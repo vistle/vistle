@@ -175,7 +175,6 @@ bool CaseInfo::checkFile(const char *filename) {
     return true;
 }
 
-
 void CaseInfo::parseResultfile() {
     int dimension, corrected_boundary_node, length;
     index_t nvars, nzones, nbounds;
@@ -347,6 +346,11 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             if (cfxExportTimestepSet(timeStepNum) < 0) {
                 sendInfo("Invalid timestep %d", timeStepNum);
             }
+
+            setParameterMaximum<Integer>(m_lasttimestep, cfxExportTimestepCount());
+            setParameterMaximum<Integer>(m_firsttimestep, cfxExportTimestepCount());
+            setParameterMaximum<Integer>(m_timeskip, cfxExportTimestepCount());
+
             //fill choice parameter
             m_case.parseResultfile();
             m_case.getFieldList();
@@ -809,7 +813,6 @@ int ReadCFX::collectBoundaries() {
     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
         if(m_coRestraintBoundaries(i)) {
             for(index_t j=0;j<allBoundaries[i-1].m_vectorIdwithZone.size();++j) {
-                std::cerr << "boundary name selected = " << allBoundaries[i-1].m_BoundName << std::endl;
                 m_boundariesSelected[numberOfSelectedBoundaries]=IdWithZoneFlag(allBoundaries[i-1].m_vectorIdwithZone[j].ID,allBoundaries[i-1].m_vectorIdwithZone[j].zoneFlag);
                 numberOfSelectedBoundaries++;
             }
@@ -907,13 +910,13 @@ bool ReadCFX::compute() {
             loadBoundaryFields(i);
         }
 
-//        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
-//        float timecount_float = (float) cfxExportTimestepCount();
-//        std::cerr << "timecount_float = " << timecount_float << std::endl;
-//        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
-//        int timeStepNum = cfxExportTimestepNumGet(1);
-//        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
-//        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
+        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
+        float timecount_float = (float) cfxExportTimestepCount();
+        std::cerr << "timecount_float = " << timecount_float << std::endl;
+        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
+        int timeStepNum = cfxExportTimestepNumGet(1);
+        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
+        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
 
     //    for(t = t1; t <= t2; t++) {
     //    ts = cfxExportTimestepNumGet(t);
