@@ -4,10 +4,6 @@
 #include "archives.h"
 #include "serialize.h"
 
-#include <boost/serialization/string.hpp>
-
-BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::primitive_type)
-//BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::object_serializable)
 
 namespace boost {
 namespace serialization {
