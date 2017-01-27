@@ -27,7 +27,7 @@ bool AttachShader::compute() {
 
    Object::const_ptr obj = expect<Object>("data_in");
    if (!obj)
-      return false;
+      return true;
 
    if (obj->isEmpty() || m_shader->getValue().empty()) {
       passThroughObject("data_out", obj);

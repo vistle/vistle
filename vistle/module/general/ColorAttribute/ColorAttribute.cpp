@@ -39,7 +39,7 @@ bool ColorAttribute::compute() {
    auto color = p_color->getValue();
    Object::const_ptr obj = expect<Object>("data_in");
    if (!obj)
-      return false;
+      return true;
 
    Object::ptr out = obj->clone();
    out->addAttribute("_color", color);
