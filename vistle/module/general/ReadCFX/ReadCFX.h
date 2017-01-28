@@ -52,7 +52,6 @@ public:
     bool m_valid;
     std::vector<Variable> m_allParam;
     std::vector<Boundary> m_allBoundaries;
-    std::map<int, int> m_ParamDimension;
     index_t m_numberOfVariables, m_numberOfBoundaries;
 
     bool checkFile(const char *filename);
@@ -97,7 +96,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_coRestraintZones, m_coRestraintBoundaries;
 
-   index_t m_nzones, m_nvolumes, m_nnodes; // m_nboundaries, m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps; // m_nboundaries, m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
@@ -127,12 +126,13 @@ class ReadCFX: public vistle::Module {
    vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
-   bool loadFields(int volumeNr);
-   bool loadBoundaryFields(int boundaryNr);
+   bool loadFields(int volumeNr, int processor, int timestep);
+   bool loadBoundaryFields(int boundaryNr, int processor, int timestep);
    int collectVolumes();
    int collectBoundaries();
    bool addVolumeDataToPorts(int volumeNr);
    bool addGridToPort(int volumeNr);
+   void setMeta(vistle::Object::ptr obj, int processor, int timestep);
 
 
 };

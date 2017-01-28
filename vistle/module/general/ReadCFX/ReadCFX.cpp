@@ -42,14 +42,15 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-//    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
-    m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
-    setParameterMinimum<Integer>(m_firsttimestep, 0);
-    m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 0);
-    setParameterMinimum<Integer>(m_lasttimestep, 0);
+    m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 1);
+    setParameterMinimum<Integer>(m_firsttimestep, 1);
+    m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 1);
+    setParameterMinimum<Integer>(m_lasttimestep, 1);
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
 
@@ -346,10 +347,10 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             if (cfxExportTimestepSet(timeStepNum) < 0) {
                 sendInfo("Invalid timestep %d", timeStepNum);
             }
-
-            setParameterMaximum<Integer>(m_lasttimestep, cfxExportTimestepCount());
-            setParameterMaximum<Integer>(m_firsttimestep, cfxExportTimestepCount());
-            setParameterMaximum<Integer>(m_timeskip, cfxExportTimestepCount());
+            m_ntimesteps = cfxExportTimestepCount();
+            setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps);
+            setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps);
+            setParameterMaximum<Integer>(m_timeskip, m_ntimesteps);
 
             //fill choice parameter
             m_case.parseResultfile();
@@ -827,7 +828,7 @@ int ReadCFX::collectBoundaries() {
     return numberOfSelectedBoundaries;
 }
 
-bool ReadCFX::loadFields(int volumeNr) {
+bool ReadCFX::loadFields(int volumeNr, int processor, int timestep) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -839,13 +840,14 @@ bool ReadCFX::loadFields(int volumeNr) {
       else {
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(volumeNr, allParam[index]);
+          setMeta(obj, processor, timestep);
           m_currentVolumedata[i]= obj;
       }
    }
    return true;
 }
 
-bool ReadCFX::loadBoundaryFields(int boundaryNr) {
+bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int timestep) {
     for (int i=0; i<NumBoundaryPorts; ++i) {
         std::string boundField = m_boundaryOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -855,6 +857,7 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
             auto index = std::distance(allParam.begin(), it);
             DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
             if(obj) {
+                setMeta(obj, processor, timestep);
                 obj ->setGrid(loadPolygon(boundaryNr));
                 obj ->setMapping(DataBase::Vertex);
                 addObject(m_boundaryDataOut[i],obj);
@@ -883,6 +886,17 @@ bool ReadCFX::addGridToPort(int volumeNr) {
     return true;
 }
 
+void ReadCFX::setMeta(Object::ptr obj, int processor, int timestep) {
+   if (obj) {
+      index_t skipfactor = m_timeskip->getValue()+1;
+      obj->setTimestep(timestep);
+      obj->setNumTimesteps(m_ntimesteps/skipfactor);
+      obj->setRealTime(cfxExportTimestepTimeGet(timestep));
+      //obj->setBlock(processor);
+      //obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
+   }
+}
+
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
@@ -891,78 +905,48 @@ bool ReadCFX::compute() {
         sendInfo("not a valid .res file entered: initialisation not yet done");
     }
     else {
-        if(ExportDone) {
-            parameterChanged(m_resultfiledir);
+        int processor = 0; //vorläufig, bis Funktionalität vorhanden
+
+        index_t step = m_timeskip->getValue()+1;
+        index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
+        for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=step) {
+            index_t timestepNumber = cfxExportTimestepNumGet(timestep);
+            if(cfxExportTimestepSet(timestepNumber)<0) {
+                std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
+            }
+            else {
+                //            std::cerr << "cfxExportTimestepNumGet(" << timestep << ") = " << cfxExportTimestepNumGet(timestep) << std::endl;
+                //            std::cerr << "cfxExportTimestepTimeGet(" << timestep << ") = " << cfxExportTimestepTimeGet(timestep) << std::endl;
+                //            std::cerr << "cfxExportTimestepSet(" << timestepNumber << ") = " << cfxExportTimestepSet(timestepNumber) << std::endl;
+
+                if(ExportDone) {
+                    parameterChanged(m_resultfiledir);
+                }
+
+                int numSelVolumes = collectVolumes();
+                //sendInfo("Schleife über Volumes Start");
+                for(int i=0;i<numSelVolumes;++i) {
+                    UnstructuredGrid::ptr grid = loadGrid(i);
+                    setMeta(grid, processor, timestep);
+                    m_currentGrid[i] = loadGrid(i);
+                    loadFields(i, processor, timestep);
+                    addGridToPort(i);
+                    addVolumeDataToPorts(i);
+                }
+                //sendInfo("Schleife über Volumes End");
+
+                int numSelBoundaries = collectBoundaries();
+                for(int i=0;i<numSelBoundaries;++i) {
+                    loadBoundaryFields(i, processor, timestep);
+                }
+
+                m_currentVolumedata.clear();
+                m_currentBoundaryVolumedata.clear();
+                m_currentGrid.clear();
+                //        cfxExportDone();
+                //        ExportDone = true;
+            }
         }
-
-        int numSelVolumes = collectVolumes();
-        sendInfo("Schleife über Volumes Start");
-        for(int i=0;i<numSelVolumes;++i) {
-            m_currentGrid[i] = loadGrid(i);
-            loadFields(i);
-            addGridToPort(i);
-            addVolumeDataToPorts(i);
-        }
-        sendInfo("Schleife über Volumes End");
-
-        int numSelBoundaries = collectBoundaries();
-        for(int i=0;i<numSelBoundaries;++i) {
-            loadBoundaryFields(i);
-        }
-
-        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
-        float timecount_float = (float) cfxExportTimestepCount();
-        std::cerr << "timecount_float = " << timecount_float << std::endl;
-        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
-        int timeStepNum = cfxExportTimestepNumGet(1);
-        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
-        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
-
-    //    for(t = t1; t <= t2; t++) {
-    //    ts = cfxExportTimestepNumGet(t);
-    //    if(cfxExportTimestepSet(ts) < 0) {
-    //    continue;
-    //    }
-
-     /*  m_firstBlock = getIntParameter("first_block");
-       m_lastBlock = getIntParameter("last_block");
-       m_firstStep = getIntParameter("first_step");
-       m_lastStep = getIntParameter("last_step");
-       m_step = getIntParameter("step");
-       if ((m_lastStep-m_firstStep)*m_step < 0)
-           m_step *= -1;
-       bool reverse = false;
-       int step = m_step, first = m_firstStep, last = m_lastStep;
-       if (step < 0) {
-           reverse = true;
-           step *= -1;
-           first *= -1;
-           last *= -1;
-       }
-
-       std::string filename = getStringParameter("filename");
-
-       int timeCounter = 0;
-       for (int t=first; t<=last; t += step) {
-           int timestep = reverse ? -t : t;
-           bool loaded = false;
-           for (int b=m_firstBlock; b<=m_lastBlock; ++b) {
-               if (rankForBlock(b) == rank()) {
-                   std::string f;
-
-           }
-           if (loaded)
-               ++timeCounter;
-       }*/
-
-        //m_case.m_ParamDimension.clear();
-        //m_case.m_allParam.clear();
-        //m_case.m_allBoundaries.clear();
-        m_currentVolumedata.clear();
-        m_currentBoundaryVolumedata.clear();
-        m_currentGrid.clear();
-//        cfxExportDone();
-//        ExportDone = true;
     }
 
     return true;
