@@ -783,6 +783,10 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
 #endif
 
    auto mit = runningMap.find(addParam.senderId());
+   if (mit == runningMap.end()) {
+      CERR << addParam << ": did not find sending module" << std::endl;
+      return true;
+   }
    vassert(mit != runningMap.end());
    auto &mod = mit->second;
    ParameterMap &pm = mod.parameters;
