@@ -449,9 +449,9 @@ bool OsgRenderer::render() {
             assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
-         std::string filename = ro->coverRenderObject->getAttribute("_model_file");
-         if (!filename.empty()) {
-             osg::Node *filenode = coVRFileManager::instance()->loadFile(filename.c_str(), NULL, transform, ro->coverRenderObject->getName());
+         const char *filename = ro->coverRenderObject->getAttribute("_model_file");
+         if (filename) {
+             osg::Node *filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
              if (filenode) {
                  m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
              }

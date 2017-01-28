@@ -116,22 +116,32 @@ RenderObject *VistleRenderObject::getVertexAttribute() const {
 
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
+   bool hasAttribute = false;
    static std::string val;
    val.clear();
    if (m_obj) {
-      val = m_obj->getAttribute(attr);
-      if (val.empty()) {
-         if (auto data = vistle::DataBase::as(m_obj))
-            if (data->grid())
-               val = data->grid()->getAttribute(attr);
-      }
+       if (m_obj->hasAttribute(attr)) {
+           val = m_obj->getAttribute(attr);
+           hasAttribute = true;
+       } else {
+           if (auto data = vistle::DataBase::as(m_obj)) {
+               if (data->grid() && data->grid()->hasAttribute(attr)) {
+                   val = data->grid()->getAttribute(attr);
+                   hasAttribute = true;
+               }
+           }
+       }
    } else if (auto ro = renderObject()) {
-      if (ro->container)
-         val = ro->container->getAttribute(attr);
-      if (val.empty() && ro->geometry)
-         val = ro->geometry->getAttribute(attr);
+       if (ro->container && ro->container->hasAttribute(attr)) {
+           val = ro->container->getAttribute(attr);
+           hasAttribute = true;
+       }
+       if (!hasAttribute && ro->geometry && ro->geometry->hasAttribute(attr)) {
+           val = ro->geometry->getAttribute(attr);
+           hasAttribute = true;
+       }
    }
-   return val.c_str();
+   return hasAttribute ? val.c_str() : nullptr;
 }
 
 
