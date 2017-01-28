@@ -1,15 +1,10 @@
 #include <cstdio>
-
-#include <sys/types.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
-
 #include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <string>
 
+#include <util/hostname.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/parameter.h>
@@ -34,18 +29,14 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
    if (observer)
       m_stateTracker.registerObserver(observer);
 
-   const int HOSTNAMESIZE = 64;
-   char hostname[HOSTNAMESIZE];
-   gethostname(hostname, HOSTNAMESIZE - 1);
-
-   std::cerr << "  userinterface ["  << id() << "] started as " << hostname << ":"
+   std::cerr << "  userinterface ["  << id() << "] started as " << hostname() << ":"
 #ifndef _WIN32
              << getpid() << std::endl;
 #else
              << std::endl;
 #endif
 
-   m_hostname = hostname;
+   m_hostname = hostname();
 
    tryConnect();
 }

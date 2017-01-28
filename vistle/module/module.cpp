@@ -1,10 +1,9 @@
 #include <cstdlib>
 #include <cstdio>
 
+#include <util/hostname.h>
 #include <sys/types.h>
-#ifndef _WIN32
-#include <unistd.h>
-#else
+#ifdef _WIN32
 #define NOMINMAX
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
@@ -190,10 +189,6 @@ Module::Module(const std::string &desc, const std::string &shmname,
 
    message::DefaultSender::init(m_id, m_rank);
 
-   const int HOSTNAMESIZE = 64;
-   char hostname[HOSTNAMESIZE];
-   gethostname(hostname, HOSTNAMESIZE - 1);
-
    try {
       Shm::attach(shmname, id(), rank());
    } catch (interprocess::interprocess_exception &ex) {
@@ -218,7 +213,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 
 #ifdef DEBUG
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "] started as " << hostname << ":"
+             << "/" << size() << "] started as " << hostname() << ":"
 #ifndef _WIN32
              << getpid()
 #endif

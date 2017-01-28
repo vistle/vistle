@@ -13,6 +13,7 @@
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/indexed.h>
+#include <util/hostname.h>
 
 using namespace vistle;
 
@@ -35,11 +36,8 @@ using namespace vistle;
 MpiInfo::MpiInfo(const std::string &shmname, const std::string &name, int moduleID)
    : Module("MPI info", shmname, name, moduleID)
 {
-   std::vector<char> hostname(1024);
-   gethostname(hostname.data(), hostname.size());
-
    std::stringstream str;
-   str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
+   str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
    sendInfo(str.str());
 }
 
@@ -49,11 +47,8 @@ MpiInfo::~MpiInfo() {
 
 bool MpiInfo::compute() {
 
-   std::vector<char> hostname(1024);
-   gethostname(hostname.data(), hostname.size());
-
    std::stringstream str;
-   str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
+   str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
    sendInfo(str.str());
    if (rank() == 0) {
        int len = 0;

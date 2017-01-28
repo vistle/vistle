@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <util/hostname.h>
+
 #include <core/unstr.h>
 #include <core/points.h>
 #include <core/normals.h>
@@ -473,8 +475,6 @@ bool PrintMetaData::compute() {
 // * must be called collectively - mpi barrier used to ensure proper message ordering
 //-------------------------------------------------------------------------
 void PrintMetaData::util_printMPIInfo(std::string printTag) {
-    std::vector<char> hostname(1024);
-    gethostname(hostname.data(), hostname.size());
     std::string message;
 
     // print header for MPI info
@@ -499,7 +499,7 @@ void PrintMetaData::util_printMPIInfo(std::string printTag) {
     usleep(10);
 
     // print mpi rank and size
-    message = printTag + "rank " + std::to_string(rank()) + "/" + std::to_string(size()) + " on host " + hostname.data() + "\n";
+    message = printTag + "rank " + std::to_string(rank()) + "/" + std::to_string(size()) + " on host " + hostname() + "\n";
 
     sendInfo(message);
 }

@@ -1,6 +1,7 @@
 #include "rhrcontroller.h"
 #include <core/parameter.h>
 #include <core/statetracker.h>
+#include <util/hostname.h>
 
 namespace vistle {
 
@@ -146,9 +147,11 @@ unsigned short RhrController::listenPort() const {
 std::string RhrController::listenHost() const {
 
     switch(m_rhrConnectionMethod->getValue()) {
+    case AutomaticHostname: {
+        return hostname();
+    }
     case UserHostname: {
         return m_rhrLocalEndpoint->getValue();
-        break;
     }
     case ViaHub: {
         auto hubdata = m_module->getHub();

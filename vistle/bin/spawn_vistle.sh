@@ -22,7 +22,7 @@ if [ -n "$SLURM_JOB_ID" ]; then
 fi
 
 VALGRIND=""
-VALGRIND="valgrind"
+#VALGRIND="valgrind"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then

@@ -4,6 +4,7 @@ set(util_SOURCES
    coRestraint.cpp
    exception.cpp
    findself.cpp
+   hostname.cpp
    stopwatch.cpp
    tools.cpp
    spawnprocess.cpp
@@ -18,6 +19,7 @@ set(util_HEADERS
    enum.h
    exception.h
    findself.h
+   hostname.h
    math.h
    sysdep.h
    tools.h

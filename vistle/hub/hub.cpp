@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include <core/assert.h>
+#include <util/hostname.h>
 #include <util/directory.h>
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
@@ -41,21 +42,6 @@ using message::Id;
 namespace dir = vistle::directory;
 
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
-
-std::string hostname() {
-
-   static std::string hname;
-
-   if (hname.empty()) {
-      const size_t HOSTNAMESIZE = 256;
-
-      char hostname[HOSTNAMESIZE];
-      gethostname(hostname, HOSTNAMESIZE-1);
-      hostname[HOSTNAMESIZE-1] = '\0';
-      hname = hostname;
-   }
-   return hname;
-}
 
 Hub *hub_instance = nullptr;
 

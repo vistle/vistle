@@ -1,18 +1,16 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#ifndef _WIN32
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#else
+
+#ifdef _WIN32
 #include <process.h>
 #define NOMINMAX
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif
+
 #include <util/sysdep.h>
+#include <util/hostname.h>
 
 #include <mpi.h>
 
@@ -25,6 +23,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include <boost/mpi.hpp>
+
 #include <core/message.h>
 #include <core/messagequeue.h>
 #include <core/object.h>
@@ -33,7 +33,8 @@
 #include "communicator.h"
 #include "executor.h"
 
-using namespace boost::interprocess;
+namespace interprocess = boost::interprocess;
+namespace mpi = boost::mpi;
 
 namespace vistle {
 
@@ -55,12 +56,6 @@ Executor::Executor(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
-   // process with the smallest rank on each host allocates shm
-   const int HOSTNAMESIZE = 256;
-
-   char hostname[HOSTNAMESIZE];
-   std::vector<char> hostnames(HOSTNAMESIZE * m_size);
-   gethostname(hostname, HOSTNAMESIZE - 1);
 
    if (argc < 4) {
       std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
@@ -84,38 +79,28 @@ Executor::Executor(int argc, char *argv[])
       m_name = std::string(buf.data(), len);
    }
 
-   MPI_Allgather(hostname, HOSTNAMESIZE, MPI_CHAR,
-                 &hostnames[0], HOSTNAMESIZE, MPI_CHAR, MPI_COMM_WORLD);
+   std::string hostname = vistle::hostname();
+   std::vector<std::string> hostnames;
+   mpi::all_gather(mpi::communicator(), hostname, hostnames);
 
    bool first = true;
    for (int index = 0; index < m_rank; index ++)
-      if (!strncmp(hostname, &hostnames[index * HOSTNAMESIZE], HOSTNAMESIZE))
+      if (hostnames[index] == hostname)
          first = false;
 
-   std::vector<std::string> hosts;
-   for (int index=0; index<m_size; ++index) {
-      hosts.push_back(&hostnames[HOSTNAMESIZE*index]);
-   }
-
    if (first) {
-      shared_memory_object::remove(m_name.c_str());
+      interprocess::shared_memory_object::remove(m_name.c_str());
       vistle::Shm::create(m_name, 0, m_rank, NULL);
    }
    MPI_Barrier(MPI_COMM_WORLD);
 
-   char name[HOSTNAMESIZE+30];
-   if (!m_rank)
-      strncpy(name, m_name.c_str(), m_name.length()+1);
-   MPI_Bcast(name, sizeof(name), MPI_CHAR, 0, MPI_COMM_WORLD);
-   if (m_rank) {
-      m_name = name;
-   }
+   mpi::broadcast(mpi::communicator(), m_name, 0);
 
    if (!first)
       vistle::Shm::attach(m_name, 0, m_rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
-   m_comm = new vistle::Communicator(m_rank, hosts);
+   m_comm = new vistle::Communicator(m_rank, hostnames);
    if (!m_comm->connectHub(argv[1], port, dataPort)) {
       std::stringstream err;
       err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
