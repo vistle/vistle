@@ -262,6 +262,10 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           m_lightsUpdateCount = rhr->lightsUpdateCount;
       }
 
+      if (m_viewData.size() > rhr->numViews()) {
+          m_viewData.resize(rhr->numViews());
+          m_doRender = 1;
+      }
       for (size_t i=m_viewData.size(); i<rhr->numViews(); ++i) {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
@@ -432,48 +436,52 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
    vassert(m_currentView >= 0);
    const size_t i = m_currentView;
    vassert(i < numViews());
+
    //std::cerr << "finishCurrentView: " << i << std::endl;
    if (m_module->rank() == rootRank()) {
-      auto rhr = m_rhrControl.server();
-      vassert(rhr);
-      const int bpp = 4;
-      const int w = rhr->width(i);
-      const int h = rhr->height(i);
-      vassert(std::max(0,w) == icetImageGetWidth(img));
-      vassert(std::max(0,h) == icetImageGetHeight(img));
+       auto rhr = m_rhrControl.server();
+       vassert(rhr);
+       if (i < rhr->numViews()) {
+           // otherwise client just disconnected
+           const int bpp = 4;
+           const int w = rhr->width(i);
+           const int h = rhr->height(i);
+           vassert(std::max(0,w) == icetImageGetWidth(img));
+           vassert(std::max(0,h) == icetImageGetHeight(img));
 
 
-      const IceTUByte *color = nullptr;
-      switch (icetImageGetColorFormat(img)) {
-      case ICET_IMAGE_COLOR_RGBA_UBYTE:
-          color = icetImageGetColorcub(img);
-          break;
-      case ICET_IMAGE_COLOR_RGBA_FLOAT:
-          std::cerr << "expected byte color, got float" << std::endl;
-          break;
-      case ICET_IMAGE_COLOR_NONE:
-          std::cerr << "expected byte color, got no color" << std::endl;
-          break;
-      }
-      const IceTFloat *depth = nullptr;
-      switch (icetImageGetDepthFormat(img)) {
-      case ICET_IMAGE_DEPTH_FLOAT:
-          depth = icetImageGetDepthcf(img);
-          break;
-      case ICET_IMAGE_DEPTH_NONE:
-          std::cerr << "expected byte color, got no color" << std::endl;
-          break;
-      }
+           const IceTUByte *color = nullptr;
+           switch (icetImageGetColorFormat(img)) {
+           case ICET_IMAGE_COLOR_RGBA_UBYTE:
+               color = icetImageGetColorcub(img);
+               break;
+           case ICET_IMAGE_COLOR_RGBA_FLOAT:
+               std::cerr << "expected byte color, got float" << std::endl;
+               break;
+           case ICET_IMAGE_COLOR_NONE:
+               std::cerr << "expected byte color, got no color" << std::endl;
+               break;
+           }
+           const IceTFloat *depth = nullptr;
+           switch (icetImageGetDepthFormat(img)) {
+           case ICET_IMAGE_DEPTH_FLOAT:
+               depth = icetImageGetDepthcf(img);
+               break;
+           case ICET_IMAGE_DEPTH_NONE:
+               std::cerr << "expected byte color, got no color" << std::endl;
+               break;
+           }
 
-      if (color && depth) {
-         for (int y=0; y<h; ++y) {
-            memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-            memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
-         }
+           if (color && depth) {
+               for (int y=0; y<h; ++y) {
+                   memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+                   memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+               }
 
-         m_viewData[i].rhrParam.timestep = timestep;
-         rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
-      }
+               m_viewData[i].rhrParam.timestep = timestep;
+               rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
+           }
+       }
    }
    m_currentView = -1;
    m_frameComplete = lastView;

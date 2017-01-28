@@ -300,6 +300,10 @@ private:
 
    VariantVisibilityMap m_clientVariants;
    InitialVariantVisibilityMap m_localVariants;
+
+   template<class Message>
+   bool send(const Message &message, const std::vector<char> *payload=nullptr);
+   void resetClient();
 };
 
 } // namespace vistle

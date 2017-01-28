@@ -58,6 +58,26 @@ static TjContext tjContexts;
 
 namespace vistle {
 
+template<class Message>
+bool RhrServer::send(const Message &message, const std::vector<char> *payload) {
+
+    if (m_clientSocket && !m_clientSocket->is_open()) {
+        resetClient();
+        CERR << "client disconnected" << std::endl;
+    }
+
+    if (!m_clientSocket)
+        return false;
+
+    RemoteRenderMessage r(message, payload ? payload->size() : 0);
+    if (!message::send(*m_clientSocket, r, payload)) {
+        CERR << "client error, disconnecting" << std::endl;
+        resetClient();
+        return false;
+    }
+    return true;
+}
+
 RhrServer *RhrServer::plugin = NULL;
 
 //! called when plugin is loaded
@@ -195,8 +215,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
             variantMsg msg;
             strncpy(msg.name, var.c_str(), sizeof(msg.name));
             msg.remove = 1;
-            RemoteRenderMessage r(msg);
-            message::send(*m_clientSocket, r);
+            send(msg);
         }
     }
 
@@ -212,8 +231,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
                 msg.configureVisibility = 1;
                 msg.visible = var.second==vistle::RenderObject::Visible ? 1 : 0;
             }
-            RemoteRenderMessage r(msg);
-            message::send(*m_clientSocket, r);
+            send(msg);
         }
     }
 }
@@ -250,7 +268,19 @@ bool RhrServer::init(unsigned short port) {
    m_queuedTiles = 0;
    m_firstTile = false;
 
+   resetClient();
+
    return start(port);
+}
+
+void RhrServer::resetClient() {
+
+    ++m_updateCount;
+    ++lightsUpdateCount;
+    m_clientSocket.reset();
+    lightsUpdateCount = 0;
+    m_clientVariants.clear();
+    m_viewData.clear();
 }
 
 bool RhrServer::start(unsigned short port) {
@@ -285,7 +315,6 @@ bool RhrServer::start(unsigned short port) {
 
 bool RhrServer::startAccept() {
 
-   assert(!m_clientSocket);
    auto sock = std::make_shared<asio::ip::tcp::socket>(m_io);
 
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(sock, ec);});
@@ -294,14 +323,18 @@ bool RhrServer::startAccept() {
 
 void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
-   assert(!m_clientSocket);
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
       return;
    }
 
-   CERR << "incoming connection..." << std::endl;
+   if (m_clientSocket) {
+       CERR << "incoming connection, rejecting as already servicing a client" << std::endl;
+       startAccept();
+       return;
+   }
 
+   CERR << "incoming connection, accepting new client" << std::endl;
    m_clientSocket = sock;
 
    int nt = m_numTimesteps;
@@ -312,10 +345,11 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
         variantMsg msg;
         strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
         msg.visible = var.second;
-        RemoteRenderMessage r(msg);
-        message::send(*m_clientSocket, r);
+        send(msg);
 
    }
+
+   startAccept();
 }
 
 
@@ -331,19 +365,18 @@ void RhrServer::resize(int viewNum, int w, int h) {
         std::cout << "resize: view=" << viewNum << ", w=" << w << ", h=" << h << std::endl;
     }
 #endif
-    if (viewNum >= numViews()) {
-        if (viewNum != 0)
-            m_viewData.emplace_back();
-        else
-            return;
+    while (viewNum >= numViews()) {
+        m_viewData.emplace_back();
     }
 
    ViewData &vd = m_viewData[viewNum];
    if (m_resizeBlocked) {
-       m_resizeDeferred = true;
 
-       vd.newWidth = w;
-       vd.newHeight = h;
+       if (w != -1 && h != -1) {
+           m_resizeDeferred = true;
+           vd.newWidth = w;
+           vd.newHeight = h;
+       }
        return;
    }
 
@@ -353,9 +386,19 @@ void RhrServer::resize(int viewNum, int w, int h) {
        h = vd.newHeight;
    }
 
+   if (w == -1 || h == -1) {
+      //CERR << "rejecting resize for view " << viewNum << " to " << w << "x" << h << std::endl;
+      return;
+   }
+
    if (vd.nparam.width != w || vd.nparam.height != h) {
       vd.nparam.width = w;
       vd.nparam.height = h;
+
+      CERR << "resizing view " << viewNum << " to " << w << "x" << h << std::endl;
+
+      w = std::max(1,w);
+      h = std::max(1,h);
 
       vd.rgba.resize(w*h*4);
       vd.depth.resize(w*h);
@@ -459,8 +502,7 @@ void RhrServer::setNumTimesteps(unsigned num) {
           animationMsg anim;
           anim.current = m_imageParam.timestep;
           anim.total = num;
-          RemoteRenderMessage r(anim);
-          message::send(*m_clientSocket, r);
+          send(anim);
       }
    }
 }
@@ -491,8 +533,7 @@ void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
    msg.center[2] = m_boundCenter[2];
    msg.radius = m_boundRadius;
 
-   RemoteRenderMessage r(msg, 0);
-   message::send(*sock, r);
+   send(msg);
 }
 
 
@@ -539,6 +580,10 @@ RhrServer::preFrame() {
           size_t avail = 0;
           asio::socket_base::bytes_readable command(true);
           m_clientSocket->io_control(command);
+          if (!m_clientSocket->is_open()) {
+              resetClient();
+              break;
+          }
           if (command.get() > 0) {
               avail = command.get();
           }
@@ -892,9 +937,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
               //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
            }
            msg->frameNumber = framecount;
-
-           message::RemoteRenderMessage vmsg(*msg, result.payload.size());
-           message::send(*m_clientSocket, vmsg, &result.payload);
+           send(*msg, &result.payload);
         }
         result.payload.clear();
         delete msg;
