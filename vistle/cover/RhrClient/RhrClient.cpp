@@ -1615,8 +1615,10 @@ void RhrClient::setTimestep(int t) {
 void RhrClient::requestTimestep(int t) {
 
     //std::cerr << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
-    if (t < 0)
+    if (t < 0) {
+        commitTimestep(t);
         return;
+    }
 
     if (m_remoteTimestep == t) {
         //std::cerr << "RhrClient::commitTimestep(" << t << ") immed" << std::endl;
@@ -1628,7 +1630,6 @@ void RhrClient::requestTimestep(int t) {
         commitTimestep(t);
 #endif
     } else if (t != m_requestedTimestep) {
-        m_requestedTimestep = t;
         bool requested = false;
         if (m_remote) {
             if (coVRMSController::instance()->isMaster()) {
@@ -1640,7 +1641,10 @@ void RhrClient::requestTimestep(int t) {
             }
             requested = coVRMSController::instance()->syncBool(requested);
         }
-        if (!requested) {
+        if (requested) {
+            m_requestedTimestep = t;
+        }
+        if (!requested || m_numRemoteTimesteps <= t) {
             commitTimestep(t);
         }
     }
