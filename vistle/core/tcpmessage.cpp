@@ -21,7 +21,7 @@ static const uint32_t VistleError = 12345;
 
 namespace {
 
-bool check(const Message &msg) {
+bool check(const Message &msg, const std::vector<char> *payload) {
     if (msg.type() <= ANY || msg.type() >= NumMessageTypes) {
         std::cerr << "check message: invalid type " << msg.type() << std::endl;
         return false;
@@ -39,6 +39,16 @@ bool check(const Message &msg) {
 
     if (msg.destRank() < -1) {
         std::cerr << "check message: invalid destination rank " << msg.destRank() << std::endl;
+        return false;
+    }
+
+    if (msg.payloadSize() > 0 && !payload) {
+        std::cerr << "check message: no payload but positive payload size" << std::endl;
+        return false;
+    }
+
+    if (msg.payloadSize() > 0 && payload->size() != msg.payloadSize()) {
+        std::cerr << "check message: payload and size do not match" << std::endl;
         return false;
     }
 
@@ -224,7 +234,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
 
 bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) {
 
-   assert(check(msg));
+   assert(check(msg, payload));
    try {
       const SizeType sz = htonl(msg.size());
       std::vector<boost::asio::const_buffer> buffers;
@@ -254,7 +264,7 @@ void async_send(socket_t &sock, const message::Message &msg,
                 std::shared_ptr<std::vector<char>> payload,
                 const std::function<void(error_code ec)> handler)
 {
-   assert(check(msg));
+   assert(check(msg, payload.get()));
    std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
 
    std::lock_guard<std::mutex> locker(sendQueueMutex);
