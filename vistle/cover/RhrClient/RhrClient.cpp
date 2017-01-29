@@ -276,15 +276,13 @@ class RemoteConnection {
                 variantMsg msg;
                 strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
                 msg.visible = var.second;
-                RemoteRenderMessage rrm(msg);
-                send(rrm);
+                send(msg);
             }
 
             animationMsg msg;
             msg.current = plugin->m_visibleTimestep;
             msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-            RemoteRenderMessage rrm(msg);
-            send(rrm);
+            send(msg);
         }
     }
 
@@ -410,12 +408,21 @@ class RemoteConnection {
         return ret;
     }
 
-    bool send(const message::Message &msg, const std::vector<char> *payload=nullptr) {
+    bool sendMessage(const message::Message &msg, const std::vector<char> *payload=nullptr) {
         lock_guard locker(*m_sendMutex);
-        if (m_sock.is_open())
-            return message::send(m_sock, msg, payload);
-        else
-            return false;
+        if (m_sock.is_open()) {
+            bool ok = message::send(m_sock, msg, payload);
+            if (!ok)
+                m_sock.close();
+            return ok;
+        }
+        return false;
+    }
+
+    template<class Message>
+    bool send(const Message &msg, const std::vector<char> *payload=nullptr) {
+        RemoteRenderMessage r(msg, payload ? payload->size() : 0);
+        return sendMessage(r, payload);
     }
 
     bool requestBounds() {
@@ -425,8 +432,7 @@ class RemoteConnection {
         boundsMsg msg;
         msg.type = rfbBounds;
         msg.sendreply = 1;
-        RemoteRenderMessage rrm(msg);
-        return send(rrm);
+        return send(msg);
     }
 
     void lock() {
@@ -506,8 +512,7 @@ bool RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, st
    for (size_t i=0; i<messages.size(); ++i) {
       matricesMsg &msg = messages[i];
       msg.requestNumber = requestNum;
-      RemoteRenderMessage rrm(msg, 0);
-      if (!remote->send(rrm))
+      if (!remote->send(msg))
           return false;
    }
    return true;
@@ -573,8 +578,7 @@ bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
 #undef COPY_VEC
    }
 
-   RemoteRenderMessage rrm(msg);
-   return remote->send(rrm);
+   return remote->send(msg);
 }
 
 //! Task structure for submitting to Intel Threading Building Blocks work //queue
@@ -1636,8 +1640,7 @@ void RhrClient::requestTimestep(int t) {
                 animationMsg msg;
                 msg.current = t;
                 msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-                RemoteRenderMessage rrm(msg);
-                requested = m_remote->send(rrm);
+                requested = m_remote->send(msg);
             }
             requested = coVRMSController::instance()->syncBool(requested);
         }
@@ -1664,8 +1667,7 @@ void RhrClient::message(int type, int len, const void *msg) {
             variantMsg msg;
             msg.visible = visible;
             strncpy(msg.name, VariantName.c_str(), sizeof(msg.name));
-            RemoteRenderMessage rrm(msg);
-            m_remote->send(rrm);
+            m_remote->send(msg);
         }
         break;
     }
