@@ -72,14 +72,14 @@ class ReadCFX: public vistle::Module {
  public:
    ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
    ~ReadCFX();
-   virtual bool compute();
+   virtual bool compute() override;
    static const int usr_level = 0; // Query the number of variables at interest level usr_level or below. If usr_level is 0, then the
                                    // total number of variables is returned.
    static const int alias = 1; // alias = 1 -> long variable name; alias = 0 -> short variable name
 
 
  private:
-   bool parameterChanged(const vistle::Parameter *p);
+   bool changeParameter(const vistle::Parameter *p) override;
    bool ExportDone;
 
    //int rankForBlock(int block) const;

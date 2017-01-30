@@ -304,11 +304,10 @@ index_t CaseInfo::getNumberOfBoundaries() {
     return block % size();
 }*/
 
-bool ReadCFX::parameterChanged(const Parameter *p) {
-    auto sp = dynamic_cast<const StringParameter *>(p);
+bool ReadCFX::changeParameter(const Parameter *p) {
 
-    if (sp == m_resultfiledir) {
-        std::string c = sp->getValue();
+    if (p == m_resultfiledir) {
+        std::string c = m_resultfiledir->getValue();
         const char *resultfiledir;
         resultfiledir = c.c_str();
         m_case.m_valid = m_case.checkFile(resultfiledir);
@@ -383,7 +382,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
         }
     }
-    return Module::parameterChanged(p);
+    return Module::changeParameter(p);
 }
 
 UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
@@ -920,7 +919,7 @@ bool ReadCFX::compute() {
                 //            std::cerr << "cfxExportTimestepSet(" << timestepNumber << ") = " << cfxExportTimestepSet(timestepNumber) << std::endl;
 
                 if(ExportDone) {
-                    parameterChanged(m_resultfiledir);
+                    changeParameter(m_resultfiledir);
                 }
 
                 int numSelVolumes = collectVolumes();
