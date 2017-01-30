@@ -3,7 +3,6 @@
 
 #include <limits.h>
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
 
@@ -25,9 +24,6 @@
 #include "archives.h"
 #include "assert.h"
 
-template<typename T>
-static T min(T a, T b) { return a<b ? a : b; }
-
 using namespace boost::interprocess;
 
 namespace mpl = boost::mpl;
@@ -38,9 +34,9 @@ namespace serialization {
 // XXX: check these
 
 template<>
-void access::destroy( const vistle::shm<char>::string * t) // const appropriate here?
+void access::destroy(const vistle::shm<char>::string * t) // const appropriate here?
 {
-   delete const_cast<vistle::shm<char>::string *>(t);
+   const_cast<vistle::shm<char>::string *>(t)->~basic_string();
 }
 
 template<>
@@ -55,7 +51,7 @@ void access::construct(vistle::shm<char>::string * t)
 template<>
 void access::destroy(const vistle::Object::Data::AttributeList *t)
 {
-   delete const_cast<vistle::Object::Data::AttributeList *>(t);
+   const_cast<vistle::Object::Data::AttributeList *>(t)->~vector();
 }
 
 template<>
@@ -65,9 +61,9 @@ void access::construct(vistle::Object::Data::AttributeList *t)
 }
 
 template<>
-void access::destroy(const vistle::Object::Data::AttributeMapValueType *t)
+void access::destroy(const vistle::ObjectData::AttributeMapValueType *t)
 {
-   delete const_cast<vistle::Object::Data::AttributeMapValueType *>(t);
+   const_cast<vistle::Object::Data::AttributeMapValueType *>(t)->~pair();
 }
 
 template<>
@@ -79,7 +75,6 @@ void access::construct(vistle::Object::Data::AttributeMapValueType *t)
 
 } // namespace serialization
 } // namespace boost
-
 
 
 namespace vistle {
@@ -168,8 +163,8 @@ ObjectData::ObjectData(const Object::Type type, const std::string & n, const Met
    , refcount(0)
    , unresolvedReferences(0)
    , meta(m)
-   , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<Key>(), Shm::the().allocator()))
-   , attachments(shm<AttachmentMap>::construct(std::string("attach_")+n)(std::less<Key>(), Shm::the().allocator()))
+   , attributes(std::less<Key>(), Shm::the().allocator())
+   , attachments(std::less<Key>(), Shm::the().allocator())
 {
 }
 
@@ -179,8 +174,8 @@ ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::T
 , refcount(0)
 , unresolvedReferences(0)
 , meta(o.meta)
-, attributes(shm<AttributeMap>::construct(std::string("attr_")+name)(std::less<Key>(), Shm::the().allocator()))
-, attachments(shm<AttachmentMap>::construct(std::string("attach_")+name)(std::less<Key>(), Shm::the().allocator()))
+, attributes(std::less<Key>(), Shm::the().allocator())
+, attachments(std::less<Key>(), Shm::the().allocator())
 {
    copyAttributes(&o, true);
    copyAttachments(&o, true);
@@ -190,15 +185,11 @@ ObjectData::~ObjectData() {
 
    //std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
 
-   shm<AttributeMap>::destroy(std::string("attr_")+name);
-   { 
-      boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
-      for (auto &objd: *attachments) {
-         // referenced in addAttachment
-         objd.second->unref();
-      }
-      shm<AttachmentMap>::destroy(std::string("attach_")+name);
-   }
+    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+    for (auto &objd: attachments) {
+        // referenced in addAttachment
+        objd.second->unref();
+    }
 }
 
 bool Object::Data::isComplete() const {
@@ -415,6 +406,16 @@ int Object::getNumBlocks() const {
    return d()->meta.numBlocks();
 }
 
+int Object::getIteration() const {
+
+   return d()->meta.iteration();
+}
+
+void Object::setIteration(const int num) {
+
+   d()->meta.setIteration(num);
+}
+
 int Object::getExecutionCounter() const {
 
    return d()->meta.executionCounter();
@@ -527,7 +528,7 @@ std::vector<std::string> Object::getAttributeList() const {
 void Object::Data::addAttribute(const std::string &key, const std::string &value) {
 
    const Key skey(key.c_str(), Shm::the().allocator());
-   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
+   std::pair<AttributeMap::iterator, bool> res = attributes.insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
    AttributeList &a = res.first->second;
    a.push_back(Attribute(value.c_str(), Shm::the().allocator()));
 }
@@ -535,7 +536,7 @@ void Object::Data::addAttribute(const std::string &key, const std::string &value
 void Object::Data::setAttributeList(const std::string &key, const std::vector<std::string> &values) {
 
    const Key skey(key.c_str(), Shm::the().allocator());
-   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
+   std::pair<AttributeMap::iterator, bool> res = attributes.insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
    AttributeList &a = res.first->second;
    a.clear();
    for (size_t i=0; i<values.size(); ++i) {
@@ -547,15 +548,15 @@ void Object::Data::copyAttributes(const ObjectData *src, bool replace) {
 
    if (replace) {
 
-      *attributes = *src->attributes;
+      attributes = src->attributes;
    } else {
 
-      const AttributeMap &a = *src->attributes;
+      const AttributeMap &a = src->attributes;
 
       for (AttributeMap::const_iterator it = a.begin(); it != a.end(); ++it) {
          const Key &key = it->first;
          const AttributeList &values = it->second;
-         std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(key, values));
+         std::pair<AttributeMap::iterator, bool> res = attributes.insert(AttributeMapValueType(key, values));
          if (!res.second) {
             AttributeList &dest = res.first->second;
             if (replace)
@@ -571,30 +572,30 @@ void Object::Data::copyAttributes(const ObjectData *src, bool replace) {
 bool Object::Data::hasAttribute(const std::string &key) const {
 
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttributeMap::iterator it = attributes->find(skey);
-   return it != attributes->end();
+   AttributeMap::const_iterator it = attributes.find(skey);
+   return it != attributes.end();
 }
 
 std::string Object::Data::getAttribute(const std::string &key) const {
 
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttributeMap::iterator it = attributes->find(skey);
-   if (it == attributes->end())
+   AttributeMap::const_iterator it = attributes.find(skey);
+   if (it == attributes.end())
       return std::string();
-   AttributeList &a = it->second;
+   const AttributeList &a = it->second;
    return a.back().c_str();
 }
 
 std::vector<std::string> Object::Data::getAttributes(const std::string &key) const {
 
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttributeMap::iterator it = attributes->find(skey);
-   if (it == attributes->end())
+   AttributeMap::const_iterator it = attributes.find(skey);
+   if (it == attributes.end())
       return std::vector<std::string>();
-   AttributeList &a = it->second;
+   const AttributeList &a = it->second;
 
    std::vector<std::string> attrs;
-   for (AttributeList::iterator i = a.begin(); i != a.end(); ++i) {
+   for (AttributeList::const_iterator i = a.begin(); i != a.end(); ++i) {
       attrs.push_back(i->c_str());
    }
    return attrs;
@@ -603,8 +604,8 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
 std::vector<std::string> Object::Data::getAttributeList() const {
 
    std::vector<std::string> result;
-   for (AttributeMap::iterator it = attributes->begin();
-         it != attributes->end();
+   for (AttributeMap::const_iterator it = attributes.begin();
+         it != attributes.end();
          ++it) {
       auto key = it->first;
       result.push_back(key.c_str());
@@ -641,16 +642,16 @@ bool Object::Data::hasAttachment(const std::string &key) const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttachmentMap::iterator it = attachments->find(skey);
-   return it != attachments->end();
+   AttachmentMap::const_iterator it = attachments.find(skey);
+   return it != attachments.end();
 }
 
 Object::const_ptr ObjectData::getAttachment(const std::string &key) const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttachmentMap::iterator it = attachments->find(skey);
-   if (it == attachments->end()) {
+   AttachmentMap::const_iterator it = attachments.find(skey);
+   if (it == attachments.end()) {
       return Object::ptr();
    }
    return Object::create(it->second.get());
@@ -660,25 +661,25 @@ bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) 
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttachmentMap::iterator it = attachments->find(skey);
-   if (it != attachments->end()) {
+   AttachmentMap::const_iterator it = attachments.find(skey);
+   if (it != attachments.end()) {
       return false;
    }
 
    obj->ref();
-   attachments->insert(AttachmentMapValueType(skey, obj->d()));
+   attachments.insert(AttachmentMapValueType(skey, obj->d()));
 
    return true;
 }
 
 void Object::Data::copyAttachments(const ObjectData *src, bool replace) {
 
-   const AttachmentMap &a = *src->attachments;
+   const AttachmentMap &a = src->attachments;
 
    for (AttachmentMap::const_iterator it = a.begin(); it != a.end(); ++it) {
       const Key &key = it->first;
       const Attachment &value = it->second;
-      auto res = attachments->insert(AttachmentMapValueType(key, value));
+      auto res = attachments.insert(AttachmentMapValueType(key, value));
       if (res.second) {
          value->ref();
       } else {
@@ -696,13 +697,13 @@ bool Object::Data::removeAttachment(const std::string &key) {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
-   AttachmentMap::iterator it = attachments->find(skey);
-   if (it == attachments->end()) {
+   AttachmentMap::iterator it = attachments.find(skey);
+   if (it == attachments.end()) {
       return false;
    }
 
    it->second->unref();
-   attachments->erase(it);
+   attachments.erase(it);
 
    return true;
 }

@@ -6,7 +6,6 @@
 #include <QRect>
 #include <QPainter>
 
-#include "math.h"
 #include "port.h"
 
 namespace gui {

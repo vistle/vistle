@@ -21,10 +21,10 @@ class V_COREEXPORT StructuredGridBase: public GridInterface {
 
 public:
    typedef StructuredGridBase Class;
-   typedef boost::shared_ptr<Class> ptr;
-   typedef boost::shared_ptr<const Class> const_ptr;
-   static boost::shared_ptr<const Class> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Class>(ptr); }
-   static boost::shared_ptr<Class> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Class>(ptr); }
+   typedef std::shared_ptr<Class> ptr;
+   typedef std::shared_ptr<const Class> const_ptr;
+   static std::shared_ptr<const Class> as(std::shared_ptr<const Object> ptr) { return std::dynamic_pointer_cast<const Class>(ptr); }
+   static std::shared_ptr<Class> as(std::shared_ptr<Object> ptr) { return std::dynamic_pointer_cast<Class>(ptr); }
 
    enum GhostLayerPosition {
        Bottom,
@@ -41,6 +41,16 @@ public:
    static inline Index vertexIndex(const Index i[3], const Index dims[3]) {
        return vertexIndex(i[0], i[1], i[2], dims);
    }
+   static inline std::array<Index,3> vertexCoordinates(Index v, const Index dims[3]) {
+       std::array<Index,3> coords;
+       coords[2] = v%dims[2];
+       v /= dims[2];
+       coords[1] = v%dims[1];
+       v /= dims[1];
+       coords[0] = v;
+       return coords;
+   }
+
    static inline Index cellIndex(const Index ix, const Index iy, const Index iz, const Index dims[3]) {
        assert(ix < dims[0]-1);
        assert(iy < dims[1]-1);
@@ -76,15 +86,18 @@ public:
    virtual bool isGhostCell(Index elem) const override;
 
    // virtual get functions
-   virtual Index getNumElements() { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
-   virtual Index getNumElements() const { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
+   virtual Index getNumElements() const override { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
    virtual Index getNumDivisions(int d) { return 1; }           //< get number of vertices in dimension d
    virtual Index getNumDivisions(int d) const { return 1; }     //< get number of vertices in dimension d
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) { return 0; }
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const { return 0; }
+   virtual Vector getVertex(Index v) const = 0;
 
    // virtual set functions
    virtual void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) { return; }
+
+   virtual Scalar cellDiameter(Index elem) const override;
+   virtual std::vector<Index> getNeighborElements(Index elem) const override;
 };
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGridBase)

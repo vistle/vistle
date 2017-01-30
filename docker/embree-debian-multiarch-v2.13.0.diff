@@ -1,0 +1,16 @@
+diff --git a/common/cmake/embree-config-linux.cmake b/common/cmake/embree-config-linux.cmake
+index b1638c5fc..1b49befa3 100644
+--- a/common/cmake/embree-config-linux.cmake
++++ b/common/cmake/embree-config-linux.cmake
+@@ -14,7 +14,11 @@
+ ## limitations under the License.                                           ##
+ ## ======================================================================== ##
+ 
++IF(CMAKE_LIBRARY_ARCHITECTURE)
++SET(EMBREE_INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../../../@CMAKE_INSTALL_INCLUDEDIR@)
++ELSE(CMAKE_LIBRARY_ARCHITECTURE)
+ SET(EMBREE_INCLUDE_DIRS ${CMAKE_CURRENT_LIST_DIR}/../../../@CMAKE_INSTALL_INCLUDEDIR@)
++ENDIF(CMAKE_LIBRARY_ARCHITECTURE)
+ SET(EMBREE_LIBRARY ${CMAKE_CURRENT_LIST_DIR}/../../@CMAKE_SHARED_LIBRARY_PREFIX@embree@CMAKE_SHARED_LIBRARY_SUFFIX@.@EMBREE_CONFIG_VERSION@)
+ 
+ SET(EMBREE_TASKING_TBB      @TASKING_TBB@)

@@ -67,7 +67,7 @@ class V_COREEXPORT Router {
    bool toRank0(const Message &msg);
 
  private:
-   static unsigned rt[Message::NumMessageTypes];
+   static unsigned rt[NumMessageTypes];
    Router();
    Identify::Identity m_identity;
    int m_hubId;

@@ -1,5 +1,7 @@
 #include <sstream>
 #include <iomanip>
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 #include <boost/mpl/for_each.hpp>
 
@@ -164,8 +166,8 @@ bool ToTriangles::compute() {
 
       const int NumLat = 8;
       const int NumLong = 13;
-      BOOST_STATIC_ASSERT(NumLat >= 3);
-      BOOST_STATIC_ASSERT(NumLong >= 3);
+      static_assert(NumLat >= 3, "too few vertices");
+      static_assert(NumLong >= 3, "too few vertices");
       Index TriPerSphere = NumLong * (NumLat-2) * 2;
       Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
@@ -274,7 +276,7 @@ bool ToTriangles::compute() {
    } else  if (auto tube = Tubes::as(obj)) {
 
       const int NumSect = 5;
-      BOOST_STATIC_ASSERT(NumSect >= 3);
+      static_assert(NumSect >= 3, "too few sectors");
       Index TriPerSection = NumSect * 2;
 
       Index n = tube->getNumTubes();
@@ -420,10 +422,12 @@ bool ToTriangles::compute() {
                         ++ci;
                      }
 
-                     Vector tip = cur + Scalar(1.5)*dir*r[k];
+                     Scalar tipSize = 2.0;
+
+                     Vector tip = cur + tipSize*dir*r[k];
                      for (Index l=0; l<NumSect; ++l) {
                         Vector norm = (normal+dir).normalized();
-                        Vector p = cur+Scalar(1.5)*r[k]*normal;
+                        Vector p = cur+tipSize*r[k]*normal;
                         normal = rot * normal;
 
                         nx[ci] = norm[0];

@@ -15,6 +15,7 @@
 #include <vector>
 #include <ctime>
 
+#include <util/filesystem.h>
 #include <core/message.h>
 #include <core/vec.h>
 #include <core/unstr.h>
@@ -77,7 +78,7 @@ ReadHDF5::~ReadHDF5() {
 
 // PARAMETER CHANGED FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
+bool ReadHDF5::changeParameter(const vistle::Parameter *param) {
     util_checkFile();
 
     return true;
@@ -700,7 +701,7 @@ bool ReadHDF5::util_checkFile() {
     unsigned numNewPorts;
     std::string fileName = m_fileName->getValue();
 
-    boost::filesystem::path path(fileName);
+    filesystem::path path(fileName);
     bool isDirectory;
     bool doesExist;
 
@@ -714,10 +715,10 @@ bool ReadHDF5::util_checkFile() {
 
     // setup boost::filesystem
     try {
-        isDirectory = boost::filesystem::is_directory(path);
-        doesExist = boost::filesystem::exists(path);
+        isDirectory = filesystem::is_directory(path);
+        doesExist = filesystem::exists(path);
 
-    } catch (const boost::filesystem::filesystem_error &error) {
+    } catch (const filesystem::filesystem_error &error) {
         std::cerr << "filesystem error - directory: " << error.what() << std::endl;
         return false;
     }

@@ -10,6 +10,8 @@ set(module_HEADERS
    objectcache.h
 )
 
+use_openmp()
+
 vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 
 if(UNIX AND NOT APPLE)

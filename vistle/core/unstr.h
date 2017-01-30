@@ -17,7 +17,9 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 
    // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
    enum Type {
-      GHOST_BIT = 0x80,
+      GHOST_BIT   = 0x80,
+      CONVEX_BIT  = 0x40, //<! cell was checked to be convex
+      TYPE_MASK   = 0x3f,
 
       NONE        =  0,
       BAR         =  1,
@@ -53,12 +55,20 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    shm<unsigned char>::array &tl() { return *d()->tl; }
    const unsigned char *tl() const { return m_tl; }
 
+   bool isConvex(Index elem) const;
    bool isGhostCell(Index elem) const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
-   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
+   bool insideConvex(Index elem, const Vector &point) const;
    bool inside(Index elem, const Vector &point) const override;
+   bool checkConvexity();
+   Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
 
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
+   std::pair<Vector, Vector> elementBounds(Index elem) const override;
+   std::vector<Index> cellVertices(Index elem) const override;
+   Scalar cellDiameter(Index elem) const override;
+   std::vector<Index> getNeighborElements(Index elem) const override;
 
  private:
    mutable const unsigned char *m_tl;

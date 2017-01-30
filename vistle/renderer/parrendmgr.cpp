@@ -1,8 +1,23 @@
 #include "parrendmgr.h"
 #include "renderobject.h"
 #include "renderer.h"
+#include <core/points.h>
 
 namespace mpi = boost::mpi;
+
+
+namespace boost { namespace  serialization {
+
+template<class Archive>
+inline void serialize(Archive &ar, vistle::Renderer::Variant &t, const unsigned int file_version) {
+
+    ar & t.name;
+    ar & t.objectCount;
+    ar & t.visible;
+}
+
+} }
+
 
 namespace vistle {
 
@@ -16,13 +31,15 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 : m_module(module)
 , m_drawCallback(drawCallback)
 , m_displayRank(0)
-, m_vncControl(module, m_displayRank)
+, m_rhrControl(module, m_displayRank)
 , m_delay(nullptr)
 , m_delaySec(0.)
 , m_defaultColor(Vector4(255, 255, 255, 255))
 , m_updateBounds(1)
+, m_updateVariants(1)
+, m_updateScene(0)
 , m_doRender(1)
-, m_lightsUpdateCount(1000) // start with a value that is different from the one managed by VncServer
+, m_lightsUpdateCount(1000) // start with a value that is different from the one managed by RhrServer
 , m_currentView(-1)
 , m_frameComplete(true)
 {
@@ -42,10 +59,76 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
    icetDestroyMPICommunicator(m_icetComm);
 }
 
+Object::ptr ParallelRemoteRenderManager::getConfigObject() {
+
+    Points::ptr points(new Points(Index(0)));
+    auto host = m_rhrControl.listenHost();
+    unsigned short port = m_rhrControl.listenPort();
+    std::stringstream config;
+    config << "connect " << host << " " << port;
+    points->addAttribute("_rhr_config", config.str());
+    points->addAttribute("_plugin", "RhrClient");
+    std::cerr << "ParallelRemoteRenderManager: creating config object: " << config.str() << std::endl;
+    return points;
+}
+
+bool ParallelRemoteRenderManager::checkIceTError(const char *msg) const {
+
+   const char *err = "No error.";
+   switch(icetGetError()) {
+      case ICET_INVALID_VALUE:
+         err = "An inappropriate value has been passed to a function.";
+         break;
+      case ICET_INVALID_OPERATION:
+         err = "An inappropriate function has been called.";
+         break;
+      case ICET_OUT_OF_MEMORY:
+         err = "IceT has ran out of memory for buffer space.";
+         break;
+      case ICET_BAD_CAST:
+         err = "A function has been passed a value of the wrong type.";
+         break;
+      case ICET_INVALID_ENUM:
+         err = "A function has been passed an invalid constant.";
+         break;
+      case ICET_SANITY_CHECK_FAIL:
+         err = "An internal error (or warning) has occurred.";
+         break;
+      case ICET_NO_ERROR:
+         return false;
+         break;
+   }
+
+   std::cerr << "IceT error at " << msg << ": " << err << std::endl;
+   return true;
+}
+
 
 void ParallelRemoteRenderManager::setModified() {
 
    m_doRender = 1;
+}
+
+bool ParallelRemoteRenderManager::sceneChanged() const {
+
+    return m_updateScene;
+}
+
+bool ParallelRemoteRenderManager::isVariantVisible(const std::string &variant) const {
+
+    if (variant.empty())
+        return true;
+    const auto it = m_clientVariants.find(variant);
+    if (it != m_clientVariants.end()) {
+        return it->second;
+    }
+    auto it2 = m_localVariants.find(variant);
+    if (it2 != m_localVariants.end()) {
+        return it2->second.visible != RenderObject::Hidden;
+    }
+
+    std::cerr << "ParallelRemoteRenderManager: isVariantVisible(" << variant << "): unknown variant" << std::endl;
+    return true;
 }
 
 void ParallelRemoteRenderManager::setLocalBounds(const Vector3 &min, const Vector3 &max) {
@@ -76,12 +159,69 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
        m_delaySec = m_delay->getValue();
     }
 
-    return m_vncControl.handleParam(p);
+    return m_rhrControl.handleParam(p);
+}
+
+void ParallelRemoteRenderManager::updateVariants() {
+
+   auto rhr = m_rhrControl.server();
+   if (rhr) {
+       m_clientVariants = rhr->getVariants();
+   }
+   mpi::broadcast(m_module->comm(), m_clientVariants, rootRank());
+
+   std::vector<Renderer::VariantMap> all;
+   mpi::gather(m_module->comm(), m_module->variants(), all, rootRank());
+   Renderer::VariantMap newState;
+   if (m_module->rank() == 0) {
+       for (const auto &varmap: all) {
+           for (const auto &var: varmap) {
+               auto it = newState.find(var.first);
+               if (it == newState.end()) {
+                   it = newState.emplace(var.first, var.second).first;
+               } else {
+                   it->second.objectCount += var.second.objectCount;
+                   if (it->second.visible == RenderObject::DontChange) {
+                       it->second.visible = var.second.visible;
+                   }
+               }
+           }
+       }
+   }
+   mpi::broadcast(m_module->comm(), newState, rootRank());
+   std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility>> addedVariants;
+   std::vector<std::string> removedVariants;
+   for (const auto &var: newState) {
+       auto it = m_localVariants.find(var.first);
+       if (it == m_localVariants.end()) {
+           if (var.second.objectCount>0) {
+               addedVariants.emplace_back(var.first, var.second.visible);
+           }
+       } else {
+           if (it->second.objectCount==0 && var.second.objectCount>0) {
+               addedVariants.emplace_back(var.first, var.second.visible);
+           }
+       }
+   }
+   for (const auto &var: m_localVariants) {
+       auto it = newState.find(var.first);
+       if (it == newState.end()) {
+           if (var.second.objectCount>0)
+               removedVariants.push_back(var.first);
+       } else {
+           if (var.second.objectCount>0 && it->second.objectCount==0)
+               removedVariants.push_back(var.first);
+       }
+   }
+
+   m_localVariants = std::move(newState);
+
+   if (rhr) {
+       rhr->updateVariants(addedVariants, removedVariants);
+   }
 }
 
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
-
-   m_module->comm().barrier();
 
    m_state.numTimesteps = numTimesteps;
    m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
@@ -98,63 +238,84 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
-   auto vnc = m_vncControl.server();
-   if (vnc) {
+   m_updateScene = 0;
+   auto rhr = m_rhrControl.server();
+   if (rhr) {
       if (m_updateBounds) {
          Vector center = 0.5*(m_state.bMin+m_state.bMax);
          Scalar radius = (m_state.bMax-m_state.bMin).norm()*0.5;
-         vnc->setBoundingSphere(center, radius);
+         rhr->setBoundingSphere(center, radius);
       }
 
-      vnc->setNumTimesteps(m_state.numTimesteps);
+      rhr->setNumTimesteps(m_state.numTimesteps);
 
-      vnc->preFrame();
+      rhr->preFrame();
       if (m_module->rank() == rootRank()) {
 
-          if (m_state.timestep != vnc->timestep())
+          if (m_state.timestep != rhr->timestep())
               m_doRender = 1;
       }
-      m_state.timestep = vnc->timestep();
+      m_state.timestep = rhr->timestep();
 
-      if (vnc->lightsUpdateCount != m_lightsUpdateCount) {
+      if (rhr->lightsUpdateCount != m_lightsUpdateCount) {
           m_doRender = 1;
-          m_lightsUpdateCount = vnc->lightsUpdateCount;
+          m_lightsUpdateCount = rhr->lightsUpdateCount;
       }
 
-      for (size_t i=m_viewData.size(); i<vnc->numViews(); ++i) {
+      if (m_viewData.size() > rhr->numViews()) {
+          m_viewData.resize(rhr->numViews());
+          m_doRender = 1;
+      }
+      for (size_t i=m_viewData.size(); i<rhr->numViews(); ++i) {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
           m_viewData.emplace_back();
       }
 
-      for (size_t i=0; i<vnc->numViews(); ++i) {
+      for (size_t i=0; i<rhr->numViews(); ++i) {
 
           PerViewState &vd = m_viewData[i];
 
-          if (vd.width != vnc->width(i)
-                  || vd.height != vnc->height(i)
-                  || vd.proj != vnc->projMat(i)
-                  || vd.view != vnc->viewMat(i)
-                  || vd.model != vnc->modelMat(i)) {
+          if (vd.width != rhr->width(i)
+                  || vd.height != rhr->height(i)
+                  || vd.proj != rhr->projMat(i)
+                  || vd.view != rhr->viewMat(i)
+                  || vd.model != rhr->modelMat(i)) {
               m_doRender = 1;
           }
 
-          vd.vncParam = vnc->getViewParameters(i);
+          vd.rhrParam = rhr->getViewParameters(i);
 
-          vd.width = vnc->width(i);
-          vd.height = vnc->height(i);
-          vd.model = vnc->modelMat(i);
-          vd.view = vnc->viewMat(i);
-          vd.proj = vnc->projMat(i);
+          vd.width = rhr->width(i);
+          vd.height = rhr->height(i);
+          vd.model = rhr->modelMat(i);
+          vd.view = rhr->viewMat(i);
+          vd.proj = rhr->projMat(i);
 
-          vd.lights = vnc->lights;
+          vd.lights = rhr->lights;
+      }
+
+      if (rhr->updateCount() != m_updateCount) {
+          m_updateScene = 1;
+          m_updateCount = rhr->updateCount();
       }
    }
    m_updateBounds = 0;
 
+   m_updateVariants = mpi::all_reduce(m_module->comm(), m_updateVariants, mpi::maximum<int>());
+   if (m_updateVariants) {
+       updateVariants();
+       m_updateVariants = 0;
+   }
+
    if (m_continuousRendering->getValue())
       m_doRender = 1;
 
+   m_updateScene = mpi::all_reduce(m_module->comm(), m_updateScene, mpi::maximum<int>());
+   if (m_updateScene) {
+       updateVariants();
+       m_doRender = 1;
+   }
    bool doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
    m_doRender = 0;
 
@@ -171,8 +332,8 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           const PerViewState &vd = m_viewData[i];
           m_rgba[i].resize(vd.width*vd.height*4);
           m_depth[i].resize(vd.width*vd.height);
-          if (vnc && m_module->rank() != rootRank()) {
-              vnc->resize(i, vd.width, vd.height);
+          if (rhr && m_module->rank() != rootRank()) {
+              rhr->resize(i, vd.width, vd.height);
           }
       }
    }
@@ -190,8 +351,10 @@ size_t ParallelRemoteRenderManager::numViews() const {
 
 void ParallelRemoteRenderManager::setCurrentView(size_t i) {
 
+   checkIceTError("setCurrentView");
+
    vassert(m_currentView == -1);
-   auto vnc = m_vncControl.server();
+   auto rhr = m_rhrControl.server();
 
    int resetTiles = 0;
    while (m_icet.size() <= i) {
@@ -200,6 +363,10 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       auto &icet = m_icet.back();
       icet.ctx = icetCreateContext(m_icetComm);
       icet.ctxValid = true;
+#ifndef NDEBUG
+      // that's too much output
+      //icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_DEBUG);
+#endif
    }
    vassert(i < m_icet.size());
    auto &icet = m_icet[i];
@@ -207,8 +374,8 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
    icetSetContext(icet.ctx);
    m_currentView = i;
 
-   if (vnc) {
-      if (icet.width != vnc->width(i) || icet.height != vnc->height(i))
+   if (rhr) {
+      if (icet.width != rhr->width(i) || icet.height != rhr->height(i))
          resetTiles = 1;
    }
    resetTiles = mpi::all_reduce(m_module->comm(), resetTiles, mpi::maximum<int>());
@@ -217,8 +384,8 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       std::cerr << "resetting IceT tiles for view " << i << "..." << std::endl;
       icet.width = icet.height = 0;
       if (m_module->rank() == rootRank()) {
-         icet.width =  vnc->width(i);
-         icet.height = vnc->height(i);
+         icet.width =  rhr->width(i);
+         icet.height = rhr->height(i);
          std::cerr << "IceT dims on rank " << m_module->rank() << ": " << icet.width << "x" << icet.height << std::endl;
       }
 
@@ -239,13 +406,16 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
             icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
       }
 
-      icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
-      icetStrategy(ICET_STRATEGY_REDUCE);
-      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
       icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
       icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+      //icetStrategy(ICET_STRATEGY_REDUCE);
+      icetStrategy(ICET_STRATEGY_SEQUENTIAL);
+      icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
 
       icetDrawCallback(m_drawCallback);
+
+      checkIceTError("after reset tiles");
    }
 
    icetBoundingBoxf(localBoundMin[0], localBoundMax[0],
@@ -253,64 +423,71 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
          localBoundMin[2], localBoundMax[2]);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep) {
 
    const bool lastView = size_t(m_currentView)==m_viewData.size()-1;
-   finishCurrentView(img, lastView);
+   finishCurrentView(img, timestep, lastView);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool lastView) {
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep, bool lastView) {
+
+   checkIceTError("before finishCurrentView");
 
    vassert(m_currentView >= 0);
    const size_t i = m_currentView;
    vassert(i < numViews());
+
    //std::cerr << "finishCurrentView: " << i << std::endl;
    if (m_module->rank() == rootRank()) {
-      auto vnc = m_vncControl.server();
-      vassert(vnc);
-      const int bpp = 4;
-      const int w = vnc->width(i);
-      const int h = vnc->height(i);
-      vassert(w == icetImageGetWidth(img));
-      vassert(h == icetImageGetHeight(img));
+       auto rhr = m_rhrControl.server();
+       vassert(rhr);
+       if (i < rhr->numViews()) {
+           // otherwise client just disconnected
+           const int bpp = 4;
+           const int w = rhr->width(i);
+           const int h = rhr->height(i);
+           vassert(std::max(0,w) == icetImageGetWidth(img));
+           vassert(std::max(0,h) == icetImageGetHeight(img));
 
 
-      const IceTUByte *color = nullptr;
-      switch (icetImageGetColorFormat(img)) {
-      case ICET_IMAGE_COLOR_RGBA_UBYTE:
-          color = icetImageGetColorcub(img);
-          break;
-      case ICET_IMAGE_COLOR_RGBA_FLOAT:
-          std::cerr << "expected byte color, got float" << std::endl;
-          break;
-      case ICET_IMAGE_COLOR_NONE:
-          std::cerr << "expected byte color, got no color" << std::endl;
-          break;
-      }
-      const IceTFloat *depth = nullptr;
-      switch (icetImageGetDepthFormat(img)) {
-      case ICET_IMAGE_DEPTH_FLOAT:
-          depth = icetImageGetDepthcf(img);
-          break;
-      case ICET_IMAGE_DEPTH_NONE:
-          std::cerr << "expected byte color, got no color" << std::endl;
-          break;
-      }
+           const IceTUByte *color = nullptr;
+           switch (icetImageGetColorFormat(img)) {
+           case ICET_IMAGE_COLOR_RGBA_UBYTE:
+               color = icetImageGetColorcub(img);
+               break;
+           case ICET_IMAGE_COLOR_RGBA_FLOAT:
+               std::cerr << "expected byte color, got float" << std::endl;
+               break;
+           case ICET_IMAGE_COLOR_NONE:
+               std::cerr << "expected byte color, got no color" << std::endl;
+               break;
+           }
+           const IceTFloat *depth = nullptr;
+           switch (icetImageGetDepthFormat(img)) {
+           case ICET_IMAGE_DEPTH_FLOAT:
+               depth = icetImageGetDepthcf(img);
+               break;
+           case ICET_IMAGE_DEPTH_NONE:
+               std::cerr << "expected byte color, got no color" << std::endl;
+               break;
+           }
 
-      if (color && depth) {
-         for (int y=0; y<h; ++y) {
-            memcpy(vnc->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-            memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
-         }
+           if (color && depth) {
+               for (int y=0; y<h; ++y) {
+                   memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+                   memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+               }
 
-         vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, lastView);
-      }
+               m_viewData[i].rhrParam.timestep = timestep;
+               rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
+           }
+       }
    }
    m_currentView = -1;
    m_frameComplete = lastView;
 }
 
-bool ParallelRemoteRenderManager::finishFrame() {
+bool ParallelRemoteRenderManager::finishFrame(int timestep) {
 
    vassert(m_currentView == -1);
 
@@ -322,9 +499,10 @@ bool ParallelRemoteRenderManager::finishFrame() {
    }
 
    if (m_module->rank() == rootRank()) {
-      auto vnc = m_vncControl.server();
-      vassert(vnc);
-      vnc->invalidate(-1, 0, 0, 0, 0, m_viewData[0].vncParam, true);
+      auto rhr = m_rhrControl.server();
+      vassert(rhr);
+      m_viewData[0].rhrParam.timestep = timestep;
+      rhr->invalidate(-1, 0, 0, 0, 0, m_viewData[0].rhrParam, true);
    }
    m_frameComplete = true;
    return true;
@@ -358,31 +536,37 @@ float *ParallelRemoteRenderManager::depth(size_t viewIdx) {
 
 void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport) {
 
-   auto vnc = m_vncControl.server();
-   if (vnc && m_module->rank() != rootRank()) {
+   auto rhr = m_rhrControl.server();
+   if (rhr && m_module->rank() != rootRank()) {
       // observe what slaves are rendering
       const int bpp = 4;
-      const int w = vnc->width(m_currentView);
-      const int h = vnc->height(m_currentView);
+      const int w = rhr->width(m_currentView);
+      const int h = rhr->height(m_currentView);
 
       const unsigned char *color = rgba(viewIdx);
 
-      memset(vnc->rgba(m_currentView), 0, w*h*bpp);
+      memset(rhr->rgba(m_currentView), 0, w*h*bpp);
 
       for (int y=viewport[1]; y<viewport[1]+viewport[3]; ++y) {
-         memcpy(vnc->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
+         memcpy(rhr->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
       }
 
-      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), vnc->getViewParameters(m_currentView), true);
+      rhr->invalidate(m_currentView, 0, 0, rhr->width(m_currentView), rhr->height(m_currentView), rhr->getViewParameters(m_currentView), true);
    }
 }
 
-void ParallelRemoteRenderManager::addObject(boost::shared_ptr<RenderObject> ro) {
+void ParallelRemoteRenderManager::addObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
+   if (!ro->variant.empty()) {
+       m_updateVariants = 1;
+   }
 }
 
-void ParallelRemoteRenderManager::removeObject(boost::shared_ptr<RenderObject> ro) {
+void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
+   if (!ro->variant.empty()) {
+       m_updateVariants = 1;
+   }
 }
 
 }

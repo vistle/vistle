@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time regex thread)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time)
 
 set(core_SOURCES
    archives.cpp
@@ -22,6 +22,7 @@ set(core_SOURCES
    allobjects.cpp
    findobjectreferenceoarchive.cpp
    cellalgorithm.cpp
+   geometry.cpp
 )
 
 if(${TEMPLATES_IN_HEADERS})
@@ -68,6 +69,7 @@ set(core_HEADERS
    coordswradius_impl.h
    dimensions.h
    export.h
+   geometry.h
    index.h
    indexed.h
    indexed_impl.h

@@ -9,10 +9,10 @@ case $1 in
       ;;
 esac
 
-export UBUNTU=15.10
-export PAR=-j8
-export ISPCVER=1.9.0
-export EMBREETAG=v2.9.0
+export UBUNTU=16.04
+export PAR=-j4
+export ISPCVER=1.9.1
+export EMBREETAG=v2.13.0
 export BUILDTYPE=Release
 export PREFIX=/usr
 export BUILDDIR=/build
@@ -31,7 +31,6 @@ FROM library/ubuntu:${UBUNTU}
 MAINTAINER "Martin Aumüller" <aumueller@hlrs.de>
 
 WORKDIR ${BUILDDIR}
-ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y \
        libtbb-dev \
@@ -41,9 +40,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y \
        libvncserver-dev \
        libsnappy-dev zlib1g-dev libreadline-dev \
        libassimp-dev \
-       libboost-atomic-dev libboost-chrono-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev \
+       libboost-atomic-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev \
        libboost-iostreams-dev libboost-locale-dev libboost-log-dev libboost-math-dev libboost-program-options-dev libboost-python-dev \
-       libboost-random-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev \
+       libboost-random-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev \
        libboost-tools-dev libboost-dev
 
 # dependencies for OpenGL/UI components
@@ -54,6 +53,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y \
 # https://bugs.launchpad.net/ubuntu/+source/libjpeg-turbo/+bug/1369067
 RUN apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
 
+# for mpirun
+RUN apt-get install --no-install-recommends -y openssh-server && mkdir -p /var/run/sshd
+
 # install ispc - prerequisite for embree
 RUN apt-get install --no-install-recommends -y wget ca-certificates \
        && cd /tmp \
@@ -62,17 +64,37 @@ RUN apt-get install --no-install-recommends -y wget ca-certificates \
        && rm download \
        && apt-get remove -y wget ca-certificates \
        && apt-get clean -y
+EOF
 
 # build embree CPU ray tracer
+case $EMBREETAG in
+   v2.9.0|v2.13.0)
+cat <<EOF-embree-2.9
+ADD embree-debian-multiarch-${EMBREETAG}.diff ${BUILDDIR}/embree-debian-multiarch.diff
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
       && git apply ../embree-debian-multiarch.diff \
       && rm ../embree-debian-multiarch.diff \
       && mkdir build && cd build \
-      && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF .. \
+      && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF -DEMBREE_TUTORIALS=OFF .. \
       && make ${PAR} install \
       && cd ${BUILDDIR} \
       && rm -rf embree
+EOF-embree-2.9
+      ;;
+   v2.*)
+cat <<EOF-embree-2.10
+# build embree CPU ray tracer
+RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
+      && mkdir build && cd build \
+      && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF -DEMBREE_TUTORIALS=OFF .. \
+      && make ${PAR} install \
+      && cd ${BUILDDIR} \
+      && rm -rf embree
+EOF-embree-2.10
+      ;;
+esac
 
+cat <<EOF
 # build COVISE file I/O library
 RUN git clone git://github.com/hlrs-vis/covise.git \
        && export ARCHSUFFIX=${ARCHSUFFIX} \
@@ -80,7 +102,7 @@ RUN git clone git://github.com/hlrs-vis/covise.git \
        && cd ${BUILDDIR}/covise \
        && mkdir -p build.covise \
        && cd build.covise \
-       && cmake .. -DCOVISE_NATIVE_ARCH=OFF -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
+       && cmake .. -DCOVISE_CPU_ARCH=corei7 -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
        && rm -rf covise
@@ -92,20 +114,20 @@ RUN git clone --recursive git://github.com/vistle/vistle.git \
        && cd ${BUILDDIR}/vistle \
        && mkdir build.vistle \
        && cd build.vistle \
-       && cmake -DVISTLE_NATIVE_ARCH=OFF -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
-       && make ${PAR} install \
+       && cmake -DVISTLE_CPU_ARCH=corei7 -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
+       && make ${PAR} VERBOSE=1 install \
        && cd ${BUILDDIR} \
        && rm -rf vistle
 EOF
 
 case $variant in
    frontend)
-      echo EXPOSE 31093 31094 31590
+      echo EXPOSE 22 31093 31094 31590
       echo ENTRYPOINT [\"/usr/bin/vistle\"]
       echo CMD [\"-b\"]
       ;;
    node)
-      echo EXPOSE 1000 31094
+      echo EXPOSE 22 31094
       echo ENTRYPOINT [\"/usr/bin/vistle\"]
       echo CMD [\"-b\"]
       ;;

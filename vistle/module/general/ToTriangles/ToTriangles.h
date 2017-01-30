@@ -1,5 +1,5 @@
-#ifndef TOSPHERES_H
-#define TOSPHERES_H
+#ifndef TOTRIANGLES_H
+#define TOTRIANGLES_H
 
 #include <module/module.h>
 

@@ -3,8 +3,6 @@
 
 #include <QObject>
 
-#include <boost/thread/recursive_mutex.hpp>
-
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
 
@@ -54,7 +52,7 @@ public:
 	void deleteConnection(int fromId, const std::string &fromName,
                           int toId, const std::string &toName) override;
 
-   void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::uuid_t &refUuid) override;
+   void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Type refType, const vistle::message::uuid_t &refUuid) override;
 
    void quitRequested() override;
 

@@ -3,6 +3,7 @@
 
 #include <vector>
 
+#include <util/enum.h>
 #include <core/vector.h>
 #include <core/object.h>
 #include <core/normals.h>
@@ -27,6 +28,9 @@ class V_RENDEREREXPORT RenderObject {
    int creatorId;
    int senderId;
    std::string senderPort;
+   std::string variant;
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(InitialVariantVisibility, (DontChange)(Hidden)(Visible));
+   InitialVariantVisibility visibility = DontChange;
 
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;

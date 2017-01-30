@@ -9,7 +9,8 @@
 #include <sstream>
 
 #include <core/assert.h>
-#include <util/findself.h>
+#include <util/hostname.h>
+#include <util/directory.h>
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
 #include <core/object.h>
@@ -21,7 +22,6 @@
 #include <core/shm.h>
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
 #include "uimanager.h"
@@ -35,32 +35,20 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
-using boost::shared_ptr;
+using std::shared_ptr;
 using namespace vistle;
 using message::Router;
 using message::Id;
+namespace dir = vistle::directory;
 
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
-
-std::string hostname() {
-
-   static std::string hname;
-
-   if (hname.empty()) {
-      const size_t HOSTNAMESIZE = 256;
-
-      char hostname[HOSTNAMESIZE];
-      gethostname(hostname, HOSTNAMESIZE-1);
-      hostname[HOSTNAMESIZE-1] = '\0';
-      hname = hostname;
-   }
-   return hname;
-}
 
 Hub *hub_instance = nullptr;
 
 Hub::Hub()
 : m_port(31093)
+, m_masterPort(m_port)
+, m_masterHost("localhost")
 , m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_stateTracker("Hub state")
 , m_uiManager(*this, m_stateTracker)
@@ -70,7 +58,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::INVALID)
+, m_traceMessages(message::INVALID)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -229,7 +217,7 @@ bool Hub::dispatch() {
    bool work = false;
    size_t avail = 0;
    do {
-      boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
       avail = 0;
       for (auto &s: m_clients) {
          boost::asio::socket_base::bytes_readable command(true);
@@ -257,7 +245,9 @@ bool Hub::dispatch() {
          m_processMap.erase(it);
          if (id == 0) {
             // manager died
+            m_dataProxy.reset();
             if (!m_quitting) {
+               m_uiManager.requestQuit();
                CERR << "manager died - cannot continue" << std::endl;
                for (auto ent: m_processMap) {
                   vistle::kill_process(ent.first);
@@ -285,10 +275,10 @@ bool Hub::dispatch() {
          ret = false;
       } else {
 #if 0
-         CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-         for (const auto &proc: m_processMap) {
-            std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
-         }
+          CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+          for (const auto &proc: m_processMap) {
+              std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
+          }
 #endif
       }
    }
@@ -298,7 +288,7 @@ bool Hub::dispatch() {
    return ret;
 }
 
-void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     auto it = m_sockets.find(sock);
@@ -496,7 +486,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    bool masterAdded = false;
    switch (msg.type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
 
          auto &id = static_cast<const Identify &>(msg);
          CERR << "ident msg: " << id.identity() << std::endl;
@@ -556,7 +546,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          return true;
       }
-      case message::Message::ADDHUB: {
+      case message::ADDHUB: {
          auto &mm = static_cast<const AddHub &>(msg);
          if (m_isMaster) {
             auto it = m_slaves.find(mm.id());
@@ -633,10 +623,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
            }
        }
 
-       if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages
+       if (m_traceMessages == message::ANY || msg.type() == m_traceMessages
 #ifdef DEBUG_DISTRIBUTED
-               || msg.type() == Message::ADDOBJECT
-               || msg.type() == Message::ADDOBJECTCOMPLETED
+               || msg.type() == message::ADDOBJECT
+               || msg.type() == message::ADDOBJECTCOMPLETED
 #endif
                ) {
            if (track) std::cerr << "t"; else std::cerr << ".";
@@ -651,7 +641,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
       switch(msg.type()) {
 
-         case Message::SPAWN: {
+         case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             if (m_isMaster) {
                auto notify = spawn;
@@ -681,7 +671,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::SPAWNPREPARED: {
+         case message::SPAWNPREPARED: {
 
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             vassert(spawn.hubId() == m_hubId);
@@ -714,7 +704,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::SETID: {
+         case message::SETID: {
 
             vassert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
@@ -725,15 +715,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_managerConnected) {
                sendManager(set);
             }
-#ifdef SCAN_MODULES_ON_HUB
-            scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
-            for (auto &am: m_availableModules) {
-               message::ModuleAvailable m(m_hubId, am.second.name, am.second.path);
-               m.setDestId(Id::MasterHub);
-               sendMaster(m);
-               m_stateTracker.handle(m);
-            }
-#endif
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
                for (auto &m: state) {
@@ -744,7 +725,17 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::QUIT: {
+         case message::MODULEAVAILABLE: {
+            auto &mm = static_cast<ModuleAvailable &>(msg);
+            AvailableModule mod;
+            mod.hub = mm.hub();
+            mod.name = mm.name();
+            mod.path = mm.path();
+            AvailableModule::Key key(mm.hub(), mm.name());
+            m_availableModules.emplace(key, mod);
+            break;
+         }
+         case message::QUIT: {
 
             std::cerr << "hub: got quit: " << msg << std::endl;
             auto &quit = static_cast<const Quit &>(msg);
@@ -771,25 +762,25 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::EXECUTE: {
+         case message::EXECUTE: {
             auto &exec = static_cast<const Execute &>(msg);
             handlePriv(exec);
             break;
          }
 
-         case Message::BARRIER: {
+         case message::BARRIER: {
             auto &barr = static_cast<const Barrier &>(msg);
             handlePriv(barr);
             break;
          }
 
-         case Message::BARRIERREACHED: {
+         case message::BARRIERREACHED: {
             auto &reached = static_cast<const BarrierReached &>(msg);
             handlePriv(reached);
             break;
          }
 
-         case Message::REQUESTTUNNEL: {
+         case message::REQUESTTUNNEL: {
             auto &tunnel = static_cast<const RequestTunnel &>(msg);
             handlePriv(tunnel);
             break;
@@ -806,7 +797,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
 bool Hub::init(int argc, char *argv[]) {
 
-   m_bindir = getbindir(argc, argv);
+   m_prefix = dir::prefix(argc, argv);
 
    m_name = hostname();
 
@@ -847,20 +838,17 @@ bool Hub::init(int argc, char *argv[]) {
 
    std::string uiCmd = "vistle_gui";
 
-   std::string masterhost;
-   unsigned short masterport = 31093;
    if (vm.count("hub") > 0) {
-      uiCmd.clear();
       m_isMaster = false;
-      masterhost = vm["hub"].as<std::string>();
-      auto colon = masterhost.find(':');
+      m_masterHost = vm["hub"].as<std::string>();
+      auto colon = m_masterHost.find(':');
       if (colon != std::string::npos) {
-         masterport = boost::lexical_cast<unsigned short>(masterhost.substr(colon+1));
-         masterhost = masterhost.substr(0, colon);
+         m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon+1));
+         m_masterHost = m_masterHost.substr(0, colon);
       }
 
-      if (!connectToMaster(masterhost, masterport)) {
-         CERR << "failed to connect to master at " << masterhost << ":" << masterport << std::endl;
+      if (!connectToMaster(m_masterHost, m_masterPort)) {
+         CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
          return false;
       }
    } else {
@@ -873,14 +861,7 @@ bool Hub::init(int argc, char *argv[]) {
       master.setPort(m_port);
       master.setDataPort(m_dataProxy->port());
       m_stateTracker.handle(master);
-
-#ifdef SCAN_MODULES_ON_HUB
-      scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
-      for (auto &am: m_availableModules) {
-         message::ModuleAvailable m(m_hubId, am.second.name, am.second.path);
-         m_stateTracker.handle(m);
-      }
-#endif
+      m_masterPort = m_port;
    }
 
    // start UI
@@ -900,7 +881,7 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    if (!uiCmd.empty()) {
-      std::string uipath = m_bindir + "/" + uiCmd;
+      std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
       startUi(uipath);
    }
 
@@ -915,7 +896,7 @@ bool Hub::init(int argc, char *argv[]) {
    std::string dataPort = boost::lexical_cast<std::string>(m_dataProxy->port());
 
    // start manager on cluster
-   std::string cmd = m_bindir + "/vistle_manager";
+   std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
    std::vector<std::string> args;
    args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
@@ -945,7 +926,7 @@ bool Hub::startCleaner() {
    }
 
    // run clean_vistle on cluster
-   std::string cmd = m_bindir + "/clean_vistle";
+   std::string cmd = dir::bin(m_prefix) + "/clean_vistle";
    std::vector<std::string> args;
    args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
@@ -988,12 +969,12 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
 bool Hub::startUi(const std::string &uipath) {
 
-   std::string port = boost::lexical_cast<std::string>(this->port());
+   std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
 
    std::vector<std::string> args;
    args.push_back(uipath);
    args.push_back("-from-vistle");
-   args.push_back("localhost");
+   args.push_back(m_masterHost);
    args.push_back(port);
    auto pid = vistle::spawn_process(uipath, args);
    if (!pid) {
@@ -1011,7 +992,7 @@ bool Hub::processScript() {
    vassert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
-      PythonInterpreter inter(m_scriptPath, m_bindir + "/../share/vistle/");
+      PythonInterpreter inter(m_scriptPath, dir::share(m_prefix));
       while(inter.check()) {
          dispatch();
       }

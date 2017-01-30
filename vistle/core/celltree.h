@@ -51,11 +51,9 @@ class V_COREEXPORT Celltree: public Object {
       }
 
       //! return whether and in which order to visit children of a node
-      Order operator()(const Node &node, const Scalar *min, const Scalar *max) {
+      Order operator()(const Node &node) {
 
          (void)node;
-         (void)min;
-         (void)max;
          return LeftRight;
       }
    };
@@ -95,18 +93,17 @@ class V_COREEXPORT Celltree: public Object {
    void traverse(InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
       if (!visitNode.checkBounds(min(), max()))
          return;
-      traverseNode(0, nodes().data(), cells().data(), min(), max(), visitNode, visitElement);
+      traverseNode(0, nodes().data(), cells().data(), visitNode, visitElement);
    }
 
  private:
    template<class BoundsFunctor>
-   bool validateNode(BoundsFunctor &func, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const;
+   bool validateNode(BoundsFunctor &func, Index nodenum, const Vector &min, const Vector &max) const;
    template<class InnerNodeFunctor, class ElementFunctor>
-   bool traverseNode(Index curNode, const Node *nodes, const Index *cells, Scalar *min, Scalar *max, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
+   bool traverseNode(Index curNode, const Node *nodes, const Index *cells, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
 
       const Node &node = nodes[curNode];
-      if (node.dim == NumDimensions) {
-         // leaf node
+      if (node.isLeaf()) {
          for (Index i = node.start; i < node.start+node.size; ++i) {
             const Index cell = cells[i];
             if (!visitElement(cell))
@@ -115,24 +112,17 @@ class V_COREEXPORT Celltree: public Object {
          return true;
       }
 
-      const typename VisitFunctor::Order order = visitNode(node, min, max);
-      const Scalar smin = min[node.dim];
-      const Scalar smax = max[node.dim];
+      const typename VisitFunctor::Order order = visitNode(node);
+      assert(!((order&VisitFunctor::RightFirst) && (order&VisitFunctor::RightSecond)));
       bool continueTraversal = true;
       if (continueTraversal && (order & VisitFunctor::RightFirst)) {
-         min[node.dim] = node.Rmin;
-         continueTraversal = traverseNode(node.child+1, nodes, cells, min, max, visitNode, visitElement);
-         min[node.dim] = smin;
+         continueTraversal = traverseNode(node.child+1, nodes, cells, visitNode, visitElement);
       }
       if (continueTraversal && (order & VisitFunctor::Left)) {
-         max[node.dim] = node.Lmax;
-         continueTraversal = traverseNode(node.child, nodes, cells, min, max, visitNode, visitElement);
-         max[node.dim] = smax;
+         continueTraversal = traverseNode(node.child, nodes, cells, visitNode, visitElement);
       }
       if (continueTraversal && (order & VisitFunctor::RightSecond)) {
-         min[node.dim] = node.Rmin;
-         continueTraversal = traverseNode(node.child+1, nodes, cells, min, max, visitNode, visitElement);
-         min[node.dim] = smin;
+         continueTraversal = traverseNode(node.child+1, nodes, cells, visitNode, visitElement);
       }
 
       return continueTraversal;
@@ -155,14 +145,14 @@ class V_COREEXPORT Celltree: public Object {
 
 #include "celltreenode.h"
 
-BOOST_STATIC_ASSERT(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0);
+static_assert(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0, "bad padding");
 
 typedef Celltree<Scalar, Index, 1> Celltree1;
 typedef Celltree<Scalar, Index, 2> Celltree2;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
 template<int Dim>
-class V_COREEXPORT CelltreeInterface: virtual public GeometryInterface {
+class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
 
  public:
    typedef vistle::Celltree<Scalar, Index, Dim> Celltree;

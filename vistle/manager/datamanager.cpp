@@ -1,5 +1,6 @@
 #include <boost/mpl/for_each.hpp>
-#include <boost/ref.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/mpi/communicator.hpp>
 
 #include "datamanager.h"
 #include "clustermanager.h"
@@ -12,6 +13,7 @@
 #include <core/messages.h>
 #include <core/shmvector.h>
 #include <iostream>
+#include <functional>
 
 #define CERR std::cerr << "data [" << m_rank << "/" << m_size << "] "
 
@@ -153,16 +155,16 @@ bool DataManager::handle(const message::Message &msg, const std::vector<char> *p
     using namespace message;
 
     switch (msg.type()) {
-    case Message::IDENTIFY: {
+    case message::IDENTIFY: {
         auto &mm = static_cast<const Identify &>(msg);
         if (mm.identity() == Identify::REQUEST) {
             return send(Identify(Identify::LOCALBULKDATA, m_rank));
         }
         return true;
     }
-    case Message::REQUESTOBJECT:
+    case message::REQUESTOBJECT:
         return handlePriv(static_cast<const RequestObject &>(msg));
-    case Message::SENDOBJECT:
+    case message::SENDOBJECT:
         return handlePriv(static_cast<const SendObject &>(msg), payload);
     default:
         break;
@@ -263,7 +265,7 @@ struct ArrayLoader {
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
 
-    boost::shared_ptr<BaseUnreffer> m_unreffer;
+    std::shared_ptr<BaseUnreffer> m_unreffer;
 
     template<typename T>
     void operator()(T) {
@@ -297,13 +299,13 @@ struct ArrayLoader {
 
 
 bool DataManager::handlePriv(const message::RequestObject &req) {
-   boost::shared_ptr<message::SendObject> snd;
+   std::shared_ptr<message::SendObject> snd;
    vecstreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
    vistle::oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
-      boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArraySaver>(saver));
+      boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArraySaver>(saver));
       if (!saver.m_ok) {
          CERR << "failed to serialize array " << req.objectId() << std::endl;
          return true;
@@ -332,7 +334,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
    if (snd.isArray()) {
        vistle::iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
-       boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(loader));
+       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
            CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
            return false;
@@ -414,7 +416,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
        };
        memar.setObjectCompletionHandler(completionHandler);
 
-       boost::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
+       std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        //CERR << "loading object " << objName << " from memar" << std::endl;
        objIt->second.obj = Object::load(memar);

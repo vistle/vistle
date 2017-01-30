@@ -1,4 +1,5 @@
 #include "port.h"
+#include <cassert>
 
 namespace vistle {
 

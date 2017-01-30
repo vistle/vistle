@@ -1,32 +1,60 @@
 #include "Integrator.h"
-#include "Tracer.h"
 #include "Particle.h"
-#include <core/unstr.h>
+#include "BlockData.h"
+#include "Tracer.h"
 #include <core/vec.h>
 
-#include "BlockData.h"
-
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
 
 using namespace vistle;
 
 
 
-Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
-           vistle::Scalar hmax, vistle::Scalar errtol,
-           IntegrationMethod mode, Particle* ptcl, bool forward):
-    m_h(h),
-    m_hmin(hmin),
-    m_hmax(hmax),
-    m_errtol(errtol),
-    m_mode(mode),
+Integrator::Integrator(Particle* ptcl, bool forward):
+    m_h(-1.),
+    m_hact(m_h),
     m_ptcl(ptcl),
-    m_forward(forward)
+    m_forward(forward),
+    m_cellSearchFlags(GridInterface::NoFlags)
 {
+    const auto &global = m_ptcl->m_global;
+    m_h = global.h_init;
+    m_hact = m_h;
+
     UpdateBlock();
 }
+
+void Integrator::hInit() {
+
+    return;
+
+    if (m_h <= 0.) {
+
+        const auto &global = m_ptcl->m_global;
+        const auto h_max = global.h_max;
+        const auto h_min = global.h_min;
+        const auto mode = global.int_mode;
+        if (mode != RK32)
+            return;
+
+        Index el=m_ptcl->m_el;
+        auto grid = m_ptcl->m_block->getGrid();
+        Scalar unit = 1.;
+        if (m_ptcl->m_global.cell_relative) {
+            Scalar cellSize = grid->cellDiameter(el);
+            unit = cellSize;
+        }
+
+        if (m_ptcl->m_global.velocity_relative) {
+            Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
+            Scalar v = std::max(vel.norm(), Scalar(1e-7));
+            unit /= v;
+        }
+
+        m_h = .5 * unit * std::sqrt(h_min*h_max);
+        m_hact = m_h;
+    }
+}
+
 
 void Integrator::UpdateBlock() {
 
@@ -42,64 +70,79 @@ void Integrator::UpdateBlock() {
 
 bool Integrator::Step() {
 
-    switch(m_mode){
+    switch(m_ptcl->m_global.int_mode){
     case Euler:
         return StepEuler();
     case RK32:
         return StepRK32();
+    case ConstantVelocity:
+        return StepConstantVelocity();
     }
     return false;
 }
 
 bool Integrator::StepEuler() {
 
-    if (m_forward)
-        m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
-    else
-        m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
+    Scalar unit = 1.;
+    if (m_ptcl->m_global.cell_relative) {
+        Index el=m_ptcl->m_el;
+        auto grid = m_ptcl->m_block->getGrid();
+        Scalar cellSize = grid->cellDiameter(el);
+        unit = cellSize;
+    }
+
+    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Scalar v = std::max(vel.norm(), Scalar(1e-7));
+    if (m_ptcl->m_global.velocity_relative)
+        unit /= v;
+    m_ptcl->m_x = m_ptcl->m_x + vel*m_h*unit;
+    m_hact = m_h*unit;
     return true;
 }
 
-void Integrator::hInit(){
-    if (m_mode == Euler)
-        return;
+bool Integrator::hNew(Vector3 cur, Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
 
-    Vector3 v = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
-    Vector3::Index dimmax = 0, dummy;
-    v.maxCoeff(&dimmax, &dummy);
-    Scalar vmax = std::abs(v(dimmax));
-    auto grid = m_ptcl->m_block->getGrid();
-    const auto bounds = grid->cellBounds(m_ptcl->m_el);
-    const auto &min = bounds.first, &max = bounds.second;
+   const auto &global = m_ptcl->m_global;
+   const auto h_max = global.h_max;
+   const auto h_min = global.h_min;
+   const auto tol_rel = global.errtolrel;
+   const auto tol_abs = global.errtolabs;
 
-    Scalar chlen = max[dimmax]-min[dimmax];
-    m_h =0.5*chlen/vmax;
-    if(m_h>m_hmax) {m_h = m_hmax;}
-    if(m_h<m_hmin) {m_h = m_hmin;}
-}
+   Scalar errestabs = (higher-lower).lpNorm<Eigen::Infinity>();
+   Scalar errestrel = (higher-lower).lpNorm<Eigen::Infinity>()/(higher-cur).lpNorm<Eigen::Infinity>();
 
-bool Integrator::hNew(Vector3 higher, Vector3 lower){
+   if (!global.cell_relative) {
+       unit = 1.;
+   }
+   if (global.velocity_relative) {
+       Scalar v = std::max(vel.norm(), Scalar(1e-7));
+       unit /= v;
+   }
 
-   Scalar xerr = std::abs(higher(0)-lower(0));
-   Scalar yerr = std::abs(higher(1)-lower(1));
-   Scalar zerr = std::abs(higher(2)-lower(2));
-   Scalar errest = std::max(std::max(xerr,yerr),zerr);
+   if (!std::isfinite(errestabs) || !std::isfinite(errestrel)) {
+       m_h = h_min*unit;
+       std::cerr << "Integrator: invalid input for error estimation: higher=" << higher.transpose() << ", lower=" << lower.transpose() <<  std::endl;
+       return true;
+   }
 
-   Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
-   if(errest<=m_errtol) {
-      if(h<m_hmin) {
-         m_h=m_hmin;
+   Scalar h_abs = 0.9*m_h*std::pow(Scalar(tol_abs/errestabs),Scalar(1.0/3.0));
+   Scalar h_rel = 0.9*m_h*std::pow(Scalar(tol_rel/errestrel),Scalar(1.0/3.0));
+   Scalar h = std::min(std::max(h_abs,h_rel), 2*m_h);
+   //Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0))*unit;
+   if(errestabs<=tol_abs || errestrel<=tol_rel) {
+      if(h<h_min*unit) {
+         m_h=h_min*unit;
          return true;
-      } else if(h>m_hmax) {
-         m_h=m_hmax;
+      } else if(h>h_max*unit) {
+         m_h=h_max*unit;
          return true;
       } else {
          m_h = h;
          return true;
       }
    } else {
-      if (h<m_hmin) {
-         m_h = m_hmin;
+      if (h<h_min*unit) {
+         m_h = h_min*unit;
          return true;
       } else {
          m_h = h;
@@ -108,68 +151,96 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
    }
 }
 
+void Integrator::enableCelltree(bool value) {
+
+    if (value) {
+        m_cellSearchFlags = GridInterface::NoFlags;
+    } else {
+
+        m_cellSearchFlags = GridInterface::NoCelltree;
+    }
+}
+
+Scalar Integrator::h() const {
+
+    return m_hact;
+}
+
+// 3rd-order Runge-Kutta with embedded Heun
 bool Integrator::StepRK32() {
 
-   bool accept = false;
-   Index el=m_ptcl->m_el;
-   Vector3 x3rd;
-   Vector3 k[3];
    Scalar sign = m_forward ? 1. : -1.;
+   Vector3 k[3];
    k[0] = sign*m_ptcl->m_v;
-   Vector xtmp = m_ptcl->m_x + m_h*k[0];
    auto grid = m_ptcl->m_block->getGrid();
-   do {
-      if(!grid->inside(el,xtmp)){
-#ifdef TIMING
-         times::celloc_start = times::start();
-#endif
-         el = grid->findCell(xtmp);
-#ifdef TIMING
-         times::celloc_dur += times::stop(times::celloc_start);
-#endif
-         if(el==InvalidIndex){
-            m_ptcl->m_x = xtmp;
-            return false;
-         }
-      }
-      k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
-      xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
-      if(!grid->inside(el,xtmp)){
-#ifdef TIMING
-         times::celloc_start = times::start();
-#endif
-         el = grid->findCell(xtmp);
-#ifdef TIMING
-         times::celloc_dur += times::stop(times::celloc_start);
-#endif
-         if(el==InvalidIndex){
-            m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
-            return false;
-         }
-      }
-      k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
-      Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
-      x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+   Scalar cellSize = grid->cellDiameter(m_ptcl->m_el);
 
-      accept = hNew(x3rd,x2nd);
-      if(!accept){
-         el = m_ptcl->m_el;
-         xtmp = m_ptcl->m_x + m_h*k[0];
+   for (;;) {
+      Index el=m_ptcl->m_el;
+
+      const Vector x1 = m_ptcl->m_x + 0.5*m_h*k[0];
+      Index el1 = grid->findCell(x1, m_ptcl->m_el, m_cellSearchFlags);
+      if (el1==InvalidIndex){
+         m_ptcl->m_x = x1;
+         m_hact = 0.5*m_h;
+         return false;
       }
-   } while(!accept);
-   m_ptcl->m_x = x3rd;
-   return true;
+      if (el1 != m_ptcl->m_el) {
+         cellSize = std::min(grid->cellDiameter(el1), cellSize);
+      }
+
+      k[1] = sign*Interpolator(m_ptcl->m_block,el, x1);
+      Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
+
+      const Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
+      Index el2 = grid->findCell(x2, el1, m_cellSearchFlags);
+      if(el2==InvalidIndex){
+         m_ptcl->m_x = x2nd;
+         m_hact = m_h;
+         return false;
+      }
+      if (el2 != el1) {
+         cellSize = std::min(grid->cellDiameter(el2), cellSize);
+      }
+
+      k[2] = sign*Interpolator(m_ptcl->m_block,el2,x2);
+      Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
+      m_hact = m_h;
+
+      bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k[0], cellSize);
+      if (accept) {
+          m_ptcl->m_x = x3rd;
+          return true;
+      }
+   }
+}
+
+bool Integrator::StepConstantVelocity() {
+
+    Index el=m_ptcl->m_el;
+    auto grid = m_ptcl->m_block->getGrid();
+
+    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Scalar t = grid->exitDistance(el, m_ptcl->m_x, vel);
+    if (t < 0)
+        return false;
+
+    const auto cellsize = grid->cellDiameter(el);
+
+    Scalar v = vel.norm();
+    const auto dir = vel.normalized();
+    m_ptcl->m_x += dir*t;
+    while (grid->inside(el, m_ptcl->m_x)) {
+        m_ptcl->m_x += dir*cellsize*0.001;
+        t += cellsize*0.001;
+    }
+    m_hact = m_h = t/v;
+
+    return true;
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
-#ifdef TIMING
-times::interp_start = times::start();
-#endif
     auto grid = bl->getGrid();
     GridInterface::Interpolator interpolator = grid->getInterpolator(el, point, bl->getVecMapping());
-#ifdef TIMING
-times::interp_dur += times::stop(times::interp_start);
-times::no_interp++;
-#endif
     return interpolator(m_v[0], m_v[1], m_v[2]);
 }

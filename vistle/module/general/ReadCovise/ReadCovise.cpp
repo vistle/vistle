@@ -2,8 +2,8 @@
 #include <iomanip>
 #include <string>
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -38,6 +38,8 @@ ReadCovise::ReadCovise(const std::string &shmname, const std::string &name, int 
 
    createOutputPort("grid_out");
    addStringParameter("filename", "name of COVISE file", "");
+   addIntParameter("first_timestep", "first timestep to read", 0);
+   addIntParameter("skip_timesteps", "number of timesteps to skip", 0);
 }
 
 ReadCovise::~ReadCovise() {
@@ -88,7 +90,8 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
          if (obj->getTimestep() != -1) {
             std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
          }
-         obj->setTimestep(index);
+         int outputTimestep = (index) / (m_skipTimesteps+1);
+         obj->setTimestep(outputTimestep);
 #if 0
          if (elem.parent)
             obj->setNumTimesteps(elem.parent->subelems.size());
@@ -281,6 +284,30 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
       for (int index = 0; index < numCorners; index ++)
          cl[index] = _cl[index];
 
+      // convert to VTK face stream
+      for (Index index = 0; index < numElements; index ++) {
+          if (tl[index] == UnstructuredGrid::POLYHEDRON) {
+              Index begin=el[index], end=el[index+1];
+              Index faceTerm = InvalidIndex;
+              Index faceVert = 0;
+              Index faceStart = 0;
+              for (Index i=begin; i<end; ++i) {
+                  Index v = cl[i];
+                  if (faceTerm == InvalidIndex) {
+                      faceTerm = v;
+                      faceVert = 0;
+                      faceStart = i;
+                  } else if (faceTerm == v) {
+                      cl[faceStart] = faceVert;
+                      faceTerm = InvalidIndex;
+                      faceVert = 0;
+                      faceStart = InvalidIndex;
+                  }
+                  ++faceVert;
+              }
+          }
+      }
+
       auto x=usg->x().data(), y=usg->y().data(), z=usg->z().data();
       for (int index = 0; index < numVertices; ++index) {
          x[index] = _x[index];
@@ -288,6 +315,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
          z[index] = _z[index];
       }
 
+      usg->checkConvexity();
       return usg;
    }
 
@@ -612,11 +640,15 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       if (block % size() != rank())
          return object;
 
+      if ((timestep-m_firstTimestep) % (m_skipTimesteps+1) != 0)
+          return object;
+      int outputTimestep = (timestep-m_firstTimestep) / (m_skipTimesteps+1);
+
       if (elem->obj) {
-          if (elem->obj->getTimestep() == timestep)
+          if (elem->obj->getTimestep() == outputTimestep)
               return elem->obj;
           object = elem->obj->clone();
-          object->setTimestep(timestep);
+          object->setTimestep(outputTimestep);
           return object;
       }
    }
@@ -710,6 +742,10 @@ bool ReadCovise::readSkeleton(const int fd, Element *elem) {
 
 bool ReadCovise::readRecursive(const int fd, Element *elem, int timestep) {
 
+   if (cancelRequested()) {
+      return true;
+   }
+
    if (Object::ptr obj = readObject(fd, elem, timestep)) {
       // obj is regular
       // do not recurse as subelems are abused for Geometry components
@@ -763,6 +799,8 @@ bool ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
+   m_firstTimestep = getIntParameter("first_timestep");
+   m_skipTimesteps = getIntParameter("skip_timesteps");
    m_numObj = 0;
    m_objects.clear();
    if (!load(getStringParameter("filename"))) {

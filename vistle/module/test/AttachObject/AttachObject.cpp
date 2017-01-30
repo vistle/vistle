@@ -36,7 +36,7 @@ bool AttachObject::compute() {
    if (!obj)
       return false;
 
-   Object::ptr out = boost::const_pointer_cast<Object>(obj);
+   Object::ptr out = std::const_pointer_cast<Object>(obj);
    Object::ptr att(new Points(4));
    obj->addAttachment("test", att);
 

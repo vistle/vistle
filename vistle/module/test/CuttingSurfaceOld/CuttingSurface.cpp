@@ -5,6 +5,7 @@
 #include <core/triangles.h>
 #include <core/unstr.h>
 #include <core/vec.h>
+#include <util/math.h>
 #include "tables.h"
 
 #include "CuttingSurface.h"
@@ -32,14 +33,7 @@ CuttingSurface::~CuttingSurface() {
 
 }
 
-#define lerp(a, b, t) ( a + t * (b - a) )
-
 const Scalar EPSILON = 1.0e-10f;
-
-inline Vector lerp3(const Vector & a, const Vector & b, const Scalar t) {
-
-   return a + t * (b - a);
-}
 
 inline Vector interp(Scalar value, const Vector & p0, const Vector & p1,
                      const Scalar f0, const Scalar f1,
@@ -65,7 +59,7 @@ inline Vector interp(Scalar value, const Vector & p0, const Vector & p1,
    Scalar t = (value - f0) / diff;
    v = lerp(v0, v1, t);
 
-   return lerp3(p0, p1, t);
+   return lerp(p0, p1, t);
 }
 
 
@@ -143,7 +137,7 @@ class PlaneCut {
       auto outputIdx = outputIdxV.data();
       outputIdx[0] = 0;
 #pragma omp parallel for
-      for (Index elem=0; elem<numElem; ++elem) {
+      for (ssize_t elem=0; elem<numElem; ++elem) {
 
          Index n = 0;
          switch (tl[elem]) {
@@ -176,7 +170,7 @@ class PlaneCut {
       }
 
 #pragma omp parallel for
-      for (Index elem = 0; elem<numElem; ++elem) {
+      for (ssize_t elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false);

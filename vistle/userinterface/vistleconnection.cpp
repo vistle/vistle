@@ -15,7 +15,7 @@ namespace vistle {
 class VistleConnectionLocker: public VistleConnection::Locker {
 
 public:
-   VistleConnectionLocker(boost::recursive_mutex &mtx)
+   VistleConnectionLocker(std::recursive_mutex &mtx)
    : m_mutex(mtx)
    {
       m_mutex.lock();
@@ -27,7 +27,7 @@ public:
    }
 
    private:
-   boost::recursive_mutex &m_mutex;
+   std::recursive_mutex &m_mutex;
 };
 
 VistleConnection *VistleConnection::s_instance = nullptr;
@@ -123,7 +123,7 @@ bool VistleConnection::sendMessage(const vistle::message::Message &msg) const
    return ui().sendMessage(msg);
 }
 
-boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
+std::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
 {
    mutex_lock lock(m_mutex);
    auto p = ui().state().getParameter(id, name);
@@ -133,7 +133,7 @@ boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, cons
    return p;
 }
 
-bool vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
+bool vistle::VistleConnection::sendParameter(const std::shared_ptr<Parameter> p) const
 {
    mutex_lock lock(m_mutex);
    vistle::message::SetParameter set(p->module(), p->getName(), p);
@@ -178,13 +178,13 @@ bool vistle::VistleConnection::barrier() const {
       }
 
       switch(buf.type()) {
-         case message::Message::BARRIERREACHED: {
+         case message::BARRIERREACHED: {
             auto &reached = buf.as<message::BarrierReached>();
             assert(m.uuid() == reached.uuid());
             return true;
             break;
          }
-         case message::Message::BARRIER: {
+         case message::BARRIER: {
             continue;
             break;
          }

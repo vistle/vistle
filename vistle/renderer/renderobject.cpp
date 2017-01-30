@@ -1,3 +1,4 @@
+#include <boost/algorithm/string/predicate.hpp>
 #include <core/coords.h>
 #include <core/coordswradius.h>
 #include <core/assert.h>
@@ -84,6 +85,17 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       timestep = texture->getTimestep();
    }
 
+   variant = container->getAttribute("_variant");
+   if (variant.empty())
+       variant = geometry->getAttribute("_variant");
+
+   if (boost::algorithm::ends_with(variant, "_on")) {
+       variant = variant.substr(0, variant.length()-3);
+       visibility = Visible;
+   } else if (boost::algorithm::ends_with(variant, "_off")) {
+       variant = variant.substr(0, variant.length()-4);
+       visibility = Hidden;
+   }
 }
 
 RenderObject::~RenderObject() {

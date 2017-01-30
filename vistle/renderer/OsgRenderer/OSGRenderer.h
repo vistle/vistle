@@ -6,7 +6,6 @@
 #include <osg/MatrixTransform>
 
 #include <renderer/renderer.h>
-#include <renderer/vnccontroller.h>
 #include <renderer/parrendmgr.h>
 
 namespace osg {
@@ -68,7 +67,7 @@ struct OsgViewData {
    ~OsgViewData();
    void createCamera();
    bool update(bool frameQueued);
-   bool composite(size_t maxQueuedFrames, bool wait=true);
+   bool composite(size_t maxQueuedFrames, int timestep, bool wait=true);
 
    OSGRenderer &viewer;
    size_t viewIdx;
@@ -96,14 +95,14 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    ~OSGRenderer();
 
  private:
-   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+   std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
-   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
-   bool parameterChanged(const vistle::Parameter *p) override;
+   void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
+   bool changeParameter(const vistle::Parameter *p) override;
 
    bool render() override;
    bool composite(size_t maxQueued);
@@ -113,7 +112,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    vistle::IntParameter *m_visibleView;
    vistle::IntParameter *m_threading;
    vistle::IntParameter *m_async;
-   std::vector<boost::shared_ptr<OsgViewData>> m_viewData;
+   std::vector<std::shared_ptr<OsgViewData>> m_viewData;
 
    vistle::ParallelRemoteRenderManager m_renderManager;
 
@@ -129,6 +128,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    std::vector<osg::ref_ptr<osg::LightSource>> lights;
    OpenThreads::Mutex *icetMutex;
    size_t m_numViewsToComposite, m_numFramesToComposite;
+   std::deque<int> m_previousTimesteps;
    int m_asyncFrames;
    ThreadingModel m_requestedThreadingModel;
 };

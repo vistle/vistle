@@ -1,15 +1,10 @@
-#include <stdio.h>
-
-#include <sys/types.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
-
+#include <cstdio>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <string>
 
+#include <util/hostname.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/parameter.h>
@@ -34,18 +29,14 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
    if (observer)
       m_stateTracker.registerObserver(observer);
 
-   const int HOSTNAMESIZE = 64;
-   char hostname[HOSTNAMESIZE];
-   gethostname(hostname, HOSTNAMESIZE - 1);
-
-   std::cerr << "  userinterface ["  << id() << "] started as " << hostname << ":"
+   std::cerr << "  userinterface ["  << id() << "] started as " << hostname() << ":"
 #ifndef _WIN32
              << getpid() << std::endl;
 #else
              << std::endl;
 #endif
 
-   m_hostname = hostname;
+   m_hostname = hostname();
 
    tryConnect();
 }
@@ -150,7 +141,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    bool ret = m_stateTracker.handle(*message);
 
    {
-      boost::mutex::scoped_lock lock(m_messageMutex);
+      std::lock_guard<std::mutex> lock(m_messageMutex);
       MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
       if (it != m_messageMap.end()) {
          it->second->buf.resize(message->size());
@@ -161,7 +152,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    }
 
    switch (message->type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
          const message::Identify *id = static_cast<const message::Identify *>(message);
          if (id->identity() == message::Identify::REQUEST) {
             const message::Identify reply(message::Identify::UI);
@@ -171,7 +162,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SETID: {
+      case message::SETID: {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
          assert(m_id > 0);
@@ -180,7 +171,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::LOCKUI: {
+      case message::LOCKUI: {
          auto lock = static_cast<const message::LockUi *>(message);
          m_locked = lock->locked();
          if (!m_locked) {
@@ -192,7 +183,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::QUIT: {
+      case message::QUIT: {
          const message::Quit *quit = static_cast<const message::Quit *>(message);
          (void)quit;
          return false;
@@ -208,10 +199,10 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
 bool UserInterface::getLockForMessage(const message::uuid_t &uuid) {
 
-   boost::mutex::scoped_lock lock(m_messageMutex);
+   std::lock_guard<std::mutex> lock(m_messageMutex);
    MessageMap::iterator it = m_messageMap.find(uuid);
    if (it == m_messageMap.end()) {
-      it = m_messageMap.insert(std::make_pair(uuid, boost::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
+      it = m_messageMap.insert(std::make_pair(uuid, std::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
    }
    it->second->mutex.lock();
    //m_messageMap[const_cast<message::uuid_t &>(uuid)]->mutex.lock();
@@ -227,9 +218,9 @@ bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &ms
    }
 
    if (!it->second->received) {
-      boost::mutex &mutex = it->second->mutex;
-      boost::condition_variable &cond = it->second->cond;
-      boost::unique_lock<boost::mutex> lock(mutex, boost::adopt_lock_t());
+      std::mutex &mutex = it->second->mutex;
+      std::condition_variable &cond = it->second->cond;
+      std::unique_lock<std::mutex> lock(mutex, std::adopt_lock_t());
 
       m_messageMutex.unlock();
       cond.wait(lock);

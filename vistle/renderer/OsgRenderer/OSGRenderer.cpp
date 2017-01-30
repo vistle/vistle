@@ -5,7 +5,6 @@
 #include <IceTMPI.h>
 
 #include <vector>
-#include <boost/static_assert.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <osg/DisplaySettings>
@@ -31,7 +30,7 @@
 
 //#define USE_FBO
 const int MaxAsyncFrames = 2;
-BOOST_STATIC_ASSERT(MaxAsyncFrames > 0);
+static_assert(MaxAsyncFrames > 0, "MaxAsyncFrames needs to be positive");
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(OsgThreadingModel,
    (Single_Threaded)
@@ -375,7 +374,7 @@ bool OsgViewData::update(bool frameQueued) {
    return false;
 }
 
-bool OsgViewData::composite(size_t maxQueuedFrames, bool wait) {
+bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
 
     size_t queued = 0;
     GLsync sync = 0;
@@ -422,7 +421,7 @@ bool OsgViewData::composite(size_t maxQueuedFrames, bool wait) {
     viewer.m_renderManager.getModelViewMat(viewIdx, view);
     viewer.m_renderManager.getProjMat(viewIdx, proj);
     IceTImage image = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, view, bg);
-    viewer.m_renderManager.finishCurrentView(image, false);
+    viewer.m_renderManager.finishCurrentView(image, timestep, false);
 
     return true;
 }
@@ -631,14 +630,15 @@ bool OSGRenderer::composite(size_t maxQueued) {
        return false;
 
    for (size_t i=0; i<m_viewData.size(); ++i) {
-      const bool progress = m_viewData[i]->composite(maxQueued);
+      const bool progress = m_viewData[i]->composite(maxQueued, m_previousTimesteps.front());
       vassert(progress);
       --m_numViewsToComposite;
    }
 
    vassert(m_numViewsToComposite%m_viewData.size() == 0);
    --m_numFramesToComposite;
-   m_renderManager.finishFrame();
+   m_renderManager.finishFrame(m_previousTimesteps.front());
+   m_previousTimesteps.pop_front();
 
    return true;
 }
@@ -732,6 +732,7 @@ bool OSGRenderer::render() {
        frame();
        ++m_numFramesToComposite;
        m_numViewsToComposite += m_viewData.size();
+       m_previousTimesteps.push_back(t);
 
        if (m_asyncFrames == 0)
           composite(0);
@@ -745,7 +746,7 @@ bool OSGRenderer::render() {
     return true;
 }
 
-bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
+bool OSGRenderer::changeParameter(const vistle::Parameter *p) {
 
    m_renderManager.handleParam(p);
 
@@ -777,17 +778,17 @@ bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
        m_asyncFrames = m_async->getValue();
    }
 
-   return Renderer::parameterChanged(p);
+   return Renderer::changeParameter(p);
 }
 
-boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
+std::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
             vistle::Object::const_ptr container,
             vistle::Object::const_ptr geometry,
             vistle::Object::const_ptr normals,
             vistle::Object::const_ptr colors,
             vistle::Object::const_ptr texture) {
 
-   boost::shared_ptr<vistle::RenderObject> ro;
+   std::shared_ptr<vistle::RenderObject> ro;
    VistleGeometryGenerator gen(ro, geometry, normals, colors, texture);
    if (VistleGeometryGenerator::isSupported(geometry->getType()) || geometry->getType() == vistle::Object::PLACEHOLDER) {
       auto geode = gen(defaultState);
@@ -803,9 +804,9 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
    return ro;
 }
 
-void OSGRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> ro) {
+void OSGRenderer::removeObject(std::shared_ptr<vistle::RenderObject> ro) {
 
-   auto oro = boost::static_pointer_cast<OsgRenderObject>(ro);
+   auto oro = std::static_pointer_cast<OsgRenderObject>(ro);
    timesteps->removeObject(oro->node, oro->timestep);
    m_renderManager.removeObject(ro);
 }

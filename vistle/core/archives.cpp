@@ -93,7 +93,7 @@ iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
 iarchive::~iarchive()
 {}
 
-void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {
+void iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 

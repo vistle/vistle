@@ -9,6 +9,10 @@
 namespace vistle {
 
 V_COREEXPORT Vector trilinearInverse(const Vector &p0, const Vector p[8]);
+V_COREEXPORT bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
+V_COREEXPORT bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
+V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z);
+V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z);
 
 template<typename Scalar, typename Index>
 class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
@@ -35,14 +39,10 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
       return true;
    }
 
-   Order operator()(const typename Celltree::Node &node, Scalar *min, Scalar *max) {
+   Order operator()(const typename Celltree::Node &node) {
 
 #ifdef CT_DEBUG
-      std::cerr << "visit subtree: min: "
-         << min[0] << " " << min[1] << " " << min[2]
-         << ", max: " << max[0] << " " << max[1] << " " << max[2]
-         << ", node: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin
-         << std::endl;
+      std::cerr << "visit subtree: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin << std::endl;
 #endif
 
       const Scalar c = m_point[node.dim];
@@ -90,10 +90,11 @@ template<class Grid, typename Scalar, typename Index>
 class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 
  public:
-   PointInclusionFunctor(const Grid *grid, const Vector &point)
+   PointInclusionFunctor(const Grid *grid, const Vector &point, bool acceptGhost=false)
       : m_grid(grid)
       , m_point(point)
-      , cell(-1)
+      , m_acceptGhost(acceptGhost)
+      , cell(InvalidIndex)
    {
    }
 
@@ -101,17 +102,20 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 #ifdef CT_DEBUG
       std::cerr << "PointInclusionFunctor: checking cell: " << elem << std::endl;
 #endif
-      if (m_grid->inside(elem, m_point)) {
+      if (m_acceptGhost || !m_grid->isGhostCell(elem)) {
+          if (m_grid->inside(elem, m_point)) {
 #ifdef CT_DEBUG
-         std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
+              std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
 #endif
-         cell = elem;
-         return false; // stop traversal
+              cell = elem;
+              return false; // stop traversal
+          }
       }
       return true;
    }
    const Grid *m_grid;
    Vector m_point;
+   bool m_acceptGhost;
    Index cell;
 
 };

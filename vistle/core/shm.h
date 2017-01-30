@@ -1,8 +1,7 @@
 #ifndef SHM_H
 #define SHM_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <memory>
 
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>
@@ -120,11 +119,11 @@ class V_COREEXPORT Shm {
    std::string createArrayId(const std::string &name="");
    std::string createObjectId(const std::string &name="");
 
-   boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
-   shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
+   std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
+   shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
    ObjectData *getObjectDataFromName(const std::string &name) const;
-   boost::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
+   std::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
    template<typename T>
    const ShmVector<T> getArrayFromName(const std::string &name) const;
 

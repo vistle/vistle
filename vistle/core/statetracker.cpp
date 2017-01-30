@@ -1,5 +1,4 @@
 #include <boost/foreach.hpp>
-#include <boost/thread.hpp>
 
 #include "message.h"
 #include "messages.h"
@@ -37,9 +36,9 @@ int StateTracker::Module::state() const {
    return s;
 }
 
-StateTracker::StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker)
+StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker)
 : m_portTracker(portTracker)
-, m_traceType(message::Message::INVALID)
+, m_traceType(message::INVALID)
 , m_traceId(Id::Invalid)
 , m_name(name)
 {
@@ -125,6 +124,17 @@ int StateTracker::getHub(int id) const {
    return it->second.hub;
 }
 
+const HubData &StateTracker::getHubData(int id) const {
+    static HubData invalidHub(0, "");
+
+    for (const auto &hub: m_hubs) {
+        if (hub.id == id)
+            return hub;
+    }
+
+    return invalidHub;
+}
+
 std::string StateTracker::getModuleName(int id) const {
 
    RunningMap::const_iterator it = runningMap.find(id);
@@ -203,7 +213,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
       for (const auto &it2: m.paramOrder) {
          //std::cerr << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
          const std::string &name = it2.second;
-         const auto &it3 = pmap.find(name);
+         const auto it3 = pmap.find(name);
          assert(it3 != pmap.end());
          const auto param = it3->second;
 
@@ -288,9 +298,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
    m_alreadySeen.insert(msg.uuid());
 #endif
 
-   if (m_traceId != Id::Invalid && m_traceType != Message::INVALID) {
+   if (m_traceId != Id::Invalid && m_traceType != INVALID) {
 
-      if (msg.type() == m_traceType || m_traceType == Message::ANY) {
+      if (msg.type() == m_traceType || m_traceType == ANY) {
 
          if (msg.senderId() == m_traceId || msg.destId() == m_traceId || m_traceId == Id::Broadcast) {
             std::cout << m_name << ": " << msg << std::endl << std::flush;
@@ -305,173 +315,176 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
 
    mutex_locker locker(getMutex());
    switch (msg.type()) {
-      case Message::IDENTIFY: {
+      case IDENTIFY: {
          break;
       }
-      case Message::ADDHUB: {
+      case ADDHUB: {
          const AddHub &slave = static_cast<const AddHub &>(msg);
          handled = handlePriv(slave);
          break;
       }
-      case Message::SPAWN: {
+      case SPAWN: {
          const Spawn &spawn = static_cast<const Spawn &>(msg);
          registerReply(msg.uuid(), msg);
          handled = handlePriv(spawn);
          break;
       }
-      case Message::SPAWNPREPARED: {
+      case SPAWNPREPARED: {
          break;
       }
-      case Message::STARTED: {
+      case STARTED: {
          const Started &started = static_cast<const Started &>(msg);
          handled = handlePriv(started);
          break;
       }
-      case Message::KILL: {
+      case KILL: {
          const Kill &kill = static_cast<const Kill &>(msg);
          handled = handlePriv(kill);
          break;
       }
-      case Message::QUIT: {
+      case QUIT: {
          const Quit &quit = static_cast<const Quit &>(msg);
          handled = handlePriv(quit);
          break;
       }
-      case Message::MODULEEXIT: {
+      case MODULEEXIT: {
          const ModuleExit &modexit = static_cast<const ModuleExit &>(msg);
          handled = handlePriv(modexit);
          break;
       }
-      case Message::EXECUTE: {
+      case EXECUTE: {
          break;
       }
-      case Message::ADDOBJECT: {
+      case CANCELEXECUTE: {
          break;
       }
-      case Message::ADDOBJECTCOMPLETED: {
+      case ADDOBJECT: {
          break;
       }
-      case Message::OBJECTRECEIVED: {
+      case ADDOBJECTCOMPLETED: {
          break;
       }
-      case Message::ADDPORT: {
+      case OBJECTRECEIVED: {
+         break;
+      }
+      case ADDPORT: {
          const AddPort &cp = static_cast<const AddPort &>(msg);
          handled = handlePriv(cp);
          break;
       }
-      case Message::REMOVEPORT: {
+      case REMOVEPORT: {
          const RemovePort &dp = static_cast<const RemovePort &>(msg);
          handled = handlePriv(dp);
          break;
       }
-      case Message::ADDPARAMETER: {
+      case ADDPARAMETER: {
          const AddParameter &add = static_cast<const AddParameter &>(msg);
          handled = handlePriv(add);
          break;
       }
-      case Message::REMOVEPARAMETER: {
+      case REMOVEPARAMETER: {
          const RemoveParameter &rem = static_cast<const RemoveParameter &>(msg);
          handled = handlePriv(rem);
          break;
       }
-      case Message::CONNECT: {
+      case CONNECT: {
          const Connect &conn = static_cast<const Connect &>(msg);
          handled = handlePriv(conn);
          break;
       }
-      case Message::DISCONNECT: {
+      case DISCONNECT: {
          const Disconnect &disc = static_cast<const Disconnect &>(msg);
          handled = handlePriv(disc);
          break;
       }
-      case Message::SETPARAMETER: {
+      case SETPARAMETER: {
          const SetParameter &set = static_cast<const SetParameter &>(msg);
          handled = handlePriv(set);
          break;
       }
-      case Message::SETPARAMETERCHOICES: {
+      case SETPARAMETERCHOICES: {
          const SetParameterChoices &choice = static_cast<const SetParameterChoices &>(msg);
          handled = handlePriv(choice);
          break;
       }
-      case Message::PING: {
+      case PING: {
          const Ping &ping = static_cast<const Ping &>(msg);
          handled = handlePriv(ping);
          break;
       }
-      case Message::PONG: {
+      case PONG: {
          const Pong &pong = static_cast<const Pong &>(msg);
          handled = handlePriv(pong);
          break;
       }
-      case Message::TRACE: {
+      case TRACE: {
          const Trace &trace = static_cast<const Trace &>(msg);
          handled = handlePriv(trace);
          break;
       }
-      case Message::BUSY: {
+      case BUSY: {
          const Busy &busy = static_cast<const Busy &>(msg);
          handled = handlePriv(busy);
          break;
       }
-      case Message::IDLE: {
+      case IDLE: {
          const Idle &idle = static_cast<const Idle &>(msg);
          handled = handlePriv(idle);
          break;
       }
-      case Message::BARRIER: {
+      case BARRIER: {
          const Barrier &barrier = static_cast<const Barrier &>(msg);
          handled = handlePriv(barrier);
          break;
       }
-      case Message::BARRIERREACHED: {
+      case BARRIERREACHED: {
          const BarrierReached &reached = static_cast<const BarrierReached &>(msg);
          handled = handlePriv(reached);
          registerReply(msg.uuid(), msg);
          break;
       }
-      case Message::SETID: {
+      case SETID: {
          const SetId &setid = static_cast<const SetId &>(msg);
          (void)setid;
          break;
       }
-      case Message::REPLAYFINISHED: {
+      case REPLAYFINISHED: {
          const ReplayFinished &fin = static_cast<const ReplayFinished &>(msg);
          handled = handlePriv(fin);
          break;
       }
-      case Message::SENDTEXT: {
+      case SENDTEXT: {
          const SendText &info = static_cast<const SendText &>(msg);
          handled = handlePriv(info);
          break;
       }
-      case Message::MODULEAVAILABLE: {
+      case MODULEAVAILABLE: {
          const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
          handled = handlePriv(mod);
          break;
       }
-      case Message::EXECUTIONPROGRESS: {
+      case EXECUTIONPROGRESS: {
          break;
       }
-      case Message::LOCKUI: {
+      case LOCKUI: {
          break;
       }
-      case Message::OBJECTRECEIVEPOLICY: {
+      case OBJECTRECEIVEPOLICY: {
          const ObjectReceivePolicy &m = static_cast<const ObjectReceivePolicy &>(msg);
          handled = handlePriv(m);
          break;
       }
-      case Message::SCHEDULINGPOLICY: {
+      case SCHEDULINGPOLICY: {
          const SchedulingPolicy &m = static_cast<const SchedulingPolicy &>(msg);
          handled = handlePriv(m);
          break;
       }
-      case Message::REDUCEPOLICY: {
+      case REDUCEPOLICY: {
          const ReducePolicy &m = static_cast<const ReducePolicy &>(msg);
          handled = handlePriv(m);
          break;
       }
-      case Message::REQUESTTUNNEL: {
+      case REQUESTTUNNEL: {
          const RequestTunnel &m = static_cast<const RequestTunnel &>(msg);
          handled = handlePriv(m);
          break;
@@ -528,13 +541,13 @@ void StateTracker::cleanQueue(int id) {
       if (msg.destId() == id)
           continue;
       switch(msg.type()) {
-      case Message::CONNECT: {
+      case CONNECT: {
           const auto &m = msg.as<Connect>();
           if (m.getModuleA() == id || m.getModuleB() == id)
               continue;
           break;
       }
-      case Message::DISCONNECT: {
+      case DISCONNECT: {
           const auto &m = msg.as<Disconnect>();
           if (m.getModuleA() == id || m.getModuleB() == id)
               continue;
@@ -548,7 +561,7 @@ void StateTracker::cleanQueue(int id) {
 }
 
 bool StateTracker::handlePriv(const message::AddHub &slave) {
-   boost::lock_guard<mutex> locker(m_slaveMutex);
+   std::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
    m_hubs.back().dataPort = slave.dataPort();
@@ -579,12 +592,14 @@ bool StateTracker::handlePriv(const message::Trace &trace) {
    } else {
       CERR << "disabling tracing of " << m_traceType << " from/to " << m_traceId << std::endl;
       m_traceId = Id::Invalid;
-      m_traceType = message::Message::INVALID;
+      m_traceType = message::INVALID;
    }
    return true;
 }
 
 bool StateTracker::handlePriv(const message::Spawn &spawn) {
+
+   ++m_graphChangeCount;
 
    int moduleId = spawn.spawnId();
    if (moduleId == Id::Invalid) {
@@ -610,6 +625,8 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
 bool StateTracker::handlePriv(const message::Started &started) {
 
+   ++m_graphChangeCount;
+
    int moduleId = started.senderId();
    auto it = runningMap.find(moduleId);
    if (it == runningMap.end()) {
@@ -634,6 +651,8 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
+   ++m_graphChangeCount;
+
    bool ret = true;
    if (portTracker()) {
       ret = portTracker()->addConnection(connect.getModuleA(),
@@ -649,6 +668,8 @@ bool StateTracker::handlePriv(const message::Connect &connect) {
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 
+   ++m_graphChangeCount;
+
    bool ret = true;
    if (portTracker()) {
       ret = portTracker()->removeConnection(disconnect.getModuleA(),
@@ -663,6 +684,8 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 }
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
+
+   ++m_graphChangeCount;
 
    const int mod = moduleExit.senderId();
    portTracker()->removeModule(mod);
@@ -760,6 +783,10 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
 #endif
 
    auto mit = runningMap.find(addParam.senderId());
+   if (mit == runningMap.end()) {
+      CERR << addParam << ": did not find sending module" << std::endl;
+      return true;
+   }
    vassert(mit != runningMap.end());
    auto &mod = mit->second;
    ParameterMap &pm = mod.parameters;
@@ -770,7 +797,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    } else {
       pm[addParam.getName()] = addParam.getParameter();
       int maxIdx = 0;
-      const auto &rit = po.rbegin();
+      const auto rit = po.rbegin();
       if (rit != po.rend())
          maxIdx = rit->first;
       po[maxIdx+1] = addParam.getName();
@@ -1055,7 +1082,7 @@ StateTracker::~StateTracker() {
     }
 }
 
-boost::shared_ptr<PortTracker> StateTracker::portTracker() const {
+std::shared_ptr<PortTracker> StateTracker::portTracker() const {
 
    return m_portTracker;
 }
@@ -1077,22 +1104,22 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
    return result;
 }
 
-boost::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const {
+std::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const {
 
    RunningMap::const_iterator rit = runningMap.find(id);
    if (rit == runningMap.end())
-      return boost::shared_ptr<Parameter>();
+      return std::shared_ptr<Parameter>();
 
    ParameterMap::const_iterator pit = rit->second.parameters.find(name);
    if (pit == rit->second.parameters.end())
-      return boost::shared_ptr<Parameter>();
+      return std::shared_ptr<Parameter>();
 
    return pit->second;
 }
 
 bool StateTracker::registerRequest(const message::uuid_t &uuid) {
 
-   boost::lock_guard<mutex> locker(m_replyMutex);
+   std::lock_guard<mutex> locker(m_replyMutex);
 
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end()) {
@@ -1101,14 +1128,14 @@ bool StateTracker::registerRequest(const message::uuid_t &uuid) {
    }
 
    //CERR << "waiting for " << uuid  << std::endl;
-   m_outstandingReplies[uuid] = boost::shared_ptr<message::Buffer>();
+   m_outstandingReplies[uuid] = std::shared_ptr<message::Buffer>();
    return true;
 }
 
-boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
+std::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
 
-   boost::unique_lock<mutex> locker(m_replyMutex);
-   boost::shared_ptr<message::Buffer> ret = removeRequest(uuid);
+   std::unique_lock<mutex> locker(m_replyMutex);
+   std::shared_ptr<message::Buffer> ret = removeRequest(uuid);
    while (!ret) {
       m_replyCondition.wait(locker);
       ret = removeRequest(uuid);
@@ -1116,10 +1143,10 @@ boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uui
    return ret;
 }
 
-boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
+std::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
 
    //CERR << "remove request try: " << uuid << std::endl;
-   boost::shared_ptr<message::Buffer> ret;
+   std::shared_ptr<message::Buffer> ret;
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end() && it->second) {
       ret = it->second;
@@ -1131,7 +1158,7 @@ boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uu
 
 bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Message &msg) {
 
-   boost::lock_guard<mutex> locker(m_replyMutex);
+   std::lock_guard<mutex> locker(m_replyMutex);
    auto it = m_outstandingReplies.find(uuid);
    if (it == m_outstandingReplies.end()) {
       return false;
@@ -1155,7 +1182,7 @@ std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 
    auto hubIds = getSlaveHubs();
    while (hubIds.size() < count) {
-      boost::unique_lock<mutex> locker(m_slaveMutex);
+      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
       hubIds = getSlaveHubs();
    }
@@ -1189,7 +1216,7 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
 
    std::vector<int> ids;
    while (!findAll(names, ids)) {
-      boost::unique_lock<mutex> locker(m_slaveMutex);
+      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
    }
    return ids;
@@ -1269,6 +1296,11 @@ void StateTracker::computeHeights() {
          }
       }
    }
+}
+
+int StateTracker::graphChangeCount() const {
+
+    return m_graphChangeCount;
 }
 
 void StateObserver::quitRequested() {

@@ -27,7 +27,7 @@ FilterNode::FilterNode(const std::string &shmname, const std::string &name, int 
 FilterNode::~FilterNode() {
 }
 
-bool FilterNode::parameterChanged(const Parameter *p) {
+bool FilterNode::changeParameter(const Parameter *p) {
     if (p == m_criterionParam) {
         switch(m_criterionParam->getValue()) {
         case Rank:

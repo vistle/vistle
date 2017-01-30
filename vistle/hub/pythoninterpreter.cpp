@@ -1,5 +1,5 @@
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <thread>
+#include <mutex>
 
 #include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
@@ -16,6 +16,7 @@ class Executor {
    , m_interpreter(inter)
    , m_filename(filename)
    {
+       m_interpreter.init();
    }
 
    void operator()() {
@@ -23,38 +24,50 @@ class Executor {
       if (!m_filename.empty())
          m_interpreter.executeFile(m_filename);
 
-      boost::lock_guard<boost::mutex> locker(m_mutex);
+      std::lock_guard<std::mutex> locker(m_mutex);
       m_done = true;
    }
 
    bool done() const {
 
-      boost::lock_guard<boost::mutex> locker(m_mutex);
+      std::lock_guard<std::mutex> locker(m_mutex);
       return m_done;
    }
 
  private:
-   mutable boost::mutex m_mutex;
+   mutable std::mutex m_mutex;
    bool m_done;
    PythonInterpreter &m_interpreter;
    const std::string &m_filename;
 };
 
 PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path)
-: m_interpreter(new PythonInterface("vistle"))
+: m_pythonPath(path)
+, m_interpreter(new PythonInterface("vistle"))
 , m_module(new PythonModule(path))
 , m_executor(new Executor(*this, file))
-, m_thread(boost::ref(*m_executor))
+, m_thread(std::ref(*m_executor))
 {
+}
+
+void PythonInterpreter::init() {
+   m_interpreter->init();
+   m_module->import(&vistle::PythonInterface::the().nameSpace(), m_pythonPath);
 }
 
 bool PythonInterpreter::executeFile(const std::string &filename) {
 
-   return m_interpreter->exec_file(filename);
+   try {
+      return m_interpreter->exec_file(filename);
+   } catch (...) {
+      std::cerr << "executing Python file " << filename << " failed" << std::endl;
+   }
+   return false;
 }
 
 PythonInterpreter::~PythonInterpreter() {
 
+   m_thread.join();
 }
 
 bool PythonInterpreter::check() {

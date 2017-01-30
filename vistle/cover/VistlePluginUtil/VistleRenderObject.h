@@ -1,6 +1,8 @@
 #ifndef VISTLERENDEROBJECT_H
 #define VISTLERENDEROBJECT_H
 
+#include "export.h"
+
 #include <cover/RenderObject.h>
 
 #include <core/polygons.h>
@@ -9,13 +11,13 @@
 #include <osg/ref_ptr>
 #include <osg/Node>
 #include <renderer/renderobject.h>
-#include <boost/weak_ptr.hpp>
+#include <memory>
 
 namespace opencover {
 class coInteractor;
 }
 
-class BaseRenderObject: public opencover::RenderObject {
+class V_PLUGINUTILEXPORT BaseRenderObject: public opencover::RenderObject {
 
    public:
    BaseRenderObject();
@@ -45,16 +47,16 @@ class BaseRenderObject: public opencover::RenderObject {
 };
 
 
-class VistleRenderObject: public BaseRenderObject {
+class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
 
    public:
-   VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro);
+   VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
    VistleRenderObject(vistle::Object::const_ptr obj);
    ~VistleRenderObject();
 
    void setNode(osg::Node *node);
    osg::Node *node() const;
-   boost::shared_ptr<const vistle::RenderObject> renderObject() const;
+   std::shared_ptr<const vistle::RenderObject> renderObject() const;
    int getCreator() const;
 
    const char *getName() const override;
@@ -69,7 +71,7 @@ class VistleRenderObject: public BaseRenderObject {
 
    protected:
 
-   boost::weak_ptr<const vistle::RenderObject> m_vistleRo;
+   std::weak_ptr<const vistle::RenderObject> m_vistleRo;
    vistle::Object::const_ptr m_obj;
    osg::ref_ptr<osg::Node> m_node;
 
@@ -81,7 +83,7 @@ class VistleRenderObject: public BaseRenderObject {
 };
 
 // pseudo RenderObject for handling module parameters
-class ModuleRenderObject: public BaseRenderObject {
+class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
 
  public:
    ModuleRenderObject(const std::string &moduleName, int moduleId);
@@ -102,5 +104,27 @@ class ModuleRenderObject: public BaseRenderObject {
    std::string m_moduleName;
    int m_moduleId;
    std::string m_name;
+};
+
+class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {
+public:
+    VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible = vistle::RenderObject::DontChange);
+
+    const char *getName() const override { return ""; }
+    bool isGeometry() const override { return false; }
+    RenderObject *getGeometry() const override { return nullptr; }
+    RenderObject *getColors() const override { return nullptr; }
+    RenderObject *getNormals() const override { return nullptr; }
+    RenderObject *getTexture() const override { return nullptr; }
+    RenderObject *getVertexAttribute() const override { return nullptr; }
+
+   const char *getAttribute(const char *key) const override;
+
+   osg::ref_ptr<osg::Node> node() const;
+
+private:
+    std::string variant, variant_onoff;
+    osg::ref_ptr<osg::Node> m_node; //< dummy osg node
+    vistle::RenderObject::InitialVariantVisibility m_visible;
 };
 #endif

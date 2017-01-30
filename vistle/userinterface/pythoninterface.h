@@ -1,6 +1,8 @@
 #ifndef PYTHON_INTERFACE_H
 #define PYTHON_INTERFACE_H
 
+// include this before any Qt headers
+
 #include <string>
 #include <iostream>
 #include <boost/python/object.hpp>
@@ -17,6 +19,7 @@ class V_UIEXPORT PythonInterface {
       ~PythonInterface();
       static PythonInterface &the();
       boost::python::object &nameSpace();
+      bool init();
 
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);

@@ -13,7 +13,6 @@
 #include <unordered_set>
 
 #include <boost/mpl/for_each.hpp>
-#include <boost/filesystem.hpp>
 
 #include <module/module.h>
 
@@ -53,7 +52,7 @@ class ReadHDF5 : public vistle::Module {
 
 
    // overriden functions
-   virtual bool parameterChanged(const vistle::Parameter *param) override;
+   virtual bool changeParameter(const vistle::Parameter *param) override;
    virtual bool prepare() override;
    virtual bool compute() override;
    virtual bool reduce(int timestep) override;

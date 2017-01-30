@@ -6,6 +6,9 @@ if(POLICY CMP0042)
    cmake_policy(SET CMP0042 NEW)
 endif()
 
+# Automatically link Qt executables to qtmain target on Windows
+cmake_policy(SET CMP0020 NEW)
+
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
@@ -39,8 +42,15 @@ endif()
 
 enable_testing()
 
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-   add_definitions(-DNDEBUG)
+if (CMAKE_BUILD_TYPE STREQUAL "")
+   set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+      "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+      FORCE
+   )
+   message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
+endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
    # disable rpath - only rely on LD_LIBRARY_PATH and the likes
    set(CMAKE_SKIP_RPATH TRUE)
 else()
@@ -119,21 +129,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_COMPILE_FLAGS}")
 set(CMAKE_C_LINK_FLAGS "${CMAKE_C_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
    if(APPLE)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+   else()
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
    endif()
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
-   if (NOT "${VISTLE_CPU_ARCH}" STREQUAL "")
+   if (DEFINED VISTLE_CPU_ARCH)
       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
    endif()
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
@@ -151,7 +162,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    endif()
 
    if (NOT APPLE)
-      if (NOT "${VISTLE_CPU_ARCH}" STREQUAL "")
+      if (DEFINED VISTLE_CPU_ARCH)
          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=${VISTLE_CPU_ARCH}")
          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=${VISTLE_CPU_ARCH}")
          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2")
@@ -169,25 +180,29 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       endif()
    endif()
 
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+#elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 if(WIN32)
     set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
     STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
     set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
-    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    add_definitions("-DOMPI_IMPORTS")
-    add_definitions("-DWIN32_LEAN_AND_MEAN")
-    add_definitions("-DNOMINMAX")
-    add_definitions("-DBOOST_ALL_NO_LIB")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    add_definitions(-DOMPI_IMPORTS)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DNOMINMAX)
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    add_definitions(-DBOOST_MPI_DYN_LINK)
+	add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
 	
 	
 endif(WIN32)
 
-vistle_find_package(Boost 1.40 REQUIRED thread system)
+vistle_find_package(Boost 1.40 REQUIRED system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 if (Boost_VERSION VERSION_GREATER 106099)
    set(BOOST_MPI_DIR "boost-mpi")
@@ -207,7 +222,7 @@ add_definitions(-DOMPI_SKIP_MPICXX)
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
-if ("${LIB64}" STREQUAL "TRUE")
+if (LIB64)
    set(LIBSUFFIX 64)
 else()
    set(LIBSUFFIX "")

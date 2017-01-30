@@ -6,11 +6,8 @@
 #include <set>
 #include <string>
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread/recursive_mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
-
-#include <util/directory.h>
+#include <mutex>
+#include <condition_variable>
 
 #include "export.h"
 #include "message.h"
@@ -19,7 +16,7 @@
 namespace vistle {
 
 class Parameter;
-typedef std::set<boost::shared_ptr<Parameter>> ParameterSet;
+typedef std::set<std::shared_ptr<Parameter>> ParameterSet;
 class PortTracker;
 
 class V_COREEXPORT StateObserver {
@@ -58,7 +55,7 @@ class V_COREEXPORT StateObserver {
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
 
-   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::uuid_t &refUuid) = 0;
+   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) = 0;
 
    virtual void quitRequested();
 
@@ -70,6 +67,22 @@ private:
    long m_modificationCount;
 };
 
+struct V_COREEXPORT HubData {
+
+    HubData(int id, const std::string &name)
+        : id(id)
+        , name(name)
+        , port(0)
+        , dataPort(0)
+    {}
+
+    int id;
+    std::string name;
+    unsigned short port;
+    unsigned short dataPort;
+    boost::asio::ip::address address;
+};
+
 class V_COREEXPORT StateTracker {
    friend class ClusterManager;
    friend class Hub;
@@ -77,11 +90,11 @@ class V_COREEXPORT StateTracker {
    friend class PortTracker;
 
  public:
-   StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker=boost::shared_ptr<PortTracker>());
+   StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker=std::shared_ptr<PortTracker>());
    ~StateTracker();
 
-   typedef boost::recursive_mutex mutex;
-   typedef boost::unique_lock<mutex> mutex_locker;
+   typedef std::recursive_mutex mutex;
+   typedef std::unique_lock<mutex> mutex_locker;
    mutex &getMutex();
 
    bool dispatch(bool &received);
@@ -93,17 +106,18 @@ class V_COREEXPORT StateTracker {
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    int getHub(int id) const;
+   const HubData &getHubData(int id) const;
    std::string getModuleName(int id) const;
    int getModuleState(int id) const;
 
    std::vector<std::string> getParameters(int id) const;
-   boost::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
+   std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
    ParameterSet getConnectedParameters(const Parameter &param) const;
 
    bool handle(const message::Message &msg, bool track=true);
 
-   boost::shared_ptr<PortTracker> portTracker() const;
+   std::shared_ptr<PortTracker> portTracker() const;
 
    std::vector<message::Buffer> getState() const;
 
@@ -112,16 +126,18 @@ class V_COREEXPORT StateTracker {
    void registerObserver(StateObserver *observer);
 
    bool registerRequest(const message::uuid_t &uuid);
-   boost::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
+   std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
 
    std::vector<int> waitForSlaveHubs(size_t count);
    std::vector<int> waitForSlaveHubs(const std::vector<std::string> &names);
 
+   int graphChangeCount() const;
+
  protected:
-   boost::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
+   std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
    bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
 
-   typedef std::map<std::string, boost::shared_ptr<Parameter>> ParameterMap;
+   typedef std::map<std::string, std::shared_ptr<Parameter>> ParameterMap;
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
       int id;
@@ -151,6 +167,7 @@ class V_COREEXPORT StateTracker {
    RunningMap quitMap; //< history of already terminated modules - for module -> hub mapping
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
+   int m_graphChangeCount = 0;
 
    std::vector<AvailableModule> m_availableModules;
 
@@ -194,35 +211,20 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::SchedulingPolicy &pol);
    bool handlePriv(const message::RequestTunnel &tunnel);
 
-   boost::shared_ptr<PortTracker> m_portTracker;
+   std::shared_ptr<PortTracker> m_portTracker;
 
    std::set<message::uuid_t> m_alreadySeen;
 
    mutex m_replyMutex;
-   boost::condition_variable_any m_replyCondition;
-   std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
+   std::condition_variable_any m_replyCondition;
+   std::map<message::uuid_t, std::shared_ptr<message::Buffer>> m_outstandingReplies;
 
    mutex m_slaveMutex;
-   boost::condition_variable_any m_slaveCondition;
+   std::condition_variable_any m_slaveCondition;
 
-   message::Message::Type m_traceType;
+   message::Type m_traceType;
    int m_traceId;
    std::string m_name;
-   struct HubData {
-
-      HubData(int id, const std::string &name)
-      : id(id)
-      , name(name)
-      , port(0)
-      , dataPort(0)
-      {}
-
-      int id;
-      std::string name;
-      unsigned short port;
-      unsigned short dataPort;
-      boost::asio::ip::address address;
-   };
    std::vector<HubData> m_hubs;
 };
 

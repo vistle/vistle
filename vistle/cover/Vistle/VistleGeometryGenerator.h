@@ -8,23 +8,23 @@
 #include <osg/ref_ptr>
 
 namespace osg {
-   class Node;
+   class MatrixTransform;
 };
 
 class VistleGeometryGenerator {
    public:
-      VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+      VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex);
 
-      osg::Node *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
+      osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
       static bool isSupported(vistle::Object::Type t);
 
    private:
-      boost::shared_ptr<vistle::RenderObject> m_ro;
+      std::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
       vistle::Object::const_ptr m_color;
       vistle::Object::const_ptr m_normal;

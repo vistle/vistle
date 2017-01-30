@@ -18,6 +18,7 @@
 
 #include <hdf5.h>
 
+#include <util/filesystem.h>
 #include <core/findobjectreferenceoarchive.h>
 #include <core/placeholder.h>
 
@@ -1212,7 +1213,7 @@ void WriteHDF5::compute_organized_addObjectToWrite(vistle::Object::const_ptr obj
 //-------------------------------------------------------------------------
 bool WriteHDF5::prepare_fileNameCheck() {
     std::string fileName = m_fileName->getValue();
-    boost::filesystem::path path(fileName);
+    filesystem::path path(fileName);
     bool isDirectory = false;
     bool doesExist = false;
 
@@ -1223,10 +1224,10 @@ bool WriteHDF5::prepare_fileNameCheck() {
 
     // setup boost::filesystem
     try {
-        isDirectory = boost::filesystem::is_directory(path);
-        doesExist = boost::filesystem::exists(path);
+        isDirectory = filesystem::is_directory(path);
+        doesExist = filesystem::exists(path);
 
-    } catch (const boost::filesystem::filesystem_error &error) {
+    } catch (const filesystem::filesystem_error &error) {
         std::cerr << "filesystem error: " << error.what() << std::endl;
         return false;
     }

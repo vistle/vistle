@@ -49,7 +49,7 @@ Build Requirements
 
          b2 --with-filesystem --with-iostreams --with-python \
              --with-serialization --with-system --with-thread \
-             --with-regex --with-chrono --with-date_time \
+             --with-date_time \
              --with-program_options
      Notes:
 
@@ -75,6 +75,11 @@ Build Requirements
 
 - **Qt**:
   Qt 5 is required by the graphical user interface
+
+### macOS with [Homebrew](https://brew.sh)
+
+  Install most of Vistle's dependencies by invoking `brew bundle` within
+  Vistle's root source directory.
 
 
 Building Vistle

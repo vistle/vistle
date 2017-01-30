@@ -29,8 +29,6 @@ public:
    void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
 private:
-   void createCelltree(Index nelem, const Index *el, const Index *cl) const;
-
    V_DATA_BEGIN(DataBase);
       shm_obj_ref<Object> grid;
       Mapping mapping;

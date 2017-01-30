@@ -15,8 +15,6 @@
 
 #include <util/stopwatch.h>
 
-#include <rhr/vncserver.h>
-#include <renderer/vnccontroller.h>
 #include <renderer/parrendmgr.h>
 #include "rayrenderobject.h"
 #include "common.h"
@@ -67,6 +65,7 @@ class RayCaster: public vistle::Renderer {
 
    RayCaster(const std::string &shmname, const std::string &name, int moduleId);
    ~RayCaster();
+   void prepareQuit() override;
 
    static RayCaster &the() {
 
@@ -75,9 +74,12 @@ class RayCaster: public vistle::Renderer {
 
    bool render() override;
 
-   bool parameterChanged(const Parameter *p) override;
+   bool changeParameter(const Parameter *p) override;
+   void connectionAdded(const Port *from, const Port *to) override;
 
    ParallelRemoteRenderManager m_renderManager;
+
+   Port *m_outPort;
 
    // parameters
    IntParameter *m_renderTileSizeParam;
@@ -89,19 +91,19 @@ class RayCaster: public vistle::Renderer {
    FloatParameter *m_pointSizeParam;
 
    // object lifetime management
-   boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
+   std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
 
-   void removeObject(boost::shared_ptr<RenderObject> ro) override;
+   void removeObject(std::shared_ptr<RenderObject> ro) override;
 
    std::vector<ispc::RenderObjectData *> instances;
 
-   std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
-   std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
+   std::vector<std::shared_ptr<RayRenderObject>> static_geometry;
+   std::vector<std::vector<std::shared_ptr<RayRenderObject>>> anim_geometry;
 
    RTCDevice m_device;
    RTCScene m_scene;
@@ -142,6 +144,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
+   m_outPort = createOutputPort("image_out", "connect to COVER");
+
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
@@ -164,12 +168,30 @@ RayCaster::~RayCaster() {
 
    vassert(s_instance == this);
    s_instance = nullptr;
+}
+
+void RayCaster::prepareQuit() {
+
+   removeAllObjects();
+
    rtcDeleteScene(m_scene);
    rtcDeleteDevice(m_device);
+
+   Renderer::prepareQuit();
+}
+
+void RayCaster::connectionAdded(const Port *from, const Port *to) {
+
+    if (from == m_outPort) {
+        if (rank() == 0) {
+            std::cerr << "sending rhr config object" << std::endl;
+            Module::addObject(m_outPort, m_renderManager.getConfigObject());
+        }
+    }
 }
 
 
-bool RayCaster::parameterChanged(const Parameter *p) {
+bool RayCaster::changeParameter(const Parameter *p) {
 
     m_renderManager.handleParam(p);
 
@@ -189,7 +211,7 @@ bool RayCaster::parameterChanged(const Parameter *p) {
         m_tilesize = m_renderTileSizeParam->getValue();
     }
 
-   return Renderer::parameterChanged(p);
+   return Renderer::changeParameter(p);
 }
 
 struct TileTask {
@@ -331,7 +353,7 @@ void TileTask::render(int tile) const {
 bool RayCaster::render() {
 
     // ensure that previous frame is completed
-    bool immed_resched = m_renderManager.finishFrame();
+    bool immed_resched = m_renderManager.finishFrame(m_timestep);
 
     //vistle::StopWatch timer("render");
 
@@ -341,17 +363,33 @@ bool RayCaster::render() {
     }
 
     // switch time steps in embree scene
-    if (m_timestep != m_renderManager.timestep()) {
-       if (anim_geometry.size() > m_timestep) {
+    if (m_timestep != m_renderManager.timestep() || m_renderManager.sceneChanged()) {
+       if (anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
           for (auto &ro: anim_geometry[m_timestep])
              if (ro->data->scene)
                 rtcDisable(m_scene, ro->data->instId);
        }
        m_timestep = m_renderManager.timestep();
        if (anim_geometry.size() > m_timestep) {
-          for (auto &ro: anim_geometry[m_timestep])
-             if (ro->data->scene)
-                rtcEnable(m_scene, ro->data->instId);
+           for (auto &ro: anim_geometry[m_timestep])
+               if (ro->data->scene) {
+                   if (m_renderManager.isVariantVisible(ro->variant)) {
+                       rtcEnable(m_scene, ro->data->instId);
+                   } else {
+                       rtcDisable(m_scene, ro->data->instId);
+                   }
+               }
+       }
+       if (m_renderManager.sceneChanged()) {
+           for (auto &ro: static_geometry) {
+               if (ro->data->scene) {
+                   if (m_renderManager.isVariantVisible(ro->variant)) {
+                       rtcEnable(m_scene, ro->data->instId);
+                   } else {
+                       rtcDisable(m_scene, ro->data->instId);
+                   }
+               }
+           }
        }
        rtcCommit(m_scene);
     }
@@ -399,7 +437,7 @@ bool RayCaster::render() {
        IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
 #endif
 
-       m_renderManager.finishCurrentView(img, false);
+       m_renderManager.finishCurrentView(img, m_timestep, false);
     }
     m_currentView = -1;
 
@@ -517,9 +555,9 @@ void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, 
 }
 
 
-void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
+void RayCaster::removeObject(std::shared_ptr<RenderObject> vro) {
 
-   auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
+   auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
    if (rod->scene) {
@@ -549,14 +587,14 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 }
 
 
-boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
+std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
                                  vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr texture) {
 
-   boost::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
+   std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
 
    const int t = ro->timestep;
    if (t == -1) {

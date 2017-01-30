@@ -1,4 +1,4 @@
-#include <Python.h>
+//#include <Python.h>
 #include <boost/python.hpp>
 
 #include "pythoninterface.h"
@@ -16,21 +16,18 @@ PythonInterface::PythonInterface(const std::string &name)
 
 #if PY_MAJOR_VERSION>2
    static std::wstring wideName = std::wstring(name.begin(), name.end());
-   Py_SetProgramName((wchar_t *)wideName.c_str());
+   Py_SetProgramName(const_cast<wchar_t*>(wideName.c_str()));
 #else
    static std::string namebuf(name);
-   Py_SetProgramName((char *)namebuf.c_str());
+   Py_SetProgramName(const_cast<char *>(namebuf.c_str()));
 #endif
-   Py_Initialize();
-
-   bp::object main = bp::import("__main__");
-   m_namespace = main.attr("__dict__");
 }
 
 
 PythonInterface::~PythonInterface() {
 
-   Py_Finalize();
+   // not with Boost.Python
+   //Py_Finalize();
 }
 
 PythonInterface &PythonInterface::the() {
@@ -41,7 +38,17 @@ PythonInterface &PythonInterface::the() {
 
 boost::python::object &PythonInterface::nameSpace()
 {
-   return m_namespace;
+    return m_namespace;
+}
+
+bool PythonInterface::init() {
+
+   Py_Initialize();
+
+   bp::object main = bp::import("__main__");
+   m_namespace = main.attr("__dict__");
+
+   return true;
 }
 
 // cf. http://stackoverflow.com/questions/1418015/how-to-get-python-exception-text

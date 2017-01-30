@@ -27,9 +27,6 @@
 
 // modified by YoungTaek Oh.
 
-#ifdef WIN32
-#   undef _DEBUG
-#endif
 #include <Python.h>
 #include <boost/python.hpp>
 #include "vistleconsole.h"
@@ -209,7 +206,20 @@ VistleConsole::VistleConsole(QWidget *parent)
     //set the Python Prompt
     setNormalPrompt(true);
 
-    Py_Initialize();
+#if PY_VERSION_HEX >= 0x03000000
+    PyImport_AppendInittab("_redirector", PyInit__redirector);
+    PyImport_AppendInittab("_console", PyInit__console);
+#else
+    PyImport_AppendInittab("_redirector", init_redirector);
+    PyImport_AppendInittab("_console", init_console);
+#endif
+}
+
+void VistleConsole::init() {
+
+    // already done in PythonInterface::the() from UiController
+    //Py_Initialize();
+
     /* NOTE: In previous implementaion, local name and global name
              were allocated separately.  And it causes a problem that
              a function declared in this console cannot be called.  By
@@ -219,15 +229,14 @@ VistleConsole::VistleConsole(QWidget *parent)
     bp::object main_module = bp::import("__main__");
     loc = glb = main_module.attr("__dict__");
 
-    //PyImport_AddModule("_redirector");
-    init_redirector();
+    try {
+       bp::import("rlcompleter");
+    } catch (...) {
+       std::cerr << "error importing rlcompleter" << std::endl;
+    }
 
-    //PyImport_AddModule("_console");
-    init_console();
-
-    bp::import("rlcompleter");
-
-    PyRun_SimpleString("import sys\n"
+    try {
+       PyRun_SimpleString("import sys\n"
 
                        "import _redirector\n"
                        "sys.stdout = _redirector.redirector()\n"
@@ -235,62 +244,98 @@ VistleConsole::VistleConsole(QWidget *parent)
 
                        "sys.path.insert(0, \".\")\n" // add current path
 
-                       "import __builtin__\n"
-
                        "import _console\n"
-                       "__builtin__.clear=_console.clear\n"
-                       "__builtin__.reset=_console.reset\n"
-                       "__builtin__.save=_console.save\n"
-                       "__builtin__.load=_console.load\n"
-                       "__builtin__.history=_console.history\n"
-                       //"__builtin__.quit=_console.quit\n"
-                       //"__builtin__.exit=_console.quit\n"
-                       "__builtin__.raw_input=_console.raw_input\n"
-
                        "import rlcompleter\n"
-                       "__builtin__.completer=rlcompleter.Completer()\n"
+
+                       "if sys.version_info >= (3,0):\n"
+                       "    import builtins\n"
+                       "    builtins.clear=_console.clear\n"
+                       "    builtins.reset=_console.reset\n"
+                       "    builtins.save=_console.save\n"
+                       "    builtins.load=_console.load\n"
+                       "    builtins.history=_console.history\n"
+                       //"    builtins.quit=_console.quit\n"
+                       //"    builtins.exit=_console.quit\n"
+                       "    builtins.input=_console.raw_input\n"
+
+                       "    builtins.completer=rlcompleter.Completer()\n"
+                       "else:\n"
+                       "    import __builtin__\n"
+                       "    __builtin__.clear=_console.clear\n"
+                       "    __builtin__.reset=_console.reset\n"
+                       "    __builtin__.save=_console.save\n"
+                       "    __builtin__.load=_console.load\n"
+                       "    __builtin__.history=_console.history\n"
+                       //"    __builtin__.quit=_console.quit\n"
+                       //"    __builtin__.exit=_console.quit\n"
+                       "    __builtin__.raw_input=_console.raw_input\n"
+
+                       "    __builtin__.completer=rlcompleter.Completer()\n"
+
         );
+    } catch (...) {
+       std::cerr << "error running Python initialisation" << std::endl;
+    }
 }
-char save_error_type[1024], save_error_info[1024];
+
+namespace {
+
+std::string python2String(PyObject *obj, bool *ok=nullptr) {
+   std::string result;
+   if (ok)
+      *ok = false;
+   PyObject *str = PyObject_Str(obj);
+   if (!str) {
+      //result = "NULL object";
+   } else if (PyUnicode_Check(str)) {
+      PyObject *bytes = PyUnicode_AsEncodedString(str, "ASCII", "strict"); // Owned reference
+      if (bytes) {
+         if (ok)
+            *ok = true;
+		 // does not work for python3 result = PyBytes_AS_STRING(bytes); // Borrowed pointer
+		 result = PyBytes_AsString(bytes); 
+         Py_DECREF(bytes);
+      } else {
+         result = "<cannot interpret unicode>";
+      }
+   } else if (PyBytes_Check(str)) {
+      if (ok)
+         *ok = true;
+      result = PyBytes_AsString(str);
+   } else {
+      //return "object neither Byte nor Unicode";
+      return "";
+   }
+
+   if (str)
+      Py_XDECREF(str);
+   return result;
+}
+
+} // anonymous namespace
 
 bool
 VistleConsole::py_check_for_unexpected_eof()
 {
-    PyObject *errobj, *errdata, *errtraceback, *pystring;
+    PyObject *errobj, *errdata, *errtraceback;
 
     /* get latest python exception info */
     PyErr_Fetch(&errobj, &errdata, &errtraceback);
-
-    pystring = NULL;
-    if (errobj != NULL &&
-        (pystring = PyObject_Str(errobj)) != NULL &&     /* str(object) */
-        (PyString_Check(pystring))
-        )
-    {
-        strcpy(save_error_type, PyString_AsString(pystring));
+    std::string save_error_type = python2String(errobj);
+    if (save_error_type.empty()) {
+       save_error_type = "<unknown exception type>";
     }
-    else
-        strcpy(save_error_type, "<unknown exception type>");
-    Py_XDECREF(pystring);
-
-    pystring = NULL;
-    if (errdata != NULL &&
-        (pystring = PyObject_Str(errdata)) != NULL &&
-        (PyString_Check(pystring))
-        )
-        strcpy(save_error_info, PyString_AsString(pystring));
-    else
-        strcpy(save_error_info, "<unknown exception data>");
-    Py_XDECREF(pystring);
-
-    if (strstr(save_error_type, "exceptions.SyntaxError")!=NULL &&
-        strncmp(save_error_info,"('unexpected EOF while parsing',",32)==0)
-    {
-        return true;
+    std::string save_error_info = python2String(errdata);
+    if (save_error_info.empty()) {
+       save_error_info = "<unknown exception data>";
+    }
+    if (save_error_type.find("exceptions.SyntaxError") != std::string::npos
+       && save_error_info.find("('unexpected EOF while parsing',") == 0) {
+       return true;
     }
     PyErr_Print ();
     resultString="Error: ";
-    resultString.append(save_error_info);
+    resultString.append(save_error_info.c_str());
     Py_XDECREF(errobj);
     Py_XDECREF(errdata);         /* caller owns all 3 */
     Py_XDECREF(errtraceback);    /* already NULL'd out */
@@ -300,7 +345,8 @@ VistleConsole::py_check_for_unexpected_eof()
 //Desctructor
 VistleConsole::~VistleConsole()
 {
-    Py_Finalize();
+    // not with Boost.Python
+    //Py_Finalize();
 }
 
 //Call the Python interpreter to execute the command
@@ -351,7 +397,11 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
             this->command="";
             this->lines=0;
 
+#if PY_VERSION_HEX >= 0x03000000
+            dum = PyEval_EvalCode (py_result, glb.ptr(), loc.ptr());
+#else
             dum = PyEval_EvalCode ((PyCodeObject *)py_result, glb.ptr(), loc.ptr());
+#endif
             Py_XDECREF (dum);
             Py_XDECREF (py_result);
             if (PyErr_Occurred ())

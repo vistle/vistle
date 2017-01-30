@@ -3,7 +3,8 @@
 
 #include <IceT.h>
 #include <IceTMPI.h>
-#include "vnccontroller.h"
+#include "rhrcontroller.h"
+#include "renderobject.h"
 
 namespace vistle {
 
@@ -22,14 +23,16 @@ public:
    ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback);
    ~ParallelRemoteRenderManager();
 
+   Object::ptr getConfigObject();
+
    bool handleParam(const Parameter *p);
    bool prepareFrame(size_t numTimesteps);
    size_t timestep() const;
    size_t numViews() const;
    void setCurrentView(size_t i);
-   void finishCurrentView(const IceTImage &img);
-   void finishCurrentView(const IceTImage &img, bool lastView);
-   bool finishFrame();
+   void finishCurrentView(const IceTImage &img, int timestep);
+   void finishCurrentView(const IceTImage &img, int timestep, bool lastView);
+   bool finishFrame(int timestep);
    void getModelViewMat(size_t viewIdx, IceTDouble *mat) const;
    void getProjMat(size_t viewIdx, IceTDouble *mat) const;
    const PerViewState &viewData(size_t viewIdx) const;
@@ -37,17 +40,20 @@ public:
    float *depth(size_t viewIdx);
    void updateRect(size_t viewIdx, const IceTInt *viewport);
    void setModified();
+   bool sceneChanged() const;
+   bool isVariantVisible(const std::string &variant) const;
    void setLocalBounds(const Vector3 &min, const Vector3 &max);
    int rootRank() const {
       return m_displayRank==-1 ? 0 : m_displayRank;
    }
-   void addObject(boost::shared_ptr<RenderObject> ro);
-   void removeObject(boost::shared_ptr<RenderObject> ro);
+   void addObject(std::shared_ptr<RenderObject> ro);
+   void removeObject(std::shared_ptr<RenderObject> ro);
+   bool checkIceTError(const char *msg) const;
 
    Renderer *m_module;
    IceTDrawCallback m_drawCallback;
    int m_displayRank;
-   VncController m_vncControl;
+   RhrController m_rhrControl;
    IntParameter *m_continuousRendering;
 
    FloatParameter *m_delay;
@@ -58,7 +64,10 @@ public:
 
    Vector3 localBoundMin, localBoundMax;
 
+   size_t m_updateCount = -1;
    int m_updateBounds;
+   int m_updateVariants;
+   int m_updateScene;
    int m_doRender;
    size_t m_lightsUpdateCount;
 
@@ -70,8 +79,8 @@ public:
       Matrix4 model;
       Matrix4 view;
       Matrix4 proj;
-      std::vector<VncServer::Light> lights;
-      VncServer::ViewParameters vncParam;
+      std::vector<RhrServer::Light> lights;
+      RhrServer::ViewParameters rhrParam;
       int width, height;
 
       PerViewState()
@@ -162,6 +171,10 @@ public:
    };
    std::vector<IceTData> m_icet; // managed locally
    IceTCommunicator m_icetComm; // common for all contexts
+
+   void updateVariants();
+   RhrServer::VariantVisibilityMap m_clientVariants;
+   Renderer::VariantMap m_localVariants;
 };
 
 }

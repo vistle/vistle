@@ -47,7 +47,7 @@ class coCellToVert
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        			     
        bool simpleAlgo(Index num_elem, Index num_conn, Index num_point,
-                           const Index *elem_list, const Index *conn_list,
+                           const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
                            Index numComp, const Scalar *in_data[], Scalar *out_data[]);
 
     public:

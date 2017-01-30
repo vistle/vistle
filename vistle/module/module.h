@@ -20,6 +20,7 @@
 #include <core/parameter.h>
 #include <core/port.h>
 #include <core/grid.h>
+#include <core/message.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -27,10 +28,13 @@
 namespace vistle {
 
 class StateTracker;
+struct HubData;
 class Renderer;
 
 namespace message {
 class Message;
+class Execute;
+class Buffer;
 class AddParameter;
 class SetParameter;
 class RemoveParameter;
@@ -66,7 +70,7 @@ class V_MODULEEXPORT Module {
    void setCurrentParameterGroup(const std::string &group);
    const std::string &currentParameterGroup() const;
 
-   Parameter *addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> parameter);
+   Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter);
    bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
 
    template<class T>
@@ -136,10 +140,6 @@ class V_MODULEEXPORT Module {
    typename Type::const_ptr expect(Port *port);
    template<class Type>
    typename Type::const_ptr expect(const std::string &port);
-   template<class Interface>
-   const Interface *expectInterface(Port *port);
-   template<class Interface>
-   const Interface *expectInterface(const std::string &port);
 
    //! request hub to forward incoming connections on forwardPort to be forwarded to localPort
    void requestPortMapping(unsigned short forwardPort, unsigned short localPort);
@@ -194,26 +194,32 @@ class V_MODULEEXPORT Module {
    int reducePolicy() const;
    void setReducePolicy(int reduceRequirement /*< really message::ReducePolicy::Reduce */);
 
-   void prepareQuit();
+   void virtual prepareQuit();
+
+   const HubData &getHub() const;
 
 protected:
 
    void setObjectReceivePolicy(int pol);
    int objectReceivePolicy() const;
+   void startIteration(); //< increase iteration counter
 
    const std::string m_name;
    int m_rank;
    int m_size;
    const int m_id;
 
-   int m_executionCount;
+   int m_executionCount, m_iteration;
 
    void setDefaultCacheMode(ObjectCache::CacheMode mode);
    void updateMeta(vistle::Object::ptr object) const;
 
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
+   std::deque<message::Buffer> messageBacklog;
    bool handleMessage(const message::Message *message);
+   bool handleExecute(const message::Execute *exec);
+   bool cancelRequested(bool sync=false);
 
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);
@@ -229,7 +235,7 @@ protected:
 
    std::string getModuleName(int id) const;
 
-   virtual bool parameterChanged(const Parameter *p);
+   virtual bool changeParameter(const Parameter *p);
 
    int openmpThreads() const;
    void setOpenmpThreads(int, bool updateParam=true);
@@ -238,19 +244,21 @@ protected:
 
    virtual bool prepare(); //< prepare execution - called on each rank individually
    virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
+   virtual bool cancelExecute(); //< if execution has been canceled early before all objects have been processed
+   int numTimesteps() const;
 
  private:
-   bool reduceWrapper(const message::Message *req);
-   bool prepareWrapper(const message::Message *req);
+   bool reduceWrapper(const message::Execute *exec);
+   bool prepareWrapper(const message::Execute *exec);
 
-   boost::shared_ptr<StateTracker> m_stateTracker;
+   std::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
    int m_schedulingPolicy;
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
-   boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
+   std::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
 
@@ -266,9 +274,10 @@ protected:
    std::map<std::string, Port*> inputPorts;
 
    std::string m_currentParameterGroup;
-   std::map<std::string, boost::shared_ptr<Parameter>> parameters;
+   std::map<std::string, std::shared_ptr<Parameter>> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
+   bool m_prioritizeVisible;
    void updateCacheMode();
    bool m_syncMessageProcessing;
 
@@ -279,8 +288,11 @@ protected:
    int m_traceMessages;
    bool m_benchmark;
    double m_benchmarkStart;
+   double m_avgComputeTime;
    boost::mpi::communicator m_comm;
 
+   int m_numTimesteps;
+   bool m_cancelRequested, m_cancelExecuteCalled;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 };
@@ -292,15 +304,16 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 // MPI_THREAD_SINGLE seems to be ok for OpenMP with MPICH
 #ifdef MPICH_VERSION
-#define V_HAVE_MPICH 1
+#define V_HAVE_MPICH 0
 #else
 #define V_HAVE_MPICH 0
 #endif
 
+// MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
       int provided = MPI_THREAD_SINGLE; \
-      MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided); \
+      MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided); \
       if (provided == MPI_THREAD_SINGLE && !V_HAVE_MPICH) { \
          std::cerr << "no thread support in MPI" << std::endl; \
          exit(1); \

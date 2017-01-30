@@ -48,6 +48,7 @@ class VistleConsole : public QConsole
 public:
     //! destructor
     ~VistleConsole();
+    void init();
 
     //! private constructor
     VistleConsole(QWidget *parent = NULL);

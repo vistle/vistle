@@ -4,11 +4,11 @@
 #include "export.h"
 
 #include <string>
-#include <boost/chrono.hpp>
+#include <chrono>
 
 namespace vistle {
 
-namespace chrono = boost::chrono;
+namespace chrono = std::chrono;
 
 class V_UTILEXPORT Clock {
 

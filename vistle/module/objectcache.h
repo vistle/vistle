@@ -3,14 +3,14 @@
 
 #include <string>
 #include <map>
-#include <list>
+#include <deque>
 
 #include <util/enum.h>
 #include <core/object.h>
 
 namespace vistle {
 
-typedef std::list<vistle::Object::const_ptr> ObjectList;
+typedef std::deque<vistle::Object::const_ptr> ObjectList;
 
 class ObjectCache {
 

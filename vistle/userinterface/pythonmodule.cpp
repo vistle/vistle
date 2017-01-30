@@ -88,7 +88,7 @@ static void ping(int dest=message::Id::Broadcast, char c='.') {
 }
 BOOST_PYTHON_FUNCTION_OVERLOADS(ping_overloads, ping, 0, 2)
 
-static void trace(int id=message::Id::Broadcast, message::Message::Type type=message::Message::ANY, bool onoff = true) {
+static void trace(int id=message::Id::Broadcast, message::Type type=message::ANY, bool onoff = true) {
 
 #ifdef DEBUG
    auto cerrflags = std::cerr.flags();
@@ -107,7 +107,7 @@ static bool barrier() {
    if (!sendMessage(m))
       return false;
    auto buf = MODULEMANAGER.waitForReply(m.uuid());
-   if (buf->type() == message::Message::BARRIERREACHED) {
+   if (buf->type() == message::BARRIERREACHED) {
       return true;
    }
    return false;
@@ -141,7 +141,7 @@ static int waitForSpawn(const std::string &uuid) {
    boost::uuids::string_generator gen;
    message::uuid_t u = gen(uuid);
    auto buf = MODULEMANAGER.waitForReply(u);
-   if (buf->type() == message::Message::SPAWN) {
+   if (buf->type() == message::SPAWN) {
       auto &spawn = buf->as<message::Spawn>();
       return spawn.spawnId();
    } else {
@@ -329,7 +329,7 @@ static T getParameterValue(int id, const std::string &name) {
       return T();
    }
 
-   const auto tparam = boost::dynamic_pointer_cast<const ParameterBase<T>>(param);
+   const auto tparam = std::dynamic_pointer_cast<const ParameterBase<T>>(param);
    if (!tparam) {
       std::cerr << "Python: getParameterValue: type mismatch" << std::endl;
       return T();
@@ -465,6 +465,15 @@ static void compute(int id=message::Id::Broadcast) {
 }
 BOOST_PYTHON_FUNCTION_OVERLOADS(compute_overloads, compute, 0, 1)
 
+static void cancelCompute(int id) {
+#ifdef DEBUG
+   std::cerr << "Python: cancelCompute " << id << std::endl;
+#endif
+   message::CancelExecute m(id);
+   m.setDestId(id);
+   sendMessage(m);
+}
+
 static void requestTunnel(unsigned short listenPort, const std::string &destHost, unsigned short destPort=0) {
 #ifdef DEBUG
    std::cerr << "Python: requestTunnel " << listenPort << " -> " << destHost << ":" << destPort << std::endl;
@@ -502,6 +511,34 @@ static void removeTunnel(unsigned short listenPort) {
    sendMessage(m);
 }
 
+static void printInfo(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printInfo " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Info, message);
+   sendMessage(m);
+}
+
+static void printWarning(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printWarning " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Warning, message);
+   sendMessage(m);
+}
+
+static void printError(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printError " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Error, message);
+   sendMessage(m);
+}
+
+
 #define param(T, f) \
    def("set" #T "Param", f, "set parameter `arg2` of module with ID `arg1` to `arg3`"); \
    def("setParam", f, "set parameter `arg2` of module with ID `arg1` to `arg3`");
@@ -510,8 +547,8 @@ BOOST_PYTHON_MODULE(_vistle)
 {
     using namespace boost::python;
 
-    // make values of vistle::message::Message::Type enum known to Python as Message.xxx
-    vistle::message::Message::enumForPython_Type("Message");
+    // make values of vistle::message::Type enum known to Python as Message.xxx
+    vistle::message::enumForPython_Type("Message");
 
     def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, spawn_overloads(args("hub", "modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return its ID"));
@@ -523,6 +560,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("disconnect", disconnect, "disconnect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, compute_overloads(args("module id"), "trigger execution of module with ID `arg1`"));
+    def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("ping", ping, ping_overloads(args("id", "data"), "send first character of `arg2` to destination `arg1`"));
     def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
@@ -530,6 +568,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("requestTunnel", requestTunnel, requestTunnel_overloads(args("listen port", "dest port", "dest addr"), "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`"));
     def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
+    def("printInfo", printInfo, "show info message to user");
+    def("printWarning", printInfo, "show info message to user");
+    def("printError", printInfo, "show info message to user");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);
@@ -572,9 +613,11 @@ PythonModule::PythonModule(const std::string &path)
    assert(s_instance == nullptr);
    s_instance = this;
 
-   if (!import(&PythonInterface::the().nameSpace(), path)) {
-      throw(vistle::except::exception("vistle python import failure"));
-   }
+#if PY_VERSION_HEX >= 0x03000000
+   PyImport_AppendInittab("_vistle", PyInit__vistle);
+#else
+   PyImport_AppendInittab("_vistle", init_vistle);
+#endif
 }
 
 PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
@@ -583,9 +626,11 @@ PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
    assert(s_instance == nullptr);
    s_instance = this;
 
-   if (!import(&PythonInterface::the().nameSpace(), path)) {
-      throw(vistle::except::exception("vistle python import failure"));
-   }
+#if PY_VERSION_HEX >= 0x03000000
+   PyImport_AppendInittab("_vistle", PyInit__vistle);
+#else
+   PyImport_AppendInittab("_vistle", init_vistle);
+#endif
 }
 
 PythonModule &PythonModule::the()
@@ -620,22 +665,6 @@ bool PythonModule::import(boost::python::object *ns, const std::string &path) {
 
    bp::class_<ParameterVector<Integer> >("ParameterVector<Integer>")
       .def(bp::vector_indexing_suite<ParameterVector<Integer> >());
-
-   try {
-#if PY_VERSION_HEX >= 0x03000000
-      PyInit__vistle();
-#else
-      init_vistle();
-#endif
-   } catch (bp::error_already_set) {
-      std::cerr << "vistle Python module initialisation failed: " << std::endl;
-      if (PyErr_Occurred()) {
-         std::cerr << PythonInterface::errorString() << std::endl;
-      }
-      bp::handle_exception();
-      PyErr_Clear();
-      return false;
-   }
 
    // load boost::python wrapper - statically linked into binary
    try {

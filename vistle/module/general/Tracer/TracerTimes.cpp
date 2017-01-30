@@ -4,13 +4,14 @@
 #include <boost/mpi.hpp>
 #include <sstream>
 #include <iostream>
+#include <chrono>
 
 
-boost::chrono::high_resolution_clock::time_point times::celloc_start = boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point times::integr_start= boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point times::interp_start= boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point times::comm_start= boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point times::total_start= boost::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point times::celloc_start = std::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point times::integr_start= std::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point times::interp_start= std::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point times::comm_start= std::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point times::total_start= std::chrono::high_resolution_clock::now();
 double times::celloc_dur =0;
 double times::integr_dur =0;
 double times::interp_dur =0;
@@ -20,12 +21,12 @@ unsigned int times::no_interp =0;
 
 namespace times{
 
-double stop(boost::chrono::high_resolution_clock::time_point start){
-    return 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>
-            (boost::chrono::high_resolution_clock::now()-start).count();
+double stop(std::chrono::high_resolution_clock::time_point start){
+    return 1e-9*std::chrono::duration_cast<std::chrono::nanoseconds>
+            (std::chrono::high_resolution_clock::now()-start).count();
 }
-boost::chrono::high_resolution_clock::time_point start(){
-    return boost::chrono::high_resolution_clock::now();
+std::chrono::high_resolution_clock::time_point start(){
+    return std::chrono::high_resolution_clock::now();
 }
 void output(){
 

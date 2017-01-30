@@ -9,16 +9,8 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-if(NOT JPEGTURBO_FOUND)
-   return()
-endif(NOT JPEGTURBO_FOUND)
 if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    message("OsgRenderer: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
-
-if(NOT LIBVNCSERVER_FOUND)
-   message("OsgRenderer: libvncserver not found")
    return()
 endif()
 
@@ -64,7 +56,6 @@ include_directories(
         ${GLEW_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
-        ${LIBVNCSERVER_INCLUDE_DIR}
         ${SNAPPY_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
         ${JPEGTURBO_INCLUDE_DIR}
@@ -89,7 +80,6 @@ target_link_libraries(OsgRenderer
         vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
-        ${LIBVNCSERVER_SERVER_LIBRARY}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${SNAPPY_LIBRARIES}

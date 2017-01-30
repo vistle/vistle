@@ -1,9 +1,6 @@
 #include "exception.h"
 #include "tools.h"
-
-#ifndef _WIN32
-#include <unistd.h>
-#endif
+#include "hostname.h"
 
 namespace vistle {
 
@@ -13,13 +10,7 @@ exception::exception(const std::string &what)
 : m_what(what)
 , m_where(vistle::backtrace())
 {
-
-#ifndef _WIN32
-   char hostname[1024];
-   gethostname(hostname, sizeof(hostname));
-   m_info = "hostname: ";
-   m_info += hostname;
-#endif
+   m_info += hostname();
 }
 
 exception::~exception() throw() {}

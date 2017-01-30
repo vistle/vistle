@@ -1,6 +1,7 @@
 vistle_find_package(CUDA)
 
 using(OpenGL)
+using(Boost)
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${ICET_INCLUDE_DIRS})

@@ -41,18 +41,21 @@ public:
    Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
-   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
 
    bool hasCelltree() const override;
    Celltree::const_ptr getCelltree() const override;
    bool validateCelltree() const override;
+   Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
+   Vector getVertex(Index v) const override;
 
 private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
    mutable Index m_ghostLayers[3][2];
+   mutable Celltree::const_ptr m_celltree;
 
    void createCelltree(Index dims[]) const;
 

@@ -43,14 +43,20 @@
 #include "depthquant.h"
 #include "export.h"
 
+#include <core/message.h>
+
+namespace vistle {
+
+const size_t RhrMessageSize = 840;
+
 //! RFB protocol extension message types for remote hybrid rendering (RHR)
 enum {
-   rfbMatrices =  156, //!< send matrices from client to server
-   rfbLights = 157, //!< send lighting parameters from client to server
-   rfbTile = 158, //!< send image tile from server to client
-   rfbBounds = 159, //!< send scene bounds from server to client
-   rfbApplication = 160, //!< generic messages between server and client
-   rfbDepth = 161, //!< send depth buffer from server to client
+   rfbMatrices, //!< send matrices from client to server
+   rfbLights, //!< send lighting parameters from client to server
+   rfbTile, //!< send image tile from server to client
+   rfbBounds, //!< send scene bounds from server to client
+   rfbAnimation, //!< current/total animation time steps
+   rfbVariant, //!< control visibility of variants
 };
 
 //! basic RFB message header
@@ -88,7 +94,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
    double view[16]; //!< view matrix
    double proj[16]; //!< projection matrix
 };
-static int matricesEncodings[] = { rfbMatrices, 0 };
+static_assert(sizeof(matricesMsg) < RhrMessageSize, "RHR message too large");
 
 //! send lighting parameters from client to server
 struct V_RHREXPORT lightsMsg: public rfbMsg {
@@ -145,7 +151,7 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
    //! all light sources
    Light lights[NumLights];
 };
-static int lightsEncodings[] = { rfbLights, 0 };
+static_assert(sizeof(lightsMsg) < RhrMessageSize, "RHR message too large");
 
 //! send scene bounding sphere from server to client
 struct V_RHREXPORT boundsMsg: public rfbMsg {
@@ -163,7 +169,7 @@ struct V_RHREXPORT boundsMsg: public rfbMsg {
    double center[3]; //!< center of bounding sphere
    double radius; //!< radius of bounding sphere
 };
-static int boundsEncodings[] = { rfbBounds, 0 };
+static_assert(sizeof(boundsMsg) < RhrMessageSize, "RHR message too large");
 
 enum rfbTileFlags {
    rfbTileNone = 0,
@@ -186,7 +192,8 @@ enum rfbTileCompressions {
    rfbTileSnappy = 1,
    rfbTileDepthQuantize = 2,
    rfbTileJpeg = 4,
-   rfbTileClear = 8,
+   rfbTileDepthZfp = 8,
+   rfbTileClear = 16,
 };
 
 //! send image tile from server to client
@@ -207,6 +214,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , totalwidth(0)
    , totalheight(0)
    , timestep(-1)
+   , unzippedsize(0)
    , requestTime(0.)
    {
       memset(model, '\0', sizeof(model));
@@ -228,143 +236,59 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint16_t totalwidth; //!< total width of image
    uint16_t totalheight; //!< total height of image
    int32_t timestep; //! number of rendered timestep 
+   int32_t unzippedsize; //! payload size before snappy compression
    double view[16]; //!< view matrix from request
    double proj[16]; //!< projection matrix from request
    double model[16]; //!< model matrix from request
    double requestTime; //!< time copied from matrices request
 };
-static int tileEncodings[] = { rfbTile, 0 };
+static_assert(sizeof(tileMsg) < RhrMessageSize, "RHR message too large");
 
-//! paylod of application dependent messages, \see applicationMsg
-enum rfbApplicationTypes {
-
-   rfbInvalid, //!< invalid application message type
-   rfbScreenConfig, //!< update screen configuration
-   rfbAddObject, //!< data object was added on server
-   rfbRemoveObject, //!< data object was removed on server
-   rfbFeedback, //!< send feedback info (module parameter changes, ...) from client to server
-   rfbAnimationTimestep, //!< send number of timesteps and current timestep from client to server or number of timesteps from server to client
-};
-
-//! paylod of rfbApplication message, \see applicationMsg
-struct V_RHREXPORT appSubMessage {
-};
-
-//! screen config on client changed
-struct V_RHREXPORT appScreenConfig: public appSubMessage {
-   appScreenConfig()
-   : viewNum(-1)
-   , width(0)
-   , height(0)
-   , nearValue(0.)
-   , farValue(0.)
-   , hsize(0.)
-   , vsize(0.)
-   {
-      memset(screenPos, '\0', sizeof(screenPos));
-      memset(screenRot, '\0', sizeof(screenRot));
-   }
-
-   int16_t viewNum; //!< number of view/window
-   uint16_t width; //!< window width
-   uint16_t height; //!< window height
-   double nearValue; //!< near clipping plane
-   double farValue; //!< far clipping plane
-   double hsize, vsize; //!< physical screen dimensions
-   double screenPos[3]; //!< physical screen position
-   double screenRot[3]; //!< physical screen rotation
-};
-
-//! data object was added on server, sub-header of corresponding message
-struct V_RHREXPORT appAddObject: public appSubMessage {
-   appAddObject()
-   : namelen(0)
-   , nattrib(0)
-   , geonamelen(0)
-   , normnamelen(0)
-   , colnamelen(0)
-   , texnamelen(0)
-   , isbase(0)
-   {}
-
-   uint32_t namelen; //!< length of name of object being added
-   uint32_t nattrib; //!< number of attributes
-   uint32_t geonamelen; //!< length of name of referenced geometry object
-   uint32_t normnamelen; //!< length of name of referenced normals object
-   uint32_t colnamelen; //!< length of name of referenced color object
-   uint32_t texnamelen; //!< length of name of referenced texture object
-   uint8_t isbase; //!< wether object is a container object
-   // followed by name; names for geometry, normals, colors and texture
-   // objects; and attributes
-};
-
-//! header for a single attribute
-struct V_RHREXPORT appAttribute {
-   appAttribute()
-   : namelen(0)
-   , valuelen(0)
-   {}
-
-   uint32_t namelen; //!< length of attribute name
-   uint32_t valuelen; //!< length of attribute value
-   // followed by name and value
-};
-
-
-//! send feedback info (module parameter changes, ...) from client to server, sub-header of corresponding message
-struct V_RHREXPORT appFeedback: public appSubMessage {
-   appFeedback()
-   : infolen(0)
-   , keylen(0)
-   , datalen(0)
-   {}
-
-   uint32_t infolen; //!< length of feedback info
-   uint32_t keylen; //!< length of feedback key
-   uint32_t datalen; //!< length of additional feedback data
-   // followed by info, key, and data
-};
-
-//! data object was removed on server, sub-header of corresponding message
-struct V_RHREXPORT appRemoveObject: public appSubMessage {
-   appRemoveObject()
-   : namelen(0)
-   , replace(0)
-   {}
-
-   uint32_t namelen; //!< length of name of object to be removed
-   uint8_t replace; //!< whether object will be replaced
-   // followed by name
-};
-
-//! control animation timesteps
-struct V_RHREXPORT appAnimationTimestep: public appSubMessage {
-   appAnimationTimestep()
-   : total(0)
+//! animation time step on client or no. of animation steps on server changed
+struct V_RHREXPORT animationMsg: public rfbMsg {
+   animationMsg()
+   : rfbMsg(rfbAnimation)
+   , total(0)
    , current(0)
    {}
 
    uint32_t total; //!< total number of animation timesteps
    uint32_t current; //!< timestep currently displayed
 };
+static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
 
-//! send arbitrary, application dependent messages between server and client
-struct V_RHREXPORT applicationMsg: public rfbMsg {
-   applicationMsg()
-   : rfbMsg(rfbApplication)
-   , appType(0)
-   , version(0)
-   , sendreply(0)
-   , size(0)
-   {
-   }
+struct V_RHREXPORT variantMsg: public rfbMsg {
+    variantMsg()
+    : rfbMsg(rfbVariant)
+    , configureVisibility(0)
+    , visible(0)
+    , remove(0)
+    {
+        memset(name, '\0', sizeof(name));
+    }
 
-   uint8_t appType; //!< type of RFB application message
-   uint8_t version; //!< protocol version of RFB application message
-   uint8_t sendreply; //!< request reply
-   uint32_t size; //!< payload size
-   // followed by message-specific sub-header
+    uint32_t configureVisibility;
+    uint32_t visible;
+    uint32_t remove;
+    char name[200];
 };
-static int applicationEncodings[] = { rfbApplication, 0 };
+static_assert(sizeof(variantMsg) < RhrMessageSize, "RHR message too large");
 
+//! header for remote hybrid rendering message
+typedef rfbMsg RhrSubMessage;
+
+namespace message {
+
+class V_RHREXPORT RemoteRenderMessage: public MessageBase<RemoteRenderMessage, REMOTERENDERING> {
+public:
+    RemoteRenderMessage(const RhrSubMessage &rhr, size_t payloadSize=0);
+    const RhrSubMessage &rhr() const;
+private:
+    std::array<char, RhrMessageSize> m_rhr;
+};
+static_assert(sizeof(RemoteRenderMessage) <= Message::MESSAGE_SIZE, "message too large");
+
+} // namespace message
+
+} // namespace vistle
 #endif

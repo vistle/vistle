@@ -8,7 +8,7 @@
 
 namespace asio = boost::asio;
 using boost::system::error_code;
-typedef boost::lock_guard<boost::recursive_mutex> lock_guard;
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 
 namespace vistle {
@@ -17,7 +17,7 @@ using vistle::message::Identify;
 using vistle::message::async_send;
 using vistle::message::async_recv;
 
-using boost::shared_ptr;
+using std::shared_ptr;
 
 DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 : m_hub(hub)
@@ -67,20 +67,30 @@ asio::io_service &DataProxy::io() {
 void DataProxy::cleanUp() {
 
    if (io().stopped()) {
+      m_acceptor.cancel();
+      m_acceptor.close();
+
+      boost::system::error_code ec;
+      for (auto &s: m_remoteDataSocket)
+          s.second->shutdown(tcp_socket::shutdown_both, ec);
+      for (auto &s: m_localDataSocket)
+          s.second->shutdown(tcp_socket::shutdown_both, ec);
       for (auto &t: m_threads)
          t.join();
       m_threads.clear();
+      m_remoteDataSocket.clear();
+      m_localDataSocket.clear();
       io().reset();
    }
 }
 
 void DataProxy::startThread() {
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-   if (true || m_threads.size() < boost::thread::hardware_concurrency()) {
+   lock_guard lock(m_mutex);
+   if (true || m_threads.size() < std::thread::hardware_concurrency()) {
    //if (m_threads.size() < 1) {
       auto &io = m_io;
       m_threads.emplace_back([&io](){ io.run(); });
-      CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
+      //CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
    } else {
       CERR << "not starting a new thread, already have " << m_threads.size() << " threads" << std::endl;
    }
@@ -88,14 +98,14 @@ void DataProxy::startThread() {
 
 void DataProxy::startAccept() {
 
-   CERR << "(re-)starting accept" << std::endl;
-   boost::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
+   //CERR << "(re-)starting accept" << std::endl;
+   std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
    startThread();
    startThread();
 }
 
-void DataProxy::handleAccept(const boost::system::error_code &error, boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
@@ -106,13 +116,13 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
 
    message::Identify ident(Identify::REQUEST); // trigger Identify message from remote
    if (message::send(*sock, ident)) {
-      CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
+      //CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
    }
 
    using namespace message;
 
-   boost::shared_ptr<message::Buffer> buf(new message::Buffer);
-   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, boost::shared_ptr<std::vector<char>> payload){
+   std::shared_ptr<message::Buffer> buf(new message::Buffer);
+   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, std::shared_ptr<std::vector<char>> payload){
       if (ec) {
           CERR << "recv error after accept: " << ec.message() << ", sock.use_count()=" << sock.use_count() << std::endl;
           return;
@@ -120,14 +130,14 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
       if (payload && payload->size()>0) {
           CERR << "recv error after accept: cannot handle payload of size " << payload->size() << std::endl;
       }
-      CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
+      //CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
       switch(buf->type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
          auto &id = buf->as<message::Identify>();
          switch(id.identity()) {
          case Identify::REMOTEBULKDATA: {
             {
-                 boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+                 lock_guard lock(m_mutex);
                  m_remoteDataSocket[id.senderId()] = sock;
             }
             Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
@@ -142,7 +152,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
          }
          case Identify::LOCALBULKDATA: {
             {
-                 boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+                 lock_guard lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
             }
 
@@ -171,20 +181,20 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
    });
 }
 
-void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    lock_guard lock(m_mutex);
     using namespace vistle::message;
 
-    boost::shared_ptr<message::Buffer> msg(new message::Buffer);
-    async_recv(*sock, *msg, [this, sock, msg](error_code ec, boost::shared_ptr<std::vector<char>> payload){
+    std::shared_ptr<message::Buffer> msg(new message::Buffer);
+    async_recv(*sock, *msg, [this, sock, msg](error_code ec, std::shared_ptr<std::vector<char>> payload){
         if (ec) {
             CERR << "recv: error " << ec.message() << std::endl;
             return;
         }
         //CERR << "localMsgRecv: msg received, type=" << msg->type() << std::endl;
         switch(msg->type()) {
-        case Message::SENDOBJECT: {
+        case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
             int hubId = m_hub.idToHub(send.destId());
             //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
@@ -201,7 +211,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::REQUESTOBJECT: {
+        case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
             int hubId = m_hub.idToHub(req.destId());
             //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
@@ -216,7 +226,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::IDENTIFY: {
+        case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() != Identify::LOCALBULKDATA) {
                 CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
@@ -232,22 +242,22 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
     });
 }
 
-void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
     //CERR << "remoteMsgRecv posted on sock " << sock.get() << std::endl;
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    lock_guard lock(m_mutex);
 
     using namespace vistle::message;
 
-    boost::shared_ptr<message::Buffer> msg(new message::Buffer);
-    async_recv(*sock, *msg, [this, sock, msg](error_code ec, boost::shared_ptr<std::vector<char>> payload){
+    std::shared_ptr<message::Buffer> msg(new message::Buffer);
+    async_recv(*sock, *msg, [this, sock, msg](error_code ec, std::shared_ptr<std::vector<char>> payload){
         if (ec) {
             CERR << "recv: error " << ec.message() << " on sock " << sock.get() << std::endl;
             return;
         }
         //CERR << "remoteMsgRecv success on sock " << sock.get() << ", msg=" << *msg << std::endl;
         switch(msg->type()) {
-        case Message::IDENTIFY: {
+        case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::REQUEST) {
                 Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
@@ -263,7 +273,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::SENDOBJECT: {
+        case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
             //int hubId = m_hub.idToHub(send.senderId());
             //CERR << "remoteMsgRecv on " << m_hub.id() << ": SendObject from " << hubId << std::endl;
@@ -282,7 +292,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::REQUESTOBJECT: {
+        case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
             int hubId = m_hub.idToHub(req.destId());
             int rank = req.destRank();
@@ -309,13 +319,13 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 }
 
 bool DataProxy::connectRemoteData(int hubId) {
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
 
    vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
 
    for (auto &hubData: m_hub.stateTracker().m_hubs) {
       if (hubData.id == hubId) {
-         boost::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
+         std::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
          boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.dataPort);
 
          boost::system::error_code ec;
@@ -352,23 +362,23 @@ bool DataProxy::connectRemoteData(int hubId) {
    return false;
 }
 
-boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int rank) {
+std::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int rank) {
 
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
    auto it = m_localDataSocket.find(rank);
    vassert(it != m_localDataSocket.end());
    return it->second;
 }
 
-boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
+std::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
 
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
    auto it = m_remoteDataSocket.find(hubId);
 #if 0
    if (it == m_remoteDataSocket.end()) {
       if (!connectRemoteData(hubId)) {
          CERR << "failed to establish data connection to remote hub with id " << hubId << std::endl;
-         return boost::shared_ptr<asio::ip::tcp::socket>();
+         return std::shared_ptr<asio::ip::tcp::socket>();
       }
    }
    it = m_remoteDataSocket.find(hubId);

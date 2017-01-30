@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <boost/filesystem.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/config.hpp>
 #include <boost/type_traits/is_enum.hpp>

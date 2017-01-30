@@ -3,10 +3,11 @@
 
 #include "shm.h"
 #include "coords.h"
+#include "geometry.h"
 
 namespace vistle {
 
-class V_COREEXPORT Triangles: public Coords {
+class V_COREEXPORT Triangles: public Coords, virtual public ElementInterface {
    V_OBJECT(Triangles);
 
  public:
@@ -15,7 +16,7 @@ class V_COREEXPORT Triangles: public Coords {
    Triangles(const Index numCorners, const Index numCoords,
              const Meta &meta=Meta());
 
-   Index getNumElements() const;
+   Index getNumElements() const override;
    Index getNumCorners() const;
 
    shm<Index>::array &cl() { return *d()->cl; }

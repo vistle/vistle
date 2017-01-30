@@ -10,6 +10,7 @@
 #include <osg/Texture1D>
 #include <osg/Point>
 #include <osg/LineWidth>
+#include <osg/MatrixTransform>
 
 #include <core/polygons.h>
 #include <core/points.h>
@@ -31,7 +32,7 @@ using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
-VistleGeometryGenerator::VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
@@ -61,10 +62,13 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
    }
 }
 
-osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
+osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
    if (!m_geo)
       return NULL;
+
+   osg::MatrixTransform *transform = new osg::MatrixTransform();
+   std::string nodename = m_geo->getName();
 
    std::stringstream debug;
    debug << "[";
@@ -123,8 +127,9 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          if (isSupported(ph->originalType())) {
             osg::Node *node = new osg::Node();
             node->setName(ph->originalName());
+            nodename = ph->originalName();
             std::cerr << debug.str() << std::endl;
-            return node;
+            transform->addChild(node);
          }
          break;
       }
@@ -139,22 +144,24 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          geode = new osg::Geode();
          geom = new osg::Geometry();
 
-         const vistle::Scalar *x = &points->x()[0];
-         const vistle::Scalar *y = &points->y()[0];
-         const vistle::Scalar *z = &points->z()[0];
-         osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-         for (Index v = 0; v < numVertices; v ++)
-            vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+         if (numVertices > 0) {
+             const vistle::Scalar *x = &points->x()[0];
+             const vistle::Scalar *y = &points->y()[0];
+             const vistle::Scalar *z = &points->z()[0];
+             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+             for (Index v = 0; v < numVertices; v ++)
+                 vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
 
-         geom->setVertexArray(vertices.get());
-         osg::ref_ptr<osg::DrawElementsUInt> idx = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, 0);
-         for (Index p=0; p<numVertices; ++p)
-            idx->push_back(p);
+             geom->setVertexArray(vertices.get());
+             osg::ref_ptr<osg::DrawElementsUInt> idx = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, 0);
+             for (Index p=0; p<numVertices; ++p)
+                 idx->push_back(p);
 
-         geom->addPrimitiveSet(idx.get());
+             geom->addPrimitiveSet(idx.get());
 
-         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-         state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+             state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+             state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+         }
 
          geode->addDrawable(geom.get());
          break;
@@ -424,7 +431,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 
    if (geode) {
       assert(m_geo->getType() == vistle::Object::PLACEHOLDER || isSupported(m_geo->getType()) == true);
-      geode->setName(m_geo->getName());
+      geode->setName(nodename);
 
       std::map<std::string, std::string> parammap;
       std::string name = m_geo->getAttribute("shader");
@@ -546,9 +553,11 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          } else {
          }
       }
+      transform->addChild(geode);
    }
 
    //std::cerr << debug.str() << std::endl;
 
-   return geode;
+   transform->setName(nodename+".t");
+   return transform;
 }

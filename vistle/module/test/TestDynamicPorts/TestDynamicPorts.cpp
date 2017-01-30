@@ -24,7 +24,7 @@ std::string portName(int num) {
    return str.str();
 }
 
-bool TestDynamicPorts::parameterChanged(const Parameter *param) {
+bool TestDynamicPorts::changeParameter(const Parameter *param) {
 
    if (param == m_numPortsParam) {
       int numPorts = m_numPortsParam->getValue();

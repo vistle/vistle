@@ -78,7 +78,7 @@ const Port *PortTracker::addPort(const int moduleID, const std::string &name, co
       portMap->insert(std::make_pair(port->getName(), port));
 
       int paramNum = 0;
-      const auto &rit = portOrder->rbegin();
+      const auto rit = portOrder->rbegin();
       if (rit != portOrder->rend())
          paramNum = rit->first+1;
       (*portOrder)[paramNum] = port->getName();
@@ -403,7 +403,7 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
    ModulePortMap::const_iterator mports = m_ports.find(moduleID);
    if (mports == m_ports.end())
       return result;
-   const auto &portOrderIt = m_portOrders.find(moduleID);
+   const auto portOrderIt = m_portOrders.find(moduleID);
    if (portOrderIt == m_portOrders.end())
       return result;
 

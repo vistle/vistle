@@ -48,7 +48,7 @@ bool attach_debugger() {
    DebugBreak();
    return true;
 #else
-   sleep(60);
+   //sleep(60);
    abort();
    return true;
 

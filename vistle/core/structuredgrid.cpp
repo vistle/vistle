@@ -93,6 +93,8 @@ void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, uns
 // HAS CELL TREE CHECK
 //-------------------------------------------------------------------------
 bool StructuredGrid::hasCelltree() const {
+   if (m_celltree)
+       return true;
 
    return hasAttachment("celltree");
 }
@@ -101,15 +103,17 @@ bool StructuredGrid::hasCelltree() const {
 //-------------------------------------------------------------------------
 StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
 
+   if (m_celltree)
+       return m_celltree;
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (!hasAttachment("celltree")) {
       refresh();
       createCelltree(m_numDivisions);
    }
 
-   Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
-   vassert(ct);
-   return ct;
+   m_celltree = Celltree::as(getAttachment("celltree"));
+   vassert(m_celltree);
+   return m_celltree;
 }
 
 // VALIDATE CELL TREE CHECK
@@ -121,7 +125,11 @@ bool StructuredGrid::validateCelltree() const {
 
    CellBoundsFunctor<Scalar,Index> boundFunc(this);
    auto ct = getCelltree();
-   return ct->validateTree(boundFunc);
+   if (!ct->validateTree(boundFunc)) {
+       std::cerr << "StructuredGrid: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
+       return false;
+   }
+   return true;
 }
 
 // CREATE CELL TREE
@@ -177,7 +185,7 @@ Index StructuredGrid::getNumVertices() const {
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> StructuredGrid::getBounds() const {
    if (hasCelltree()) {
-      const auto &ct = getCelltree();
+      const auto ct = getCelltree();
       return std::make_pair(Vector(ct->min()), Vector(ct->max()));
    }
 
@@ -204,22 +212,26 @@ std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const {
+Index StructuredGrid::findCell(const Vec::Vector &point, Index hint, int flags) const {
 
-   if (hasCelltree()) {
+   const bool acceptGhost = flags&AcceptGhost;
+   const bool useCelltree = (flags&ForceCelltree) || (hasCelltree() && !(flags&NoCelltree));
+
+   if (hint != InvalidIndex && inside(hint, point)) {
+      return hint;
+   }
+
+   if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point);
+      vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point, acceptGhost);
       getCelltree()->traverse(nodeFunc, elemFunc);
-      if (acceptGhost || !isGhostCell(elemFunc.cell))
-         return elemFunc.cell;
-      else
-         return InvalidIndex;
+      return elemFunc.cell;
    }
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
-      if (acceptGhost || !isGhostCell(i)) {
+      if ((acceptGhost || !isGhostCell(i)) && i!=hint) {
          if (inside(i, point))
             return i;
       }
@@ -230,6 +242,9 @@ Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const
 // INSIDE CHECK
 //-------------------------------------------------------------------------
 bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
+
+    if (elem == InvalidIndex)
+        return false;
 
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
@@ -264,6 +279,55 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
             return false;
     }
     return true;
+}
+
+Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const Vec::Vector &dir) const {
+
+    refresh();
+    auto cl = cellVertices(elem, m_numDivisions);
+
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+
+    const Vector raydir(dir.normalized());
+
+    Scalar exitDist = -1;
+    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
+    const auto numFaces = UnstructuredGrid::NumFaces[type];
+    const auto &faces = UnstructuredGrid::FaceVertices[type];
+    const auto &sizes = UnstructuredGrid::FaceSizes[type];
+    Vector corners[4];
+    for (int f=0; f<numFaces; ++f) {
+        auto nc = faceNormalAndCenter(type, f, cl.data(), x, y, z);
+        auto normal = nc.first;
+        auto center = nc.second;
+
+        const Scalar cosa = normal.dot(raydir);
+        if (std::abs(cosa) <= 1e-7) {
+            continue;
+        }
+        const Scalar t = normal.dot(center-point)/cosa;
+        if (t < 0) {
+            continue;
+        }
+        const Index nCorners = sizes[f];
+        for (int i=0; i<nCorners; ++i) {
+            const Index v = cl[faces[f][i]];
+            corners[i] = Vector(x[v], y[v], z[v]);
+        }
+        const auto isect = point + t*raydir;
+        if (insidePolygon(isect, corners, nCorners, normal)) {
+            if (exitDist<0 || t<exitDist)
+                exitDist = t;
+        }
+    }
+    return exitDist;
+}
+
+Vector StructuredGrid::getVertex(Index v) const {
+
+    return Vector(x()[v], y()[v], z()[v]);
 }
 
 // GET INTERPOLATOR

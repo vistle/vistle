@@ -32,8 +32,8 @@ struct GridDataContainer {
 
    GridDataContainer(vistle::UnstructuredGrid::ptr g
                      , std::vector<vistle::Polygons::ptr> p
-                     , boost::shared_ptr<std::vector<vistle::Index> > o
-                     , boost::shared_ptr<Boundaries> b) {
+                     , std::shared_ptr<std::vector<vistle::Index> > o
+                     , std::shared_ptr<Boundaries> b) {
       grid=g;
       polygon=p;
       owners=o;
@@ -42,8 +42,8 @@ struct GridDataContainer {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<vistle::Polygons::ptr> polygon;
-   boost::shared_ptr<std::vector<vistle::Index> > owners;
-   boost::shared_ptr<Boundaries> boundaries;
+   std::shared_ptr<std::vector<vistle::Index> > owners;
+   std::shared_ptr<Boundaries> boundaries;
 };
 
 class GhostCells {
@@ -127,7 +127,7 @@ class ReadFOAM: public vistle::Module
 
       //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
       int rankForBlock(int processor) const;
-      bool parameterChanged(const vistle::Parameter *p);
+      bool changeParameter(const vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool buildGhostCells(int processor, GhostMode mode);
       bool buildGhostCellData(int processor);
@@ -166,14 +166,14 @@ class ReadFOAM: public vistle::Module
       std::map<int, vistle::UnstructuredGrid::ptr> m_currentgrid;
       std::map<int, std::string> m_basedir;
       std::map<int, std::map<int, vistle::DataBase::ptr> > m_currentvolumedata;
-      std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
-      std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
+      std::map<int, std::shared_ptr<std::vector<vistle::Index> > > m_owners;
+      std::map<int, std::shared_ptr<Boundaries>> m_boundaries;
       std::map<int, std::map<int, std::vector<vistle::Index> > > m_procBoundaryVertices;
       std::map<int, std::map<int, std::unordered_set<vistle::Index> > > m_procGhostCellCandidates;
-      std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsOut;
-      std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsIn;
-      std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataOut;
-      std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataIn;
+      std::map<int, std::map<int, std::shared_ptr<GhostCells> > > m_GhostCellsOut;
+      std::map<int, std::map<int, std::shared_ptr<GhostCells> > > m_GhostCellsIn;
+      std::map<int, std::map<int, std::map<int, std::shared_ptr<GhostData> > > > m_GhostDataOut;
+      std::map<int, std::map<int, std::map<int, std::shared_ptr<GhostData> > > > m_GhostDataIn;
       std::vector<boost::mpi::request> m_requests;
       std::map<int, std::map<int, std::map<vistle::Index, vistle::SIndex> > > m_verticesMappings;
 };

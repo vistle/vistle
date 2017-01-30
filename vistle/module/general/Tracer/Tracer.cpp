@@ -1,46 +1,26 @@
-﻿#include <sstream>
+﻿#include "Tracer.h"
+#include "BlockData.h"
+#include "Particle.h"
+#include <sstream>
 #include <iostream>
-#include <limits>
 #include <algorithm>
 #include <cmath>
-#include <boost/chrono.hpp>
-#include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/collectives/all_gather.hpp>
-#include <boost/serialization/vector.hpp>
 #include <boost/mpi/collectives/broadcast.hpp>
-#include <boost/mpi/packed_iarchive.hpp>
-#include <boost/mpi/packed_oarchive.hpp>
-#include <boost/mpi.hpp>
 #include <boost/mpi/operations.hpp>
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Dense>
 #include <core/vec.h>
-#include <core/scalars.h>
 #include <core/paramvector.h>
-#include <core/message.h>
-#include <core/coords.h>
 #include <core/lines.h>
 #include <core/unstr.h>
 #include <core/structuredgridbase.h>
 #include <core/structuredgrid.h>
-#include <core/points.h>
-#include <core/celltree.h>
-#include <module/module.h>
-#include "Tracer.h"
-#include "Integrator.h"
-#include "BlockData.h"
-#include "Particle.h"
-
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
 
 MODULE_MAIN(Tracer)
 
 
 using namespace vistle;
+namespace mpi = boost::mpi;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle,
       (Line)
@@ -58,14 +38,16 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
    : Module("Tracer", shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-   setReducePolicy(message::ReducePolicy::OverAll);
+   setReducePolicy(message::ReducePolicy::PerTimestep);
 
     createInputPort("data_in0");
     createInputPort("data_in1");
     createOutputPort("data_out0");
     createOutputPort("data_out1");
     createOutputPort("particle_id");
-    createOutputPort("timestep");
+    createOutputPort("step");
+    createOutputPort("time");
+    createOutputPort("distance");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";
@@ -76,30 +58,51 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
 #endif
 
+    m_taskType = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_taskType, TraceType);
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
-    addIntParameter("no_startp", "number of startpoints", 2);
-    setParameterRange("no_startp", (Integer)0, (Integer)10000);
+    const Integer max_no_startp = 300;
+    m_numStartpoints = addIntParameter("no_startp", "number of startpoints", 2);
+    setParameterRange(m_numStartpoints, (Integer)1, max_no_startp);
+    m_maxStartpoints = addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
+    setParameterRange(m_maxStartpoints, (Integer)2, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
-    //addFloatParameter("trace_len", "maximum number of integrations per particle", 1000);
-    IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    std::vector<std::string> taskchoices;
-    taskchoices.push_back("streamlines");
-    setParameterChoices(tasktype, taskchoices);
-    IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", 0, Parameter::Choice);
+    setParameterRange("steps_max", (Integer)1, (Integer)1000000);
+    auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
+    setParameterMinimum(tl, 0.0);
+    auto tt = addFloatParameter("trace_time", "maximum trace time", 10000.0);
+    setParameterMinimum(tt, 0.0);
+    IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
     V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
     IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
     V_ENUM_SET_CHOICES(startStyle, StartStyle);
     IntParameter* integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
     V_ENUM_SET_CHOICES(integration, IntegrationMethod);
     addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
-    addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
-    addFloatParameter("h_min","minimum step size for rk32 integration", 1e-05);
-    addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
-    addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
-    addFloatParameter("comm_threshold", "ratio of active particles that have to leave current block for starting communication phase", 0.1);
+    setParameterRange("min_speed", 0.0, 1e6);
+    addFloatParameter("dt_step", "duration of a timestep (for moving points or when data does not specify realtime", 1./25);
+    setParameterRange("dt_step", 0.0, 1e6);
+
+    setCurrentParameterGroup("Step Length Control");
+    addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
+    setParameterRange("h_init", 0.0, 1e6);
+    addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
+    setParameterRange("h_min", 0.0, 1e6);
+    addFloatParameter("h_max", "maximum step size for rk32 integration", .5);
+    setParameterRange("h_max", 0.0, 1e6);
+    addFloatParameter("err_tol_abs", "absolute error tolerance for rk32 integration", 1e-04);
+    setParameterRange("err_tol_abs", 0.0, 1e6);
+    addFloatParameter("err_tol_rel", "relative error tolerance for rk32 integration", 1e-03);
+    setParameterRange("err_tol_rel", 0.0, 1.0);
+    addIntParameter("cell_relative", "whether step length control should take into account cell size", 1, Parameter::Boolean);
+    addIntParameter("velocity_relative", "whether step length control should take into account velocity", 1, Parameter::Boolean);
+
+    setCurrentParameterGroup("Performance Tuning");
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
+    auto num_active = addIntParameter("num_active", "number of particles to trace simultaneously on each node (0: no. of cores)", 0);
+    setParameterRange(num_active, (Integer)0, (Integer)10000);
 }
 
 Tracer::~Tracer() {
@@ -127,13 +130,13 @@ bool Tracer::compute() {
 
     if (!data0)
        return true;
-    auto unstr = UnstructuredGrid::as(data0->grid());
-    auto strb = StructuredGridBase::as(data0->grid());
+    auto grid = data0->grid();
+    auto unstr = UnstructuredGrid::as(grid);
+    auto strb = StructuredGridBase::as(grid);
     if (!strb && !unstr) {
         sendError("grid attachment required at data_in0");
         return true;
     }
-    auto grid = data0->grid();
 
     int t = data0->getTimestep();
     if (grid->getTimestep() >= 0) {
@@ -160,6 +163,13 @@ bool Tracer::compute() {
        }
     }
 
+    if (getIntParameter("integration") == ConstantVelocity) {
+        // initialize VertexOwnerList
+        if (unstr) {
+            unstr->getNeighborElements(InvalidIndex);
+        }
+    }
+
     grid_in[t].push_back(grid);
     data_in0[t].push_back(data0);
     data_in1[t].push_back(data1);
@@ -174,21 +184,19 @@ bool Tracer::compute() {
 
 bool Tracer::reduce(int timestep) {
 
-#ifdef TIMING
-   times::celloc_dur =0;
-   times::integr_dur =0;
-   times::interp_dur =0;
-   times::comm_dur =0;
-   times::total_dur=0;
-   times::no_interp =0;
-   times::total_start = times::start();
-#endif
-
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
+   Index numpoints = m_numStartpoints->getValue();
+   Index maxNumActive = getIntParameter("num_active");
+   if (maxNumActive <= 0) {
+       maxNumActive = std::thread::hardware_concurrency();
+   }
+   maxNumActive = mpi::all_reduce(comm(), maxNumActive, mpi::minimum<Index>());
+   auto taskType = (TraceType)getIntParameter("taskType");
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
-   Index steps_max = getIntParameter("steps_max");
-   Index numpoints = getIntParameter("no_startp");
+   if (taskType != Streamlines) {
+       traceDirection = Forward;
+   }
 
    //determine startpoints
    std::vector<Vector3> startpoints;
@@ -220,8 +228,10 @@ bool Tracer::reduce(int timestep) {
            if (n1 <= 1)
                n1 = 2;
        }
+       //setIntParameter("no_startp", numpoints);
+       if (rank() == 0 && numpoints != n0*n1)
+           sendInfo("actually using %d*%d=%d start points", n0, n1, n0*n1);
        numpoints = n0*n1;
-       setIntParameter("no_startp", numpoints);
        startpoints.resize(numpoints);
 
        Scalar s0 = Scalar(1)/(n0-1);
@@ -234,233 +244,315 @@ bool Tracer::reduce(int timestep) {
    } else {
        startpoints.resize(numpoints);
 
-       Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
-       for(Index i=0; i<numpoints; i++){
+       if (numpoints == 1) {
+           startpoints[0] = (startpoint1+startpoint2)*0.5;
+       } else {
+           Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
+           for(Index i=0; i<numpoints; i++){
 
-           startpoints[i] = startpoint1 + i*delta;
+               startpoints[i] = startpoint1 + i*delta;
+           }
        }
    }
    Index numparticles = numpoints;
    if (traceDirection == Both) {
        numparticles *= 2;
-       startpoints.resize(numparticles);
-
-       for(Index i=0; i<numpoints; i++){
-           startpoints[i+numpoints] = startpoints[i];
-       }
    }
 
-   IntegrationMethod int_mode = (IntegrationMethod)getIntParameter("integration");
-   Scalar dt = getFloatParameter("h_euler");
-   Scalar dtmin = getFloatParameter("h_min");
-   Scalar dtmax = getFloatParameter("h_max");
-   Scalar errtol = getFloatParameter("err_tol");
-   Scalar commthresh = getFloatParameter("comm_threshold");
-   Scalar minspeed = getFloatParameter("min_speed");
+   int numtime = numTimesteps();
+   std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
+   if (numtime == 0)
+       numtime = 1;
 
-   bool havePressure = boost::mpi::all_reduce(comm(), m_havePressure, std::logical_and<bool>());
-   Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
-   for (Index t=0; t<numtime; ++t) {
+
+   GlobalData global;
+   global.int_mode = (IntegrationMethod)getIntParameter("integration");
+   global.task_type = (TraceType)getIntParameter("taskType");
+   global.dt_step = getFloatParameter("dt_step");
+   global.h_init = getFloatParameter("h_init");
+   global.h_min = getFloatParameter("h_min");
+   global.h_max = getFloatParameter("h_max");
+   global.errtolrel = getFloatParameter("err_tol_rel");
+   global.errtolabs = getFloatParameter("err_tol_abs");
+   global.use_celltree = getIntParameter("use_celltree");
+   global.trace_len = getFloatParameter("trace_len");
+   global.trace_time = getFloatParameter("trace_time");
+   global.min_vel = getFloatParameter("min_speed");
+   global.max_step = getIntParameter("steps_max");
+   global.cell_relative = getIntParameter("cell_relative");
+   global.velocity_relative = getIntParameter("velocity_relative");
+   global.blocks.resize(numtime);
+
+   std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
+   std::vector<std::shared_ptr<Particle>> allParticles;
+   std::set<std::shared_ptr<Particle>> activeParticles;
+
+   std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
+   auto checkActivity = [&checkSet, &allParticles](const mpi::communicator &comm) -> Index {
+       for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
+           ++next;
+
+           auto particle = allParticles[*it];
+           bool active = mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
+           if (!active) {
+               particle->Deactivate(Particle::OutOfDomain);
+               checkSet.erase(it);
+           }
+       }
+       return checkSet.size();
+   };
+
+   // create particles
+   Index id=0;
+   for (int t=0; t<numtime; ++t) {
+       if (timestep != t && timestep != -1)
+           continue;
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
-       std::vector<std::unique_ptr<BlockData>> block(numblocks);
+       global.blocks[t].resize(numblocks);
        for(Index i=0; i<numblocks; i++){
 
            if (useCelltree && celltree.size() > t) {
                if (celltree[t].size() > i)
                    celltree[t][i].get();
            }
-           block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
+           global.blocks[t][i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
        }
 
-       Index numActive = numparticles;
-
-       //create particle objects
-       std::vector<std::unique_ptr<Particle>> particle(numparticles);
+       //create particle objects, 2 if traceDirecton==Both
+       allParticles.reserve(allParticles.size()+numparticles);
        Index i = 0;
-       if (traceDirection != Backward) {
-           for(; i<numpoints; i++){
-
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, true));
-
-#ifdef TIMING
-               times::comm_start = times::start();
-#endif
-               bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-               times::comm_dur += times::stop(times::comm_start);
-#endif
-               if(!active){
-                   particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
-                   --numActive;
-               }
+       for(; i<numpoints; i++) {
+           if (traceDirection != Backward) {
+               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], true, global, t));
+           }
+           if (traceDirection != Forward) {
+               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], false, global, t));
            }
        }
-       if (traceDirection != Forward) {
-           for(; i<numparticles; i++){
-
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, false));
-
-#ifdef TIMING
-               times::comm_start = times::start();
-#endif
-               bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-               times::comm_dur += times::stop(times::comm_start);
-#endif
-               if(!active){
-                   particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
-                   --numActive;
-               }
-           }
-       }
-       const int mpisize = comm().size();
-
-       while(numActive > 0) {
-
-           std::vector<Index> sendlist;
-
-           //#pragma omp parallel for
-           // trace local particles
-           for(Index i=0; i<numparticles; i++) {
-               bool traced = false;
-               while(particle[i]->isMoving(steps_max, minspeed)
-                     && particle[i]->findCell(block)) {
-#ifdef TIMING
-                   double celloc_old = times::celloc_dur;
-                   double integr_old = times::integr_dur;
-                   times::integr_start = times::start();
-#endif
-                   particle[i]->Step();
-#ifdef TIMING
-                   times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
-#endif
-                   traced = true;
-               }
-               if(traced) {
-                   //#pragma omp critical
-                   sendlist.push_back(i);
-                   if (commthresh > 1.) {
-                       if (sendlist.size() >= commthresh)
-                           break;
-                   } else {
-                       if (sendlist.size() >= commthresh*numActive)
-                           break;
-                   }
-               }
-           }
-
-           // communicate
-           Index num_send = sendlist.size();
-           std::vector<Index> num_transmit(mpisize);
-           boost::mpi::all_gather(comm(), num_send, num_transmit);
-           for(int mpirank=0; mpirank<mpisize; mpirank++) {
-#ifdef TIMING
-               times::comm_start = times::start();
-               times::comm_dur += times::stop(times::comm_start);
-#endif
-               Index num_recv = num_transmit[mpirank];
-               if(num_recv>0) {
-                   std::vector<Index> tmplist = sendlist;
-#ifdef TIMING
-                   times::comm_start = times::start();
-#endif
-                   boost::mpi::broadcast(comm(), tmplist, mpirank);
-#ifdef TIMING
-                   times::comm_dur += times::stop(times::comm_start);
-#endif
-                   for(Index i=0; i<num_recv; i++){
-#ifdef TIMING
-                       times::comm_start = times::start();
-#endif
-                       Index p_index = tmplist[i];
-                       particle[p_index]->Communicator(comm(), mpirank, havePressure);
-#ifdef TIMING
-                       times::comm_dur += times::stop(times::comm_start);
-#endif
-                   }
-                   if (mpirank != rank()) {
-                       for(Index i=0; i<num_recv; i++){
-                           Index p_index = tmplist[i];
-                           if (particle[p_index]->isMoving(steps_max, minspeed)
-                                   && particle[p_index]->findCell(block)) {
-                               // if the particle trajectory continues in this block, repeat last data point from previous block
-                               particle[p_index]->EmitData(havePressure);
-                           }
-                       }
-                   }
-                   for(Index i=0; i<num_recv; i++){
-                       Index p_index = tmplist[i];
-#ifdef TIMING
-                       times::comm_start = times::start();
-#endif
-                       bool active = particle[p_index]->isActive();
-                       active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-                       times::comm_dur += times::stop(times::comm_start);
-#endif
-                       if(!active){
-                           particle[p_index]->Deactivate(Particle::OutOfDomain);
-                           --numActive;
-                       }
-                   }
-               }
-           }
-       }
-
-       if (rank() == 0) {
-           std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
-           for(Index i=0; i<numparticles; i++) {
-               ++stopReasonCount[particle[i]->stopReason()];
-           }
-           std::stringstream str;
-           str << "Stop stats for timestep " << t << ":";
-           for (size_t i=0; i<stopReasonCount.size(); ++i) {
-               str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
-           }
-           std::string s = str.str();
-           sendInfo("%s", s.c_str());
-       }
-
-      //add Lines-objects to output port
-      for(Index i=0; i<numblocks; i++){
-
-         Meta meta(i, t);
-         meta.setNumTimesteps(numtime);
-         meta.setNumBlocks(numblocks);
-
-         block[i]->setMeta(meta);
-         Lines::ptr lines = block[i]->getLines();
-         block[i]->ids()->setGrid(lines);
-         addObject("particle_id", block[i]->ids());
-         block[i]->steps()->setGrid(lines);
-         addObject("timestep", block[i]->steps());
-
-         std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
-         Vec<Scalar, 3>::ptr v;
-         if(v_vec.size()>0){
-            v = v_vec[0];
-            v->setGrid(lines);
-            addObject("data_out0", v);
-         }
-
-         if(data_in1[t][0]){
-            std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getIplScal();
-            Vec<Scalar>::ptr p;
-            if(p_vec.size()>0){
-               p = p_vec[0];
-               p->setGrid(lines);
-               addObject("data_out1", p);
-            }
-         }
-      }
    }
 
-#ifdef TIMING
-   comm().barrier();
-   times::total_dur = times::stop(times::total_start);
-   times::output();
-#endif
+   Index nextParticleToStart = 0;
+   auto startParticles = [this, &nextParticleToStart, &allParticles, &activeParticles, &checkSet](int toStart) -> int {
+       int started = 0;
+       while (nextParticleToStart < allParticles.size()) {
+           if (started >= toStart)
+               break;
+
+           Index idx = nextParticleToStart;
+           ++nextParticleToStart;
+           auto particle = allParticles[idx];
+           if (particle->startTracing(comm()) >= 0) {
+               activeParticles.insert(particle);
+               checkSet.insert(particle->id());
+               ++started;
+           } else {
+               particle->Deactivate(Particle::InitiallyOutOfDomain);
+           }
+       }
+       return started;
+   };
+
+   const int mpisize = comm().size();
+   Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
+   do {
+      Index numStart = numActiveMin>maxNumActive ? maxNumActive : maxNumActive-numActiveMin;
+      startParticles(numStart);
+
+      bool first = true;
+      std::vector<Index> sendlist;
+      for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
+          next = it;
+          ++next;
+
+          auto particle = it->get();
+
+          bool wait = mpisize==1 && first;
+          first = false;
+          if (!particle->isTracing(wait)) {
+              if (mpisize==1) {
+                  particle->Deactivate(Particle::OutOfDomain);
+              } else if (particle->madeProgress()) {
+                  sendlist.push_back(particle->id());
+              }
+              activeParticles.erase(it);
+          }
+      }
+
+      if (mpisize==1) {
+          checkSet.clear();
+          numActiveMax = numActiveMin = activeParticles.size();
+          continue;
+      }
+
+      // communicate
+      checkActivity(comm());
+
+      std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
+      Index num_send = sendlist.size();
+      std::vector<Index> num_transmit(mpisize);
+      mpi::all_gather(comm(), num_send, num_transmit);
+      for(int mpirank=0; mpirank<mpisize; mpirank++) {
+          Index num_recv = num_transmit[mpirank];
+          if(num_recv>0) {
+              std::vector<Index> recvlist;
+              auto &curlist = rank()==mpirank ? sendlist : recvlist;
+              mpi::broadcast(comm(), curlist, mpirank);
+              for(Index i=0; i<num_recv; i++){
+                  Index p_index = curlist[i];
+                  auto p = allParticles[p_index];
+                  assert(!p->isTracing(false));
+                  p->broadcast(comm(), mpirank);
+                  checkSet.insert(p_index);
+                  if (p->rank() == rank()) {
+                      if (rank() == mpirank) {
+                          p->finishSegment();
+                      } else {
+                          datarecvlist.emplace_back(p->id(), mpirank);
+                      }
+                  }
+                  if (p->startTracing(comm()) >= 0) {
+                      activeParticles.insert(p);
+                  }
+              }
+          }
+      }
+      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
+      numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
+      numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
+      // iterate over all other ranks
+      for(int i=1; i<mpisize; ++i) {
+          int dst = (rank()+i)%size();
+          int src = (rank()-i+size())%size();
+          for (auto id: sendlist) {
+              auto p = allParticles[id];
+              if (p->rank() == dst) {
+                  //std::cerr << "sending " << p->id() << " to " << dst << std::endl;
+                  p->sendData(comm());
+              }
+          }
+          for (const auto &part: datarecvlist) {
+              auto id = part.first;
+              auto rank = part.second;
+              auto p = allParticles[id];
+              assert(p->rank() == this->rank());
+              if (rank == src) {
+                  //std::cerr << "receiving " << p->id() << " from " << src << std::endl;
+                  p->receiveData(comm(), src);
+              }
+          }
+      }
+   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
+
+   if (mpisize == 1) {
+       for (auto p: allParticles) {
+           p->finishSegment();
+       }
+   }
+
+   Scalar maxTime = 0;
+   for (auto &p: allParticles) {
+       maxTime = std::max(p->time(), maxTime);
+   }
+   maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
+   if (taskType == MovingPoints) {
+       numtime = maxTime / global.dt_step;
+       if (numtime < 1)
+           numtime = 1;
+   }
+
+   for (int i=0; i<numtime; ++i) {
+       if (timestep != i && timestep != -1)
+           continue;
+       if (taskType == MovingPoints) {
+           global.points.emplace_back(new Points(Index(0)));
+       } else {
+           global.lines.emplace_back(new Lines(0,0,0));
+       }
+
+       global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
+       global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.idField.emplace_back(new Vec<Index>(Index(0)));
+       global.stepField.emplace_back(new Vec<Index>(Index(0)));
+       global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.distField.emplace_back(new Vec<Scalar>(Index(0)));
+   }
+
+   for (auto &p: allParticles) {
+       if (rank() == 0)
+           ++stopReasonCount[p->stopReason()];
+       if (p->rank() == rank()) {
+           if (traceDirection == Both && p->isForward()) {
+               auto other = allParticles[p->id()+1];
+               p->fetchSegments(*other);
+           }
+           p->addToOutput();
+       }
+   }
+
+   Meta meta;
+   meta.setNumTimesteps(numtime);
+   meta.setNumBlocks(size());
+   Index i = 0;
+   for (int t=0; t<numtime; ++t) {
+       if (timestep != t && timestep != -1)
+           continue;
+       meta.setBlock(rank());
+       meta.setTimeStep(t);
+
+       Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
+       geo->setMeta(meta);
+
+       global.idField[i]->setGrid(geo);
+       global.idField[i]->setMeta(meta);
+       addObject("particle_id", global.idField[i]);
+
+       global.stepField[i]->setGrid(geo);
+       global.stepField[i]->setMeta(meta);
+       addObject("step", global.stepField[i]);
+
+       global.timeField[i]->setGrid(geo);
+       global.timeField[i]->setMeta(meta);
+       addObject("time", global.timeField[i]);
+
+       global.distField[i]->setGrid(geo);
+       global.distField[i]->setMeta(meta);
+       addObject("distance", global.distField[i]);
+
+       global.vecField[i]->setGrid(geo);
+       global.vecField[i]->setMeta(meta);
+       addObject("data_out0", global.vecField[i]);
+
+       global.scalField[i]->setGrid(geo);
+       global.scalField[i]->setMeta(meta);
+       addObject("data_out1", global.scalField[i]);
+
+       ++t;
+   }
+
+   if (rank() == 0) {
+       std::stringstream str;
+       str << "Stop stats for " << allParticles.size() << " particles:";
+       for (size_t i=0; i<stopReasonCount.size(); ++i) {
+           str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
+       }
+       std::string s = str.str();
+       sendInfo("%s", s.c_str());
+   }
+
    return true;
+}
+
+bool Tracer::changeParameter(const Parameter *param) {
+
+    if (param == m_maxStartpoints) {
+        setParameterRange(m_numStartpoints, (Integer)1, m_maxStartpoints->getValue());
+    } else if (param == m_taskType) {
+        if (m_taskType->getValue() == Streamlines)
+            setReducePolicy(message::ReducePolicy::PerTimestep);
+        else
+            setReducePolicy(message::ReducePolicy::OverAll);
+    }
+    return true;
 }

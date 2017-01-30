@@ -1,7 +1,8 @@
 set(SOURCES
    VistlePlugin.cpp
-   VistleRenderObject.cpp
+   VistleGeometryGenerator.h
    VistleGeometryGenerator.cpp
+   VistleInteractor.h
    VistleInteractor.cpp
    )
 
@@ -11,6 +12,7 @@ set_source_files_properties(VistlePlugin.cpp PROPERTIES COMPILE_FLAGS "-Wno-over
 endif(WIN32)
 
 include_directories(
+        .. # VistlePluginUtil
         ../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
@@ -22,4 +24,4 @@ include_directories(
 add_definitions(-DCOVER_PLUGIN)
 
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
-target_link_libraries(VistlePlugin vistle_renderer vistle_boost_mpi)
+target_link_libraries(VistlePlugin VistlePluginUtil vistle_renderer vistle_boost_mpi)

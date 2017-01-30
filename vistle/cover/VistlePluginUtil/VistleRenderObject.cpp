@@ -10,7 +10,7 @@ BaseRenderObject::BaseRenderObject() {
 BaseRenderObject::~BaseRenderObject() {
 }
 
-VistleRenderObject::VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro)
+VistleRenderObject::VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro)
 : m_vistleRo(ro)
 , m_roGeo(NULL)
 , m_roCol(NULL)
@@ -36,7 +36,7 @@ VistleRenderObject::~VistleRenderObject() {
    delete m_roTex;
 }
 
-boost::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
+std::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
 
    return m_vistleRo.lock();
 }
@@ -116,22 +116,32 @@ RenderObject *VistleRenderObject::getVertexAttribute() const {
 
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
+   bool hasAttribute = false;
    static std::string val;
    val.clear();
    if (m_obj) {
-      val = m_obj->getAttribute(attr);
-      if (val.empty()) {
-         if (auto data = vistle::DataBase::as(m_obj))
-            if (data->grid())
-               val = data->grid()->getAttribute(attr);
-      }
+       if (m_obj->hasAttribute(attr)) {
+           val = m_obj->getAttribute(attr);
+           hasAttribute = true;
+       } else {
+           if (auto data = vistle::DataBase::as(m_obj)) {
+               if (data->grid() && data->grid()->hasAttribute(attr)) {
+                   val = data->grid()->getAttribute(attr);
+                   hasAttribute = true;
+               }
+           }
+       }
    } else if (auto ro = renderObject()) {
-      if (ro->container)
-         val = ro->container->getAttribute(attr);
-      if (val.empty() && ro->geometry)
-         val = ro->geometry->getAttribute(attr);
+       if (ro->container && ro->container->hasAttribute(attr)) {
+           val = ro->container->getAttribute(attr);
+           hasAttribute = true;
+       }
+       if (!hasAttribute && ro->geometry && ro->geometry->hasAttribute(attr)) {
+           val = ro->geometry->getAttribute(attr);
+           hasAttribute = true;
+       }
    }
-   return val.c_str();
+   return hasAttribute ? val.c_str() : nullptr;
 }
 
 
@@ -190,4 +200,33 @@ const char *ModuleRenderObject::getAttribute(const char *attrname) const
       return getName();
 
    return NULL;
+}
+
+VariantRenderObject::VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible)
+: variant(variantName)
+, m_node(new osg::Group)
+, m_visible(visible)
+{
+    std::string nn("RhrClient:Variant:");
+    m_node->setName(nn+variant);
+    variant_onoff = variant;
+    if (visible == vistle::RenderObject::Hidden)
+        variant_onoff += "_off";
+    else if (visible == vistle::RenderObject::Visible)
+        variant_onoff += "_on";
+}
+
+const char *VariantRenderObject::getAttribute(const char *key) const {
+    if (key) {
+        std::string k(key);
+        if (k == "VARIANT") {
+            return variant_onoff.c_str();
+        }
+    }
+    return nullptr;
+}
+
+osg::ref_ptr<osg::Node> VariantRenderObject::node() const {
+
+    return m_node;
 }

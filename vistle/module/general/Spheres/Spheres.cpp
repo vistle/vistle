@@ -3,6 +3,7 @@
 
 #include <core/object.h>
 #include <core/spheres.h>
+#include <util/math.h>
 
 #include "Spheres.h"
 
@@ -21,6 +22,7 @@ ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int mo
    : Module("Spheres", shmname, name, moduleID) {
 
    createInputPort("grid_in");
+   createInputPort("map_in");
    createOutputPort("grid_out");
 
    auto MaxRad = std::numeric_limits<Scalar>::max();
@@ -35,11 +37,6 @@ ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int mo
 
 ToSpheres::~ToSpheres() {
 
-}
-
-template<typename S>
-S clamp(S v, S vmin, S vmax) {
-   return std::min(std::max(v, vmin), vmax);
 }
 
 bool ToSpheres::compute() {
@@ -61,7 +58,9 @@ bool ToSpheres::compute() {
       return true;
    }
 
-   const MapMode mode = (MapMode)m_mapMode->getValue();
+   auto data = accept<DataBase>("map_in");
+
+   MapMode mode = (MapMode)m_mapMode->getValue();
    if (mode != Fixed && !radius && !radius3) {
       sendError("data input required for varying radius");
       return true;
@@ -70,7 +69,19 @@ bool ToSpheres::compute() {
    Spheres::ptr spheres = Spheres::clone<Vec<Scalar, 3>>(points);
    auto r = spheres->r().data();
 
+   std::vector<Scalar> rad3;
    auto rad = radius ? &radius->x()[0] : nullptr;
+   if (!rad && radius3) {
+       rad3.resize(radius3->getSize());
+       auto x=&radius3->x()[0], y=&radius3->y()[0], z=&radius3->z()[0];
+       for (Index i=0; i<rad3.size(); ++i) {
+           rad3[i] = Vector(x[i], y[i], z[i]).norm();
+       }
+       rad = rad3.data();
+   }
+   if (!rad) {
+       mode = Fixed;
+   }
    const Scalar scale = m_radius->getValue();
    const Scalar rmin = m_range->getValue()[0];
    const Scalar rmax = m_range->getValue()[1];
@@ -94,7 +105,14 @@ bool ToSpheres::compute() {
    }
    spheres->setMeta(points->meta());
    spheres->copyAttributes(points);
-   addObject("grid_out", spheres);
+
+   if (data) {
+       auto dout = data->clone();
+       dout->setGrid(spheres);
+       addObject("grid_out", dout);
+   } else {
+       addObject("grid_out", spheres);
+   }
 
    return true;
 }

@@ -1,12 +1,10 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS chrono system)
-vistle_find_package(CUDA)
-vistle_find_package(GLEW)
 vistle_find_package(OpenGL)
 vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
+vistle_find_package(ZFP)
 
 if(NOT JPEGTURBO_FOUND)
    RETURN()
@@ -16,13 +14,7 @@ if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    return()
 endif()
 
-if(TBB_FOUND)
-    #if (NOT OPENMP_FOUND)
-      add_definitions(-DUSE_TBB)
-      #endif()
-else()
-   use_openmp()
-endif()
+#use_openmp()
 
 if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
@@ -33,17 +25,25 @@ if(SNAPPY_FOUND)
    include_directories(${SNAPPY_INCLUDE_DIR})
 endif()
 
+if(ZFP_FOUND)
+   add_definitions(-DHAVE_ZFP)
+   include_directories(${ZFP_INCLUDE_DIRS})
+endif()
+
 set(RHR_SOURCES
    depthquant.cpp
+   rfbext.cpp
+   rhrserver.cpp
    )
 
 set(RHR_HEADERS
    depthquant.h
    rfbext.h
    ReadBackCuda.h
+   rhrserver.h
    )
 
-if(LIBVNCSERVER_FOUND AND TBB_FOUND)
+if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
    include_directories(
@@ -59,15 +59,18 @@ include_directories(
         ..
 )
 
+set(RHR_CUDA_SOURCES
+    ReadBackCuda.cu
+)
+
 if(CUDA_FOUND AND GLEW_FOUND AND OPENGL_FOUND AND VISTLE_USE_CUDA)
   set(USE_CUDA TRUE)
-  set(RHR_CUDA_SOURCES
-      ReadBackCuda.cu
-  )
 
   add_definitions(-DHAVE_CUDA)
   include_directories(${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
   cuda_compile(RHR_CUDA_OBJ ${RHR_CUDA_SOURCES} ${VISTLE_LIB_TYPE})
+else()
+  add_custom_target(RHR_CUDA SOURCES ${RHR_CUDA_SOURCES})
 endif()
 
 if (NOT "${TURBOJPEG_LIBRARY_DYNAMIC}" STREQUAL "")
@@ -82,6 +85,7 @@ endif()
 
 target_link_libraries(vistle_rhr
         vistle_util
+        vistle_core
         ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
@@ -91,6 +95,10 @@ target_link_libraries(vistle_rhr
 
 if(SNAPPY_FOUND)
    target_link_libraries(vistle_rhr ${SNAPPY_LIBRARIES})
+endif()
+
+if (ZFP_FOUND)
+   target_link_libraries(vistle_rhr ${ZFP_LIBRARIES})
 endif()
 
 if(LIBVNCSERVER_FOUND)

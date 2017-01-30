@@ -28,6 +28,8 @@
 
 #include "export.h"
 
+namespace vistle {
+
 //! Implement remote hybrid rendering server based on VNC protocol
 class V_RHREXPORT VncServer
 {
@@ -322,4 +324,6 @@ private:
 
    void deferredResize();
 };
+
+}
 #endif

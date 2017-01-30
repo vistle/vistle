@@ -7,6 +7,7 @@
 #include <core/vec.h>
 #include <core/triangles.h>
 #include <core/vector.h>
+#include <util/math.h>
 
 #include <boost/mpi/collectives.hpp>
 
@@ -57,14 +58,7 @@ bool IsoSurface::reduce(int timestep) {
    return Module::reduce(timestep);
 }
 
-#define lerp(a, b, t) ( a + t * (b - a) )
-
 const Scalar EPSILON = 1.0e-10f;
-
-inline Vector lerp3(const Vector &a, const Vector &b, const Scalar t) {
-
-   return lerp(a, b, t);
-}
 
 inline Vector interp(Scalar iso, const Vector &p0, const Vector &p1, const Scalar &f0, const Scalar &f1) {
 
@@ -81,7 +75,7 @@ inline Vector interp(Scalar iso, const Vector &p0, const Vector &p1, const Scala
 
    Scalar t = (iso - f0) / diff;
 
-   return lerp3(p0, p1, t);
+   return lerp(p0, p1, t);
 }
 
 class Leveller {
@@ -164,7 +158,7 @@ class Leveller {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (Index elem=0; elem<numElem; ++elem) {
+         for (ssize_t elem=0; elem<numElem; ++elem) {
 
             Index n = 0;
             switch (tl[elem]) {
@@ -250,7 +244,7 @@ class Leveller {
          field[idx] = d[index[idx]];
       }
 
-      uint tableIndex = 0;
+      int tableIndex = 0;
       for (int idx = 0; idx < 8; idx ++)
          tableIndex += (((int) (field[idx] < m_isoValue)) << idx);
 

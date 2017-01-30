@@ -63,7 +63,7 @@ int main(int argc, char ** argv) {
          switch(info.type) {
             case 'O':
                if (info.handle) {
-                  boost::shared_ptr<const Object> obj = Shm::the().getObjectFromHandle(info.handle);
+                  std::shared_ptr<const Object> obj = Shm::the().getObjectFromHandle(info.handle);
                   if (obj) {
                      std::cout << " type " << obj->getType();
                      std::cout << " ref " << obj->refcount() << std::endl;

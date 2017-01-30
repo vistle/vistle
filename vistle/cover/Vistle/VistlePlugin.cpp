@@ -8,6 +8,7 @@
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
 #include <cover/coVRPluginList.h>
+#include <cover/coVRFileManager.h>
 
 // vistle
 #include <renderer/renderer.h>
@@ -27,7 +28,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 
-#include "VistleRenderObject.h"
+#include <VistlePluginUtil/VistleRenderObject.h>
 #include "VistleGeometryGenerator.h"
 #include "VistleInteractor.h"
 
@@ -48,45 +49,15 @@ class PluginRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
-         vistle::Object::const_ptr texture,
-         const std::string &variant)
+         vistle::Object::const_ptr texture)
       : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
-      , variant(variant)
       {
       }
 
    ~PluginRenderObject() {
    }
 
-   boost::shared_ptr<VistleRenderObject> coverRenderObject;
-   std::string variant;
-};
-
-class VariantRenderObject: public BaseRenderObject {
-public:
-    VariantRenderObject(const std::string &variantName)
-    : variant(variantName)
-    {}
-
-    const char *getName() const override { return ""; }
-    bool isGeometry() const override { return false; }
-    RenderObject *getGeometry() const override { return nullptr; }
-    RenderObject *getColors() const override { return nullptr; }
-    RenderObject *getNormals() const override { return nullptr; }
-    RenderObject *getTexture() const override { return nullptr; }
-    RenderObject *getVertexAttribute() const override { return nullptr; }
-
-   const char *getAttribute(const char *key) const override {
-       if (key) {
-           std::string k(key);
-           if (k == "VARIANT")
-               return variant.c_str();
-       }
-       return nullptr;
-   }
-
-private:
-    std::string variant;
+   std::shared_ptr<VistleRenderObject> coverRenderObject;
 };
 
 class OsgRenderer: public vistle::Renderer {
@@ -97,32 +68,36 @@ class OsgRenderer: public vistle::Renderer {
    ~OsgRenderer();
 
    bool render() override;
-   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+   std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
       vistle::Object::const_ptr colors,
       vistle::Object::const_ptr texture) override;
-   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
+   void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
 
    osg::ref_ptr<osg::Group> vistleRoot;
 
    bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) override;
    bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) override;
    bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) override;
+   void prepareQuit() override;
+
+   typedef std::map<VistleRenderObject *, std::string> FileAttachmentMap;
+   FileAttachmentMap m_fileAttachmentMap;
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
 
    struct DelayedObject {
-      DelayedObject(boost::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
+      DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
          : ro(ro)
          , generator(generator)
          , node_future(std::async(std::launch::async, generator))
       {}
-      boost::shared_ptr<PluginRenderObject> ro;
+      std::shared_ptr<PluginRenderObject> ro;
       VistleGeometryGenerator generator;
-      std::future<osg::Node *> node_future;
+      std::future<osg::MatrixTransform *> node_future;
    };
    std::deque<DelayedObject> m_delayedObjects;
 
@@ -225,8 +200,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
 OsgRenderer::~OsgRenderer() {
 
-   removeAllObjects();
-   cover->getObjectsRoot()->removeChild(vistleRoot);
+   prepareQuit();
 }
 
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -236,7 +210,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
-    std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
+   // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
    if (plugin == "CuttingSurface"
          || plugin == "Tracer"
@@ -291,14 +265,31 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
    return true;
 }
 
-void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
-   auto pro = boost::static_pointer_cast<PluginRenderObject>(vro);
+void OsgRenderer::prepareQuit() {
+
+   removeAllObjects();
+   cover->getObjectsRoot()->removeChild(vistleRoot);
+   vistleRoot.release();
+
+   Renderer::prepareQuit();
+}
+
+void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
+   auto pro = std::static_pointer_cast<PluginRenderObject>(vro);
    auto ro = pro->coverRenderObject;
    std::string variant = pro->variant;
 
    if (!ro) {
       std::cerr << "removeObject: no COVER render object" << std::endl;
       return;
+   }
+
+   coVRPluginList::instance()->removeObject(ro->getName(), false);
+
+   auto it = m_fileAttachmentMap.find(ro.get());
+   if (it != m_fileAttachmentMap.end()) {
+       coVRFileManager::instance()->unloadFile(it->second.c_str());
+       m_fileAttachmentMap.erase(it);
    }
 
    if (!ro->isGeometry()) {
@@ -319,13 +310,14 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
                gr->removeChild(node);
                if (gr->getNumChildren() == 0) {
                   bool removed = false;
-                  for (size_t i=cr.animated(variant)->getNumChildren()-1; i>0; --i) {
-                     osg::Group *g = cr.animated(variant)->getChild(i)->asGroup();
+                  for (size_t i=cr.animated(variant)->getNumChildren(); i>1; --i) {
+                     size_t idx = i-1;
+                     osg::Group *g = cr.animated(variant)->getChild(idx)->asGroup();
                      if (!g)
                         break;
                      if (g->getNumChildren() > 0)
                         break;
-                     cr.animated(variant)->removeChildren(i, 1);
+                     cr.animated(variant)->removeChildren(idx, 1);
                      removed = true;
                   }
                   if (removed) {
@@ -347,7 +339,7 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
    pro->coverRenderObject.reset();
 }
 
-boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
+std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
@@ -387,18 +379,20 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
    if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
       return nullptr;
 
-   std::string variant = container->getAttribute("_variant");
-   if (variant.empty()) {
-       variant = geometry->getAttribute("_variant");
-   }
-   if (!variant.empty()) {
+   std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
+         container, geometry, normals, colors, texture));
+   if (!pro->variant.empty()) {
       cover->addPlugin("Variant");
    }
-   boost::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
-         container, geometry, normals, colors, texture, variant));
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
+
+   coVRPluginList::instance()->addObject(pro->coverRenderObject.get(), nullptr, nullptr, nullptr, nullptr, nullptr,
+                                         0, 0, 0,
+                                         nullptr, nullptr, nullptr, nullptr,
+                                         0, 0, nullptr, nullptr, nullptr,
+                                         0.0);
 
    return pro;
 }
@@ -433,15 +427,14 @@ bool OsgRenderer::render() {
    for (int i=0; i<numAdd; ++i) {
       auto &node_future = m_delayedObjects.front().node_future;
       auto &ro = m_delayedObjects.front().ro;
-      osg::Node *node = node_future.get();
-      if (ro->coverRenderObject && node) {
+      osg::MatrixTransform *transform = node_future.get();
+      if (ro->coverRenderObject && transform) {
          int creatorId = ro->coverRenderObject->getCreator();
          Creator &creator = getCreator(creatorId);
 
-         ro->coverRenderObject->setNode(node);
-         node->setName(ro->coverRenderObject->getName());
+         ro->coverRenderObject->setNode(transform);
+         transform->setName(ro->coverRenderObject->getName());
          const std::string variant = ro->variant;
-         const auto &vro = creator.getVariant(variant).ro;
          osg::ref_ptr<osg::Group> parent = creator.constant(variant);
          const int t = ro->timestep;
          if (t >= 0) {
@@ -456,10 +449,17 @@ bool OsgRenderer::render() {
             assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
-         parent->addChild(node);
+         const char *filename = ro->coverRenderObject->getAttribute("_model_file");
+         if (filename) {
+             osg::Node *filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
+             if (filenode) {
+                 m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
+             }
+         }
+         parent->addChild(transform);
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
-      } else if (!node) {
+      } else if (!transform) {
          //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
       }
       m_delayedObjects.pop_front();
@@ -474,6 +474,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    VistlePlugin();
    ~VistlePlugin();
    bool init() override;
+   bool destroy() override;
    void menuEvent(vrui::coMenuItem *item) override;
    void preFrame() override;
    void requestQuit(bool killSession) override;
@@ -521,7 +522,9 @@ VistlePlugin::~VistlePlugin() {
 
    if (m_module) {
       MPI_Barrier(MPI_COMM_WORLD);
+      m_module->prepareQuit();
       delete m_module;
+      m_module = nullptr;
    }
 
    plugin = nullptr;
@@ -544,6 +547,18 @@ bool VistlePlugin::init() {
    return m_module;
 }
 
+bool VistlePlugin::destroy() {
+
+   if (m_module) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      m_module->prepareQuit();
+      delete m_module;
+      m_module = nullptr;
+   }
+
+    return true;
+}
+
 void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 
    if (item == executeButton) {
@@ -562,6 +577,8 @@ void VistlePlugin::preFrame() {
 
 void VistlePlugin::requestQuit(bool killSession)
 {
+   MPI_Barrier(MPI_COMM_WORLD);
+   m_module->prepareQuit();
    delete m_module;
    m_module = nullptr;
 }

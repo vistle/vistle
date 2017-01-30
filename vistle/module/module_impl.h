@@ -9,7 +9,7 @@ namespace vistle {
 template<class T>
 bool Module::setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo) {
 
-   auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
+   auto p = std::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
    if (!p)
       return false;
 
@@ -39,7 +39,7 @@ bool Module::setParameterMaximum(ParameterBase<T> *param, const T &maximum) {
 template<class T>
 bool Module::setParameterRange(const std::string &name, const T &minimum, const T &maximum) {
 
-   auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
+   auto p = std::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
    if (!p)
       return false;
 
@@ -78,7 +78,7 @@ bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const 
 template<class T>
 bool Module::getParameter(const std::string &name, T &value) const {
 
-   if (auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name))) {
+   if (auto p = std::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name))) {
       value = p->getValue();
    } else {
       std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;
@@ -118,7 +118,12 @@ typename Type::const_ptr Module::accept(const std::string &port) {
 
 template<class Type>
 typename Type::const_ptr Module::expect(Port *port) {
-   Object::const_ptr obj;
+   if (!port) {
+       std::stringstream str;
+       str << "invalid port" << std::endl;
+       sendError(str.str());
+       return nullptr;
+   }
    if (port->objects().empty()) {
       if (schedulingPolicy() == message::SchedulingPolicy::Single) {
           std::stringstream str;
@@ -127,7 +132,7 @@ typename Type::const_ptr Module::expect(Port *port) {
       }
       return nullptr;
    }
-   obj = port->objects().front();
+   Object::const_ptr obj = port->objects().front();
    typename Type::const_ptr ret = Type::as(obj);
    port->objects().pop_front();
    if (!obj) {
@@ -149,13 +154,6 @@ typename Type::const_ptr Module::expect(const std::string &port) {
    Port *p = findInputPort(port);
    vassert(p);
    return expect<Type>(p);
-}
-
-template<class Interface>
-const Interface *Module::expectInterface(const std::string &port) {
-   Port *p = findInputPort(port);
-   vassert(p);
-   return expectInterface<Interface>(p);
 }
 
 

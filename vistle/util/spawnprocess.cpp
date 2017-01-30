@@ -4,6 +4,9 @@
 #include <iostream>
 
 #ifdef _WIN32
+#include <process.h>
+#include <Windows.h>
+#include <WinBase.h>
 #else
 #include <unistd.h>
 #include <signal.h>
@@ -13,20 +16,19 @@
 namespace vistle {
 
 process_handle spawn_process(const std::string &executable, const std::vector<std::string> args) {
-
+	std::vector<const char *> a;
+	for (const auto &s : args) {
+		a.push_back(s.c_str());
+	}
+	a.push_back(nullptr);
 #ifdef _WIN32
-#error("not implemented")
+   process_handle pid = _spawnvp(P_NOWAIT, a[0], (char *const *)a.data());
 #else
    const pid_t pid = fork();
    if (pid < 0) {
       std::cerr << "Error when forking for executing " << executable << ": " << strerror(errno) << std::endl;
       return false;
-   } else if (pid == 0) {
-      std::vector<const char *> a;
-      for (const auto &s: args) {
-         a.push_back(s.c_str());
-      }
-      a.push_back(nullptr);
+   } else if (pid == 0) {  
       execvp(executable.c_str(), (char **)a.data());
       std::cout << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
       std::cerr << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
@@ -39,7 +41,7 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
 bool kill_process(process_handle pid) {
 
 #ifdef _WIN32
-#error("not implemented")
+   return TerminateProcess((HANDLE)pid, -9) != 0;
 #else
    return kill(pid, SIGTERM) == 0;
 #endif
@@ -48,6 +50,7 @@ bool kill_process(process_handle pid) {
 process_handle try_wait() {
 
 #ifdef _WIN32
+	return 0;
 #else
    int stat = 0;
    pid_t pid = wait3(&stat, WNOHANG, nullptr);

@@ -9,7 +9,6 @@
 #include <boost/asio/ip/address_v4.hpp>
 
 #include <util/enum.h>
-#include <util/directory.h>
 #include "uuid.h"
 #include "object.h"
 #include "scalar.h"
@@ -29,17 +28,8 @@ class Port;
 
 namespace message {
 
-template<class MessageClass, Message::Type MessageType>
-class MessageBase: public Message {
-public:
-    static const Message::Type s_type = MessageType;
-protected:
-    MessageBase(): Message(MessageType, sizeof(MessageClass)) {
-    }
-};
-
 //! indicate the kind of a communication partner
-class V_COREEXPORT Identify: public MessageBase<Identify, Message::IDENTIFY> {
+class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
@@ -67,11 +57,11 @@ class V_COREEXPORT Identify: public MessageBase<Identify, Message::IDENTIFY> {
    int m_rank;
 
 };
-BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Identify) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Identity, Identify)
 
 //! announce that a slave hub has connected
-class V_COREEXPORT AddHub: public MessageBase<AddHub, Message::ADDHUB> {
+class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
       (Hostname)
@@ -108,10 +98,10 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, Message::ADDHUB> {
    address_t m_address;
 
 };
-BOOST_STATIC_ASSERT(sizeof(AddHub) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(AddHub) <= Message::MESSAGE_SIZE, "message too large");
 
 //! debug: request a reply containing character 'c'
-class V_COREEXPORT Ping: public MessageBase<Ping, Message::PING> {
+class V_COREEXPORT Ping: public MessageBase<Ping, PING> {
 
  public:
    Ping(const char c);
@@ -121,10 +111,10 @@ class V_COREEXPORT Ping: public MessageBase<Ping, Message::PING> {
  private:
    const char character;
 };
-BOOST_STATIC_ASSERT(sizeof(Ping) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Ping) <= Message::MESSAGE_SIZE, "message too large");
 
 //! debug: reply to pong
-class V_COREEXPORT Pong: public MessageBase<Pong, Message::PONG> {
+class V_COREEXPORT Pong: public MessageBase<Pong, PONG> {
 
  public:
    Pong(const Ping &ping);
@@ -136,10 +126,10 @@ class V_COREEXPORT Pong: public MessageBase<Pong, Message::PONG> {
    const char character;
    int module;
 };
-BOOST_STATIC_ASSERT(sizeof(Pong) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Pong) <= Message::MESSAGE_SIZE, "message too large");
 
 //! spawn a module
-class V_COREEXPORT Spawn: public MessageBase<Spawn, Message::SPAWN> {
+class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
 
  public:
    Spawn(int hubId, const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
@@ -166,10 +156,10 @@ class V_COREEXPORT Spawn: public MessageBase<Spawn, Message::SPAWN> {
    //! name of module to be started
    module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(Spawn) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Spawn) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notification of manager that spawning is possible (i.e. shmem has been set up)
-class V_COREEXPORT SpawnPrepared: public MessageBase<SpawnPrepared, Message::SPAWNPREPARED> {
+class V_COREEXPORT SpawnPrepared: public MessageBase<SpawnPrepared, SPAWNPREPARED> {
 
  public:
    SpawnPrepared(const Spawn &spawn);
@@ -187,10 +177,10 @@ class V_COREEXPORT SpawnPrepared: public MessageBase<SpawnPrepared, Message::SPA
    //! name of module to be started
    module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(SpawnPrepared) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SpawnPrepared) <= Message::MESSAGE_SIZE, "message too large");
 
 //! acknowledge that a module has been spawned
-class V_COREEXPORT Started: public MessageBase<Started, Message::STARTED> {
+class V_COREEXPORT Started: public MessageBase<Started, STARTED> {
 
  public:
    Started(const std::string &name);
@@ -201,10 +191,10 @@ class V_COREEXPORT Started: public MessageBase<Started, Message::STARTED> {
    //! name of module to be started
    module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(Started) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Started) <= Message::MESSAGE_SIZE, "message too large");
 
 //! request a module to quit
-class V_COREEXPORT Kill: public MessageBase<Kill, Message::KILL> {
+class V_COREEXPORT Kill: public MessageBase<Kill, KILL> {
 
  public:
    Kill(const int module);
@@ -215,20 +205,20 @@ class V_COREEXPORT Kill: public MessageBase<Kill, Message::KILL> {
    //! ID of module to stop
    const int module;
 };
-BOOST_STATIC_ASSERT(sizeof(Kill) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Kill) <= Message::MESSAGE_SIZE, "message too large");
 
 //! request all modules to quit for terminating the session
-class V_COREEXPORT Quit: public MessageBase<Quit, Message::QUIT> {
+class V_COREEXPORT Quit: public MessageBase<Quit, QUIT> {
 
  public:
    Quit();
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Quit) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Quit) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notify that a module has quit
-class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, Message::MODULEEXIT> {
+class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, MODULEEXIT> {
 
  public:
    ModuleExit();
@@ -238,10 +228,10 @@ class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, Message::MODULEEXI
  private:
    bool forwarded;
 };
-BOOST_STATIC_ASSERT(sizeof(ModuleExit) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ModuleExit) <= Message::MESSAGE_SIZE, "message too large");
 
 //! trigger execution of a module function
-class V_COREEXPORT Execute: public MessageBase<Execute, Message::EXECUTE> {
+class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(What,
@@ -252,6 +242,7 @@ class V_COREEXPORT Execute: public MessageBase<Execute, Message::EXECUTE> {
    )
 
    Execute(What what=Execute::ComputeExecute, const int module=Id::Broadcast, const int count=-1);
+   Execute(const int module, double realtime, double step);
 
    void setModule(int );
    int getModule() const;
@@ -264,37 +255,54 @@ class V_COREEXPORT Execute: public MessageBase<Execute, Message::EXECUTE> {
    What what() const;
    void setWhat(What r);
 
+   double animationRealTime() const;
+   double animationStep() const;
+
 private:
    bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
    int module; //!< destination module, -1: all sources
    int executionCount; //!< count of execution which triggered this execute
    What m_what; //!< reason why this message was generated
+   double m_realtime; //!< realtime/timestep currently displayed
+   double m_animationStep; //!< duration of a single timestep
 };
-BOOST_STATIC_ASSERT(sizeof(Execute) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Execute) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(What, Execute)
 
+//! trigger execution of a module function
+class V_COREEXPORT CancelExecute: public MessageBase<CancelExecute, CANCELEXECUTE> {
+
+public:
+    CancelExecute(const int module);
+    int getModule() const;
+
+    private:
+    int m_module;
+};
+static_assert(sizeof(CancelExecute) <= Message::MESSAGE_SIZE, "message too large");
+
 //! indicate that a module has started computing
-class V_COREEXPORT Busy: public MessageBase<Busy, Message::BUSY> {
+class V_COREEXPORT Busy: public MessageBase<Busy, BUSY> {
 
  public:
    Busy();
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Busy) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Busy) <= Message::MESSAGE_SIZE, "message too large");
 
 //! indicate that a module has finished computing
-class V_COREEXPORT Idle: public MessageBase<Idle, Message::IDLE> {
+class V_COREEXPORT Idle: public MessageBase<Idle, IDLE> {
 
  public:
    Idle();
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Idle) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notification that a module has created an input/output port
-class V_COREEXPORT AddPort: public MessageBase<AddPort, Message::ADDPORT> {
+class V_COREEXPORT AddPort: public MessageBase<AddPort, ADDPORT> {
 
  public:
    AddPort(const Port &port);
@@ -305,10 +313,10 @@ class V_COREEXPORT AddPort: public MessageBase<AddPort, Message::ADDPORT> {
    int m_porttype;
    int m_flags;
 };
-BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(AddPort) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notification that a module has destroyed an input/output port
-class V_COREEXPORT RemovePort: public MessageBase<RemovePort, Message::REMOVEPORT> {
+class V_COREEXPORT RemovePort: public MessageBase<RemovePort, REMOVEPORT> {
 
  public:
    RemovePort(const Port &port);
@@ -316,12 +324,12 @@ class V_COREEXPORT RemovePort: public MessageBase<RemovePort, Message::REMOVEPOR
  private:
    port_name_t m_name;
 };
-BOOST_STATIC_ASSERT(sizeof(RemovePort) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(RemovePort) <= Message::MESSAGE_SIZE, "message too large");
 
 class AddObjectCompleted;
 
 //! add an object to the input queue of an input port
-class V_COREEXPORT AddObject: public MessageBase<AddObject, Message::ADDOBJECT> {
+class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
 
  public:
    AddObject(const std::string &senderPort, vistle::Object::const_ptr obj,
@@ -353,9 +361,9 @@ class V_COREEXPORT AddObject: public MessageBase<AddObject, Message::ADDOBJECT> 
    const shm_handle_t handle;
    mutable bool m_handleValid;
 };
-BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(AddObject) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, Message::ADDOBJECTCOMPLETED> {
+class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, ADDOBJECTCOMPLETED> {
 
  public:
    AddObjectCompleted(const AddObject &msg);
@@ -366,10 +374,10 @@ class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, Me
    shm_name_t m_name;
    int m_orgDestId;
 };
-BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notify rank 0 controller that an object was received
-class V_COREEXPORT ObjectReceived: public MessageBase<ObjectReceived, Message::OBJECTRECEIVED> {
+class V_COREEXPORT ObjectReceived: public MessageBase<ObjectReceived, OBJECTRECEIVED> {
 
  public:
    ObjectReceived(const AddObject &add, const std::string &destPort="");
@@ -386,10 +394,10 @@ class V_COREEXPORT ObjectReceived: public MessageBase<ObjectReceived, Message::O
    Meta m_meta;
    int m_objectType;
 };
-BOOST_STATIC_ASSERT(sizeof(ObjectReceived) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ObjectReceived) <= Message::MESSAGE_SIZE, "message too large");
 
 //! connect an output port to an input port of another module
-class V_COREEXPORT Connect: public MessageBase<Connect, Message::CONNECT> {
+class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT> {
 
  public:
    Connect(const int moduleIDA, const std::string & portA,
@@ -410,10 +418,10 @@ class V_COREEXPORT Connect: public MessageBase<Connect, Message::CONNECT> {
    int moduleA;
    int moduleB;
 };
-BOOST_STATIC_ASSERT(sizeof(Connect) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Connect) <= Message::MESSAGE_SIZE, "message too large");
 
 //! disconnect an output port from an input port of another module
-class V_COREEXPORT Disconnect: public MessageBase<Disconnect, Message::DISCONNECT> {
+class V_COREEXPORT Disconnect: public MessageBase<Disconnect, DISCONNECT> {
 
  public:
    Disconnect(const int moduleIDA, const std::string & portA,
@@ -434,10 +442,10 @@ class V_COREEXPORT Disconnect: public MessageBase<Disconnect, Message::DISCONNEC
    int moduleA;
    int moduleB;
 };
-BOOST_STATIC_ASSERT(sizeof(Disconnect) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Disconnect) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notification that a module has created a parameter
-class V_COREEXPORT AddParameter: public MessageBase<AddParameter, Message::ADDPARAMETER> {
+class V_COREEXPORT AddParameter: public MessageBase<AddParameter, ADDPARAMETER> {
    public:
       AddParameter(const Parameter &param, const std::string &moduleName);
 
@@ -447,7 +455,7 @@ class V_COREEXPORT AddParameter: public MessageBase<AddParameter, Message::ADDPA
       const char *group() const;
       int getParameterType() const;
       int getPresentation() const;
-      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+      std::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
@@ -457,17 +465,17 @@ class V_COREEXPORT AddParameter: public MessageBase<AddParameter, Message::ADDPA
       int paramtype;
       int presentation;
 };
-BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(AddParameter) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notification that a module has removed a parameter
-class V_COREEXPORT RemoveParameter: public MessageBase<RemoveParameter, Message::REMOVEPARAMETER> {
+class V_COREEXPORT RemoveParameter: public MessageBase<RemoveParameter, REMOVEPARAMETER> {
    public:
       RemoveParameter(const Parameter &param, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;
       int getParameterType() const;
-      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+      std::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
@@ -475,12 +483,12 @@ class V_COREEXPORT RemoveParameter: public MessageBase<RemoveParameter, Message:
       module_name_t module;
       int paramtype;
 };
-BOOST_STATIC_ASSERT(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE, "message too large");
 
 //! request parameter value update or notify that a parameter value has been changed
-class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPARAMETER> {
+class V_COREEXPORT SetParameter: public MessageBase<SetParameter, SETPARAMETER> {
    public:
-      SetParameter(int module, const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
+      SetParameter(int module, const std::string & name, const std::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(int module, const std::string & name, const Integer value);
       SetParameter(int module, const std::string & name, const Float value);
       SetParameter(int module, const std::string & name, const ParamVector &value);
@@ -505,7 +513,7 @@ class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPA
       ParamVector getVector() const;
       IntParamVector getIntVector() const;
 
-      bool apply(boost::shared_ptr<Parameter> param) const;
+      bool apply(std::shared_ptr<Parameter> param) const;
 
    private:
       int m_module; //!< destination module
@@ -523,10 +531,10 @@ class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPA
          param_value_t v_string;
       };
 };
-BOOST_STATIC_ASSERT(sizeof(SetParameter) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SetParameter) <= Message::MESSAGE_SIZE, "message too large");
 
 //! set list of choice descriptions for a choice parameter
-class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, Message::SETPARAMETERCHOICES> {
+class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, SETPARAMETERCHOICES> {
    public:
       SetParameterChoices(const std::string &name, const std::vector<std::string> &choices);
 
@@ -534,30 +542,30 @@ class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, 
       int getNumChoices() const;
       const char *getChoice(int idx) const;
 
-      bool apply(boost::shared_ptr<Parameter> param) const;
+      bool apply(std::shared_ptr<Parameter> param) const;
 
    private:
       int numChoices;
       param_name_t name;
       param_choice_t choices[param_num_choices];
 };
-BOOST_STATIC_ASSERT(sizeof(SetParameterChoices) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SetParameterChoices) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT Barrier: public MessageBase<Barrier, Message::BARRIER> {
+class V_COREEXPORT Barrier: public MessageBase<Barrier, BARRIER> {
 
  public:
    Barrier();
 };
-BOOST_STATIC_ASSERT(sizeof(Barrier) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Barrier) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, Message::BARRIERREACHED> {
+class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, BARRIERREACHED> {
 
  public:
    BarrierReached(const uuid_t &uuid);
 };
-BOOST_STATIC_ASSERT(sizeof(BarrierReached) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(BarrierReached) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT SetId: public MessageBase<SetId, Message::SETID> {
+class V_COREEXPORT SetId: public MessageBase<SetId, SETID> {
 
  public:
    SetId(const int id);
@@ -567,17 +575,17 @@ class V_COREEXPORT SetId: public MessageBase<SetId, Message::SETID> {
  private:
    const int m_id;
 };
-BOOST_STATIC_ASSERT(sizeof(SetId) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SetId) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT ReplayFinished: public MessageBase<ReplayFinished, Message::REPLAYFINISHED> {
+class V_COREEXPORT ReplayFinished: public MessageBase<ReplayFinished, REPLAYFINISHED> {
 
 public:
    ReplayFinished();
 };
-BOOST_STATIC_ASSERT(sizeof(ReplayFinished) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ReplayFinished) <= Message::MESSAGE_SIZE, "message too large");
 
 //! send text messages to user interfaces
-class V_COREEXPORT SendText: public MessageBase<SendText, Message::SENDTEXT> {
+class V_COREEXPORT SendText: public MessageBase<SendText, SENDTEXT> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(TextType,
@@ -611,10 +619,10 @@ private:
    //! whether m_text has been truncated
    bool m_truncated;
 };
-BOOST_STATIC_ASSERT(sizeof(SendText) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SendText) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(TextType, SendText)
 
-class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, Message::OBJECTRECEIVEPOLICY> {
+class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, OBJECTRECEIVEPOLICY> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy,
@@ -627,10 +635,10 @@ public:
 private:
    Policy m_policy;
 };
-BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ObjectReceivePolicy) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Policy, ObjectReceivePolicy)
 
-class V_COREEXPORT SchedulingPolicy: public MessageBase<SchedulingPolicy, Message::SCHEDULINGPOLICY> {
+class V_COREEXPORT SchedulingPolicy: public MessageBase<SchedulingPolicy, SCHEDULINGPOLICY> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Schedule,
@@ -644,17 +652,19 @@ public:
 private:
    Schedule m_policy;
 };
-BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(SchedulingPolicy) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Schedule, SchedulingPolicy)
 
 //! control whether/when prepare() and reduce() are called
-class V_COREEXPORT ReducePolicy: public MessageBase<ReducePolicy, Message::REDUCEPOLICY> {
+class V_COREEXPORT ReducePolicy: public MessageBase<ReducePolicy, REDUCEPOLICY> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reduce,
       (Never) //< module's prepare()/reduce() methods will never be called - only for modules with COMBINE port (renderers)
       (Locally) //< module's prepare()/reduce() methods will be called unsynchronized on each rank
-      //(PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
+      (PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
+      (PerTimestepOrdered) //< module's reduce() method will be called on all ranks together once per timestep in ascending order
+      (PerTimestepZeroFirst) //< module's reduce() method will be called on all ranks together once per timestep in arbitrary order, but zero first
       (OverAll) //< module's prepare()/reduce() method will be called on all ranks together after all timesteps have been received
    )
    ReducePolicy(Reduce red);
@@ -662,7 +672,7 @@ class V_COREEXPORT ReducePolicy: public MessageBase<ReducePolicy, Message::REDUC
  private:
    Reduce m_reduce;
 };
-BOOST_STATIC_ASSERT(sizeof(ReducePolicy) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ReducePolicy) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
 
 //! steer execution stages
@@ -671,7 +681,7 @@ V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
  *
  *
  */
-class V_COREEXPORT ExecutionProgress: public MessageBase<ExecutionProgress, Message::EXECUTIONPROGRESS> {
+class V_COREEXPORT ExecutionProgress: public MessageBase<ExecutionProgress, EXECUTIONPROGRESS> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Progress,
@@ -685,14 +695,14 @@ class V_COREEXPORT ExecutionProgress: public MessageBase<ExecutionProgress, Mess
  private:
    Progress m_stage;
 };
-BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
 
 //! enable/disable message tracing for a module
-class V_COREEXPORT Trace: public MessageBase<Trace, Message::TRACE> {
+class V_COREEXPORT Trace: public MessageBase<Trace, TRACE> {
 
  public:
-   Trace(int module, Message::Type type, bool onoff);
+   Trace(int module, Type type, bool onoff);
    int module() const;
    Type messageType() const;
    bool on() const;
@@ -702,10 +712,10 @@ class V_COREEXPORT Trace: public MessageBase<Trace, Message::TRACE> {
    Type m_messageType;
    bool m_on;
 };
-BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(Trace) <= Message::MESSAGE_SIZE, "message too large");
 
 //! announce availability of a module to UI
-class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, Message::MODULEAVAILABLE> {
+class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAVAILABLE> {
 
  public:
    ModuleAvailable(int hub, const std::string &name, const std::string &path = std::string());
@@ -718,10 +728,10 @@ class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, Message:
    module_name_t m_name;
    text_t m_path;
 };
-BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
 
 //! lock UI (block user interaction)
-class V_COREEXPORT LockUi: public MessageBase<LockUi, Message::LOCKUI> {
+class V_COREEXPORT LockUi: public MessageBase<LockUi, LOCKUI> {
 
  public:
    LockUi(bool locked);
@@ -730,10 +740,10 @@ class V_COREEXPORT LockUi: public MessageBase<LockUi, Message::LOCKUI> {
  private:
    bool m_locked;
 };
-BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(LockUi) <= Message::MESSAGE_SIZE, "message too large");
 
 //! request hub to listen on TCP port and forward incoming connections
-class V_COREEXPORT RequestTunnel: public MessageBase<RequestTunnel, Message::REQUESTTUNNEL> {
+class V_COREEXPORT RequestTunnel: public MessageBase<RequestTunnel, REQUESTTUNNEL> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
@@ -772,10 +782,10 @@ class V_COREEXPORT RequestTunnel: public MessageBase<RequestTunnel, Message::REQ
    unsigned short m_destPort;
    bool m_remove;
 };
-BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE, "message too large");
 
 //! request remote data object
-class V_COREEXPORT RequestObject: public MessageBase<RequestObject, Message::REQUESTOBJECT> {
+class V_COREEXPORT RequestObject: public MessageBase<RequestObject, REQUESTOBJECT> {
 
  public:
    RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer="");
@@ -792,10 +802,10 @@ class V_COREEXPORT RequestObject: public MessageBase<RequestObject, Message::REQ
    bool m_array;
    int m_arrayType;
 };
-BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(RequestObject) <= Message::MESSAGE_SIZE, "message too large");
 
 //! header for data object transmission
-class V_COREEXPORT SendObject: public MessageBase<SendObject, Message::SENDOBJECT> {
+class V_COREEXPORT SendObject: public MessageBase<SendObject, SENDOBJECT> {
 
  public:
    SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);
@@ -821,7 +831,7 @@ class V_COREEXPORT SendObject: public MessageBase<SendObject, Message::SENDOBJEC
    int32_t m_creator;
    double m_realtime;
 };
-BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
+static_assert(sizeof(RequestObject) <= Message::MESSAGE_SIZE, "message too large");
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

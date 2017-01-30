@@ -1,6 +1,5 @@
 #include "tunnel.h"
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 #include <boost/system/error_code.hpp>
 
 #include <core/messages.h>
@@ -9,7 +8,7 @@
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
-using boost::shared_ptr;
+using std::shared_ptr;
 
 typedef ip::tcp::socket tcp_socket;
 typedef ip::tcp::acceptor acceptor;
@@ -46,7 +45,8 @@ void TunnelManager::cleanUp() {
 }
 
 void TunnelManager::startThread() {
-   m_threads.emplace_back(boost::bind(&asio::io_service::run, &m_io));
+   auto &io = m_io;
+   m_threads.emplace_back([&io](){ io.run(); });
    CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
 }
 
@@ -92,9 +92,9 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
       return false;
    }
    try {
-      boost::shared_ptr<Tunnel> tun(new Tunnel(*this, listenPort, destAddr, destPort));
+      std::shared_ptr<Tunnel> tun(new Tunnel(*this, listenPort, destAddr, destPort));
       m_tunnels[listenPort] = tun;
-      if (m_threads.size() < boost::thread::hardware_concurrency())
+      if (m_threads.size() < std::thread::hardware_concurrency())
          startThread();
    } catch(...) {
       CERR << "error during tunnel creation" << std::endl;
@@ -157,7 +157,7 @@ Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::addres
 Tunnel::~Tunnel() {
 
    for (auto &s: m_streams) {
-      if (boost::shared_ptr<TunnelStream> p = s.lock())
+      if (std::shared_ptr<TunnelStream> p = s.lock())
          p->destroy();
    }
 }
@@ -200,16 +200,16 @@ void Tunnel::handleAccept(const boost::system::error_code &error) {
 
    CERR << "incoming connection..." << std::endl;
 
-   boost::shared_ptr<tcp_socket> sock(new tcp_socket(m_manager.io()));
+   std::shared_ptr<tcp_socket> sock(new tcp_socket(m_manager.io()));
    boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
    CERR << "forwarding to " << dest << std::endl;
    sock->async_connect(dest,
-       boost::bind(&Tunnel::handleConnect, this, m_listeningSocket, sock, boost::asio::placeholders::error));
+         [this, sock](boost::system::error_code ec){ handleConnect(m_listeningSocket, sock, ec); });
 
    startAccept();
 }
 
-void Tunnel::handleConnect(boost::shared_ptr<ip::tcp::socket> sock0, boost::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {
+void Tunnel::handleConnect(std::shared_ptr<ip::tcp::socket> sock0, std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {
 
    if (error) {
       CERR << "error in connect: " << error.message() << std::endl;
@@ -225,7 +225,7 @@ void Tunnel::handleConnect(boost::shared_ptr<ip::tcp::socket> sock0, boost::shar
 #undef CERR
 #define CERR std::cerr << "TunnelStream: "
 
-TunnelStream::TunnelStream(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0, boost::shared_ptr<boost::asio::ip::tcp::socket> sock1)
+TunnelStream::TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1)
 {
    m_self.reset(this);
 
@@ -249,7 +249,7 @@ TunnelStream::~TunnelStream() {
    close();
 }
 
-boost::shared_ptr<TunnelStream> TunnelStream::self() {
+std::shared_ptr<TunnelStream> TunnelStream::self() {
    return m_self;
 }
 
@@ -266,7 +266,7 @@ void TunnelStream::destroy() {
    m_self.reset();
 }
 
-void TunnelStream::handleRead(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length) {
+void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length) {
 
    //CERR << "handleRead:  sockIdx=" << sockIdx << ", len=" << length << std::endl;
    int other = (sockIdx+1)%2;
@@ -281,7 +281,7 @@ void TunnelStream::handleRead(boost::shared_ptr<TunnelStream> self, size_t sockI
          });
 }
 
-void TunnelStream::handleWrite(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec) {
+void TunnelStream::handleWrite(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec) {
 
    //CERR << "handleWrite: sockIdx=" << sockIdx << std::endl;
    int other = (sockIdx+1)%2;

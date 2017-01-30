@@ -47,9 +47,11 @@ public:
    // GridInterface
    Index getNumVertices() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
-   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
+   Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
+   Vector getVertex(Index v) const override;
 
 private:
    // mutable pointers to ShmVectors

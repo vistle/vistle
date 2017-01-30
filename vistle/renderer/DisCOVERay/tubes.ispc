@@ -29,7 +29,7 @@
 #include "spheres_isect.isph"
 
 uniform const float Epsilon = 1e-6;
-uniform const float ArrowSize = 1.5f;
+uniform const float ArrowSize = 2.0f;
 
 bool coneSectionIsect(const uniform TubeSection &section0,
       const uniform TubeSection &section1,

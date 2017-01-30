@@ -4,26 +4,27 @@ vistle_find_package(TBB)
 set(renderer_SOURCES
    renderer.cpp
    renderobject.cpp
+   rhrcontroller.cpp
 )
 
 set(renderer_HEADERS
    export.h
    renderer.h
    renderobject.h
+   rhrcontroller.h
 )
 
-if(LIBVNCSERVER_FOUND AND TBB_FOUND)
+if(TBB_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
-      vnccontroller.cpp
+      #vnccontroller.cpp
       parrendmgr.cpp
    )
    set(renderer_HEADERS ${renderer_HEADERS}
-      vnccontroller.h
+      #vnccontroller.h
       parrendmgr.h
    )
    include_directories(
       ${TBB_INCLUDE_DIR}
-      ${LIBVNCSERVER_INCLUDE_DIR}
       ${ICET_INCLUDE_DIRS}
    )
 endif()
@@ -50,7 +51,7 @@ target_link_libraries(vistle_renderer
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
-if(LIBVNCSERVER_FOUND AND TBB_FOUND)
+if(TBB_FOUND)
    target_link_libraries(vistle_renderer
       vistle_rhr
       ${ICET_CORE_LIBS}

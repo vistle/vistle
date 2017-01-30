@@ -1,7 +1,7 @@
 #ifndef VISTLE_HUB_H
 #define VISTLE_HUB_H
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/asio.hpp>
 #include <core/porttracker.h>
 #include <core/statetracker.h>
@@ -27,12 +27,12 @@ class Hub {
    bool init(int argc, char *argv[]);
    bool processScript();
    bool dispatch();
-   bool sendMessage(boost::shared_ptr<socket> sock, const message::Message &msg);
+   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg);
    unsigned short port() const;
    const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
-         boost::shared_ptr<boost::asio::ip::tcp::socket> sock = boost::shared_ptr<boost::asio::ip::tcp::socket>());
+         std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>());
    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub);
    bool sendMaster(const message::Message &msg);
    bool sendSlaves(const message::Message &msg, bool returnToSender=false);
@@ -54,24 +54,25 @@ private:
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();
-   void handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
-   void handleAccept(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
-   void addSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
-   bool removeSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void addSlave(const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
+   void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
+   void addSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
+   bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addSlave(const std::string &name, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
    bool startCleaner();
    bool startManager();
 
-   unsigned short m_port;
+   unsigned short m_port, m_masterPort;
+   std::string m_masterHost;
    boost::asio::io_service m_ioService;
-   boost::shared_ptr<acceptor> m_acceptor;
+   std::shared_ptr<acceptor> m_acceptor;
 
-   std::map<boost::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
-   std::set<boost::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
+   std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
+   std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
 
-   boost::shared_ptr<DataProxy> m_dataProxy;
+   std::shared_ptr<DataProxy> m_dataProxy;
    TunnelManager m_tunnelManager;
    StateTracker m_stateTracker;
    UiManager m_uiManager;
@@ -79,16 +80,16 @@ private:
    std::map<process_handle, int> m_processMap;
    bool m_managerConnected;
 
-   std::string m_bindir;
+   std::string m_prefix;
    std::string m_scriptPath;
    bool m_quitting;
 
    AvailableMap m_availableModules;
 
    bool m_isMaster;
-   boost::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+   std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
    struct Slave {
-      boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
       std::string name;
       bool ready = false;
       int id = 0;

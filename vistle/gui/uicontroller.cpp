@@ -1,19 +1,21 @@
+#include <userinterface/pythoninterface.h>
+#include <userinterface/pythonmodule.h>
 #include "uicontroller.h"
 #include "modifieddialog.h"
 #include "dataflownetwork.h"
 #include "dataflowview.h"
 #include "parameters.h"
 #include "vistleconsole.h"
-#include <userinterface/pythoninterface.h>
-#include <userinterface/pythonmodule.h>
-#include <util/findself.h>
+#include <util/directory.h>
 
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <QDir>
 #include <QFileDialog>
 #include <QDockWidget>
 #include <QGuiApplication>
+
+namespace dir = vistle::directory;
 
 namespace gui {
 
@@ -21,7 +23,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 : QObject(parent)
 , m_vistleConnection(nullptr)
 , m_ui(nullptr)
-, m_python(nullptr)
 , m_pythonMod(nullptr)
 , m_thread(nullptr)
 , m_scene(nullptr)
@@ -44,8 +45,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       port = atoi(argv[2]);
    }
 
-   m_python = new vistle::PythonInterface("Vistle GUI");
-
    m_mainWindow.parameters()->setVistleObserver(&m_observer);
    m_mainWindow.setQuitOnExit(quitOnExit);
    m_ui = new vistle::UserInterface(host, port, &m_observer);
@@ -57,8 +56,9 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
-   m_pythonMod = new vistle::PythonModule(m_vistleConnection, vistle::getbindir(argc, argv) + "/../share/vistle/");
-   m_thread = new boost::thread(boost::ref(*m_vistleConnection));
+   m_pythonMod = new vistle::PythonModule(m_vistleConnection, dir::share(dir::prefix(argc, argv)));
+   m_pythonDir = dir::share(dir::prefix(argc, argv));
+   m_thread = new std::thread(std::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
@@ -106,6 +106,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_mainWindow.show();
 }
 
+void UiController::init() {
+   m_mainWindow.m_console->init();
+   m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
+}
+
 UiController::~UiController()
 {
 }
@@ -128,9 +133,6 @@ void UiController::finish() {
 
    delete m_vistleConnection;
    m_vistleConnection = nullptr;
-
-   delete m_python;
-   m_python = nullptr;
 }
 
 void UiController::quitRequested(bool &allowed) {
@@ -265,7 +267,7 @@ void UiController::newParameter(int moduleId, QString parameterName)
     if (parameterName == "_position") {
        if (Module *m = m_scene->findModule(moduleId)) {
           auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-          auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p);
+          auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
           if (vp && vp->isDefault() && m->isPositionValid()) {
              m->sendPosition();
           }
@@ -283,7 +285,7 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
    if (parameterName == "_position") {
       if (Module *m = m_scene->findModule(moduleId)) {
          auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-         auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p);
+         auto vp = std::dynamic_pointer_cast<vistle::VectorParameter>(p);
          if (vp && !vp->isDefault()) {
             vistle::ParamVector pos = vp->getValue();
             m->setPos(pos[0], pos[1]);

@@ -1,6 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/triangles.h>
@@ -105,7 +107,7 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale) {
 #pragma omp parallel for
-    for (Index idx=0; idx<numVert; ++idx) {
+    for (ssize_t idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
         d[idx] = computeData(x, y, z, mode, scale);
     }
@@ -117,9 +119,9 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
         dist[c] /= dim[c]-1;
     }
 #pragma omp parallel for
-    for (Index i=0; i<dim[0]; ++i) {
-        for (Index j=0; j<dim[1]; ++j) {
-            for (Index k=0; k<dim[2]; ++k) {
+    for (ssize_t i=0; i<dim[0]; ++i) {
+        for (ssize_t j=0; j<dim[1]; ++j) {
+            for (ssize_t k=0; k<dim[2]; ++k) {
                 Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                 Scalar x = min[0]+i*dist[0];
                 Scalar y = min[1]+j*dist[1];
@@ -131,7 +133,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     }
 }
 
-void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, SIndex ghostWidth[3][2]) {
+void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[3][2]) {
     for (Index i=0; i<3; ++i) {
             ptr->setNumGhostLayers(i, StructuredGridBase::Bottom, ghostWidth[i][0]);
             ptr->setNumGhostLayers(i, StructuredGridBase::Top, ghostWidth[i][1]);
@@ -213,7 +215,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
         geoOut = geo;
     } else {
         // obtain dimenstions of current block while taking into consideration ghost cells
-        SIndex ghostWidth[3][2];
+        Index ghostWidth[3][2];
 
         for (unsigned i = 0; i < 3; i++) {
             ghostWidth[i][0] = (currBlock[i] == 0) ? 0 : m_ghostLayerWidth->getValue();
@@ -241,7 +243,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
 
             // generate test data
             for (int c=0; c<3; ++c) {
-                for (SIndex i = 0; i < dim[c]; ++i) {
+                for (Index i = 0; i < dim[c]; ++i) {
                     r->coords(c)[i] = min[c]+(i-ghostWidth[c][0])*dist[c];
                 }
             }
@@ -256,11 +258,11 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
             Scalar *y = s->y().data();
             Scalar *z = s->z().data();
 #pragma omp parallel for
-            for (SIndex i=0; i<dim[0]; ++i) {
+            for (ssize_t i=0; i<dim[0]; ++i) {
 #pragma omp parallel for
-                for (SIndex j=0; j<dim[1]; ++j) {
+                for (ssize_t j=0; j<dim[1]; ++j) {
 #pragma omp parallel for
-                    for (SIndex k=0; k<dim[2]; ++k) {
+                    for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
                         y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];
@@ -279,11 +281,11 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
             Scalar *y = u->y().data();
             Scalar *z = u->z().data();
 #pragma omp parallel for
-            for (SIndex i=0; i<dim[0]; ++i) {
+            for (ssize_t i=0; i<dim[0]; ++i) {
 #pragma omp parallel for
-                for (SIndex j=0; j<dim[1]; ++j) {
+                for (ssize_t j=0; j<dim[1]; ++j) {
 #pragma omp parallel for
-                    for (SIndex k=0; k<dim[2]; ++k) {
+                    for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
                         y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];

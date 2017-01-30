@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <queue>
 
 #include <util/directory.h>
 
@@ -29,8 +30,6 @@ class ClusterManager {
    ClusterManager(int rank, const std::vector<std::string> &hosts);
    ~ClusterManager();
 
-   bool scanModules(const std::string &dir);
-
    bool dispatch(bool &received);
    const StateTracker &state() const;
 
@@ -51,7 +50,7 @@ class ClusterManager {
 
    std::string getModuleName(int id) const;
    std::vector<std::string> getParameters(int id) const;
-   boost::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
+   std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
    PortManager &portManager() const;
 
@@ -64,9 +63,17 @@ class ClusterManager {
    bool isLocal(int id) const;
    std::vector<message::Buffer> m_messageQueue;
 
-   boost::shared_ptr<PortManager> m_portManager;
+   std::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
-   message::Message::Type m_traceMessages;
+   message::Type m_traceMessages;
+
+   struct CompModuleHeight {
+      bool operator()(const StateTracker::Module &a, const StateTracker::Module &b) {
+         return a.height > b.height;
+      }
+   };
+   std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> m_modulePriority;
+   int m_modulePriorityChange = -1;
 
    bool m_quitFlag;
 

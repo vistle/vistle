@@ -1,7 +1,9 @@
+return()
 vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(GLEW)
+vistle_find_package(Boost 1.40 REQUIRED)
 using(SNAPPY optional)
 using(GLEW)
 using(BOOST)
@@ -30,6 +32,7 @@ include_directories(
    ${LIBVNCSERVER_INCLUDE_DIR}
    ${TBB_INCLUDE_DIR}
    ${JPEGTURBO_INCLUDE_DIR}
+   ${Boost_INCLUDE_DIRS}
 )
 
 set(HEADERS
@@ -51,4 +54,10 @@ if(NOT WIN32)
 endif()
 
 cover_add_plugin(VncClient ${HEADER} ${SOURCES})
-target_link_libraries(VncClient vistle_rhr ${TURBOJPEG_LIBRARIES} ${LIBVNCSERVER_CLIENT_LIBRARY} ${TBB_LIBRARIES})
+target_link_libraries(VncClient vistle_rhr ${TURBOJPEG_LIBRARIES} ${LIBVNCSERVER_CLIENT_LIBRARY} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
+if(UNIX AND NOT APPLE)
+    target_link_libraries(VncClient
+        -lpthread                                                                                                                                                                                                                                                                           
+    )
+endif()
+

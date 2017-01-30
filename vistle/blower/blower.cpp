@@ -2,15 +2,16 @@
 #include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
-#include <util/findself.h>
+#include <util/directory.h>
 
-#include <boost/ref.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <functional>
+#include <thread>
+#include <mutex>
 
 #include <util/sleep.h>
 
 using namespace vistle;
+namespace dir = vistle::directory;
 
 class UiRunner {
 
@@ -21,20 +22,20 @@ class UiRunner {
       {
       }
    void cancel() {
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      std::unique_lock<std::mutex> lock(m_mutex);
       m_done = true;
    }
    void operator()() {
 
       while(m_ui.dispatch()) {
          {
-            boost::unique_lock<boost::mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             if (m_done)
                break;
          }
       }
       {
-         boost::unique_lock<boost::mutex> lock(m_mutex);
+         std::unique_lock<std::mutex> lock(m_mutex);
          m_done = true;
       }
    }
@@ -42,7 +43,7 @@ class UiRunner {
  private:
    UserInterface &m_ui;
    bool m_done;
-   boost::mutex m_mutex;
+   std::mutex m_mutex;
 };
 
 class StatePrinter: public StateObserver {
@@ -111,7 +112,7 @@ class StatePrinter: public StateObserver {
          << toId << ":" << toName << std::endl;
    }
 
-   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::uuid_t &refUuid) {
+   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) {
 
       std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
    }
@@ -150,8 +151,10 @@ int main(int argc, char *argv[]) {
       PythonInterface python("blower");
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
-      PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../share/vistle/");
-      boost::thread runnerThread(boost::ref(conn));
+      PythonModule pythonmodule(&conn, dir::share(dir::prefix(argc, argv)));
+      python.init();
+      pythonmodule.import(&python.nameSpace(), dir::share(dir::prefix(argc, argv)));
+      std::thread runnerThread(std::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {
          std::string line;

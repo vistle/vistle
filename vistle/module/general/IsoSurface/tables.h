@@ -32,12 +32,12 @@
 //vertlist[11] = lerp3(newv[3], newv[7], tlist[11]);
 
 
-static CONSTANT uint hexaEdgeTable[2][12] = {
+static CONSTANT int hexaEdgeTable[2][12] = {
     {0,1,2,3,4,5,6,7,0,1,2,3},
     {1,2,3,0,5,6,7,4,4,5,6,7},
 };
 
-static CONSTANT uint hexaTriTable[256][16] = {
+static CONSTANT int hexaTriTable[256][16] = {
    {X, X, X, X, X, X, X, X, X, X, X, X, X, X, X, X},
 	{0, 8, 3, X, X, X, X, X, X, X, X, X, X, X, X, X},
 	{0, 1, 9, X, X, X, X, X, X, X, X, X, X, X, X, X},
@@ -297,7 +297,7 @@ static CONSTANT uint hexaTriTable[256][16] = {
 };
 
 // number of vertices for each case above
-static CONSTANT uint hexaNumVertsTable[256] = {
+static CONSTANT int hexaNumVertsTable[256] = {
     0,
     3,
     3,
@@ -571,7 +571,7 @@ static CONSTANT uint hexaNumVertsTable[256] = {
 //
 //vertlist[5] = vertexInterp(isoValue, v[2], v[3], field[2], field[3]);
 
-static CONSTANT uint tetraTriTable[16][6] = {
+static CONSTANT int tetraTriTable[16][6] = {
    { X, X, X, X, X, X }, //0
    { 0, 2, 1, X, X, X }, //1
    { 0, 3, 4, X, X, X }, //2
@@ -590,7 +590,7 @@ static CONSTANT uint tetraTriTable[16][6] = {
    { X, X, X, X, X, X }  //15
 };
 
-static CONSTANT uint tetraNumVertsTable[16]={
+static CONSTANT int tetraNumVertsTable[16]={
     0,
     3,
     3,
@@ -609,7 +609,7 @@ static CONSTANT uint tetraNumVertsTable[16]={
     0,
 };
 
-static CONSTANT uint tetraEdgeTable[2][6] = {
+static CONSTANT int tetraEdgeTable[2][6] = {
     {0,0,0,1,1,2},
     {1,2,3,2,3,3},
 };
@@ -630,7 +630,7 @@ static CONSTANT uint tetraEdgeTable[2][6] = {
 //vertlist[8] = vertexInterp(isoValue, v[2], v[5], field[2], field[5]);
 
 
-static CONSTANT uint prismTriTable[64][12] = {
+static CONSTANT int prismTriTable[64][12] = {
 
 { X, X, X, X, X, X, X, X, X, X, X, X },//0
 { 0, 6, 2, X, X, X, X, X, X, X, X, X },
@@ -699,7 +699,7 @@ static CONSTANT uint prismTriTable[64][12] = {
 
         };
 
-static CONSTANT uint prismNumVertsTable[64] = {
+static CONSTANT int prismNumVertsTable[64] = {
 
 
     0,
@@ -769,7 +769,7 @@ static CONSTANT uint prismNumVertsTable[64] = {
 
 };
 
-static CONSTANT uint prismEdgeTable[2][9] = {
+static CONSTANT int prismEdgeTable[2][9] = {
     {0,1,0,3,4,3,0,1,2},
     {1,2,2,4,5,5,3,4,5},
 };
@@ -789,7 +789,7 @@ static CONSTANT uint prismEdgeTable[2][9] = {
 
 
 
-static CONSTANT uint pyrTriTable[32][12] = {
+static CONSTANT int pyrTriTable[32][12] = {
     { X, X, X, X, X, X, X, X, X, X, X, X },
     { 0, 1, 2, X, X, X, X, X, X, X, X, X },
     { 0, 4, 3, X, X, X, X, X, X, X, X, X },
@@ -825,7 +825,7 @@ static CONSTANT uint pyrTriTable[32][12] = {
 };
 
 
-static CONSTANT uint pyrNumVertsTable[32] = {
+static CONSTANT int pyrNumVertsTable[32] = {
     0,
     3,
     3,
@@ -860,7 +860,7 @@ static CONSTANT uint pyrNumVertsTable[32] = {
     0
 };
 
-static CONSTANT uint pyrEdgeTable[2][8] = {
+static CONSTANT int pyrEdgeTable[2][8] = {
  {0,0,0,1,1,2,2,3},
  {1,4,3,4,2,3,4,4},
 };

@@ -1,21 +1,26 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS chrono system filesystem)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system filesystem)
 
 set(util_SOURCES
    coRestraint.cpp
    exception.cpp
    findself.cpp
+   hostname.cpp
    stopwatch.cpp
    tools.cpp
    spawnprocess.cpp
    directory.cpp
    sleep.cpp
+   sysdep.cpp
 )
 
 set(util_HEADERS
    export.h
    coRestraint.h
+   enum.h
    exception.h
    findself.h
+   hostname.h
+   math.h
    sysdep.h
    tools.h
    triple.h

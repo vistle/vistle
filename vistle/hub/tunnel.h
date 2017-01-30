@@ -1,10 +1,9 @@
 #ifndef VISTLE_TUNNEL_H
 #define VISTLE_TUNNEL_H
 
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
+#include <memory>
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <core/message.h>
 #include <core/messages.h>
@@ -34,11 +33,11 @@ private:
    unsigned short m_destPort;
 
    acceptor m_acceptor;
-   boost::shared_ptr<socket> m_listeningSocket;
-   std::vector<boost::weak_ptr<TunnelStream>> m_streams;
+   std::shared_ptr<socket> m_listeningSocket;
+   std::vector<std::weak_ptr<TunnelStream>> m_streams;
    void startAccept();
    void handleAccept(const boost::system::error_code &error);
-   void handleConnect(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0, boost::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
+   void handleConnect(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
 };
 
 //! a single established connection being tunneled
@@ -46,18 +45,18 @@ class TunnelStream {
 
    typedef boost::asio::ip::tcp::socket socket;
  public:
-   TunnelStream(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0, boost::shared_ptr<boost::asio::ip::tcp::socket> sock1);
+   TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1);
    ~TunnelStream();
-   boost::shared_ptr<TunnelStream> self();
+   std::shared_ptr<TunnelStream> self();
    void destroy();
    void close();
 
  private:
-   boost::shared_ptr<TunnelStream> m_self;
+   std::shared_ptr<TunnelStream> m_self;
    std::vector<std::vector<char>> m_buf;
-   std::vector<boost::shared_ptr<socket>> m_sock;
-   void handleRead(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length);
-   void handleWrite(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec);
+   std::vector<std::shared_ptr<socket>> m_sock;
+   void handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length);
+   void handleWrite(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec);
 };
 
 //! manage tunnel creation and destruction
@@ -80,8 +79,8 @@ class TunnelManager {
    bool removeTunnel(const message::RequestTunnel &msg);
    void startThread();
    io_service m_io;
-   std::map<unsigned short, boost::shared_ptr<Tunnel>> m_tunnels;
-   std::vector<boost::thread> m_threads;
+   std::map<unsigned short, std::shared_ptr<Tunnel>> m_tunnels;
+   std::vector<std::thread> m_threads;
 };
 
 }

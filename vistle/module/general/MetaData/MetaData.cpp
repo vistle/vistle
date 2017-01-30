@@ -5,6 +5,7 @@
 #include <core/triangles.h>
 #include <core/geometry.h>
 #include <core/vec.h>
+#include <util/math.h>
 
 #include "MetaData.h"
 
@@ -79,10 +80,7 @@ bool MetaData::compute() {
       }
       if (mod > 0)
           val[i] %= mod;
-      if (val[i] < min)
-          val[i] = min;
-      if (val[i] > max)
-          val[i] = max;
+      val[i] = clamp(val[i], min, max);
    }
 
    out->setMeta(data->meta());

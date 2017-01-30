@@ -14,8 +14,8 @@
 #include <core/message.h>
 
 #include <boost/asio.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <mutex>
+#include <condition_variable>
 
 namespace vistle {
 
@@ -65,17 +65,17 @@ class V_UIEXPORT UserInterface {
    boost::asio::ip::tcp::socket m_socket;
 
    struct RequestedMessage {
-      boost::mutex mutex;
-      boost::condition_variable cond;
+      std::mutex mutex;
+      std::condition_variable cond;
       bool received;
       std::vector<char> buf;
 
       RequestedMessage(): received(false) {}
    };
 
-   typedef std::map<message::uuid_t, boost::shared_ptr<RequestedMessage>> MessageMap;
+   typedef std::map<message::uuid_t, std::shared_ptr<RequestedMessage>> MessageMap;
    MessageMap m_messageMap;
-   boost::mutex m_messageMutex; //< protect access to m_messageMap
+   std::mutex m_messageMutex; //< protect access to m_messageMap
    bool m_locked;
    std::vector<message::Buffer> m_sendQueue;
 };

@@ -68,7 +68,7 @@ public:
     template<class T>
     void setParameter(QString name, const T &value) const;
     template<class T>
-    boost::shared_ptr<vistle::ParameterBase<T>> getParameter(QString name) const;
+    std::shared_ptr<vistle::ParameterBase<T>> getParameter(QString name) const;
     void sendPosition() const;
     bool isPositionValid() const;
     void setPositionValid();
@@ -87,6 +87,7 @@ protected:
 
 public slots:
     void execModule();
+    void cancelExecModule();
     void deleteModule();
 
 private:
@@ -98,6 +99,7 @@ private:
     QMenu *m_moduleMenu;
     QAction *m_deleteAct;
     QAction *m_execAct;
+    QAction *m_cancelExecAct;
 
     int m_hub;
     int m_id;
@@ -123,9 +125,9 @@ void Module::setParameter(QString name, const T &value) const {
 }
 
 template <class T>
-boost::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
+std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
 
-   return boost::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
+   return std::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
 }
 
 } //namespace gui

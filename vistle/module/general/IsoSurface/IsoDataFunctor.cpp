@@ -22,7 +22,7 @@ IsoController::IsoController(vistle::Module *module)
 #endif
 }
 
-bool IsoController::parameterChanged(const vistle::Parameter* param) {
+bool IsoController::changeParameter(const vistle::Parameter* param) {
 
 #ifdef CUTTINGSURFACE
    switch (m_option->getValue()) {

@@ -4,8 +4,6 @@
 #include <array>
 #include <cassert>
 
-#include <boost/static_assert.hpp>
-
 #include <util/enum.h>
 #include <util/directory.h> // ModuleNameLength
 #include "uuid.h"
@@ -17,6 +15,55 @@
 namespace vistle {
 
 namespace message {
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
+      (INVALID) // keep 1st
+      (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
+      (IDENTIFY)
+      (ADDHUB)
+      (REMOVESLAVE)
+      (SETID)
+      (TRACE)
+      (SPAWN)
+      (SPAWNPREPARED)
+      (KILL)
+      (QUIT)
+      (STARTED)
+      (MODULEEXIT)
+      (BUSY)
+      (IDLE)
+      (EXECUTIONPROGRESS)
+      (EXECUTE)
+      (CANCELEXECUTE)
+      (ADDOBJECT)
+      (ADDOBJECTCOMPLETED)
+      (OBJECTRECEIVED)
+      (ADDPORT)
+      (REMOVEPORT)
+      (CONNECT)
+      (DISCONNECT)
+      (ADDPARAMETER)
+      (REMOVEPARAMETER)
+      (SETPARAMETER)
+      (SETPARAMETERCHOICES)
+      (PING)
+      (PONG)
+      (BARRIER)
+      (BARRIERREACHED)
+      (SENDTEXT)
+      (OBJECTRECEIVEPOLICY)
+      (SCHEDULINGPOLICY)
+      (REDUCEPOLICY)
+      (MODULEAVAILABLE)
+      (LOCKUI)
+      (REPLAYFINISHED)
+      (REQUESTTUNNEL)
+      (REQUESTOBJECT)
+      (SENDOBJECT)
+      (REMOTERENDERING)
+      (NumMessageTypes) // keep last
+)
+V_ENUM_OUTPUT_OP(Type, ::vistle::message)
 
 struct Id {
 
@@ -70,52 +117,6 @@ class V_COREEXPORT Message {
 
  public:
    static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
-
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
-      (INVALID) // keep 1st
-      (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
-      (IDENTIFY)
-      (ADDHUB)
-      (REMOVESLAVE)
-      (SETID)
-      (TRACE)
-      (SPAWN)
-      (SPAWNPREPARED)
-      (KILL)
-      (QUIT)
-      (STARTED)
-      (MODULEEXIT)
-      (BUSY)
-      (IDLE)
-      (EXECUTIONPROGRESS)
-      (EXECUTE)
-      (ADDOBJECT)
-      (ADDOBJECTCOMPLETED)
-      (OBJECTRECEIVED)
-      (ADDPORT)
-      (REMOVEPORT)
-      (CONNECT)
-      (DISCONNECT)
-      (ADDPARAMETER)
-      (REMOVEPARAMETER)
-      (SETPARAMETER)
-      (SETPARAMETERCHOICES)
-      (PING)
-      (PONG)
-      (BARRIER)
-      (BARRIERREACHED)
-      (SENDTEXT)
-      (OBJECTRECEIVEPOLICY)
-      (SCHEDULINGPOLICY)
-      (REDUCEPOLICY)
-      (MODULEAVAILABLE)
-      (LOCKUI)
-      (REPLAYFINISHED)
-      (REQUESTTUNNEL)
-      (REQUESTOBJECT)
-      (SENDOBJECT)
-      (NumMessageTypes) // keep last
-   )
 
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
@@ -188,12 +189,11 @@ class V_COREEXPORT Message {
    //! broadcast to all ranks?
    bool m_broadcast;
 };
-V_ENUM_OUTPUT_OP(Type, Message)
 
 class V_COREEXPORT Buffer: public Message {
 
   public:
-   Buffer(): Message(Message::ANY, Message::MESSAGE_SIZE) {
+   Buffer(): Message(ANY, Message::MESSAGE_SIZE) {
       memset(payload.data(), 0, payload.size());
    }
    Buffer(const Message &message): Message(message) {
@@ -220,7 +220,16 @@ class V_COREEXPORT Buffer: public Message {
    std::array<char, Message::MESSAGE_SIZE - sizeof(Message)> payload;
 
 };
-BOOST_STATIC_ASSERT(sizeof(Buffer) == Message::MESSAGE_SIZE);
+static_assert(sizeof(Buffer) == Message::MESSAGE_SIZE, "message too large");
+
+template<class MessageClass, Type MessageType>
+class MessageBase: public Message {
+public:
+    static const Type s_type = MessageType;
+protected:
+    MessageBase(): Message(MessageType, sizeof(MessageClass)) {
+    }
+};
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

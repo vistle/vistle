@@ -2,22 +2,13 @@ include(FindPackageHandleStandardArgs)
 vistle_find_package(embree 2.0)
 find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 
-vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
 
-if(NOT JPEGTURBO_FOUND)
-   RETURN()
-endif(NOT JPEGTURBO_FOUND)
 if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    message("DisCOVERay: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
-
-if(NOT LIBVNCSERVER_FOUND)
-   message("DisCOVERay: libvncserver not found")
    return()
 endif()
 
@@ -151,7 +142,7 @@ include_directories_ispc(${EMBREE_INCLUDE_DIRS})
 
 if (ENABLE_ISPC_SUPPORT)
    add_definitions(-DHAVE_ISPC)
-   if ((${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo") OR (${CMAKE_BUILD_TYPE} STREQUAL "Debug"))
+   if ((CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
       set(ISPC_COMPILE_FLAGS "-g")
    endif()
    add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h

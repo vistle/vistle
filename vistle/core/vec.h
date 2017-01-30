@@ -1,13 +1,12 @@
 #ifndef VEC_H
 #define VEC_H
-
 #include "index.h"
 #include "dimensions.h"
 #include "shm.h"
-#include "shmvector.h"
 #include "object.h"
 #include "vector.h"
 #include "database.h"
+#include "shmvector.h"
 
 namespace vistle {
 
@@ -16,8 +15,8 @@ class Vec: public DataBase {
    V_OBJECT(Vec);
 
    static const int MaxDim = MaxDimension;
-   BOOST_STATIC_ASSERT(Dim > 0);
-   BOOST_STATIC_ASSERT(Dim <= MaxDim);
+   static_assert(Dim > 0, "only positive Dim allowed");
+   static_assert(Dim <= MaxDim, "Dim too large");
 
  public:
    typedef DataBase Base;

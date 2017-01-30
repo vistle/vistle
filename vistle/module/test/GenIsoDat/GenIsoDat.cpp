@@ -4,6 +4,7 @@
 #include <core/lines.h>
 #include <core/points.h>
 #include <util/enum.h>
+#include <bitset>
 
 #include "GenIsoDat.h"
 
@@ -376,22 +377,22 @@ bool GenIsoDat::compute() {
           numElements = 1;
        };
 
-       cl.push_back(0);
+       cl.push_back(3);
        cl.push_back(1);
        cl.push_back(3);
        cl.push_back(0);
 
-       cl.push_back(0);
+       cl.push_back(3);
        cl.push_back(3);
        cl.push_back(2);
        cl.push_back(0);
 
-       cl.push_back(0);
+       cl.push_back(3);
        cl.push_back(2);
        cl.push_back(1);
        cl.push_back(0);
 
-       cl.push_back(1);
+       cl.push_back(3);
        cl.push_back(2);
        cl.push_back(3);
        cl.push_back(1);

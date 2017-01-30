@@ -3,9 +3,7 @@
 
 #include <map>
 
-#include <boost/thread/mutex.hpp>
-#include <boost/thread.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/asio.hpp>
 
 #include <core/message.h>
@@ -23,17 +21,17 @@ class UiManager {
    ~UiManager();
 
    void requestQuit();
-   bool handleMessage(const message::Message &msg, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   bool handleMessage(const message::Message &msg, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void sendMessage(const message::Message &msg);
-   void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void lockUi(bool lock);
    bool isLocked() const;
 
  private:
-   bool sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const;
+   bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg) const;
 
    void disconnect();
-   bool removeClient(boost::shared_ptr<UiClient> c);
+   bool removeClient(std::shared_ptr<UiClient> c);
 
    Hub &m_hub;
    StateTracker &m_stateTracker;
@@ -42,7 +40,7 @@ class UiManager {
    bool m_requestQuit;
 
    int m_uiCount;
-   std::map<boost::shared_ptr<boost::asio::ip::tcp::socket>, boost::shared_ptr<UiClient>> m_clients;
+   std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, std::shared_ptr<UiClient>> m_clients;
    std::vector<message::Buffer> m_queue;
 };
 

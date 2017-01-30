@@ -53,7 +53,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_rank(DefaultSender::rank())
 , m_destId(Id::NextHop)
 , m_destRank(-1)
-, m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
+, m_uuid(t == ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
 , m_referrer(boost::uuids::nil_generator()())
 , m_payloadSize(0)
 , m_broadcast(false)
@@ -135,7 +135,7 @@ void Message::setRank(int rank) {
    m_rank = rank;
 }
 
-Message::Type Message::type() const {
+Type Message::type() const {
 
    return m_type;
 }

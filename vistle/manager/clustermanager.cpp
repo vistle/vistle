@@ -3,7 +3,6 @@
  */
 #include <util/sysdep.h>
 #include <boost/foreach.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <mpi.h>
@@ -24,7 +23,7 @@
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
-#include <util/findself.h>
+#include <util/directory.h>
 
 #include "clustermanager.h"
 #include "datamanager.h"
@@ -33,14 +32,6 @@
 //#define QUEUE_DEBUG
 #define BARRIER_DEBUG
 //#define DEBUG
-
-#ifdef NOHUB
-#ifdef _WIN32
-#define SPAWN_WITH_MPI
-#else
-#include <unistd.h>
-#endif
-#endif
 
 #define CERR \
    std::cerr << "ClusterManager [" << m_rank << "/" << m_size << "] "
@@ -138,7 +129,7 @@ bool  ClusterManager::Module::processDelayed() {
                 auto type = msg.type();
                 ret = Communicator::the().broadcastAndHandleMessage(delayedMessages.front());
                 delayedMessages.pop_front();
-                if (type == message::Message::EXECUTE)
+                if (type == message::EXECUTE)
                     break;
             }
         }
@@ -155,7 +146,7 @@ bool ClusterManager::Module::haveDelayed() const {
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
-, m_traceMessages(message::Message::INVALID)
+, m_traceMessages(message::INVALID)
 , m_quitFlag(false)
 , m_rank(r)
 , m_size(hosts.size())
@@ -192,24 +183,6 @@ bool ClusterManager::isLocal(int id) const {
    }
    int hub = m_stateTracker.getHub(id);
    return hub == Communicator::the().hubId();
-}
-
-bool ClusterManager::scanModules(const std::string &dir) {
-
-#ifdef SCAN_MODULES_ON_HUB
-    return true;
-#else
-   bool result = true;
-   if (getRank() == 0) {
-      AvailableMap availableModules;
-      result = vistle::scanModules(dir, Communicator::the().hubId(), availableModules);
-      for (auto &p: availableModules) {
-         const auto &m = p.second;
-         sendHub(message::ModuleAvailable(m.hub, m.name, m.path));
-      }
-   }
-   return result;
-#endif
 }
 
 std::vector<AvailableModule> ClusterManager::availableModules() const {
@@ -256,19 +229,21 @@ bool ClusterManager::dispatch(bool &received) {
 
    bool done = false;
 
-   // handle messages from modules closer to sink first
-   // - should allow for objects to travel through the pipeline more quickly
-   typedef StateTracker::Module Module;
-   struct Comp {
-      bool operator()(const Module &a, const Module &b) {
-         return a.height > b.height;
-      }
-   };
-   std::priority_queue<Module, std::vector<Module>, Comp> modules;
-   for (auto m: m_stateTracker.runningMap) {
-      const auto &mod = m.second;
-      modules.emplace(mod);
+   if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
+
+       // handle messages from modules closer to sink first
+       // - should allow for objects to travel through the pipeline more quickly
+       while (!m_modulePriority.empty()) {
+           m_modulePriority.pop();
+       }
+       m_modulePriorityChange = m_stateTracker.graphChangeCount();
+       for (auto m: m_stateTracker.runningMap) {
+           const auto &mod = m.second;
+           m_modulePriority.emplace(mod);
+       }
    }
+
+   auto modules = m_modulePriority;
 
    // handle messages from modules
    while (!modules.empty()) {
@@ -400,7 +375,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
       if (it == runningMap.end()) {
          CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
          std::cerr << "  message: " << message << std::endl;
-         return false;
+         return true;
       }
 
       if (destRank == -1 || destRank == getRank()) {
@@ -428,13 +403,13 @@ bool ClusterManager::handle(const message::Buffer &message) {
        return sendHub(message);
    }
 
-   if (message.type() == m_traceMessages || m_traceMessages==Message::ANY) {
+   if (message.type() == m_traceMessages || m_traceMessages==ANY) {
        CERR << "handle: " << message << std::endl;
    }
 
    switch (message.type()) {
-      case Message::CONNECT:
-      case Message::DISCONNECT:
+      case CONNECT:
+      case DISCONNECT:
          // handled in handlePriv(...)
          break;
       default:
@@ -466,7 +441,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
    if (message::Id::isModule(message.destId())) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
-         if (message.type() != message::Message::EXECUTE) {
+         if (message.type() != message::EXECUTE) {
             return sendMessage(message.destId(), message);
          }
       } else {
@@ -474,14 +449,14 @@ bool ClusterManager::handle(const message::Buffer &message) {
       }
    }
    if (message::Id::isHub(message.destId())) {
-       if (destHub != hubId || message.type() == message::Message::EXECUTE) {
+       if (destHub != hubId || message.type() == message::EXECUTE) {
            return sendHub(message);
        }
    }
 
    switch (message.type()) {
 
-      case Message::IDENTIFY: {
+      case IDENTIFY: {
 
          const Identify &id = message.as<Identify>();
          CERR << "Identify message: " << id << std::endl;
@@ -496,150 +471,156 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
 
-      case message::Message::QUIT: {
+      case message::QUIT: {
 
          result = false;
          break;
       }
 
-      case message::Message::TRACE: {
+      case message::TRACE: {
          const Trace &trace = message.as<Trace>();
          result = handlePriv(trace);
          break;
       }
 
-      case message::Message::SPAWN: {
+      case message::SPAWN: {
 
          const message::Spawn &spawn = message.as<Spawn>();
          result = handlePriv(spawn);
          break;
       }
 
-      case message::Message::CONNECT: {
+      case message::CONNECT: {
 
          const message::Connect &connect = message.as<Connect>();
          result = handlePriv(connect);
          break;
       }
 
-      case message::Message::DISCONNECT: {
+      case message::DISCONNECT: {
 
          const message::Disconnect &disc = message.as<Disconnect>();
          result = handlePriv(disc);
          break;
       }
 
-      case message::Message::MODULEEXIT: {
+      case message::MODULEEXIT: {
 
          const message::ModuleExit &moduleExit = message.as<ModuleExit>();
          result = handlePriv(moduleExit);
          break;
       }
 
-      case message::Message::EXECUTE: {
+      case message::EXECUTE: {
 
          const message::Execute &exec = message.as<Execute>();
          result = handlePriv(exec);
          break;
       }
 
-      case message::Message::ADDOBJECT: {
+      case message::CANCELEXECUTE: {
+
+         const message::CancelExecute &cancel = message.as<CancelExecute>();
+         break;
+      }
+
+      case message::ADDOBJECT: {
 
          const message::AddObject &m = message.as<AddObject>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::ADDOBJECTCOMPLETED: {
+      case message::ADDOBJECTCOMPLETED: {
          const message::AddObjectCompleted &m = message.as<AddObjectCompleted>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::EXECUTIONPROGRESS: {
+      case message::EXECUTIONPROGRESS: {
 
          const message::ExecutionProgress &prog = message.as<ExecutionProgress>();
          result = handlePriv(prog);
          break;
       }
 
-      case message::Message::BUSY: {
+      case message::BUSY: {
 
          const message::Busy &busy = message.as<Busy>();
          result = handlePriv(busy);
          break;
       }
 
-      case message::Message::IDLE: {
+      case message::IDLE: {
 
          const message::Idle &idle = message.as<Idle>();
          result = handlePriv(idle);
          break;
       }
 
-      case message::Message::OBJECTRECEIVED: {
+      case message::OBJECTRECEIVED: {
          const message::ObjectReceived &m = message.as<ObjectReceived>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::SETPARAMETER: {
+      case message::SETPARAMETER: {
 
          const message::SetParameter &m = message.as<SetParameter>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::SETPARAMETERCHOICES: {
+      case message::SETPARAMETERCHOICES: {
          const message::SetParameterChoices &m = message.as<SetParameterChoices>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::BARRIER: {
+      case message::BARRIER: {
 
          const message::Barrier &m = message.as<Barrier>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::BARRIERREACHED: {
+      case message::BARRIERREACHED: {
 
          const message::BarrierReached &m = message.as<BarrierReached>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::SENDTEXT: {
+      case message::SENDTEXT: {
          const message::SendText &m = message.as<SendText>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::REQUESTTUNNEL: {
+      case message::REQUESTTUNNEL: {
          const message::RequestTunnel &m = message.as<RequestTunnel>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::PING: {
+      case message::PING: {
          const message::Ping &m = message.as<Ping>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::ADDHUB:
-      case Message::REMOVESLAVE:
-      case Message::STARTED:
-      case Message::ADDPORT:
-      case Message::ADDPARAMETER:
-      case Message::REMOVEPARAMETER:
-      case Message::MODULEAVAILABLE:
-      case Message::REPLAYFINISHED:
-      case Message::REDUCEPOLICY:
-      case Message::SCHEDULINGPOLICY:
-      case Message::OBJECTRECEIVEPOLICY:
-      case Message::PONG:
+      case message::ADDHUB:
+      case message::REMOVESLAVE:
+      case message::STARTED:
+      case message::ADDPORT:
+      case message::ADDPARAMETER:
+      case message::REMOVEPARAMETER:
+      case message::MODULEAVAILABLE:
+      case message::REPLAYFINISHED:
+      case message::REDUCEPOLICY:
+      case message::SCHEDULINGPOLICY:
+      case message::OBJECTRECEIVEPOLICY:
+      case message::PONG:
          break;
 
       default:
@@ -681,7 +662,7 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
       if (trace.on())
          m_traceMessages = trace.messageType();
       else
-         m_traceMessages = message::Message::INVALID;
+         m_traceMessages = message::INVALID;
    }
 
    return true;
@@ -1194,8 +1175,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                 if (mod.ranksStarted != m_size) {
                    CERR << "mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
                 }
-                vassert(mod.ranksStarted == m_size);
-                mod.ranksStarted = 0;
+                vassert(mod.ranksStarted >= m_size);
+                mod.ranksStarted -= m_size;
                 mod.ranksFinished = 0;
                 unqueueExecute = true;
              } else {
@@ -1382,7 +1363,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    bool handled = true;
    int sender = setParam.senderId();
    int dest = setParam.destId();
-   boost::shared_ptr<Parameter> applied;
+   std::shared_ptr<Parameter> applied;
    if (message::Id::isModule(dest)) {
       // message to owning module
       auto param = getParameter(dest, setParam.getName());
@@ -1606,7 +1587,7 @@ std::vector<std::string> ClusterManager::getParameters(int id) const {
    return m_stateTracker.getParameters(id);
 }
 
-boost::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const {
+std::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const {
 
    return m_stateTracker.getParameter(id, name);
 }
@@ -1637,7 +1618,7 @@ int ClusterManager::numRunning() const {
    int n = 0;
    for (auto &m: runningMap) {
       int state = m_stateTracker.getModuleState(m.first);
-      if ((state & StateObserver::Initialized) && !(state & StateObserver::Killed) && !(state & StateObserver::Quit))
+      if ((state & StateObserver::Initialized) && /* !(state & StateObserver::Killed) && */ !(state & StateObserver::Quit))
          ++n;
    }
    return n;

@@ -10,9 +10,11 @@
 #ifndef VNC_CLIENT_H
 #define VNC_CLIENT_H
 
-#include <cover/coVRPluginSupport.h>
-
 #include <string>
+#include <mutex>
+#include <thread>
+
+#include <cover/coVRPluginSupport.h>
 
 #include <rfb/rfb.h>
 #include <rfb/rfbclient.h>
@@ -20,7 +22,7 @@
 #include <rhr/rfbext.h>
 
 #include <tbb/concurrent_queue.h>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -58,6 +60,9 @@ class RemoteRenderObject;
 
 struct DecodeTask;
 
+using namespace vistle;
+
+
 
 //! implement remote hybrid rendering client based on VNC protocol
 class VncClient: public coVRPlugin
@@ -87,14 +92,16 @@ public:
    static rfbBool rfbMatricesMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbLightsMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbBoundsMessage(rfbClient *client, rfbServerToClientMsg *message);
-   static rfbBool rfbDepthMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbTileMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg *message);
    static void rfbUpdate(rfbClient *client, int x, int y, int w, int h);
    static rfbBool rfbResize(rfbClient *client);
 
    void sendFeedback(const char *info, const char *key, const char *data=NULL);
+   int handleRfbMessages();
 
+   bool m_runClient, m_clientRunning;
+   std::recursive_mutex *m_clientMutex;
 private:
    //! make plugin available to static member functions
    static VncClient *plugin;
@@ -107,11 +114,11 @@ private:
    bool m_benchmark;
    double m_minDelay, m_maxDelay, m_accumDelay;
    double m_lastStat;
+   double m_avgDelay;
    size_t m_remoteFrames, m_localFrames;
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
-   int handleRfbMessages();
    bool connectClient();
    void clientCleanup(rfbClient *client);
    void sendMatricesMessage(rfbClient *client, std::vector<matricesMsg> &messages, uint32_t requestNum);
@@ -121,8 +128,10 @@ private:
 
    //! server connection
    rfbClient *m_client;
+   std::thread *m_clientThread;
    bool m_listen;
    bool m_haveConnection;
+   bool m_haveMessage;
 
    appScreenConfig activeConfig;
 
@@ -136,18 +145,18 @@ private:
 
    int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_timestepToCommit;
 
-   bool handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload);
+   bool handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload);
    // work queue management for decoding tiles
    bool m_waitForDecode;
    int m_queued;
    std::deque<DecodeTask *> m_deferred;
-   typedef tbb::concurrent_queue<boost::shared_ptr<tileMsg> > ResultQueue;
+   typedef tbb::concurrent_queue<std::shared_ptr<tileMsg> > ResultQueue;
    ResultQueue m_resultQueue;
    bool updateTileQueue();
    void handleTileMeta(const tileMsg &msg);
    void finishFrame(const tileMsg &msg);
    void swapFrame();
-   void checkSwapFrame();
+   bool checkSwapFrame();
    bool canEnqueue() const;
    void enqueueTask(DecodeTask *task);
    osg::ref_ptr<osg::Image> m_fbImg;
@@ -158,11 +167,11 @@ private:
    uint32_t m_matrixNum;
 
    struct TileMessage {
-      TileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload)
+      TileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload)
       : msg(msg), payload(payload) {}
 
-      boost::shared_ptr<tileMsg> msg;
-      boost::shared_ptr<char> payload;
+      std::shared_ptr<tileMsg> msg;
+      std::shared_ptr<char> payload;
    };
    std::deque<TileMessage> m_receivedTiles;
    int m_lastTileAt;

@@ -39,7 +39,7 @@ bool Indexed::checkImpl() const {
 
 std::pair<Vector, Vector> Indexed::getBounds() const {
    if (hasCelltree()) {
-      const auto &ct = getCelltree();
+      const auto ct = getCelltree();
       return std::make_pair(Vector(ct->min()), Vector(ct->max()));
    }
 
@@ -47,11 +47,16 @@ std::pair<Vector, Vector> Indexed::getBounds() const {
 }
 
 bool Indexed::hasCelltree() const {
+   if (m_celltree)
+       return true;
 
    return hasAttachment("celltree");
 }
 
 Indexed::Celltree::const_ptr Indexed::getCelltree() const {
+
+   if (m_celltree)
+       return m_celltree;
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (!hasAttachment("celltree")) {
@@ -59,9 +64,9 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const {
       createCelltree(getNumElements(), &el()[0], &cl()[0]);
    }
 
-   Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
-   vassert(ct);
-   return ct;
+   m_celltree = Celltree::as(getAttachment("celltree"));
+   vassert(m_celltree);
+   return m_celltree;
 }
 
 void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) const {
@@ -88,32 +93,51 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
       for (Index c = start; c<end; ++c) {
          const Index v = cl[c];
          for (int d=0; d<3; ++d) {
+            min[i][d] = std::min(min[i][d], coords[d][v]);
+#if 0
             if (min[i][d] > coords[d][v]) {
                min[i][d] = coords[d][v];
                if (gmin[d] > min[i][d])
                   gmin[d] = min[i][d];
             }
+#endif
+            max[i][d] = std::max(max[i][d], coords[d][v]);
+#if 0
             if (max[i][d] < coords[d][v]) {
                max[i][d] = coords[d][v];
                if (gmax[d] < max[i][d])
                   gmax[d] = max[i][d];
             }
+#endif
          }
+      }
+      for (int d=0; d<3; ++d) {
+         gmin[d] = std::min(gmin[d], min[i][d]);
+         gmax[d] = std::max(gmax[d], max[i][d]);
       }
    }
 
    typename Celltree::ptr ct(new Celltree(nelem));
    ct->init(min.data(), max.data(), gmin, gmax);
    addAttachment("celltree", ct);
+   if (!validateCelltree()) {
+       std::cerr << "ERROR: Celltree validation failed." << std::endl;
+   }
 }
 
 
 bool Indexed::hasVertexOwnerList() const {
 
+   if (m_vertexOwnerList)
+       return true;
+
    return hasAttachment("vertexownerlist");
 }
 
 Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
+
+   if (m_vertexOwnerList)
+       return m_vertexOwnerList;
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (!hasAttachment("vertexownerlist")) {
@@ -121,9 +145,9 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
       createVertexOwnerList();
    }
 
-   VertexOwnerList::const_ptr vol = VertexOwnerList::as(getAttachment("vertexownerlist"));
-   vassert(vol);
-   return vol;
+   m_vertexOwnerList = VertexOwnerList::as(getAttachment("vertexownerlist"));
+   vassert(m_vertexOwnerList);
+   return m_vertexOwnerList;
 }
 
 void Indexed::createVertexOwnerList() const {
@@ -195,7 +219,9 @@ void Indexed::removeVertexOwnerList() const {
     removeAttachment("vertexownerlist");
 }
 
-Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed) {
+Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed)
+    : indexed(indexed)
+{
     auto ol = indexed->getVertexOwnerList();
     numElem = indexed->getNumElements();
     numVert = indexed->getNumCorners();
@@ -205,7 +231,7 @@ Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed) {
     vol = ol->cellList();
 }
 
-Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) {
+Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) const {
 
    if (v1 == v2 || v1 == v3 || v2 == v3) {
       std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices." << std::endl;
@@ -213,8 +239,8 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
    }
 
    const Index *elems = &vol[vl[v1]];
-   Index nvert = vl[v1+1] - vl[v1];
-   for (Index j=0; j<nvert; ++j) {
+   Index nelem = vl[v1+1] - vl[v1];
+   for (Index j=0; j<nelem; ++j) {
        Index e = elems[j];
        if (e == elem)
            continue;
@@ -235,9 +261,39 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
    return InvalidIndex;
 }
 
-Indexed::NeighborFinder Indexed::getNeighborFinder() const {
+std::vector<Index> Indexed::NeighborFinder::getContainingElements(Index vert) const {
 
-    return NeighborFinder(this);
+   const Index begin = vl[vert], end = vl[vert+1];
+   return std::vector<Index>(&vol[begin], &vol[end]);
+}
+
+std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) const {
+
+   std::vector<Index> elems;
+   if (elem == InvalidIndex)
+       return elems;
+
+   const auto vert = indexed->cellVertices(elem);
+   for (auto v: vert) {
+       const auto e = getContainingElements(v);
+       std::copy_if(e.begin(), e.end(), std::back_inserter(elems), [elem](Index el) -> bool { return el!=elem; });
+   }
+
+   std::sort(elems.begin(), elems.end());
+   auto last = std::unique(elems.begin(), elems.end());
+
+   elems.resize(last - elems.begin());
+   return elems;
+}
+
+const Indexed::NeighborFinder &Indexed::getNeighborFinder() const {
+
+    if (!m_neighborfinder) {
+        refresh();
+        m_neighborfinder.reset(new NeighborFinder(this));
+    }
+
+    return *m_neighborfinder;
 }
 
 struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
@@ -248,7 +304,10 @@ struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
 
    bool operator()(Index elem, Vector *min, Vector *max) const {
 
-      return m_indexed->getElementBounds(elem, min, max);
+      auto b = m_indexed->elementBounds(elem);
+      *min = b.first;
+      *max = b.second;
+      return true;
    }
 
    const Indexed *m_indexed;
@@ -261,36 +320,36 @@ bool Indexed::validateCelltree() const {
 
    CellBoundsFunctor boundFunc(this);
    auto ct = getCelltree();
-   return ct->validateTree(boundFunc);
+   if (!ct->validateTree(boundFunc)) {
+       std::cerr << "Indexed: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
+       return false;
+   }
+   return true;
 }
 
-bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
+std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const {
+   const Index *el = &this->el()[0];
+   const Index *cl = &this->cl()[0];
+   const Index begin = el[elem], end = el[elem+1];
+   const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
-   *min = Vector(smax, smax, smax);
-   *max = Vector(-smax, -smax, -smax);
-   const auto cl = &this->cl()[0];
-   const auto el = &this->el()[0];
-   const Scalar *coords[3] = {
-      &x()[0],
-      &y()[0],
-      &z()[0],
-   };
-
-   const Index begin = el[elem], end = el[elem+1];
-   for (Index c=begin; c<end; ++c) {
-      const Index v = cl[c];
-      for (int d=0; d<3; ++d) {
-         if ((*min)[d] > coords[d][v]) {
-            (*min)[d] = coords[d][v];
-         }
-         if ((*max)[d] < coords[d][v]) {
-            (*max)[d] = coords[d][v];
-         }
-      }
+   Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+   for (Index i=begin; i<end; ++i) {
+       Index v=cl[i];
+       for (int c=0; c<3; ++c) {
+           min[c] = std::min(min[c], x[c][v]);
+           max[c] = std::max(max[c], x[c][v]);
+       }
    }
+   return std::make_pair(min, max);
+}
 
-   return true;
+std::vector<Index> Indexed::cellVertices(Index elem) const {
+    const Index *el = &this->el()[0];
+    const Index *cl = &this->cl()[0];
+    const Index begin = el[elem], end = el[elem+1];
+    return std::vector<Index>(&cl[begin], &cl[end]);
 }
 
 void Indexed::refreshImpl() const {
