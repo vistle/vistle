@@ -9,22 +9,22 @@ namespace boost {
 namespace serialization {
 
 template<>
-void access::destroy(const vistle::shm<char>::string *t);
+V_COREEXPORT void access::destroy(const vistle::shm<char>::string *t);
 
 template<>
-void access::construct(vistle::shm<char>::string *t);
+V_COREEXPORT void access::construct(vistle::shm<char>::string *t);
 
 template<>
-void access::destroy(const vistle::Object::Data::AttributeList *t);
+V_COREEXPORT void access::destroy(const vistle::Object::Data::AttributeList *t);
 
 template<>
-void access::construct(vistle::Object::Data::AttributeList *t);
+V_COREEXPORT void access::construct(vistle::Object::Data::AttributeList *t);
 
 template<>
-void access::destroy(const vistle::Object::Data::AttributeMapValueType *t);
+V_COREEXPORT void access::destroy(const vistle::Object::Data::AttributeMapValueType *t);
 
 template<>
-void access::construct(vistle::Object::Data::AttributeMapValueType *t);
+V_COREEXPORT void access::construct(vistle::Object::Data::AttributeMapValueType *t);
 
 } // namespace serialization
 } // namespace boost
