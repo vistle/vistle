@@ -48,9 +48,8 @@ class PluginRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture)
-      : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+      : vistle::RenderObject(senderId, senderPort, container, geometry, normals, texture)
       {
       }
 
@@ -72,7 +71,6 @@ class OsgRenderer: public vistle::Renderer {
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
-      vistle::Object::const_ptr colors,
       vistle::Object::const_ptr texture) override;
    void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
 
@@ -343,7 +341,6 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
-      vistle::Object::const_ptr colors,
       vistle::Object::const_ptr texture) {
 
    if (!container)
@@ -363,11 +360,6 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
       if (!plugin.empty())
          cover->addPlugin(plugin.c_str());
    }
-   if (colors) {
-      plugin = colors->getAttribute("_plugin");
-      if (!plugin.empty())
-         cover->addPlugin(plugin.c_str());
-   }
    if (texture) {
       plugin = texture->getAttribute("_plugin");
       if (!plugin.empty())
@@ -384,13 +376,13 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    getCreator(creatorId);
 
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
-         container, geometry, normals, colors, texture));
+         container, geometry, normals, texture));
 
    if (!pro->variant.empty()) {
       cover->addPlugin("Variant");
    }
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
-   m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
+   m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, normals, texture)));
 
 #if 0
    coVRPluginList::instance()->addObject(pro->coverRenderObject.get(), nullptr, nullptr, nullptr, nullptr, nullptr,

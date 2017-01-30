@@ -20,7 +20,6 @@ class V_RENDEREREXPORT RenderObject {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture);
 
    virtual ~RenderObject();
@@ -35,7 +34,6 @@ class V_RENDEREREXPORT RenderObject {
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;
    vistle::Normals::const_ptr normals;
-   vistle::Object::const_ptr colors;
    vistle::Texture1D::const_ptr texture;
 
    int timestep;

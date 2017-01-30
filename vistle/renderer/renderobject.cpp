@@ -10,7 +10,6 @@ namespace vistle {
 RenderObject::RenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
-      Object::const_ptr colors,
       Object::const_ptr normals,
       Object::const_ptr texture)
 : senderId(senderId)
@@ -18,7 +17,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 , container(container)
 , geometry(geometry)
 , normals(Normals::as(normals))
-, colors(colors)
 , texture(Texture1D::as(texture))
 , timestep(-1)
 , hasSolidColor(false)
@@ -75,9 +73,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 
    if (geometry)
       timestep = geometry->getTimestep();
-   if (timestep < 0 && colors) {
-      timestep = colors->getTimestep();
-   }
    if (timestep < 0 && normals) {
       timestep = normals->getTimestep();
    }

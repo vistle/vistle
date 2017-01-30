@@ -27,7 +27,6 @@ class OsgRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture,
          osg::ref_ptr<osg::Node> node);
 
@@ -99,7 +98,6 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
    void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
    bool changeParameter(const vistle::Parameter *p) override;

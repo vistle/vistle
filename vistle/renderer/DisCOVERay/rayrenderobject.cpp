@@ -24,9 +24,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       Object::const_ptr container,
       Object::const_ptr geometry,
       Object::const_ptr normals,
-      Object::const_ptr colors,
       Object::const_ptr texture)
-: vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+: vistle::RenderObject(senderId, senderPort, container, geometry, normals, texture)
 , data(new ispc::RenderObjectData)
 {
    data->device = device;

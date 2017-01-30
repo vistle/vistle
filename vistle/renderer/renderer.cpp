@@ -281,15 +281,15 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
 
    if (auto tex = vistle::Texture1D::as(object)) {
        if (auto grid = vistle::Coords::as(tex->grid())) {
-         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr, tex);
+         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), tex);
        }
    } else if (auto data = vistle::DataBase::as(object)) {
        if (auto grid = vistle::Coords::as(data->grid())) {
-         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr, nullptr);
+         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr);
        }
    }
    if (!ro) {
-      ro = addObjectWrapper(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+      ro = addObjectWrapper(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr());
    }
 
    if (ro) {
@@ -302,9 +302,9 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    return true;
 }
 
-std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort, Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) {
+std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort, Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture) {
 
-    auto ro = addObject(senderId, senderPort, container, geom, normal, colors, texture);
+    auto ro = addObject(senderId, senderPort, container, geom, normal, texture);
     if (ro && !ro->variant.empty()) {
         auto it = m_variants.find(ro->variant);
         if (it == m_variants.end()) {

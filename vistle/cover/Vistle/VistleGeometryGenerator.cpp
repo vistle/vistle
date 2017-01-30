@@ -34,12 +34,10 @@ std::mutex VistleGeometryGenerator::s_coverMutex;
 
 VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
-            vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex)
 : m_ro(ro)
 , m_geo(geo)
-, m_color(color)
 , m_normal(normal)
 , m_tex(tex)
 {
@@ -73,22 +71,17 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    std::stringstream debug;
    debug << "[";
    debug << (m_geo ? "G" : ".");
-   debug << (m_color ? "C" : ".");
    debug << (m_normal ? "N" : ".");
    debug << (m_tex ? "T" : ".");
    debug << "] ";
 
    int t=m_geo->getTimestep();
-   if (t<0 && m_color)
-      t = m_color->getTimestep();
    if (t<0 && m_normal)
       t = m_normal->getTimestep();
    if (t<0 && m_tex)
       t = m_tex->getTimestep();
 
    int b=m_geo->getBlock();
-   if (b<0 && m_color)
-      b = m_color->getBlock();
    if (b<0 && m_normal)
       b = m_normal->getBlock();
    if (b<0 && m_tex)

@@ -34,7 +34,7 @@ class V_RENDEREREXPORT Renderer: public Module {
 
  protected:
    virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
-         Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) = 0;
+         Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture) = 0;
    virtual void removeObject(std::shared_ptr<RenderObject> ro);
 
    bool changeParameter(const Parameter *p) override;
@@ -50,7 +50,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
          vistle::Object::const_ptr object) override;
    std::shared_ptr<RenderObject> addObjectWrapper(int senderId, const std::string &senderPort,
-         Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture);
+         Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture);
    void removeObjectWrapper(std::shared_ptr<RenderObject> ro);
    void connectionRemoved(const Port *from, const Port *to) override;
 

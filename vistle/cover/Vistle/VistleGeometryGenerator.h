@@ -15,7 +15,6 @@ class VistleGeometryGenerator {
    public:
       VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
-            vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex);
 
@@ -26,7 +25,6 @@ class VistleGeometryGenerator {
    private:
       std::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
-      vistle::Object::const_ptr m_color;
       vistle::Object::const_ptr m_normal;
       vistle::Object::const_ptr m_tex;
 

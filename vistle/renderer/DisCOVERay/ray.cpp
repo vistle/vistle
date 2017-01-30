@@ -95,7 +95,6 @@ class RayCaster: public vistle::Renderer {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
 
    void removeObject(std::shared_ptr<RenderObject> ro) override;
@@ -591,10 +590,9 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
                                  vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr normals,
-                                 vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr texture) {
 
-   std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
+   std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, texture));
 
    const int t = ro->timestep;
    if (t == -1) {

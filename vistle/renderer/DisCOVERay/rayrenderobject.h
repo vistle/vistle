@@ -30,7 +30,6 @@ struct RayRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture);
 
    ~RayRenderObject();

@@ -784,16 +784,15 @@ std::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const
             vistle::Object::const_ptr container,
             vistle::Object::const_ptr geometry,
             vistle::Object::const_ptr normals,
-            vistle::Object::const_ptr colors,
             vistle::Object::const_ptr texture) {
 
    std::shared_ptr<vistle::RenderObject> ro;
-   VistleGeometryGenerator gen(ro, geometry, normals, colors, texture);
+   VistleGeometryGenerator gen(ro, geometry, normals, texture);
    if (VistleGeometryGenerator::isSupported(geometry->getType()) || geometry->getType() == vistle::Object::PLACEHOLDER) {
       auto geode = gen(defaultState);
 
       if (geode) {
-         ro.reset(new OsgRenderObject(senderId, senderPort, container, geometry, normals, colors, texture, geode));
+         ro.reset(new OsgRenderObject(senderId, senderPort, container, geometry, normals, texture, geode));
          timesteps->addObject(geode, ro->timestep);
       }
    }
@@ -814,10 +813,9 @@ OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture,
          osg::ref_ptr<osg::Node> node)
-: vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+: vistle::RenderObject(senderId, senderPort, container, geometry, normals, texture)
 , node(node)
 {
 }
