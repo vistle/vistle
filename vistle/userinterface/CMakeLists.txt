@@ -1,6 +1,5 @@
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS thread system chrono OPTIONAL_COMPONENTS python)
 vistle_find_package(Readline)
-vistle_find_package(PythonLibs)
 
 set(EXTRA_LIBRARIES)
 if(READLINE_FOUND)
