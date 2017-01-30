@@ -5,6 +5,7 @@
 #include <core/coords.h>
 #include <core/archives.h>
 #include <core/archive_loader.h>
+#include <core/archive_saver.h>
 
 #include "renderer.h"
 
@@ -323,43 +324,34 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
     bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv.rank() == rank());
     if (recv.rank() == rank()) {
         Object::const_ptr obj = Shm::the().getObjectFromName(recv.objectName());
+        vassert(obj);
+        vassert(obj->check());
         if (send) {
-            if (obj) {
-                vecostreambuf<char> memstr;
-                vistle::deep_oarchive memar(memstr);
-                obj->save(memar);
-                const std::vector<char> &mem = memstr.get_vector();
-                uint64_t len = mem.size();
-                std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
-                const char *data = mem.data();
-                if (bcast) {
-                    MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
-                    MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
-                    auto dir = memar.get_directory();
-                    mpi::broadcast(comm(), dir, rank());
-                    for (auto &ent: dir) {
-                        mpi::broadcast(comm(), ent.data, ent.size, rank());
-                    }
-                } else if (rank() != 0) {
-                    MPI_Request r1, r2;
-                    MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
-                    MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
-                    MPI_Wait(&r1, MPI_STATUS_IGNORE);
-                    MPI_Wait(&r2, MPI_STATUS_IGNORE);
+            vecostreambuf<char> memstr;
+            vistle::shallow_oarchive memar(memstr);
+            auto saver = std::make_shared<DeepArchiveSaver>();
+            memar.setSaver(saver);
+            obj->save(memar);
+            const std::vector<char> &mem = memstr.get_vector();
+            uint64_t len = mem.size();
+            std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
+            const char *data = mem.data();
+            if (bcast) {
+                MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
+                auto dir = saver->getDirectory();
+                mpi::broadcast(comm(), dir, rank());
+                for (auto &ent: dir) {
+                    mpi::broadcast(comm(), ent.data, ent.size, rank());
                 }
-            } else {
-                uint64_t len = 0;
-                if (bcast) {
-                    MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
-                } else if (rank() != 0) {
-                    MPI_Request r;
-                    MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r);
-                    MPI_Wait(&r, MPI_STATUS_IGNORE);
-                }
-                std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv.objectName() << std::endl;
+            } else if (rank() != 0) {
+                MPI_Request r1, r2;
+                MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
+                MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
+                MPI_Wait(&r1, MPI_STATUS_IGNORE);
+                MPI_Wait(&r2, MPI_STATUS_IGNORE);
             }
         }
-        vassert(obj->check());
         if (localAdd) {
             addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
         }
@@ -379,7 +371,7 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
                 //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
                 std::vector<char> mem(len);
                 char *data = mem.data();
-                vistle::deep_oarchive::directory dir;
+                vistle::SubArchiveDirectory dir;
                 std::map<std::string, std::vector<char>> objects, arrays;
                 if (bcast) {
                     MPI_Bcast(data, mem.size(), MPI_BYTE, recv.rank(), MPI_COMM_WORLD);
@@ -392,7 +384,6 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
                             objects[ent.name].resize(ent.size);
                             ent.data = objects[ent.name].data();
                         }
-                        char *d;
                         mpi::broadcast(comm(), ent.data, ent.size, recv.rank());
                     }
                 } else if (rank() == 0) {
@@ -400,10 +391,10 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
                     MPI_Irecv(data, mem.size(), MPI_BYTE, recv.rank(), 0, MPI_COMM_WORLD, &r);
                     MPI_Wait(&r, MPI_STATUS_IGNORE);
                 }
-                //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
+                std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv.objectName() << ", " << objects.size() << " subobjects, " << arrays.size() << " arrays" << std::endl;
                 vecistreambuf<char> membuf(mem);
-                vistle::deep_iarchive memar(membuf);
-                std::shared_ptr<DeepArchiveFetcher> fetcher(new DeepArchiveFetcher(objects, arrays));
+                vistle::shallow_iarchive memar(membuf);
+                auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
                 memar.setFetcher(fetcher);
                 Object::ptr obj(Object::load(memar));
                 if (obj) {

@@ -2,6 +2,7 @@
 #define ARCHIVES_H
 
 #include <functional>
+#include <vector>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -47,6 +48,32 @@ struct ObjectData;
 typedef std::shared_ptr<Object> obj_ptr;
 typedef std::shared_ptr<const Object> obj_const_ptr;
 
+struct SubArchiveDirectoryEntry {
+    std::string name;
+    bool is_array;
+    size_t size;
+    char *data;
+
+    SubArchiveDirectoryEntry(): is_array(false), size(0), data(nullptr) {}
+    SubArchiveDirectoryEntry(const std::string &name, bool is_array, size_t size, char *data)
+        : name(name), is_array(is_array), size(size), data(data) {}
+
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & name;
+        ar & is_array;
+        ar & size;
+    }
+};
+typedef std::vector<SubArchiveDirectoryEntry> SubArchiveDirectory;
+
+class V_COREEXPORT Saver {
+public:
+    virtual ~Saver();
+    virtual void saveArray(const std::string &name, int type, const void *array) = 0;
+    virtual void saveObject(const std::string &name, obj_const_ptr obj) = 0;
+};
+
 class V_COREEXPORT shallow_oarchive: public boost::archive::binary_oarchive_impl<shallow_oarchive, std::ostream::char_type, std::ostream::traits_type> {
 
     typedef boost::archive::binary_oarchive_impl<shallow_oarchive, std::ostream::char_type, std::ostream::traits_type> Base;
@@ -55,8 +82,26 @@ public:
     shallow_oarchive(std::streambuf &bsb, unsigned int flags=0);
     ~shallow_oarchive();
 
+    void setSaver(std::shared_ptr<Saver> saver);
+
+    template<class T>
+    void saveArray(const vistle::ShmVector<T> &t) {
+        std::cerr << "shallow_oarchive: serializing array " << t.name() << std::endl;
+        if (m_saver)
+            m_saver->saveArray(t.name(), t->type(), &t);
+    }
+
+    template<class T>
+    void saveObject(const vistle::shm_obj_ref<T> &t) {
+        std::cerr << "shallow_oarchive: serializing object " << t.name() << std::endl;
+        if (m_saver)
+            m_saver->saveObject(t.name(), t.getObject());
+    }
+
+    std::shared_ptr<Saver> m_saver;
 };
 
+#if 0
 class V_COREEXPORT deep_oarchive: public shallow_oarchive {
 
     typedef shallow_oarchive Base;
@@ -77,55 +122,27 @@ public:
     std::map<std::string, std::vector<char>> arrays;
 
     template<class T>
-    deep_oarchive &operator<<(vistle::ShmVector<T> &t) {
+    void saveArray(const vistle::ShmVector<T> &t) {
         vecostreambuf<char> vb;
         deep_oarchive ar(vb);
         ar & *t;
+        std::cerr << "deep_oarchive: serializing array " << t->name() << std::endl;
         ar.arrays.emplace(t->name(), vb.get_vector());
         move_subarchives(ar);
-        return *this;
     }
 
     template<class T>
-    deep_oarchive &operator<<(vistle::shm_obj_ref<T> &t) {
+    void saveObject(const vistle::shm_obj_ref<T> &t) {
         vecostreambuf<char> vb;
         deep_oarchive ar(vb);
         ar & *t;
+        std::cerr << "deep_oarchive: serializing object " << t->name() << std::endl;
         ar.arrays.emplace(t->name(), vb.get_vector());
         move_subarchives(ar);
-        return *this;
     }
 
-    struct directory_entry {
-        std::string name;
-        bool is_array;
-        size_t size;
-        char *data;
-
-        directory_entry(): is_array(false), size(0), data(nullptr) {}
-        directory_entry(const std::string &name, bool is_array, size_t size, char *data)
-            : name(name), is_array(is_array), size(size), data(data) {}
-
-        template<class Archive>
-        void serialize(Archive &ar, const unsigned int version) {
-            ar & name;
-            ar & is_array;
-            ar & size;
-        }
-    };
-
-    typedef std::vector<directory_entry> directory;
-    directory get_directory() {
-        directory dir;
-        for (auto &obj: objects) {
-            dir.emplace_back(obj.first, false, obj.second.size(), obj.second.data());
-        }
-        for (auto &arr: arrays) {
-            dir.emplace_back(arr.first, true, arr.second.size(), arr.second.data());
-        }
-        return dir;
-    }
 };
+#endif
 
 
 class V_COREEXPORT Fetcher {
@@ -177,7 +194,7 @@ private:
     std::function<void()> m_completer;
 };
 
-
+#if 0
 class V_COREEXPORT deep_iarchive: public shallow_iarchive {
 
     typedef shallow_iarchive Base;
@@ -198,17 +215,16 @@ public:
         return *this;
     }
 };
+#endif
 
 
 
 typedef boost::mpl::vector<
-   shallow_iarchive,
-   deep_iarchive
+   shallow_iarchive
       > InputArchives;
 
 typedef boost::mpl::vector<
-   shallow_oarchive,
-   deep_oarchive
+   shallow_oarchive
       > OutputArchives;
 
 } // namespace vistle
@@ -216,11 +232,15 @@ typedef boost::mpl::vector<
 
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::shallow_oarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::shallow_oarchive)
+#if 0
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::deep_oarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::deep_oarchive)
+#endif
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::shallow_iarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::shallow_iarchive)
+#if 0
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::deep_iarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::deep_iarchive)
+#endif
 
 #endif

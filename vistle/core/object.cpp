@@ -203,7 +203,7 @@ void Object::Data::referenceResolved(const std::function<void()> &completeCallba
     //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);
     --unresolvedReferences;
-    if (isComplete()) {
+    if (isComplete() && completeCallback) {
         completeCallback();
     }
 }
@@ -496,9 +496,7 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
       } \
    }
 REG_WITH_ARCHIVE(shallow_oarchive, registerOArchive)
-REG_WITH_ARCHIVE(deep_oarchive, registerDeepOArchive)
 REG_WITH_ARCHIVE(shallow_iarchive, registerIArchive)
-REG_WITH_ARCHIVE(deep_iarchive, registerDeepIArchive)
 
 void Object::addAttribute(const std::string &key, const std::string &value) {
    d()->addAttribute(key, value);

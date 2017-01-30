@@ -103,7 +103,7 @@ class shm_obj_ref {
        return ObjType::as(Object::create(const_cast<typename ObjType::Data *>(m_d.get())));
    }
 
-   typename ObjType::Data *getData() const {
+   const typename ObjType::Data *getData() const {
        if (!valid())
            return nullptr;
        return m_d.get();
@@ -145,6 +145,9 @@ class shm_obj_ref {
    template<class Archive>
    void save(Archive &ar, const unsigned int version) const {
       ar & boost::serialization::make_nvp("obj_name", m_name);
+      assert(valid());
+      if (m_d)
+          ar.saveObject(*this);
    }
    template<class Archive>
    void load(Archive &ar, const unsigned int version) {

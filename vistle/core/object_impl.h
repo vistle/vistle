@@ -75,8 +75,9 @@ Object *Object::load(Archive &ar) {
    Object *p = NULL;
    ar & V_NAME("object", p);
    assert(ar.currentObject() == p->d());
-   if (p->d()->unresolvedReferences == 0)
+   if (p->d()->unresolvedReferences == 0 && ar.objectCompletionHandler()) {
        ar.objectCompletionHandler()();
+   }
    return p;
 }
 
@@ -84,10 +85,12 @@ template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(shallow_iarchive &ar);
 template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(shallow_oarchive &ar);
+#if 0
 template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(deep_oarchive &ar);
 template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(deep_iarchive &ar);
+#endif
 
 } // namespace vistle
 

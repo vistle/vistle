@@ -34,8 +34,10 @@ typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class shallow_oarchive;
 class shallow_iarchive;
+#if 0
 class deep_oarchive;
 class deep_iarchive;
+#endif
 class FindObjectReferenceOArchive;
 
 class Shm;
@@ -279,18 +281,18 @@ public:
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
    typedef void (*RegisterIArchiveFunc)(shallow_iarchive &ar);
-   typedef void (*RegisterDeepIArchiveFunc)(deep_iarchive &ar);
+   //typedef void (*RegisterDeepIArchiveFunc)(deep_iarchive &ar);
    typedef void (*RegisterOArchiveFunc)(shallow_oarchive &ar);
-   typedef void (*RegisterDeepOArchiveFunc)(deep_oarchive &ar);
+   //typedef void (*RegisterDeepOArchiveFunc)(deep_oarchive &ar);
 
    struct FunctionTable {
        CreateEmptyFunc createEmpty;
        CreateFunc create;
        DestroyFunc destroy;
        RegisterIArchiveFunc registerIArchive;
-       RegisterDeepIArchiveFunc registerDeepIArchive;
+       //RegisterDeepIArchiveFunc registerDeepIArchive;
        RegisterOArchiveFunc registerOArchive;
-       RegisterDeepOArchiveFunc registerDeepOArchive;
+       //RegisterDeepOArchiveFunc registerDeepOArchive;
    };
 
    template<class O>
@@ -303,9 +305,9 @@ public:
          O::createFromData,
          O::destroy,
          O::registerIArchive,
-         O::registerDeepIArchive,
+         //O::registerDeepIArchive,
          O::registerOArchive,
-         O::registerDeepOArchive,
+         //O::registerDeepOArchive,
       };
       typeMap()[id] = t;
    }
@@ -384,9 +386,9 @@ private:
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(shallow_iarchive &ar); \
-   static void registerDeepIArchive(deep_iarchive &ar); \
+   /* static void registerDeepIArchive(deep_iarchive &ar); */ \
    static void registerOArchive(shallow_oarchive &ar); \
-   static void registerDeepOArchive(deep_oarchive &ar); \
+   /* static void registerDeepOArchive(deep_oarchive &ar); */ \
    void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
@@ -412,11 +414,17 @@ private:
          ar & V_NAME("name", name); \
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
-         std::cerr << "Object::load: creating " << name << std::endl; \
-         Object::m_data = Data::createNamed(ObjType::type(), name); \
-         if (!ar.currentObject()) \
-             ar.setCurrentObject(Object::m_data); \
-         d()->template serialize<Archive>(ar, version); \
+         if (auto data = Shm::the().getObjectDataFromName(name)) { \
+            Object::m_data = data; \
+            if (!ar.currentObject()) \
+                ar.setCurrentObject(Object::m_data); \
+         } else { \
+            std::cerr << "Object::load: creating " << name << std::endl; \
+            Object::m_data = Data::createNamed(ObjType::type(), name); \
+            if (!ar.currentObject()) \
+                ar.setCurrentObject(Object::m_data); \
+            d()->template serialize<Archive>(ar, version); \
+         } \
          assert(type == Object::getType()); \
       } \
    template<class Archive> \
@@ -458,15 +466,7 @@ private:
       ar.register_type<Type1, Type2 >(); \
    } \
    prefix1, prefix2 \
-   void Type1, Type2::registerDeepIArchive(deep_iarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
    void Type1, Type2::registerOArchive(shallow_oarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerDeepOArchive(deep_oarchive &ar) { \
       ar.register_type<Type1, Type2 >(); \
    }
 
@@ -476,15 +476,7 @@ private:
       ar.register_type<ObjType >(); \
    } \
    prefix \
-   void ObjType::registerDeepIArchive(deep_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
    void ObjType::registerOArchive(shallow_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerDeepOArchive(deep_oarchive &ar) { \
       ar.register_type<ObjType >(); \
    }
 

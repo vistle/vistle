@@ -8,6 +8,7 @@
 #include <util/vecstreambuf.h>
 #include <core/archives.h>
 #include <core/archive_loader.h>
+#include <core/archive_saver.h>
 #include <core/statetracker.h>
 #include <core/object.h>
 #include <core/tcpmessage.h>
@@ -261,40 +262,6 @@ public:
     size_t m_numRequests;
 };
 
-struct ArraySaver {
-
-    ArraySaver(const std::string &name, int type, vistle::shallow_oarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
-    ArraySaver() = delete;
-    ArraySaver(const ArraySaver &other) = delete;
-
-    template<typename T>
-    void operator()(T) {
-        if (shm_array<T, typename shm<T>::allocator>::typeId() != m_type) {
-            //std::cerr << "ArraySaver: type mismatch - looking for " << m_type << ", is " << shm_array<T, typename shm<T>::allocator>::typeId() << std::endl;
-            return;
-        }
-
-        if (m_ok) {
-            m_ok = false;
-            std::cerr << "ArraySaver: multiple type matches for data array " << m_name << std::endl;
-            return;
-        }
-        auto &arr = Shm::the().getArrayFromName<T>(m_name);
-        if (!arr) {
-            std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
-            return;
-        }
-        m_ar & m_name;
-        m_ar & *arr;
-        m_ok = true;
-    }
-
-    bool m_ok;
-    std::string m_name;
-    int m_type;
-    vistle::shallow_oarchive &m_ar;
-};
-
 bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
    vecostreambuf<char> buf;
@@ -302,8 +269,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    vistle::shallow_oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
-      boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArraySaver>(saver));
-      if (!saver.m_ok) {
+      if (!saver.save()) {
          CERR << "failed to serialize array " << req.objectId() << std::endl;
          return true;
       }

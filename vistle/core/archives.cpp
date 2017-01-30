@@ -73,6 +73,9 @@ template class binary_iarchive_impl<
 
 namespace vistle {
 
+Saver::~Saver() {
+}
+
 shallow_oarchive::shallow_oarchive(std::ostream &os, unsigned int flags)
 : boost::archive::binary_oarchive_impl<shallow_oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
 {}
@@ -84,6 +87,12 @@ shallow_oarchive::shallow_oarchive(std::streambuf &bsb, unsigned int flags)
 shallow_oarchive::~shallow_oarchive()
 {}
 
+void shallow_oarchive::setSaver(std::shared_ptr<Saver> saver) {
+
+    m_saver = saver;
+}
+
+#if 0
 deep_oarchive::deep_oarchive(std::ostream &os, unsigned int flags)
 : shallow_oarchive(os, flags)
 {}
@@ -94,6 +103,7 @@ deep_oarchive::deep_oarchive(std::streambuf &bsb, unsigned int flags)
 
 deep_oarchive::~deep_oarchive()
 {}
+#endif
 
 
 Fetcher::~Fetcher() {
@@ -133,6 +143,7 @@ const std::function<void()> &shallow_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
 
+#if 0
 deep_iarchive::deep_iarchive(std::istream &is, unsigned int flags)
 : Base(is, flags)
 {}
@@ -143,5 +154,6 @@ deep_iarchive::deep_iarchive(std::streambuf &bsb, unsigned int flags)
 
 deep_iarchive::~deep_iarchive()
 {}
+#endif
 
 } // namespace vistle

@@ -60,6 +60,7 @@ set(core_HEADERS
    assert.h
    archives.h
    archive_loader.h
+   archive_saver.h
    celltree.h
    celltree_impl.h
    vertexownerlist.h

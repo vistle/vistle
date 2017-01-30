@@ -13,6 +13,7 @@ template<class Archive>
 void shm_ref<T>::save(Archive &ar, const unsigned int version) const {
 
     ar & boost::serialization::make_nvp("shm_name", m_name);
+    ar.template saveArray<typename T::value_type>(*this);
 }
 
 template<class T>
@@ -24,9 +25,12 @@ void shm_ref<T>::load(Archive &ar, const unsigned int version) {
    unref();
    m_p = nullptr;
    auto obj = ar.currentObject();
+   if (obj && !valid()) {
+       obj->unresolvedReference();
+   }
    auto handler = ar.objectCompletionHandler();
    auto ref =  ar.template getArray<typename T::value_type>(name, [this, name, obj, handler]() -> void {
-      //std::cerr << "array completion handler: " << name << std::endl;
+      std::cerr << "array completion handler: " << name << std::endl;
       auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
       assert(ref);
       *this = ref;
@@ -36,11 +40,13 @@ void shm_ref<T>::load(Archive &ar, const unsigned int version) {
    });
    if (ref) {
       *this = ref;
+#if 0
    } else {
       //std::cerr << "waiting for completion of " << name << std::endl;
       auto obj = ar.currentObject();
       if (obj && !valid())
          obj->unresolvedReference();
+#endif
    }
 }
 
