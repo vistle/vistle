@@ -46,6 +46,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    bool compute() override; // provide dummy implementation of Module::compute
 
    virtual bool render() = 0;
+   bool handle(const message::ObjectReceived &recv);
 
    bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
          vistle::Object::const_ptr object) override;
