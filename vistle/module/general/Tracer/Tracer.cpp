@@ -307,13 +307,13 @@ bool Tracer::reduce(int timestep) {
    for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
            continue;
-       Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
+       Index numblocks = size_t(t)>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
        global.blocks[t].resize(numblocks);
        for(Index i=0; i<numblocks; i++){
 
-           if (useCelltree && celltree.size() > t) {
+           if (useCelltree && celltree.size() > size_t(t)) {
                if (celltree[t].size() > i)
                    celltree[t][i].get();
            }

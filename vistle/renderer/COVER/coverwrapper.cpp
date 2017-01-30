@@ -212,5 +212,5 @@ finish:
 	}
    MPI_Finalize();
 
-   return 0;
+   return ret;
 }

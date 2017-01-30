@@ -1427,7 +1427,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
     const auto *ghostArray = vugrid->GetCellGhostArray();
 #endif
     vtkUnsignedCharArray *vtypearray = vugrid->GetCellTypesArray();
-    for (int i = 0; i < nelem; ++i) {
+    for (Index i = 0; i < nelem; ++i) {
         switch (vtypearray->GetValue(i))
         {
         case VTK_VERTEX:
@@ -1571,7 +1571,7 @@ Object::ptr vtkPoly2Vistle(vtkPolyData *vpolydata) {
 
         Index k = 0;
         polys->InitTraversal();
-        for (int i = 0; i < npolys; ++i)
+        for (Index i = 0; i < npolys; ++i)
         {
             polylist[i] = k;
 
@@ -1670,11 +1670,11 @@ Object::ptr vtkSGrid2Vistle(vtkStructuredGrid *vsgrid)
     float *zc = csgrid->z().data();
 
     Index l = 0;
-    for (Index i = 0; i < dim[0]; ++i)
+    for (Index i = 0; i < Index(dim[0]); ++i)
     {
-        for (Index j = 0; j < dim[1]; ++j)
+        for (Index j = 0; j < Index(dim[1]); ++j)
         {
-            for (Index k = 0; k < dim[2]; ++k)
+            for (Index k = 0; k < Index(dim[2]); ++k)
             {
                 Index idx = k * (dim[0] * dim[1]) + j * dim[0] + i;
                 xc[l] = vsgrid->GetPoint(idx)[0];
@@ -1732,15 +1732,15 @@ Object::ptr vtkRGrid2Vistle(vtkRectilinearGrid *vrgrid)
     }
 
     vtkDataArray *vx = vrgrid->GetXCoordinates();
-    for (Index i = 0; i < n[0]; ++i)
+    for (Index i = 0; i < Index(n[0]); ++i)
         c[0][i] = vx->GetTuple1(i);
 
     vtkDataArray *vy = vrgrid->GetYCoordinates();
-    for (Index i = 0; i < n[1]; ++i)
+    for (Index i = 0; i < Index(n[1]); ++i)
         c[1][i] = vy->GetTuple1(i);
 
     vtkDataArray *vz = vrgrid->GetZCoordinates();
-    for (Index i = 0; i < n[2]; ++i)
+    for (Index i = 0; i < Index(n[2]); ++i)
         c[2][i] = vz->GetTuple1(i);
 
     return rgrid;

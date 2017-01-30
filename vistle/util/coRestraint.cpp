@@ -200,7 +200,7 @@ bool coRestraint::get(ssize_t val, ssize_t &group) const
    }
 
    group=0;
-   while (group<min.size())
+   while (group<ssize_t(min.size()))
    {
       if ( (val>=min[group]) && (val<=max[group]) )
          return true;

@@ -180,6 +180,9 @@ bool vistle::VistleConnection::barrier() const {
       switch(buf.type()) {
          case message::BARRIERREACHED: {
             auto &reached = buf.as<message::BarrierReached>();
+            if (m.uuid() != reached.uuid()) {
+                std::cerr << "VistleConnection: BarrierReached's uuid does not match Barrier's" << std::endl;
+            }
             assert(m.uuid() == reached.uuid());
             return true;
             break;

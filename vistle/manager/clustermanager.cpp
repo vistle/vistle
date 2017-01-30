@@ -193,7 +193,7 @@ std::vector<AvailableModule> ClusterManager::availableModules() const {
 bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 
    vassert(m_barrierActive);
-   int numLocal = 0;
+   size_t numLocal = 0;
    for (const auto &m: m_stateTracker.runningMap) {
       if (m.second.hub == Communicator::the().hubId())
          ++numLocal;
@@ -520,7 +520,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
       case message::CANCELEXECUTE: {
 
-         const message::CancelExecute &cancel = message.as<CancelExecute>();
+         //const message::CancelExecute &cancel = message.as<CancelExecute>();
          break;
       }
 
@@ -897,7 +897,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
              if (m_rank == 0) {
                  bool doExec = pol == message::SchedulingPolicy::Gang;
                  if (pol == message::SchedulingPolicy::LazyGang) {
-                     if (mod.objectCount.size() < getSize())
+                     if (ssize_t(mod.objectCount.size()) < getSize())
                          mod.objectCount.resize(getSize());
                      ++mod.objectCount[exec.rank()];
                      int numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
@@ -1263,7 +1263,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                          vassert(destMod.prepared);
                          vassert(!destMod.reduced);
                          if (m_rank == 0) {
-                             if (destMod.objectCount.size() < getSize())
+                             if (ssize_t(destMod.objectCount.size()) < getSize())
                                  destMod.objectCount.resize(getSize());
                              int maxNumObject = 0;
                              for (size_t r=0; r<destMod.objectCount.size(); ++r) {

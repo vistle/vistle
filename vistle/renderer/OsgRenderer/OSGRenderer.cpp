@@ -410,7 +410,6 @@ bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
        return true;
     }
 
-    const auto &vd = viewer.m_renderManager.viewData(viewIdx);
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(*viewer.icetMutex);
     viewer.m_renderManager.setCurrentView(viewIdx);
     //renderMgr.updateRect(viewIdx, const IceTInt *viewport, const IceTImage image);

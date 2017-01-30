@@ -176,7 +176,7 @@ bool DomainSurface::createSurface() {
                const auto facesize = UnstructuredGrid::FaceSizes[t][f];
                Index neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
                if (neighbour == InvalidIndex) {
-                  for (Index j=0;j<facesize;++j) {
+                  for (int j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);
                   }
                   pl.push_back(pcl.size());

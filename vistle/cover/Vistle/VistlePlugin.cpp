@@ -304,7 +304,7 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       if (pro->timestep == -1) {
          cr.constant(variant)->removeChild(node);
       } else {
-         if (cr.animated(variant)->getNumChildren() > pro->timestep) {
+         if (ssize_t(cr.animated(variant)->getNumChildren()) > pro->timestep) {
             osg::Group *gr = cr.animated(variant)->getChild(pro->timestep)->asGroup();
             if (gr) {
                gr->removeChild(node);

@@ -557,7 +557,7 @@ static CONSTANT int hexaNumVertsTable[256] = {
 };
 
 
-
+#ifndef ONLY_HEXAHEDRON
 
 // triangle table maps same cube vertex index to a list of up to 5 triangles
 // which are built from the interpolated edge vertices
@@ -864,6 +864,7 @@ static CONSTANT int pyrEdgeTable[2][8] = {
  {0,0,0,1,1,2,2,3},
  {1,4,3,4,2,3,4,4},
 };
+#endif /* ONLY_HEXAHEDRON */
 
 #undef X
 

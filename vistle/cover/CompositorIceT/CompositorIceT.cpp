@@ -214,7 +214,6 @@ public:
 osg::ref_ptr<osg::GraphicsContext> CompositorIceT::createGraphicsContext(int view, bool pbuffer, osg::ref_ptr<osg::GraphicsContext> sharedGc) {
 
     auto &cd = m_compositeData[view];
-    auto &vd = m_viewData[view];
 
     osg::ref_ptr<osg::DisplaySettings> displaySettings = new osg::DisplaySettings;
     displaySettings->setStereo(false);
@@ -565,7 +564,7 @@ void CompositorIceT::clusterSyncDraw()
 {
     assert(m_compositeData.size() == m_viewData.size());
 
-    for (int i=0; i<m_compositeData.size(); ++i) {
+    for (size_t i=0; i<m_compositeData.size(); ++i) {
         composite(i);
     }
     if (m_drawer)

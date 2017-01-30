@@ -71,7 +71,7 @@ bool ToPolyhedra::compute() {
                    const auto &face = faces[f];
                    const auto facesize = UnstructuredGrid::FaceSizes[t][f];
                    ocl.push_back(facesize);
-                   for (Index k=0; k<facesize; ++k) {
+                   for (int k=0; k<facesize; ++k) {
                        ocl.push_back(icl[begin+face[k]]);
                    }
                }

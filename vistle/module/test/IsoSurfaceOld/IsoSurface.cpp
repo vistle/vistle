@@ -12,6 +12,7 @@
 #include <boost/mpi/collectives.hpp>
 
 #include "IsoSurface.h"
+#define ONLY_HEXAHEDRON
 #include "../../general/IsoSurface/tables.h"
 
 #include <util/openmp.h>

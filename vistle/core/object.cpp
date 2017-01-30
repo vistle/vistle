@@ -114,7 +114,7 @@ const char *Object::toString(Type v) {
     snprintf(buf, sizeof(buf), "invalid Object::Type (%d)", v);
     if (v >= VEC) {
         int dim = (v-Object::VEC) % (MaxDimension+1);
-        int scalidx = (v-Object::VEC) / (MaxDimension+1);
+        size_t scalidx = (v-Object::VEC) / (MaxDimension+1);
 #ifndef NDEBUG
         const int NumScalars = boost::mpl::size<Scalars>::value;
         assert(scalidx < NumScalars);

@@ -311,7 +311,7 @@ void Particle::addToOutput() {
    if (m_global.task_type == MovingPoints) {
 
        std::lock_guard<std::mutex> locker(m_global.mutex);
-       Scalar lastTime(0), prevTime(0), nextTime(m_global.dt_step);
+       Scalar prevTime(0), nextTime(m_global.dt_step);
        std::shared_ptr<Segment> lastSeg;
        Index lastIdx = 0;
        Index timestep = 0;
@@ -327,7 +327,6 @@ void Particle::addToOutput() {
 
                if (time < nextTime) {
                    lastSeg = ent.second;
-                   lastTime = time;
                    continue;
                }
 
@@ -364,7 +363,6 @@ void Particle::addToOutput() {
                    m_global.timeField[timestep]->x().push_back(nextTime);
                    m_global.idField[timestep]->x().push_back(m_startId);
 
-                   lastTime = time;
                    nextTime += m_global.dt_step;
                    ++timestep;
                }

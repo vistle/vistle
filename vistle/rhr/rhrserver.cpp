@@ -163,64 +163,64 @@ asio::ip::address RhrServer::listenAddress() const {
     return m_listenAddress;
 }
 
-int RhrServer::numViews() const {
+size_t RhrServer::numViews() const {
 
     return m_viewData.size();
 }
 
-unsigned char *RhrServer::rgba(int i) {
+unsigned char *RhrServer::rgba(size_t i) {
 
     if (i > numViews())
         return nullptr;
     return m_viewData[i].rgba.data();
 }
 
-const unsigned char *RhrServer::rgba(int i) const {
+const unsigned char *RhrServer::rgba(size_t i) const {
 
     if (i > numViews())
         return nullptr;
     return m_viewData[i].rgba.data();
 }
 
-float *RhrServer::depth(int i) {
+float *RhrServer::depth(size_t i) {
 
     if (i > numViews())
         return nullptr;
     return m_viewData[i].depth.data();
 }
 
-const float *RhrServer::depth(int i) const {
+const float *RhrServer::depth(size_t i) const {
 
     if (i > numViews())
         return nullptr;
     return m_viewData[i].depth.data();
 }
 
-int RhrServer::width(int i) const {
+int RhrServer::width(size_t i) const {
 
    if (i > numViews())
        return 0;
    return m_viewData[i].param.width;
 }
 
-int RhrServer::height(int i) const {
+int RhrServer::height(size_t i) const {
 
    if (i > numViews())
        return 0;
    return m_viewData[i].param.height;
 }
 
-const vistle::Matrix4 &RhrServer::viewMat(int i) const {
+const vistle::Matrix4 &RhrServer::viewMat(size_t i) const {
 
    return m_viewData[i].param.view;
 }
 
-const vistle::Matrix4 &RhrServer::projMat(int i) const {
+const vistle::Matrix4 &RhrServer::projMat(size_t i) const {
 
    return m_viewData[i].param.proj;
 }
 
-const vistle::Matrix4 &RhrServer::modelMat(int i) const {
+const vistle::Matrix4 &RhrServer::modelMat(size_t i) const {
 
    return m_viewData[i].param.model;
 }
@@ -388,7 +388,7 @@ void RhrServer::setAppMessageHandler(AppMessageHandlerFunc handler) {
    m_appHandler = handler;
 }
 
-void RhrServer::resize(int viewNum, int w, int h) {
+void RhrServer::resize(size_t viewNum, int w, int h) {
 
 #if 0
     if (w!=-1 && h!=-1) {
@@ -438,7 +438,7 @@ void RhrServer::resize(int viewNum, int w, int h) {
 void RhrServer::deferredResize() {
 
     assert(!m_resizeBlocked);
-    for (int i=0; i<numViews(); ++i) {
+    for (size_t i=0; i<numViews(); ++i) {
         resize(i, -1, -1);
     }
     m_resizeDeferred = false;
@@ -469,7 +469,7 @@ bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderM
    //std::cerr << "handleMatrices: view " << mat.viewNum << ", proj: " << vd.nparam.proj << std::endl;
 
    if (mat.last) {
-       for (int i=0; i<numViews(); ++i) {
+       for (size_t i=0; i<numViews(); ++i) {
            m_viewData[i].param = m_viewData[i].nparam;
        }
    }

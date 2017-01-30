@@ -168,6 +168,7 @@ void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::I
 
    bool ok = m_sockets.insert(std::make_pair(sock, ident)).second;
    vassert(ok);
+   (void)ok;
 }
 
 bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock) {

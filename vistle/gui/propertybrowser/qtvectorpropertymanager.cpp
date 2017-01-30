@@ -173,7 +173,7 @@ QString QtVectorPropertyManager::valueText(const QtProperty *property) const
     if (it == d_ptr->m_values.constEnd())
         return QString();
     const ParamVector v = it.value().val;
-    const int dec =  it.value().decimals;
+    //const int dec =  it.value().decimals;
 
     if (v.dim == 0)
        return "()";

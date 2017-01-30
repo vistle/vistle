@@ -1096,7 +1096,7 @@ bool RhrClient::init()
    m_withHolesCheck->setEventListener(this);
    m_withHolesCheck->setPos(4,0);
 
-   coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
+   //coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
 
    m_inhibitModelUpdate = mui::ToggleButton::create(muiId("no_model_update"), m_tab);
    m_inhibitModelUpdate->setLabel("No Model Update");
@@ -1293,9 +1293,7 @@ void RhrClient::tabletEvent(coTUIElement *item) {
 void
 RhrClient::preFrame()
 {
-   static double lastUpdate = -DBL_MAX;
    static double lastMatrices = -DBL_MAX;
-   static double lastConnectionTry = -DBL_MAX;
    static int remoteSkipped = 0;
 
    m_io.poll();
@@ -1362,10 +1360,6 @@ RhrClient::preFrame()
    int ntiles = 0;
    {
        if (coVRMSController::instance()->isMaster()) {
-           if (m_remote->messageReceived()) {
-               lastUpdate = cover->frameTime();
-           }
-
            bool sendUpdate = false;
            {
                std::lock_guard<std::mutex> locker(m_pluginMutex);
@@ -1516,13 +1510,6 @@ RhrClient::preFrame()
        }
    }
 
-#if 0
-   if (m_client && cover->frameTime() - lastUpdate > 5.) {
-      //SendFramebufferUpdateRequest(m_client, 0, 0, m_client->width, m_client->height, FALSE);
-      SendFramebufferUpdateRequest(m_client, 0, 0, 1, 1, FALSE);
-      lastUpdate = cover->frameTime();
-   }
-#endif
    while (updateTileQueue())
       ++remoteSkipped;
 

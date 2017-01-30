@@ -370,7 +370,7 @@ bool Gendat::compute() {
         blocks[i] = m_blocks[i]->getValue();
     }
 
-    Index b = 0;
+    int b = 0;
     for (Index bx=0; bx<blocks[0]; ++bx) {
         for (Index by=0; by<blocks[1]; ++by) {
             for (Index bz=0; bz<blocks[2]; ++bz) {

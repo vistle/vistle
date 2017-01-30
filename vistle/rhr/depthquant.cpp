@@ -755,8 +755,8 @@ double depthcompare_t(const float *ref, const float *check, int xx, int yy, int 
    T maxerr = 0;
    T refminval = Max, minval = Max;
    T refmaxval = 0, maxval = 0;
-   for (unsigned y=0; y<h; ++y) {
-      for (unsigned x=0; x<w; ++x) {
+   for (int y=0; y<h; ++y) {
+      for (int x=0; x<w; ++x) {
          size_t idx = y*w+x;
          T e = 0;
 

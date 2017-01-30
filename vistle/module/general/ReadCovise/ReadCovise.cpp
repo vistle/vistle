@@ -285,7 +285,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
          cl[index] = _cl[index];
 
       // convert to VTK face stream
-      for (Index index = 0; index < numElements; index ++) {
+      for (int index = 0; index < numElements; index ++) {
           if (tl[index] == UnstructuredGrid::POLYHEDRON) {
               Index begin=el[index], end=el[index+1];
               Index faceTerm = InvalidIndex;

@@ -311,7 +311,7 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const 
         if (t < 0) {
             continue;
         }
-        const Index nCorners = sizes[f];
+        const int nCorners = sizes[f];
         for (int i=0; i<nCorners; ++i) {
             const Index v = cl[faces[f][i]];
             corners[i] = Vector(x[v], y[v], z[v]);

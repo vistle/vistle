@@ -45,7 +45,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
        return false;
    }
 
-   for (int c=0; c<numComp; ++c)
+   for (Index c=0; c<numComp; ++c)
    {
        if (!in_data[c])
            return false;
@@ -56,7 +56,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
    // copy original data if already vertex based   
    if( dataSize==num_point && dataSize!=num_elem )
    {
-       for (int c=0; c<numComp; ++c) {
+       for (Index c=0; c<numComp; ++c) {
            const Scalar *in = in_data[c];
            Scalar *out = out_data[c];
            for(Index i=0; i<num_point; i++ )
@@ -100,7 +100,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
    std::vector<Scalar> weight(num_point, 1.0e-30f);
    Scalar *weight_num = weight.data();
 
-   for (int c=0; c<numComp; ++c) {
+   for (Index c=0; c<numComp; ++c) {
        memset(out_data[c], 0, sizeof(Scalar)*num_point);
    }
 
@@ -125,7 +125,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                for (auto it = verts.begin(); it != last; ++it) {
                    Index vertex = *it;
                    weight_num[ vertex ] += 1.0;
-                   for (int c=0; c<numComp; ++c) {
+                   for (Index c=0; c<numComp; ++c) {
                        out_data[c][vertex] += in_data[c][i];
                    }
                }
@@ -135,7 +135,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                {
                    Index vertex = conn_list[ elem_list[i]+j ];
                    weight_num[ vertex ] += 1.0;
-                   for (int c=0; c<numComp; ++c) {
+                   for (Index c=0; c<numComp; ++c) {
                        out_data[c][vertex] += in_data[c][i];
                    }
                }
@@ -147,7 +147,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
            for(Index j=0; j<3; ++j) {
                const Index vertex = conn_list ? conn_list[elem*3+j] : elem*3+j;
                weight_num[vertex] += 1.0;
-               for (int c=0; c<numComp; ++c) {
+               for (Index c=0; c<numComp; ++c) {
                    out_data[c][vertex] += in_data[c][elem];
                }
            }
@@ -161,7 +161,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
    // divide value sum by 'weight' (# adjacent cells)
    for(Index vertex=0; vertex<num_point; vertex++ ) {
        if (weight_num[vertex]>=1.0) {
-           for (int c=0; c<numComp; ++c) {
+           for (Index c=0; c<numComp; ++c) {
                out_data[c][vertex] /= weight_num[vertex];
          }
        }

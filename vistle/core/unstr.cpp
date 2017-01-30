@@ -410,7 +410,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
                 continue;
             }
             std::vector<Vector> corners(nCorners);
-            for (int k=0; k<nCorners; ++k) {
+            for (Index k=0; k<nCorners; ++k) {
                 const Index v = cl[i+k+1];
                 corners[k] = Vector(x[v], y[v], z[v]);
             }
@@ -436,7 +436,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
             if (t < 0) {
                 continue;
             }
-            const Index nCorners = FaceSizes[type][f];
+            const int nCorners = FaceSizes[type][f];
             for (int i=0; i<nCorners; ++i) {
                 const Index v = cl[FaceVertices[type][f][i]];
                 corners[i] = Vector(x[v], y[v], z[v]);
@@ -493,7 +493,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
             if (t < 0 || !std::isfinite(t)) {
                 continue;
             }
-            const Index nCorners = FaceSizes[type][f];
+            const int nCorners = FaceSizes[type][f];
             for (int i=0; i<nCorners; ++i) {
                 const Index v = cl[FaceVertices[type][f][i]];
                 corners[i] = Vector(x[v], y[v], z[v]);
@@ -531,7 +531,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 continue;
             }
             std::vector<Vector> corners(nCorners);
-            for (int k=0; k<nCorners; ++k) {
+            for (Index k=0; k<nCorners; ++k) {
                 const Index v = cl[i+k+1];
                 corners[k] = Vector(x[v], y[v], z[v]);
             }
@@ -792,7 +792,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                         weights[i] = 1/centerDist;
                         sum += weights[i];
                     } else {
-                        for (int j=0; j<ncoord; ++j) {
+                        for (Index j=0; j<ncoord; ++j) {
                             weights[j] = 0;
 
                         }

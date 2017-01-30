@@ -112,7 +112,7 @@ bool ShowUSG::compute() {
           case UnstructuredGrid::HEXAHEDRON: {
               const auto numFaces = UnstructuredGrid::NumFaces[type];
               for (int f=0; f<numFaces; ++f) {
-                  const Index nCorners = UnstructuredGrid::FaceSizes[type][f];
+                  const int nCorners = UnstructuredGrid::FaceSizes[type][f];
                   for (int i=0; i<=nCorners; ++i) {
                       const Index v = icl[begin+UnstructuredGrid::FaceVertices[type][f][i%nCorners]];
                       ocl.push_back(v);
@@ -149,7 +149,7 @@ bool ShowUSG::compute() {
            const unsigned char type = UnstructuredGrid::HEXAHEDRON;
            const auto numFaces = UnstructuredGrid::NumFaces[type];
            for (int f=0; f<numFaces; ++f) {
-               const Index nCorners = UnstructuredGrid::FaceSizes[type][f];
+               const int nCorners = UnstructuredGrid::FaceSizes[type][f];
                for (int i=0; i<=nCorners; ++i) {
                    const Index v = verts[UnstructuredGrid::FaceVertices[type][f][i%nCorners]];
                    ocl.push_back(v);

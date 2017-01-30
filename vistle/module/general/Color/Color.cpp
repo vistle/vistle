@@ -204,7 +204,7 @@ Color::~Color() {
 void Color::getMinMax(vistle::DataBase::const_ptr object,
                       vistle::Scalar & min, vistle::Scalar & max) {
 
-   size_t numElements = object->getSize();
+   const ssize_t numElements = object->getSize();
 
    if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
       const vistle::Index *x = &scal->x()[0];
@@ -279,7 +279,7 @@ void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned lon
 
    const int numBins = binsVec.size();
 
-   const size_t numElements = object->getSize();
+   const ssize_t numElements = object->getSize();
    const Scalar w = m_max-m_min;
    unsigned long *bins = binsVec.data();
 
@@ -344,7 +344,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    for (size_t index = 0; index < cmap.width * 4; index ++)
       pix[index] = cmap.data[index];
 
-   const size_t numElem = object->getSize();
+   const ssize_t numElem = object->getSize();
    tex->coords().resize(numElem);
    auto tc = tex->coords().data();
 
@@ -520,7 +520,8 @@ bool Color::reduce(int timestep) {
         if (!relative) {
             width /= m_max-m_min;
         }
-        int insetRes = width*bins.size();
+        size_t insetRes = width*bins.size();
+        insetRes = std::min(insetRes, bins.size());
         unsigned long numEnt=0;
         for (size_t i=0; i<insetRes; ++i) {
             numEnt += bins[i];

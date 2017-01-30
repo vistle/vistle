@@ -62,7 +62,7 @@ class Communicator {
 
    bool m_quitFlag;
 
-   int m_recvSize;
+   unsigned m_recvSize;
    message::Buffer m_recvBufToRank, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank;
 

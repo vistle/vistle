@@ -56,14 +56,14 @@ public:
    address listenAddress() const;
    asio::io_service &ioService();
 
-   int width(int viewNum) const;
-   int height(int viewNum) const;
-   unsigned char *rgba(int viewNum);
-   const unsigned char *rgba(int viewNum) const;
-   float *depth(int viewNum);
-   const float *depth(int viewNum) const;
+   int width(size_t viewNum) const;
+   int height(size_t viewNum) const;
+   unsigned char *rgba(size_t viewNum);
+   const unsigned char *rgba(size_t viewNum) const;
+   float *depth(size_t viewNum);
+   const float *depth(size_t viewNum) const;
 
-   void resize(int viewNum, int w, int h);
+   void resize(size_t viewNum, int w, int h);
 
    bool init(unsigned short port);
    bool start(unsigned short port);
@@ -97,10 +97,10 @@ public:
    bool handleAnimation(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const animationMsg &anim);
    bool handleVariant(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const variantMsg &variant);
 
-   int numViews() const;
-   const vistle::Matrix4 &viewMat(int viewNum) const;
-   const vistle::Matrix4 &projMat(int viewNum) const;
-   const vistle::Matrix4 &modelMat(int viewNum) const;
+   size_t numViews() const;
+   const vistle::Matrix4 &viewMat(size_t viewNum) const;
+   const vistle::Matrix4 &projMat(size_t viewNum) const;
+   const vistle::Matrix4 &modelMat(size_t viewNum) const;
 
    void setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius);
 
