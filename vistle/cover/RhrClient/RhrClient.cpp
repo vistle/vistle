@@ -120,6 +120,7 @@ class RemoteConnection {
     std::thread *m_thread = nullptr;
     bool haveMessage = false;
     bool m_running = false;
+    bool m_connected = false;
     bool m_interrupt = false;
     bool m_isMaster = false;
     std::deque<TileMessage> m_receivedTiles;
@@ -209,6 +210,7 @@ class RemoteConnection {
 
         {
             lock_guard locker(*m_mutex);
+            m_connected = true;
             connectionEstablished();
         }
 
@@ -390,12 +392,12 @@ class RemoteConnection {
 
     bool isConnecting() const {
         lock_guard locker(*m_mutex);
-        return m_sock.is_open();
+        return !m_connected && m_sock.is_open();
     }
 
     bool isConnected() const {
         lock_guard locker(*m_mutex);
-        return m_sock.is_open();
+        return m_connected && m_sock.is_open();
     }
 
     bool messageReceived() {
@@ -431,6 +433,8 @@ class RemoteConnection {
 
     bool requestBounds() {
         lock_guard locker(*m_mutex);
+        if (!isConnected())
+            return false;
         m_boundsUpdated = false;
 
         boundsMsg msg;
@@ -1664,7 +1668,7 @@ void RhrClient::requestTimestep(int t) {
 #endif
     } else if (t != m_requestedTimestep) {
         bool requested = false;
-        if (m_remote) {
+        if (m_remote && m_remote->isConnected()) {
             if (coVRMSController::instance()->isMaster()) {
                 animationMsg msg;
                 msg.current = t;
@@ -1696,7 +1700,8 @@ void RhrClient::message(int type, int len, const void *msg) {
             variantMsg msg;
             msg.visible = visible;
             strncpy(msg.name, VariantName.c_str(), sizeof(msg.name));
-            m_remote->send(msg);
+            if (m_remote && m_remote->isConnected())
+                m_remote->send(msg);
         }
         break;
     }
