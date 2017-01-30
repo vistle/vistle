@@ -47,6 +47,8 @@ Hub *hub_instance = nullptr;
 
 Hub::Hub()
 : m_port(31093)
+, m_masterPort(m_port)
+, m_masterHost("localhost")
 , m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_stateTracker("Hub state")
 , m_uiManager(*this, m_stateTracker)
@@ -836,20 +838,17 @@ bool Hub::init(int argc, char *argv[]) {
 
    std::string uiCmd = "vistle_gui";
 
-   std::string masterhost;
-   unsigned short masterport = 31093;
    if (vm.count("hub") > 0) {
-      uiCmd.clear();
       m_isMaster = false;
-      masterhost = vm["hub"].as<std::string>();
-      auto colon = masterhost.find(':');
+      m_masterHost = vm["hub"].as<std::string>();
+      auto colon = m_masterHost.find(':');
       if (colon != std::string::npos) {
-         masterport = boost::lexical_cast<unsigned short>(masterhost.substr(colon+1));
-         masterhost = masterhost.substr(0, colon);
+         m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon+1));
+         m_masterHost = m_masterHost.substr(0, colon);
       }
 
-      if (!connectToMaster(masterhost, masterport)) {
-         CERR << "failed to connect to master at " << masterhost << ":" << masterport << std::endl;
+      if (!connectToMaster(m_masterHost, m_masterPort)) {
+         CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
          return false;
       }
    } else {
@@ -862,6 +861,7 @@ bool Hub::init(int argc, char *argv[]) {
       master.setPort(m_port);
       master.setDataPort(m_dataProxy->port());
       m_stateTracker.handle(master);
+      m_masterPort = m_port;
    }
 
    // start UI
@@ -969,12 +969,12 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
 bool Hub::startUi(const std::string &uipath) {
 
-   std::string port = boost::lexical_cast<std::string>(this->port());
+   std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
 
    std::vector<std::string> args;
    args.push_back(uipath);
    args.push_back("-from-vistle");
-   args.push_back("localhost");
+   args.push_back(m_masterHost);
    args.push_back(port);
    auto pid = vistle::spawn_process(uipath, args);
    if (!pid) {

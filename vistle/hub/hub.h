@@ -64,7 +64,8 @@ private:
    bool startCleaner();
    bool startManager();
 
-   unsigned short m_port;
+   unsigned short m_port, m_masterPort;
+   std::string m_masterHost;
    boost::asio::io_service m_ioService;
    std::shared_ptr<acceptor> m_acceptor;
 
