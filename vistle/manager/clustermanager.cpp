@@ -837,93 +837,96 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
 bool ClusterManager::handlePriv(const message::Execute &exec) {
 
-   vassert (exec.getModule() >= Id::ModuleBase);
-   RunningMap::iterator i = runningMap.find(exec.getModule());
-   if (i != runningMap.end()) {
-      auto &mod = i->second;
-      switch(exec.what()) {
-      case message::Execute::Prepare: {
-         vassert(!mod.prepared);
-         vassert(mod.reduced);
-         mod.prepared = true;
-         mod.reduced = false;
-         mod.send(exec);
-         CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
-         checkExecuteObject(exec.getModule());
-         break;
-      }
-      case message::Execute::Reduce: {
-         vassert(mod.prepared);
-         vassert(!mod.reduced);
-         mod.prepared = false;
-         mod.reduced = true;
-         mod.send(exec);
-         break;
-      }
-      case message::Execute::ComputeExecute: {
-         if (exec.isBroadcast()) {
-             mod.send(exec);
-             vassert(!mod.prepared);
-             mod.prepared = false;
-             mod.reduced = true;
-         } else if (Communicator::the().getRank() == 0) {
-             CERR << "non-broadcast Execute: " << exec << std::endl;
-             if (mod.ranksStarted > 0) {
-                 mod.delay(exec);
-             } else {
-                 vassert(!mod.prepared);
-                 mod.prepared = false;
-                 mod.reduced = true;
-                 message::Buffer buf(exec);
-                 buf.setBroadcast(true);
-                 Communicator::the().broadcastAndHandleMessage(buf);
-             }
-         }
-         break;
-      }
-      case message::Execute::ComputeObject: {
-         //CERR << exec << std::endl;
-         vassert(mod.prepared);
-         vassert(!mod.reduced);
-         auto it = m_stateTracker.runningMap.find(exec.getModule());
-         auto pol = message::SchedulingPolicy::Single;
-         if (it != m_stateTracker.runningMap.end()) {
-             pol = it->second.schedulingPolicy;
-         }
-         if (exec.isBroadcast() || pol == message::SchedulingPolicy::Single) {
-             mod.reduced = false;
-             mod.send(exec);
-         } else {
-             if (m_rank == 0) {
-                 bool doExec = pol == message::SchedulingPolicy::Gang;
-                 if (pol == message::SchedulingPolicy::LazyGang) {
-                     if (ssize_t(mod.objectCount.size()) < getSize())
-                         mod.objectCount.resize(getSize());
-                     ++mod.objectCount[exec.rank()];
-                     int numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
-                     if (numObjects>0 && numObjects>=getSize()*.2) {
-                         doExec = true;
-                         for (auto &c: mod.objectCount) {
-                             if (c > 0) {
-                                 --c;
-                             }
-                         }
-                     }
-                 }
-                 if (doExec) {
-                     //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
-                     message::Buffer buf(exec);
-                     buf.setBroadcast(true);
-                     Communicator::the().broadcastAndHandleMessage(buf);
-                 }
-             }
-         }
-         break;
-      }
-      }
-   }
+    vassert (exec.getModule() >= Id::ModuleBase);
+    RunningMap::iterator i = runningMap.find(exec.getModule());
+    if (i == runningMap.end()) {
+        CERR << "did not find module to be executed: " << exec.getModule() << std::endl;
+        return true;
+    }
 
-   return true;
+    auto &mod = i->second;
+    switch(exec.what()) {
+    case message::Execute::Prepare: {
+        vassert(!mod.prepared);
+        vassert(mod.reduced);
+        mod.prepared = true;
+        mod.reduced = false;
+        mod.send(exec);
+        CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
+        checkExecuteObject(exec.getModule());
+        break;
+    }
+    case message::Execute::Reduce: {
+        vassert(mod.prepared);
+        vassert(!mod.reduced);
+        mod.prepared = false;
+        mod.reduced = true;
+        mod.send(exec);
+        break;
+    }
+    case message::Execute::ComputeExecute: {
+        if (exec.isBroadcast()) {
+            mod.send(exec);
+            vassert(!mod.prepared);
+            mod.prepared = false;
+            mod.reduced = true;
+        } else if (Communicator::the().getRank() == 0) {
+            CERR << "non-broadcast Execute: " << exec << std::endl;
+            if (mod.ranksStarted > 0) {
+                mod.delay(exec);
+            } else {
+                vassert(!mod.prepared);
+                mod.prepared = false;
+                mod.reduced = true;
+                message::Buffer buf(exec);
+                buf.setBroadcast(true);
+                Communicator::the().broadcastAndHandleMessage(buf);
+            }
+        }
+        break;
+    }
+    case message::Execute::ComputeObject: {
+        //CERR << exec << std::endl;
+        vassert(mod.prepared);
+        vassert(!mod.reduced);
+        auto it = m_stateTracker.runningMap.find(exec.getModule());
+        auto pol = message::SchedulingPolicy::Single;
+        if (it != m_stateTracker.runningMap.end()) {
+            pol = it->second.schedulingPolicy;
+        }
+        if (exec.isBroadcast() || pol == message::SchedulingPolicy::Single) {
+            mod.reduced = false;
+            mod.send(exec);
+        } else {
+            if (m_rank == 0) {
+                bool doExec = pol == message::SchedulingPolicy::Gang;
+                if (pol == message::SchedulingPolicy::LazyGang) {
+                    if (ssize_t(mod.objectCount.size()) < getSize())
+                        mod.objectCount.resize(getSize());
+                    ++mod.objectCount[exec.rank()];
+                    int numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
+                    if (numObjects>0 && numObjects>=getSize()*.2) {
+                        doExec = true;
+                        for (auto &c: mod.objectCount) {
+                            if (c > 0) {
+                                --c;
+                            }
+                        }
+                    }
+                }
+                if (doExec) {
+                    //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
+                    message::Buffer buf(exec);
+                    buf.setBroadcast(true);
+                    Communicator::the().broadcastAndHandleMessage(buf);
+                }
+            }
+        }
+        break;
+    }
+    }
+
+    return true;
 }
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
