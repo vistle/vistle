@@ -170,31 +170,43 @@ int RhrServer::numViews() const {
 
 unsigned char *RhrServer::rgba(int i) {
 
+    if (i > numViews())
+        return nullptr;
     return m_viewData[i].rgba.data();
 }
 
 const unsigned char *RhrServer::rgba(int i) const {
 
+    if (i > numViews())
+        return nullptr;
     return m_viewData[i].rgba.data();
 }
 
 float *RhrServer::depth(int i) {
 
+    if (i > numViews())
+        return nullptr;
     return m_viewData[i].depth.data();
 }
 
 const float *RhrServer::depth(int i) const {
 
+    if (i > numViews())
+        return nullptr;
     return m_viewData[i].depth.data();
 }
 
 int RhrServer::width(int i) const {
 
+   if (i > numViews())
+       return 0;
    return m_viewData[i].param.width;
 }
 
 int RhrServer::height(int i) const {
 
+   if (i > numViews())
+       return 0;
    return m_viewData[i].param.height;
 }
 
@@ -290,6 +302,8 @@ bool RhrServer::init(unsigned short port) {
 }
 
 void RhrServer::resetClient() {
+
+    finishTiles(true /* finish */, false /* send */);
 
     ++m_updateCount;
     ++lightsUpdateCount;
@@ -957,8 +971,6 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
 
     //vistle::StopWatch timer("encodeAndSend");
     const int tileWidth = m_tileWidth, tileHeight = m_tileHeight;
-    static int framecount=0;
-    ++framecount;
 
     if (viewNum >= 0) {
        for (int y=y0; y<y0+h; y+=tileHeight) {
@@ -987,13 +999,21 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
        }
     }
 
+    finishTiles(lastView);
+}
+
+bool RhrServer::finishTiles(bool finish, bool sendTiles) {
+
+    static int framecount=0;
+    ++framecount;
+
     bool tileReady = false;
     do {
         RhrServer::EncodeResult result;
         tileReady = false;
         tileMsg *msg = nullptr;
-        if (m_queuedTiles == 0 && lastView) {
-           msg = newTileMsg(m_imageParam, param, viewNum, x0, y0, w, h);
+        if (m_queuedTiles == 0 && finish) {
+           msg = newTileMsg(m_imageParam, RhrServer::ViewParameters(), -1, 0, 0, 0, 0);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;
@@ -1005,22 +1025,25 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
               //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
            }
            m_firstTile = false;
-           if (m_queuedTiles == 0 && lastView) {
+           if (m_queuedTiles == 0 && finish) {
               msg->flags |= rfbTileLast;
               //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
            }
            msg->frameNumber = framecount;
-           send(*msg, &result.payload);
+           if (sendTiles)
+               send(*msg, &result.payload);
         }
         result.payload.clear();
         delete msg;
-    } while (m_queuedTiles > 0 && (tileReady || lastView));
+    } while (m_queuedTiles > 0 && (tileReady || finish));
 
-    if (lastView) {
+    if (finish) {
         vassert(m_queuedTiles == 0);
         m_resizeBlocked = false;
         deferredResize();
     }
+
+    return  m_queuedTiles==0;
 }
 
 RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const {

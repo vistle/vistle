@@ -472,7 +472,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
                break;
            }
 
-           if (color && depth) {
+           if (color && depth && rhr->rgba(i) && rhr->depth(i)) {
                for (int y=0; y<h; ++y) {
                    memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
                    memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
