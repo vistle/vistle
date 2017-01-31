@@ -50,7 +50,7 @@ if(NOT WIN32)
 endif()
 
 cover_add_plugin(RhrClient ${HEADER} ${SOURCES})
-target_link_libraries(RhrClient VistlePluginUtil vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(RhrClient VistlePluginUtil ${COVISE_NET_LIBRARY} vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
 if(UNIX AND NOT APPLE)
    target_link_libraries(RhrClient
         -lpthread                                                                                                                                                                                                                                                                           
