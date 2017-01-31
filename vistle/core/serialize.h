@@ -147,7 +147,7 @@ inline void load(
        detail::stack_construct<Archive, CharT> u(ar, 0);
        ar >> boost::serialization::make_nvp("item", u.reference());
        t.push_back(u.reference());
-       ar.reset_object_address(& t.back() , & u.reference());
+       ar.reset_object_address(& t[t.length()-1] , & u.reference());
     }
 }
 
