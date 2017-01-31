@@ -113,26 +113,22 @@ class ReadCFX: public vistle::Module {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected, m_boundariesSelected;
-   std::map<int, vistle::DataBase::ptr> m_currentVolumedata;
-   std::map<int, vistle::DataBase::ptr> m_currentBoundaryVolumedata;
+   std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
 
-
-
-
-   //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
-   int rankForBlock(int processor) const;
+   int rankForVolumeAndTimestep(int timestep, int firsttimestep, int step, int volume, int numVolumes) const;
+   int rankForBoundaryAndTimestep(int timestep, int firsttimestep, int step, int boundary, int numBoundaries) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
    vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
-   bool loadFields(int volumeNr, int processor, int timestep);
-   bool loadBoundaryFields(int boundaryNr, int processor, int timestep);
-   int collectVolumes();
-   int collectBoundaries();
-   bool addVolumeDataToPorts(int volumeNr);
-   bool addGridToPort(int volumeNr);
-   void setMeta(vistle::Object::ptr obj, int processor, int timestep);
+   bool loadFields(int volumeNr, int processor, int timestep, index_t numBlocks);
+   bool loadBoundaryFields(int boundaryNr, int processor, int timestep, index_t numBlocks);
+   index_t collectVolumes();
+   index_t collectBoundaries();
+   bool addVolumeDataToPorts(int processor);
+   bool addGridToPort(int processor);
+   void setMeta(vistle::Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks);
 
 
 };
