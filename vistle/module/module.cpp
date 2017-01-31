@@ -42,6 +42,10 @@
 #endif
 #include "module.h"
 
+#include <core/shm_reference.h>
+#include <core/archive_saver.h>
+#include <core/archive_loader.h>
+
 //#define DEBUG
 //#define REDUCE_DEBUG
 
@@ -544,6 +548,111 @@ bool Module::removeParameter(Parameter *param) {
    parameters.erase(it);
 
    return true;
+}
+
+bool Module::sendObject(Object::const_ptr obj, int destRank) const {
+
+    vecostreambuf<char> memstr;
+    vistle::shallow_oarchive memar(memstr);
+    auto saver = std::make_shared<DeepArchiveSaver>();
+    memar.setSaver(saver);
+    obj->save(memar);
+    const std::vector<char> &mem = memstr.get_vector();
+    uint64_t len = mem.size();
+    std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
+    const char *data = mem.data();
+
+    MPI_Request r1, r2;
+    MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
+    MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
+    MPI_Wait(&r1, MPI_STATUS_IGNORE);
+    MPI_Wait(&r2, MPI_STATUS_IGNORE);
+    //FIXME: directory
+
+    return true;
+}
+
+Object::const_ptr Module::receiveObject(int sourceRank) const {
+    uint64_t len = 0;
+    MPI_Request r;
+    MPI_Irecv(&len, 1, MPI_UINT64_T, sourceRank, 0, MPI_COMM_WORLD, &r);
+    MPI_Wait(&r, MPI_STATUS_IGNORE);
+    if (len > 0) {
+        //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
+        std::vector<char> mem(len);
+        char *data = mem.data();
+        vistle::SubArchiveDirectory dir;
+        std::map<std::string, std::vector<char>> objects, arrays;
+        MPI_Request r;
+        MPI_Irecv(data, mem.size(), MPI_BYTE, sourceRank, 0, MPI_COMM_WORLD, &r);
+        MPI_Wait(&r, MPI_STATUS_IGNORE);
+        //FIXME: directory
+
+        vecistreambuf<char> membuf(mem);
+        vistle::shallow_iarchive memar(membuf);
+        auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+        memar.setFetcher(fetcher);
+        Object::ptr obj(Object::load(memar));
+        return obj;
+    }
+
+    return Object::const_ptr();
+}
+
+bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
+
+    if (rank() == root) {
+        vecostreambuf<char> memstr;
+        vistle::shallow_oarchive memar(memstr);
+        auto saver = std::make_shared<DeepArchiveSaver>();
+        memar.setSaver(saver);
+        obj->save(memar);
+        const std::vector<char> &mem = memstr.get_vector();
+        uint64_t len = mem.size();
+        std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
+        const char *data = mem.data();
+
+        MPI_Bcast(&len, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+        MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, root, MPI_COMM_WORLD);
+
+        auto dir = saver->getDirectory();
+        mpi::broadcast(comm(), dir, rank());
+        for (auto &ent: dir) {
+            mpi::broadcast(comm(), ent.data, ent.size, rank());
+        }
+    } else {
+        uint64_t len = 0;
+        std::cerr << "Rank " << rank() << ": Waiting to receive: broadcast" << std::endl;
+        MPI_Bcast(&len, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
+        if (len > 0) {
+            //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
+            std::vector<char> mem(len);
+            char *data = mem.data();
+            vistle::SubArchiveDirectory dir;
+            std::map<std::string, std::vector<char>> objects, arrays;
+            MPI_Bcast(data, mem.size(), MPI_BYTE, root, MPI_COMM_WORLD);
+            mpi::broadcast(comm(), dir, root);
+            for (auto &ent: dir) {
+                if (ent.is_array) {
+                    arrays[ent.name].resize(ent.size);
+                    ent.data = arrays[ent.name].data();
+                } else {
+                    objects[ent.name].resize(ent.size);
+                    ent.data = objects[ent.name].data();
+                }
+                mpi::broadcast(comm(), ent.data, ent.size, root);
+            }
+
+            vecistreambuf<char> membuf(mem);
+            vistle::shallow_iarchive memar(membuf);
+            auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+            memar.setFetcher(fetcher);
+            Object::ptr obj2(Object::load(memar));
+            obj = obj2;
+        }
+    }
+
+    return true;
 }
 
 bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {

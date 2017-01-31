@@ -115,6 +115,10 @@ class V_MODULEEXPORT Module {
    bool removeParameter(const std::string &name);
    bool removeParameter(Parameter *param);
 
+   bool sendObject(vistle::Object::const_ptr object, int destRank) const;
+   vistle::Object::const_ptr receiveObject(int destRank) const;
+   bool broadcastObject(vistle::Object::const_ptr &object, int root) const;
+
    bool addObject(Port *port, vistle::Object::ptr object);
    bool addObject(const std::string &portName, vistle::Object::ptr object);
    bool passThroughObject(Port *port, vistle::Object::const_ptr object);

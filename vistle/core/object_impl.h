@@ -75,8 +75,10 @@ Object *Object::load(Archive &ar) {
    Object *p = NULL;
    ar & V_NAME("object", p);
    assert(ar.currentObject() == p->d());
-   if (p->d()->unresolvedReferences == 0 && ar.objectCompletionHandler()) {
-       ar.objectCompletionHandler()();
+   if (p->d()->unresolvedReferences == 0) {
+       p->refresh();
+       if (ar.objectCompletionHandler())
+           ar.objectCompletionHandler()();
    }
    return p;
 }
