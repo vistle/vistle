@@ -8,6 +8,10 @@ if (TINYXML2_FOUND)
    include_directories(${TINYXML2_INCLUDE_DIRS})
 endif()
 
+if (NOT VTK_FOUND)
+    return()
+endif()
+
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
