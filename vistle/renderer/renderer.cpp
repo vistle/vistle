@@ -317,20 +317,27 @@ bool Renderer::compute() {
 
 bool Renderer::handle(const message::ObjectReceived &recv) {
 
-    PlaceHolder::ptr ph(new PlaceHolder(recv.objectName(), recv.meta(), recv.objectType()));
+    Object::const_ptr obj, placeholder;
+    if (recv.rank() == rank()) {
+        obj = Shm::the().getObjectFromName(recv.objectName());
+        auto ph = std::make_shared<PlaceHolder>(recv.objectName(), recv.meta(), recv.objectType());
+        ph->copyAttributes(obj);
+        placeholder = ph;
+    }
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
     const bool send = rm != LocalOnly;
     const bool bcast = rm == AllNodes;
     bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv.rank() == rank());
     if (bcast) {
-        Object::const_ptr obj;
-        if (recv.rank() == rank())
-            obj = Shm::the().getObjectFromName(recv.objectName());
         broadcastObject(obj, recv.rank());
-        if (localAdd) {
-            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-        }
+        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
     } else {
+        broadcastObject(placeholder, recv.rank());
+        if (obj)
+            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
+        else
+            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), placeholder);
+#if 0
         if (recv.rank() == rank()) {
             Object::const_ptr obj = Shm::the().getObjectFromName(recv.objectName());
             vassert(obj);
@@ -422,9 +429,12 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
                 localAdd = false;
             }
         }
+#endif
     }
+#if 0
     if (!localAdd)
         addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), ph);
+#endif
 
     return true;
 }
