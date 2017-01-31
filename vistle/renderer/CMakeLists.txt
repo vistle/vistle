@@ -4,24 +4,24 @@ vistle_find_package(TBB)
 set(renderer_SOURCES
    renderer.cpp
    renderobject.cpp
-   rhrcontroller.cpp
 )
 
 set(renderer_HEADERS
    export.h
    renderer.h
    renderobject.h
-   rhrcontroller.h
 )
 
 if(TBB_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
       #vnccontroller.cpp
+      rhrcontroller.cpp
       parrendmgr.cpp
    )
    set(renderer_HEADERS ${renderer_HEADERS}
       #vnccontroller.h
       parrendmgr.h
+      rhrcontroller.h
    )
    include_directories(
       ${TBB_INCLUDE_DIR}
