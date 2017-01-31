@@ -131,9 +131,6 @@ private:
    bool m_haveConnection;
    std::shared_ptr<RemoteConnection> m_remote;
 
-   //! buffer for storing decompressed data
-   std::vector<char> recvbuf, decompbuf;
-
    int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_timestepToCommit;
 
    bool handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload);

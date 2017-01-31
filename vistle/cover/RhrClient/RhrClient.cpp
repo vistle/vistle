@@ -127,6 +127,8 @@ class RemoteConnection {
     std::map<std::string, vistle::RenderObject::InitialVariantVisibility> m_variantsToAdd;
     std::set<std::string> m_variantsToRemove;
     std::map<std::string, std::shared_ptr<VariantRenderObject>> m_variants;
+    int m_requestedTimestep=-1, m_remoteTimestep=-1, m_visibleTimestep=-1, m_numRemoteTimesteps=-1, m_timestepToCommit=-1;
+    osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
 
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
@@ -135,6 +137,7 @@ class RemoteConnection {
         , m_host(host)
         , m_port(port)
         , m_sock(plugin->m_io)
+        , m_isMaster(isMaster)
     {
         boundsNode = new osg::Node;
         m_mutex = new std::recursive_mutex;
@@ -155,6 +158,7 @@ class RemoteConnection {
             m_thread->join();
             delete m_thread;
         }
+        delete m_sendMutex;
         delete m_mutex;
     }
 
@@ -277,24 +281,22 @@ class RemoteConnection {
 
     void connectionEstablished() {
         std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
-        if (coVRMSController::instance()->isMaster()) {
-            for (const auto &var: plugin->m_coverVariants) {
-                variantMsg msg;
-                strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
-                msg.visible = var.second;
-                send(msg);
-            }
-
-            animationMsg msg;
-            msg.current = plugin->m_visibleTimestep;
-            msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+        for (const auto &var: plugin->m_coverVariants) {
+            variantMsg msg;
+            strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+            msg.visible = var.second;
             send(msg);
         }
+
+        animationMsg msg;
+        msg.current = plugin->m_visibleTimestep;
+        msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+        send(msg);
     }
 
     bool handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim) {
-        std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
-        plugin->m_numRemoteTimesteps = anim.total;
+        lock_guard locker(*m_mutex);
+        m_numRemoteTimesteps = anim.total;
         return true;
     }
 
@@ -315,9 +317,47 @@ class RemoteConnection {
     void update() {
         lock_guard locker(*m_mutex);
         updateVariants();
+        coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+        plugin->m_numRemoteTimesteps = m_numRemoteTimesteps;
+        coVRMSController::instance()->syncData(&m_remoteTimestep, sizeof(m_remoteTimestep));
+        plugin->m_remoteTimestep = m_remoteTimestep;
     }
 
     void updateVariants() {
+        int numAdd = m_variantsToAdd.size(), numRemove = m_variantsToRemove.size();
+        coVRMSController::instance()->syncData(&numAdd, sizeof(numAdd));
+        coVRMSController::instance()->syncData(&numRemove, sizeof(numRemove));
+        auto itAdd = m_variantsToAdd.begin();
+        for (int i=0; i<numAdd; ++i) {
+            std::string s;
+            enum vistle::RenderObject::InitialVariantVisibility vis;
+            if (m_isMaster) {
+                s = itAdd->first;
+                vis = itAdd->second;
+            }
+            s = coVRMSController::instance()->syncString(s);
+            coVRMSController::instance()->syncData(&vis, sizeof(vis));
+            if (!m_isMaster) {
+                m_variantsToAdd.emplace(s, vis);
+            } else {
+                ++itAdd;
+            }
+        }
+        assert(m_variantsToAdd.size() == numAdd);
+        auto itRemove = m_variantsToRemove.begin();
+        for (int i=0; i<numRemove; ++i) {
+            std::string s;
+            if (m_isMaster)
+                s = *itRemove;
+            s = coVRMSController::instance()->syncString(s);
+            if (!m_isMaster) {
+                m_variantsToRemove.insert(s);
+            } else {
+                ++itRemove;
+            }
+        }
+        assert(m_variantsToRemove.size() == numRemove);
+
         if (!m_variantsToAdd.empty())
             cover->addPlugin("Variant");
         for (auto &var: m_variantsToAdd) {
@@ -328,6 +368,7 @@ class RemoteConnection {
             coVRPluginList::instance()->addNode(it->second->node(), it->second.get(), plugin);
         }
         m_variantsToAdd.clear();
+
         for (auto &var: m_variantsToRemove) {
             auto it = m_variants.find(var);
             if (it != m_variants.end()) {
@@ -788,7 +829,7 @@ void RhrClient::finishFrame(const tileMsg &msg) {
    m_numPixelsS = m_numPixels;
 
    //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
-   m_remoteTimestep = msg.timestep;
+   m_remote->m_remoteTimestep = msg.timestep;
    if (m_requestedTimestep>=0) {
        if (msg.timestep == m_requestedTimestep) {
            m_timestepToCommit = msg.timestep;
@@ -1299,7 +1340,8 @@ RhrClient::preFrame()
 
    m_io.poll();
 
-   if (m_remote && !m_remote->isRunning()) {
+   bool running = coVRMSController::instance()->syncBool(m_remote && m_remote->isRunning());
+   if (m_remote && !running) {
        clientCleanup(m_remote);
    }
 
@@ -1657,14 +1699,12 @@ void RhrClient::requestTimestep(int t) {
     } else if (t != m_requestedTimestep) {
         bool requested = false;
         if (m_remote && m_remote->isConnected()) {
-            if (coVRMSController::instance()->isMaster()) {
-                animationMsg msg;
-                msg.current = t;
-                msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-                requested = m_remote->send(msg);
-            }
-            requested = coVRMSController::instance()->syncBool(requested);
+            animationMsg msg;
+            msg.current = t;
+            msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+            requested = m_remote->send(msg);
         }
+        requested = coVRMSController::instance()->syncBool(requested);
         if (requested) {
             m_requestedTimestep = t;
         }
