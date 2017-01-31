@@ -33,15 +33,21 @@ endif()
 set(RHR_SOURCES
    depthquant.cpp
    rfbext.cpp
-   rhrserver.cpp
    )
 
 set(RHR_HEADERS
    depthquant.h
    rfbext.h
    ReadBackCuda.h
-   rhrserver.h
    )
+
+if(TBB_FOUND)
+   set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
+   set(RHR_HEADERS ${RHR_HEADERS} rhsserver.h)
+   include_directories(
+        ${TBB_INCLUDE_DIRS}
+   )
+endif()
 
 if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
@@ -54,7 +60,6 @@ endif()
 include_directories(
         ..
         ${Boost_INCLUDE_DIRS}
-        ${TBB_INCLUDE_DIRS}
         ${JPEGTURBO_INCLUDE_DIR}
         ..
 )
@@ -87,11 +92,15 @@ target_link_libraries(vistle_rhr
         vistle_util
         vistle_core
         ${Boost_LIBRARIES}
-        ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
         ${TURBOJPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
 )
+
+if(TBB_FOUND)
+   target_link_libraries(vistle_rhr ${TBB_LIBRARIES})
+endif()
+
 
 if(SNAPPY_FOUND)
    target_link_libraries(vistle_rhr ${SNAPPY_LIBRARIES})
