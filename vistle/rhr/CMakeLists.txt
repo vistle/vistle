@@ -43,7 +43,7 @@ set(RHR_HEADERS
 
 if(TBB_FOUND)
    set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
-   set(RHR_HEADERS ${RHR_HEADERS} rhsserver.h)
+   set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
    include_directories(
         ${TBB_INCLUDE_DIRS}
    )
