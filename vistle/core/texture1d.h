@@ -31,7 +31,6 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
       Scalar max;
 
       ShmVector<unsigned char> pixels;
-      ShmVector<Scalar> coords;
 
       static Data *create(const Index width = 0,
             const Scalar min = 0, const Scalar max = 0,
