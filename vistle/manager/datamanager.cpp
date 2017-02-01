@@ -381,7 +381,6 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
        memar.setFetcher(fetcher);
        //CERR << "loading object " << objName << " from memar" << std::endl;
        objIt->second.obj = Object::load(memar);
-       objIt->second.obj->ref();
    }
 
    return true;

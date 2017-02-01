@@ -80,6 +80,7 @@ Object *Object::load(Archive &ar) {
        if (ar.objectCompletionHandler())
            ar.objectCompletionHandler()();
    }
+   p->ref();
    return p;
 }
 
