@@ -34,6 +34,7 @@
 #include <core/object.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include <core/messagerouter.h>
 #include <core/parameter.h>
 #include <core/shm.h>
 #include <core/port.h>
@@ -1173,7 +1174,8 @@ void Module::sendMessage(const message::Message &message) const {
          && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
       CERR << "SEND: " << message << std::endl;
    }
-   sendMessageQueue->send(message);
+   if (rank() == 0 || message::Router::the().toRank0(message))
+       sendMessageQueue->send(message);
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {
