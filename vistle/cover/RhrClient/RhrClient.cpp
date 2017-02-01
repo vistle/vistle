@@ -1111,7 +1111,8 @@ bool RhrClient::init()
    return true;
 }
 
-void RhrClient::addObject(opencover::RenderObject *baseObj, opencover::RenderObject *geomObj, opencover::RenderObject *normObj, opencover::RenderObject *colorObj, opencover::RenderObject *texObj, osg::Group *parent, int numCol, int colorBinding, int colorPacking, float *r, float *g, float *b, int *packedCol, int numNormals, int normalBinding, float *xn, float *yn, float *zn, float transparency) {
+void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *parent, const opencover::RenderObject *geometry, const opencover::RenderObject *normals, const opencover::RenderObject *colors, const opencover::RenderObject *texture)
+{
 
     if (!baseObj)
         return;

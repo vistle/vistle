@@ -84,15 +84,9 @@ public:
    ~RhrClient();
 
    bool init() override;
-   void addObject(RenderObject *baseObj,
-                           RenderObject *geomObj, RenderObject *normObj,
-                           RenderObject *colorObj, RenderObject *texObj,
-                           osg::Group *parent,
-                           int numCol, int colorBinding, int colorPacking,
-                           float *r, float *g, float *b, int *packedCol,
-                           int numNormals, int normalBinding,
-                           float *xn, float *yn, float *zn,
-                           float transparency) override;
+   void addObject(const RenderObject *container, osg::Group *parent,
+                  const RenderObject *geometry, const RenderObject *normals,
+                  const RenderObject *colors, const RenderObject *texture) override;
    void removeObject(const char *objName, bool replaceFlag) override;
    void preFrame() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;

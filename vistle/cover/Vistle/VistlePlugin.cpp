@@ -456,10 +456,7 @@ bool OsgRenderer::render() {
          }
          parent->addChild(transform);
          auto cro = ro->coverRenderObject;
-         coVRPluginList::instance()->addObject(cro.get(), cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture(), parent,
-                                               0, 0, 0, nullptr, nullptr, nullptr, nullptr,
-                                               0, 0, nullptr, nullptr, nullptr,
-                                               0.);
+         coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
       } else if (!transform) {
