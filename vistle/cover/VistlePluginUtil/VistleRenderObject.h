@@ -60,6 +60,7 @@ class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
    int getCreator() const;
 
    const char *getName() const override;
+   bool isPlaceHolder() const;
    bool isGeometry() const override;
    RenderObject *getGeometry() const override;
    RenderObject *getColors() const override;

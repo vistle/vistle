@@ -2,6 +2,8 @@
 
 #include <cover/coVRPluginList.h>
 
+#include <core/placeholder.h>
+
 using namespace opencover;
 
 BaseRenderObject::BaseRenderObject() {
@@ -56,6 +58,13 @@ const char *VistleRenderObject::getName() const {
    }
 
    return m_name.c_str();
+}
+
+bool VistleRenderObject::isPlaceHolder() const {
+
+   if (vistle::PlaceHolder::as(m_obj))
+       return true;
+   return false;
 }
 
 int VistleRenderObject::getCreator() const {

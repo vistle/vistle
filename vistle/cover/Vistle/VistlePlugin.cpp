@@ -177,6 +177,26 @@ class OsgRenderer: public vistle::Renderer {
       return it->second;
    }
 
+   osg::ref_ptr<osg::Group> getParent(VistleRenderObject *ro) {
+       int creatorId = ro->getCreator();
+       Creator &creator = getCreator(creatorId);
+
+       std::string variant = ro->renderObject()->variant;
+       osg::ref_ptr<osg::Group> parent = creator.constant(variant);
+       const int t = ro->renderObject()->timestep;
+       if (t >= 0) {
+           while (size_t(t) >= creator.animated(variant)->getNumChildren()) {
+               auto g = new osg::Group;
+               std::stringstream name;
+               name << "t" << t;
+               g->setName(name.str());
+               creator.animated(variant)->addChild(g);
+           }
+           parent = dynamic_cast<osg::Group *>(creator.animated(variant)->getChild(t));
+           assert(parent);
+       }
+       return parent;
+   }
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -373,25 +393,21 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
       return nullptr;
 
    int creatorId = container->getCreator();
-   getCreator(creatorId);
+   Creator &creator = getCreator(creatorId);
 
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, texture));
 
-   if (!pro->variant.empty()) {
+   const std::string variant = pro->variant;
+   if (!variant.empty()) {
       cover->addPlugin("Variant");
    }
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
+   auto cro = pro->coverRenderObject;
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, normals, texture)));
+   osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
 
-#if 0
-   coVRPluginList::instance()->addObject(pro->coverRenderObject.get(), nullptr, nullptr, nullptr, nullptr, nullptr,
-                                         0, 0, 0,
-                                         nullptr, nullptr, nullptr, nullptr,
-                                         0, 0, nullptr, nullptr, nullptr,
-                                         0.0);
-#endif
-
+   coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
    return pro;
 }
 
@@ -433,30 +449,21 @@ bool OsgRenderer::render() {
          ro->coverRenderObject->setNode(transform);
          transform->setName(ro->coverRenderObject->getName());
          const std::string variant = ro->variant;
-         osg::ref_ptr<osg::Group> parent = creator.constant(variant);
          const int t = ro->timestep;
          if (t >= 0) {
-            while (size_t(t) >= creator.animated(variant)->getNumChildren()) {
-               auto g = new osg::Group;
-               std::stringstream name;
-               name << "t" << t;
-               g->setName(name.str());
-               creator.animated(variant)->addChild(g);
-            }
-            parent = dynamic_cast<osg::Group *>(creator.animated(variant)->getChild(t));
-            assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
-         const char *filename = ro->coverRenderObject->getAttribute("_model_file");
-         if (filename) {
-             osg::Node *filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
-             if (filenode) {
-                 m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
+         if (!ro->coverRenderObject->isPlaceHolder()) {
+             const char *filename = ro->coverRenderObject->getAttribute("_model_file");
+             if (filename) {
+                 osg::Node *filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
+                 if (filenode) {
+                     m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
+                 }
              }
          }
+         osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
          parent->addChild(transform);
-         auto cro = ro->coverRenderObject;
-         coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
       } else if (!transform) {
