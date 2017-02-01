@@ -48,6 +48,9 @@ static bool needsSync(const message::Message &m) {
       case vistle::message::OBJECTRECEIVED:
       case vistle::message::QUIT:
       case vistle::message::KILL:
+      case vistle::message::ADDPARAMETER:
+      case vistle::message::SETPARAMETER:
+      case vistle::message::REMOVEPARAMETER:
          return true;
       default:
          return false;
