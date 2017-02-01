@@ -266,7 +266,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
    vecostreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
-   vistle::shallow_oarchive memar(buf);
+   vistle::oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
       if (!saver.save()) {
@@ -295,7 +295,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
 
    vecistreambuf<char> membuf(*payload);
    if (snd.isArray()) {
-       vistle::shallow_iarchive memar(membuf);
+       vistle::iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
        if (!loader.load()) {
            return false;
@@ -311,7 +311,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
 
        return true;
    } else {
-       vistle::shallow_iarchive memar(membuf);
+       vistle::iarchive memar(membuf);
        std::string objName = snd.objectId();
        auto objIt = m_outstandingObjects.find(objName);
        if (objIt == m_outstandingObjects.end()) {

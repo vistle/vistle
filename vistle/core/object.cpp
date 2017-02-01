@@ -495,8 +495,8 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
          funcs.func_name(ar); \
       } \
    }
-REG_WITH_ARCHIVE(shallow_oarchive, registerOArchive)
-REG_WITH_ARCHIVE(shallow_iarchive, registerIArchive)
+REG_WITH_ARCHIVE(oarchive, registerOArchive)
+REG_WITH_ARCHIVE(iarchive, registerIArchive)
 
 void Object::addAttribute(const std::string &key, const std::string &value) {
    d()->addAttribute(key, value);

@@ -32,12 +32,8 @@ namespace interprocess = boost::interprocess;
 
 typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 
-class shallow_oarchive;
-class shallow_iarchive;
-#if 0
-class deep_oarchive;
-class deep_iarchive;
-#endif
+class oarchive;
+class iarchive;
 class FindObjectReferenceOArchive;
 
 class Shm;
@@ -280,10 +276,8 @@ public:
    typedef Object::ptr (*CreateEmptyFunc)();
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
-   typedef void (*RegisterIArchiveFunc)(shallow_iarchive &ar);
-   //typedef void (*RegisterDeepIArchiveFunc)(deep_iarchive &ar);
-   typedef void (*RegisterOArchiveFunc)(shallow_oarchive &ar);
-   //typedef void (*RegisterDeepOArchiveFunc)(deep_oarchive &ar);
+   typedef void (*RegisterIArchiveFunc)(iarchive &ar);
+   typedef void (*RegisterOArchiveFunc)(oarchive &ar);
 
    struct FunctionTable {
        CreateEmptyFunc createEmpty;
@@ -385,10 +379,8 @@ private:
       return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
-   static void registerIArchive(shallow_iarchive &ar); \
-   /* static void registerDeepIArchive(deep_iarchive &ar); */ \
-   static void registerOArchive(shallow_oarchive &ar); \
-   /* static void registerDeepOArchive(deep_oarchive &ar); */ \
+   static void registerIArchive(iarchive &ar); \
+   static void registerOArchive(oarchive &ar); \
    void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
@@ -462,21 +454,21 @@ private:
 
 #define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
    prefix1, prefix2 \
-   void Type1, Type2::registerIArchive(shallow_iarchive &ar) { \
+   void Type1, Type2::registerIArchive(iarchive &ar) { \
       ar.register_type<Type1, Type2 >(); \
    } \
    prefix1, prefix2 \
-   void Type1, Type2::registerOArchive(shallow_oarchive &ar) { \
+   void Type1, Type2::registerOArchive(oarchive &ar) { \
       ar.register_type<Type1, Type2 >(); \
    }
 
 #define V_SERIALIZERS2(ObjType, prefix) \
    prefix \
-   void ObjType::registerIArchive(shallow_iarchive &ar) { \
+   void ObjType::registerIArchive(iarchive &ar) { \
       ar.register_type<ObjType >(); \
    } \
    prefix \
-   void ObjType::registerOArchive(shallow_oarchive &ar) { \
+   void ObjType::registerOArchive(oarchive &ar) { \
       ar.register_type<ObjType >(); \
    }
 

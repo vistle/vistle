@@ -553,7 +553,7 @@ bool Module::removeParameter(Parameter *param) {
 bool Module::sendObject(Object::const_ptr obj, int destRank) const {
 
     vecostreambuf<char> memstr;
-    vistle::shallow_oarchive memar(memstr);
+    vistle::oarchive memar(memstr);
     auto saver = std::make_shared<DeepArchiveSaver>();
     memar.setSaver(saver);
     obj->save(memar);
@@ -567,7 +567,7 @@ bool Module::sendObject(Object::const_ptr obj, int destRank) const {
     return true;
 #if 0
     vecostreambuf<char> memstr;
-    vistle::shallow_oarchive memar(memstr);
+    vistle::oarchive memar(memstr);
     auto saver = std::make_shared<DeepArchiveSaver>();
     memar.setSaver(saver);
     obj->save(memar);
@@ -605,7 +605,7 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
         comm().recv(sourceRank, 0, ent.data, ent.size);
     }
     vecistreambuf<char> membuf(mem);
-    vistle::shallow_iarchive memar(membuf);
+    vistle::iarchive memar(membuf);
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
     memar.setFetcher(fetcher);
     Object::ptr p(Object::load(memar));
@@ -629,7 +629,7 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
         //FIXME: directory
 
         vecistreambuf<char> membuf(mem);
-        vistle::shallow_iarchive memar(membuf);
+        vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
         memar.setFetcher(fetcher);
         Object::ptr obj(Object::load(memar));
@@ -644,7 +644,7 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
 
     if (rank() == root) {
         vecostreambuf<char> memstr;
-        vistle::shallow_oarchive memar(memstr);
+        vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
         memar.setSaver(saver);
         obj->save(memar);
@@ -672,7 +672,7 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
             mpi::broadcast(comm(), ent.data, ent.size, root);
         }
         vecistreambuf<char> membuf(mem);
-        vistle::shallow_iarchive memar(membuf);
+        vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
         memar.setFetcher(fetcher);
         obj.reset(Object::load(memar));

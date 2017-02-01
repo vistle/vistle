@@ -20,7 +20,7 @@ struct V_COREEXPORT ArrayLoader {
         ShmVector<T> m_ref;
     };
 
-    ArrayLoader(const std::string &name, int type, const vistle::shallow_iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArrayLoader(const std::string &name, int type, const vistle::iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
 
@@ -39,7 +39,7 @@ struct V_COREEXPORT ArrayLoader {
                 std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
                 return;
             }
-            auto &ar = const_cast<vistle::shallow_iarchive &>(m_ar);
+            auto &ar = const_cast<vistle::iarchive &>(m_ar);
             std::string name;
             ar & name;
             vassert(name == m_name);
@@ -62,7 +62,7 @@ struct V_COREEXPORT ArrayLoader {
     bool m_ok;
     std::string m_name;
     int m_type;
-    const vistle::shallow_iarchive &m_ar;
+    const vistle::iarchive &m_ar;
 };
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
@@ -78,7 +78,7 @@ public:
             return;
         }
         vecistreambuf<char> vb(it->second);
-        shallow_iarchive ar(vb);
+        iarchive ar(vb);
         ArrayLoader loader(name, type, ar);
         if (loader.load()) {
             std::cerr << "DeepArchiveFetcher: success array " << name << std::endl;
@@ -96,7 +96,7 @@ public:
             return;
         }
         vecistreambuf<char> vb(it->second);
-        shallow_iarchive ar(vb);
+        iarchive ar(vb);
         ar.setFetcher(shared_from_this());
         Object::ptr obj(Object::load(ar));
         if (obj->isComplete()) {

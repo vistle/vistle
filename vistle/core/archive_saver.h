@@ -10,7 +10,7 @@ namespace vistle {
 
 struct V_COREEXPORT ArraySaver {
 
-    ArraySaver(const std::string &name, int type, vistle::shallow_oarchive &ar, const void *array=nullptr): m_ok(false), m_name(name), m_type(type), m_ar(ar), m_array(array) {}
+    ArraySaver(const std::string &name, int type, vistle::oarchive &ar, const void *array=nullptr): m_ok(false), m_name(name), m_type(type), m_ar(ar), m_array(array) {}
     ArraySaver() = delete;
     ArraySaver(const ArraySaver &other) = delete;
 
@@ -52,7 +52,7 @@ struct V_COREEXPORT ArraySaver {
     bool m_ok;
     std::string m_name;
     int m_type;
-    vistle::shallow_oarchive &m_ar;
+    vistle::oarchive &m_ar;
     const void *m_array = nullptr;
 };
 
@@ -63,27 +63,12 @@ public:
             return;
 
         vecostreambuf<char> vb;
-        shallow_oarchive ar(vb);
+        oarchive ar(vb);
         ar.setSaver(shared_from_this());
         ArraySaver as(name, type, ar, array);
         if (as.save()) {
             m_arrays.emplace(name, vb.get_vector());
         }
-#if 0
-        auto it = m_arrays.find(name);
-        if (it == m_arrays.end()) {
-            std::cerr << "DeepArchiveSaver: did not find array " << name << std::endl;
-            return;
-        }
-        vecistreambuf<char> vb(it->second);
-        shallow_iarchive ar(vb);
-        ArrayLoader loader(name, type, ar);
-        if (loader.load()) {
-           completeCallback();
-        } else {
-            std::cerr << "DeepArchiveSaver: failed to load array " << name << std::endl;
-        }
-#endif
     }
 
     void saveObject(const std::string &name, Object::const_ptr obj) override {
@@ -91,25 +76,10 @@ public:
             return;
 
         vecostreambuf<char> vb;
-        shallow_oarchive ar(vb);
+        oarchive ar(vb);
         ar.setSaver(shared_from_this());
         obj->save(ar);
         m_objects.emplace(name, vb.get_vector());
-#if 0
-        auto it = m_objects.find(name);
-        if (it == m_objects.end()) {
-            std::cerr << "DeepArchiveSaver: did not find object " << name << std::endl;
-            return;
-        }
-        vecistreambuf<char> vb(it->second);
-        shallow_iarchive ar(vb);
-        Object::ptr obj(Object::load(ar));
-        if (obj->isComplete()) {
-           completeCallback();
-        } else {
-            std::cerr << "DeepArchiveSaver: failed to load object " << name << std::endl;
-        }
-#endif
     }
 
     SubArchiveDirectory getDirectory() {
