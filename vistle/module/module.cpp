@@ -558,6 +558,20 @@ bool Module::sendObject(Object::const_ptr obj, int destRank) const {
     memar.setSaver(saver);
     obj->save(memar);
     const std::vector<char> &mem = memstr.get_vector();
+    comm().send(destRank, 0, mem);
+    auto dir = saver->getDirectory();
+    comm().send(destRank, 0, dir);
+    for (auto &ent: dir) {
+        comm().send(destRank, 0, ent.data, ent.size);
+    }
+    return true;
+#if 0
+    vecostreambuf<char> memstr;
+    vistle::shallow_oarchive memar(memstr);
+    auto saver = std::make_shared<DeepArchiveSaver>();
+    memar.setSaver(saver);
+    obj->save(memar);
+    const std::vector<char> &mem = memstr.get_vector();
     uint64_t len = mem.size();
     std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
     const char *data = mem.data();
@@ -570,9 +584,35 @@ bool Module::sendObject(Object::const_ptr obj, int destRank) const {
     //FIXME: directory
 
     return true;
+#endif
 }
 
 Object::const_ptr Module::receiveObject(int sourceRank) const {
+
+    std::vector<char> mem;
+    comm().recv(sourceRank, 0, mem);
+    vistle::SubArchiveDirectory dir;
+    std::map<std::string, std::vector<char>> objects, arrays;
+    comm().recv(sourceRank, 0, dir);
+    for (auto &ent: dir) {
+        if (ent.is_array) {
+            arrays[ent.name].resize(ent.size);
+            ent.data = arrays[ent.name].data();
+        } else {
+            objects[ent.name].resize(ent.size);
+            ent.data = objects[ent.name].data();
+        }
+        comm().recv(sourceRank, 0, ent.data, ent.size);
+    }
+    vecistreambuf<char> membuf(mem);
+    vistle::shallow_iarchive memar(membuf);
+    auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+    memar.setFetcher(fetcher);
+    Object::ptr p(Object::load(memar));
+    return p;
+#if 0
+    obj.reset(Object::load(memar));
+
     uint64_t len = 0;
     MPI_Request r;
     MPI_Irecv(&len, 1, MPI_UINT64_T, sourceRank, 0, MPI_COMM_WORLD, &r);
@@ -597,6 +637,7 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
     }
 
     return Object::const_ptr();
+#endif
 }
 
 bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
@@ -608,48 +649,33 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
         memar.setSaver(saver);
         obj->save(memar);
         const std::vector<char> &mem = memstr.get_vector();
-        uint64_t len = mem.size();
-        std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
-        const char *data = mem.data();
-
-        MPI_Bcast(&len, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
-        MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, root, MPI_COMM_WORLD);
-
+        mpi::broadcast(comm(), const_cast<std::vector<char>&>(mem), root);
         auto dir = saver->getDirectory();
-        mpi::broadcast(comm(), dir, rank());
+        mpi::broadcast(comm(), dir, root);
         for (auto &ent: dir) {
-            mpi::broadcast(comm(), ent.data, ent.size, rank());
+            mpi::broadcast(comm(), ent.data, ent.size, root);
         }
     } else {
-        uint64_t len = 0;
-        std::cerr << "Rank " << rank() << ": Waiting to receive: broadcast" << std::endl;
-        MPI_Bcast(&len, 1, MPI_UINT64_T, root, MPI_COMM_WORLD);
-        if (len > 0) {
-            //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
-            std::vector<char> mem(len);
-            char *data = mem.data();
-            vistle::SubArchiveDirectory dir;
-            std::map<std::string, std::vector<char>> objects, arrays;
-            MPI_Bcast(data, mem.size(), MPI_BYTE, root, MPI_COMM_WORLD);
-            mpi::broadcast(comm(), dir, root);
-            for (auto &ent: dir) {
-                if (ent.is_array) {
-                    arrays[ent.name].resize(ent.size);
-                    ent.data = arrays[ent.name].data();
-                } else {
-                    objects[ent.name].resize(ent.size);
-                    ent.data = objects[ent.name].data();
-                }
-                mpi::broadcast(comm(), ent.data, ent.size, root);
+        std::vector<char> mem;
+        mpi::broadcast(comm(), mem, root);
+        vistle::SubArchiveDirectory dir;
+        std::map<std::string, std::vector<char>> objects, arrays;
+        mpi::broadcast(comm(), dir, root);
+        for (auto &ent: dir) {
+            if (ent.is_array) {
+                arrays[ent.name].resize(ent.size);
+                ent.data = arrays[ent.name].data();
+            } else {
+                objects[ent.name].resize(ent.size);
+                ent.data = objects[ent.name].data();
             }
-
-            vecistreambuf<char> membuf(mem);
-            vistle::shallow_iarchive memar(membuf);
-            auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
-            memar.setFetcher(fetcher);
-            Object::ptr obj2(Object::load(memar));
-            obj = obj2;
+            mpi::broadcast(comm(), ent.data, ent.size, root);
         }
+        vecistreambuf<char> membuf(mem);
+        vistle::shallow_iarchive memar(membuf);
+        auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+        memar.setFetcher(fetcher);
+        obj.reset(Object::load(memar));
     }
 
     return true;
