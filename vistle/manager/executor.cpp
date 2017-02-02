@@ -71,6 +71,7 @@ Executor::Executor(int argc, char *argv[])
       if (hostnames[index] == hostname)
          first = false;
 
+   first = true;
    if (first) {
       interprocess::shared_memory_object::remove(m_name.c_str());
       vistle::Shm::create(m_name, 0, m_rank, NULL);

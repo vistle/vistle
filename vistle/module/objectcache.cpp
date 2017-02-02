@@ -31,10 +31,16 @@ ObjectCache::CacheMode ObjectCache::cacheMode() const {
 
 void ObjectCache::setCacheMode(ObjectCache::CacheMode mode) {
 
-   m_cacheMode = mode;
+   if (mode != m_cacheMode) {
+       if (m_cacheMode == CacheDeleteLate) {
+           m_cache.clear();
+           std::swap(m_cache, m_oldCache);
+       }
+       if (mode == CacheNone)
+           clear();
+   }
 
-   if (m_cacheMode == CacheNone)
-      clear();
+   m_cacheMode = mode;
 }
 
 void ObjectCache::addObject(const std::string &portname, Object::const_ptr object) {

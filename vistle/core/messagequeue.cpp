@@ -20,8 +20,10 @@ std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
-   mqID << "mq_" << Shm::the().name() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID
-        << "_" << std::setw(8) << std::setfill('0') << rank;
+   mqID << Shm::the().instanceName() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID;
+#ifndef SHMPERRANK
+   mqID << "_" << std::setw(8) << std::setfill('0') << rank;
+#endif
 
    return mqID.str();
 }

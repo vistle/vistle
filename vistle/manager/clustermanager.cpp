@@ -685,8 +685,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    int newId = spawn.spawnId();
 
    Module &mod = runningMap[newId];
-   std::string smqName = message::MessageQueue::createName("smq", newId, m_rank);
-   std::string rmqName = message::MessageQueue::createName("rmq", newId, m_rank);
+   std::string smqName = message::MessageQueue::createName("send", newId, m_rank);
+   std::string rmqName = message::MessageQueue::createName("recv", newId, m_rank);
 
    try {
       mod.sendQueue = message::MessageQueue::create(smqName);

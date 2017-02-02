@@ -55,9 +55,7 @@ class V_COREEXPORT Object: public std::enable_shared_from_this<Object>, virtual 
    friend struct ObjectData;
    template<class ObjType>
    friend class shm_obj_ref;
-#ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
-#endif
 
 public:
    typedef std::shared_ptr<Object> ptr;

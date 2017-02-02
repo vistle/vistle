@@ -192,14 +192,14 @@ Module::Module(const std::string &desc, const std::string &shmname,
    }
 
    // names are swapped relative to communicator
-   std::string smqName = message::MessageQueue::createName("rmq", id(), rank());
+   std::string smqName = message::MessageQueue::createName("recv", id(), rank());
    try {
       sendMessageQueue = message::MessageQueue::open(smqName);
    } catch (interprocess::interprocess_exception &ex) {
       throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
    }
 
-   std::string rmqName = message::MessageQueue::createName("smq", id(), rank());
+   std::string rmqName = message::MessageQueue::createName("send", id(), rank());
    try {
       receiveMessageQueue = message::MessageQueue::open(rmqName);
    } catch (interprocess::interprocess_exception &ex) {

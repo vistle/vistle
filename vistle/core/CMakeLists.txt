@@ -141,6 +141,10 @@ set(core_HEADERS
    cellalgorithm.h
 )
 
+if (VISTLE_SHM_PER_RANK)
+   add_definitions(-DSHMPERRANK)
+endif()
+
 vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 
 if(UNIX AND NOT APPLE)

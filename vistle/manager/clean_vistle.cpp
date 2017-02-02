@@ -16,17 +16,17 @@ int main(int argc, char ** argv) {
    try {
 
       MPI_Init(&argc, &argv);
+      int rank = 0;
+      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
       if (argc == 2) {
 
-         int rank = 0;
-         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
          vistle::Shm::attach(argv[1], 0, rank);
          vistle::Shm::the().setRemoveOnDetach();
          vistle::Shm::the().detach();
       } else {
 
-         vistle::Shm::cleanAll();
+         vistle::Shm::cleanAll(rank);
       }
 
       MPI_Finalize();

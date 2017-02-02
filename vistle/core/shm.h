@@ -109,7 +109,8 @@ class V_COREEXPORT Shm {
    void detach();
    void setRemoveOnDetach();
 
-   const std::string &name() const;
+   std::string name() const;
+   const std::string &instanceName() const;
 
    typedef boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager> void_allocator;
    const void_allocator &allocator() const;
@@ -128,13 +129,13 @@ class V_COREEXPORT Shm {
    const ShmVector<T> getArrayFromName(const std::string &name) const;
 
    static std::string shmIdFilename();
-   static bool cleanAll();
+   static bool cleanAll(int rank);
 
+   void markAsRemoved(const std::string &name);
+   void addObject(const std::string &name, const shm_handle_t &handle);
 #ifdef SHMDEBUG
    static boost::interprocess::vector<ShmDebugInfo, vistle::shm<ShmDebugInfo>::allocator> *s_shmdebug;
    static boost::interprocess::interprocess_recursive_mutex *s_shmdebugMutex;
-   void markAsRemoved(const std::string &name);
-   void addObject(const std::string &name, const shm_handle_t &handle);
 #endif
 
  private:
@@ -171,9 +172,7 @@ void shm<T>::destroy_ptr(T *ptr) {
 template<typename T>
 bool shm<T>::destroy(const std::string &name) {
     const bool ret = Shm::the().shm().destroy<T>(name.c_str());
-#ifdef SHMDEBUG
     Shm::the().markAsRemoved(name);
-#endif
     return ret;
 }
 

@@ -67,6 +67,12 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
+option(VISTLE_SHM_DEBUG "Shared memory debugging" OFF)
+if (VISTLE_SHM_DEBUG)
+   add_definitions(-DSHMDEBUG)
+endif()
+option(VISTLE_SHM_PER_RANK "Don't share shared memory segments between MPI ranks on same node" OFF)
+
 option(VISTLE_USE_PYTHON3 "use Python 3" OFF)
 if(VISTLE_USE_PYTHON3)
    set(PythonLibs_FIND_VERSION_MAJOR 3)

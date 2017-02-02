@@ -109,6 +109,13 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
    : m_name(name), m_remove(create), m_moduleId(m), m_rank(r), m_objectId(0), m_arrayId(0) {
 
+#ifdef SHMDEBUG
+      if (create) {
+          std::cerr << "SHMDEBUG: won't remove shm " << m_name << std::endl;
+          m_remove = false;
+      }
+#endif
+
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
       } else {
@@ -126,12 +133,8 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 Shm::~Shm() {
 
    if (m_remove) {
-#ifdef SHMDEBUG
-      std::cerr << "SHMDEBUG: not removing shm " << m_name << std::endl;
-#else
       shared_memory_object::remove(m_name.c_str());
       std::cerr << "removed shm " << m_name << std::endl;
-#endif
    }
 
    delete m_allocator;
@@ -186,7 +189,20 @@ std::string Shm::shmIdFilename() {
    return name.str();
 }
 
-bool Shm::cleanAll() {
+namespace {
+
+std::string shmSegName(const std::string &name, const int rank) {
+#ifdef SHMPERRANK
+    return name + "_" + std::to_string(rank) + "_shmem";
+#else
+    (void)rank;
+    return name + "_shmem";
+#endif
+}
+
+}
+
+bool Shm::cleanAll(int rank) {
 
    std::fstream shmlist;
    shmlist.open(shmIdFilename().c_str(), std::ios::in);
@@ -200,12 +216,12 @@ bool Shm::cleanAll() {
       if (!shmid.empty()) {
          bool ok = true;
 
-         if (shmid.find("mq_") == 0) {
+         if (shmid.find("_send_") != std::string::npos || shmid.find("_recv_") != std::string::npos) {
             std::cerr << "removing message queue: id " << shmid << std::flush;
             ok = message::MessageQueue::message_queue::remove(shmid.c_str());
          } else {
             std::cerr << "removing shared memory: id " << shmid << std::flush;
-            ok = shared_memory_object::remove(shmid.c_str());
+            ok = shared_memory_object::remove(shmSegName(shmid.c_str(), rank).c_str());
          }
          std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
 
@@ -218,7 +234,12 @@ bool Shm::cleanAll() {
    return ret;
 }
 
-const std::string &Shm::name() const {
+std::string Shm::name() const {
+
+    return shmSegName(instanceName(), m_rank);
+}
+
+const std::string &Shm::instanceName() const {
 
    return m_name;
 }
@@ -242,6 +263,8 @@ bool Shm::isAttached() {
 Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
+   std::string n = shmSegName(name, rank);
+
    if (!s_singleton) {
       {
          // store name of shared memory segment for possible clean up
@@ -254,7 +277,7 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(name, moduleID, rank, memsize, mq, true);
+            s_singleton = new Shm(n, moduleID, rank, memsize, mq, true);
          } catch (boost::interprocess::interprocess_exception ex) {
             memsize /= 2;
          }
@@ -276,12 +299,14 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
 Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
+   std::string n = shmSegName(name, rank);
+
    if (!s_singleton) {
       size_t memsize = memorySize<sizeof(void *)>();
 
       do {
          try {
-            s_singleton = new Shm(name, moduleID, rank, memsize, mq, false);
+            s_singleton = new Shm(n, moduleID, rank, memsize, mq, false);
          } catch (boost::interprocess::interprocess_exception ex) {
             memsize /= 2;
          }
@@ -347,8 +372,8 @@ std::string Shm::createArrayId(const std::string &id) {
    return name.str();
 }
 
-#ifdef SHMDEBUG
 void Shm::markAsRemoved(const std::string &name) {
+#ifdef SHMDBEBUG
    s_shmdebugMutex->lock();
 
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
@@ -357,14 +382,16 @@ void Shm::markAsRemoved(const std::string &name) {
    }
 
    s_shmdebugMutex->unlock();
+#endif
 }
 
 void Shm::addObject(const std::string &name, const shm_handle_t &handle) {
+#ifdef SHMDEBUG
    s_shmdebugMutex->lock();
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', name, handle));
    s_shmdebugMutex->unlock();
-}
 #endif
+}
 
 shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) const {
 
