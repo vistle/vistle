@@ -1033,11 +1033,13 @@ int Module::schedulingPolicy() const
 
 void Module::setSchedulingPolicy(int schedulingPolicy)
 {
-   vassert(schedulingPolicy >= message::SchedulingPolicy::Ignore);
-   vassert(schedulingPolicy <= message::SchedulingPolicy::LazyGang);
+   using namespace message;
+
+   vassert(schedulingPolicy >= SchedulingPolicy::Ignore);
+   vassert(schedulingPolicy <= SchedulingPolicy::LazyGang);
 
    m_schedulingPolicy = schedulingPolicy;
-   sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Schedule(schedulingPolicy)));
+   sendMessage(SchedulingPolicy(SchedulingPolicy::Schedule(schedulingPolicy)));
 }
 
 int Module::reducePolicy() const
@@ -1720,9 +1722,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     if (!isConnected(port.second))
                         continue;
                     const auto &objs = port.second->objects();
-                    int t = objs.front()->getTimestep();
-                    if (t != -1)
-                        timestep = t;
+                    if (!objs.empty()) {
+                        int t = objs.front()->getTimestep();
+                        if (t != -1)
+                            timestep = t;
+                    }
                 }
                 if (cancelRequested()) {
                     computeOk = true;

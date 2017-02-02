@@ -867,7 +867,6 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
     case message::Execute::ComputeExecute: {
         if (exec.isBroadcast()) {
             mod.send(exec);
-            vassert(!mod.prepared);
             mod.prepared = false;
             mod.reduced = true;
         } else if (Communicator::the().getRank() == 0) {
@@ -887,8 +886,6 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
     }
     case message::Execute::ComputeObject: {
         //CERR << exec << std::endl;
-        vassert(mod.prepared);
-        vassert(!mod.reduced);
         auto it = m_stateTracker.runningMap.find(exec.getModule());
         auto pol = message::SchedulingPolicy::Single;
         if (it != m_stateTracker.runningMap.end()) {
@@ -1139,8 +1136,11 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             }
             vassert(it != m_stateTracker.runningMap.end());
             const auto &destState = it->second;
-            if (destState.reducePolicy != message::ReducePolicy::Never && destState.reducePolicy != message::ReducePolicy::Locally) {
-                handleOnMaster = true;
+            if (destState.reducePolicy != message::ReducePolicy::Never) {
+                bool gang = destState.schedulingPolicy == message::SchedulingPolicy::Gang
+                        || destState.schedulingPolicy == message::SchedulingPolicy::LazyGang;
+                if (gang || destState.reducePolicy != message::ReducePolicy::Locally)
+                    handleOnMaster = true;
             }
          }
       }
@@ -1148,7 +1148,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    if (!receivingHubs.empty())
        handleOnMaster = true;
 
-   const bool localReduce = modState.reducePolicy == message::ReducePolicy::Locally || modState.reducePolicy == message::ReducePolicy::Never;
+   bool gang = modState.schedulingPolicy==message::SchedulingPolicy::Gang || modState.schedulingPolicy==message::SchedulingPolicy::LazyGang;
+   bool localReduce = (modState.reducePolicy == message::ReducePolicy::Locally && !gang) || modState.reducePolicy == message::ReducePolicy::Never;
    if (!localReduce)
        handleOnMaster = true;
    if (localSender && handleOnMaster && m_rank != 0) {
@@ -1229,7 +1230,9 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
-            if (it->second.reducePolicy != message::ReducePolicy::Never || it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+            if (it->second.reducePolicy != message::ReducePolicy::Never
+                    || it->second.schedulingPolicy == message::SchedulingPolicy::Gang
+                    || it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
                bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
                if (allReadyForPrepare) {
                   for (auto input: allInputs) {
