@@ -9,8 +9,6 @@
 #include <util/sysdep.h>
 #include <util/hostname.h>
 
-#include <mpi.h>
-
 #include <sys/types.h>
 
 #include <cstdlib>
@@ -45,9 +43,10 @@ Executor::Executor(int argc, char *argv[])
      , m_argc(argc)
      , m_argv(argv)
 {
-   MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-   MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
+   auto comm = mpi::communicator();
+   m_size = comm.size();
+   m_rank = comm.rank();
 
    if (argc < 4) {
       std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
@@ -59,22 +58,14 @@ Executor::Executor(int argc, char *argv[])
    m_name = Shm::instanceName(argv[1], port);
    unsigned short dataPort = boost::lexical_cast<unsigned short>(argv[3]);
 
-   if (!m_rank) {
-      uint64_t len = m_name.length();
-      MPI_Bcast(&len, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-      MPI_Bcast(const_cast<char *>(m_name.data()), len, MPI_BYTE, 0, MPI_COMM_WORLD);
-   } else {
-      uint64_t len = 0;
-      MPI_Bcast(&len, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
-      std::vector<char> buf(len);
-      MPI_Bcast(buf.data(), len, MPI_BYTE, 0, MPI_COMM_WORLD);
-      m_name = std::string(buf.data(), len);
-   }
+   // broadcast name of vistle session
+   mpi::broadcast(comm, m_name, 0);
 
    std::string hostname = vistle::hostname();
    std::vector<std::string> hostnames;
    mpi::all_gather(mpi::communicator(), hostname, hostnames);
 
+   // determine first rank on each host
    bool first = true;
    for (int index = 0; index < m_rank; index ++)
       if (hostnames[index] == hostname)
@@ -84,13 +75,10 @@ Executor::Executor(int argc, char *argv[])
       interprocess::shared_memory_object::remove(m_name.c_str());
       vistle::Shm::create(m_name, 0, m_rank, NULL);
    }
-   MPI_Barrier(MPI_COMM_WORLD);
-
-   mpi::broadcast(mpi::communicator(), m_name, 0);
-
+   comm.barrier();
    if (!first)
       vistle::Shm::attach(m_name, 0, m_rank, NULL);
-   MPI_Barrier(MPI_COMM_WORLD);
+   comm.barrier();
 
    m_comm = new vistle::Communicator(m_rank, hostnames);
    if (!m_comm->connectHub(argv[1], port, dataPort)) {
