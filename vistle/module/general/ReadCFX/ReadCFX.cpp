@@ -39,11 +39,11 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
@@ -327,17 +327,10 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 ExportDone = true;
                 return false;
             }
-            std::cerr << "cfxExportTimestepNumGet(0) = " << cfxExportTimestepNumGet(0) << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(2) = " << cfxExportTimestepNumGet(2) << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(462) = " << cfxExportTimestepNumGet(462) << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(463) = " << cfxExportTimestepNumGet(463) << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(464) = " << cfxExportTimestepNumGet(464) << std::endl;
             if (cfxExportTimestepNumGet(1) < 0) {
                 sendInfo("no timesteps");
             }
             m_ntimesteps = cfxExportTimestepCount();
-            std::cerr << "count = " << m_ntimesteps << std::endl;
             if(m_ntimesteps > 0) {
                 setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
                 setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
@@ -398,7 +391,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     nelmsInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS);
         //std::cerr << "nodesInVolume = " << nnodesInVolume << std::endl;
         //std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
-        //std::cerr << "tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+        std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
     UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
@@ -460,18 +453,43 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
             case 5: {
                 ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
                 ptrOnEl[i] = elemListCounter;
-                for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-                }
+//                for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
+//                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+//                }
+
+                // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[0]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[1]-1;
+                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[2]-1;
+                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[3]-1;
+                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[4]-1;
+
                 elemListCounter += 5;
                 break;
             }
             case 6: {
                 ptrOnTl[i] = (UnstructuredGrid::PRISM);
                 ptrOnEl[i] = elemListCounter;
-                for (int nodesOfElm_counter=0;nodesOfElm_counter<6;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-                }
+
+                // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[3]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[5]-1;
+                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[4]-1;
+                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[0]-1;
+                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[2]-1;
+                ptrOnCl[elemListCounter+5] = nodesOfElm.get()[1]-1;
+
+
+//                if(i<1680090) {
+//                    std::cerr << "nodesOfElm.get()[3]-1 = " << nodesOfElm.get()[3]-1 << std::endl;
+//                    std::cerr << "nodesOfElm.get()[5]-1 = " << nodesOfElm.get()[5]-1 << std::endl;
+//                    std::cerr << "nodesOfElm.get()[4]-1 = " << nodesOfElm.get()[4]-1 << std::endl;
+//                    std::cerr << "nodesOfElm.get()[0]-1 = " << nodesOfElm.get()[0]-1 << std::endl;
+//                    std::cerr << "nodesOfElm.get()[2]-1 = " << nodesOfElm.get()[2]-1 << std::endl;
+//                    std::cerr << "nodesOfElm.get()[1]-1 = " << nodesOfElm.get()[1]-1 << std::endl;
+//                    std::cerr << "i = " << i << std::endl << std::endl;
+//                }
+
                 elemListCounter += 6;
                 break;
             }
@@ -479,11 +497,9 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::HEXAHEDRON);
                 ptrOnEl[i] = elemListCounter;
                 //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
-//                for (int nodesOfElm_counter=0;nodesOfElm_counter<8;++nodesOfElm_counter) {
-//                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-//                        std::cerr << "nodesOfElm(" << nodesOfElm_counter << ") = " << nodesOfElm.get()[nodesOfElm_counter]-1 << std::endl;
-//                }
-                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[4]-1;
+
+                // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[4]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
                 ptrOnCl[elemListCounter+1] = nodesOfElm.get()[6]-1;
                 ptrOnCl[elemListCounter+2] = nodesOfElm.get()[7]-1;
                 ptrOnCl[elemListCounter+3] = nodesOfElm.get()[5]-1;
@@ -491,15 +507,34 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnCl[elemListCounter+5] = nodesOfElm.get()[2]-1;
                 ptrOnCl[elemListCounter+6] = nodesOfElm.get()[3]-1;
                 ptrOnCl[elemListCounter+7] = nodesOfElm.get()[1]-1;
+
                 elemListCounter += 8;
                 break;
             }
+            default: {
+                std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
+            }
         }
+
     }
 
     //element after last element
     ptrOnEl[nelmsInVolume] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
+
+//    cfxElement *elems = cfxExportElementList();
+
+//    int nelems = cfxExportElementCount();
+//    for (int i = 0; i < nelems; i++, elems++) {
+//        if(elems->type == 6 && i < 1680090) {
+//            for (int j = 0; j < elems->type; j++) {
+//                std::cerr << "elems->nodeid[" << j << "]-1 = " << elems->nodeid[j]-1 << std::endl;
+//            }
+//            std::cerr << "i = " << i << std::endl;
+//            std::cerr << std::endl;
+//        }
+//    }
+
 
     //Test, ob Einlesen funktioniert hat
 //        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
@@ -695,11 +730,11 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
-                    //            if(j<2000) {
-                    //                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-                    //                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-                    //                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-                    //            }
+//                                if(j<2000) {
+//                                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//                                }
                 }
                 cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
