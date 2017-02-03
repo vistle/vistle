@@ -39,18 +39,18 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
-    m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 1);
-    setParameterMinimum<Integer>(m_firsttimestep, 1);
-    m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 1);
-    setParameterMinimum<Integer>(m_lasttimestep, 1);
+    m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
+    setParameterMinimum<Integer>(m_firsttimestep, 0);
+    m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 0);
+    setParameterMinimum<Integer>(m_lasttimestep, 0);
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
 
@@ -286,12 +286,6 @@ index_t CaseInfo::getNumberOfBoundaries() {
 int ReadCFX::rankForVolumeAndTimestep(int timestep, int firsttimestep, int step, int volume, int numVolumes) const {
     int processor = ((timestep-firsttimestep)/step)*numVolumes+volume;
 
-    //    if (numBlocks == 0)
-    //        return 0;
-
-    //    if (processor == -1)
-    //        return -1;
-
     return processor % size();
 }
 
@@ -333,20 +327,30 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 ExportDone = true;
                 return false;
             }
-
-            int timeStepNum = cfxExportTimestepNumGet(1);
-            if (timeStepNum < 0) {
+            std::cerr << "cfxExportTimestepNumGet(0) = " << cfxExportTimestepNumGet(0) << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(2) = " << cfxExportTimestepNumGet(2) << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(462) = " << cfxExportTimestepNumGet(462) << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(463) = " << cfxExportTimestepNumGet(463) << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(464) = " << cfxExportTimestepNumGet(464) << std::endl;
+            if (cfxExportTimestepNumGet(1) < 0) {
                 sendInfo("no timesteps");
             }
-
-            cfxExportTimestepSet(timeStepNum);
-            if (cfxExportTimestepSet(timeStepNum) < 0) {
-                sendInfo("Invalid timestep %d", timeStepNum);
-            }
             m_ntimesteps = cfxExportTimestepCount();
-            setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps);
-            setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps);
-            setParameterMaximum<Integer>(m_timeskip, m_ntimesteps);
+            std::cerr << "count = " << m_ntimesteps << std::endl;
+            if(m_ntimesteps > 0) {
+                setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
+                setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
+                setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps-1);
+                setParameterMaximum<Integer>(m_timeskip, m_ntimesteps-1);
+            }
+            else {
+                setParameterMaximum<Integer>(m_lasttimestep, 0);
+                setParameter<Integer>(m_lasttimestep,0);
+                setParameterMaximum<Integer>(m_firsttimestep, 0);
+                setParameter<Integer>(m_firsttimestep,0);
+                setParameterMaximum<Integer>(m_timeskip, 0);
+            }
 
             //fill choice parameter
             m_case.parseResultfile();
@@ -475,10 +479,18 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::HEXAHEDRON);
                 ptrOnEl[i] = elemListCounter;
                 //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
-                for (int nodesOfElm_counter=0;nodesOfElm_counter<8;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+//                for (int nodesOfElm_counter=0;nodesOfElm_counter<8;++nodesOfElm_counter) {
+//                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
 //                        std::cerr << "nodesOfElm(" << nodesOfElm_counter << ") = " << nodesOfElm.get()[nodesOfElm_counter]-1 << std::endl;
-                }
+//                }
+                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[4]-1;
+                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[6]-1;
+                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[7]-1;
+                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[5]-1;
+                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[0]-1;
+                ptrOnCl[elemListCounter+5] = nodesOfElm.get()[2]-1;
+                ptrOnCl[elemListCounter+6] = nodesOfElm.get()[3]-1;
+                ptrOnCl[elemListCounter+7] = nodesOfElm.get()[1]-1;
                 elemListCounter += 8;
                 break;
             }
@@ -575,6 +587,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
             std::cerr << "error while reading faces out of .res file: faceId is out of range" << std::endl;
         }
 
+        assert(NumOfVerticesDefiningFace<=4); //see CFX Reference Guide p.57
         switch(NumOfVerticesDefiningFace) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
@@ -883,9 +896,13 @@ bool ReadCFX::addGridToPort(int processor) {
 
 void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks) {
    if (obj) {
-      index_t skipfactor = m_timeskip->getValue()+1;
       obj->setTimestep(timestep);
-      obj->setNumTimesteps(m_ntimesteps/skipfactor);
+      if(m_ntimesteps == 0) {
+          obj->setNumTimesteps(-1);
+      }
+      else {
+          obj->setNumTimesteps(m_ntimesteps);
+      }
       obj->setRealTime(cfxExportTimestepTimeGet(timestep));
       obj->setBlock(volumeNr);
       obj->setNumBlocks(numOfBlocks == 0 ? 1 : numOfBlocks);
@@ -893,7 +910,6 @@ void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int timestep, index_t numOf
 }
 
 bool ReadCFX::compute() {
-
     std::cerr << "Compute Start. \n";
 
     if(!m_case.m_valid) {
@@ -908,10 +924,10 @@ bool ReadCFX::compute() {
 
         for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=step) {
             for(index_t i=0;i<numSelVolumes;++i) {
-                std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
+                //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
                 if(rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) == rank()) {
                     int processor = rank();
-                    index_t timestepNumber = cfxExportTimestepNumGet(timestep);
+                    index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
                     if(cfxExportTimestepSet(timestepNumber)<0) {
                         std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                     }
@@ -919,7 +935,7 @@ bool ReadCFX::compute() {
                         if(ExportDone) {
                             changeParameter(m_resultfiledir);
                         }
-                        //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
+                        //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep+1 << std::endl;
                         UnstructuredGrid::ptr grid = loadGrid(i);
                         setMeta(grid, i, timestep, numSelVolumes);
                         m_currentGrid[processor] = grid;
