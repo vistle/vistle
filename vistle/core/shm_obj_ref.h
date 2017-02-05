@@ -163,6 +163,9 @@ class shm_obj_ref {
           return;
 
       auto obj = ar.currentObject();
+      if (obj) {
+          obj->unresolvedReference();
+      }
       auto handler = ar.objectCompletionHandler();
       auto ref0 = ar.getObject(name, [this, name, obj, handler]() -> void {
          //std::cerr << "object completion handler: " << name << std::endl;
@@ -180,10 +183,6 @@ class shm_obj_ref {
       } else {
          assert(!ref0);
          //std::cerr << "waiting for completion of object " << name << std::endl;
-         auto obj = ar.currentObject();
-         if (obj && !valid()) {
-            obj->unresolvedReference();
-         }
       }
    }
 };
