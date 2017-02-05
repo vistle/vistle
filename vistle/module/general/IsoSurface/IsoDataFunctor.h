@@ -114,9 +114,13 @@ public:
 #endif
 
 private:
+#ifdef CUTTINGSURFACE
     vistle::Module *m_module;
     vistle::IntParameter *m_option;
+#ifdef TOGGLESIGN
     vistle::IntParameter *m_flip;
+#endif
+#endif
 };
 
 #endif

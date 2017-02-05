@@ -4,9 +4,13 @@
 using namespace vistle;
 
 IsoController::IsoController(vistle::Module *module)
+#ifdef CUTTINGSURFACE
 : m_module(module)
 , m_option(nullptr)
+#ifdef TOGGLESIGN
 , m_flip(nullptr)
+#endif
+#endif
 {
 #ifdef CUTTINGSURFACE
    m_module->addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
