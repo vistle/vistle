@@ -193,6 +193,9 @@ bool Renderer::dispatch() {
                }
                default:
                   quit = !handleMessage(&message);
+                  if (quit) {
+                      std::cerr << "Quitting: " << message << std::endl;
+                  }
                   break;
             }
 
