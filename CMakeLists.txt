@@ -65,8 +65,13 @@ add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 macro(vistle_find_package package)
    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
 
-   string(TOUPPER ${package} UPPER)
-   string(TOLOWER ${package} LOWER)
+   set(pack "${package}")
+   if (pack STREQUAL "PythonLibs")
+      set(pack "Python")
+   endif()
+
+   string(TOUPPER ${pack} UPPER)
+   string(TOLOWER ${pack} LOWER)
    if(MINGW)
       set(CMAKE_PREFIX_PATH ${MINGW_SYSROOT} ${CMAKE_PREFIX_PATH})
    endif()
@@ -84,6 +89,23 @@ macro(vistle_find_package package)
 
    set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 endmacro(vistle_find_package PACKAGE)
+
+if(WIN32)
+   #set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
+   #STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
+    #set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    #add_definitions(-DOMPI_IMPORTS)
+
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DNOMINMAX)
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    add_definitions(-DBOOST_MPI_DYN_LINK)
+    add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
+endif(WIN32)
+
 
 #vistle_find_package(IceT REQUIRED)
 set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
@@ -185,22 +207,12 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 #elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
-if(WIN32)
-    set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
-    STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
-    set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
-    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    add_definitions(-DOMPI_IMPORTS)
-    add_definitions(-DWIN32_LEAN_AND_MEAN)
-    add_definitions(-DNOMINMAX)
-    add_definitions(-DBOOST_ALL_NO_LIB)
-    add_definitions(-DBOOST_MPI_DYN_LINK)
-	add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
-	
-	
-endif(WIN32)
+vistle_find_package(MPI REQUIRED)
+
+include_directories(${MPI_C_INCLUDE_DIR})
+set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
+add_definitions(-DOMPI_SKIP_MPICXX)
+set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
 vistle_find_package(Boost 1.40 REQUIRED system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
@@ -214,12 +226,6 @@ else()
    set(BOOST_MPI_DIR "boost-mpi-1.55")
 endif()
 #message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
-
-vistle_find_package(MPI REQUIRED)
-include_directories(${MPI_C_INCLUDE_DIR})
-set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
-add_definitions(-DOMPI_SKIP_MPICXX)
-set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
 if (LIB64)
