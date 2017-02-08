@@ -442,7 +442,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
    if (message::Id::isModule(message.destId())) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
-         if (message.type() != message::EXECUTE) {
+         if (message.type() != message::EXECUTE && message.type() != message::CANCELEXECUTE) {
             return sendMessage(message.destId(), message);
          }
       } else {
@@ -450,7 +450,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
       }
    }
    if (message::Id::isHub(message.destId())) {
-       if (destHub != hubId || message.type() == message::EXECUTE) {
+       if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE) {
            return sendHub(message);
        }
    }
@@ -521,7 +521,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
       case message::CANCELEXECUTE: {
 
-         //const message::CancelExecute &cancel = message.as<CancelExecute>();
+         const message::CancelExecute &cancel = message.as<CancelExecute>();
          break;
       }
 
@@ -922,6 +922,27 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         }
         break;
     }
+    }
+
+    return true;
+}
+
+bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
+    vassert (cancel.getModule() >= Id::ModuleBase);
+    RunningMap::iterator i = runningMap.find(cancel.getModule());
+    if (i == runningMap.end()) {
+        CERR << "did not find module to cancel execution: " << cancel.getModule() << std::endl;
+        return true;
+    }
+
+    auto &mod = i->second;
+    if (cancel.isBroadcast()) {
+        mod.send(cancel);
+    } else if (Communicator::the().getRank() == 0) {
+        CERR << "non-broadcast CancelExecute: " << cancel << std::endl;
+        message::Buffer buf(cancel);
+        buf.setBroadcast(true);
+        Communicator::the().broadcastAndHandleMessage(buf);
     }
 
     return true;

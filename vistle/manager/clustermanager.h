@@ -83,6 +83,7 @@ class ClusterManager {
    bool handlePriv(const message::Disconnect &disc);
    bool handlePriv(const message::ModuleExit &moduleExit);
    bool handlePriv(const message::Execute &exec);
+   bool handlePriv(const message::CancelExecute &cancel);
    bool handlePriv(const message::ExecutionProgress &prog);
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);
@@ -97,6 +98,7 @@ class ClusterManager {
    bool handlePriv(const message::RequestTunnel &tunnel);
    bool handlePriv(const message::Ping &ping);
 
+   //! check whether objects are available for a module and compute() should be called
    bool checkExecuteObject(int modId);
 
    const int m_rank;

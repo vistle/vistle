@@ -89,7 +89,7 @@ void VistleInteractor::executeModule()
    double t = anim.getAnimationFrame();
 
    message::CancelExecute cancel(m_moduleId);
-   cancel.setDestId(m_moduleId);
+   cancel.setDestId(message::Id::MasterHub);
    sendMessage(cancel);
 
    message::Execute exec(m_moduleId, t, dt); // Communicator will update execution count

@@ -784,6 +784,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
+         case message::CANCELEXECUTE: {
+            auto &cancel = static_cast<const CancelExecute &>(msg);
+            handlePriv(cancel);
+            break;
+         }
+
          case message::BARRIER: {
             auto &barr = static_cast<const Barrier &>(msg);
             handlePriv(barr);
@@ -1049,6 +1055,19 @@ bool Hub::handlePriv(const message::Execute &exec) {
    }
 
    return true;
+}
+
+bool Hub::handlePriv(const message::CancelExecute &cancel) {
+
+    message::CancelExecute toSend(cancel);
+
+    if (Id::isModule(cancel.getModule())) {
+        const int hub = m_stateTracker.getHub(cancel.getModule());
+        toSend.setDestId(cancel.getModule());
+        sendManager(toSend, hub);
+    }
+
+    return true;
 }
 
 bool Hub::handlePriv(const message::Barrier &barrier) {
