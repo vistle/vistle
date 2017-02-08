@@ -4,6 +4,7 @@ vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
 vistle_find_package(X11)
+vistle_find_package(GLEW)
 
 if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
@@ -24,6 +25,11 @@ if (NOT TBB_FOUND)
    return()
 endif()
 
+if (NOT GLEW_FOUND)
+   message("OsgRenderer: GLEW not found")
+   return()
+endif()
+
 if(TBB_FOUND)
     #if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)
@@ -35,6 +41,7 @@ endif()
 if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
 endif()
+
 
 
 add_module(OsgRenderer
