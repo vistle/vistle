@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system zlib)
 vistle_find_package(ZLIB)
 
 function(add_compile_flags file flags)
