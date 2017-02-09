@@ -202,7 +202,7 @@ class Leveller {
       }
 
 #pragma omp parallel for
-      for (Index elem = 0; elem<numElem; ++elem) {
+      for (ssize_t elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false, gmin, gmax);
