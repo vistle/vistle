@@ -19,29 +19,9 @@ typedef uint32_t uid_t;
 
 uid_t V_UTILEXPORT getuid();
 
-inline void sleep(int x) { Sleep(x*1000); }; 
-inline void usleep(__int64 usec) 
-{ 
-    HANDLE timer; 
-    LARGE_INTEGER ft; 
-
-    ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
-
-    timer = CreateWaitableTimer(NULL, TRUE, NULL); 
-    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0); 
-    WaitForSingleObject(timer, INFINITE); 
-    CloseHandle(timer); 
-};
-inline int setenv(const char *name, const char *value, int overwrite)
-{
-	int errcode = 0;
-	if (!overwrite) {
-		size_t envsize = 0;
-		errcode = getenv_s(&envsize, NULL, 0, name);
-		if (errcode || envsize) return errcode;
-	}
-	return _putenv_s(name, value);
-}
+void V_UTILEXPORT sleep(int x);
+void V_UTILEXPORT usleep(__int64 usec);
+int V_UTILEXPORT setenv(const char *name, const char *value, int overwrite);
 
 #define getpid _getpid
 #define popen _popen
