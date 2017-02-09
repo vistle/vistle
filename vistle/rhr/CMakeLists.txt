@@ -6,18 +6,16 @@ vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
 vistle_find_package(ZFP)
 
-if(NOT JPEGTURBO_FOUND)
-   RETURN()
-endif(NOT JPEGTURBO_FOUND)
-if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
-   message("Ray: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
 
 #use_openmp()
 
 if(JPEGTURBO_FOUND)
-   add_definitions(-DHAVE_TURBOJPEG)
+   if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
+      message("vistle_rhr: turbojpeg w/o tjMcuWidth")
+   else()
+      add_definitions(-DHAVE_TURBOJPEG)
+      include_directories(${JPEGTURBO_INCLUDE_DIR})
+   endif()
 endif()
 
 if(SNAPPY_FOUND)
@@ -60,7 +58,6 @@ endif()
 include_directories(
         ..
         ${Boost_INCLUDE_DIRS}
-        ${JPEGTURBO_INCLUDE_DIR}
         ..
 )
 
@@ -93,9 +90,12 @@ target_link_libraries(vistle_rhr
         vistle_core
         ${Boost_LIBRARIES}
         ${JPEG_LIBRARIES}
-        ${TURBOJPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
 )
+
+if (JPEGTURBO_FOUND AND TURBOJPEG_LIBRARY_DYNAMIC)
+   target_link_libraries(vistle_rhr ${TURBOJPEG_LIBRARIES})
+endif()
 
 if(TBB_FOUND)
    target_link_libraries(vistle_rhr ${TBB_LIBRARIES})
