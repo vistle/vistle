@@ -1,4 +1,8 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system zlib)
+set(BOOST_COMPONENTS iostreams filesystem system)
+if (WIN32)
+   set(BOOST_COMPONENTS ${BOOST_COMPONENTS} zlib)
+endif()
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS ${BOOST_COMPONENTS})
 vistle_find_package(ZLIB)
 
 function(add_compile_flags file flags)
