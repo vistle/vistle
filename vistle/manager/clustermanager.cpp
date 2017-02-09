@@ -1397,16 +1397,33 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    CERR << "SetParameter: " << setParam << std::endl;
 #endif
 
+   vassert (setParam.getModule() >= Id::ModuleBase);
+    RunningMap::iterator i = runningMap.find(setParam.getModule());
+    if (i == runningMap.end()) {
+        CERR << "did not find module for SetParameter: " << setParam.getModule() << std::endl;
+        return true;
+    }
+    auto &mod = i->second;
+
    bool handled = true;
    int sender = setParam.senderId();
    int dest = setParam.destId();
    std::shared_ptr<Parameter> applied;
    if (message::Id::isModule(dest)) {
       // message to owning module
-      auto param = getParameter(dest, setParam.getName());
-      if (param) {
-         applied.reset(param->clone());
-         setParam.apply(applied);
+      if (setParam.isBroadcast()) {
+          auto param = getParameter(dest, setParam.getName());
+          if (param) {
+              applied.reset(param->clone());
+              setParam.apply(applied);
+          }
+          mod.send(setParam);
+      } else {
+        CERR << "non-broadcast SetParameter: " << setParam << std::endl;
+        message::Buffer buf(setParam);
+        buf.setBroadcast(true);
+        Communicator::the().broadcastAndHandleMessage(buf);
+        return true;
       }
    } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module
