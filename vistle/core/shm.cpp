@@ -40,8 +40,10 @@ template<> size_t memorySize<8>() {
       std::cerr << "running under valgrind: reducing shmem size" << std::endl;
       return (size_t)1 << 32;
    } else {
-#ifdef __APPLE__
+#if defined(__APPLE__)
       return (size_t)1 << 32;
+#elif defined(_WIN32)
+      return (size_t)1 << 30; // 1 GB
 #else
       return (size_t)1 << 38; // 256 GB
 #endif
