@@ -6,19 +6,14 @@ vistle_find_package(ZFP)
 using(SNAPPY optional)
 using(GLEW)
 using(BOOST)
-if(NOT JPEGTURBO_FOUND)
-   RETURN()
-endif(NOT JPEGTURBO_FOUND)
-if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
-   return()
-endif()
 
 if(NOT TBB_FOUND)
    return()
 endif()
 
-if(JPEGTURBO_FOUND)
+if(JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
    add_definitions(-DHAVE_TURBOJPEG)
+   include_directories(${JPEGTURBO_INCLUDE_DIR})
 endif()
 
 if(ZFP_FOUND)
@@ -31,7 +26,6 @@ include_directories(
    .. # VistlePluginUtil
    ${PROJECT_SOURCE_DIR}
    ${TBB_INCLUDE_DIR}
-   ${JPEGTURBO_INCLUDE_DIR}
    ${Boost_INCLUDE_DIRS}
 )
 
@@ -58,5 +52,8 @@ if(UNIX AND NOT APPLE)
 endif()
 if (ZFP_FOUND)
     target_link_libraries(RhrClient ${ZFP_LIBRARIES})
+endif()
+if(JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
+   target_link_libraries(RhrClient ${TURBOJPEG_LIBRARIES})
 endif()
 
