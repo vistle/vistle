@@ -101,11 +101,14 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
 
 	assert(!argv.empty());
 #ifdef _WIN32
-	std::cerr << "launching " << argv[0] << std::endl;
 	auto pid = spawn_process("spawn_vistle.bat", argv);
 	std::cerr << "launched " << argv[0] << " with PID " << pid << std::endl;
 #else
-	auto pid = spawn_process("spawn_vistle.sh", argv);
+    std::vector<std::string> args;
+    args.push_back(argv[0]);
+    std::copy(argv.begin(), argv.end(), std::back_inserter(args));
+    auto pid = spawn_process("spawn_vistle.sh", args);
+    //std::cerr << "launched " << argv[0] << " with PID " << pid << std::endl;
 #endif
 	return pid;
 }
