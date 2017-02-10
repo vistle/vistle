@@ -23,11 +23,15 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
 	a.push_back(nullptr);
 #ifdef _WIN32
    process_handle pid = _spawnvp(P_NOWAIT, a[0], (char *const *)a.data());
+   if (pid == -1) {
+      std::cerr << "Error when spawning " << executable << ": " << strerror(errno) << std::endl;
+	  std::cerr << "PATH is " << getenv("PATH") << std::endl;
+   }
 #else
    const pid_t pid = fork();
    if (pid < 0) {
       std::cerr << "Error when forking for executing " << executable << ": " << strerror(errno) << std::endl;
-      return false;
+      return -1;
    } else if (pid == 0) {  
       execvp(executable.c_str(), (char **)a.data());
       std::cout << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
