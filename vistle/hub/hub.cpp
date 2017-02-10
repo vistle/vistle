@@ -97,6 +97,19 @@ unsigned short Hub::port() const {
    return m_port;
 }
 
+vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) {
+
+	assert(!argv.empty());
+#ifdef _WIN32
+	std::cerr << "launching " << argv[0] << std::endl;
+	auto pid = spawn_process("spawn_vistle.bat", argv);
+	std::cerr << "launched " << argv[0] << " with PID " << pid << std::endl;
+#else
+	auto pid = spawn_process("spawn_vistle.sh", argv);
+#endif
+	return pid;
+}
+
 bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
 
    bool result = true;
@@ -689,19 +702,18 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
             std::string executable = path;
             std::vector<std::string> argv;
-            argv.push_back("spawn_vistle.sh");
             argv.push_back(executable);
             argv.push_back(Shm::instanceName(hostname(), m_port));
             argv.push_back(name);
             argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
 
-            auto pid = spawn_process("spawn_vistle.sh", argv);
-            if (pid) {
-               //std::cerr << "started " << executable << " with PID " << pid << std::endl;
-               m_processMap[pid] = spawn.spawnId();
-            } else {
-               std::cerr << "program " << executable << " failed to start" << std::endl;
-            }
+			auto pid = launchProcess(argv);
+			if (pid) {
+				//std::cerr << "started " << executable << " with PID " << pid << std::endl;
+				m_processMap[pid] = spawn.spawnId();
+			} else {
+				std::cerr << "program " << argv[0] << " failed to start" << std::endl;
+			}
             break;
          }
 
@@ -899,12 +911,11 @@ bool Hub::init(int argc, char *argv[]) {
    // start manager on cluster
    std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
    std::vector<std::string> args;
-   args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
    args.push_back(hostname());
    args.push_back(port);
    args.push_back(dataPort);
-   auto pid = vistle::spawn_process("spawn_vistle.sh", args);
+   auto pid = launchProcess(args);
    if (!pid) {
       CERR << "failed to spawn Vistle manager " << std::endl;
       exit(1);
@@ -929,11 +940,10 @@ bool Hub::startCleaner() {
    // run clean_vistle on cluster
    std::string cmd = dir::bin(m_prefix) + "/clean_vistle";
    std::vector<std::string> args;
-   args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
    std::string shmname = Shm::instanceName(hostname(), m_port);
    args.push_back(shmname);
-   auto pid = vistle::spawn_process("spawn_vistle.sh", args);
+   auto pid = launchProcess(args);
    if (!pid) {
       CERR << "failed to spawn clean_vistle" << std::endl;
       return false;

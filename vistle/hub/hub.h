@@ -29,6 +29,7 @@ class Hub {
    bool dispatch();
    bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg);
    unsigned short port() const;
+   vistle::process_handle launchProcess(const std::vector<std::string>& argv);
    const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
