@@ -54,7 +54,13 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
          continue;
       }
 
+#ifdef _WIN32
       std::string ext = ent.extension().string();
+	  if (ext != ".exe") {
+		  //std::cerr << "scanModules: skipping " << stem << ": ext=" << ext << std::endl;
+		  continue;
+	  }
+#endif
 
       AvailableModule mod;
       mod.hub = hub;
