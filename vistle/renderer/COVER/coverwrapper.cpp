@@ -26,7 +26,7 @@
 
 int main(int argc, char *argv[]) {
 #ifdef WIN32
-	const char libcover[] = "libmpicover.dll";
+	const char libcover[] = "mpicover.dll";
 #else
 	const char libcover[] = "libmpicover.so";
 #endif
@@ -101,16 +101,18 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	std::string vistleplugin = bindir + "/../../../" + env["ARCHSUFFIX"] + "/lib/OpenCOVER/plugins/libVistlePlugin";
+	std::string vistleplugin = bindir + "/../../../" + env["ARCHSUFFIX"] + "/lib/OpenCOVER/plugins/";
 #ifdef __APPLE__
-	vistleplugin += ".so";
+	vistleplugin += "libVistlePlugin.so";
 #elif WIN32
-	vistleplugin += ".dll";
+	vistleplugin += "VistlePlugin.dll";
 #else
-	vistleplugin += ".so";
+	vistleplugin += "libVistlePlugin.so";
 #endif
 	env["VISTLE_PLUGIN"] = vistleplugin;
-	//std::cerr << "Vistle plugin: " << vistleplugin << std::endl;
+#ifdef _WIN32
+	std::cerr << "Vistle plugin: " << vistleplugin << std::endl;
+#endif
 
 	std::string ldpath, dyldpath, dyldfwpath, covisepath;
 
