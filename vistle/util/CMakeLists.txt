@@ -32,6 +32,11 @@ set(util_HEADERS
    sleep.h
 )
 
+if (NOT CMAKE_BUILD_TYPE STREQUAL "")
+   message("CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+   add_definitions(-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
+endif()
+
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util

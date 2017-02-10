@@ -5,19 +5,29 @@
 
 namespace vistle {
 
+#ifdef _WIN32
+#ifdef CMAKE_BUILD_TYPE
+//const std::string build_type = CMAKE_BUILD_TYPE;
+const std::string build_type = "RelWithDebInfo";
+#else
+#ifdef _DEBUG
+const std::string build_type = "Debug";
+#else
+const std::string build_type = "Release";
+#endif
+#endif
+#else
+const std::string build_type = "";
+#endif
+
 bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
    namespace bf = vistle::filesystem;
-#ifdef WIN32
-#ifdef _DEBUG
-   std::cerr << dir + "/../../../libexec/module/Debug" << std::endl;
-   bf::path p(dir + "/../../../libexec/module/Debug");
-#else
-   bf::path p(dir + "/../../../libexec/module/Release");
-#endif
-#else
    bf::path p(dir);
-#endif
+   if (!build_type.empty()) {
+	   std::cerr << dir + "/../../../libexec/module/" + build_type << std::endl;
+	   p = dir + "/../../../libexec/module/" + build_type;
+   }
    try {
       if (!bf::is_directory(p)) {
          std::cerr << "scanModules: " << dir << " is not a directory" << std::endl;
@@ -73,11 +83,11 @@ std::string prefix(const std::string &bindir) {
 
    namespace bf = vistle::filesystem;
    bf::path p(bindir);
-#ifdef WIN32
-   p += "/../..";
-#else
-   p += "/..";
-#endif
+   if (build_type.empty()) {
+	   p += "/..";
+   } else {
+	   p += "/../..";
+   }
    p = bf::canonical(p);
 
    return p.string();
@@ -85,29 +95,20 @@ std::string prefix(const std::string &bindir) {
 
 std::string bin(const std::string &prefix) {
 
-#ifdef WIN32
-#ifdef _DEBUG
-    return prefix + "/Debug/bin";
-#else
-    return prefix + "/Release/bin";
-#endif
-#else
-    return prefix + "/bin";
-#endif
+	if (build_type.empty()) {
+		return prefix + "/bin";
+	}
+
+	return prefix + "/bin/" + build_type;
 }
 
 std::string module(const std::string &prefix) {
 
-#ifdef WIN32
-#ifdef _DEBUG
-    return prefix + "/Debug/libexec/module";
-#else
-    return prefix + "/Release/libexec/module";
-#endif
-#else
-    return prefix + "/libexec/module";
-#endif
+	if (build_type.empty()) {
+		return prefix + "/libexec/module";
+	}
 
+	return prefix + "/" + build_type + "/libexec/module";
 }
 
 std::string share(const std::string &prefix) {
