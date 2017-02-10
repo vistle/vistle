@@ -495,7 +495,7 @@ bool ParallelRemoteRenderManager::finishFrame(int timestep) {
       return false;
 
    if (m_delaySec > 0.) {
-      usleep(useconds_t(m_delaySec*1e6));
+      usleep(int32_t(m_delaySec*1e6));
    }
 
    if (m_module->rank() == rootRank()) {
