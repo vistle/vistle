@@ -244,6 +244,7 @@ mark_as_advanced(INSTALL_LIB_DIR)
 
 macro(vistle_add_library targetname)
     add_library(${targetname} ${ARGN})
+    set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
     install(TARGETS ${targetname}
        LIBRARY DESTINATION ${INSTALL_LIB_DIR}
        ARCHIVE DESTINATION ${INSTALL_LIB_DIR})

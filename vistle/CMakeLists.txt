@@ -10,6 +10,8 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}
 
 enable_testing()
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
 if(${TEMPLATES_IN_HEADERS})
    add_definitions(-DTEMPLATES_IN_HEADERS)
@@ -29,12 +31,14 @@ endmacro(USE_OPENMP)
 
 macro(vistle_add_executable targetname)
     add_executable(${targetname} ${ARGN})
+    set_target_properties(${targetname} PROPERTIES FOLDER "Executables")
     install(TARGETS ${targetname} RUNTIME DESTINATION bin BUNDLE DESTINATION bin)
 endmacro(vistle_add_executable)
 
 macro(add_module targetname)
     add_executable(${targetname} ${ARGN})
     set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+    set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
     install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
 endmacro(add_module)
 
