@@ -5,10 +5,12 @@
 
 namespace vistle {
 
+#ifdef CMAKE_INTDIR
+const std::string build_type = CMAKE_INTDIR;
+#else
 #ifdef _WIN32
 #ifdef CMAKE_BUILD_TYPE
-//const std::string build_type = CMAKE_BUILD_TYPE;
-const std::string build_type = "RelWithDebInfo";
+const std::string build_type = CMAKE_BUILD_TYPE;
 #else
 #ifdef _DEBUG
 const std::string build_type = "Debug";
@@ -18,6 +20,7 @@ const std::string build_type = "Release";
 #endif
 #else
 const std::string build_type = "";
+#endif
 #endif
 
 bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
