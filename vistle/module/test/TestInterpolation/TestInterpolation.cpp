@@ -7,6 +7,7 @@
 #include <core/rectilineargrid.h>
 #include "TestInterpolation.h"
 #include <util/enum.h>
+#include <random>
 
 MODULE_MAIN(TestInterpolation)
 
@@ -31,9 +32,12 @@ TestInterpolation::~TestInterpolation() {
 
 namespace {
    Vector randpoint(const Vector &min, const Vector &max) {
+      auto rand = std::minstd_rand0();
+	  auto dist = std::uniform_real_distribution<Scalar>();
+	  
       Vector point;
       for (int c=0; c<3; ++c) {
-         point[c] = drand48() * (max[c]-min[c]) + min[c];
+         point[c] = dist(rand) * (max[c]-min[c]) + min[c];
       }
       return point;
    }

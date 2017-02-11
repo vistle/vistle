@@ -6,6 +6,7 @@
 #include <vector>
 #include <limits>
 #include <iostream>
+#include <random>
 
 using vistle::Clock;
 
@@ -88,9 +89,11 @@ int main(int argc, char *argv[]) {
    }
 
    size_t num_pix = sz*sz;
+   auto rand = std::minstd_rand0();
+   auto dist = std::uniform_real_distribution<float>();
    std::vector<float> depth_rand(num_pix), depth_far(num_pix), depth_uni(num_pix);
    for (size_t i=0; i<num_pix; ++i) {
-      depth_rand[i] = drand48();
+      depth_rand[i] = dist(rand);
       depth_far[i] = 1.f;
       depth_uni[i] = 0.3f;
    }
