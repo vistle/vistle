@@ -122,13 +122,15 @@ class ReadCFX: public vistle::Module {
    vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
-   bool loadFields(int volumeNr, int processor, int timestep, index_t numBlocks);
-   bool loadBoundaryFields(int boundaryNr, int processor, int timestep, index_t numBlocks);
+   bool initializeResultfile();
+   bool loadFields(int volumeNr, int processor, int timestep, index_t numBlocks, bool trnOrRes);
+   bool loadBoundaryFields(int boundaryNr, int timestep, index_t numBlocks, bool trnOrRes);
    index_t collectVolumes();
    index_t collectBoundaries();
    bool addVolumeDataToPorts(int processor);
    bool addGridToPort(int processor);
-   void setMeta(vistle::Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks);
+   void setMeta(vistle::Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks, bool trnOrRes);
+   bool readTime(index_t numSelVolumes, index_t numSelBoundaries, int timestep, int firsttimestep, int step, bool trnOrRes);
 
 
 };

@@ -1,5 +1,6 @@
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include <core/object.h>
 #include <core/vec.h>
@@ -99,17 +100,6 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
        }
     }
     //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);ll
-
-
-   /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
-   addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
-
-   addIntParameter("first_block", "number of first block", 0);
-   addIntParameter("last_block", "number of last block", 0);
-*/
-//   addIntParameter("first_step", "number of first timestep", 0);
-//   addIntParameter("last_step", "number of last timestep", 0);
-//   addIntParameter("step", "increment", 1);
 }
 
 ReadCFX::~ReadCFX() {
@@ -196,8 +186,6 @@ void CaseInfo::parseResultfile() {
 
         for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
             const char *VariableName = cfxExportVariableName(varnum,ReadCFX::alias);
-            //bm_type::right_const_iterator right_iter = m_allParam.right.find(VariableName);
-
             auto it = find_if(m_allParam.begin(), m_allParam.end(), [&VariableName](const Variable& obj) {
                 return obj.m_VarName == VariableName;
             });
@@ -295,6 +283,31 @@ int ReadCFX::rankForBoundaryAndTimestep(int timestep, int firsttimestep, int ste
     return processor % size();
 }
 
+bool ReadCFX::initializeResultfile() {
+    std::string c = m_resultfiledir->getValue();
+    const char *resultfiledir;
+    resultfiledir = c.c_str();
+
+    char *resultfileName = strdup(resultfiledir);
+    m_nzones = cfxExportInit(resultfileName, counts);
+    m_nnodes = counts[cfxCNT_NODE];
+    //m_nelems = counts[cfxCNT_ELEMENT];
+    //m_nregions = counts[cfxCNT_REGION];
+    m_nvolumes = counts[cfxCNT_VOLUME];
+    //m_nvars = counts[cfxCNT_VARIABLE];
+    ExportDone = false;
+
+    if (m_nzones < 0) {
+        cfxExportDone();
+        sendError("cfxExportInit could not open %s", resultfileName);
+        ExportDone = true;
+        return false;
+    }
+
+    free(resultfileName);
+    return true;
+}
+
 bool ReadCFX::changeParameter(const Parameter *p) {
 
     if (p == m_resultfiledir) {
@@ -313,69 +326,68 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 cfxExportDone();
                 ExportDone = true;
             }
-            char *resultfileName = strdup(resultfiledir);
-            m_nzones = cfxExportInit(resultfileName, counts);
-            m_nnodes = counts[cfxCNT_NODE];
-            //m_nelems = counts[cfxCNT_ELEMENT];
-            //m_nregions = counts[cfxCNT_REGION];
-            m_nvolumes = counts[cfxCNT_VOLUME];
-            //m_nvars = counts[cfxCNT_VARIABLE];
-            ExportDone = false;
-            if (m_nzones < 0) {
-                cfxExportDone();
-                sendError("cfxExportInit could not open %s", resultfileName);
-                ExportDone = true;
-                return false;
-            }
-            if (cfxExportTimestepNumGet(1) < 0) {
-                sendInfo("no timesteps");
-            }
-            m_ntimesteps = cfxExportTimestepCount();
-            if(m_ntimesteps > 0) {
-                setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
-                setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
-                setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps-1);
-                setParameterMaximum<Integer>(m_timeskip, m_ntimesteps-1);
-            }
-            else {
-                setParameterMaximum<Integer>(m_lasttimestep, 0);
-                setParameter<Integer>(m_lasttimestep,0);
-                setParameterMaximum<Integer>(m_firsttimestep, 0);
-                setParameter<Integer>(m_firsttimestep,0);
-                setParameterMaximum<Integer>(m_timeskip, 0);
-            }
 
-            //fill choice parameter
-            m_case.parseResultfile();
-            m_case.getFieldList();
-            for (auto out: m_fieldOut) {
-                setParameterChoices(out, m_case.m_field_param);
-            }
-            for (auto out: m_boundaryOut) {
-                setParameterChoices(out, m_case.m_boundary_param);
-            }
-            if(rank() == 0) {
-                //print out zone names
-                sendInfo("Found %d zones", m_nzones);
-                for(index_t i=1;i<=m_nzones;i++) {
-                    cfxExportZoneSet(i,NULL);
-                    sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
-                    cfxExportZoneFree();
+            if(initializeResultfile()) {
+                if (cfxExportTimestepNumGet(1) < 0) {
+                    sendInfo("no timesteps");
                 }
-                //print out boundary names
-                sendInfo("Found %d boundaries", m_case.getNumberOfBoundaries());
-                std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
-                for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-                    sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
+                m_ntimesteps = cfxExportTimestepCount();
+                if(m_ntimesteps > 0) {
+                    setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
+                    setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
+                    setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps-1);
+                    setParameterMaximum<Integer>(m_timeskip, m_ntimesteps-1);
                 }
+                else {
+                    setParameterMaximum<Integer>(m_lasttimestep, 0);
+                    setParameter<Integer>(m_lasttimestep,0);
+                    setParameterMaximum<Integer>(m_firsttimestep, 0);
+                    setParameter<Integer>(m_firsttimestep,0);
+                    setParameterMaximum<Integer>(m_timeskip, 0);
+                }
+
+                //fill choice parameter
+                m_case.parseResultfile();
+                m_case.getFieldList();
+                for (auto out: m_fieldOut) {
+                    setParameterChoices(out, m_case.m_field_param);
+                }
+                for (auto out: m_boundaryOut) {
+                    setParameterChoices(out, m_case.m_boundary_param);
+                }
+                if(rank() == 0) {
+                    //print out zone names
+                    sendInfo("Found %d zones", m_nzones);
+                    for(index_t i=1;i<=m_nzones;i++) {
+                        cfxExportZoneSet(i,NULL);
+                        sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
+                        cfxExportZoneFree();
+                    }
+                    //print out boundary names
+                    sendInfo("Found %d boundaries", m_case.getNumberOfBoundaries());
+                    std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
+                    for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
+                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
+                    }
+                }
+                cfxExportZoneFree();
+
+                sendInfo("The initialisation was successfully done");
             }
-            cfxExportZoneFree();
-
-            free(resultfileName);
-            sendInfo("The initialisation was successfully done");
-
         }
     }
+
+//    if(p==m_firsttimestep || p==m_lasttimestep || p==m_timeskip) {
+//        m_case.parseResultfile();
+//        m_case.getFieldList();
+//        for (auto out: m_fieldOut) {
+//            setParameterChoices(out, m_case.m_field_param);
+//        }
+//        for (auto out: m_boundaryOut) {
+//            setParameterChoices(out, m_case.m_boundary_param);
+//        }
+//    }
+
     return Module::changeParameter(p);
 }
 
@@ -386,15 +398,16 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     }
     //std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
 
-    index_t nnodesInVolume, nelmsInVolume, nconnectivities;
+    index_t nnodesInVolume, nelmsInVolume, nconnectivities, nnodesInZone;
     nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
     nelmsInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS);
-        //std::cerr << "nodesInVolume = " << nnodesInVolume << std::endl;
+    nnodesInZone = cfxExportNodeCount();
+    //std::cerr << "nodesInVolume = " << nnodesInVolume << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
         //std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
-        std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+        //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
-    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
+    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInZone)); //initialized with number of elements, number of connectivities, number of coordinates
 
     //load coords into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
@@ -404,14 +417,23 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     auto ptrOnZcoords = grid->z().data();
 
     int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
+    //std::vector<int> nodeListOfVolumeVec(nnodesInVolume);
+    //wuerde es auch gehen mit std::vector<int> = nodeListOfVolumeVec(nodeListOfVolume, nodeListOfVolume+nnodesInVolume); ???
+    //std::vector<int> = nodeListOfVolumeVec(nodeListOfVolume, nodeListOfVolume+nnodesInVolume);
+    //nodeListOfVolumeVec.reserve(nnodesInVolume);
+
     for(index_t i=0;i<nnodesInVolume;++i) {
         if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
         }
-        ptrOnXcoords[i] = *x_coord.get();
-        ptrOnYcoords[i] = *y_coord.get();
-        ptrOnZcoords[i] = *z_coord.get();
+        ptrOnXcoords[nodeListOfVolume[i]-1] = *x_coord.get();
+        ptrOnYcoords[nodeListOfVolume[i]-1] = *y_coord.get();
+        ptrOnZcoords[nodeListOfVolume[i]-1] = *z_coord.get();
+
+        //nodeListOfVolumeVec[i] = nodeListOfVolume[i];
     }
+
+    //std::cerr << "nodeListOfVolumeVec.size() = " << nodeListOfVolumeVec.size() << "; nnodesInVolume = " << nnodesInVolume << std::endl;
 
 
     //Test, ob Einlesen funktioniert hat
@@ -424,9 +446,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     //        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
 
 
-    cfxExportNodeFree();
-    cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
-
     //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
     boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
@@ -435,6 +454,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     auto ptrOnCl = grid->cl().data();
 
     int *elmListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS); //query the elements that define the volume
+    //std::vector<int>::iterator it;
 
     for(index_t i=0;i<nelmsInVolume;++i) {
         if(!cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get())) {
@@ -458,13 +478,59 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 //                }
 
                 // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+
+
+//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[0]);
+//                if(it==nodeListOfVolumeVec.end()) {
+//                    std::cerr << "error message" << std::endl;
+//                }
+//                else {
+//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
+//                    ptrOnCl[elemListCounter+0] = index;
+//                }
+//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[1]);
+//                if(it==nodeListOfVolumeVec.end()) {
+//                    std::cerr << "error message" << std::endl;
+//                }
+//                else {
+//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
+//                    ptrOnCl[elemListCounter+1] = index;
+//                }
+//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[2]);
+//                if(it==nodeListOfVolumeVec.end()) {
+//                    std::cerr << "error message" << std::endl;
+//                }
+//                else {
+//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
+//                    ptrOnCl[elemListCounter+2] = index;
+//                }
+//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[3]);
+//                if(it==nodeListOfVolumeVec.end()) {
+//                    std::cerr << "error message" << std::endl;
+//                }
+//                else {
+//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
+//                    ptrOnCl[elemListCounter+3] = index;
+//                }
+//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[4]);
+//                if(it==nodeListOfVolumeVec.end()) {
+//                    std::cerr << "error message" << std::endl;
+//                }
+//                else {
+//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
+//                    ptrOnCl[elemListCounter+4] = index;
+//                }
+
                 ptrOnCl[elemListCounter+0] = nodesOfElm.get()[0]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
                 ptrOnCl[elemListCounter+1] = nodesOfElm.get()[1]-1;
                 ptrOnCl[elemListCounter+2] = nodesOfElm.get()[2]-1;
                 ptrOnCl[elemListCounter+3] = nodesOfElm.get()[3]-1;
                 ptrOnCl[elemListCounter+4] = nodesOfElm.get()[4]-1;
 
+
                 elemListCounter += 5;
+
+
                 break;
             }
             case 6: {
@@ -559,7 +625,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 //    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
 //        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
 //    }
-
+    cfxExportNodeFree();
     cfxExportElementFree();
     cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
 
@@ -708,11 +774,14 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
+                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
+                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
+                        return s;
+                    }
                     ptrOnScalarData[j] = *value.get();
-                    //            if(j<200) {
-                    //                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-                    //            }
+//                                if(j<10) {
+//                                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                                }
                 }
                 cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
@@ -725,16 +794,20 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
+
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
+                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
+                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
+                        return v;
+                    }
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
-//                                if(j<2000) {
-//                                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//                                }
+//                    if(j<20) {
+//                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//                    }
                 }
                 cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
@@ -763,7 +836,10 @@ DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, Variable var) {
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
                 for(index_t j=0;j<nNodesInBoundary;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+                    if(cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get()) == 0) {
+                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
+                        return s;
+                    }
                     ptrOnScalarData[j] = *value.get();
                     //            if(j<200) {
                     //                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
@@ -781,7 +857,10 @@ DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, Variable var) {
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
                 for(index_t j=0;j<nNodesInBoundary;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+                    if(cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get()) == 0) {
+                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
+                        return v;
+                    }
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
@@ -871,7 +950,7 @@ index_t ReadCFX::collectBoundaries() {
     return numberOfSelectedBoundaries;
 }
 
-bool ReadCFX::loadFields(int volumeNr, int processor, int timestep, index_t numBlocks) {
+bool ReadCFX::loadFields(int volumeNr, int processor, int timestep, index_t numBlocks, bool trnOrRes) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -883,7 +962,7 @@ bool ReadCFX::loadFields(int volumeNr, int processor, int timestep, index_t numB
       else {
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(volumeNr, allParam[index]);
-          setMeta(obj, volumeNr, timestep, numBlocks);
+          setMeta(obj, volumeNr, timestep, numBlocks, trnOrRes);
           obj ->setGrid(m_currentGrid[processor]);
           obj ->setMapping(DataBase::Vertex);
           m_currentVolumedata[processor][i]= obj;
@@ -892,7 +971,7 @@ bool ReadCFX::loadFields(int volumeNr, int processor, int timestep, index_t numB
    return true;
 }
 
-bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int timestep, index_t numBlocks) {
+bool ReadCFX::loadBoundaryFields(int boundaryNr, int timestep, index_t numBlocks, bool trnOrRes) {
     for (int i=0; i<NumBoundaryPorts; ++i) {
         std::string boundField = m_boundaryOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -902,7 +981,7 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int timestep, in
             auto index = std::distance(allParam.begin(), it);
             DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
             if(obj) {
-                setMeta(obj, boundaryNr, timestep, numBlocks);
+                setMeta(obj, boundaryNr, timestep, numBlocks, trnOrRes);
                 obj ->setGrid(loadPolygon(boundaryNr));
                 obj ->setMapping(DataBase::Vertex);
                 addObject(m_boundaryDataOut[i],obj);
@@ -929,69 +1008,96 @@ bool ReadCFX::addGridToPort(int processor) {
     return true;
 }
 
-void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks) {
+void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks, bool trnOrRes) {
    if (obj) {
-      obj->setTimestep(timestep);
-      if(m_ntimesteps == 0) {
-          obj->setNumTimesteps(-1);
-      }
-      else {
-          obj->setNumTimesteps(m_ntimesteps);
-      }
-      obj->setRealTime(cfxExportTimestepTimeGet(timestep));
+       if(trnOrRes) {
+           obj->setTimestep(timestep);
+           if(m_ntimesteps == 0) {
+               obj->setNumTimesteps(-1);
+           }
+           else {
+               obj->setNumTimesteps(m_ntimesteps);
+           }
+           obj->setRealTime(cfxExportTimestepTimeGet(timestep));
+       }
+       else {
+           obj->setTimestep(0);
+           obj->setNumTimesteps(-1);
+           obj->setRealTime(0);
+       }
       obj->setBlock(volumeNr);
       obj->setNumBlocks(numOfBlocks == 0 ? 1 : numOfBlocks);
    }
 }
 
+bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int timestep, int firsttimestep, int step, bool trnOrRes) {
+    for(index_t i=0;i<numSelVolumes;++i) {
+        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
+        if(rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) == rank()) {
+            int processor = rank();
+            //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep+1 << std::endl;
+            UnstructuredGrid::ptr grid = loadGrid(i);
+            setMeta(grid, i, timestep, numSelVolumes, trnOrRes);
+            m_currentGrid[processor] = grid;
+            loadFields(i, processor, timestep, numSelVolumes, trnOrRes);
+            addGridToPort(processor);
+            addVolumeDataToPorts(processor);
+
+        }
+    }
+    for(index_t i=0;i<numSelBoundaries;++i) {
+        if(rankForBoundaryAndTimestep(timestep,firsttimestep,step,i,numSelBoundaries) == rank()) {
+            //std::cerr << "process mit rank() = " << rank() << "; berechnet boundary = " << i << "; in timestep = " << timestep << std::endl;
+            loadBoundaryFields(i, timestep, numSelBoundaries, trnOrRes);
+        }
+    }
+
+    return true;
+}
+
 bool ReadCFX::compute() {
     std::cerr << "Compute Start. \n";
+    index_t numSelVolumes, numSelBoundaries;
+    index_t step = m_timeskip->getValue()+1;
+    index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
+    bool trnOrRes;
 
     if(!m_case.m_valid) {
         sendInfo("not a valid .res file entered: initialisation not yet done");
     }
     else {
-        index_t numSelVolumes = collectVolumes();
-        index_t numSelBoundaries = collectBoundaries();
+        if(ExportDone) {
+            initializeResultfile();
+            m_case.parseResultfile();
+        }
+        //read variables out of .res file
+        trnOrRes = 0;
+        numSelVolumes = collectVolumes();
+        numSelBoundaries = collectBoundaries();
+        readTime(numSelVolumes,numSelBoundaries,0,0,1,trnOrRes);
 
-        index_t step = m_timeskip->getValue()+1;
-        index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
+        //read variables out of timesteps .trn file
+        if(m_ntimesteps!=0) {
+            trnOrRes = 1;
+            for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=step) {
+                index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
+                if(cfxExportTimestepSet(timestepNumber)<0) {
+                    std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
+                }
+                else {
+                    m_case.parseResultfile();
+                    numSelVolumes = collectVolumes();
+                    numSelBoundaries = collectBoundaries();
 
-        for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=step) {
-            for(index_t i=0;i<numSelVolumes;++i) {
-                //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
-                if(rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) == rank()) {
-                    int processor = rank();
-                    index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
-                    if(cfxExportTimestepSet(timestepNumber)<0) {
-                        std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
-                    }
-                    else {
-                        if(ExportDone) {
-                            changeParameter(m_resultfiledir);
-                        }
-                        //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep+1 << std::endl;
-                        UnstructuredGrid::ptr grid = loadGrid(i);
-                        setMeta(grid, i, timestep, numSelVolumes);
-                        m_currentGrid[processor] = grid;
-                        loadFields(i, processor, timestep, numSelVolumes);
-                        addGridToPort(processor);
-                        addVolumeDataToPorts(processor);
-                    }
+                    readTime(numSelVolumes,numSelBoundaries,timestep,firsttimestep,step,trnOrRes);
+
+                    m_currentVolumedata.clear();
+                    m_currentGrid.clear();
                 }
             }
-            for(index_t i=0;i<numSelBoundaries;++i) {
-                if(rankForBoundaryAndTimestep(timestep,firsttimestep,step,i,numSelBoundaries) == rank()) {
-                    int processor = rank();
-                    //std::cerr << "process mit rank() = " << rank() << "; berechnet boundary = " << i << "; in timestep = " << timestep << std::endl;
-                    loadBoundaryFields(i, processor, timestep, numSelBoundaries);
-                }
-            }
-
-            m_currentVolumedata.clear();
-            m_currentGrid.clear();
+            cfxExportDone();
+            ExportDone = true;
         }
     }
-
     return true;
 }
