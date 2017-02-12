@@ -160,7 +160,6 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
-        ${LIBVNCSERVER_INCLUDE_DIR}
         ${SNAPPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_DIRS}
@@ -177,7 +176,6 @@ target_link_libraries(DisCOVERay
         vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
-        ${LIBVNCSERVER_SERVER_LIBRARY}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${SNAPPY_LIBRARIES}
