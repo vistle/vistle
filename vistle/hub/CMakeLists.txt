@@ -31,9 +31,6 @@ target_link_libraries(vistle
         vistle_core
 )
 
-if(UNIX AND NOT APPLE)
-	target_link_libraries(vistle
-		-ldl
-		-lutil
-	)
+if(UNIX)
+	target_link_libraries(vistle ${CMAKE_DL_LIBS})
 endif()

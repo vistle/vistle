@@ -22,5 +22,5 @@ include_directories(
 add_module(COVER coverwrapper.cpp)
 target_link_libraries(COVER ${EXTRA_LIBS} vistle_util)
 if(NOT APPLE AND NOT WINDOWS)
-   target_link_libraries(COVER ${EXTRA_LIBS} -ldl)
+   target_link_libraries(COVER ${CMAKE_DL_LIBS})
 endif()

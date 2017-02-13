@@ -17,9 +17,6 @@ target_link_libraries(blower
         vistle_userinterface
 )
 
-if(UNIX AND NOT APPLE)
-	target_link_libraries(blower
-		-ldl
-		-lutil
-	)
+if(UNIX)
+	target_link_libraries(blower ${CMAKE_DL_LIBS})
 endif()
