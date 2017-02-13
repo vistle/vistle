@@ -1,4 +1,4 @@
-vistle_find_package(LibVncServer)
+#vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 
 set(renderer_SOURCES
@@ -14,12 +14,10 @@ set(renderer_HEADERS
 
 if(TBB_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
-      #vnccontroller.cpp
       rhrcontroller.cpp
       parrendmgr.cpp
    )
    set(renderer_HEADERS ${renderer_HEADERS}
-      #vnccontroller.h
       parrendmgr.h
       rhrcontroller.h
    )
@@ -27,6 +25,12 @@ if(TBB_FOUND)
       ${TBB_INCLUDE_DIR}
       ${ICET_INCLUDE_DIRS}
    )
+endif()
+
+if(LIBVNCSERVER_FOUND)
+   set(renderer_SOURCES ${renderer_SOURCES} vnccontroller.cpp)
+   set(renderer_HEADERS ${renderer_HEADERS} vnccontroller.h)
+   include_directories(${LIBVNCSERVER_INCLUDE_DIR})
 endif()
 
 use_openmp()
@@ -57,6 +61,10 @@ if(TBB_FOUND)
       ${ICET_CORE_LIBS}
       ${ICET_MPI_LIBS}
    )
+endif()
+
+if(LIBVNCSERVER_FOUND)
+   target_link_libraries(vistle_renderer ${LIBVNCSERVER_SERVER_LIBRARY})
 endif()
 
 include_directories(

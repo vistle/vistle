@@ -56,7 +56,6 @@ if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
 endif()
 
 include_directories(
-        ..
         ${Boost_INCLUDE_DIRS}
         ..
 )
