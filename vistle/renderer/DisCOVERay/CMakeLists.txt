@@ -7,18 +7,8 @@ vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
 
-if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
-   message("DisCOVERay: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
-
 if (NOT TBB_FOUND)
    message("DisCOVERay: TBB not found")
-   return()
-endif()
-
-if(NOT SNAPPY_FOUND)
-   message("DisCOVERay: Snappy not found")
    return()
 endif()
 
@@ -36,8 +26,18 @@ else()
 endif()
 
 if(JPEGTURBO_FOUND)
-   add_definitions(-DHAVE_TURBOJPEG)
+   if(TURBOJPEG_HAVE_TJMCUWIDTH)
+      add_definitions(-DHAVE_TURBOJPEG)
+      include_directories(${JPEGTURBO_INCLUDE_DIR})
+   else()
+      message("DisCOVERay: turbojpeg w/o tjMcuWidth")
+   endif()
 endif()
+
+if(SNAPPY_FOUND)
+   include_directories(${SNAPPY_INCLUDE_DIR})
+endif()
+
 
 # BEGIN: ispc
 ##############################################################
@@ -160,11 +160,9 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
-        ${SNAPPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
-        ${JPEGTURBO_INCLUDE_DIR}
 )
 
 target_link_libraries(DisCOVERay
@@ -176,9 +174,15 @@ target_link_libraries(DisCOVERay
         vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
-        ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${SNAPPY_LIBRARIES}
         ${EMBREE_LIBRARY}
         ${TBB_LIBRARIES}
 )
+
+if (SNAPPY_FOUND)
+   target_link_libraries(DisCOVERay ${SNAPPY_LIBRARIES})
+endif()
+
+if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
+   target_link_libraries(DisCOVERay ${JPEG_LIBRARIES})
+endif()

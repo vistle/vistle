@@ -10,16 +10,6 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
-   message("OsgRenderer: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
-
-if(NOT SNAPPY_FOUND)
-   message("OsgRenderer: Snappy not found")
-   return()
-endif()
-
 if (NOT TBB_FOUND)
    message("OsgRenderer: TBB not found")
    return()
@@ -38,8 +28,18 @@ else()
    use_openmp()
 endif()
 
+if(SNAPPY_FOUND)
+   include_directories(${SNAPPY_INCLUDE_DIR})
+endif()
+
+
 if(JPEGTURBO_FOUND)
-   add_definitions(-DHAVE_TURBOJPEG)
+   if(TURBOJPEG_HAVE_TJMCUWIDTH)
+      add_definitions(-DHAVE_TURBOJPEG)
+      include_directories(${JPEGTURBO_INCLUDE_DIR})
+   else()
+      message("OsgRenderer: turbojpeg w/o tjMcuWidth")
+   endif()
 endif()
 
 
@@ -63,9 +63,7 @@ include_directories(
         ${GLEW_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
-        ${SNAPPY_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
-        ${JPEGTURBO_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
         ../../cover/Vistle
 )
@@ -87,8 +85,14 @@ target_link_libraries(OsgRenderer
         vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
-        ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${SNAPPY_LIBRARIES}
         ${TBB_LIBRARIES}
 )
+
+if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
+   target_link_libraries(OsgRenderer ${JPEG_LIBRARIES})
+endif()
+
+if (SNAPPY_FOUND)
+   target_link_libraries(OsgRenderer ${SNAPPY_LIBRARIES})
+endif()
