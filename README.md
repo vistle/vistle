@@ -32,6 +32,7 @@ Build Requirements
   - GCC (4.6, 4.8, 4.9)
   - Clang (Xcode 5.0–6.1)
   - Intel (14.0.2 - but use Boost 1.52 and not on Cray, 13.1.3 with GCC 4.6.3)
+  - Microsoft Visual Studio 2015 (14.0)
   
   Known bad compilers:
   - GCC 4.4 (not enough C++11)
@@ -42,7 +43,7 @@ Build Requirements
   at least 2.8
 
 - **MPI**:
-  Open MPI, MPICH and MVAPCH2 has been used successfully.
+  Microsoft MPI, Open MPI, MPICH and MVAPCH2 has been used successfully.
 
 - **Boost**:
   Build boost with the following options:
@@ -57,7 +58,7 @@ Build Requirements
      - Intel compiler (at least 14.0.2) does not work with 1.55 because of missing `std::nullptr_t`, use 1.52
 
 - **Python**:
-  for interpreting Vistle scripts (.vsl), only tested with Python 2.6 and 2.7
+  for interpreting Vistle scripts (.vsl), Python 2.7 and 3 should work.
 
 - **Readline library**:
   history and line editing for command line interface
@@ -67,14 +68,21 @@ Build Requirements
   [GitHub](https://github.com/hlrs-vis/covise), needed for:
   
     - ReadCovise module
-    - COVER plug-ins
+    - COVER module and COVER plug-ins
     - ray casting render module
+
+  In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug=ins
+  should go.
 
 - **OpenSceneGraph**:
   the version of OpenSceneGraph that was used for compiling OpenCOVER
 
 - **Qt**:
   Qt 5 is required by the graphical user interface
+
+You can set the environment variable `EXTERNLIBS` to a directory where Vistle
+should search for 3rd party libraries.
+It will search in e.g. `$EXTERNLIBS/boost` if CMake is looking for `Boost`.
 
 ### macOS with [Homebrew](https://brew.sh)
 
@@ -96,14 +104,21 @@ Then build with your build tool, e.g.:
 Invoking Vistle
 ---------------
 
+### Environment Set-Up
+
 Vistle modules are run on clusters via MPI. You have to configure how they
-have to be spawned by providing a script named `spawn_vistle.sh` somewhere in your
-`PATH`. It could be as simple as
+have to be spawned by providing a script named `spawn_vistle.sh` (or `spawn_vistle.bat`
+on Windows) somewhere in your `PATH`. It could be as simple as
 
       #! /bin/bash
       mpirun "$@"
 
 But it also might require invoking your batch system.
+
+For COVER to find its plug-ins, you should add the directory from
+`COVISEDESTDIR` to `COVISE_PATH`.
+
+### Command Line Switches
 
 Synopsis:
 
@@ -144,7 +159,7 @@ Source Code Organization
     - `vistle/util`: support code
     - `vistle/core`: Vistle core data structures
     - `vistle/userinterface`: common library for user interfaces
-    - `vistle/rhr`: library for remote hybrid rendering servers
+    - `vistle/rhr`: library for remote hybrid rendering servers and clients
     - `vistle/control`: Python code for controlling a Vistle session
     - `vistle/hub`: Vistle session controller
     - `vistle/gui`: graphical user interface
@@ -156,4 +171,4 @@ Source Code Organization
         - `vistle/renderer/DisCOVERay`: a parallel remote hybrid rendering server based on Embree (CPU ray-casting)
         - `vistle/renderer/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
     - `vistle/cover`: plugins for OpenCOVER, e.g. for connecting to Vistle
-        - `vistle/cover/VncClient`: OpenCOVER remote hybrid rendering client plugin
+        - `vistle/cover/RhrClient`: OpenCOVER remote hybrid rendering client plugin
