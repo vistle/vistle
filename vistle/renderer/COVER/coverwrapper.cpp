@@ -81,7 +81,11 @@ int main(int argc, char *argv[]) {
 		std::string archsuffix = env["ARCHSUFFIX"];
 
 		if (!covisedir.empty()) {
-			if (FILE *fp = popen((covisedir + "/bin/print_covise_env").c_str(), "r")) {
+            std::string print_covise_env = covisedir + "/bin/print_covise_env";
+#ifdef _WIN32
+            print_covise_env += ".bat";
+#endif
+			if (FILE *fp = popen(print_covise_env.c_str(), "r")) {
 				std::vector<char> buf(10000);
 				while (fgets(buf.data(), buf.size(), fp)) {
 					auto sep = std::find(buf.begin(), buf.end(), '=');
@@ -109,10 +113,11 @@ int main(int argc, char *argv[]) {
 #else
 	vistleplugin += "libVistlePlugin.so";
 #endif
-	env["VISTLE_PLUGIN"] = vistleplugin;
 #ifdef _WIN32
 	std::cerr << "Vistle plugin: " << vistleplugin << std::endl;
+    vistleplugin = "VistlePlugin";
 #endif
+	env["VISTLE_PLUGIN"] = vistleplugin;
 
 	std::string ldpath, dyldpath, dyldfwpath, covisepath;
 
