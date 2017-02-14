@@ -3,11 +3,6 @@
 
 #include <util/hostname.h>
 #include <sys/types.h>
-#ifdef _WIN32
-#define NOMINMAX
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
-#endif
 
 #include <sstream>
 #include <iostream>
@@ -180,11 +175,6 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_reduced(false)
 , m_readyForQuit(false)
 {
-#ifdef _WIN32
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
    m_size = comm().size();
    m_rank = comm().rank();
 

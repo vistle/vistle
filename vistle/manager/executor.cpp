@@ -4,9 +4,6 @@
 
 #ifdef _WIN32
 #include <process.h>
-#define NOMINMAX
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
 #endif
 
 #include <util/sysdep.h>
@@ -48,11 +45,6 @@ Executor::Executor(int argc, char *argv[])
      , m_argc(argc)
      , m_argv(argv)
 {
-#ifdef _WIN32
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
