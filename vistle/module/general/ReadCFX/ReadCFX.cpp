@@ -773,6 +773,11 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
+
+//                for(int k=0;k<cfxExportVariableCount(0);++k) {
+//                    std::cerr << "Name(" << k << ") = " << cfxExportVariableName(k,1) << std::endl;
+//                }
+
                 for(index_t j=0;j<nnodesInVolume;++j) {
                     if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
                         std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
@@ -794,6 +799,10 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
+
+//                for(int k=0;k<cfxExportVariableCount(0);++k) {
+//                    std::cerr << "Name(" << k << ") = " << cfxExportVariableName(k,1) << std::endl;
+//                }
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
                     if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
@@ -1035,14 +1044,13 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int time
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
         if(rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) == rank()) {
             int processor = rank();
-            //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep+1 << std::endl;
+            //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
             UnstructuredGrid::ptr grid = loadGrid(i);
             setMeta(grid, i, timestep, numSelVolumes, trnOrRes);
             m_currentGrid[processor] = grid;
             loadFields(i, processor, timestep, numSelVolumes, trnOrRes);
             addGridToPort(processor);
             addVolumeDataToPorts(processor);
-
         }
     }
     for(index_t i=0;i<numSelBoundaries;++i) {
@@ -1070,6 +1078,24 @@ bool ReadCFX::compute() {
             initializeResultfile();
             m_case.parseResultfile();
         }
+
+
+//        double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+//        double angularVel;
+//        for(index_t i=1;i<=m_nzones;++i) {
+//            std::cerr << "cfxExportZoneMotionAction(" << i << ",cfxMOTION_USE) = " << cfxExportZoneMotionAction(i,cfxMOTION_IGNORE) << std::endl; //cfxMOTION_USE, cfxMOTION_IGNORE
+//            std::cerr << "ZoneIsRotating("<< i << ") = " << cfxExportZoneIsRotating(rotAxis,&angularVel) << std::endl;
+//            for(int k=0;k<3;++k) {
+//                std::cerr << "rotAxis[1][" << k << "] = " << rotAxis[0][k] << std::endl << std::endl;
+//            }
+//            for(int k=0;k<3;++k) {
+//                std::cerr << "rotAxis[2][" << k << "] = " << rotAxis[1][k] << std::endl << std::endl;
+//            }
+//            std::cerr << "angular velocity = " << angularVel << std::endl;
+//        }
+
+
+
         //read variables out of .res file
         trnOrRes = 0;
         numSelVolumes = collectVolumes();
@@ -1088,7 +1114,6 @@ bool ReadCFX::compute() {
                     m_case.parseResultfile();
                     numSelVolumes = collectVolumes();
                     numSelBoundaries = collectBoundaries();
-
                     readTime(numSelVolumes,numSelBoundaries,timestep,firsttimestep,step,trnOrRes);
 
                     m_currentVolumedata.clear();
