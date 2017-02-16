@@ -97,7 +97,7 @@ bool PrintMetaData::reduce(int timestep) {
     if (m_isRootNode) {
         boost::mpi::reduce(comm(), m_currentProfile, m_minProfile, ProfileMinimum<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, m_maxProfile, ProfileMaximum<ObjectProfile>(), M_ROOT_NODE);
-         boost::mpi::reduce(comm(), m_currentProfile, m_TotalsProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_currentProfile, m_TotalsProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
     } else {
         boost::mpi::reduce(comm(), m_currentProfile, ProfileMinimum<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, ProfileMaximum<ObjectProfile>(), M_ROOT_NODE);
@@ -243,7 +243,6 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
     }
 
     m_currentProfile.blocks++;
-
 }
 
 // COMPUTE HELPER FUNCTION - PRINT VERBOSE DATA
@@ -290,7 +289,6 @@ void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
     }
 
     sendInfo(message);
-
 }
 
 // REDUCE HELPER FUNCTION - PRINT DATA

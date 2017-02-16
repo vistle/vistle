@@ -32,8 +32,8 @@ class PrintMetaData : public vistle::Module {
        vistle::Index normals;
        vistle::Index elements;
        vistle::Index vertices;
-       std::vector<double> unifMin;
-       std::vector<double> unifMax;
+       std::vector<vistle::Scalar> unifMin;
+       std::vector<vistle::Scalar> unifMax;
        std::vector<vistle::Index> structuredGridSize;
        std::vector<vistle::Index> vecs;
        std::vector<unsigned> types;
@@ -46,7 +46,7 @@ class PrintMetaData : public vistle::Module {
            elements(0),
            vertices(0),
            unifMin(NUM_STRUCTURED, std::numeric_limits<double>::max()),
-           unifMax(NUM_STRUCTURED, std::numeric_limits<double>::min()),
+           unifMax(NUM_STRUCTURED, -std::numeric_limits<double>::max()),
            structuredGridSize(NUM_STRUCTURED, 0),
            vecs(NUM_VECS, 0)
        {}
