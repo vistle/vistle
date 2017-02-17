@@ -44,8 +44,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -271,14 +271,14 @@ index_t CaseInfo::getNumberOfBoundaries() {
     return m_numberOfBoundaries;
 }
 
-int ReadCFX::rankForVolumeAndTimestep(int timestep, int firsttimestep, int step, int volume, int numVolumes) const {
-    int processor = ((timestep-firsttimestep)/step)*numVolumes+volume;
+int ReadCFX::rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const {
+    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*numVolumes+volume;
 
     return processor % size();
 }
 
-int ReadCFX::rankForBoundaryAndTimestep(int timestep, int firsttimestep, int step, int boundary, int numBoundaries) const {
-    int processor = ((timestep-firsttimestep)/step)*numBoundaries+boundary;
+int ReadCFX::rankForBoundaryAndTimestep(int timestep, int boundary, int numBoundaries) const {
+    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*numBoundaries+boundary;
 
     return processor % size();
 }
@@ -774,10 +774,6 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
 
-//                for(int k=0;k<cfxExportVariableCount(0);++k) {
-//                    std::cerr << "Name(" << k << ") = " << cfxExportVariableName(k,1) << std::endl;
-//                }
-
                 for(index_t j=0;j<nnodesInVolume;++j) {
                     if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
                         std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
@@ -799,10 +795,6 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
-
-//                for(int k=0;k<cfxExportVariableCount(0);++k) {
-//                    std::cerr << "Name(" << k << ") = " << cfxExportVariableName(k,1) << std::endl;
-//                }
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
                     if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
@@ -959,28 +951,36 @@ index_t ReadCFX::collectBoundaries() {
     return numberOfSelectedBoundaries;
 }
 
-bool ReadCFX::loadFields(int volumeNr, int processor, int timestep, index_t numBlocks, bool trnOrRes) {
+bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
           return obj.m_VarName == field;});
       if (it == allParam.end()) {
-          m_currentVolumedata[processor][i]= DataBase::ptr();
+          if(m_ResfileVolumedata) {
+              m_currentVolumedata[processor][i]= m_ResfileVolumedata;
+          }
+          else {
+              m_currentVolumedata[processor][i]= DataBase::ptr();
+          }
       }
       else {
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(volumeNr, allParam[index]);
-          setMeta(obj, volumeNr, timestep, numBlocks, trnOrRes);
+          setMeta(obj, volumeNr, setMetaTimestep, timestep, numBlocks, trnOrRes);
           obj ->setGrid(m_currentGrid[processor]);
           obj ->setMapping(DataBase::Vertex);
           m_currentVolumedata[processor][i]= obj;
+          if(!trnOrRes) {
+              m_ResfileVolumedata=obj;
+          }
       }
    }
    return true;
 }
 
-bool ReadCFX::loadBoundaryFields(int boundaryNr, int timestep, index_t numBlocks, bool trnOrRes) {
+bool ReadCFX::loadBoundaryFields(int boundaryNr, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes) {
     for (int i=0; i<NumBoundaryPorts; ++i) {
         std::string boundField = m_boundaryOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -990,10 +990,18 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int timestep, index_t numBlocks
             auto index = std::distance(allParam.begin(), it);
             DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
             if(obj) {
-                setMeta(obj, boundaryNr, timestep, numBlocks, trnOrRes);
+                setMeta(obj, boundaryNr, setMetaTimestep, timestep, numBlocks, trnOrRes);
                 obj ->setGrid(loadPolygon(boundaryNr));
                 obj ->setMapping(DataBase::Vertex);
                 addObject(m_boundaryDataOut[i],obj);
+                if(!trnOrRes) {
+                    m_ResfileBoundarydata=obj;
+                }
+            }
+        }
+        else {
+            if(m_ResfileBoundarydata) {
+                addObject(m_boundaryDataOut[i],m_ResfileBoundarydata);
             }
         }
     }
@@ -1017,46 +1025,47 @@ bool ReadCFX::addGridToPort(int processor) {
     return true;
 }
 
-void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks, bool trnOrRes) {
+void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numOfBlocks, bool trnOrRes) {
    if (obj) {
-       if(trnOrRes) {
-           obj->setTimestep(timestep);
-           if(m_ntimesteps == 0) {
-               obj->setNumTimesteps(-1);
-           }
-           else {
-               obj->setNumTimesteps(m_ntimesteps);
-           }
-           obj->setRealTime(cfxExportTimestepTimeGet(timestep));
+       if(m_ntimesteps == 0) {
+           obj->setNumTimesteps(-1);
+           obj->setTimestep(0);
+           obj->setRealTime(0);
        }
        else {
-           obj->setTimestep(0);
-           obj->setNumTimesteps(-1);
-           obj->setRealTime(0);
+           obj->setNumTimesteps(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+           if(trnOrRes) {
+               obj->setTimestep(setMetaTimestep);
+               obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
+           }
+           else {
+               obj->setTimestep(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
+               obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
+           }
        }
       obj->setBlock(volumeNr);
       obj->setNumBlocks(numOfBlocks == 0 ? 1 : numOfBlocks);
    }
 }
 
-bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int timestep, int firsttimestep, int step, bool trnOrRes) {
+bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setMetaTimestep, int timestep, bool trnOrRes) {
     for(index_t i=0;i<numSelVolumes;++i) {
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
-        if(rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) == rank()) {
+        if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {
             int processor = rank();
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
             UnstructuredGrid::ptr grid = loadGrid(i);
-            setMeta(grid, i, timestep, numSelVolumes, trnOrRes);
+            setMeta(grid, i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
             m_currentGrid[processor] = grid;
-            loadFields(i, processor, timestep, numSelVolumes, trnOrRes);
+            loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
             addGridToPort(processor);
             addVolumeDataToPorts(processor);
         }
     }
     for(index_t i=0;i<numSelBoundaries;++i) {
-        if(rankForBoundaryAndTimestep(timestep,firsttimestep,step,i,numSelBoundaries) == rank()) {
+        if(rankForBoundaryAndTimestep(timestep,i,numSelBoundaries) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet boundary = " << i << "; in timestep = " << timestep << std::endl;
-            loadBoundaryFields(i, timestep, numSelBoundaries, trnOrRes);
+            loadBoundaryFields(i, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
         }
     }
 
@@ -1065,7 +1074,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int time
 
 bool ReadCFX::compute() {
     std::cerr << "Compute Start. \n";
-    index_t numSelVolumes, numSelBoundaries;
+    index_t numSelVolumes, numSelBoundaries, setMetaTimestep=0;
     index_t step = m_timeskip->getValue()+1;
     index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
     bool trnOrRes;
@@ -1082,31 +1091,22 @@ bool ReadCFX::compute() {
 
 //        double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
 //        double angularVel;
-//        for(index_t i=1;i<=m_nzones;++i) {
-//            std::cerr << "cfxExportZoneMotionAction(" << i << ",cfxMOTION_USE) = " << cfxExportZoneMotionAction(i,cfxMOTION_IGNORE) << std::endl; //cfxMOTION_USE, cfxMOTION_IGNORE
-//            std::cerr << "ZoneIsRotating("<< i << ") = " << cfxExportZoneIsRotating(rotAxis,&angularVel) << std::endl;
-//            for(int k=0;k<3;++k) {
-//                std::cerr << "rotAxis[1][" << k << "] = " << rotAxis[0][k] << std::endl << std::endl;
-//            }
-//            for(int k=0;k<3;++k) {
-//                std::cerr << "rotAxis[2][" << k << "] = " << rotAxis[1][k] << std::endl << std::endl;
-//            }
-//            std::cerr << "angular velocity = " << angularVel << std::endl;
+//        if(cfxExportZoneIstRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
+//            cfxExportZoneMotionAction(zone,cfxMOTION_USE);
 //        }
-
-
 
         //read variables out of .res file
         trnOrRes = 0;
         numSelVolumes = collectVolumes();
         numSelBoundaries = collectBoundaries();
-        readTime(numSelVolumes,numSelBoundaries,0,0,1,trnOrRes);
+        readTime(numSelVolumes,numSelBoundaries,0,0,trnOrRes);
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
             trnOrRes = 1;
             for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=step) {
                 index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
+                //cfxExportTimestepTimeGet(timestepNumber);
                 if(cfxExportTimestepSet(timestepNumber)<0) {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
@@ -1114,11 +1114,12 @@ bool ReadCFX::compute() {
                     m_case.parseResultfile();
                     numSelVolumes = collectVolumes();
                     numSelBoundaries = collectBoundaries();
-                    readTime(numSelVolumes,numSelBoundaries,timestep,firsttimestep,step,trnOrRes);
+                    readTime(numSelVolumes,numSelBoundaries,setMetaTimestep,timestep,trnOrRes);
 
                     m_currentVolumedata.clear();
                     m_currentGrid.clear();
                 }
+                setMetaTimestep++;
             }
             cfxExportDone();
             ExportDone = true;

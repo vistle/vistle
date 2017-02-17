@@ -114,23 +114,24 @@ class ReadCFX: public vistle::Module {
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected, m_boundariesSelected;
    std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata;
+   vistle::DataBase::ptr m_ResfileVolumedata, m_ResfileBoundarydata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
 
-   int rankForVolumeAndTimestep(int timestep, int firsttimestep, int step, int volume, int numVolumes) const;
-   int rankForBoundaryAndTimestep(int timestep, int firsttimestep, int step, int boundary, int numBoundaries) const;
+   int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
+   int rankForBoundaryAndTimestep(int timestep, int boundary, int numBoundaries) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
    vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
    bool initializeResultfile();
-   bool loadFields(int volumeNr, int processor, int timestep, index_t numBlocks, bool trnOrRes);
-   bool loadBoundaryFields(int boundaryNr, int timestep, index_t numBlocks, bool trnOrRes);
+   bool loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes);
+   bool loadBoundaryFields(int boundaryNr, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes);
    index_t collectVolumes();
    index_t collectBoundaries();
    bool addVolumeDataToPorts(int processor);
    bool addGridToPort(int processor);
-   void setMeta(vistle::Object::ptr obj, int volumeNr, int timestep, index_t numOfBlocks, bool trnOrRes);
-   bool readTime(index_t numSelVolumes, index_t numSelBoundaries, int timestep, int firsttimestep, int step, bool trnOrRes);
+   void setMeta(vistle::Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numOfBlocks, bool trnOrRes);
+   bool readTime(index_t numSelVolumes, index_t numSelBoundaries, int setMetaTimestep, int timestep, bool trnOrRes);
 
 
 };
