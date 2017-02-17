@@ -1405,13 +1405,31 @@ RhrClient::preFrame()
        if (coVRMSController::instance()->isMaster()) {
            bool sendUpdate = false;
            {
-               std::lock_guard<std::mutex> locker(m_pluginMutex);
-               sendUpdate = (m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_remote && m_remote->isConnected();
+               bool changed = messages.size() != m_oldMatrices.size();
+               for (int i=0; !changed && i<messages.size(); ++i) {
+                   const auto &cur = messages[i], &old = m_oldMatrices[i];
+                   for (int j=0; j<16; ++j) {
+                       if (cur.view[j] != old.view[j])
+                           changed = true;
+                       if (cur.model[j] != old.model[j])
+                           changed = true;
+                       if (cur.proj[j] != old.proj[j])
+                           changed = true;
+                   }
+               }
+               if (changed) {
+                   std::lock_guard<std::mutex> locker(m_pluginMutex);
+                   if (m_remote && m_remote->isConnected())
+                       sendUpdate = m_lastTileAt >= 0
+                               || cover->frameTime()-lastMatrices>m_avgDelay*0.7
+                               || cover->frameTime()-lastMatrices>0.3;
+               }
            }
            if (sendUpdate) {
                sendLightsMessage(m_remote);
                sendMatricesMessage(m_remote, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
+               std::swap(m_oldMatrices, messages);
            }
        }
 
@@ -1578,12 +1596,14 @@ RhrClient::preFrame()
          double rgbRate = (double)m_rgbBytesS/((m_remoteFrames)*3*m_numPixelsS);
          double bandwidthMB = (m_depthBytesS+m_rgbBytesS)/diff/1024/1024;
          if (m_remoteFrames + remoteSkipped > 0) {
-            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
+            fprintf(stderr, "VNC RHR: #Mat updates: %d, FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
+                  m_matrixNum,
                   m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff,
                   remoteSkipped,
                   m_minDelay, m_maxDelay, m_accumDelay/m_remoteFrames);
          } else {
-            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f\n",
+            fprintf(stderr, "VNC RHR: FPS: #Mat updates: %d, local %f, remote %f\n",
+                  m_matrixNum,
                   m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff);
          }
          fprintf(stderr, "    pixels: %ld, bandwidth: %.2f MB/s",
