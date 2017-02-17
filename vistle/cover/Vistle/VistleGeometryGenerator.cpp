@@ -183,7 +183,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          const vistle::Scalar *z = &spheres->z()[0];
          const vistle::Scalar *r = &spheres->r()[0];
          opencover::coSphere *sphere = new opencover::coSphere();
-         sphere->setRenderMethod(opencover::coSphere::RENDER_METHOD_CPU_BILLBOARDS);
+         //sphere->setRenderMethod(opencover::coSphere::RENDER_METHOD_CPU_BILLBOARDS);
          sphere->setCoords(numVertices, x, y, z, r);
          sphere->setColorBinding(opencover::Bind::OverAll);
          float rgba[] = { 1., 0., 0., 1. };
