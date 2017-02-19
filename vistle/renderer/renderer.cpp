@@ -323,118 +323,29 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
         auto ph = std::make_shared<PlaceHolder>(recv.objectName(), recv.meta(), recv.objectType());
         ph->copyAttributes(obj);
         placeholder = ph;
+        assert(obj);
+        assert(placeholder);
     }
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
-    const bool send = rm != LocalOnly;
-    const bool bcast = rm == AllNodes;
-    bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv.rank() == rank());
-    if (bcast) {
+    if (rm == AllNodes) {
         broadcastObject(obj, recv.rank());
-        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
+        assert(obj);
     } else {
         broadcastObject(placeholder, recv.rank());
-        if (obj)
-            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-        else
-            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), placeholder);
-#if 0
-        if (recv.rank() == rank()) {
-            Object::const_ptr obj = Shm::the().getObjectFromName(recv.objectName());
-            vassert(obj);
-            vassert(obj->check());
-            if (send) {
-                vecostreambuf<char> memstr;
-                vistle::shallow_oarchive memar(memstr);
-                auto saver = std::make_shared<DeepArchiveSaver>();
-                memar.setSaver(saver);
-                obj->save(memar);
-                const std::vector<char> &mem = memstr.get_vector();
-                uint64_t len = mem.size();
-                std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
-                const char *data = mem.data();
-                if (bcast) {
-                    MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
-                    MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
-                    auto dir = saver->getDirectory();
-                    mpi::broadcast(comm(), dir, rank());
-                    for (auto &ent: dir) {
-                        mpi::broadcast(comm(), ent.data, ent.size, rank());
-                    }
-                } else if (rank() != 0) {
-                    MPI_Request r1, r2;
-                    MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
-                    MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
-                    MPI_Wait(&r1, MPI_STATUS_IGNORE);
-                    MPI_Wait(&r2, MPI_STATUS_IGNORE);
-                }
-            }
-            if (localAdd) {
-                addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-            }
-            obj->unref(); // normally done in AddObject::takeObject();
-        } else {
-            if (send) {
-                uint64_t len = 0;
-                std::cerr << "Rank " << rank() << ": Waiting to receive: bcast=" << bcast << std::endl;
-                if (bcast) {
-                    MPI_Bcast(&len, 1, MPI_UINT64_T, recv.rank(), MPI_COMM_WORLD);
-                } else if (rank() == 0) {
-                    MPI_Request r;
-                    MPI_Irecv(&len, 1, MPI_UINT64_T, recv.rank(), 0, MPI_COMM_WORLD, &r);
-                    MPI_Wait(&r, MPI_STATUS_IGNORE);
-                }
-                if (len > 0) {
-                    //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
-                    std::vector<char> mem(len);
-                    char *data = mem.data();
-                    vistle::SubArchiveDirectory dir;
-                    std::map<std::string, std::vector<char>> objects, arrays;
-                    if (bcast) {
-                        MPI_Bcast(data, mem.size(), MPI_BYTE, recv.rank(), MPI_COMM_WORLD);
-                        mpi::broadcast(comm(), dir, recv.rank());
-                        for (auto &ent: dir) {
-                            if (ent.is_array) {
-                                arrays[ent.name].resize(ent.size);
-                                ent.data = arrays[ent.name].data();
-                            } else {
-                                objects[ent.name].resize(ent.size);
-                                ent.data = objects[ent.name].data();
-                            }
-                            mpi::broadcast(comm(), ent.data, ent.size, recv.rank());
-                        }
-                    } else if (rank() == 0) {
-                        MPI_Request r;
-                        MPI_Irecv(data, mem.size(), MPI_BYTE, recv.rank(), 0, MPI_COMM_WORLD, &r);
-                        MPI_Wait(&r, MPI_STATUS_IGNORE);
-                    }
-                    std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv.objectName() << ", " << objects.size() << " subobjects, " << arrays.size() << " arrays" << std::endl;
-                    vecistreambuf<char> membuf(mem);
-                    vistle::shallow_iarchive memar(membuf);
-                    auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
-                    memar.setFetcher(fetcher);
-                    Object::ptr obj(Object::load(memar));
-                    if (obj) {
-                        //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
-                        vassert(obj->check());
-                        if (localAdd) {
-                            addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-                        }
-                    } else {
-                        localAdd = false;
-                    }
-                } else {
-                    localAdd = false;
-                }
-            } else {
-                localAdd = false;
+        assert(placeholder);
+        if (rm == MasterOnly) {
+            if (rank() == 0) {
+                if (recv.rank() != 0)
+                    obj = receiveObject(recv.rank());
+            } else if (rank() == recv.rank()) {
+                sendObject(obj, 0);
             }
         }
-#endif
     }
-#if 0
-    if (!localAdd)
-        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), ph);
-#endif
+    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || rank() == recv.rank())
+        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
+    else
+        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), placeholder);
 
     return true;
 }
