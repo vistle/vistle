@@ -16,7 +16,7 @@ find_path (ZFP_INCLUDE_DIR
    NAMES
    zfp.h
    PATHS
-   PATH_SUFFIXES inc
+   PATH_SUFFIXES include/zfp inc
 )
 
 include(FindPackageHandleStandardArgs)
