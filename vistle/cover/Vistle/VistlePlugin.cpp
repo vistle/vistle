@@ -1,5 +1,6 @@
 #include <future>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/interprocess/exceptions.hpp>
 
 // cover
 #include <cover/coVRPluginSupport.h>
@@ -576,9 +577,18 @@ void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 void VistlePlugin::preFrame() {
 
    MPI_Barrier(MPI_COMM_WORLD);
-   if (m_module && !m_module->dispatch()) {
-      std::cerr << "Vistle requested COVER to quit" << std::endl;
-      OpenCOVER::instance()->quitCallback(NULL,NULL);
+   try {
+       if (m_module && !m_module->dispatch()) {
+           std::cerr << "Vistle requested COVER to quit" << std::endl;
+           OpenCOVER::instance()->quitCallback(NULL,NULL);
+       }
+   } catch (boost::interprocess::interprocess_exception &e) {
+       std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
+       std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
+       throw(e);
+   } catch (std::exception &e) {
+       std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
+       throw(e);
    }
 }
 
