@@ -64,9 +64,9 @@ fi
 
 if [ "$OPENMPI" = "1" ]; then
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -H ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
