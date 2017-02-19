@@ -196,6 +196,9 @@ public:
    static void publish(const Data *d);
    static Object::ptr create(Data *);
  private:
+#ifndef NDEBUG
+   std::string m_name;
+#endif
    friend class boost::serialization::access;
    template<class Archive>
    void serialize(Archive &ar, const unsigned int version);

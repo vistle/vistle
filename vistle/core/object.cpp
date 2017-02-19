@@ -235,11 +235,17 @@ Object::Object(Object::Data *data)
 : m_data(data)
 {
    m_data->ref();
+#ifndef NDEBUG
+   m_name = getName();
+#endif
 }
 
 Object::Object()
 : m_data(NULL)
 {
+#ifndef NDEBUG
+    m_name = "(NULL)";
+#endif
 }
 
 Object::~Object() {
