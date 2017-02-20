@@ -1,5 +1,3 @@
-//#undef NDEBUG
-
 #include <IceT.h>
 #include <IceTMPI.h>
 

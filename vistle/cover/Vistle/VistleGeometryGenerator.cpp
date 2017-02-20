@@ -1,5 +1,3 @@
-#undef NDEBUG
-
 #include "VistleGeometryGenerator.h"
 
 #include <osg/Geode>

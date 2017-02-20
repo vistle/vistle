@@ -1,4 +1,3 @@
-#undef NDEBUG
 #include <GL/glew.h>
 
 #include <IceT.h>

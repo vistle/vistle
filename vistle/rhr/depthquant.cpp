@@ -12,8 +12,6 @@
 #include "stopwatch.h"
 #endif
 
-//#undef NDEBUG
-//#define NDEBUG
 #include <cassert>
 
 //#define ERRORPIC
