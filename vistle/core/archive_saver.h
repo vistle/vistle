@@ -3,6 +3,7 @@
 
 #include "archives.h"
 #include "assert.h"
+#include "shm_reference.h"
 
 #include <boost/mpl/for_each.hpp>
 
@@ -58,40 +59,9 @@ struct V_COREEXPORT ArraySaver {
 
 class V_COREEXPORT DeepArchiveSaver: public Saver, public std::enable_shared_from_this<DeepArchiveSaver> {
 public:
-    void saveArray(const std::string &name, int type, const void *array) override {
-        if (m_arrays.find(name) != m_arrays.end())
-            return;
-
-        vecostreambuf<char> vb;
-        oarchive ar(vb);
-        ar.setSaver(shared_from_this());
-        ArraySaver as(name, type, ar, array);
-        if (as.save()) {
-            m_arrays.emplace(name, vb.get_vector());
-        }
-    }
-
-    void saveObject(const std::string &name, Object::const_ptr obj) override {
-        if (m_objects.find(name) != m_objects.end())
-            return;
-
-        vecostreambuf<char> vb;
-        oarchive ar(vb);
-        ar.setSaver(shared_from_this());
-        obj->save(ar);
-        m_objects.emplace(name, vb.get_vector());
-    }
-
-    SubArchiveDirectory getDirectory() {
-        SubArchiveDirectory dir;
-        for (auto &obj: m_objects) {
-            dir.emplace_back(obj.first, false, obj.second.size(), obj.second.data());
-        }
-        for (auto &arr: m_arrays) {
-            dir.emplace_back(arr.first, true, arr.second.size(), arr.second.data());
-        }
-        return dir;
-    }
+    void saveArray(const std::string &name, int type, const void *array) override;
+    void saveObject(const std::string &name, Object::const_ptr obj) override;
+    SubArchiveDirectory getDirectory();
 
 private:
     std::map<std::string,std::vector<char>> m_objects;
