@@ -938,8 +938,8 @@ ObjectList Module::getObjects(const std::string &portName) {
          Object::const_ptr object = *it;
          if (object.get()) {
             vassert(object->check());
-            objects.push_back(object);
          }
+         objects.push_back(object);
       }
    } else {
       CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;
