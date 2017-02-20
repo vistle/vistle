@@ -32,8 +32,8 @@ const int MaxNumData = 6;
 struct HostData {
 
    Scalar m_isovalue;
-   Index m_numInVertData, m_numInVertDataI;
-   Index m_numInCellData, m_numInCellDataI;
+   int m_numInVertData, m_numInVertDataI;
+   int m_numInCellData, m_numInCellDataI;
    IsoDataFunctor m_isoFunc;
    const Index *m_el;
    const Index *m_cl;
@@ -124,8 +124,8 @@ struct HostData {
 struct DeviceData {
 
    Scalar m_isovalue;
-   Index m_numInVertData, m_numInVertDataI;
-   Index m_numInCellData, m_numInCellDataI;
+   int m_numInVertData, m_numInVertDataI;
+   int m_numInCellData, m_numInCellDataI;
    IsoDataFunctor m_isoFunc;
    thrust::device_vector<Index> m_el;
    thrust::device_vector<Index> m_cl;
@@ -217,21 +217,21 @@ struct process_Cell {
     const unsigned int v2 = edgeTable[1][edge]; \
     const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
     Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
-    for(Index j = 0; j < m_data.m_numInVertData; j++) { \
+    for(int j = 0; j < m_data.m_numInVertData; j++) { \
         m_data.m_outVertPtr[j][outvertexindex] = \
             lerp(m_data.m_inVertPtr[j][cl[v1]], m_data.m_inVertPtr[j][cl[v2]], t); \
     } \
-    for(Index j = 0; j < m_data.m_numInVertDataI; j++) { \
+    for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
         m_data.m_outVertPtrI[j][outvertexindex] = \
             lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
     }
 
       for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]/3; idx++) {
           Index outcellindex = m_data.m_LocationList[ValidCellIndex]/3+idx; \
-          for(Index j = 0; j < m_data.m_numInCellData; j++) {
+          for(int j = 0; j < m_data.m_numInCellData; j++) {
               m_data.m_outCellPtr[j][outcellindex] = m_data.m_inCellPtr[j][CellNr];
           }
-          for(Index j = 0; j < m_data.m_numInCellDataI; j++) {
+          for(int j = 0; j < m_data.m_numInCellDataI; j++) {
               m_data.m_outCellPtrI[j][outcellindex] = m_data.m_inCellPtrI[j][CellNr];
           }
       }
@@ -344,12 +344,12 @@ struct process_Cell {
                                out -= 1;
                        }
                        Scalar t = tinterp(m_data.m_isovalue, d1, d2);
-                       for(Index i = 0; i < m_data.m_numInVertData; i++) {
+                       for(int i = 0; i < m_data.m_numInVertData; i++) {
                            Scalar v = lerp(cd1[i], cd2[i], t);
                            middleData[i] += v;
                            m_data.m_outVertPtr[i][out] = v;
                        }
-                       for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                       for(int i = 0; i < m_data.m_numInVertDataI; i++){
                            Index vI = lerp(cd1I[i], cd2I[i], t);
                            middleDataI[i] += vI;
                            m_data.m_outVertPtrI[i][out] = vI;
@@ -365,19 +365,19 @@ struct process_Cell {
                }
             }
             if (numAvg > 0) {
-                for(Index i = 0; i < m_data.m_numInVertData; i++){
+                for(int i = 0; i < m_data.m_numInVertData; i++){
                     middleData[i] /= numAvg;
                 }
-                for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                for(int i = 0; i < m_data.m_numInVertDataI; i++){
                     middleDataI[i] /= numAvg;
                 }
             }
             for (Index i = 2; i < numVert; i += 3) {
                const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
-               for(Index i = 0; i < m_data.m_numInVertData; i++){
+               for(int i = 0; i < m_data.m_numInVertData; i++){
                   m_data.m_outVertPtr[i][idx] = middleData[i];
                }
-               for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+               for(int i = 0; i < m_data.m_numInVertDataI; i++){
                   m_data.m_outVertPtrI[i][idx] = middleDataI[i];
                }
             };
@@ -434,7 +434,7 @@ struct classify_cell {
       unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
       int numVerts = 0;
       if (CellType != UnstructuredGrid::POLYHEDRON) {
-         for (int idx = 0; idx < nvert; idx ++) {
+         for (Index idx = 0; idx < nvert; idx ++) {
             tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);
          }
       }

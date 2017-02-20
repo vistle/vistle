@@ -936,9 +936,10 @@ ObjectList Module::getObjects(const std::string &portName) {
       ObjectList &olist = i->second->objects();
       for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
          Object::const_ptr object = *it;
-         if (object.get())
+         if (object.get()) {
             vassert(object->check());
             objects.push_back(object);
+         }
       }
    } else {
       CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;

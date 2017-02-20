@@ -393,9 +393,6 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
       return nullptr;
 
-   int creatorId = container->getCreator();
-   Creator &creator = getCreator(creatorId);
-
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, texture));
 

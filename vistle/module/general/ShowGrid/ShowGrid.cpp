@@ -93,15 +93,15 @@ bool ShowUSG::compute() {
           type &= vistle::UnstructuredGrid::TYPE_MASK;
           switch(type) {
           case UnstructuredGrid::TETRAHEDRON:
-              if (!showtet) continue; break;
+              if (!showtet) { continue; } break;
           case UnstructuredGrid::PYRAMID:
-              if (!showpyr) continue; break;
+              if (!showpyr) { continue; } break;
           case UnstructuredGrid::PRISM:
-              if (!showpri) continue; break;
+              if (!showpri) { continue; } break;
           case UnstructuredGrid::HEXAHEDRON:
-              if (!showhex) continue; break;
+              if (!showhex) { continue; } break;
           case UnstructuredGrid::POLYHEDRON:
-              if (!showpol) continue; break;
+              if (!showpol) { continue; } break;
           }
 
           const Index begin=unstr->el()[index], end=unstr->el()[index+1];

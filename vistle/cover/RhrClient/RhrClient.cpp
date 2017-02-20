@@ -1406,7 +1406,7 @@ RhrClient::preFrame()
            bool sendUpdate = false;
            {
                bool changed = messages.size() != m_oldMatrices.size();
-               for (int i=0; !changed && i<messages.size(); ++i) {
+               for (size_t i=0; !changed && i<messages.size(); ++i) {
                    const auto &cur = messages[i], &old = m_oldMatrices[i];
                    for (int j=0; j<16; ++j) {
                        if (cur.view[j] != old.view[j])
