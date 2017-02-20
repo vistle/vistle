@@ -20,6 +20,7 @@
 #include <cfxExport.h>  // linked but still qtcreator doesn't find it
 #include <getargs.h>    // linked but still qtcreator doesn't find it
 #include <iostream>
+//#include <mutex>
 //#include <unistd.h>
 
 //#include <boost/filesystem.hpp>
@@ -34,6 +35,8 @@ namespace bf = boost::filesystem;
 MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
+//std::mutex m;
+//static int counting_variable_processors;
 
 
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
@@ -372,21 +375,17 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 }
                 cfxExportZoneFree();
 
-                sendInfo("The initialisation was successfully done");
+                //m.lock();
+                //counting_variable_processors++;
+                //m.unlock();
+                //std::cerr << "counting = " << counting_variable_processors << std::endl;
+                //if(counting_variable_processors == size()) {
+                    sendInfo("The initialisation was successfully done");
+                //}
+
             }
         }
     }
-
-//    if(p==m_firsttimestep || p==m_lasttimestep || p==m_timeskip) {
-//        m_case.parseResultfile();
-//        m_case.getFieldList();
-//        for (auto out: m_fieldOut) {
-//            setParameterChoices(out, m_case.m_field_param);
-//        }
-//        for (auto out: m_boundaryOut) {
-//            setParameterChoices(out, m_case.m_boundary_param);
-//        }
-//    }
 
     return Module::changeParameter(p);
 }
@@ -641,7 +640,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
     nNodesInZone = cfxExportNodeCount();
     nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
-    nConnectInBoundary = 4*nFacesInBoundary; //maximum of conncectivities. If there are 3 vertices faces, it is correct with resize at the end of the function
+    nConnectInBoundary = 4*nFacesInBoundary; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
 
     Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInZone)); //initialize Polygon with numFaces, numCorners, numVertices
 //    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
@@ -678,7 +677,6 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
     auto ptrOnEl = polygon->el().data();
     auto ptrOnCl = polygon->cl().data();
-//    auto &ptrOnCl = polygon->cl();
 
     int *faceListofBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES); //query the faces that define the boundary
 
@@ -687,14 +685,12 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         if(!NumOfVerticesDefiningFace) {
             std::cerr << "error while reading faces out of .res file: faceId is out of range" << std::endl;
         }
-
         assert(NumOfVerticesDefiningFace<=4); //see CFX Reference Guide p.57
         switch(NumOfVerticesDefiningFace) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
                 ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-//                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 3;
             break;
@@ -703,10 +699,12 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
                 ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-//                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 4;
             break;
+        }
+        default: {
+            std::cerr << "number of vertices defining the face(" << NumOfVerticesDefiningFace << ") not implemented." << std::endl;
         }
         }
 
@@ -725,7 +723,6 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     //element after last element in element list and connectivity list
     ptrOnEl[nFacesInBoundary] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
-//    ptrOnCl.push_back(0);
 //    ptrOnCl.resize(elemListCounter);
     polygon->cl().resize(elemListCounter);
 
@@ -958,8 +955,8 @@ bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int t
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
           return obj.m_VarName == field;});
       if (it == allParam.end()) {
-          if(m_ResfileVolumedata) {
-              m_currentVolumedata[processor][i]= m_ResfileVolumedata;
+          if(m_ResfileVolumedata[i]) {
+              m_currentVolumedata[processor][i]= m_ResfileVolumedata[i];
           }
           else {
               m_currentVolumedata[processor][i]= DataBase::ptr();
@@ -973,7 +970,7 @@ bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int t
           obj ->setMapping(DataBase::Vertex);
           m_currentVolumedata[processor][i]= obj;
           if(!trnOrRes) {
-              m_ResfileVolumedata=obj;
+              m_ResfileVolumedata[i]=obj;
           }
       }
    }
@@ -995,13 +992,13 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int setMetaTimestep, int timest
                 obj ->setMapping(DataBase::Vertex);
                 addObject(m_boundaryDataOut[i],obj);
                 if(!trnOrRes) {
-                    m_ResfileBoundarydata=obj;
+                    m_ResfileBoundarydata[i]=obj;
                 }
             }
         }
         else {
-            if(m_ResfileBoundarydata) {
-                addObject(m_boundaryDataOut[i],m_ResfileBoundarydata);
+            if(m_ResfileBoundarydata[i]) {
+                addObject(m_boundaryDataOut[i],m_ResfileBoundarydata[i]);
             }
         }
     }
@@ -1054,6 +1051,15 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
         if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {
             int processor = rank();
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
+
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(0,1) << ", timestep = " << 1 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(1,2) << ", timestep = " << 2 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(2,3) << ", timestep = " << 3 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(3,4) << ", timestep = " << 4 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(459,460) << ", timestep = " << 460 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(460,461) << ", timestep = " << 461 << std::endl;
+//            std::cerr << "GridChanged = " << cfxExportGridChanged(461,462) << ", timestep = " << 462 << std::endl;
+
             UnstructuredGrid::ptr grid = loadGrid(i);
             setMeta(grid, i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
             m_currentGrid[processor] = grid;
@@ -1091,7 +1097,7 @@ bool ReadCFX::compute() {
 
 //        double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
 //        double angularVel;
-//        if(cfxExportZoneIstRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
+//        if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
 //            cfxExportZoneMotionAction(zone,cfxMOTION_USE);
 //        }
 
@@ -1118,6 +1124,8 @@ bool ReadCFX::compute() {
 
                     m_currentVolumedata.clear();
                     m_currentGrid.clear();
+                    m_ResfileVolumedata.clear();
+                    m_ResfileBoundarydata.clear();
                 }
                 setMetaTimestep++;
             }

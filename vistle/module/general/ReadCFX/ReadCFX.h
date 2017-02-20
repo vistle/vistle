@@ -68,7 +68,6 @@ class ReadCFX: public vistle::Module {
     static const int correct = 1; //correct indicates whether to correct boundary node data according to the boundary condition (correct=1)
                                   //or not (correct=0) (result out of calculation), assuming that it exists.
 
-
  public:
    ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
    ~ReadCFX();
@@ -81,12 +80,6 @@ class ReadCFX: public vistle::Module {
  private:
    bool changeParameter(const vistle::Parameter *p) override;
    bool ExportDone;
-
-   //int rankForBlock(int block) const;
-
-   //vistle::Integer m_firstBlock, m_lastBlock;
-   //vistle::Integer m_firstStep, m_lastStep, m_step;
-
 
    //Parameter
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_boundarySelection;
@@ -105,16 +98,12 @@ class ReadCFX: public vistle::Module {
 
    CaseInfo m_case;
 
-   //cfxNode *nodeList;
-   //cfxElement *elmList;
-   // number of digits in transient file suffix
-   //char zoneExt[256];
    int counts[cfxCNT_SIZE];
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected, m_boundariesSelected;
    std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata;
-   vistle::DataBase::ptr m_ResfileVolumedata, m_ResfileBoundarydata;
+   std::map<int, vistle::DataBase::ptr> m_ResfileVolumedata, m_ResfileBoundarydata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
