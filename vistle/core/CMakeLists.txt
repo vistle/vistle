@@ -2,6 +2,8 @@ vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_tim
 
 set(core_SOURCES
    archives.cpp
+   archive_loader.cpp
+   archive_saver.cpp
    shm.cpp
    shm_reference.cpp
    shm_obj_ref.cpp
