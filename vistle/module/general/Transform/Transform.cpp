@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES // for M_PI on windows
+
 #include <module/module.h>
 #include <core/points.h>
 #include <util/enum.h>

@@ -22,7 +22,7 @@
 #include <string>
 
 #include "export.h"
-#include "sysdep.h"
+#include "ssize_t.h"
 
 namespace vistle
 {

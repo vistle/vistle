@@ -27,8 +27,8 @@ int V_UTILEXPORT setenv(const char *name, const char *value, int overwrite);
 #define popen _popen
 #define pclose _pclose
 
-typedef SSIZE_T ssize_t;
 
 #endif
 
+#include "ssize_t.h"
 #endif
