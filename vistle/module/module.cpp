@@ -949,34 +949,6 @@ ObjectList Module::getObjects(const std::string &portName) {
    return objects;
 }
 
-void Module::removeObject(const std::string &portName, vistle::Object::const_ptr object) {
-
-   bool erased = false;
-   shm_handle_t handle = object->getHandle();
-   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
-
-   if (i != inputPorts.end()) {
-      ObjectList &olist = i->second->objects();
-
-      for (ObjectList::iterator it = olist.begin(); it != olist.end(); ) {
-         if (handle == (*it)->getHandle()) {
-            erased = true;
-            //object->unref(); // XXX: doesn't erasing the it handle that already?
-            it = olist.erase(it);
-         } else
-            ++it;
-      }
-      if (!erased)
-         CERR << "Module " << id() << " removeObject didn't find"
-            " object [" << object->getName() << "]" << std::endl;
-   } else {
-      CERR << "Module " << id() << " removeObject didn't find port ["
-                << portName << "]" << std::endl;
-
-      vassert(i != inputPorts.end());
-   }
-}
-
 bool Module::hasObject(const std::string &portName) const {
 
    std::map<std::string, Port *>::const_iterator i = inputPorts.find(portName);
