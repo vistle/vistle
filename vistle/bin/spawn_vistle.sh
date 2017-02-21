@@ -36,7 +36,7 @@ case $(hostname) in
    viscluster70)
       BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster70 viscluster{51..60} viscluster{71..79}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster70 viscluster{71..79} viscluster{51..60} |sed -e 's/ /,/g')
       fi
       ;;
    viscluster*)
@@ -72,6 +72,7 @@ else
    if [ -z "$MPIHOSTS" ]; then
       exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
+      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
       exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
       exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null

@@ -29,6 +29,17 @@ struct IdWithZoneFlag {
     index_t zoneFlag;
 };
 
+struct portData {
+    portData() {
+
+    }
+    std::vector<vistle::DataBase::ptr> m_vectorResfileVolumeData;
+    std::vector<std::int16_t> m_vectorVolumeDataVolumeNr;
+    std::vector<vistle::DataBase::ptr> m_vectorResfileBoundaryData;
+    std::vector<std::int16_t> m_vectorBoundaryDataBoundaryNr;
+
+};
+
 class Variable {
 public:
     Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone);
@@ -79,7 +90,7 @@ class ReadCFX: public vistle::Module {
 
  private:
    bool changeParameter(const vistle::Parameter *p) override;
-   bool ExportDone;
+   bool m_ExportDone, m_addToPortResfileVolumeData, m_addToPortResfileBoundaryData;
 
    //Parameter
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_boundarySelection;
@@ -93,7 +104,7 @@ class ReadCFX: public vistle::Module {
 
 
    //Ports
-   vistle::Port *m_gridOut;
+   vistle::Port *m_gridOut, *m_polyOut;
    std::vector<vistle::Port *> m_volumeDataOut, m_boundaryDataOut;
 
    CaseInfo m_case;
@@ -102,9 +113,13 @@ class ReadCFX: public vistle::Module {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected, m_boundariesSelected;
-   std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata;
-   std::map<int, vistle::DataBase::ptr> m_ResfileVolumedata, m_ResfileBoundarydata;
-   std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
+   std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata, m_currentBoundarydata;
+   std::map<int, vistle::UnstructuredGrid::ptr> m_currentGrid;
+   std::map<int, vistle::Polygons::ptr> m_currentPolygon;
+
+   std::vector<portData> m_portDatas;
+   std::vector<vistle::UnstructuredGrid::ptr> m_vectorResfileGrid;
+   std::vector<vistle::Polygons::ptr> m_vectorResfilePolygon;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankForBoundaryAndTimestep(int timestep, int boundary, int numBoundaries) const;
@@ -113,14 +128,19 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
    bool initializeResultfile();
-   bool loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes);
-   bool loadBoundaryFields(int boundaryNr, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes);
+   bool loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
+   bool loadBoundaryFields(int boundaryNr, int processor, int setMetaTimestep, int timestep, index_t numSelBoundaries, bool trnOrRes);
    index_t collectVolumes();
    index_t collectBoundaries();
    bool addVolumeDataToPorts(int processor);
+   bool addBoundaryDataToPorts(int processor);
    bool addGridToPort(int processor);
-   void setMeta(vistle::Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numOfBlocks, bool trnOrRes);
+   bool addPolygonToPort(int processor);
+   void setMeta(vistle::Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
+   bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
+   bool setBoundaryObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
    bool readTime(index_t numSelVolumes, index_t numSelBoundaries, int setMetaTimestep, int timestep, bool trnOrRes);
+   bool clearResfileData ();
 
 
 };
