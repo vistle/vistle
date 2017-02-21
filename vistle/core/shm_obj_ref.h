@@ -37,6 +37,7 @@ class shm_obj_ref {
     : m_name(name)
     , m_d(shm<T>::find(name))
     {
+        ref();
     }
 
     ~shm_obj_ref() {
