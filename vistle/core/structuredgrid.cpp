@@ -156,8 +156,8 @@ void StructuredGrid::createCelltree(Index dims[3]) const {
    Vector gmin=vmax, gmax=vmin;
    for (Index el=0; el<nelem; ++el) {
        const auto corners = cellVertices(el, dims);
-       for (const auto v: corners) {
-           for (int d=0; d<3; ++d) {
+       for (int d=0; d<3; ++d) {
+           for (const auto v: corners) {
                if (min[el][d] > coords[d][v]) {
                    min[el][d] = coords[d][v];
                    if (gmin[d] > min[el][d])
