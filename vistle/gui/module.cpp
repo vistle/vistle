@@ -15,6 +15,8 @@
 
 #include <userinterface/vistleconnection.h>
 
+#include <boost/uuid/nil_generator.hpp>
+
 #include "module.h"
 #include "connection.h"
 #include "dataflownetwork.h"
@@ -24,6 +26,7 @@
 namespace gui {
 
 const double Module::portDistance = 3.;
+boost::uuids::nil_generator nil_uuid;
 
 /*!
  * \brief Module::Module
@@ -36,6 +39,7 @@ Module::Module(QGraphicsItem *parent, QString name)
 : Base(parent)
 , m_hub(0)
 , m_id(vistle::message::Id::Invalid)
+, m_spawnUuid(nil_uuid())
 , m_Status(SPAWNING)
 , m_validPosition(false)
 , m_fontHeight(0.)
