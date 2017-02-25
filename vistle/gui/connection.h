@@ -45,6 +45,7 @@ public:
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event);
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
                QWidget *widget);                    // re-implemented

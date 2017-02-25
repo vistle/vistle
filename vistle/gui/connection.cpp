@@ -118,7 +118,12 @@ void Connection::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
 
 void Connection::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
 
-   setHighlight(false);
+    setHighlight(false);
+}
+
+void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
+
+    scene()->removeConnection(source(), destination(), true);
 }
 
 

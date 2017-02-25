@@ -318,66 +318,54 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
 
-   qDebug() << "mouse release";
-    QGraphicsItem *item;
+    qDebug() << "mouse release";
     // if there was a click
-    if ((m_mousePressed) && (event->scenePos() == vLastPoint)) {
-       qDebug() << "eq vLastPoint";
-        item = itemAt(event->scenePos(), QTransform());
-        if (item) {
-            if (Connection *connection = dynamic_cast<Connection *>(item)) {
-               removeConnection(connection->source(), connection->destination(), true);
+    if (m_Line) {
+        qDebug() << "have m_Line";
+
+        // clean up connection
+        removeItem(m_Line);
+        delete m_Line;
+        m_Line = nullptr;
+
+        // Begin testing for the finish of the line draw.
+        QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+        if (Port *endPort = dynamic_cast<Port *>(item)) {
+            // Test over the port types
+            ///\todo improve testing for viability of connection
+            auto endModule = dynamic_cast<Module *>(endPort->parentItem());
+            assert(endModule);
+            switch (endPort->portType()) {
+            case Port::Input:
+                if (startPort->portType() == Port::Output) {
+                    if (startModule != endModule) {
+                        addConnection(startPort, endPort, true);
+                        qDebug() << "add conn: out -> in";
+                    }
+                }
+                break;
+            case Port::Output:
+                if (startPort->portType() == Port::Input) {
+                    if (startModule != endModule) {
+                        addConnection(endPort, startPort, true);
+                        qDebug() << "add conn: in -> out";
+                    }
+                }
+                break;
+            case Port::Parameter:
+                if (startPort->portType() == Port::Parameter) {
+                    if (startModule != endModule) {
+                        addConnection(startPort, endPort, true);
+                        qDebug() << "add conn: par -> par";
+                    }
+                }
+                break;
             }
-        } //end if (item)
-    // if there was not a click, and if m_line already was drawn
-    } else if (m_mousePressed && m_Line) {
-       qDebug() << "have m_Line";
-
-       // clean up connection
-       removeItem(m_Line);
-       delete m_Line;
-       m_Line = nullptr;
-
-       // Begin testing for the finish of the line draw.
-       item = itemAt(event->scenePos(), QTransform());
-       if (Port *endPort = dynamic_cast<Port *>(item)) {
-          // Test over the port types
-          ///\todo improve testing for viability of connection
-          switch (endPort->portType()) {
-          case Port::Input:
-             if (startPort->portType() == Port::Output) {
-                endModule = dynamic_cast<Module *>(endPort->parentItem());
-                if (startModule != endModule) {
-                   addConnection(startPort, endPort, true);
-                   qDebug() << "add conn: out -> in";
-                }
-             }
-             break;
-          case Port::Output:
-             if (startPort->portType() == Port::Input) {
-                endModule = dynamic_cast<Module *>(endPort->parentItem());
-                if (startModule != endModule) {
-                   addConnection(endPort, startPort, true);
-                   qDebug() << "add conn: in -> out";
-                }
-             }
-             break;
-          case Port::Parameter:
-             if (startPort->portType() == Port::Parameter) {
-                endModule = dynamic_cast<Module *>(endPort->parentItem());
-                if (startModule != endModule) {
-                   addConnection(startPort, endPort, true);
-                   qDebug() << "add conn: par -> par";
-                }
-             }
-             break;
-          }
-       }
+        }
     }
 
     // Clear data
     startModule = nullptr;
-    endModule = nullptr;
     startPort = nullptr;
     m_mousePressed = false;
     QGraphicsScene::mouseReleaseEvent(event);
@@ -389,23 +377,16 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
  */
 void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    if (!startPort) {
+    if (!startPort  || !m_Line) {
        QGraphicsScene::mouseMoveEvent(event);
        return;
     }
 
-    Port::Type port = startPort->portType();
-    ///\todo should additional tests be present here?
-    // if correct mode, m_line has been created, and there is a correctly initialized port:
-    if (m_Line != 0
-        && (port == Port::Input || port == Port::Output || port == Port::Parameter)) {
-        // update the line drawing
-        QLineF newLine(m_Line->line().p1(), event->scenePos());
-        m_Line->setLine(newLine);
-    // otherwise call standard mouse move
-    } else {
-        QGraphicsScene::mouseMoveEvent(event);
-    }
+    event->accept();
+
+    // update the line drawing
+    QLineF newLine(m_Line->line().p1(), event->scenePos());
+    m_Line->setLine(newLine);
 }
 
 } //namespace gui
