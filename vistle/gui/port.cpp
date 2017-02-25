@@ -56,13 +56,17 @@ Port::Port(Port::Type type, Module *parent)
     createTooltip();
 }
 
+bool Port::valid() const {
+    return m_port != nullptr;
+}
+
 vistle::Port *Port::vistlePort() const {
     return m_port.get();
 }
 
 bool Port::operator<(const Port &other) const {
-    if (!m_port)
-        return false;
+    assert(valid());
+    assert(other.valid());
     return *m_port < *other.m_port;
 }
 
@@ -104,20 +108,21 @@ void Port::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 void Port::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
+#if 0
    if (rect().contains(event->pos())) {
       emit clicked(this);
       return;
    }
+#endif
 
    DataFlowNetwork *sc = dynamic_cast<DataFlowNetwork *>(scene());
    QGraphicsItem *item = scene()->itemAt(event->scenePos(), QTransform());
    if (Port *dest = dynamic_cast<Port *>(item)) {
       if (portType()==Output && dest->portType()==Input) {
          sc->addConnection(this, dest, true);
-      } else {
+      } else if (portType()==Input && dest->portType()==Output) {
          sc->addConnection(dest, this, true);
       }
-      return;
    }
 
    Base::mouseReleaseEvent(event);

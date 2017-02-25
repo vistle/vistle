@@ -30,6 +30,7 @@ public:
     Port(const vistle::Port *port, Module *parent);
     Port(Type type, Module *parent);
 
+    bool valid() const;
     Type portType() const;
     Module *module() const;
     vistle::Port *vistlePort() const;

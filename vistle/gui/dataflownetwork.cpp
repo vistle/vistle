@@ -186,11 +186,15 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
    assert(portTo);
 
    ConnectionKey key(portFrom, portTo);
-   auto it = m_connections.find(key);
+   auto it = m_connections.end();
+   if (key.valid())
+       it = m_connections.find(key);
    Connection *c = nullptr;
    if (it != m_connections.end()) {
+      qDebug() << "already have connection";
       c = it->second;
    } else {
+      qDebug() << "new connection";
       c = new Connection(portFrom, portTo, sendToController ? Connection::ToEstablish : Connection::Established);
       m_connections[key] = c;
       addItem(c);
@@ -209,6 +213,7 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
 void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
    ConnectionKey key(portFrom, portTo);
+   assert(key.valid());
    auto it = m_connections.find(key);
    if (it == m_connections.end()) {
       std::cerr << "connection to be removed not found" << std::endl;
@@ -266,15 +271,10 @@ QColor DataFlowNetwork::highlightColor() const {
  */
 void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    ///\todo add other button support
-    if (event->button() == Qt::RightButton) {
-        ///\todo open a context menu?
+    if (event->button() != Qt::LeftButton) {
+        QGraphicsScene::mousePressEvent(event);
+        return;
     }
-
-    // store the click location
-    vLastPoint = event->scenePos();
-    // set the click flag
-    m_mousePressed = true;
 
     // If the user clicks on a module, test for what is being clicked on.
     //  If okay, begin the process of drawing a line.
@@ -284,6 +284,12 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
     ///\todo add other objects and dynamic cast checks here
     ///\todo dynamic cast is not a perfect solution, is there a better one?
     if (startPort) {
+        // store the click location
+        vLastPoint = event->scenePos();
+        // set the click flag
+        m_mousePressed = true;
+        event->accept();
+
        // Test for port type
        switch (startPort->portType()) {
           case Port::Input:
@@ -296,9 +302,9 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
              startModule = dynamic_cast<Module *>(startPort->parentItem());
              break;
        } //end switch
-    } //end if (startPort)
-
-    QGraphicsScene::mousePressEvent(event);
+    } else {
+        QGraphicsScene::mousePressEvent(event);
+    }
 }
 
 /*!
@@ -307,6 +313,11 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
  */
 void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
+    if (event->button() != Qt::LeftButton || !m_mousePressed) {
+        QGraphicsScene::mouseReleaseEvent(event);
+        return;
+    }
+
    qDebug() << "mouse release";
     QGraphicsItem *item;
     // if there was a click
@@ -382,6 +393,7 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
        QGraphicsScene::mouseMoveEvent(event);
        return;
     }
+
     Port::Type port = startPort->portType();
     ///\todo should additional tests be present here?
     // if correct mode, m_line has been created, and there is a correctly initialized port:

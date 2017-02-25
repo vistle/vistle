@@ -8,6 +8,8 @@
 #include "port.h"
 #include <core/uuid.h>
 
+#include <cassert>
+
 namespace vistle {
 class VistleConnection;
 class StateTracker;
@@ -72,18 +74,24 @@ private:
              std::swap(port1, port2);
        }
 
+       bool valid() const {
+           return port1->valid() && port2->valid();
+       }
+
        Port *port1, *port2;
 
        bool operator<(const ConnectionKey &c) const {
 
-          if (*port1 < *c.port1) {
-             return true;
-          }
-          if (*c.port1 < *port1) {
-             return false;
-          }
+          assert(valid());
+          assert(c.valid());
 
-          return (*port2 < *c.port2);
+          if (*port1 < *c.port1)
+              return true;
+
+          if (*c.port1 < *port1)
+              return false;
+
+          return *port2 < *c.port2;
        }
     };
 
