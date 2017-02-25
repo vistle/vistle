@@ -64,6 +64,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
    m_scene = new DataFlowNetwork(m_vistleConnection, m_mainWindow.dataFlowView());
    m_mainWindow.dataFlowView()->setScene(m_scene);
+   connect(m_mainWindow.dataFlowView(), SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
 
    connect(&m_mainWindow, SIGNAL(quitRequested(bool &)), SLOT(quitRequested(bool &)));
    connect(&m_mainWindow, SIGNAL(newDataFlow()), SLOT(clearDataFlowNetwork()));

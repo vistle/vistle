@@ -97,7 +97,7 @@ private:
     void doLayout();
 
     QMenu *m_moduleMenu;
-    QAction *m_deleteAct;
+    QAction *m_deleteThisAct, *m_deleteSelAct;
     QAction *m_execAct;
     QAction *m_cancelExecAct;
 
