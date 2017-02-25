@@ -276,6 +276,9 @@ std::vector<message::Buffer> StateTracker::getState() const {
       }
    }
 
+   for (const auto &m: m_queue)
+      appendMessage(state, m);
+
    // finalize
    appendMessage(state, ReplayFinished());
 
