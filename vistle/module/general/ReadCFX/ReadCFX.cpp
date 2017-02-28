@@ -45,8 +45,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -102,6 +102,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
        }
     }
     //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);ll
+    m_portDatas.resize(NumPorts);
+    m_boundaryPortDatas.resize(NumBoundaryPorts);
 }
 
 ReadCFX::~ReadCFX() {
@@ -814,8 +816,12 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
 }
 
 DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, Variable var) {
+    std::cerr << "Test301" << std::endl;
+    std::cerr << "boundaryNr = " << boundaryNr << "var.m_VarName = " << var.m_VarName << std::endl;
     for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
+        std::cerr << "Test302" << std::endl;
         if(var.m_vectorIdwithZone[i].zoneFlag == m_boundariesSelected[boundaryNr].zoneFlag) {
+            std::cerr << "Test302" << std::endl;
             if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
@@ -945,36 +951,51 @@ index_t ReadCFX::collectBoundaries() {
 
 bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes) {
    for (int i=0; i<NumPorts; ++i) {
+       std::cerr << "Test201" << std::endl;
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
           return obj.m_VarName == field;});
       if (it == allParam.end()) {
+          std::cerr << "Test202" << std::endl;
           if(!m_portDatas[i].m_vectorResfileVolumeData.empty()) {
+              std::cerr << "Test203" << std::endl;
               //values are only in resfile --> timestep = -1
               setDataObject(m_vectorResfileGrid.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),m_portDatas[i].m_vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              std::cerr << "Test204" << std::endl;
           }
           else {
+              std::cerr << "Test205" << std::endl;
               m_currentVolumedata[processor][i] = DataBase::ptr();
           }
       }
       else {
+          std::cerr << "Test206" << std::endl;
           if(!m_portDatas[i].m_vectorResfileVolumeData.empty()) {
+              std::cerr << "Test207" << std::endl;
               //resfile is last timestep
               setDataObject(m_vectorResfileGrid.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),m_portDatas[i].m_vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
+              std::cerr << "Test208" << std::endl;
               return true;
           }
+          std::cerr << "Test209" << std::endl;
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(volumeNr, allParam[index]);
+          std::cerr << "Test210" << std::endl;
           if(trnOrRes) {
+              std::cerr << "Test211" << std::endl;
               setDataObject(m_currentGrid[processor],obj,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
               m_currentVolumedata[processor][i]= obj;
+              std::cerr << "Test212" << std::endl;
           }
           else {
+              std::cerr << "Test213" << std::endl;
               m_portDatas[i].m_vectorResfileVolumeData.push_back(obj);
               m_portDatas[i].m_vectorVolumeDataVolumeNr.push_back(volumeNr);
+              std::cerr << "Test214" << std::endl;
               if(m_ntimesteps==0) {
                   setDataObject(m_vectorResfileGrid.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+                  std::cerr << "Test215" << std::endl;
               }
           }
       }
@@ -988,33 +1009,55 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int setMetaTimes
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
         auto it = find_if(allParam.begin(), allParam.end(), [&boundField](const Variable& obj) {
             return obj.m_VarName == boundField;});
-        if (!(it == allParam.end())) {
+        std::cerr << "Test101" << std::endl;
 
-            if(!m_portDatas[i].m_vectorResfileBoundaryData.empty()) {
+        if (it == allParam.end()) {
+            std::cerr << "Test102" << std::endl;
+
+            if(!m_boundaryPortDatas[i].m_vectorResfileBoundaryData.empty()) {
+                std::cerr << "Test103" << std::endl;
                 //values are only in resfile --> timestep = -1
-                setBoundaryObject(m_vectorResfilePolygon.back(),m_portDatas[i].m_vectorResfileBoundaryData.back(),m_portDatas[i].m_vectorBoundaryDataBoundaryNr.back(),setMetaTimestep,-1,numSelBoundaries,trnOrRes);
+                setBoundaryObject(m_vectorResfilePolygon.back(),m_boundaryPortDatas[i].m_vectorResfileBoundaryData.back(),m_boundaryPortDatas[i].m_vectorBoundaryDataBoundaryNr.back(),setMetaTimestep,-1,numSelBoundaries,trnOrRes);
+                std::cerr << "Test104" << std::endl;
             }
             else {
                m_currentBoundarydata[processor][i] = DataBase::ptr();
+               std::cerr << "Test105" << std::endl;
             }
        }
        else {
-            if(!m_portDatas[i].m_vectorResfileBoundaryData.empty()) {
+            std::cerr << "Test106" << std::endl;
+            if(!m_boundaryPortDatas[i].m_vectorResfileBoundaryData.empty()) {
                 //resfile is last timestep
-                setBoundaryObject(m_vectorResfilePolygon.back(),m_portDatas[i].m_vectorResfileBoundaryData.back(),m_portDatas[i].m_vectorBoundaryDataBoundaryNr.back(),0,0,numSelBoundaries,0);
+                std::cerr << "Test107" << std::endl;
+                setBoundaryObject(m_vectorResfilePolygon.back(),m_boundaryPortDatas[i].m_vectorResfileBoundaryData.back(),m_boundaryPortDatas[i].m_vectorBoundaryDataBoundaryNr.back(),0,0,numSelBoundaries,0);
+                std::cerr << "Test108" << std::endl;
                 return true;
            }
+            std::cerr << "Test109" << std::endl;
            auto index = std::distance(allParam.begin(), it);
+           std::cerr << "Test110" << std::endl;
+           std::cerr << "index = " << index << "boundaryNr = " << boundaryNr << std::endl;
+           allParam[index];
+           std::cerr << "allParam[index].varName" << allParam[index].m_VarName << std::endl;
+
            DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
+           std::cerr << "Test111" << std::endl;
            if(trnOrRes) {
                setBoundaryObject(m_currentPolygon[processor],obj,boundaryNr,setMetaTimestep,timestep,numSelBoundaries,trnOrRes);
+               std::cerr << "Test112" << std::endl;
                m_currentBoundarydata[processor][i]= obj;
+               std::cerr << "Test113" << std::endl;
            }
            else {
-               m_portDatas[i].m_vectorResfileBoundaryData.push_back(obj);
-               m_portDatas[i].m_vectorBoundaryDataBoundaryNr.push_back(boundaryNr);
+               std::cerr << "Test114" << std::endl;
+               m_boundaryPortDatas[i].m_vectorResfileBoundaryData.push_back(obj);
+               m_boundaryPortDatas[i].m_vectorBoundaryDataBoundaryNr.push_back(boundaryNr);
+               std::cerr << "Test115" << std::endl;
                if(m_ntimesteps==0) {
-                   setBoundaryObject(m_vectorResfilePolygon.back(),m_portDatas[i].m_vectorResfileBoundaryData.back(),boundaryNr,setMetaTimestep,-1,numSelBoundaries,trnOrRes);
+                   std::cerr << "Test116" << std::endl;
+                   setBoundaryObject(m_vectorResfilePolygon.back(),m_boundaryPortDatas[i].m_vectorResfileBoundaryData.back(),boundaryNr,setMetaTimestep,-1,numSelBoundaries,trnOrRes);
+                   std::cerr << "Test117" << std::endl;
                }
            }
        }
@@ -1025,21 +1068,33 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int setMetaTimes
 
 bool ReadCFX::addVolumeDataToPorts(int processor) {
     for (int portnum=0; portnum<NumPorts; ++portnum) {
-        if(m_portDatas[portnum].m_vectorResfileVolumeData.back()) {
+        std::cerr << "Test301" << std::endl;
+        if(!m_portDatas[portnum].m_vectorResfileVolumeData.empty()) {
+            std::cerr << "Test302" << std::endl;
             auto &volumedata = m_portDatas[portnum].m_vectorResfileVolumeData.back();
+            std::cerr << "Test303" << std::endl;
             if(volumedata) {
+                std::cerr << "Test304" << std::endl;
                 //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                 addObject(m_volumeDataOut[portnum], volumedata);
+                std::cerr << "Test305" << std::endl;
             }
+            std::cerr << "Test306" << std::endl;
             m_portDatas[portnum].m_vectorResfileVolumeData.pop_back();
             m_portDatas[portnum].m_vectorVolumeDataVolumeNr.pop_back();
+            std::cerr << "Test307" << std::endl;
         }
         else {
+            std::cerr << "Test308" << std::endl;
             auto &volumedata = m_currentVolumedata[processor];
+            std::cerr << "Test309" << std::endl;
             if(volumedata.find(portnum) != volumedata.end()) {
+                std::cerr << "Test310" << std::endl;
                 if(volumedata[portnum]) {
+                    std::cerr << "Test311" << std::endl;
                     //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                     addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+                    std::cerr << "Test312" << std::endl;
                 }
             }
         }
@@ -1049,14 +1104,14 @@ bool ReadCFX::addVolumeDataToPorts(int processor) {
 
 bool ReadCFX::addBoundaryDataToPorts(int processor) {
     for (int portnum=0; portnum<NumBoundaryPorts; ++portnum) {
-        if(m_portDatas[portnum].m_vectorResfileBoundaryData.back()) {
-            auto &boundarydata = m_portDatas[portnum].m_vectorResfileBoundaryData.back();
+        if(!m_boundaryPortDatas[portnum].m_vectorResfileBoundaryData.empty()) {
+            auto &boundarydata = m_boundaryPortDatas[portnum].m_vectorResfileBoundaryData.back();
             if(boundarydata) {
                 //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                 addObject(m_boundaryDataOut[portnum], boundarydata);
             }
-            m_portDatas[portnum].m_vectorResfileBoundaryData.pop_back();
-            m_portDatas[portnum].m_vectorBoundaryDataBoundaryNr.pop_back();
+            m_boundaryPortDatas[portnum].m_vectorResfileBoundaryData.pop_back();
+            m_boundaryPortDatas[portnum].m_vectorBoundaryDataBoundaryNr.pop_back();
         }
         else {
             auto &boundarydata = m_currentBoundarydata[processor];
@@ -1071,24 +1126,24 @@ bool ReadCFX::addBoundaryDataToPorts(int processor) {
 }
 
 bool ReadCFX::addGridToPort(int processor) {
-    if(m_vectorResfileGrid.back()) {
+    if(!m_vectorResfileGrid.empty()) {
         addObject(m_gridOut,m_vectorResfileGrid.back());
+        m_vectorResfileGrid.pop_back();
     }
     else {
         addObject(m_gridOut,m_currentGrid[processor]);
     }
-    m_vectorResfileGrid.pop_back();
     return true;
 }
 
 bool ReadCFX::addPolygonToPort(int processor) {
-    if(m_vectorResfilePolygon.back()) {
+    if(!m_vectorResfilePolygon.empty()) {
         addObject(m_polyOut,m_vectorResfilePolygon.back());
+        m_vectorResfilePolygon.pop_back();
     }
     else {
         addObject(m_polyOut,m_currentPolygon[processor]);
     }
-    m_vectorResfilePolygon.pop_back();
     return true;
 }
 
@@ -1155,36 +1210,55 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
 //            std::cerr << "GridChanged = " << cfxExportGridChanged(460,461) << ", timestep = " << 461 << std::endl;
 //            std::cerr << "GridChanged = " << cfxExportGridChanged(461,462) << ", timestep = " << 462 << std::endl;
 
+            std::cerr << "Test11" << std::endl;
             UnstructuredGrid::ptr grid = loadGrid(i);
+            std::cerr << "Test12" << std::endl;
             if(m_ntimesteps==0) {
+                std::cerr << "Test13" << std::endl;
                 m_vectorResfileGrid.push_back(grid);
                 loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                std::cerr << "Test14" << std::endl;
                 addGridToPort(processor);
                 addVolumeDataToPorts(processor);
+                std::cerr << "Test15" << std::endl;
             }
             else {
                 if(trnOrRes) {
+                    std::cerr << "Test16" << std::endl;
                     if(m_addToPortResfileVolumeData) {
+                        std::cerr << "Test17" << std::endl;
                         for(int j=0;j<NumPorts;++j) {
+                            std::cerr << "Test18" << std::endl;
                             if(!m_portDatas[j].m_vectorResfileVolumeData.empty()) {
+                                std::cerr << "Test19" << std::endl;
                                 int nResfileDataSets = m_portDatas[j].m_vectorResfileVolumeData.size();
                                 for(int k=0;k<nResfileDataSets;++k) {
+                                    std::cerr << "Test20" << std::endl;
                                     loadFields(0, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                                    std::cerr << "Test21" << std::endl;
                                     addGridToPort(processor);
                                     addVolumeDataToPorts(processor);
+                                    std::cerr << "Test22" << std::endl;
                                 }
                             }
                         }
                         m_addToPortResfileVolumeData=false;
                     }
+                    std::cerr << "Test23" << std::endl;
                     m_currentGrid[processor] = grid;
                     loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                    std::cerr << "Test24" << std::endl;
                     addGridToPort(processor);
+                    std::cerr << "Test24b" << std::endl;
                     addVolumeDataToPorts(processor);
+                    std::cerr << "Test25" << std::endl;
                 }
                 else {
+                    std::cerr << "Test26" << std::endl;
                     m_vectorResfileGrid.push_back(grid);
+                    std::cerr << "Test27" << std::endl;
                     loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                    std::cerr << "Test28" << std::endl;
                 }
             }
         }
@@ -1193,36 +1267,53 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
         if(rankForBoundaryAndTimestep(timestep,i,numSelBoundaries) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet boundary = " << i << "; in timestep = " << timestep << std::endl;
             int processor = rank();
+            std::cerr << "Test29" << std::endl;
             Polygons::ptr polygon = loadPolygon(i);
+            std::cerr << "Test30" << std::endl;
             if(m_ntimesteps==0) {
+                std::cerr << "Test31" << std::endl;
                 m_vectorResfilePolygon.push_back(polygon);
                 loadBoundaryFields(i, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
+                std::cerr << "Test32" << std::endl;
                 addPolygonToPort(processor);
                 addBoundaryDataToPorts(processor);
+                std::cerr << "Test33" << std::endl;
             }
             else {
                 if(trnOrRes) {
+                    std::cerr << "Test34" << std::endl;
                     if(m_addToPortResfileBoundaryData) {
+                        std::cerr << "Test35" << std::endl;
                         for(int j=0;j<NumBoundaryPorts;++j) {
-                            if(!m_portDatas[j].m_vectorResfileBoundaryData.empty()) {
-                                int nResfileDataSets = m_portDatas[i].m_vectorResfileBoundaryData.size();
+                            if(!m_boundaryPortDatas[j].m_vectorResfileBoundaryData.empty()) {
+                                int nResfileDataSets = m_boundaryPortDatas[i].m_vectorResfileBoundaryData.size();
+                                std::cerr << "Test36" << std::endl;
                                 for(int k=0;k<nResfileDataSets;++k) {
+                                    std::cerr << "Test37" << std::endl;
                                     loadBoundaryFields(0, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
+                                    std::cerr << "Test38" << std::endl;
                                     addPolygonToPort(processor);
                                     addBoundaryDataToPorts(processor);
+                                    std::cerr << "Test39" << std::endl;
                                 }
                             }
                         }
                         m_addToPortResfileBoundaryData=false;
                     }
+                    std::cerr << "Test40" << std::endl;
                     m_currentPolygon[processor] = polygon;
                     loadBoundaryFields(i, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
+                    std::cerr << "Test41" << std::endl;
                     addPolygonToPort(processor);
                     addBoundaryDataToPorts(processor);
+                    std::cerr << "Test42" << std::endl;
                 }
                 else {
+                    std::cerr << "Test43" << std::endl;
                     m_vectorResfilePolygon.push_back(polygon);
+                    std::cerr << "Test44" << std::endl;
                     loadBoundaryFields(i, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
+                    std::cerr << "Test45" << std::endl;
                 }
             }
         }
@@ -1237,8 +1328,8 @@ bool ReadCFX::clearResfileData () {
         m_portDatas[i].m_vectorVolumeDataVolumeNr.clear();
     }
     for(int i=0;i<NumBoundaryPorts;++i) {
-        m_portDatas[i].m_vectorResfileBoundaryData.clear();
-        m_portDatas[i].m_vectorBoundaryDataBoundaryNr.clear();
+        m_boundaryPortDatas[i].m_vectorResfileBoundaryData.clear();
+        m_boundaryPortDatas[i].m_vectorBoundaryDataBoundaryNr.clear();
     }
     m_vectorResfileGrid.clear();
 
@@ -1273,12 +1364,15 @@ bool ReadCFX::compute() {
 
         //read variables out of .res file
         trnOrRes = 0;
+        std::cerr << "Test1" << std::endl;
         m_addToPortResfileVolumeData = true;
         m_addToPortResfileBoundaryData = true;
         clearResfileData();
+        std::cerr << "Test2" << std::endl;
         numSelVolumes = collectVolumes();
         numSelBoundaries = collectBoundaries();
         readTime(numSelVolumes,numSelBoundaries,0,0,trnOrRes);
+        std::cerr << "Test3" << std::endl;
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
@@ -1297,10 +1391,13 @@ bool ReadCFX::compute() {
                             sendInfo("%d. %s",i,cfxExportVariableName(i,alias));
                         }
                     }
+                    std::cerr << "Test4" << std::endl;
+
                     m_case.parseResultfile();
                     numSelVolumes = collectVolumes();
                     numSelBoundaries = collectBoundaries();
                     readTime(numSelVolumes,numSelBoundaries,setMetaTimestep,timestep,trnOrRes);
+                    std::cerr << "Test5" << std::endl;
                 }
                 setMetaTimestep++;
             }

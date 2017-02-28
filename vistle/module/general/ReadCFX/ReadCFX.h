@@ -35,9 +35,14 @@ struct portData {
     }
     std::vector<vistle::DataBase::ptr> m_vectorResfileVolumeData;
     std::vector<std::int16_t> m_vectorVolumeDataVolumeNr;
+};
+
+struct boundaryPortData {
+    boundaryPortData() {
+
+    }
     std::vector<vistle::DataBase::ptr> m_vectorResfileBoundaryData;
     std::vector<std::int16_t> m_vectorBoundaryDataBoundaryNr;
-
 };
 
 class Variable {
@@ -118,6 +123,7 @@ class ReadCFX: public vistle::Module {
    std::map<int, vistle::Polygons::ptr> m_currentPolygon;
 
    std::vector<portData> m_portDatas;
+   std::vector<boundaryPortData> m_boundaryPortDatas;
    std::vector<vistle::UnstructuredGrid::ptr> m_vectorResfileGrid;
    std::vector<vistle::Polygons::ptr> m_vectorResfilePolygon;
 
