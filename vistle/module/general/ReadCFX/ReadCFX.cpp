@@ -750,8 +750,9 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
 }
 
 DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
-
     for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
+        std::cerr << var.m_VarName << " --> vectorIdwithZone " << var.m_vectorIdwithZone.size() << std::endl;
+        std::cerr << "i = " << i << std::endl;
         if(var.m_vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
             if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
@@ -971,7 +972,7 @@ bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int t
       }
       else {
           std::cerr << "Test206" << std::endl;
-          if(!m_portDatas[i].m_vectorResfileVolumeData.empty()) {
+          if(!m_portDatas[i].m_vectorResfileVolumeData.empty() && trnOrRes) {
               std::cerr << "Test207" << std::endl;
               //resfile is last timestep
               setDataObject(m_vectorResfileGrid.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),m_portDatas[i].m_vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
@@ -1027,7 +1028,7 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr, int processor, int setMetaTimes
        }
        else {
             std::cerr << "Test106" << std::endl;
-            if(!m_boundaryPortDatas[i].m_vectorResfileBoundaryData.empty()) {
+            if(!m_boundaryPortDatas[i].m_vectorResfileBoundaryData.empty() && trnOrRes) {
                 //resfile is last timestep
                 std::cerr << "Test107" << std::endl;
                 setBoundaryObject(m_vectorResfilePolygon.back(),m_boundaryPortDatas[i].m_vectorResfileBoundaryData.back(),m_boundaryPortDatas[i].m_vectorBoundaryDataBoundaryNr.back(),0,0,numSelBoundaries,0);
