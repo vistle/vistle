@@ -577,8 +577,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
     nConnectInBoundary = 4*nFacesInBoundary; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
 
-    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInZone)); //initialize Polygon with numFaces, numCorners, numVertices
-//    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
+    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
@@ -588,13 +587,18 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     auto ptrOnZcoords = polygon->z().data();
 
     int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
+    std::vector<std::int32_t> nodeListOfBoundaryVec;
+    nodeListOfBoundaryVec.resize(nNodesInZone+1);
+
     for(index_t i=0;i<nNodesInBoundary;++i) {
         if(!cfxExportNodeGet(nodeListOfBoundary[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
         }
-        ptrOnXcoords[nodeListOfBoundary[i]-1] = *x_coord.get(); //-1 start array with 0; nodeListofBoundary gives nodeID's starting minimum with 1
-        ptrOnYcoords[nodeListOfBoundary[i]-1] = *y_coord.get();
-        ptrOnZcoords[nodeListOfBoundary[i]-1] = *z_coord.get();
+        ptrOnXcoords[i] = *x_coord.get();
+        ptrOnYcoords[i] = *y_coord.get();
+        ptrOnZcoords[i] = *z_coord.get();
+
+        nodeListOfBoundaryVec[nodeListOfBoundary[i]] = i;
     }
 
     //Test, ob Einlesen funktioniert hat
@@ -625,7 +629,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfBoundaryVec[nodesOfFace.get()[nodesOfElm_counter]];
             }
             elemListCounter += 3;
             break;
@@ -633,7 +637,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 4: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfBoundaryVec[nodesOfFace.get()[nodesOfElm_counter]];
             }
             elemListCounter += 4;
             break;
