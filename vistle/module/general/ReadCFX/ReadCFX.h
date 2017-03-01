@@ -106,6 +106,7 @@ class ReadCFX: public vistle::Module {
    vistle::coRestraint m_coRestraintZones, m_coRestraintBoundaries;
 
    index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps; // m_nboundaries, m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   int m_previousTimestep = 0;
 
 
    //Ports
@@ -140,9 +141,9 @@ class ReadCFX: public vistle::Module {
    index_t collectBoundaries();
    bool addVolumeDataToPorts(int processor);
    bool addBoundaryDataToPorts(int processor);
-   bool addGridToPort(int processor);
-   bool addPolygonToPort(int processor);
-   void setMeta(vistle::Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
+   bool addGridToPort(int volumeNr);
+   bool addPolygonToPort(int boundaryNr);
+   void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
    bool setBoundaryObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
    bool readTime(index_t numSelVolumes, index_t numSelBoundaries, int setMetaTimestep, int timestep, bool trnOrRes);
