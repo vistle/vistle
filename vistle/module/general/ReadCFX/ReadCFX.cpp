@@ -1145,7 +1145,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
             if(m_ntimesteps==0) {
                 m_vectorResfileGrid.push_back(loadGrid(i));
                 loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
-                addGridToPort(processor);
+                addGridToPort(i);
                 addVolumeDataToPorts(processor);
             }
             else {
@@ -1153,10 +1153,10 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                     if(m_addToPortResfileVolumeData) {
                         for(int j=0;j<NumPorts;++j) {
                             if(!m_portDatas[j].m_vectorResfileVolumeData.empty()) {
-                                int nResfileDataSets = m_portDatas[j].m_vectorResfileVolumeData.size();
-                                for(int k=0;k<nResfileDataSets;++k) {
+                                index_t nResfileDataSets = m_portDatas[j].m_vectorResfileVolumeData.size();
+                                for(index_t k=0;k<nResfileDataSets;++k) {
                                     loadFields(0, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
-                                    addGridToPort(processor);
+                                    addGridToPort(i);
                                     addVolumeDataToPorts(processor);
                                 }
                             }
@@ -1167,8 +1167,9 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                     if(!m_currentGrid[i] || cfxExportGridChanged(m_previousTimestep,timestep)) {
                         m_currentGrid[i] = loadGrid(i);
                     }
+                    m_currentGrid[i] = loadGrid(i);
                     loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
-                    addGridToPort(processor);
+                    addGridToPort(i);
                     addVolumeDataToPorts(processor);
                 }
                 else {
@@ -1186,7 +1187,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
             if(m_ntimesteps==0) {
                 m_vectorResfilePolygon.push_back(loadPolygon(i));
                 loadBoundaryFields(i, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
-                addPolygonToPort(processor);
+                addPolygonToPort(i);
                 addBoundaryDataToPorts(processor);
             }
             else {
@@ -1197,7 +1198,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                                 int nResfileDataSets = m_boundaryPortDatas[i].m_vectorResfileBoundaryData.size();
                                 for(int k=0;k<nResfileDataSets;++k) {
                                     loadBoundaryFields(0, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
-                                    addPolygonToPort(processor);
+                                    addPolygonToPort(i);
                                     addBoundaryDataToPorts(processor);
                                 }
                             }
@@ -1207,8 +1208,9 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                     if(!m_currentPolygon[i] || cfxExportGridChanged(m_previousTimestep,timestep)) {
                         m_currentPolygon[i] = loadPolygon(i);
                     }
+                    m_currentPolygon[i] = loadPolygon(i);
                     loadBoundaryFields(i, processor, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
-                    addPolygonToPort(processor);
+                    addPolygonToPort(i);
                     addBoundaryDataToPorts(processor);
                 }
                 else {
