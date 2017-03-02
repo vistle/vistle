@@ -49,7 +49,7 @@ class Communicator {
 
    ClusterManager &clusterManager() const;
    DataManager &dataManager() const;
-   bool connectHub(const std::string &host, unsigned short port, unsigned short dataPort);
+   bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
 
  private:
    bool sendHub(const message::Message &message);

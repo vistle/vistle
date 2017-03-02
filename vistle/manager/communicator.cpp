@@ -18,6 +18,7 @@
 #include <core/parameter.h>
 #include <util/sleep.h>
 #include <util/tools.h>
+#include <util/hostname.h>
 
 #include "communicator.h"
 #include "clustermanager.h"
@@ -96,13 +97,14 @@ int Communicator::getSize() const {
    return m_size;
 }
 
-bool Communicator::connectHub(const std::string &host, unsigned short port, unsigned short dataPort) {
+bool Communicator::connectHub(std::string host, unsigned short port, unsigned short dataPort) {
 
+   if (host == hostname())
+       host = "localhost";
    if (getRank() == 0) {
-      CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
+       CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
    }
 
-   int ret = 1;
    asio::ip::tcp::resolver resolver(m_ioService);
    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
    auto ep = resolver.resolve(query);
@@ -110,13 +112,13 @@ bool Communicator::connectHub(const std::string &host, unsigned short port, unsi
    m_dataEndpoint = resolver.resolve(queryd);
    boost::system::error_code ec;
 
+   int ret = 1;
    if (getRank() == 0) {
-
       asio::connect(m_hubSocket, ep, ec);
       if (ec) {
          std::cerr << std::endl;
          CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
-         ret = false;
+         ret = 0;
       } else {
          std::cerr << " ok." << std::endl;
       }
