@@ -13,6 +13,8 @@
 #include <mutex>
 #include <atomic>
 
+void PrintOpenGLContextInfo();
+
 //////////////////////////// TEXTURE PROCESSING ////////////////////////////
 
 void SwapHorizontally32Bit(uint32_t* data, int width, int height);

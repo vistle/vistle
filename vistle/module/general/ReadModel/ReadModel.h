@@ -16,7 +16,7 @@ class ReadModel: public vistle::Module {
 
  private:
 
-   vistle::Object::ptr load(const std::string & filename);
+   std::vector<vistle::Object::ptr> load(const std::string & filename);
 
    virtual bool compute();
    int rankForBlock(int block) const;

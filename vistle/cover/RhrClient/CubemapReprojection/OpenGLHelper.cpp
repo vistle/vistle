@@ -11,6 +11,18 @@
 
 using namespace EngineBuildingBlocks::Graphics;
 
+void PrintOpenGLContextInfo()
+{
+	GLint major, minor;
+	glGetIntegerv(GL_MAJOR_VERSION, &major);
+	glGetIntegerv(GL_MINOR_VERSION, &minor);
+	printf(
+		"OpenGL context info:\n"
+		"--------------------\n\n"
+		"Version: %d.%d\n"
+		, major, minor);
+}
+
 ///////////////////////////////////// TEXTURE PROCESSING /////////////////////////////////////
 
 void SwapHorizontally32Bit(uint32_t* data, int width, int height)

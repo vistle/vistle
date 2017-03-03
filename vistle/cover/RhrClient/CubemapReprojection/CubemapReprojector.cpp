@@ -14,6 +14,9 @@
 #include <EngineBuildingBlocks/ErrorHandling.h>
 #include <OculusVR/SimpleVR_GL.h>
 
+// For debugging:
+#include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
+
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
 using namespace OpenGLRender;
@@ -108,6 +111,55 @@ void CubemapReprojector::SetDepthData(unsigned resourceIndex, unsigned char** pp
 		unsigned size[] = { end[i].x - start[i].x, end[i].y - start[i].y, 1 };
 		texture.SetData(ppData[i], PixelDataFormat::Red, PixelDataType::Float, offset, size, 0);
 	}
+}
+
+void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorTexture)
+{
+	static bool isInitializing = true;
+	static OpenGLRender::ShaderProgram showProgram;
+	static Primitive quad;
+	static SystemTime time;
+	static unsigned regionIndex = 0;
+	if (isInitializing)
+	{
+		isInitializing = false;
+
+		OpenGLRender::ShaderProgramDescription spd;
+		spd.Shaders =
+		{
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory("Shaders/ShowColorBuffer_vs.glsl"), ShaderType::Vertex),
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory("Shaders/ShowColorBuffer_ps.glsl"), ShaderType::Fragment)
+		};
+		showProgram.Initialize(spd);
+
+		Vertex_SOA_Data vertexData;
+		IndexData indexData;
+		CreateQuadGeometry(vertexData, indexData, PrimitiveRange::_Minus1_To_Plus1);
+		vertexData.RemoveVertexElement(c_PositionVertexElement);
+		vertexData.RemoveVertexElement(c_NormalVertexElement);
+		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
+		showProgram.SetInputLayout(vertexData.InputLayout);
+
+		time.Initialize();
+	}
+
+	time.Update();
+	if (time.GetTotalTime() > 1.0)
+	{
+		time.Reset();
+		if (++regionIndex == c_CountCubemapSides) regionIndex = 0;
+	}
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	colorTexture.Bind(0);
+	showProgram.Bind();
+	showProgram.SetUniformValue("ColorTexture", 0);
+	showProgram.SetUniformValue("RegionIndex", regionIndex);
+
+	quad.Bind();
+	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +311,8 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
-	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
+	//m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
+	DebugColorTexture(m_PathHandler, m_ColorTextures[m_CurrentTextureIndex]);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
@@ -460,6 +513,17 @@ void CubemapReprojector::UpdateTextures()
 			colorDataPointers[i] = m_Buffers[GetBufferIndex(BufferType::Color, i, m_ReadBufferIndex)].GetArray();
 			depthDataPointers[i] = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_ReadBufferIndex)].GetArray();
 		}
+
+		unsigned nzc[] { 0, 0, 0, 0, 0, 0 };
+		for (int i = 0; i < 6; i++)
+		{
+			auto ptr = (unsigned*)colorDataPointers[i];
+			for (int j = 0; j < 1024 * 1024; j++)
+			{
+				if (ptr[j] != 0) nzc[i]++;
+			}
+		}
+		printf("%d %d %d %d %d %d\n", nzc[0], nzc[1], nzc[2], nzc[3], nzc[4], nzc[5]);
 
 		SetColorCubemapData(writeTextureIndex, colorDataPointers, m_IsContainingAlpha,
 			colorSideStarts, colorSideEnds);
