@@ -42,11 +42,11 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -1133,15 +1133,6 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
         if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {
             int processor = rank();
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
-
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(0,1) << ", timestep = " << 1 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(1,2) << ", timestep = " << 2 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(2,3) << ", timestep = " << 3 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(3,4) << ", timestep = " << 4 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(459,460) << ", timestep = " << 460 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(460,461) << ", timestep = " << 461 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(461,462) << ", timestep = " << 462 << std::endl;
-
             if(m_ntimesteps==0) {
                 m_vectorResfileGrid.push_back(loadGrid(i));
                 loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
@@ -1163,8 +1154,9 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                         }
                         m_addToPortResfileVolumeData=false;
                     }
-                    //std::cerr << "cfxExportGridChanged(" << m_previousTimestep << "," << timestep << ") = " << cfxExportGridChanged(m_previousTimestep,timestep) << std::endl;
-                    if(!m_currentGrid[i] || cfxExportGridChanged(m_previousTimestep,timestep)) {
+                    std::cerr << "cfxExportGridChanged(" << m_previousTimestep << "," << timestep+1 << ") = " << cfxExportGridChanged(m_previousTimestep,timestep+1) << std::endl;
+                    std::cerr << "!m_currentGrid[" << i << "] = " << !m_currentGrid[i] << std::endl;
+                    if(!m_currentGrid[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_currentGrid[i] = loadGrid(i);
                     }
                     m_currentGrid[i] = loadGrid(i);
@@ -1205,7 +1197,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                         }
                         m_addToPortResfileBoundaryData=false;
                     }
-                    if(!m_currentPolygon[i] || cfxExportGridChanged(m_previousTimestep,timestep)) {
+                    if(!m_currentPolygon[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_currentPolygon[i] = loadPolygon(i);
                     }
                     m_currentPolygon[i] = loadPolygon(i);
@@ -1220,7 +1212,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
             }
         }
     }
-    m_previousTimestep = timestep;
+    m_previousTimestep = timestep+1;
     return true;
 }
 

@@ -106,7 +106,7 @@ class ReadCFX: public vistle::Module {
    vistle::coRestraint m_coRestraintZones, m_coRestraintBoundaries;
 
    index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps; // m_nboundaries, m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
-   int m_previousTimestep = 0;
+   int m_previousTimestep = 1;
 
 
    //Ports
