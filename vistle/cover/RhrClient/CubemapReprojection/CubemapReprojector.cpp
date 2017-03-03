@@ -456,6 +456,18 @@ void CubemapReprojector::IncrementWriteBufferIndex()
 void CubemapReprojector::SwapBuffers()
 {
 	std::lock_guard<std::mutex> lock(m_BufferMutex);
+
+	unsigned nzc[]{ 0, 0, 0, 0, 0, 0 };
+	for (int i = 0; i < 6; i++)
+	{
+		auto ptr = (unsigned*)m_Buffers[GetBufferIndex(BufferType::Color, i, m_WriteBufferIndex)].GetArray();
+		for (int j = 0; j < 1024 * 1024; j++)
+		{
+			if (ptr[j] != 0) nzc[i]++;
+		}
+	}
+	printf("%d %d %d %d %d %d\n", nzc[0], nzc[1], nzc[2], nzc[3], nzc[4], nzc[5]);
+
 	m_WrittenBufferIndex = m_WriteBufferIndex;
 	IncrementWriteBufferIndex();
 	if (m_WriteBufferIndex == m_ReadBufferIndex)
@@ -513,17 +525,6 @@ void CubemapReprojector::UpdateTextures()
 			colorDataPointers[i] = m_Buffers[GetBufferIndex(BufferType::Color, i, m_ReadBufferIndex)].GetArray();
 			depthDataPointers[i] = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_ReadBufferIndex)].GetArray();
 		}
-
-		unsigned nzc[] { 0, 0, 0, 0, 0, 0 };
-		for (int i = 0; i < 6; i++)
-		{
-			auto ptr = (unsigned*)colorDataPointers[i];
-			for (int j = 0; j < 1024 * 1024; j++)
-			{
-				if (ptr[j] != 0) nzc[i]++;
-			}
-		}
-		printf("%d %d %d %d %d %d\n", nzc[0], nzc[1], nzc[2], nzc[3], nzc[4], nzc[5]);
 
 		SetColorCubemapData(writeTextureIndex, colorDataPointers, m_IsContainingAlpha,
 			colorSideStarts, colorSideEnds);
