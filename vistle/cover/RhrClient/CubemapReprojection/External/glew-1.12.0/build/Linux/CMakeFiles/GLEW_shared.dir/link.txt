@@ -1,0 +1,1 @@
+/usr/bin/cc  -fPIC   -DGLEW_BUILD -DGLEW_NO_GLU -O2 -Wall -W   -shared -Wl,-soname,libGLEW.so -o lib/libGLEW.so CMakeFiles/GLEW_shared.dir/src/glew.o -lGL 

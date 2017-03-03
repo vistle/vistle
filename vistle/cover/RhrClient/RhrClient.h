@@ -14,6 +14,8 @@
 #include <mutex>
 #include <thread>
 
+#include <CubemapReprojector.h>
+
 #include <cover/coVRPluginSupport.h>
 
 #include <rhr/rfbext.h>
@@ -79,6 +81,14 @@ class RhrClient: public coVRPlugin
 #endif
 {
     friend class RemoteConnection;
+
+private:
+
+	CubemapReprojector m_CubemapReprojector;
+
+	unsigned GetCountChannels() const;
+	void SetNumViewsAndChannelBase();
+
 public:
    RhrClient();
    ~RhrClient();
@@ -173,10 +183,10 @@ private:
    coCheckboxMenuItem *m_allTilesCheck;
 #else
    mui::Tab *m_tab;
-   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck;
+   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck, *m_CubemapReprojectionCheck;
    mui::ToggleButton *m_inhibitModelUpdate;
 #endif
-   bool m_reproject, m_adapt, m_adaptWithNeighbors, m_asMesh, m_withHoles;
+   bool m_reproject, m_adapt, m_adaptWithNeighbors, m_asMesh, m_withHoles, m_ReprojectAsCubemap;
    bool m_noModelUpdate;
    osg::Matrix m_oldModelMatrix;
 

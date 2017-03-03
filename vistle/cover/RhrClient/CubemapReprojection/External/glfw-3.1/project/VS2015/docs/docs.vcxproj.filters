@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\Work\Code\own\Framework\External\glfw-3.1\docs\CMakeLists.txt" />
+    <CustomBuild Include="D:\Work\Code\own\Framework\External\glfw-3.1\project\VS2015\CMakeFiles\61d328083adb2ea6326c981d346242da\docs.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\Work\Code\own\Framework\External\glfw-3.1\project\VS2015\docs\CMakeFiles\docs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E8312384-6557-3839-9538-816071DDC009}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

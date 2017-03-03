@@ -1,0 +1,1 @@
+/usr/bin/cc    -DGLEW_BUILD -DGLEW_NO_GLU -O2 -Wall -W    CMakeFiles/visualinfo.dir/src/visualinfo.o  -o bin/visualinfo -rdynamic lib/libGLEW.so -lGL -lSM -lICE -lX11 -lXext -Wl,-rpath,/home/tszep_local/projects/External/glew-1.12.0/build/Linux/lib: 

@@ -1,0 +1,2 @@
+/usr/bin/ar cr lib/libGLEWmx.a  CMakeFiles/GLEW_MX_static.dir/src/glew.o
+/usr/bin/ranlib lib/libGLEWmx.a

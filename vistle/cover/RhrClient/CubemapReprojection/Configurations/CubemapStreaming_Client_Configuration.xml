@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<Configuration>
+
+  <Property name="IsRenderingInVR" value="0" />
+  <Property name="IsLoadingFakeCubemap" value="0" />
+  <Property name="IsLoadingClientCameraLocation" value="0" />
+  <Property name="IsSavingFakeCubemapImages" value="0" />
+
+  <Property name="IsContainingAlpha" value="1" />
+  <Property name="SideVisiblePortion" value="1" />
+  <Property name="PosZVisiblePortion" value="1" />
+  
+  <Property name="MinPosDiffForServer" value="1e-2" />
+  <Property name="MinDirCrossForServer" value="1e-1" />
+
+  <GridReprojection>
+    <Property name="IsMultisamplingEnabled" value="0" />
+    <Property name="CountGridTilesX" value="8" />
+    <Property name="CountGridTilesY" value="8" />
+    <Property name="BackgroundFarPlaneMultiplier" value="1.5" />
+  </GridReprojection>
+
+</Configuration>

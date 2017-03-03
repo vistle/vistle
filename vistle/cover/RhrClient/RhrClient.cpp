@@ -7,6 +7,8 @@
  * \copyright GPL2+
  */
 
+#include "RhrClient.h"
+
 #include <config/CoviseConfig.h>
 
 #include <net/tokenbuffer.h>
@@ -43,8 +45,6 @@
 #include <osgViewer/Renderer>
 
 #include <osg/io_utils>
-
-#include "RhrClient.h"
 
 #include <rhr/rfbext.h>
 
@@ -548,6 +548,13 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
       msg.view[i] = view.ptr()[i];
       msg.proj[i] = proj.ptr()[i];
    }
+
+   if (m_mode == MultiChannelDrawer::ReprojectCubemap)
+   {
+	   m_CubemapReprojector.AdjustDimensionsAndMatrices(viewNum, msg.width, msg.height, &msg.width, &msg.height,
+		   chan.leftView.ptr(), chan.rightView.ptr(),
+		   chan.leftProj.ptr(), chan.rightProj.ptr(), msg.view, msg.proj);
+   }
 }
 
 //! send matrices to server
@@ -972,7 +979,7 @@ bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<
       << std::endl;
 #endif
 
-   if (msg->flags) {
+   if (msg->flags || m_mode == MultiChannelDrawer::ReprojectCubemap) {
    } else if (msg->viewNum < m_channelBase || msg->viewNum >= m_channelBase+m_numViews) {
        return true;
    }
@@ -998,6 +1005,49 @@ bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<
    return true;
 }
 
+unsigned RhrClient::GetCountChannels() const
+{
+	return (m_mode == MultiChannelDrawer::ReprojectCubemap
+		? m_numViews
+		: coVRConfig::instance()->numChannels());
+}
+
+void RhrClient::SetNumViewsAndChannelBase()
+{
+	if (m_mode == MultiChannelDrawer::ReprojectCubemap)
+	{
+		m_numViews = 6;
+		m_channelBase = 0;
+	}
+	else
+	{
+		const int numChannels = coVRConfig::instance()->numChannels();
+		m_numViews = numChannels;
+		for (int i = 0; i < numChannels; ++i)
+			if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER)
+				++m_numViews;
+
+		if (coVRMSController::instance()->isMaster())
+		{
+			coVRMSController::SlaveData sd(sizeof(m_numViews));
+			coVRMSController::instance()->readSlaves(&sd);
+			int channelBase = m_numViews;
+			for (int i = 0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
+				int *p = static_cast<int *>(sd.data[i]);
+				int n = *p;
+				m_numChannels.push_back(n);
+				*p = channelBase;
+				channelBase += n;
+			}
+			coVRMSController::instance()->sendSlaves(sd);
+			m_channelBase = 0;
+		}
+		else {
+			coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
+			coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
+		}
+	}
+}
 
 //! called when plugin is loaded
 RhrClient::RhrClient()
@@ -1059,36 +1109,12 @@ bool RhrClient::init()
    m_deferredFrames = 0;
    m_waitForDecode = false;
 
-   m_channelBase = 0;
+   SetNumViewsAndChannelBase();
 
-   const int numChannels = coVRConfig::instance()->numChannels();
-   m_numViews = numChannels;
-   for (int i=0; i<numChannels; ++i) {
-       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-          ++m_numViews;
-       }
-   }
-   if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sd(sizeof(m_numViews));
-      coVRMSController::instance()->readSlaves(&sd);
-      int channelBase = m_numViews;
-      for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
-         int *p = static_cast<int *>(sd.data[i]);
-         int n = *p;
-         m_numChannels.push_back(n);
-         *p = channelBase;
-         channelBase += n;
-      }
-      coVRMSController::instance()->sendSlaves(sd);
-   } else {
-      coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
-      coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
-   }
-
-   std::cerr << "numChannels: " << numChannels << ", m_channelBase: " << m_channelBase << std::endl;
+   std::cerr << "numChannels: " << GetCountChannels() << ", m_channelBase: " << m_channelBase << std::endl;
    std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
-   m_drawer = new MultiChannelDrawer(numChannels, true /* flip top/bottom */);
+   m_drawer = new MultiChannelDrawer(&m_CubemapReprojector, GetCountChannels(), true /* flip top/bottom */);
 
 #ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
@@ -1136,6 +1162,11 @@ bool RhrClient::init()
    m_withHolesCheck->setLabel("With Holes");
    m_withHolesCheck->setEventListener(this);
    m_withHolesCheck->setPos(4,0);
+
+   m_CubemapReprojectionCheck = mui::ToggleButton::create(muiId("as_a_cubemap"), m_tab);
+   m_CubemapReprojectionCheck->setLabel("As a cubemap");
+   m_CubemapReprojectionCheck->setEventListener(this);
+   m_CubemapReprojectionCheck->setPos(5, 0);
 
    //coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
 
@@ -1220,31 +1251,43 @@ void RhrClient::modeToUi(MultiChannelDrawer::Mode mode) {
          m_reproject = true;
          m_adapt = false;
          m_asMesh = false;
+		 m_ReprojectAsCubemap = false;
          break;
       case MultiChannelDrawer::ReprojectAdaptive:
          m_reproject = true;
          m_adapt = true;
          m_adaptWithNeighbors = false;
          m_asMesh = false;
+		 m_ReprojectAsCubemap = false;
          break;
       case MultiChannelDrawer::ReprojectAdaptiveWithNeighbors:
          m_reproject = true;
          m_adapt = true;
          m_adaptWithNeighbors = true;
          m_asMesh = false;
+		 m_ReprojectAsCubemap = false;
          break;
       case MultiChannelDrawer::ReprojectMesh:
          m_reproject = true;
          m_adapt = false;
          m_asMesh = true;
          m_withHoles = false;
+		 m_ReprojectAsCubemap = false;
          break;
       case MultiChannelDrawer::ReprojectMeshWithHoles:
          m_reproject = true;
          m_adapt = false;
          m_asMesh = true;
          m_withHoles = true;
+		 m_ReprojectAsCubemap = false;
          break;
+	  case MultiChannelDrawer::ReprojectCubemap:
+		  m_reproject = true;
+		  m_adapt = false;
+		  m_asMesh = true;
+		  m_withHoles = false;
+		  m_ReprojectAsCubemap = true;
+		  break;
    }
 
    m_reprojCheck->setState(m_reproject);
@@ -1252,6 +1295,7 @@ void RhrClient::modeToUi(MultiChannelDrawer::Mode mode) {
    m_adaptWithNeighborsCheck->setState(m_adaptWithNeighbors);
    m_asMeshCheck->setState(m_asMesh);
    m_withHolesCheck->setState(m_withHoles);
+   m_CubemapReprojectionCheck->setState(m_ReprojectAsCubemap);
 }
 
 void RhrClient::applyMode() {
@@ -1261,6 +1305,10 @@ void RhrClient::applyMode() {
          mode = MultiChannelDrawer::ReprojectMesh;
          if (m_withHoles)
             mode = MultiChannelDrawer::ReprojectMeshWithHoles;
+		 if (m_ReprojectAsCubemap)
+		 {
+			 mode = MultiChannelDrawer::ReprojectCubemap;
+		 }
       } else {
          if (m_adapt) {
             if (m_adaptWithNeighbors)
@@ -1274,6 +1322,9 @@ void RhrClient::applyMode() {
    }
    modeToUi(mode);
    m_mode = mode;
+
+   SetNumViewsAndChannelBase();
+
    m_drawer->setMode(m_mode);
 }
 
@@ -1323,6 +1374,18 @@ void RhrClient::muiEvent(mui::Element *item) {
       }
       applyMode();
    }
+   if (item == m_CubemapReprojectionCheck)
+   {
+	   m_ReprojectAsCubemap = m_CubemapReprojectionCheck->getState();
+	   if (m_ReprojectAsCubemap)
+	   {
+		   m_reproject = true;
+		   m_adapt = false;
+		   m_asMesh = true;
+		   m_withHoles = false;
+	   }
+	   applyMode();
+   }
    if (item == m_inhibitModelUpdate) {
        m_noModelUpdate = m_inhibitModelUpdate->getState();
    }
@@ -1369,35 +1432,44 @@ RhrClient::preFrame()
 
    m_remote->update();
 
-   const int numChannels = coVRConfig::instance()->numChannels();
    std::vector<matricesMsg> messages(m_numViews);
-   int view=0;
-   for (int i=0; i<numChannels; ++i) {
-
-      fillMatricesMessage(messages[view], i, view, false);
-      ++view;
-      if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
-         fillMatricesMessage(messages[view], i, view, true);
-         ++view;
-      }
+   if (m_mode == MultiChannelDrawer::ReprojectCubemap)
+   {
+	   assert(m_numViews == 6);
+	   for (int i = 0; i < m_numViews; ++i) fillMatricesMessage(messages[i], 0, i, false);
    }
+   else
+   {
+	   const int numChannels = coVRConfig::instance()->numChannels();
+	   int view = 0;
+	   for (int i = 0; i < numChannels; ++i) {
 
-   if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sNumScreens(sizeof(m_numViews));
-      coVRMSController::instance()->readSlaves(&sNumScreens);
-      for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
-         int n = *static_cast<int *>(sNumScreens.data[i]);
-         for (int s=0; s<n; ++s) {
-            matricesMsg msg;
-            coVRMSController::instance()->readSlave(i, &msg, sizeof(msg));
-            messages.push_back(msg);
-         }
-      }
-   } else {
-      coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
-      for (int s=0; s<m_numViews; ++s) {
-         coVRMSController::instance()->sendMaster(&messages[s], sizeof(messages[s]));
-      }
+		   fillMatricesMessage(messages[view], i, view, false);
+		   ++view;
+		   if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+			   fillMatricesMessage(messages[view], i, view, true);
+			   ++view;
+		   }
+	   }
+
+	   if (coVRMSController::instance()->isMaster()) {
+		   coVRMSController::SlaveData sNumScreens(sizeof(m_numViews));
+		   coVRMSController::instance()->readSlaves(&sNumScreens);
+		   for (int i = 0; i < coVRMSController::instance()->getNumSlaves(); ++i) {
+			   int n = *static_cast<int *>(sNumScreens.data[i]);
+			   for (int s = 0; s < n; ++s) {
+				   matricesMsg msg;
+				   coVRMSController::instance()->readSlave(i, &msg, sizeof(msg));
+				   messages.push_back(msg);
+			   }
+		   }
+	   }
+	   else {
+		   coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
+		   for (int s = 0; s < m_numViews; ++s) {
+			   coVRMSController::instance()->sendMaster(&messages[s], sizeof(messages[s]));
+		   }
+	   }
    }
 
    int ntiles = 0;

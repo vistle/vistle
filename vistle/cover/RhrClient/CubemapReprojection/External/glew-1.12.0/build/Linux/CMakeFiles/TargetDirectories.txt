@@ -1,0 +1,6 @@
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/GLEW_MX_shared.dir
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/GLEW_MX_static.dir
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/GLEW_shared.dir
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/GLEW_static.dir
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/glewinfo.dir
+/home/tszep_local/projects/External/glew-1.12.0/build/Linux/CMakeFiles/visualinfo.dir
