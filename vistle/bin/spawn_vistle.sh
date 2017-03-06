@@ -21,8 +21,8 @@ if [ -n "$SLURM_JOB_ID" ]; then
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
-VALGRIND=""
-#VALGRIND="valgrind"
+WRAPPER=""
+#WRAPPER="valgrind"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then
@@ -64,20 +64,20 @@ fi
 
 if [ "$OPENMPI" = "1" ]; then
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
-      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
 echo "default: $@"
-exec VALGRIND "$@"
+exec WRAPPER "$@"
