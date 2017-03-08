@@ -31,6 +31,7 @@ class Leveller  {
    std::vector<vistle::DataBase::ptr> m_outvertData;
    std::vector<vistle::DataBase::ptr> m_outcellData;
    vistle::Scalar gmin, gmax;
+   vistle::Matrix4 m_objectTransform;
 
    template<class Data, class pol>
    vistle::Index calculateSurface(Data &data);

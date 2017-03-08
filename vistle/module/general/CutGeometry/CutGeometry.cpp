@@ -643,7 +643,7 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const {
    if (!coords)
        return Object::ptr();
 
-   IsoDataFunctor decider = isocontrol.newFunc(&coords->x()[0], &coords->y()[0], &coords->z()[0]);
+   IsoDataFunctor decider = isocontrol.newFunc(object->getTransform(), &coords->x()[0], &coords->y()[0], &coords->z()[0]);
 
    switch (object->getType()) {
       case Object::TRIANGLES: {
