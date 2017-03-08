@@ -42,11 +42,11 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -373,13 +373,17 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
                         sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
                     }
+                    //print out region names
+                    m_nregions = cfxExportRegionCount();
+                    sendInfo("Found %d regions", m_nregions);
+                    for(index_t i=1;i<=m_nregions;++i) {
+                        sendInfo("region no. %d: %s",i,cfxExportRegionName(i));
+                    }
                 }
                 cfxExportZoneFree();
 #ifdef CFX_DEBUG
                 sendInfo("The initialisation was successfully done");
 #endif
-
-
             }
         }
     }

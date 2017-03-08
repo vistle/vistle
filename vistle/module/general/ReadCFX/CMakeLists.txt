@@ -10,6 +10,9 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
 	${CFX_INCLUDE_DIRS}
 )
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 
 add_module(ReadCFX ReadCFX.cpp)
 
