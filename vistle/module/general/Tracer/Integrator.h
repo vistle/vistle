@@ -19,6 +19,7 @@ private:
     Particle* m_ptcl;
     bool m_forward;
     const vistle::Scalar *m_v[3];
+    vistle::Matrix3 m_velTransform;
     int m_cellSearchFlags;
 
 public:
@@ -34,6 +35,8 @@ public:
     bool hNew(vistle::Vector3 cur, vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector vel, vistle::Scalar unit);
     void enableCelltree(bool value);
     vistle::Scalar h() const;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 #endif

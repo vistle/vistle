@@ -21,6 +21,10 @@ m_vy(nullptr),
 m_vz(nullptr),
 m_p(nullptr)
 {
+   m_transform = m_grid->getTransform();
+   m_invTransform = m_transform.inverse();
+   m_velocityTransform = m_transform.block<3,3>(0,0).inverse().transpose();
+
    if (m_vecfld) {
       m_vx = &m_vecfld->x()[0];
       m_vy = &m_vecfld->y()[0];
@@ -60,3 +64,16 @@ Vec<Scalar>::const_ptr BlockData::getScalFld(){
 DataBase::Mapping BlockData::getScalMapping() const {
     return m_scamap;
 }
+
+const Matrix4 &BlockData::transform() const {
+    return m_transform;
+}
+
+const Matrix4 &BlockData::invTransform() const {
+    return m_invTransform;
+}
+
+const Matrix3 &BlockData::velocityTransform() const {
+    return m_velocityTransform;
+}
+
