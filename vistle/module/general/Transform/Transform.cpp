@@ -58,6 +58,14 @@ bool Transform::compute() {
    if (!obj)
       return true;
 
+   Object::const_ptr geo = obj;
+   auto data = DataBase::as(obj);
+   if (data && data->grid()) {
+       geo = data->grid();
+   } else {
+       data.reset();
+   }
+
    Matrix4 mirrorMat(Matrix4::Identity());
    switch (p_mirror->getValue()) {
    case Mirror_X:
@@ -102,9 +110,15 @@ bool Transform::compute() {
    int timestep = animation==Deanimate ? -1 : 0;
    if (keep_original) {
        if (animation != Keep) {
-           Object::ptr out = obj->clone();
-           out->setTimestep(timestep);
-           addObject(data_out, out);
+           Object::ptr outGeo = geo->clone();
+           outGeo->setTimestep(timestep);
+           if (data) {
+               auto dataOut = data->clone();
+               dataOut->setGrid(outGeo);
+               addObject(data_out, dataOut);
+           } else {
+               addObject(data_out, outGeo);
+           }
            if (animation != Deanimate)
                ++timestep;
        } else {
@@ -112,17 +126,23 @@ bool Transform::compute() {
        }
    }
 
-   Matrix4 t = obj->getTransform();
+   Matrix4 t = geo->getTransform();
    for (int i=0; i<repetitions; ++i) {
-       Object::ptr out = obj->clone();
+       Object::ptr outGeo = geo->clone();
        t *= transform;
-       out->setTransform(t);
+       outGeo->setTransform(t);
        if (animation != Keep) {
-           out->setTimestep(timestep);
+           outGeo->setTimestep(timestep);
            if (animation != Deanimate)
                ++timestep;
        }
-       addObject(data_out, out);
+       if (data) {
+           auto dataOut = data->clone();
+           dataOut->setGrid(outGeo);
+           addObject(data_out, dataOut);
+       } else {
+           addObject(data_out, outGeo);
+       }
    }
 
    return true;
