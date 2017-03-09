@@ -41,12 +41,12 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -374,6 +374,7 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                         sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
                     }
                     //print out region names
+                    cfxExportZoneSet(0,NULL);
                     m_nregions = cfxExportRegionCount();
                     sendInfo("Found %d regions", m_nregions);
                     for(index_t i=1;i<=m_nregions;++i) {
@@ -525,6 +526,8 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     ptrOnEl[nelmsInVolume] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
 
+    grid->cl().resize(elemListCounter); //correct initialization; initialized with connectivities in zone; connectivities in volume are <= connectivities in zone
+
 //    cfxElement *elems = cfxExportElementList();
 
 //    int nelems = cfxExportElementCount();
@@ -552,10 +555,12 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 //        }
 
 //    std::cerr << "grid->el(grid->getNumElements())" << grid->el().at(grid->getNumElements()) << std::endl;
+//    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
 //    std::cerr << "grid->getNumCorners()" << grid->getNumCorners() << std::endl;
 //    std::cerr << "grid->getNumVertices()" << grid->getNumVertices() << std::endl;
+//    std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
 //    std::cerr << "nconnectivities = " << nconnectivities << std::endl;
-//    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
+//    std::cerr << "nnodesInVolume = " << nnodesInVolume << std::endl;
 
 //    for(int i=nelmsInVolume-10;i<=nelmsInVolume;++i) {
 //        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
@@ -1158,8 +1163,9 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setM
                         }
                         m_addToPortResfileVolumeData=false;
                     }
-                    std::cerr << "cfxExportGridChanged(" << m_previousTimestep << "," << timestep+1 << ") = " << cfxExportGridChanged(m_previousTimestep,timestep+1) << std::endl;
-                    std::cerr << "!m_currentGrid[" << i << "] = " << !m_currentGrid[i] << std::endl;
+                    if(cfxExportZoneSet(m_volumesSelected[i].zoneFlag,NULL) < 0) { //set the right zone because cfxExportGridChanged depends on the zone
+                        std::cerr << "invalid zone number" << std::endl;
+                    }
                     if(!m_currentGrid[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_currentGrid[i] = loadGrid(i);
                     }
@@ -1251,7 +1257,6 @@ bool ReadCFX::compute() {
             initializeResultfile();
             m_case.parseResultfile();
         }
-
         //read variables out of .res file
         trnOrRes = 0;
 #ifdef CFX_DEBUG
