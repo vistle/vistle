@@ -156,10 +156,7 @@ bool Particle::findCell(double time) {
             continue;
         }
         auto grid = block->getGrid();
-        Vector4 x;
-        x << m_x,1;
-        x = block->invTransform() * x;
-        m_el = grid->findCell(x.block<3,1>(0,0)/x[3], InvalidIndex, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
+        m_el = grid->findCell(transformPoint(block->invTransform(), m_x), InvalidIndex, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         if (m_el!=InvalidIndex) {
 
             if (!m_currentSegment) {
@@ -184,10 +181,7 @@ bool Particle::findCell(double time) {
 
 void Particle::EmitData() {
 
-   Vector4 x;
-   x << m_xold, 1;
-   x = m_block->transform() * x;
-   m_currentSegment->m_xhist.push_back(x.block<3,1>(0,0)/x[3]);
+   m_currentSegment->m_xhist.push_back(transformPoint(m_block->transform(), m_xold));
    m_currentSegment->m_vhist.push_back(m_v);
    m_currentSegment->m_steps.push_back(m_stp);
    m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
@@ -495,29 +489,15 @@ void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {
 void Particle::UpdateBlock(BlockData *block) {
 
     if (m_block) {
-        Vector4 x4;
-
-        x4 << m_x, 1;
-        x4 = m_block->transform() * x4;
-        m_x = x4.block<3,1>(0,0)/x4[3];
-
-        x4 << m_xold, 1;
-        x4 = m_block->transform() * x4;
-        m_xold = x4.block<3,1>(0,0)/x4[3];
+        m_x = transformPoint(m_block->transform(), m_x);
+        m_xold = transformPoint(m_block->transform(), m_xold);
     }
 
     m_block = block;
 
     if (m_block) {
-        Vector4 x4;
-
-        x4 << m_x, 1;
-        x4 = m_block->invTransform() * x4;
-        m_x = x4.block<3,1>(0,0)/x4[3];
-
-        x4 << m_xold, 1;
-        x4 = m_block->invTransform() * x4;
-        m_xold = x4.block<3,1>(0,0)/x4[3];
+        m_x = transformPoint(m_block->invTransform(), m_x);
+        m_xold = transformPoint(m_block->invTransform(), m_xold);
     }
 
     m_integrator.UpdateBlock();

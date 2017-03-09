@@ -65,6 +65,14 @@ void serializeMatrix(Archive & ar, M &m, const unsigned int version) {
    }
 }
 
+template<class FourColMat>
+Vector3 transformPoint(const FourColMat &t, const Vector3 &v) {
+    Vector4 v4;
+    v4 << v, 1;
+    v4 = t * v4;
+    return v4.block<3,1>(0,0) / v4[3];
+}
+
 } // namespace vistle
 
 EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector1)

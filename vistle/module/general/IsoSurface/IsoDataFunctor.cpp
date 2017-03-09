@@ -97,11 +97,7 @@ IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const
     auto inv = objTransform.inverse();
     auto normalTransform = inv.block<3,3>(0,0).inverse().transpose();
     vertex = normalTransform * vertex;
-
-    Vector4 p4;
-    p4 << point, 1.;
-    p4 = inv * p4;
-    point = p4.block<3,1>(0,0)/p4[3];
+    point = transformPoint(inv, point);
 
 #ifdef TOGGLESIGN
     return IsoDataFunctor(vertex, point, direction, x, y, z, m_option->getValue(), m_flip->getValue());
