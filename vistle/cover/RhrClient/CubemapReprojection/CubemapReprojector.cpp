@@ -547,7 +547,7 @@ glm::mat4 ToMatrix(const double* values)
 	return m;
 }
 
-void FromMatrix(const glm::mat4& m, double* values)
+void CreateFromMatrix(const glm::mat4& m, double* values)
 {
 	for (int c = 0; c < 16; c++) values[c] = glm::value_ptr(m)[c];
 }
@@ -560,7 +560,7 @@ RigidTransformation ToRigidTransformation(const double* values)
 CameraProjection ToProjection(const double* values)
 {
 	CameraProjection projection;
-	if (!CameraProjection::FromMatrix(ToMatrix(values), &projection)) printf("Camera projection error!\n");
+	if (!projection.CreateFromMatrix(ToMatrix(values))) printf("Camera projection error!\n");
 	return projection;
 }
 
@@ -605,14 +605,10 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		auto& lp = leftProj.Projection.Perspective;
 		auto& rp = rightProj.Projection.Perspective;
 		assert(leftProj.Type == ProjectionType::Perspective && rightProj.Type == ProjectionType::Perspective);
-		assert(leftProj.Projection.Perspective.NearPlaneDistance == rightProj.Projection.Perspective.NearPlaneDistance);
-		assert(lp.FarPlaneDistance == rp.FarPlaneDistance && lp.Bottom == rp.Bottom && lp.Top == rp.Top);
-		assert(lp.Right - lp.Left == rp.Right - rp.Left);
-		auto halfSize = (lp.Right - lp.Left) * 0.5f;
-		auto proj = leftProj;
-		auto& cp = proj.Projection.Perspective;
-		cp.Left = -halfSize;
-		cp.Right = halfSize;
+		assert(lp.NearPlaneDistance == rp.NearPlaneDistance && lp.FarPlaneDistance == rp.FarPlaneDistance);
+		assert(lp.Bottom == rp.Bottom && lp.Top == rp.Top && lp.Right - lp.Left == rp.Right - rp.Left);
+		CameraProjection proj;
+		proj.CreatePerspecive(1.0f, glm::half_pi<float>(), lp.NearPlaneDistance, lp.FarPlaneDistance, false);
 		m_ServerCameraCopy.SetProjection(proj);
 		m_ServerCubemapCameraGroupCopy.Update();
 	}
@@ -620,8 +616,8 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	auto camera = m_ServerCubemapCameraGroupCopy.Cameras[sideIndex];
 	auto& sideViewMatrix = camera->GetViewMatrix();
 	auto& sideProjectionMatrix = camera->GetProjectionMatrix();
-	FromMatrix(sideViewMatrix, viewMatrix);
-	FromMatrix(sideProjectionMatrix, projMatrix);
+	CreateFromMatrix(sideViewMatrix, viewMatrix);
+	CreateFromMatrix(sideProjectionMatrix, projMatrix);
 }
 
 inline void SetCameraFromMatrices(Camera& camera, const double* viewMatrix, const double* projMatrix)

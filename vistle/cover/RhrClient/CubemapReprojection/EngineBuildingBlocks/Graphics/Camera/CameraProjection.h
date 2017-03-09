@@ -85,7 +85,9 @@ namespace EngineBuildingBlocks
 			void SerializeSXML(Core::SerializationSXMLData& data) const;
 			void DeserializeSXML(Core::DeserializationSXMLData& data);
 		
-			static bool FromMatrix(const glm::mat4& m, CameraProjection* pProjection);
+			bool CreateFromMatrix(const glm::mat4& m);
+			void CreatePerspecive(float aspectRatio, float fovY, float near, float far,
+				bool isProjectingTo_0_1);
 		};
 	}
 }

@@ -183,7 +183,7 @@ void CameraProjection::DeserializeSXML(Core::DeserializationSXMLData& data)
 
 // Note that currently only the OpenGL-projections are supported!
 
-bool CameraProjection::FromMatrix(const glm::mat4& m, CameraProjection* pProjection)
+bool CameraProjection::CreateFromMatrix(const glm::mat4& m)
 {
 	// Trying to interpret as a perspective projection.
 	{
@@ -202,14 +202,14 @@ bool CameraProjection::FromMatrix(const glm::mat4& m, CameraProjection* pProject
 			float r = bx * (c3 + 1);
 			float b = by * (c4 - 1);
 			float t = by * (c4 + 1);
-			pProjection->Projection.Perspective.NearPlaneDistance = n;
-			pProjection->Projection.Perspective.FarPlaneDistance = f;
-			pProjection->Projection.Perspective.IsProjectingTo_0_1_Interval = false;
-			pProjection->Projection.Perspective.Left = l;
-			pProjection->Projection.Perspective.Right = r;
-			pProjection->Projection.Perspective.Bottom = b;
-			pProjection->Projection.Perspective.Top = t;
-			pProjection->Type = ProjectionType::Perspective;
+			Projection.Perspective.NearPlaneDistance = n;
+			Projection.Perspective.FarPlaneDistance = f;
+			Projection.Perspective.IsProjectingTo_0_1_Interval = false;
+			Projection.Perspective.Left = l;
+			Projection.Perspective.Right = r;
+			Projection.Perspective.Bottom = b;
+			Projection.Perspective.Top = t;
+			Type = ProjectionType::Perspective;
 			return true;
 		}
 	}
@@ -220,4 +220,20 @@ bool CameraProjection::FromMatrix(const glm::mat4& m, CameraProjection* pProject
 	}
 
 	return false;
+}
+
+void CameraProjection::CreatePerspecive(float aspectRatio, float fovY, float near, float far,
+	bool isProjectingTo_0_1)
+{
+	float h2 = near * tan(fovY * 0.5f);
+	float w2 = aspectRatio * h2;
+
+	Projection.Perspective.NearPlaneDistance = near;
+	Projection.Perspective.FarPlaneDistance = far;
+	Projection.Perspective.IsProjectingTo_0_1_Interval = isProjectingTo_0_1;
+	Projection.Perspective.Left = -w2;
+	Projection.Perspective.Right = w2;
+	Projection.Perspective.Bottom = -h2;
+	Projection.Perspective.Top = h2;
+	Type = ProjectionType::Perspective;
 }
