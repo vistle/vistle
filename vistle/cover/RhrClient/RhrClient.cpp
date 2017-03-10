@@ -7,6 +7,8 @@
  * \copyright GPL2+
  */
 
+const bool c_AllowDebugging = true;
+
 #include "RhrClient.h"
 
 #include <config/CoviseConfig.h>
@@ -1398,6 +1400,24 @@ void RhrClient::tabletEvent(coTUIElement *item) {
 void
 RhrClient::preFrame()
 {
+	// DEBUG!!!!
+	if (c_AllowDebugging)
+	{
+		static bool c_Debug_IsFirstFrame = true;
+		if (c_Debug_IsFirstFrame)
+		{
+			c_Debug_IsFirstFrame = false;
+
+			double view[] = {
+				0.0, 1.0, 0.0, 0.0,
+				0.0, 0.0, 1.0, 0.0,
+				1.0, 0.0, 0.0, 0.0,
+				50.0, -1250.0, -200.0, 1.0 };
+
+			cover->setXformMat(osg::Matrix(view));
+		}
+	}
+
    static double lastMatrices = -DBL_MAX;
    static int remoteSkipped = 0;
 
