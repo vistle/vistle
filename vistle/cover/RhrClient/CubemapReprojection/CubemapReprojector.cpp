@@ -16,6 +16,7 @@
 
 // For debugging:
 #include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
+#include <EngineBuildingBlocks/Graphics/Resources/ImageHelper.h>
 
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
@@ -441,20 +442,26 @@ void CubemapReprojector::IncrementWriteBufferIndex()
 	if (++m_WriteBufferIndex == c_TripleBuffering) m_WriteBufferIndex = 0;
 }
 
+const bool c_IsDebuggingBuffers = false;
+
 void CubemapReprojector::SwapBuffers()
 {
 	std::lock_guard<std::mutex> lock(m_BufferMutex);
 
-	unsigned nzc[]{ 0, 0, 0, 0, 0, 0 };
-	for (int i = 0; i < 6; i++)
+	if (c_IsDebuggingBuffers)
 	{
-		auto ptr = (unsigned*)m_Buffers[GetBufferIndex(BufferType::Color, i, m_WriteBufferIndex)].GetArray();
-		for (int j = 0; j < 1024 * 1024; j++)
+		for (unsigned sideIndex = 0; sideIndex < 6; sideIndex++)
 		{
-			if (ptr[j] != 0) nzc[i]++;
+			auto colorBuffer
+				= m_Buffers[GetBufferIndex(BufferType::Color, sideIndex, m_WriteBufferIndex)].GetArray();
+			char fileRelPath[32];
+			snprintf(fileRelPath, 32, "Temp/ColorBuffer_%d.png", sideIndex);
+			SaveImageToFile(colorBuffer,
+				Image2DDescription::ColorImage(m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3),
+				m_PathHandler.GetPathFromRootDirectory(fileRelPath),
+				ImageSaveFlags::None);
 		}
 	}
-	printf("%d %d %d %d %d %d\n", nzc[0], nzc[1], nzc[2], nzc[3], nzc[4], nzc[5]);
 
 	m_WrittenBufferIndex = m_WriteBufferIndex;
 	IncrementWriteBufferIndex();
@@ -600,6 +607,8 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		m_ServerCameraCopy.SetProjection(proj);
 		m_ServerCubemapCameraGroupCopy.Update();
 	}
+
+	// There is something definitely wrong with the view matrix!!!
 
 	auto camera = m_ServerCubemapCameraGroupCopy.Cameras[sideIndex];
 	auto& sideViewMatrix = camera->GetViewMatrix();
