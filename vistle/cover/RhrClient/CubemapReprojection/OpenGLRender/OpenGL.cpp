@@ -125,8 +125,8 @@ namespace OpenGLRender
 		ss << "Message:  " << message << std::endl << std::endl;
 		ss << "*********************************************" << std::endl << std::endl;
 
-		if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) EngineBuildingBlocks::RaiseWarning(ss);
-		else EngineBuildingBlocks::RaiseException(ss);
+		if (severity == GL_DEBUG_SEVERITY_HIGH) EngineBuildingBlocks::RaiseException(ss);
+		else EngineBuildingBlocks::RaiseWarning(ss);
 	}
 
 	void InitializeGLDebugging()

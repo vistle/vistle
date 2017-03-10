@@ -118,8 +118,6 @@ void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorT
 	static bool isInitializing = true;
 	static OpenGLRender::ShaderProgram showProgram;
 	static Primitive quad;
-	static SystemTime time;
-	static unsigned regionIndex = 0;
 	if (isInitializing)
 	{
 		isInitializing = false;
@@ -139,15 +137,6 @@ void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorT
 		vertexData.RemoveVertexElement(c_NormalVertexElement);
 		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
 		showProgram.SetInputLayout(vertexData.InputLayout);
-
-		time.Initialize();
-	}
-
-	time.Update();
-	if (time.GetTotalTime() > 1.0)
-	{
-		time.Reset();
-		if (++regionIndex == c_CountCubemapSides) regionIndex = 0;
 	}
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -156,7 +145,6 @@ void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorT
 	colorTexture.Bind(0);
 	showProgram.Bind();
 	showProgram.SetUniformValue("ColorTexture", 0);
-	showProgram.SetUniformValue("RegionIndex", regionIndex);
 
 	quad.Bind();
 	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
