@@ -10,10 +10,12 @@ if [ -n "$4" ]; then
 fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
-
+cd /tmp
 export MV2_ENABLE_AFFINITY=0
 export MPI_UNBUFFERED_STDIO=1
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+
+export GMON_OUT_PREFIX=readcfx.out
 
 if [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none "$@"
