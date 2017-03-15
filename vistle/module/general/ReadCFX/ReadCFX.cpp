@@ -429,7 +429,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     nelmsInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS);
     nnodesInZone = cfxExportNodeCount();
     //std::cerr << "nodesInVolume = " << nnodesInVolume << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
-        //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+    //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
     UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
@@ -446,13 +446,10 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     nodeListOfVolumeVec.resize(nnodesInZone+1);
 
     for(index_t i=0;i<nnodesInVolume;++i) {
-        if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-        }
+        cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get());   //get access to coordinates: [IN] nodeid [OUT] x,y,z
         ptrOnXcoords[i] = *x_coord.get();
         ptrOnYcoords[i] = *y_coord.get();
         ptrOnZcoords[i] = *z_coord.get();
-
         nodeListOfVolumeVec[nodeListOfVolume[i]] = i;
     }
 
@@ -476,9 +473,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     int *elmListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS); //query the elements that define the volume
 
     for(index_t i=0;i<nelmsInVolume;++i) {
-        if(!cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get())) {
-            std::cerr << "error while reading elements out of .res file: elemid is out of range" << std::endl;
-        }
+        cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get());
         switch(*elemtype.get()) {
             case 4: {
                 ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
@@ -509,17 +504,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
                 ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
                 ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
-
-//                if(i<1680090) {
-//                    std::cerr << "nodesOfElm.get()[3]-1 = " << nodesOfElm.get()[3]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[5]-1 = " << nodesOfElm.get()[5]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[4]-1 = " << nodesOfElm.get()[4]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[0]-1 = " << nodesOfElm.get()[0]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[2]-1 = " << nodesOfElm.get()[2]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[1]-1 = " << nodesOfElm.get()[1]-1 << std::endl;
-//                    std::cerr << "i = " << i << std::endl << std::endl;
-//                }
-
                 elemListCounter += 6;
                 break;
             }
@@ -544,7 +528,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
             }
         }
-
     }
 
     //element after last element
@@ -638,9 +621,7 @@ Polygons::ptr ReadCFX::loadPolygon(int Area2d) {
     nodeListOf2dAreaVec.resize(nNodesInZone+1);
 
     for(index_t i=0;i<nNodesIn2dArea;++i) {
-        if(!cfxExportNodeGet(nodeListOf2dArea[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-        }
+        cfxExportNodeGet(nodeListOf2dArea[i],x_coord.get(),y_coord.get(),z_coord.get());  //get access to coordinates: [IN] nodeid [OUT] x,y,z
         ptrOnXcoords[i] = *x_coord.get();
         ptrOnYcoords[i] = *y_coord.get();
         ptrOnZcoords[i] = *z_coord.get();
@@ -678,9 +659,6 @@ Polygons::ptr ReadCFX::loadPolygon(int Area2d) {
 
     for(index_t i=0;i<nFacesIn2dArea;++i) {
         int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListOf2dArea[i],nodesOfFace.get());
-        if(!NumOfVerticesDefiningFace) {
-            std::cerr << "error while reading faces out of .res file: faceId is out of range" << std::endl;
-        }
         assert(NumOfVerticesDefiningFace<=4); //see CFX Reference Guide p.57
         switch(NumOfVerticesDefiningFace) {
         case 3: {
@@ -763,14 +741,11 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 scalar_t *ptrOnScalarData = s->x().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return s;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
                     ptrOnScalarData[j] = *value.get();
-//                                if(j<10) {
-//                                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//                                }
+//                    if(j<10) {
+//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                    }
                 }
                 cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
@@ -785,10 +760,7 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 ptrOnVectorZData = v->z().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return v;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
@@ -802,7 +774,6 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
                 return v;
             }
-
             cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
         }
     }
@@ -849,10 +820,7 @@ DataBase::ptr ReadCFX::load2dField(int Area2d, Variable var) {
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return s;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
                     ptrOnScalarData[j] = *value.get();
 //                    if(j<100) {
 //                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
@@ -870,10 +838,7 @@ DataBase::ptr ReadCFX::load2dField(int Area2d, Variable var) {
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return v;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
