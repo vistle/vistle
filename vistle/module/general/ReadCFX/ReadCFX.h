@@ -125,9 +125,10 @@ class ReadCFX: public vistle::Module {
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected;
    std::vector<Areas2d> m_2dAreasSelected;
-   std::map<int, std::map<int, vistle::DataBase::ptr>> m_currentVolumedata, m_current2dData;
-   std::map<int, vistle::UnstructuredGrid::ptr> m_currentGrid;
-   std::map<int, vistle::Polygons::ptr> m_currentPolygon;
+
+   std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
+   std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
+   std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData;
 
    std::vector<portData> m_portDatas;
    std::vector<Area2dPortData> m_2dPortDatas;
@@ -141,12 +142,12 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
    vistle::DataBase::ptr load2dField(int Area2d, Variable var);
    bool initializeResultfile();
-   bool loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
-   bool load2dFields(int Area2d, int processor, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
+   bool loadFields(int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
+   bool load2dFields(int Area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
    index_t collectVolumes();
    index_t collect2dAreas();
-   bool addVolumeDataToPorts(int processor);
-   bool add2dDataToPorts(int processor);
+   bool addVolumeDataToPorts();
+   bool add2dDataToPorts();
    bool addGridToPort(int volumeNr);
    bool addPolygonToPort(int Area2d);
    void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
