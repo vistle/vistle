@@ -29,7 +29,7 @@
 
 #include "ReadCFX.h"
 
-//#define CFX_DEBUG
+#define CFX_DEBUG
 
 namespace bf = boost::filesystem;
 
@@ -1023,7 +1023,6 @@ bool ReadCFX::addVolumeDataToPorts() {
         if(!m_portDatas[portnum].m_vectorResfileVolumeData.empty()) {
             auto &volumedata = m_portDatas[portnum].m_vectorResfileVolumeData.back();
             if(volumedata) {
-                //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                 addObject(m_volumeDataOut[portnum], volumedata);
             }
             m_portDatas[portnum].m_vectorResfileVolumeData.pop_back();
@@ -1031,7 +1030,6 @@ bool ReadCFX::addVolumeDataToPorts() {
         }
         else {
             if(m_currentVolumedata[portnum]) {
-                //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                 addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
             }
         }
@@ -1224,9 +1222,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
 
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(timestep,i,numSel2dArea) == rank()) {
-#ifdef CFX_DEBUG
-            std::cerr << "process mit rank() = " << rank() << "; berechnet Area2d = " << i << "; in timestep = " << timestep << std::endl;
-#endif
+//            std::cerr << "process mit rank() = " << rank() << "; berechnet Area2d = " << i << "; in timestep = " << timestep << std::endl;
             if(m_ntimesteps==0) {
                 m_ResfilePolygonVec.push_back(loadPolygon(i));
                 load2dFields(i,setMetaTimestep, timestep, numSel2dArea, trnOrRes);
@@ -1277,6 +1273,7 @@ bool ReadCFX::clearResfileData () {
         m_2dPortDatas[i].Resfile2dIdVec.clear();
     }
     m_ResfileGridVec.clear();
+    m_ResfilePolygonVec.clear();
 
     return true;
 }
@@ -1355,6 +1352,19 @@ bool ReadCFX::compute() {
         }
     }
     clearResfileData();
+    m_fieldOut.clear();
+    m_2dOut.clear();
+    m_volumeDataOut.clear();
+    m_2dDataOut.clear();
+    m_volumesSelected.clear();
+    m_2dAreasSelected.clear();
+    m_gridsInTimestep.clear();
+    m_polygonsInTimestep.clear();
+    m_currentVolumedata.clear();
+    m_current2dData.clear();
+
+    grid.reset();
+
 #ifdef CFX_DEBUG
                     std::cerr << "Test6" << std::endl;
 #endif

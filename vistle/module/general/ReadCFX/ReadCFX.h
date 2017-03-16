@@ -118,18 +118,15 @@ class ReadCFX: public vistle::Module {
    vistle::Port *m_gridOut, *m_polyOut;
    std::vector<vistle::Port *> m_volumeDataOut, m_2dDataOut;
 
+   //Data
    CaseInfo m_case;
-
    int counts[cfxCNT_SIZE];
-
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected;
    std::vector<Areas2d> m_2dAreasSelected;
-
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData;
-
    std::vector<portData> m_portDatas;
    std::vector<Area2dPortData> m_2dPortDatas;
    std::vector<vistle::UnstructuredGrid::ptr> m_ResfileGridVec;
