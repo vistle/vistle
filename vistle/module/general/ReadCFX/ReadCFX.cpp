@@ -29,7 +29,7 @@
 
 #include "ReadCFX.h"
 
-#define CFX_DEBUG
+//#define CFX_DEBUG
 
 namespace bf = boost::filesystem;
 
@@ -954,16 +954,17 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
           return obj.varName == field;});
       if (it == allParam.end()) {
           if(!m_portDatas[i].vectorResfileVolumeData.empty()) {
-              //values are only in resfile --> timestep = -1
+              //data exist only in resfile --> timestep = -1
               setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
           }
           else {
-              m_currentVolumedata[i] = DataBase::ptr();
+              setMeta(m_gridsInTimestep[volumeNr],volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              m_currentVolumedata[i]= DataBase::ptr();
           }
       }
       else {
           if(!m_portDatas[i].vectorResfileVolumeData.empty() && trnOrRes) {
-              //resfile is last timestep
+              //variable exists in other timesteps as well. resfiledata are set as last timestep because they are the most converged data
               setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
               return true;
           }
@@ -974,6 +975,7 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
               m_currentVolumedata[i]= obj;
           }
           else {
+              //fill vector with resfile data
               m_portDatas[i].vectorResfileVolumeData.push_back(obj);
               m_portDatas[i].vectorVolumeDataVolumeNr.push_back(volumeNr);
               if(m_ntimesteps==0) {
@@ -997,7 +999,8 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_
                 set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
             }
             else {
-               m_current2dData[i] = DataBase::ptr();
+                setMeta(m_polygonsInTimestep[area2d],area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
+                m_current2dData[i] = DataBase::ptr();
             }
        }
        else {
@@ -1213,7 +1216,6 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                     if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_gridsInTimestep[i] = loadGrid(i);
                     }
-                    m_gridsInTimestep[i] = loadGrid(i);
                     loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
                     addGridToPort(i);
                     addVolumeDataToPorts();
@@ -1253,7 +1255,6 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                     if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_polygonsInTimestep[i] = loadPolygon(i);
                     }
-                    m_polygonsInTimestep[i] = loadPolygon(i);
                     load2dFields(i, setMetaTimestep, timestep, numSel2dArea, trnOrRes);
                     addPolygonToPort(i);
                     add2dDataToPorts();
@@ -1319,6 +1320,7 @@ bool ReadCFX::compute() {
         readTime(numSelVolumes,numSel2dArea,0,0,trnOrRes);
 #ifdef CFX_DEBUG
         std::cerr << "Test3" << std::endl;
+        std::cerr << "numSelVolumes = " << numSelVolumes << std::endl;
         std::cerr << "numSel2dArea = " << numSel2dArea << std::endl;
 #endif
 
@@ -1357,6 +1359,8 @@ bool ReadCFX::compute() {
             m_ExportDone = true;
         }
     }
+    sendInfo("vor clear");
+
     clearResfileData();
     m_fieldOut.clear();
     m_2dOut.clear();
@@ -1370,7 +1374,7 @@ bool ReadCFX::compute() {
     m_current2dData.clear();
 
     grid.reset();
-
+    sendInfo("nach clear");
 #ifdef CFX_DEBUG
                     std::cerr << "Test6" << std::endl;
 #endif
