@@ -25,42 +25,39 @@ struct IdWithZoneFlag {
     index_t zoneFlag;
 };
 
-struct portData {
-    std::vector<vistle::DataBase::ptr> m_vectorResfileVolumeData;
-    std::vector<std::int16_t> m_vectorVolumeDataVolumeNr;
+struct PortData {
+    std::vector<vistle::DataBase::ptr> vectorResfileVolumeData;
+    std::vector<std::int16_t> vectorVolumeDataVolumeNr;
 };
 
 struct Area2dPortData {
-    std::vector<vistle::DataBase::ptr> Resfile2dDataVec;
-    std::vector<std::int16_t> Resfile2dIdVec;
+    std::vector<vistle::DataBase::ptr> resfile2dDataVec;
+    std::vector<std::int16_t> resfile2dIdVec;
 };
 
 struct Areas2d {
-    IdWithZoneFlag m_IdWithZone;
-    std::string m_2dAreaType;
+    IdWithZoneFlag idWithZone;
+    std::string area2dType;
 };
 
-class Variable {
-public:
+struct Variable {
     Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone);
-    std::string m_VarName;
-    int m_VarDimension;
-    int m_onlyMeaningfulOnBoundary; //if 1 than variable has only meaningful values on the boundary
-    std::vector<IdWithZoneFlag> m_vectorIdwithZone;
+    std::string varName;
+    int varDimension;
+    int onlyMeaningfulOnBoundary; //if 1 than variable has only meaningful values on the boundary
+    std::vector<IdWithZoneFlag> vectorIdwithZone;
 };
 
-class Boundary {
-public:
+struct Boundary {
     Boundary(std::string Name, int ID, int zone);
-    std::string m_BoundName;
-    IdWithZoneFlag m_IdwithZone;
+    std::string boundName;
+    IdWithZoneFlag idWithZone;
 };
 
-class Region {
-public:
+struct Region {
     Region(std::string Name, int ID, int zone);
-    std::string m_RegionName;
-    IdWithZoneFlag m_IdwithZone;
+    std::string regionName;
+    IdWithZoneFlag idWithZone;
 };
 
 class CaseInfo {
@@ -127,7 +124,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData;
-   std::vector<portData> m_portDatas;
+   std::vector<PortData> m_portDatas;
    std::vector<Area2dPortData> m_2dPortDatas;
    std::vector<vistle::UnstructuredGrid::ptr> m_ResfileGridVec;
    std::vector<vistle::Polygons::ptr> m_ResfilePolygonVec;
@@ -135,24 +132,24 @@ class ReadCFX: public vistle::Module {
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
-   vistle::Polygons::ptr loadPolygon(int Area2d);
+   vistle::Polygons::ptr loadPolygon(int area2d);
    vistle::DataBase::ptr loadField(int volumeNr, Variable var);
-   vistle::DataBase::ptr load2dField(int Area2d, Variable var);
+   vistle::DataBase::ptr load2dField(int area2d, Variable var);
    bool initializeResultfile();
    bool loadFields(int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
-   bool load2dFields(int Area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
+   bool load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
    index_t collectVolumes();
    index_t collect2dAreas();
    bool addVolumeDataToPorts();
    bool add2dDataToPorts();
    bool addGridToPort(int volumeNr);
-   bool addPolygonToPort(int Area2d);
+   bool addPolygonToPort(int area2d);
    void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes);
    bool readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes);
    bool clearResfileData ();
-   bool free2dArea(const char *Area2dType, int Area2d);
+   bool free2dArea(const char *area2dType, int area2d);
 
 };
 

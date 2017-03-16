@@ -128,21 +128,21 @@ IdWithZoneFlag::IdWithZoneFlag(index_t r
 }
 
 Variable::Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone)
-    : m_VarName(Name),
-      m_VarDimension(Dimension),
-      m_onlyMeaningfulOnBoundary(onlyMeaningful) {
-    m_vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
+    : varName(Name),
+      varDimension(Dimension),
+      onlyMeaningfulOnBoundary(onlyMeaningful) {
+    vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
 }
 
 Boundary::Boundary(std::string Name, int ID, int zone)
-    : m_BoundName(Name),
-      m_IdwithZone(IdWithZoneFlag(ID,zone)) {
+    : boundName(Name),
+      idWithZone(IdWithZoneFlag(ID,zone)) {
 
 }
 
 Region::Region(std::string Name, int ID, int zone)
-    : m_RegionName(Name),
-      m_IdwithZone(IdWithZoneFlag(ID,zone)) {
+    : regionName(Name),
+      idWithZone(IdWithZoneFlag(ID,zone)) {
 
 }
 
@@ -215,7 +215,7 @@ void CaseInfo::parseResultfile() {
         for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
             const char *VariableName = cfxExportVariableName(varnum,ReadCFX::alias);
             auto it = find_if(m_allParam.begin(), m_allParam.end(), [&VariableName](const Variable& obj) {
-                return obj.m_VarName == VariableName;
+                return obj.varName == VariableName;
             });
             if (it == m_allParam.end()) {
                 if(!cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) {
@@ -226,7 +226,7 @@ void CaseInfo::parseResultfile() {
             }
             else {
                 auto index = std::distance(m_allParam.begin(), it);
-                m_allParam[index].m_vectorIdwithZone.push_back(IdWithZoneFlag(varnum,i));
+                m_allParam[index].vectorIdwithZone.push_back(IdWithZoneFlag(varnum,i));
             }
 
             cfxExportVariableFree(varnum);
@@ -250,23 +250,23 @@ void CaseInfo::parseResultfile() {
 
     //verification:
 //    for(index_t i=0;i<m_allParam.size();++i) {
-//        std::cerr << "m_allParam[" << i << "].m_VarName = " << m_allParam[i].m_VarName << std::endl;
-//        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].m_VarDimension << std::endl;
-//        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].m_onlyMeaningfulOnBoundary << std::endl;
-//        for(index_t j=0;j<m_allParam[i].m_vectorIdwithZone.size();++j) {
-//            std::cerr << "m_allParam[" << i << "].IdwZone.ID = " << m_allParam[i].m_vectorIdwithZone[j].ID << std::endl;
-//            std::cerr << "m_allParam[" << i << "].IdwZone.zoneFlag = " << m_allParam[i].m_vectorIdwithZone[j].zoneFlag << std::endl;
+//        std::cerr << "m_allParam[" << i << "].varName = " << m_allParam[i].varName << std::endl;
+//        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].varDimension << std::endl;
+//        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].onlyMeaningfulOnBoundary << std::endl;
+//        for(index_t j=0;j<m_allParam[i].vectorIdwithZone.size();++j) {
+//            std::cerr << "m_allParam[" << i << "].IdwZone.ID = " << m_allParam[i].vectorIdwithZone[j].ID << std::endl;
+//            std::cerr << "m_allParam[" << i << "].IdwZone.zoneFlag = " << m_allParam[i].vectorIdwithZone[j].zoneFlag << std::endl;
 //        }
 //    }
 //    for(index_t i=0;i<m_allBoundaries.size();++i) {
-//        std::cerr << "m_allBoundaries[" << i << "].m_BoundName = " << m_allBoundaries[i].m_BoundName << std::endl;
-//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.ID = " << m_allBoundaries[i].m_IdwithZone.ID << std::endl;
-//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.zoneFlag = " << m_allBoundaries[i].m_IdwithZone.zoneFlag << std::endl;
+//        std::cerr << "m_allBoundaries[" << i << "].boundName = " << m_allBoundaries[i].boundName << std::endl;
+//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.ID = " << m_allBoundaries[i].idWithZone.ID << std::endl;
+//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.zoneFlag = " << m_allBoundaries[i].idWithZone.zoneFlag << std::endl;
 //    }
 //    for(index_t i=0;i<m_allRegions.size();++i) {
-//        std::cerr << "m_allRegions[" << i << "].m_RegionName = " << m_allRegions[i].m_RegionName << std::endl;
-//        std::cerr << "m_allRegions[" << i << "].IdwZone.ID = " << m_allRegions[i].m_IdwithZone.ID << std::endl;
-//        std::cerr << "m_allRegions[" << i << "].IdwZone.zoneFlag = " << m_allRegions[i].m_IdwithZone.zoneFlag << std::endl;
+//        std::cerr << "m_allRegions[" << i << "].regionName = " << m_allRegions[i].regionName << std::endl;
+//        std::cerr << "m_allRegions[" << i << "].IdwZone.ID = " << m_allRegions[i].idWithZone.ID << std::endl;
+//        std::cerr << "m_allRegions[" << i << "].IdwZone.zoneFlag = " << m_allRegions[i].idWithZone.zoneFlag << std::endl;
 //    }
 
     return;
@@ -279,10 +279,10 @@ void CaseInfo::getFieldList() {
     m_field_param.push_back("(NONE)");
 
     for(index_t varnum=0;varnum<m_numberOfVariables;varnum++) {
-        if(m_allParam[varnum].m_onlyMeaningfulOnBoundary != 1) {
-            m_field_param.push_back(m_allParam[varnum].m_VarName);
+        if(m_allParam[varnum].onlyMeaningfulOnBoundary != 1) {
+            m_field_param.push_back(m_allParam[varnum].varName);
         }
-        m_boundary_param.push_back(m_allParam[varnum].m_VarName);
+        m_boundary_param.push_back(m_allParam[varnum].varName);
     }
     return;
 }
@@ -402,11 +402,11 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
                     std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
                     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
+                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].boundName).c_str());
                     }
                     std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
                     for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
-                        sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].m_RegionName).c_str());
+                        sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
                     }
                 }
                 cfxExportZoneFree();
@@ -585,26 +585,30 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     return grid;
 }
 
-Polygons::ptr ReadCFX::loadPolygon(int Area2d) {
-    if(cfxExportZoneSet(m_2dAreasSelected[Area2d].m_IdWithZone.zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
+Polygons::ptr ReadCFX::loadPolygon(int area2d) {
+    if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
         std::cerr << "invalid zone number" << std::endl;
     }
 
     int *nodeListOf2dArea;
     index_t nNodesInZone, nNodesIn2dArea, nConnectIn2dArea, nFacesIn2dArea;
 
-    if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"boundary")) {
-        nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES);
-        nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
-        nFacesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_FACES);
+    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+        nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+        nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+        nFacesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
     }
-    else if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"region")) {
-        nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES);
-        nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
-        nFacesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_FACES);
+    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+        nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+        nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+        nFacesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
     }
     else {
         std::cerr << "error in loadPolygon: no valid 2d area" << std::endl;
+        int dmy = 0;
+        nodeListOf2dArea = &dmy;
+        nNodesIn2dArea = 0;
+        nFacesIn2dArea = 0;
     }
 
     nNodesInZone = cfxExportNodeCount();
@@ -638,19 +642,21 @@ Polygons::ptr ReadCFX::loadPolygon(int Area2d) {
 //        }
 
     cfxExportNodeFree();
-    free2dArea((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(), Area2d);
+    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
 
     //attention: cfxExportBoundary/RegionList(cfxREG_FACES) has to be called AFTER cfxExportBoundary/RegionList(cfxREG_NODES) and free2dArea
     //if not, cfxExportBoundary/RegionList(cfxREG_NODES) gives unreasonable values for node id's
     int *faceListOf2dArea;
-    if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"boundary")) {
-        faceListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
+    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+        faceListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
     }
-    else if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"region")) {
-        faceListOf2dArea = cfxExportRegionList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
+    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+        faceListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
     }
     else {
         std::cerr << "error in loadPolygon: no valid 2D area" << std::endl;
+        int dmy = 0;
+        faceListOf2dArea = &dmy;
     }
 
     //load face types, element list and connectivity list into polygon
@@ -719,14 +725,14 @@ Polygons::ptr ReadCFX::loadPolygon(int Area2d) {
 //        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
 //    }
 
-    free2dArea((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(), Area2d);
+    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
 
     return polygon;
 }
 
 DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
-    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
-        if(var.m_vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
+    for(index_t i=0;i<var.vectorIdwithZone.size();++i) {
+        if(var.vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
             if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
@@ -735,9 +741,9 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
             int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
 
             //read field parameters
-            index_t varnum = var.m_vectorIdwithZone[i].ID;
+            index_t varnum = var.vectorIdwithZone[i].ID;
 
-            if(var.m_VarDimension == 1) {
+            if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
@@ -753,7 +759,7 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
                 return s;
             }
-            else if(var.m_VarDimension == 3) {
+            else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
                 boost::shared_ptr<float_t> value(new float[3]);
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
@@ -782,12 +788,12 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
     return DataBase::ptr();
 }
 
-bool ReadCFX::free2dArea(const char *Area2dType, int Area2d) {
-    if(!strcmp(Area2dType,"boundary")) {
-        cfxExportBoundaryFree(m_2dAreasSelected[Area2d].m_IdWithZone.ID);
+bool ReadCFX::free2dArea(const char *area2dType, int area2d) {
+    if(!strcmp(area2dType,"boundary")) {
+        cfxExportBoundaryFree(m_2dAreasSelected[area2d].idWithZone.ID);
     }
-    else if(!strcmp(Area2dType,"region")) {
-        cfxExportRegionFree(m_2dAreasSelected[Area2d].m_IdWithZone.ID);
+    else if(!strcmp(area2dType,"region")) {
+        cfxExportRegionFree(m_2dAreasSelected[area2d].idWithZone.ID);
     }
     else {
         std::cerr << "Fehler free2dArea" << std::endl;
@@ -795,29 +801,29 @@ bool ReadCFX::free2dArea(const char *Area2dType, int Area2d) {
     return true;
 }
 
-DataBase::ptr ReadCFX::load2dField(int Area2d, Variable var) {
-    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
-        if(m_2dAreasSelected[Area2d].m_IdWithZone.zoneFlag == var.m_vectorIdwithZone[i].zoneFlag) {
-            if(cfxExportZoneSet(m_2dAreasSelected[Area2d].m_IdWithZone.zoneFlag,NULL) < 0) {
+DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
+    for(index_t i=0;i<var.vectorIdwithZone.size();++i) {
+        if(m_2dAreasSelected[area2d].idWithZone.zoneFlag == var.vectorIdwithZone[i].zoneFlag) {
+            if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            index_t nNodesIn2dArea;
+            index_t nNodesIn2dArea=0;
             int *nodeListOf2dArea;
-            if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"boundary")) {
-                nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES);
-                nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+            if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+                nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+                nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
             }
-            else if(!strcmp((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(),"region")) {
-                nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES);
-                nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[Area2d].m_IdWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+            else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+                nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+                nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
             }
             else {
                 std::cerr << "Fehler in load2dAreaField 1" << std::endl;
             }
 
             //read field parameters
-            index_t varnum = var.m_vectorIdwithZone[i].ID;
-            if(var.m_VarDimension == 1) {
+            index_t varnum = var.vectorIdwithZone[i].ID;
+            if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesIn2dArea));
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
@@ -829,10 +835,10 @@ DataBase::ptr ReadCFX::load2dField(int Area2d, Variable var) {
 //                    }
                 }
                 cfxExportVariableFree(varnum);
-                free2dArea((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(), Area2d);
+                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return s;
             }
-            else if(var.m_VarDimension == 3) {
+            else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesIn2dArea));
                 boost::shared_ptr<float_t> value(new float[3]);
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
@@ -851,10 +857,10 @@ DataBase::ptr ReadCFX::load2dField(int Area2d, Variable var) {
 //                    }
                 }
                 cfxExportVariableFree(varnum);
-                free2dArea((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(), Area2d);
+                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return v;
             }
-            free2dArea((m_2dAreasSelected[Area2d].m_2dAreaType).c_str(), Area2d);
+            free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
         }
     }
     return DataBase::ptr();
@@ -914,15 +920,15 @@ index_t ReadCFX::collect2dAreas() {
 
     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
         if(m_coRestraint2dAreas(i)) {
-            m_2dAreasSelected[numberOfSelected2dAreas].m_IdWithZone=IdWithZoneFlag(allBoundaries[i-1].m_IdwithZone.ID,allBoundaries[i-1].m_IdwithZone.zoneFlag);
-            m_2dAreasSelected[numberOfSelected2dAreas].m_2dAreaType = "boundary";
+            m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allBoundaries[i-1].idWithZone.ID,allBoundaries[i-1].idWithZone.zoneFlag);
+            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "boundary";
             numberOfSelected2dAreas++;
         }
     }
     for(index_t i=m_case.getNumberOfBoundaries()+1;i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
         if(m_coRestraint2dAreas(i)) {
-            m_2dAreasSelected[numberOfSelected2dAreas].m_IdWithZone=IdWithZoneFlag(allRegions[i-m_case.getNumberOfBoundaries()-1].m_IdwithZone.ID,allRegions[i-m_case.getNumberOfBoundaries()-1].m_IdwithZone.zoneFlag);
-            m_2dAreasSelected[numberOfSelected2dAreas].m_2dAreaType = "region";
+            m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.ID,allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.zoneFlag);
+            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "region";
             numberOfSelected2dAreas++;
         }
     }
@@ -932,7 +938,7 @@ index_t ReadCFX::collect2dAreas() {
     //zum Testen
 //    if(rank()==0) {
 //        for(index_t i=0;i<numberOfSelected2dAreas;++i) {
-//            std::cerr << "m_2dAreasSelected[" << i << "] = " << m_2dAreasSelected[i].m_IdWithZone.ID << "; zoneflag = " << m_2dAreasSelected[i].m_IdWithZone.zoneFlag << std::endl;
+//            std::cerr << "m_2dAreasSelected[" << i << "] = " << m_2dAreasSelected[i].idWithZone.ID << "; zoneflag = " << m_2dAreasSelected[i].idWithZone.zoneFlag << std::endl;
 //        }
 //    }
 
@@ -945,20 +951,20 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
-          return obj.m_VarName == field;});
+          return obj.varName == field;});
       if (it == allParam.end()) {
-          if(!m_portDatas[i].m_vectorResfileVolumeData.empty()) {
+          if(!m_portDatas[i].vectorResfileVolumeData.empty()) {
               //values are only in resfile --> timestep = -1
-              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),m_portDatas[i].m_vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
           }
           else {
               m_currentVolumedata[i] = DataBase::ptr();
           }
       }
       else {
-          if(!m_portDatas[i].m_vectorResfileVolumeData.empty() && trnOrRes) {
+          if(!m_portDatas[i].vectorResfileVolumeData.empty() && trnOrRes) {
               //resfile is last timestep
-              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),m_portDatas[i].m_vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
               return true;
           }
           auto index = std::distance(allParam.begin(), it);
@@ -968,10 +974,10 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
               m_currentVolumedata[i]= obj;
           }
           else {
-              m_portDatas[i].m_vectorResfileVolumeData.push_back(obj);
-              m_portDatas[i].m_vectorVolumeDataVolumeNr.push_back(volumeNr);
+              m_portDatas[i].vectorResfileVolumeData.push_back(obj);
+              m_portDatas[i].vectorVolumeDataVolumeNr.push_back(volumeNr);
               if(m_ntimesteps==0) {
-                  setDataObject(m_ResfileGridVec.back(),m_portDatas[i].m_vectorResfileVolumeData.back(),volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+                  setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
               }
           }
       }
@@ -979,38 +985,38 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
    return true;
 }
 
-bool ReadCFX::load2dFields(int Area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
     for (int i=0; i<Num2dPorts; ++i) {
-        std::string Area2dField = m_2dOut[i]->getValue();
+        std::string area2dField = m_2dOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
-        auto it = find_if(allParam.begin(), allParam.end(), [&Area2dField](const Variable& obj) {
-            return obj.m_VarName == Area2dField;});
+        auto it = find_if(allParam.begin(), allParam.end(), [&area2dField](const Variable& obj) {
+            return obj.varName == area2dField;});
         if (it == allParam.end()) {
-            if(!m_2dPortDatas[i].Resfile2dDataVec.empty()) {
+            if(!m_2dPortDatas[i].resfile2dDataVec.empty()) {
                 //values are only in resfile --> timestep = -1
-                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].Resfile2dDataVec.back(),m_2dPortDatas[i].Resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
+                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
             }
             else {
                m_current2dData[i] = DataBase::ptr();
             }
        }
        else {
-            if(!m_2dPortDatas[i].Resfile2dDataVec.empty() && trnOrRes) {
+            if(!m_2dPortDatas[i].resfile2dDataVec.empty() && trnOrRes) {
                 //resfile is last timestep
-                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].Resfile2dDataVec.back(),m_2dPortDatas[i].Resfile2dIdVec.back(),0,0,numSel2dArea,0);
+                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),0,0,numSel2dArea,0);
                 return true;
            }
            auto index = std::distance(allParam.begin(), it);
-           DataBase::ptr obj = load2dField(Area2d, allParam[index]);
+           DataBase::ptr obj = load2dField(area2d, allParam[index]);
            if(trnOrRes) {
-               set2dObject(m_polygonsInTimestep[Area2d],obj,Area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+               set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
                m_current2dData[i]= obj;
            }
            else {
-               m_2dPortDatas[i].Resfile2dDataVec.push_back(obj);
-               m_2dPortDatas[i].Resfile2dIdVec.push_back(Area2d);
+               m_2dPortDatas[i].resfile2dDataVec.push_back(obj);
+               m_2dPortDatas[i].resfile2dIdVec.push_back(area2d);
                if(m_ntimesteps==0) {
-                   set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].Resfile2dDataVec.back(),Area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
+                   set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
                }
            }
        }
@@ -1020,13 +1026,13 @@ bool ReadCFX::load2dFields(int Area2d, int setMetaTimestep, int timestep, index_
 
 bool ReadCFX::addVolumeDataToPorts() {
     for (int portnum=0; portnum<NumPorts; ++portnum) {
-        if(!m_portDatas[portnum].m_vectorResfileVolumeData.empty()) {
-            auto &volumedata = m_portDatas[portnum].m_vectorResfileVolumeData.back();
+        if(!m_portDatas[portnum].vectorResfileVolumeData.empty()) {
+            auto &volumedata = m_portDatas[portnum].vectorResfileVolumeData.back();
             if(volumedata) {
                 addObject(m_volumeDataOut[portnum], volumedata);
             }
-            m_portDatas[portnum].m_vectorResfileVolumeData.pop_back();
-            m_portDatas[portnum].m_vectorVolumeDataVolumeNr.pop_back();
+            m_portDatas[portnum].vectorResfileVolumeData.pop_back();
+            m_portDatas[portnum].vectorVolumeDataVolumeNr.pop_back();
         }
         else {
             if(m_currentVolumedata[portnum]) {
@@ -1039,14 +1045,14 @@ bool ReadCFX::addVolumeDataToPorts() {
 
 bool ReadCFX::add2dDataToPorts() {
     for (int portnum=0; portnum<Num2dPorts; ++portnum) {
-        if(!m_2dPortDatas[portnum].Resfile2dDataVec.empty()) {
-            auto &data2d = m_2dPortDatas[portnum].Resfile2dDataVec.back();
+        if(!m_2dPortDatas[portnum].resfile2dDataVec.empty()) {
+            auto &data2d = m_2dPortDatas[portnum].resfile2dDataVec.back();
             if(data2d) {
                 //std::cerr << "addVolume(" << portnum << ")" << std::endl;
                 addObject(m_2dDataOut[portnum], data2d);
             }
-            m_2dPortDatas[portnum].Resfile2dDataVec.pop_back();
-            m_2dPortDatas[portnum].Resfile2dIdVec.pop_back();
+            m_2dPortDatas[portnum].resfile2dDataVec.pop_back();
+            m_2dPortDatas[portnum].resfile2dIdVec.pop_back();
         }
         else {
             if(m_current2dData[portnum]) {
@@ -1068,13 +1074,13 @@ bool ReadCFX::addGridToPort(int volumeNr) {
     return true;
 }
 
-bool ReadCFX::addPolygonToPort(int Area2d) {
+bool ReadCFX::addPolygonToPort(int area2d) {
     if(!m_ResfilePolygonVec.empty()) {
         addObject(m_polyOut,m_ResfilePolygonVec.back());
         m_ResfilePolygonVec.pop_back();
     }
     else {
-        addObject(m_polyOut,m_polygonsInTimestep[Area2d]);
+        addObject(m_polyOut,m_polygonsInTimestep[area2d]);
     }
     return true;
 }
@@ -1166,9 +1172,9 @@ bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int 
     return true;
 }
 
-bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int Area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
-    setMeta(polygon,Area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-    setMeta(data,Area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+    setMeta(polygon,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+    setMeta(data,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
     data->setGrid(polygon);
     data->setMapping(DataBase::Vertex);
 
@@ -1190,8 +1196,8 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                 if(trnOrRes) {
                     if(m_addToPortResfileVolumeData) {
                         for(int j=0;j<NumPorts;++j) {
-                            if(!m_portDatas[j].m_vectorResfileVolumeData.empty()) {
-                                index_t nResfileDataSets = m_portDatas[j].m_vectorResfileVolumeData.size();
+                            if(!m_portDatas[j].vectorResfileVolumeData.empty()) {
+                                index_t nResfileDataSets = m_portDatas[j].vectorResfileVolumeData.size();
                                 for(index_t k=0;k<nResfileDataSets;++k) {
                                     loadFields(0, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
                                     addGridToPort(i);
@@ -1222,7 +1228,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
 
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(timestep,i,numSel2dArea) == rank()) {
-//            std::cerr << "process mit rank() = " << rank() << "; berechnet Area2d = " << i << "; in timestep = " << timestep << std::endl;
+//            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in timestep = " << timestep << std::endl;
             if(m_ntimesteps==0) {
                 m_ResfilePolygonVec.push_back(loadPolygon(i));
                 load2dFields(i,setMetaTimestep, timestep, numSel2dArea, trnOrRes);
@@ -1233,8 +1239,8 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                 if(trnOrRes) {
                     if(m_addToPortResfile2dData) {
                         for(int j=0;j<Num2dPorts;++j) {
-                            if(!m_2dPortDatas[j].Resfile2dDataVec.empty()) {
-                                int nResfileDataSets = m_2dPortDatas[j].Resfile2dDataVec.size();
+                            if(!m_2dPortDatas[j].resfile2dDataVec.empty()) {
+                                int nResfileDataSets = m_2dPortDatas[j].resfile2dDataVec.size();
                                 for(int k=0;k<nResfileDataSets;++k) {
                                     load2dFields(0, setMetaTimestep, timestep, numSel2dArea, trnOrRes);
                                     addPolygonToPort(0);
@@ -1265,12 +1271,12 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
 
 bool ReadCFX::clearResfileData () {
     for(int i=0;i<NumPorts;++i) {
-        m_portDatas[i].m_vectorResfileVolumeData.clear();
-        m_portDatas[i].m_vectorVolumeDataVolumeNr.clear();
+        m_portDatas[i].vectorResfileVolumeData.clear();
+        m_portDatas[i].vectorVolumeDataVolumeNr.clear();
     }
     for(int i=0;i<Num2dPorts;++i) {
-        m_2dPortDatas[i].Resfile2dDataVec.clear();
-        m_2dPortDatas[i].Resfile2dIdVec.clear();
+        m_2dPortDatas[i].resfile2dDataVec.clear();
+        m_2dPortDatas[i].resfile2dIdVec.clear();
     }
     m_ResfileGridVec.clear();
     m_ResfilePolygonVec.clear();
