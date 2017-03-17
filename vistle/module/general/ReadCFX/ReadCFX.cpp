@@ -30,6 +30,8 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
+#define parallelOverZones
+//#define parallelOverVolumes
 
 namespace bf = boost::filesystem;
 
@@ -41,13 +43,14 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -1304,25 +1307,14 @@ bool ReadCFX::compute() {
         }
         //read variables out of .res file
         trnOrRes = 0;
-#ifdef CFX_DEBUG
-        std::cerr << "Test1" << std::endl;
-#endif
         m_addToPortResfileVolumeData = true;
         m_addToPortResfile2dData = true;
         clearResfileData();
-#ifdef CFX_DEBUG
-        std::cerr << "Test2" << std::endl;
-#endif
         numSelVolumes = collectVolumes();
         numSel2dArea = collect2dAreas();
         m_gridsInTimestep.resize(numSelVolumes);
         m_polygonsInTimestep.resize(numSel2dArea);
         readTime(numSelVolumes,numSel2dArea,0,0,trnOrRes);
-#ifdef CFX_DEBUG
-        std::cerr << "Test3" << std::endl;
-        std::cerr << "numSelVolumes = " << numSelVolumes << std::endl;
-        std::cerr << "numSel2dArea = " << numSel2dArea << std::endl;
-#endif
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
@@ -1341,17 +1333,10 @@ bool ReadCFX::compute() {
                             sendInfo("%d. %s",i,cfxExportVariableName(i,alias));
                         }
                     }
-#ifdef CFX_DEBUG
-                    std::cerr << "Test4" << std::endl;
-#endif
-
                     m_case.parseResultfile();
                     numSelVolumes = collectVolumes();
                     numSel2dArea = collect2dAreas();
                     readTime(numSelVolumes,numSel2dArea,setMetaTimestep,timestep,trnOrRes);
-#ifdef CFX_DEBUG
-                    std::cerr << "Test5" << std::endl;
-#endif
                 }
                 setMetaTimestep++;
             }
@@ -1359,7 +1344,6 @@ bool ReadCFX::compute() {
             m_ExportDone = true;
         }
     }
-    sendInfo("vor clear");
 
     clearResfileData();
     m_fieldOut.clear();
@@ -1374,9 +1358,53 @@ bool ReadCFX::compute() {
     m_current2dData.clear();
 
     grid.reset();
-    sendInfo("nach clear");
-#ifdef CFX_DEBUG
-                    std::cerr << "Test6" << std::endl;
-#endif
+
     return true;
 }
+
+
+//        //Testfeld particles
+//        int numParticlesType = cfxExportGetNumberOfParticleTypes();
+
+//        std::cerr << "cfxExportGetNumberOfParticleTypes() = " << cfxExportGetNumberOfParticleTypes() << std::endl;
+
+//        for(int typeIndex=1; typeIndex<=numParticlesType; ++typeIndex) {
+//            std::cerr << "cfxExportGetNumberOfTracks(" << typeIndex << ") = " << cfxExportGetNumberOfTracks(typeIndex) << std::endl;
+//            std::cerr << "cfxExportGetParticleName(" << typeIndex << ") = " << cfxExportGetParticleName(typeIndex) << std::endl;
+//            for(int j=1; j<=5; ++j) {
+//                int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(typeIndex,j);
+//                std::cerr << "cfxExportGetNumberOfPointsOnParticleTrack(" << typeIndex << "," << j << ") = " << cfxExportGetNumberOfPointsOnParticleTrack(typeIndex,j) << std::endl;
+//                float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(typeIndex,j,&NumOfPointsOnTrack);
+//                float *ParticleTrackTime = cfxExportGetParticleTrackTimeByTrack(typeIndex,j,&NumOfPointsOnTrack);
+//                for(int k=0;k<cfxExportGetNumberOfPointsOnParticleTrack(typeIndex,j);++k) {
+//                    if(k<10 || k>(cfxExportGetNumberOfPointsOnParticleTrack(typeIndex,j)-10)) {
+//                        std::cerr << "ParticleTrackCoords_x[" << k*3 << "] " << ParticleTrackCoords[k*3] << std::endl;
+//                        std::cerr << "ParticleTrackCoords_y[" << k*3+1 << "] " << ParticleTrackCoords[k*3+1] << std::endl;
+//                        std::cerr << "ParticleTrackCoords_z[" << k*3+2 << "] " << ParticleTrackCoords[k*3+2] << std::endl;
+//                        std::cerr << "ParticleTrackTime[" << k << "] " << ParticleTrackTime[k] << std::endl;
+//                    }
+//                }
+//            }
+//            int varCount = cfxExportGetParticleTypeVarCount(typeIndex);
+//            std::cerr << "cfxExportGetParticleTypeVarCount(" << typeIndex << " = " << cfxExportGetParticleTypeVarCount(typeIndex) << std::endl;
+//            for(int j=1; j<=varCount; ++j) {
+//                std::cerr << "cfxExportGetParticleTypeVarName(" << typeIndex << "," << j << ",1) = " << cfxExportGetParticleTypeVarName(typeIndex,j,1)  << std::endl;
+//                std::cerr << "cfxExportGetParticleTypeVarDimension(" << typeIndex << "," << j << ") = " << cfxExportGetParticleTypeVarDimension(typeIndex,j)  << std::endl;
+//                for(int trackIndex=1; trackIndex<=5; ++trackIndex) {
+//                    int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(typeIndex,trackIndex);
+//                    float *ParticleVar = cfxExportGetParticleTypeVar(typeIndex,j,trackIndex);
+//                    for(int pointIndex=0; pointIndex<NumOfPointsOnTrack; ++pointIndex) {
+//                        if(pointIndex < 5 || pointIndex>(NumOfPointsOnTrack-5)) {
+//                            if(cfxExportGetParticleTypeVarDimension(typeIndex,j) == 1) {
+//                                std::cerr << "ParticleVar[" << pointIndex << "] = " << ParticleVar[pointIndex]  << std::endl;
+//                            }
+//                            else if(cfxExportGetParticleTypeVarDimension(typeIndex,j) == 3) {
+//                                std::cerr << "ParticleVar_x[" << pointIndex*3 << "] = " << ParticleVar[pointIndex*3]  << std::endl;
+//                                std::cerr << "ParticleVar_y[" << pointIndex*3+1 << "] = " << ParticleVar[pointIndex*3+1]  << std::endl;
+//                                std::cerr << "ParticleVar_z[" << pointIndex*3+2 << "] = " << ParticleVar[pointIndex*3+2]  << std::endl;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }

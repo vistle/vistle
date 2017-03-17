@@ -110,7 +110,6 @@ class ReadCFX: public vistle::Module {
    index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps, m_nregions; // m_nboundaries, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
    int m_previousTimestep = 1;
 
-
    //Ports
    vistle::Port *m_gridOut, *m_polyOut;
    std::vector<vistle::Port *> m_volumeDataOut, m_2dDataOut;
