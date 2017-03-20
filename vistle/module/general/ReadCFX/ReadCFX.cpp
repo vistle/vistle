@@ -30,8 +30,8 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
-#define parallelOverZones
-//#define parallelOverVolumes
+//#define PARALLEL_ZONES
+
 
 namespace bf = boost::filesystem;
 
@@ -422,69 +422,81 @@ bool ReadCFX::changeParameter(const Parameter *p) {
     return Module::changeParameter(p);
 }
 
-UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
+UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
 
-    if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,counts) < 0) {
+    index_t nelmsIn3dArea, nconnectivities, nnodesIn3dArea;
+    if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,counts) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    //std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
-
-    index_t nnodesInVolume, nelmsInVolume, nconnectivities, nnodesInZone;
-    nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
-    nelmsInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS);
-    nnodesInZone = cfxExportNodeCount();
-    //std::cerr << "nodesInVolume = " << nnodesInVolume << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
-    //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+#ifdef PARALLEL_ZONES
+    nnodesIn3dArea = cfxExportNodeCount();
+    nelmsIn3dArea = cfxExportElementCount();
+#else
+    nnodesIn3dArea = cfxExportVolumeSize(m_3dAreasSelected[area3d].ID,cfxVOL_NODES);
+    nelmsIn3dArea = cfxExportVolumeSize(m_3dAreasSelected[area3d].ID,cfxVOL_ELEMS);
+#endif
+//    std::cerr << "m_3dAreasSelected[area3d].ID = " << m_3dAreasSelected[area3d].ID << std::endl;
+    std::cerr << "m_3dAreasSelected[area3d].zoneFlag = " << m_3dAreasSelected[area3d].zoneFlag << std::endl;
+    //std::cerr << "nodesInVolume = " << nnodesIn3dArea << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
+    //std::cerr << "nelmsIn3dArea = " << nelmsIn3dArea << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+    std::cerr << "area3d = " << area3d << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
-    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
+    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsIn3dArea, nconnectivities, nnodesIn3dArea)); //initialized with number of elements, number of connectivities, number of coordinates
 
     //load coords into unstructured grid
-    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-
     auto ptrOnXcoords = grid->x().data();
     auto ptrOnYcoords = grid->y().data();
     auto ptrOnZcoords = grid->z().data();
 
-    int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
+#ifdef PARALLEL_ZONES
+    cfxNode *nodes;
+    nodes = cfxExportNodeList();
+    for(index_t i=0;i<nnodesIn3dArea;++i) {
+        ptrOnXcoords[i] = nodes[i].x;
+        ptrOnYcoords[i] = nodes[i].y;
+        ptrOnZcoords[i] = nodes[i].z;
+    }
+#else
+    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    int *nodeListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_NODES); //query the nodes that define the volume
+    index_t nnodesInZone = cfxExportNodeCount();
     std::vector<std::int32_t> nodeListOfVolumeVec;
     nodeListOfVolumeVec.resize(nnodesInZone+1);
-
-    for(index_t i=0;i<nnodesInVolume;++i) {
+    for(index_t i=0;i<nnodesIn3dArea;++i) {
         cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get());   //get access to coordinates: [IN] nodeid [OUT] x,y,z
         ptrOnXcoords[i] = *x_coord.get();
         ptrOnYcoords[i] = *y_coord.get();
         ptrOnZcoords[i] = *z_coord.get();
         nodeListOfVolumeVec[nodeListOfVolume[i]] = i;
     }
-
+#endif
+    cfxExportNodeFree();
     //Test, ob Einlesen funktioniert hat
-    //        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
-    //        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
-//    for(int i=0;i<20;++i) {
-//            std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
-//    }
-    //        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
-    //        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
-
+    std::cerr << "m_nnodes = " << m_nnodes << std::endl;
+    std::cerr << "nnodesIn3dArea = " << nnodesIn3dArea << std::endl;
+    std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
+    for(int i=0;i<20;++i) {
+        std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
+    }
+    std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
 
     //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
-    boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
     auto ptrOnTl = grid->tl().data();
     auto ptrOnEl = grid->el().data();
     auto ptrOnCl = grid->cl().data();
 
-    int *elmListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS); //query the elements that define the volume
-
-    for(index_t i=0;i<nelmsInVolume;++i) {
-        cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get());
-        switch(*elemtype.get()) {
+#ifdef PARALLEL_ZONES
+    cfxElement *elems;
+    elems = cfxExportElementList();
+    for(index_t i=0;i<nelmsIn3dArea;++i) {
+        switch(elems[i].type) {
             case 4: {
                 ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = elems[i].nodeid[nodesOfElm_counter]-1; //cfx starts nodeid with 1; index of coordinate list starts with 0. index coordinate list = nodeid
                 }
                 elemListCounter += 4;
                 break;
@@ -493,7 +505,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = elems[i].nodeid[nodesOfElm_counter]-1;
                 }
                 elemListCounter += 5;
                 break;
@@ -503,12 +515,12 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnEl[i] = elemListCounter;
 
                 // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-                ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
-                ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
-                ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
-                ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
-                ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
-                ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+                ptrOnCl[elemListCounter+0] = elems[i].nodeid[3]-1;
+                ptrOnCl[elemListCounter+1] = elems[i].nodeid[5]-1;
+                ptrOnCl[elemListCounter+2] = elems[i].nodeid[4]-1;
+                ptrOnCl[elemListCounter+3] = elems[i].nodeid[0]-1;
+                ptrOnCl[elemListCounter+4] = elems[i].nodeid[2]-1;
+                ptrOnCl[elemListCounter+5] = elems[i].nodeid[1]-1;
                 elemListCounter += 6;
                 break;
             }
@@ -517,29 +529,92 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnEl[i] = elemListCounter;
 
                 // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-                ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
-                ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[6]];
-                ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[7]];
-                ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
-                ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
-                ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
-                ptrOnCl[elemListCounter+6] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
-                ptrOnCl[elemListCounter+7] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+                ptrOnCl[elemListCounter+0] = elems[i].nodeid[4]-1;
+                ptrOnCl[elemListCounter+1] = elems[i].nodeid[6]-1;
+                ptrOnCl[elemListCounter+2] = elems[i].nodeid[7]-1;
+                ptrOnCl[elemListCounter+3] = elems[i].nodeid[5]-1;
+                ptrOnCl[elemListCounter+4] = elems[i].nodeid[0]-1;
+                ptrOnCl[elemListCounter+5] = elems[i].nodeid[2]-1;
+                ptrOnCl[elemListCounter+6] = elems[i].nodeid[3]-1;
+                ptrOnCl[elemListCounter+7] = elems[i].nodeid[1]-1;
 
                 elemListCounter += 8;
                 break;
             }
             default: {
-                std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
+                std::cerr << "Elementtype(" << elems[i].type << "not yet implemented." << std::endl;
             }
         }
     }
+#else
+    boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
+    int *elmListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_ELEMS); //query the elements that define the volume
+    for(index_t i=0;i<nelmsIn3dArea;++i) {
+        cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get());
+        switch(*elemtype.get()) {
+        case 4: {
+            ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
+            ptrOnEl[i] = elemListCounter;
+            for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+            }
+            elemListCounter += 4;
+            break;
+        }
+        case 5: {
+            ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
+            ptrOnEl[i] = elemListCounter;
+            for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+            }
+            elemListCounter += 5;
+            break;
+        }
+        case 6: {
+            ptrOnTl[i] = (UnstructuredGrid::PRISM);
+            ptrOnEl[i] = elemListCounter;
+
+            // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
+            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
+            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
+            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
+            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
+            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+            elemListCounter += 6;
+            break;
+        }
+        case 8: {
+            ptrOnTl[i] = (UnstructuredGrid::HEXAHEDRON);
+            ptrOnEl[i] = elemListCounter;
+
+            // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
+            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
+            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[6]];
+            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[7]];
+            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
+            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
+            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
+            ptrOnCl[elemListCounter+6] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
+            ptrOnCl[elemListCounter+7] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+
+            elemListCounter += 8;
+            break;
+        }
+        default: {
+            std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
+        }
+        }
+    }
+    cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
+#endif
+
 
     //element after last element
-    ptrOnEl[nelmsInVolume] = elemListCounter;
+    ptrOnEl[nelmsIn3dArea] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
 
-    grid->cl().resize(elemListCounter); //correct initialization; initialized with connectivities in zone; connectivities in volume are <= connectivities in zone
+    grid->cl().resize(elemListCounter+1); //correct initialization; initialized with connectivities in zone; connectivities in 3dArea <= connectivities in zone
 
 //    cfxElement *elems = cfxExportElementList();
 
@@ -556,34 +631,33 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 
 
     //Test, ob Einlesen funktioniert hat
-//        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-//        std::cerr <<"no. elems total = " << m_nelems << std::endl;
-//        std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
-//        for(index_t i = nelmsInVolume-5;i<nelmsInVolume+1;++i) {
-//            //std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
-//            std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
+        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
+        //std::cerr <<"no. elems total = " << m_nelems << std::endl;
+        std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
+        for(index_t i = nelmsIn3dArea-5;i<nelmsIn3dArea;++i) {
+            //std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
+            std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
 //            for(index_t j = 0;j<1;++j) {
 //                std::cerr << "cl(" << i*8+j << ") = " << grid->cl().at(i*8+j) << std::endl;
 //            }
-//        }
+        }
 
-//    std::cerr << "grid->el(grid->getNumElements())" << grid->el().at(grid->getNumElements()) << std::endl;
-//    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
-//    std::cerr << "grid->getNumCorners()" << grid->getNumCorners() << std::endl;
-//    std::cerr << "grid->getNumVertices()" << grid->getNumVertices() << std::endl;
-//    std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
-//    std::cerr << "nconnectivities = " << nconnectivities << std::endl;
-//    std::cerr << "nnodesInVolume = " << nnodesInVolume << std::endl;
+    std::cerr << "grid->el(grid->getNumElements())" << grid->el().at(grid->getNumElements()) << std::endl;
+    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
+    std::cerr << "grid->getNumCorners()" << grid->getNumCorners() << std::endl;
+    std::cerr << "grid->getNumVertices()" << grid->getNumVertices() << std::endl;
+    std::cerr << "nelmsIn3dArea = " << nelmsIn3dArea << std::endl;
+    std::cerr << "nconnectivities = " << nconnectivities << std::endl;
+    std::cerr << "nnodesIn3dArea = " << nnodesIn3dArea << std::endl;
 
-//    for(int i=nelmsInVolume-10;i<=nelmsInVolume;++i) {
-//        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
-//    }
-//    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
-//        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
-//    }
-    cfxExportNodeFree();
+    for(index_t i=nelmsIn3dArea-10;i<=nelmsIn3dArea;++i) {
+        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
+    }
+    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
+        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
+    }
+
     cfxExportElementFree();
-    cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
 
     return grid;
 }
@@ -733,15 +807,56 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     return polygon;
 }
 
-DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
+DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
     for(index_t i=0;i<var.vectorIdwithZone.size();++i) {
-        if(var.vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
-            if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
+        if(var.vectorIdwithZone[i].zoneFlag == m_3dAreasSelected[area3d].zoneFlag) {
+            if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            //    std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
-            index_t nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
-            int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
+
+#ifdef PARALLEL_ZONES
+            index_t nnodesInZone = cfxExportNodeCount();
+            //read field parameters
+            index_t varnum = var.vectorIdwithZone[i].ID;
+            float *variableList = cfxExportVariableList(varnum,correct);
+
+            if(var.varDimension == 1) {
+                Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInZone));
+                scalar_t *ptrOnScalarData = s->x().data();
+
+                for(index_t j=0;j<nnodesInZone;++j) {
+                    ptrOnScalarData[j] = variableList[j];
+                    if(j<10) {
+                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+                    }
+                }
+                cfxExportVariableFree(varnum);
+                return s;
+            }
+            else if(var.varDimension == 3) {
+                Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInZone));
+                scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+                ptrOnVectorXData = v->x().data();
+                ptrOnVectorYData = v->y().data();
+                ptrOnVectorZData = v->z().data();
+
+                for(index_t j=0;j<nnodesInZone;++j) {
+                    ptrOnVectorXData[j] = variableList[3*j];
+                    ptrOnVectorYData[j] = variableList[3*j+1];
+                    ptrOnVectorZData[j] = variableList[3*j+2];
+                    if(j<20) {
+                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+                    }
+                }
+                cfxExportVariableFree(varnum);
+                return v;
+            }
+#else
+            //    std::cerr << "m_3dAreasSelected[area3d].ID = " << m_3dAreasSelected[area3d].ID << "; m_3dAreasSelected[area3d].zoneFlag = " << m_3dAreasSelected[area3d].zoneFlag << std::endl;
+            index_t nnodesInVolume = cfxExportVolumeSize(m_3dAreasSelected[area3d].ID,cfxVOL_NODES);
+            int *nodeListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_NODES); //query the nodes that define the volume
 
             //read field parameters
             index_t varnum = var.vectorIdwithZone[i].ID;
@@ -754,12 +869,12 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 for(index_t j=0;j<nnodesInVolume;++j) {
                     cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
                     ptrOnScalarData[j] = *value.get();
-//                    if(j<10) {
-//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//                    }
+                    if(j<10) {
+                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+                    }
                 }
                 cfxExportVariableFree(varnum);
-                cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
+                cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
                 return s;
             }
             else if(var.varDimension == 3) {
@@ -775,17 +890,18 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
-//                    if(j<20) {
-//                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//                    }
+                    if(j<20) {
+                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+                    }
                 }
                 cfxExportVariableFree(varnum);
-                cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
+                cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
                 return v;
             }
-            cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
+            cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
+#endif
         }
     }
     return DataBase::ptr();
@@ -869,48 +985,60 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
     return DataBase::ptr();
 }
 
-index_t ReadCFX::collectVolumes() {
+index_t ReadCFX::collect3dAreas() {
     // read zone selection; m_coRestraintZones contains a bool array of which zones are selected
-        //m_coRestraintZones(zone) = 1 Zone ist selektiert
-        //m_coRestraintZones(zone) = 0 Zone ist nicht selektiert
-        //group = -1 alle Zonen sind selektiert
+    //m_coRestraintZones(zone) = 1 zone is selected
+    //m_coRestraintZones(zone) = 0 zone isn't selected
+    //group = -1 zones are selected
     m_coRestraintZones.clear();
     m_coRestraintZones.add(m_zoneSelection->getValue());
     ssize_t val = m_coRestraintZones.getNumGroups(), group;
     m_coRestraintZones.get(val,group);
 
-    index_t numberOfSelectedVolumes=0;
-    m_volumesSelected.resize(m_nvolumes);
-
+    index_t numberOfSelected3dAreas=0;
+#ifdef PARALLEL_ZONES
+    m_3dAreasSelected.resize(m_nzones);
+#else
+    m_3dAreasSelected.resize(m_nvolumes);
+#endif
     for(index_t i=1;i<=m_nzones;++i) {
         if(m_coRestraintZones(i)) {
+#ifdef PARALLEL_ZONES
+            m_3dAreasSelected[numberOfSelected3dAreas]=IdWithZoneFlag(0,i);
+            numberOfSelected3dAreas++;
+#else
             if(cfxExportZoneSet(i,NULL)<0) {
                 std::cerr << "invalid zone number" << std::endl;
-                return numberOfSelectedVolumes;
+                return numberOfSelected3dAreas;
             }
             int nvolumes = cfxExportVolumeCount();
             for(int j=1;j<=nvolumes;++j) {
                 //std::cerr << "volumeName no. " << j << " in zone. " << i << " = " << cfxExportVolumeName(j) << std::endl;
-                m_volumesSelected[numberOfSelectedVolumes]=IdWithZoneFlag(j,i);
-                numberOfSelectedVolumes++;
+                m_3dAreasSelected[numberOfSelected3dAreas]=IdWithZoneFlag(j,i);
+                numberOfSelected3dAreas++;
             }
+#endif
         }
     }
-    m_volumesSelected.resize(numberOfSelectedVolumes);
+
+#ifndef PARALLEL_ZONES
+    m_3dAreasSelected.resize(numberOfSelected3dAreas);
+#endif
+
 
     //zum Testen
-//    for(index_t i=0;i<numberOfSelectedVolumes;++i) {
-//        std::cerr << "m_volumesSelected[" << i << "].ID = " << m_volumesSelected[i].ID << " m_volumesSelected.zoneFlag" << m_volumesSelected[i].zoneFlag << std::endl;
+//    for(index_t i=0;i<numberOfSelected3dAreas;++i) {
+//        std::cerr << "m_3dAreasSelected[" << i << "].ID = " << m_3dAreasSelected[i].ID << " m_3dAreasSelected.zoneFlag" << m_3dAreasSelected[i].zoneFlag << std::endl;
 //    }
     cfxExportZoneFree();
-    return numberOfSelectedVolumes;
+    return numberOfSelected3dAreas;
 }
 
 index_t ReadCFX::collect2dAreas() {
     //m_coRestraint2dAreas contains a bool array of which 2dAreas are selected
-    //m_coRestraint2dAreas(zone) = 1 2dAreas ist selektiert
-    //m_coRestraint2dAreas(zone) = 0 2dAreas ist nicht selektiert
-    //group = -1 alle 2dAreas sind selektiert
+    //m_coRestraint2dAreas(Area2d) = 1 Area2d is selected
+    //m_coRestraint2dAreas(Area2d) = 0 Area2d isn't selected
+    //group = -1 all Area2d are selected
     m_coRestraint2dAreas.clear();
     m_coRestraint2dAreas.add(m_2dAreaSelection->getValue());
     ssize_t val = m_coRestraint2dAreas.getNumGroups(), group;
@@ -949,7 +1077,7 @@ index_t ReadCFX::collect2dAreas() {
     return numberOfSelected2dAreas;
 }
 
-bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes) {
+bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -958,31 +1086,31 @@ bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_
       if (it == allParam.end()) {
           if(!m_portDatas[i].vectorResfileVolumeData.empty()) {
               //data exist only in resfile --> timestep = -1
-              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSel3dArea,trnOrRes);
           }
           else {
-              setMeta(m_gridsInTimestep[volumeNr],volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              setMeta(m_gridsInTimestep[area3d],area3d,setMetaTimestep,-1,numSel3dArea,trnOrRes);
               m_currentVolumedata[i]= DataBase::ptr();
           }
       }
       else {
           if(!m_portDatas[i].vectorResfileVolumeData.empty() && trnOrRes) {
               //variable exists in other timesteps as well. resfiledata are set as last timestep because they are the most converged data
-              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),0,0,numSel3dArea,0);
               return true;
           }
           auto index = std::distance(allParam.begin(), it);
-          DataBase::ptr obj = loadField(volumeNr, allParam[index]);
+          DataBase::ptr obj = loadField(area3d, allParam[index]);
           if(trnOrRes) {
-              setDataObject(m_gridsInTimestep[volumeNr],obj,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
+              setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
               m_currentVolumedata[i]= obj;
           }
           else {
               //fill vector with resfile data
               m_portDatas[i].vectorResfileVolumeData.push_back(obj);
-              m_portDatas[i].vectorVolumeDataVolumeNr.push_back(volumeNr);
+              m_portDatas[i].vectorVolumeDataVolumeNr.push_back(area3d);
               if(m_ntimesteps==0) {
-                  setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+                  setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),area3d,setMetaTimestep,-1,numSel3dArea,trnOrRes);
               }
           }
       }
@@ -1069,13 +1197,13 @@ bool ReadCFX::add2dDataToPorts() {
     return true;
 }
 
-bool ReadCFX::addGridToPort(int volumeNr) {
+bool ReadCFX::addGridToPort(int area3d) {
     if(!m_ResfileGridVec.empty()) {
         addObject(m_gridOut,m_ResfileGridVec.back());
         m_ResfileGridVec.pop_back();
     }
     else {
-        addObject(m_gridOut,m_gridsInTimestep[volumeNr]);
+        addObject(m_gridOut,m_gridsInTimestep[area3d]);
     }
     return true;
 }
@@ -1169,9 +1297,9 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
    }
 }
 
-bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes) {
-    setMeta(grid,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
-    setMeta(data,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
+bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes) {
+    setMeta(grid,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
+    setMeta(data,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
     data->setGrid(grid);
     data->setMapping(DataBase::Vertex);
 
@@ -1187,14 +1315,14 @@ bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d,
     return true;
 }
 
-bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes) {
-    for(index_t i=0;i<numSelVolumes;++i) {
-        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
-        if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {                    
+bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes) {
+    for(index_t i=0;i<numSel3dArea;++i) {
+        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSel3dArea) << std::endl;
+        if(rankForVolumeAndTimestep(timestep,i,numSel3dArea) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
             if(m_ntimesteps==0) {
                 m_ResfileGridVec.push_back(loadGrid(i));
-                loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                loadFields(i, setMetaTimestep, timestep, numSel3dArea, trnOrRes);
                 addGridToPort(i);
                 addVolumeDataToPorts();
             }
@@ -1205,7 +1333,7 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                             if(!m_portDatas[j].vectorResfileVolumeData.empty()) {
                                 index_t nResfileDataSets = m_portDatas[j].vectorResfileVolumeData.size();
                                 for(index_t k=0;k<nResfileDataSets;++k) {
-                                    loadFields(0, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                                    loadFields(0, setMetaTimestep, timestep, numSel3dArea, trnOrRes);
                                     addGridToPort(i);
                                     addVolumeDataToPorts();
                                 }
@@ -1213,19 +1341,19 @@ bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaT
                         }
                         m_addToPortResfileVolumeData=false;
                     }
-                    if(cfxExportZoneSet(m_volumesSelected[i].zoneFlag,NULL) < 0) { //set the right zone because cfxExportGridChanged depends on the zone
+                    if(cfxExportZoneSet(m_3dAreasSelected[i].zoneFlag,NULL) < 0) { //set the right zone because cfxExportGridChanged depends on the zone
                         std::cerr << "invalid zone number" << std::endl;
                     }
                     if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                         m_gridsInTimestep[i] = loadGrid(i);
                     }
-                    loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                    loadFields(i, setMetaTimestep, timestep, numSel3dArea, trnOrRes);
                     addGridToPort(i);
                     addVolumeDataToPorts();
                 }
                 else {
                     m_ResfileGridVec.push_back(loadGrid(i));
-                    loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                    loadFields(i, setMetaTimestep, timestep, numSel3dArea, trnOrRes);
                 }
             }
         }
@@ -1292,7 +1420,7 @@ bool ReadCFX::compute() {
 #ifdef CFX_DEBUG
     std::cerr << "Compute Start. \n";
 #endif
-    index_t numSelVolumes, numSel2dArea, setMetaTimestep=0;
+    index_t numSel3dArea, numSel2dArea, setMetaTimestep=0;
     index_t step = m_timeskip->getValue()+1;
     index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
     bool trnOrRes;
@@ -1310,11 +1438,11 @@ bool ReadCFX::compute() {
         m_addToPortResfileVolumeData = true;
         m_addToPortResfile2dData = true;
         clearResfileData();
-        numSelVolumes = collectVolumes();
+        numSel3dArea = collect3dAreas();
         numSel2dArea = collect2dAreas();
-        m_gridsInTimestep.resize(numSelVolumes);
+        m_gridsInTimestep.resize(numSel3dArea);
         m_polygonsInTimestep.resize(numSel2dArea);
-        readTime(numSelVolumes,numSel2dArea,0,0,trnOrRes);
+        readTime(numSel3dArea,numSel2dArea,0,0,trnOrRes);
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
@@ -1334,9 +1462,9 @@ bool ReadCFX::compute() {
                         }
                     }
                     m_case.parseResultfile();
-                    numSelVolumes = collectVolumes();
+                    numSel3dArea = collect3dAreas();
                     numSel2dArea = collect2dAreas();
-                    readTime(numSelVolumes,numSel2dArea,setMetaTimestep,timestep,trnOrRes);
+                    readTime(numSel3dArea,numSel2dArea,setMetaTimestep,timestep,trnOrRes);
                 }
                 setMetaTimestep++;
             }
@@ -1350,7 +1478,7 @@ bool ReadCFX::compute() {
     m_2dOut.clear();
     m_volumeDataOut.clear();
     m_2dDataOut.clear();
-    m_volumesSelected.clear();
+    m_3dAreasSelected.clear();
     m_2dAreasSelected.clear();
     m_gridsInTimestep.clear();
     m_polygonsInTimestep.clear();
