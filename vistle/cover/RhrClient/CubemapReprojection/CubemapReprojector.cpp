@@ -334,8 +334,8 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
-	//m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
-	DebugSourceTexture(m_PathHandler, BufferType::Color);
+	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
+	//DebugSourceTexture(m_PathHandler, BufferType::Color);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
@@ -677,7 +677,7 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 
 inline void SetCameraFromMatrices(Camera& camera, const double* viewMatrix, const double* projMatrix)
 {
-	camera.SetLocalTransformation(RigidTransformation(ToMatrix(viewMatrix)));
+	camera.SetFromViewMatrix(ToMatrix(viewMatrix));
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
