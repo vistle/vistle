@@ -78,6 +78,23 @@ void Camera::DeserializeSB(const unsigned char*& bytes)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
+void Camera::SetFromViewMatrix(glm::mat4& viewMatrix)
+{
+	glm::mat3 a(viewMatrix);
+	auto aInv = glm::transpose(a);
+
+	glm::mat4 transformation(glm::uninitialize);
+	transformation[0] = glm::vec4(glm::normalize(-aInv[2]), 0.0f);
+	transformation[1] = glm::vec4(glm::normalize(aInv[1]), 0.0f);
+	transformation[2] = glm::vec4(glm::normalize(aInv[0]), 0.0f);
+	transformation[3] = glm::vec4(-aInv * glm::vec3(viewMatrix[3]), 1.0f);
+
+	m_ViewMatrix = viewMatrix;
+	m_SceneNode.SetLocation(transformation);
+	m_SceneNode.SetTransformationUpToDateForUser();
+	m_IsViewProjectionMatrixRecomputationNeeded = true;
+}
+
 void Camera::SetViewMatrix(const EngineBuildingBlocks::ScaledTransformation& worldTransformation, glm::mat4& viewMatrix)
 {
 	auto& position = worldTransformation.Position;

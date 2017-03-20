@@ -39,8 +39,8 @@ void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2
 	if     (texCoord.x <= c_OneOverThree) { regionIndex = 0;  imTexCoord.x = texCoord.x;                   }
 	else if(texCoord.x <= c_TwoOverThree) { regionIndex = 1;  imTexCoord.x = texCoord.x - c_OneOverThree;  }
 	else                                  { regionIndex = 2;  imTexCoord.x = texCoord.x - c_TwoOverThree;  }
-	if     (texCoord.y <= 0.5f)           {                   imTexCoord.y = texCoord.y;                   }
-	else                                  { regionIndex += 3; imTexCoord.y = texCoord.y - 0.5f;            }
+	if     (texCoord.y <= 0.5f)           { regionIndex += 3; imTexCoord.y = texCoord.y;                   }
+	else                                  {                   imTexCoord.y = texCoord.y - 0.5f;            }
 	imTexCoord *= vec2(3.0f, 2.0f);
 }
 

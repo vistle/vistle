@@ -459,7 +459,7 @@ void CubemapReprojector::SwapBuffers()
 			SaveImageToFile(colorBuffer,
 				Image2DDescription::ColorImage(m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3),
 				m_PathHandler.GetPathFromRootDirectory(fileRelPath),
-				ImageSaveFlags::None);
+				ImageSaveFlags::IsFlippingY);
 		}
 	}
 
@@ -593,7 +593,8 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		auto rightViewTr = ToRigidTransformation(rightViewMatrix);
 		assert(leftViewTr.Orientation == rightViewTr.Orientation);
 		auto pos = (leftViewTr.Position + rightViewTr.Position) * 0.5f;
-		m_ServerCameraCopy.SetLocalTransformation(RigidTransformation(leftViewTr.Orientation, pos));
+		auto viewTr = RigidTransformation(leftViewTr.Orientation, pos);
+		m_ServerCameraCopy.SetFromViewMatrix(viewTr.AsMatrix4());
 
 		auto leftProj = ToProjection(leftProjMatrix);
 		auto rightProj = ToProjection(rightProjMatrix);
