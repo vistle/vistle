@@ -612,8 +612,6 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	*serverWidth = m_ServerWidth;
 	*serverHeight = m_ServerHeight;
 
-	// There is something definitely wrong with the view matrix!!!
-
 	auto camera = m_ServerCubemapCameraGroupCopy.Cameras[sideIndex];
 	auto& sideViewMatrix = camera->GetViewMatrix();
 	auto& sideProjectionMatrix = camera->GetProjectionMatrix();
