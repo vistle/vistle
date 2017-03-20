@@ -21,6 +21,11 @@
 
 #include <atomic>
 
+enum class BufferType
+{
+	Color = 0, Depth, COUNT
+};
+
 class CubemapReprojector
 {
 	EngineBuildingBlocks::PathHandler m_PathHandler;
@@ -50,11 +55,6 @@ private:
 		EngineBuildingBlocks::Graphics::Camera& clientCamera);
 
 private: // Buffers.
-
-	enum class BufferType
-	{
-		Color = 0, Depth, COUNT
-	};
 
 	static const unsigned c_CountCubemapSides = 6;
 	static const unsigned c_TripleBuffering = 3;
@@ -139,6 +139,11 @@ public:
 	unsigned char* GetColorBuffer(unsigned index);
 	unsigned char* GetDepthBuffer(unsigned index);
 	void SwapBuffers();
+
+private: // Temporary.
+
+	Core::ByteVectorU m_SwapVector;
+	void SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
 };
 
 #endif

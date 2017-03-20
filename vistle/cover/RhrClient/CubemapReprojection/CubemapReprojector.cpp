@@ -114,7 +114,7 @@ void CubemapReprojector::SetDepthData(unsigned resourceIndex, unsigned char** pp
 	}
 }
 
-void DebugColorTexture(PathHandler& pathHandler)
+void DebugSourceTexture(PathHandler& pathHandler, BufferType bufferType)
 {
 	const bool isClearingBuffers = false;
 	static bool isInitializing = true;
@@ -124,11 +124,16 @@ void DebugColorTexture(PathHandler& pathHandler)
 	{
 		isInitializing = false;
 
+		auto vsPath = "Shaders/ShowBuffer_vs.glsl";
+		auto psPath = (bufferType == BufferType::Color
+			? "Shaders/ShowColorBuffer_ps.glsl"
+			: "Shaders/ShowDepthBuffer_ps.glsl");
+
 		OpenGLRender::ShaderProgramDescription spd;
 		spd.Shaders =
 		{
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory("Shaders/ShowColorBuffer_vs.glsl"), ShaderType::Vertex),
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory("Shaders/ShowColorBuffer_ps.glsl"), ShaderType::Fragment)
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
 		};
 		showProgram.Initialize(spd);
 
@@ -151,7 +156,9 @@ void DebugColorTexture(PathHandler& pathHandler)
 	glDepthFunc(GL_LEQUAL);
 
 	showProgram.Bind();
-	showProgram.SetUniformValue("ColorTexture", 0);
+
+	if (bufferType == BufferType::Color) showProgram.SetUniformValue("ColorTexture", 0);
+	else                                 showProgram.SetUniformValue("DepthTexture", 1);
 
 	quad.Bind();
 	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
@@ -184,6 +191,9 @@ CubemapReprojector::CubemapReprojector()
 	else m_CountSamples = 1;
 
 	m_GridReprojector.SetClearingBuffers(false);
+	
+	// DEBUG: disabling culling in the grid reprojector.
+	m_GridReprojector.SetCullingEnabled(false);
 
 	if (m_IsRenderingInVR)
 	{
@@ -325,7 +335,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
 	//m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
-	DebugColorTexture(m_PathHandler);
+	DebugSourceTexture(m_PathHandler, BufferType::Color);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
@@ -466,10 +476,32 @@ void CubemapReprojector::IncrementWriteBufferIndex()
 	if (++m_WriteBufferIndex == c_TripleBuffering) m_WriteBufferIndex = 0;
 }
 
+void CubemapReprojector::SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
+{
+	unsigned rowSize = width * elementSize;
+	m_SwapVector.Resize(rowSize);
+	auto tempPtr = m_SwapVector.GetArray();
+	auto ptr1 = reinterpret_cast<uint8_t*>(pBuffer);
+	auto ptr2 = ptr1 + (height - 1) * rowSize;
+	for (; ptr1 < ptr2; ptr1 += rowSize, ptr2 -= rowSize)
+	{
+		memcpy(tempPtr, ptr1, rowSize);
+		memcpy(ptr1, ptr2, rowSize);
+		memcpy(ptr2, tempPtr, rowSize);
+	}
+}
+
 const bool c_IsDebuggingBuffers = false;
 
 void CubemapReprojector::SwapBuffers()
 {
+	// TODO: implement depth swapping in shader!
+	for (unsigned i = 0; i < c_CountCubemapSides; i++)
+	{
+		auto& buffer = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WriteBufferIndex)];
+		SwapY(buffer.GetArray(), m_ServerWidth, m_ServerHeight, sizeof(float));
+	}
+
 	std::lock_guard<std::mutex> lock(m_BufferMutex);
 
 	if (c_IsDebuggingBuffers)
