@@ -573,8 +573,8 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		m_ClientHeight = clientHeight;
 
 		unsigned serverSize = std::max(*serverWidth, *serverHeight);
-		*serverWidth = m_ServerWidth = serverSize;
-		*serverHeight = m_ServerHeight = serverSize;
+		m_ServerWidth = serverSize;
+		m_ServerHeight = serverSize;
 
 		unsigned colorBufferSize = m_ServerWidth * m_ServerHeight * (m_IsContainingAlpha ? 4 : 3);
 		unsigned depthBufferSize = m_ServerWidth * m_ServerHeight * sizeof(float);
@@ -608,6 +608,9 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		m_ServerCameraCopy.SetProjection(proj);
 		m_ServerCubemapCameraGroupCopy.Update();
 	}
+
+	*serverWidth = m_ServerWidth;
+	*serverHeight = m_ServerHeight;
 
 	// There is something definitely wrong with the view matrix!!!
 
