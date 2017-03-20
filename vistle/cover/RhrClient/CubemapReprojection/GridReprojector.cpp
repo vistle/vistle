@@ -22,6 +22,7 @@ GridReprojector::GridReprojector(EngineBuildingBlocks::SceneNodeHandler& sceneNo
 	, m_PosZVisiblePortion(0.0f)
 	, m_BackgroundCamera(&sceneNodeHandler)
 	, m_IsCullingEnabled(true)
+	, m_IsClearingBuffers(true)
 	, m_ShaderRebuilder(pIShuttingDown)
 {
 }
@@ -42,6 +43,11 @@ ShaderRebuilder& GridReprojector::GetShaderRebuilder()
 void GridReprojector::SetCullingEnabled(bool enabled)
 {
 	this->m_IsCullingEnabled = enabled;
+}
+
+void GridReprojector::SetClearingBuffers(bool isClearing)
+{
+	this->m_IsClearingBuffers = isClearing;
 }
 
 bool GridReprojector::IsMultisamplingEnabled() const
@@ -226,8 +232,11 @@ void GridReprojector::Render(CubemapCameraGroup& serverCubemapCameraGroup, Camer
 
 	UpdateTileData(serverCubemapCameraGroup, clientCamera);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if (m_IsClearingBuffers)
+	{
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
 
 	glPolygonMode(GL_FRONT_AND_BACK, useWireframe ? GL_LINE : GL_FILL);
 

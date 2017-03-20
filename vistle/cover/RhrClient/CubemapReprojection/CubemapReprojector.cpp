@@ -114,8 +114,9 @@ void CubemapReprojector::SetDepthData(unsigned resourceIndex, unsigned char** pp
 	}
 }
 
-void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorTexture)
+void DebugColorTexture(PathHandler& pathHandler)
 {
+	const bool isClearingBuffers = false;
 	static bool isInitializing = true;
 	static OpenGLRender::ShaderProgram showProgram;
 	static Primitive quad;
@@ -140,15 +141,22 @@ void DebugColorTexture(PathHandler& pathHandler, OpenGLRender::Texture2D& colorT
 		showProgram.SetInputLayout(vertexData.InputLayout);
 	}
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	if (isClearingBuffers)
+	{
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	}
+	GLint prevDepthFunc;
+	glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
+	glDepthFunc(GL_LEQUAL);
 
-	colorTexture.Bind(0);
 	showProgram.Bind();
 	showProgram.SetUniformValue("ColorTexture", 0);
 
 	quad.Bind();
 	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
+
+	glDepthFunc(prevDepthFunc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +182,8 @@ CubemapReprojector::CubemapReprojector()
 
 	if (!m_IsRenderingInVR && m_GridReprojector.IsMultisamplingEnabled()) m_CountSamples = 8;
 	else m_CountSamples = 1;
+
+	m_GridReprojector.SetClearingBuffers(false);
 
 	if (m_IsRenderingInVR)
 	{
@@ -256,6 +266,13 @@ void CubemapReprojector::UpdateVRData()
 
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
+	// Getting previous state.
+	GLint prevActiveTexture, prevProgram;
+	{
+		glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActiveTexture);
+		glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
+	}
+
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 		m_ServerCamera.Set(m_ServerCameraCopy);
@@ -276,6 +293,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	}
 
 	UpdateTextures();
+	
 	m_ColorTextures[m_CurrentTextureIndex].Bind(0);
 	m_DepthTextures[m_CurrentTextureIndex].Bind(1);
 
@@ -295,13 +313,19 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 		RenderReprojection(m_ClientCamera);
 	}
 
+	// Setting back previous state.
+	{
+		glActiveTexture(prevActiveTexture);
+		glUseProgram(prevProgram);
+	}
+
 	CheckGLError();
 }
 
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
 	//m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
-	DebugColorTexture(m_PathHandler, m_ColorTextures[m_CurrentTextureIndex]);
+	DebugColorTexture(m_PathHandler);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////

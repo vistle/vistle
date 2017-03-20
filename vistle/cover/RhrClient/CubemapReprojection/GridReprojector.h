@@ -39,6 +39,7 @@ class GridReprojector
 	Core::SimpleTypeVectorU<glm::vec2> m_TileOffsets;
 
 	bool m_IsCullingEnabled;
+	bool m_IsClearingBuffers;
 
 	Primitive m_GridEdge;
 
@@ -103,6 +104,7 @@ public:
 	ShaderRebuilder& GetShaderRebuilder();
 
 	void SetCullingEnabled(bool enabled);
+	void SetClearingBuffers(bool isClearing);
 
 	void LoadConfiguration(const Core::Properties& configuration);
 	void Initialize(const std::string& shadersPath);
