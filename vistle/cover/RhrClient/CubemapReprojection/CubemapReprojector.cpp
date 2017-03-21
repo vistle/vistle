@@ -177,10 +177,11 @@ CubemapReprojector::CubemapReprojector()
 	, m_IsShuttingDown(false)
 	, m_ServerCamera(&m_SceneNodeHandler)
 	, m_ServerCameraCopy(&m_SceneNodeHandler)
+	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
 	, m_ClientCameraCopy(&m_SceneNodeHandler)
 	, m_ServerCubemapCameraGroup(&m_ServerCamera)
-	, m_ServerCubemapCameraGroupCopy(&m_ServerCameraCopy)
+	, m_ServerCubemapCameraGroupForAdjustment(&m_ServerCameraForAdjustment)
 	, m_GridReprojector(m_SceneNodeHandler, &m_IsShuttingDown)
 	, m_InitializedOpenGLContextId(Core::c_InvalidIndexU)
 	, m_IsVRGraphicsInitialized(false)
@@ -679,7 +680,7 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		assert(leftViewTr.Orientation == rightViewTr.Orientation);
 		auto pos = (leftViewTr.Position + rightViewTr.Position) * 0.5f;
 		auto viewTr = RigidTransformation(leftViewTr.Orientation, pos);
-		m_ServerCameraCopy.SetFromViewMatrix(viewTr.AsMatrix4());
+		m_ServerCameraForAdjustment.SetFromViewMatrix(viewTr.AsMatrix4());
 
 		auto leftProj = ToProjection(leftProjMatrix);
 		auto rightProj = ToProjection(rightProjMatrix);
@@ -690,14 +691,14 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 		assert(lp.Bottom == rp.Bottom && lp.Top == rp.Top && lp.Right - lp.Left == rp.Right - rp.Left);
 		CameraProjection proj;
 		proj.CreatePerspecive(1.0f, glm::half_pi<float>(), lp.NearPlaneDistance, lp.FarPlaneDistance, false);
-		m_ServerCameraCopy.SetProjection(proj);
-		m_ServerCubemapCameraGroupCopy.Update();
+		m_ServerCameraForAdjustment.SetProjection(proj);
+		m_ServerCubemapCameraGroupForAdjustment.Update();
 	}
 
 	*serverWidth = m_ServerWidth;
 	*serverHeight = m_ServerHeight;
 
-	auto camera = m_ServerCubemapCameraGroupCopy.Cameras[sideIndex];
+	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[sideIndex];
 	auto& sideViewMatrix = camera->GetViewMatrix();
 	auto& sideProjectionMatrix = camera->GetProjectionMatrix();
 	CreateFromMatrix(sideViewMatrix, viewMatrix);
@@ -710,6 +711,15 @@ inline void SetCameraFromMatrices(Camera& camera, const double* viewMatrix, cons
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
+void CubemapReprojector::SetServerCameraTransformations(int sideIndex, const double* viewMatrix, const double* projMatrix)
+{
+	if (sideIndex == (int)CubemapSide::Front)
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		SetCameraFromMatrices(m_ServerCameraCopy, viewMatrix, projMatrix);
+	}
+}
+
 void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
@@ -718,7 +728,7 @@ void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix
 
 // Improvements:
 //
-// - use only some portion of the sides and don't use the 
+// - use only some portion of the sides and don't use the +Z face.s
 
 // Questions:
 //

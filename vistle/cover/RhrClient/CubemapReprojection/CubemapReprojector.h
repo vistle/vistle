@@ -42,9 +42,9 @@ class CubemapReprojector
 
 private:
 
-	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy;
+	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy, m_ServerCameraForAdjustment;
 	EngineBuildingBlocks::Graphics::Camera m_ClientCamera, m_ClientCameraCopy;
-	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupCopy;
+	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
 	GridReprojector m_GridReprojector;
 	
@@ -137,6 +137,7 @@ public:
 		const double* leftProjMatrix, const double* rightProjMatrix,
 		double* viewMatrix, double* projMatrix);
 
+	void SetServerCameraTransformations(int sideIndex, const double* viewMatrix, const double* projMatrix);
 	void SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix);
 
 	unsigned char* GetColorBuffer(unsigned index);
