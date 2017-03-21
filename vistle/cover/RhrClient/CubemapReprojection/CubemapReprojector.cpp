@@ -191,9 +191,7 @@ CubemapReprojector::CubemapReprojector()
 	else m_CountSamples = 1;
 
 	m_GridReprojector.SetClearingBuffers(false);
-	
-	// DEBUG: disabling culling in the grid reprojector.
-	m_GridReprojector.SetCullingEnabled(false);
+	m_GridReprojector.SetCullingEnabled(true);
 
 	if (m_IsRenderingInVR)
 	{
