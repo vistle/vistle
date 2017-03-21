@@ -109,7 +109,6 @@ void GridReprojector::Initialize(const std::string& shadersPath)
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	if (m_IsMultisamplingEnabled) glEnable(GL_MULTISAMPLE);
 }
 
 void GridReprojector::CreatePrimitives()

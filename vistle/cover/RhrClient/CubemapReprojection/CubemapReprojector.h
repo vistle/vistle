@@ -43,9 +43,7 @@ class CubemapReprojector
 private:
 
 	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_NewServerCamera,
-		m_CurrentServerCamera,
-		m_RenderServerCamera,
-		m_ServerCameraForAdjustment;
+		m_CurrentServerCamera, m_ServerCameraForAdjustment;
 	EngineBuildingBlocks::Graphics::Camera m_ClientCamera, m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
@@ -152,6 +150,7 @@ public:
 private: // Temporary.
 
 	Core::ByteVectorU m_SwapVector;
+	void SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
 	void SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
 };
 

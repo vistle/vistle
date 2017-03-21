@@ -216,7 +216,6 @@ CubemapReprojector::CubemapReprojector()
 	, m_ServerCamera(&m_SceneNodeHandler)
 	, m_NewServerCamera(&m_SceneNodeHandler)
 	, m_CurrentServerCamera(&m_SceneNodeHandler)
-	, m_RenderServerCamera(&m_SceneNodeHandler)
 	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
 	, m_ClientCameraCopy(&m_SceneNodeHandler)
@@ -341,10 +340,8 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-		m_ServerCamera.Set(m_RenderServerCamera);
 		m_ClientCamera.Set(m_ClientCameraCopy);
 	}
-	m_ServerCubemapCameraGroup.Update();
 
 	InitializeGL(openGLContextID);
 
@@ -358,9 +355,12 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	}
 
 	UpdateTextures();
-	
+
 	m_ColorTextures[m_CurrentTextureIndex].Bind(0);
 	m_DepthTextures[m_CurrentTextureIndex].Bind(1);
+
+	if (m_GridReprojector.IsMultisamplingEnabled()) glEnable(GL_MULTISAMPLE);
+	else                                            glDisable(GL_MULTISAMPLE);
 
 	if (m_IsRenderingInVR)
 	{
@@ -379,15 +379,15 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 		// Reading current content from the target FBO.
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevDrawFBO);
-		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, m_ClientWidth, 0, 0, m_ClientHeight,
+		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
 			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-		
+
 		RenderReprojection(m_ClientCamera);
 
 		// Writing rendered content back to the target FBO.
 		m_FBO.Bind(FrameBufferBindingTarget::Read);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDrawFBO);
-		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, m_ClientWidth, 0, 0, m_ClientHeight,
+		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
 			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevReadFBO);
 	}
@@ -405,7 +405,7 @@ void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
 	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
 	//DebugSourceTexture(m_PathHandler, BufferType::Color);
-	RenderProgressBar(m_PathHandler);
+	//RenderProgressBar(m_PathHandler);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
@@ -546,6 +546,28 @@ void CubemapReprojector::IncrementWriteBufferIndex()
 	if (++m_WriteBufferIndex == c_TripleBuffering) m_WriteBufferIndex = 0;
 }
 
+void CubemapReprojector::SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
+{
+	uint32_t temp;
+	assert(elementSize <= sizeof(uint32_t));
+
+	auto leftPtr = reinterpret_cast<uint8_t*>(pBuffer);
+	auto rightPtr = leftPtr + (width - 1) * elementSize;
+	auto leftPtrLimit = leftPtr + width * height * elementSize;
+	auto rowSize = width * elementSize;
+	for (; leftPtr < leftPtrLimit; leftPtr += rowSize, rightPtr += rowSize)
+	{
+		auto cLeftPtr = leftPtr;
+		auto cRightPtr = rightPtr;
+		for (; cLeftPtr < cRightPtr; cLeftPtr += elementSize, cRightPtr -= elementSize)
+		{
+			memcpy(&temp, cLeftPtr, elementSize);
+			memcpy(cLeftPtr, cRightPtr, elementSize);
+			memcpy(cRightPtr, &temp, elementSize);
+		}
+	}
+}
+
 void CubemapReprojector::SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
 {
 	unsigned rowSize = width * elementSize;
@@ -565,11 +587,13 @@ const bool c_IsDebuggingBuffers = false;
 
 void CubemapReprojector::SwapBuffers()
 {
-	// TODO: implement depth swapping in shader!
+	// TODO: implement swappings in shader!
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
-		auto& buffer = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WriteBufferIndex)];
-		SwapY(buffer.GetArray(), m_ServerWidth, m_ServerHeight, sizeof(float));
+		auto& colorBuffer = m_Buffers[GetBufferIndex(BufferType::Color, i, m_WriteBufferIndex)];
+		auto& depthBuffer = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WriteBufferIndex)];
+		SwapX(colorBuffer.GetArray(), m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3);
+		SwapY(depthBuffer.GetArray(), m_ServerWidth, m_ServerHeight, sizeof(float));
 	}
 
 	std::lock_guard<std::mutex> lock(m_BufferMutex);
@@ -605,11 +629,20 @@ inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, 
 
 void CubemapReprojector::UpdateTextures()
 {
+	// DEBUG: there is something wrong with the texture-matrix consistency.
+	//static int debctr = 0;
+	//debctr++;
+	//printf("debctr: %d\n", debctr);
+	//if (debctr > 100) return;
+
 	bool isDataAvailable;
 	{
 		std::lock_guard<std::mutex> lock(m_BufferMutex);
 		isDataAvailable = (m_ReadBufferIndex != m_WrittenBufferIndex);
 		m_ReadBufferIndex = m_WrittenBufferIndex;
+
+		m_ServerCamera.Set(m_CurrentServerCamera);
+		m_ServerCubemapCameraGroup.Update();
 	}
 	if (isDataAvailable)
 	{
@@ -766,8 +799,6 @@ void CubemapReprojector::SetClientCameraTransformations(const double* modelMatri
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 	SetCameraFromMatrices(m_ClientCameraCopy, modelMatrix, viewMatrix, projMatrix);
-
-	//m_RenderServerCamera.Set(m_CurrentServerCamera);
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
@@ -781,8 +812,9 @@ void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
 //
 // - use only some portion of the sides and don't use the +Z face.
 
-// Questions:
+// TODO:
 //
-// - cubemap rendering and transferring performance?
-// - why do I have to swap Y for depth values?
-// - why do I have to swap X for the rendered picture?
+// - CHECK matrix-data consistency
+// - check swappings (here: X for color and Y for depth)
+// - check whether multisampling is working properly
+// - check stiching geometry (there seem to be some holes...)
