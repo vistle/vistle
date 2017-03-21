@@ -26,8 +26,8 @@ struct IdWithZoneFlag {
 };
 
 struct PortData {
-    std::vector<vistle::DataBase::ptr> vectorResfileVolumeData;
-    std::vector<std::int16_t> vectorVolumeDataVolumeNr;
+    std::vector<vistle::DataBase::ptr> resfile3dDataVec;
+    std::vector<std::int16_t> resfile3dIdVec;
 };
 
 struct Area2dPortData {
