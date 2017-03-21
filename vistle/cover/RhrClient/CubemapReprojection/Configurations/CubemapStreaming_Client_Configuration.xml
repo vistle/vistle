@@ -14,7 +14,7 @@
   <Property name="MinDirCrossForServer" value="1e-1" />
 
   <GridReprojection>
-    <Property name="IsMultisamplingEnabled" value="0" />
+    <Property name="IsMultisamplingEnabled" value="1" />
     <Property name="CountGridTilesX" value="8" />
     <Property name="CountGridTilesY" value="8" />
     <Property name="BackgroundFarPlaneMultiplier" value="1.5" />

@@ -236,7 +236,22 @@ void CubemapReprojector::InitializeGL(unsigned openGLContextID)
 			&m_GridReprojector.GetShaderRebuilder(), &m_PathHandler);
 
 		m_InitializedOpenGLContextId = openGLContextID;
+
+		if (!m_IsRenderingInVR)
+		{
+			CreateFBO();
+		}
 	}
+}
+
+void CubemapReprojector::CreateFBO()
+{
+	Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8, 1, m_CountSamples));
+	Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32, 1, m_CountSamples));
+	m_FBO.Initialize();
+	m_FBO.Bind();
+	m_FBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
+	m_FBO.Attach(std::move(depthTexture), FrameBufferAttachment::Depth);
 }
 
 void CubemapReprojector::Destroy()
@@ -277,10 +292,12 @@ void CubemapReprojector::UpdateVRData()
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
 	// Getting previous state.
-	GLint prevActiveTexture, prevProgram;
+	GLint prevActiveTexture, prevProgram, prevReadFBO, prevDrawFBO;
 	{
 		glGetIntegerv(GL_ACTIVE_TEXTURE, &prevActiveTexture);
 		glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
+		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFBO);
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFBO);
 	}
 
 	{
@@ -299,7 +316,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	// at initialization time.
 	if (m_IsRenderingInVR)
 	{
-		InitializeVRGraphics();
+		InitializeVRGraphics(prevDrawFBO);
 	}
 
 	UpdateTextures();
@@ -320,7 +337,21 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	}
 	else
 	{
+		m_FBO.Bind(FrameBufferBindingTarget::Draw);
+
+		// Reading current content from the target FBO.
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevDrawFBO);
+		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, m_ClientWidth, 0, 0, m_ClientHeight,
+			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		
 		RenderReprojection(m_ClientCamera);
+
+		// Writing rendered content back to the target FBO.
+		m_FBO.Bind(FrameBufferBindingTarget::Read);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDrawFBO);
+		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, m_ClientWidth, 0, 0, m_ClientHeight,
+			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevReadFBO);
 	}
 
 	// Setting back previous state.
@@ -361,7 +392,7 @@ void CubemapReprojector::ReleaseVR()
 	}
 }
 
-void CubemapReprojector::InitializeVRGraphics()
+void CubemapReprojector::InitializeVRGraphics(int prevDrawFBO)
 {
 	if (!m_IsVRGraphicsInitialized)
 	{
@@ -372,7 +403,7 @@ void CubemapReprojector::InitializeVRGraphics()
 		vrInitData.WindowSize = glm::uvec2(m_ClientWidth, m_ClientHeight);
 		vrInitData.SampleCount = sampleCount;
 		vrInitData.Flags = OculusVR::VR_Flags::SetUpViewportForRendering;
-		vrInitData.OutputFBO = 0; // Back buffer.
+		vrInitData.OutputFBO = prevDrawFBO;
 
 		for (unsigned i = 0; i < 2; i++)
 		{

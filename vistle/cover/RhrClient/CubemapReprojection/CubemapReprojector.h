@@ -50,6 +50,10 @@ private:
 	
 	std::mutex m_RenderSyncMutex;
 
+	OpenGLRender::FrameBufferObject m_FBO;
+
+	void CreateFBO();
+
 	void UpdateVRData();
 	void RenderReprojection(
 		EngineBuildingBlocks::Graphics::Camera& clientCamera);
@@ -116,7 +120,7 @@ private: // VR.
 	EngineBuildingBlocks::Graphics::Camera* m_VRCameras[2];
 
 	void InitializeVR();
-	void InitializeVRGraphics();
+	void InitializeVRGraphics(int prevDrawFBO);
 	void ReleaseVR();
 
 public:
