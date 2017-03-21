@@ -715,3 +715,13 @@ void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 	SetCameraFromMatrices(m_ClientCameraCopy, viewMatrix, projMatrix);
 }
+
+// Improvements:
+//
+// - use only some portion of the sides and don't use the 
+
+// Questions:
+//
+// - cubemap rendering and transferring performance?
+// - why do I have to swap Y for depth values?
+// - why do I have to swap X for the rendered picture?
