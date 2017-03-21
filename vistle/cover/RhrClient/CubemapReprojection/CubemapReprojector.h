@@ -140,6 +140,8 @@ public:
 	void SetServerCameraTransformations(int sideIndex, const double* viewMatrix, const double* projMatrix);
 	void SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix);
 
+	void ResizeView(int idx, int w, int h, GLenum depthFormat);
+
 	unsigned char* GetColorBuffer(unsigned index);
 	unsigned char* GetDepthBuffer(unsigned index);
 	void SwapBuffers();

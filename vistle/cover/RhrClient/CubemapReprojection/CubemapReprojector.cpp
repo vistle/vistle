@@ -290,6 +290,8 @@ void CubemapReprojector::UpdateVRData()
 
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
+	printf("Render()\n");
+
 	// Getting previous state.
 	GLint prevActiveTexture, prevProgram, prevReadFBO, prevDrawFBO;
 	{
@@ -525,6 +527,8 @@ const bool c_IsDebuggingBuffers = false;
 
 void CubemapReprojector::SwapBuffers()
 {
+	printf("SwapBuffers()\n");
+
 	// TODO: implement depth swapping in shader!
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
@@ -726,9 +730,16 @@ void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix
 	SetCameraFromMatrices(m_ClientCameraCopy, viewMatrix, projMatrix);
 }
 
+void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
+{
+	assert(idx == 0);
+	
+	// Handling view resizing in the AdjustDimensionsAndMatrices(...) function.
+}
+
 // Improvements:
 //
-// - use only some portion of the sides and don't use the +Z face.s
+// - use only some portion of the sides and don't use the +Z face.
 
 // Questions:
 //
