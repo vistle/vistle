@@ -133,7 +133,6 @@ public:
 		const double* leftProjMatrix, const double* rightProjMatrix,
 		double* viewMatrix, double* projMatrix);
 
-	void SetServerCameraTransformations(const double* viewMatrix, const double* projMatrix);
 	void SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix);
 
 	unsigned char* GetColorBuffer(unsigned index);

@@ -681,13 +681,6 @@ inline void SetCameraFromMatrices(Camera& camera, const double* viewMatrix, cons
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
-void CubemapReprojector::SetServerCameraTransformations(const double* viewMatrix, const double* projMatrix)
-{
-	// We don't assume that the previously set adjusted matrices are the ones, which we set here: setting them again.
-	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	SetCameraFromMatrices(m_ServerCameraCopy, viewMatrix, projMatrix);
-}
-
 void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
