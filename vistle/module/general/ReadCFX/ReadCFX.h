@@ -25,15 +25,15 @@ struct IdWithZoneFlag {
     index_t zoneFlag;
 };
 
-struct PortData {
-    std::vector<vistle::DataBase::ptr> resfile3dDataVec;
-    std::vector<std::int16_t> resfile3dIdVec;
-};
+//struct PortData {
+//    std::vector<vistle::DataBase::ptr> resfile3dDataVec;
+//    std::vector<std::int16_t> resfile3dIdVec;
+//};
 
-struct Area2dPortData {
-    std::vector<vistle::DataBase::ptr> resfile2dDataVec;
-    std::vector<std::int16_t> resfile2dIdVec;
-};
+//struct Area2dPortData {
+//    std::vector<vistle::DataBase::ptr> resfile2dDataVec;
+//    std::vector<std::int16_t> resfile2dIdVec;
+//};
 
 struct Areas2d {
     IdWithZoneFlag idWithZone;
@@ -64,6 +64,7 @@ class CaseInfo {
 public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param, m_region_param;
+    std::vector<std::string> m_variableInTransientFile;
     bool m_valid;
     std::vector<Variable> m_allParam;
     std::vector<Boundary> m_allBoundaries;
@@ -77,7 +78,9 @@ public:
     std::vector<Boundary> getCopyOfAllBoundaries();
     index_t getNumberOfBoundaries();
     std::vector<Region> getCopyOfAllRegions();
+    std::vector<std::string> getCopyOfTrnVars();
     index_t getNumberOfRegions();
+    bool checkWhichVariablesAreInTransientFile(index_t ntimesteps);
 };
 
 class ReadCFX: public vistle::Module {
@@ -97,7 +100,7 @@ class ReadCFX: public vistle::Module {
 
  private:
    bool changeParameter(const vistle::Parameter *p) override;
-   bool m_ExportDone, m_addToPortResfileVolumeData, m_addToPortResfile2dData;
+   bool m_ExportDone; // m_addToPortResfileVolumeData, m_addToPortResfile2dData;
 
    //Parameter
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection;
@@ -123,10 +126,10 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData;
-   std::vector<PortData> m_portDatas;
-   std::vector<Area2dPortData> m_2dPortDatas;
-   std::vector<vistle::UnstructuredGrid::ptr> m_ResfileGridVec;
-   std::vector<vistle::Polygons::ptr> m_ResfilePolygonVec;
+//   std::vector<PortData> m_portDatas;
+//   std::vector<Area2dPortData> m_2dPortDatas;
+//   std::vector<vistle::UnstructuredGrid::ptr> m_ResfileGridVec;
+//   std::vector<vistle::Polygons::ptr> m_ResfilePolygonVec;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
@@ -147,7 +150,7 @@ class ReadCFX: public vistle::Module {
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes);
-   bool clearResfileData ();
+//   bool clearResfileData ();
    bool free2dArea(const char *area2dType, int area2d);
 
 };
