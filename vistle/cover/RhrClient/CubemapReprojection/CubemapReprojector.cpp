@@ -166,6 +166,44 @@ void DebugSourceTexture(PathHandler& pathHandler, BufferType bufferType)
 	glDepthFunc(prevDepthFunc);
 }
 
+void RenderProgressBar(PathHandler& pathHandler)
+{
+	static bool isInitializing = true;
+	static OpenGLRender::ShaderProgram pbProgram;
+	static Primitive quad;
+	static unsigned countFrames = 0;
+	if (isInitializing)
+	{
+		isInitializing = false;
+
+		auto vsPath = "Shaders/ProgressBar_vs.glsl";
+		auto psPath = "Shaders/ProgressBar_ps.glsl";
+
+		OpenGLRender::ShaderProgramDescription spd;
+		spd.Shaders =
+		{
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
+			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
+		};
+		pbProgram.Initialize(spd);
+
+		Vertex_SOA_Data vertexData;
+		IndexData indexData;
+		CreateQuadGeometry(vertexData, indexData, PrimitiveRange::_Minus1_To_Plus1);
+		vertexData.RemoveVertexElement(c_PositionVertexElement);
+		vertexData.RemoveVertexElement(c_NormalVertexElement);
+		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
+		pbProgram.SetInputLayout(vertexData.InputLayout);
+	}
+
+	pbProgram.Bind();
+
+	pbProgram.SetUniformValue("CountFrames", ++countFrames);
+
+	quad.Bind();
+	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CubemapReprojector::CubemapReprojector()
@@ -176,7 +214,9 @@ CubemapReprojector::CubemapReprojector()
 	, m_ThreadPool(1)
 	, m_IsShuttingDown(false)
 	, m_ServerCamera(&m_SceneNodeHandler)
-	, m_ServerCameraCopy(&m_SceneNodeHandler)
+	, m_NewServerCamera(&m_SceneNodeHandler)
+	, m_CurrentServerCamera(&m_SceneNodeHandler)
+	, m_RenderServerCamera(&m_SceneNodeHandler)
 	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
 	, m_ClientCameraCopy(&m_SceneNodeHandler)
@@ -290,8 +330,6 @@ void CubemapReprojector::UpdateVRData()
 
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
-	printf("Render()\n");
-
 	// Getting previous state.
 	GLint prevActiveTexture, prevProgram, prevReadFBO, prevDrawFBO;
 	{
@@ -303,10 +341,9 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-		m_ServerCamera.Set(m_ServerCameraCopy);
+		m_ServerCamera.Set(m_RenderServerCamera);
 		m_ClientCamera.Set(m_ClientCameraCopy);
 	}
-
 	m_ServerCubemapCameraGroup.Update();
 
 	InitializeGL(openGLContextID);
@@ -368,6 +405,7 @@ void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
 	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
 	//DebugSourceTexture(m_PathHandler, BufferType::Color);
+	RenderProgressBar(m_PathHandler);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
@@ -527,8 +565,6 @@ const bool c_IsDebuggingBuffers = false;
 
 void CubemapReprojector::SwapBuffers()
 {
-	printf("SwapBuffers()\n");
-
 	// TODO: implement depth swapping in shader!
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
@@ -557,6 +593,8 @@ void CubemapReprojector::SwapBuffers()
 	IncrementWriteBufferIndex();
 	if (m_WriteBufferIndex == m_ReadBufferIndex)
 		IncrementWriteBufferIndex();
+
+	m_CurrentServerCamera.Set(m_NewServerCamera);
 }
 
 inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, bool isContainingAlpha)
@@ -709,25 +747,27 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	CreateFromMatrix(sideProjectionMatrix, projMatrix);
 }
 
-inline void SetCameraFromMatrices(Camera& camera, const double* viewMatrix, const double* projMatrix)
+inline void SetCameraFromMatrices(Camera& camera, const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
 {
-	camera.SetFromViewMatrix(ToMatrix(viewMatrix));
+	auto modelView = ToMatrix(viewMatrix) * ToMatrix(modelMatrix);
+	camera.SetFromViewMatrix(modelView);
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
-void CubemapReprojector::SetServerCameraTransformations(int sideIndex, const double* viewMatrix, const double* projMatrix)
+void CubemapReprojector::SetNewServerCameraTransformations(int sideIndex, const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
 {
 	if (sideIndex == (int)CubemapSide::Front)
 	{
-		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-		SetCameraFromMatrices(m_ServerCameraCopy, viewMatrix, projMatrix);
+		SetCameraFromMatrices(m_NewServerCamera, modelMatrix, viewMatrix, projMatrix);
 	}
 }
 
-void CubemapReprojector::SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix)
+void CubemapReprojector::SetClientCameraTransformations(const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	SetCameraFromMatrices(m_ClientCameraCopy, viewMatrix, projMatrix);
+	SetCameraFromMatrices(m_ClientCameraCopy, modelMatrix, viewMatrix, projMatrix);
+
+	//m_RenderServerCamera.Set(m_CurrentServerCamera);
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)

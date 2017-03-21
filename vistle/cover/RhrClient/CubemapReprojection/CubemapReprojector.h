@@ -42,7 +42,10 @@ class CubemapReprojector
 
 private:
 
-	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy, m_ServerCameraForAdjustment;
+	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_NewServerCamera,
+		m_CurrentServerCamera,
+		m_RenderServerCamera,
+		m_ServerCameraForAdjustment;
 	EngineBuildingBlocks::Graphics::Camera m_ClientCamera, m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
@@ -137,8 +140,8 @@ public:
 		const double* leftProjMatrix, const double* rightProjMatrix,
 		double* viewMatrix, double* projMatrix);
 
-	void SetServerCameraTransformations(int sideIndex, const double* viewMatrix, const double* projMatrix);
-	void SetClientCameraTransformations(const double* viewMatrix, const double* projMatrix);
+	void SetNewServerCameraTransformations(int sideIndex, const double* modelMatrix, const double* viewMatrix, const double* projMatrix);
+	void SetClientCameraTransformations(const double* modelMatrix, const double* viewMatrix, const double* projMatrix);
 
 	void ResizeView(int idx, int w, int h, GLenum depthFormat);
 
