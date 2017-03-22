@@ -32,7 +32,7 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
-#define PARALLEL_ZONES
+//#define PARALLEL_ZONES
 
 
 namespace bf = boost::filesystem;
@@ -1126,23 +1126,18 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(area3d, allParam[index]);
 
-          if(trnOrRes) {
-              std::vector<int>::iterator it2;
-              it2 = find(trnVars.begin(), trnVars.end(), allParam[index].varName);
-              if(it2 == myvector.end()) {
-                  //variable exists only in resfile --> timestep = -1
-                  setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,-1,numSel3dArea,trnOrRes);
-                  std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
-              }
-              else {
-                  //variable exists in resfile and in transient files --> timestep = last
-                  setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
-                  std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
-              }
+          if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
+              //variable exists only in resfile --> timestep = -1
+              setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,-1,numSel3dArea,trnOrRes);
+              std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
           }
           else {
+              //variable exists in resfile and in transient files --> timestep = last
               setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
+              std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
           }
+
+          //setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
           m_currentVolumedata[i]= obj;
           //              }
           //              else {
@@ -1164,38 +1159,47 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_
     for (int i=0; i<Num2dPorts; ++i) {
         std::string area2dField = m_2dOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
+        std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
         auto it = find_if(allParam.begin(), allParam.end(), [&area2dField](const Variable& obj) {
             return obj.varName == area2dField;});
         if (it == allParam.end()) {
-            if(!m_2dPortDatas[i].resfile2dDataVec.empty()) {
-                //values are only in resfile --> timestep = -1
-                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
+            //            if(!m_2dPortDatas[i].resfile2dDataVec.empty()) {
+            //                //values are only in resfile --> timestep = -1
+            //                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
+            //            }
+            //            else {
+            setMeta(m_polygonsInTimestep[area2d],area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
+            m_current2dData[i] = DataBase::ptr();
+            //        }
+        }
+        else {
+            //            if(!m_2dPortDatas[i].resfile2dDataVec.empty() && trnOrRes) {
+            //                //resfile is last timestep
+            //                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),0,0,numSel2dArea,0);
+            //                return true;
+            //            }
+            auto index = std::distance(allParam.begin(), it);
+            DataBase::ptr obj = load2dField(area2d, allParam[index]);
+
+            if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
+                //variable exists only in resfile --> timestep = -1
+                set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
+                std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
             }
             else {
-                setMeta(m_polygonsInTimestep[area2d],area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
-                m_current2dData[i] = DataBase::ptr();
+                //variable exists in resfile and in transient files --> timestep = last
+                set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+                std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
+
             }
-       }
-       else {
-            if(!m_2dPortDatas[i].resfile2dDataVec.empty() && trnOrRes) {
-                //resfile is last timestep
-                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),0,0,numSel2dArea,0);
-                return true;
-           }
-           auto index = std::distance(allParam.begin(), it);
-           DataBase::ptr obj = load2dField(area2d, allParam[index]);
-           if(trnOrRes) {
-               set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-               m_current2dData[i]= obj;
-           }
-           else {
-               m_2dPortDatas[i].resfile2dDataVec.push_back(obj);
-               m_2dPortDatas[i].resfile2dIdVec.push_back(area2d);
-               if(m_ntimesteps==0) {
-                   set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
-               }
-           }
-       }
+
+            //               m_2dPortDatas[i].resfile2dDataVec.push_back(obj);
+            //               m_2dPortDatas[i].resfile2dIdVec.push_back(area2d);
+            //               if(m_ntimesteps==0) {
+            //set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+
+            m_current2dData[i]= obj;
+        }
     }
     return true;
 }
@@ -1551,7 +1555,7 @@ bool ReadCFX::compute() {
         }
     }
 
-    clearResfileData();
+//    clearResfileData();
     m_fieldOut.clear();
     m_2dOut.clear();
     m_volumeDataOut.clear();
