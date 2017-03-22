@@ -555,7 +555,7 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    {
 	   m_CubemapReprojector.AdjustDimensionsAndMatrices(viewNum, msg.width, msg.height, &msg.width, &msg.height,
 		   chan.leftView.ptr(), chan.rightView.ptr(),
-		   chan.leftProj.ptr(), chan.rightProj.ptr(), msg.view, msg.proj);
+		   chan.leftProj.ptr(), chan.rightProj.ptr(), msg.view, msg.proj, msg.time);
    }
 }
 

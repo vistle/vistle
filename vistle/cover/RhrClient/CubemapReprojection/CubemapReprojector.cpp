@@ -214,8 +214,7 @@ CubemapReprojector::CubemapReprojector()
 	, m_ThreadPool(1)
 	, m_IsShuttingDown(false)
 	, m_ServerCamera(&m_SceneNodeHandler)
-	, m_NewServerCamera(&m_SceneNodeHandler)
-	, m_CurrentServerCamera(&m_SceneNodeHandler)
+	, m_ServerCameraCopy(&m_SceneNodeHandler)
 	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
 	, m_ClientCameraCopy(&m_SceneNodeHandler)
@@ -329,6 +328,10 @@ void CubemapReprojector::UpdateVRData()
 
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
+	// Synchronising with updating thread.
+	bool isTextureDataAvailable;
+	SynchronizeWithUpdating(&isTextureDataAvailable);
+
 	// Getting previous state.
 	GLint prevActiveTexture, prevProgram, prevReadFBO, prevDrawFBO;
 	{
@@ -336,11 +339,6 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 		glGetIntegerv(GL_CURRENT_PROGRAM, &prevProgram);
 		glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFBO);
 		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFBO);
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-		m_ClientCamera.Set(m_ClientCameraCopy);
 	}
 
 	InitializeGL(openGLContextID);
@@ -354,7 +352,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 		InitializeVRGraphics(prevDrawFBO);
 	}
 
-	UpdateTextures();
+	UpdateTextures(isTextureDataAvailable);
 
 	m_ColorTextures[m_CurrentTextureIndex].Bind(0);
 	m_DepthTextures[m_CurrentTextureIndex].Bind(1);
@@ -585,7 +583,7 @@ void CubemapReprojector::SwapY(void* pBuffer, unsigned width, unsigned height, u
 
 const bool c_IsDebuggingBuffers = false;
 
-void CubemapReprojector::SwapBuffers()
+void CubemapReprojector::SwapFrame()
 {
 	// TODO: implement swappings in shader!
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
@@ -595,8 +593,6 @@ void CubemapReprojector::SwapBuffers()
 		SwapX(colorBuffer.GetArray(), m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3);
 		SwapY(depthBuffer.GetArray(), m_ServerWidth, m_ServerHeight, sizeof(float));
 	}
-
-	std::lock_guard<std::mutex> lock(m_BufferMutex);
 
 	if (c_IsDebuggingBuffers)
 	{
@@ -613,12 +609,25 @@ void CubemapReprojector::SwapBuffers()
 		}
 	}
 
+	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+
 	m_WrittenBufferIndex = m_WriteBufferIndex;
 	IncrementWriteBufferIndex();
 	if (m_WriteBufferIndex == m_ReadBufferIndex)
 		IncrementWriteBufferIndex();
+}
 
-	m_CurrentServerCamera.Set(m_NewServerCamera);
+void CubemapReprojector::SynchronizeWithUpdating(bool* pIsTextureDataAvailable)
+{
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		*pIsTextureDataAvailable = (m_ReadBufferIndex != m_WrittenBufferIndex);
+		m_ReadBufferIndex = m_WrittenBufferIndex;
+
+		m_ClientCamera.Set(m_ClientCameraCopy);
+		m_ServerCamera.Set(m_ServerCameraCopy);
+	}
+	m_ServerCubemapCameraGroup.Update();
 }
 
 inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, bool isContainingAlpha)
@@ -627,24 +636,9 @@ inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, 
 	return (bufferSize != width * height * pixelSize);
 }
 
-void CubemapReprojector::UpdateTextures()
+void CubemapReprojector::UpdateTextures(bool isTextureDataAvailable)
 {
-	// DEBUG: there is something wrong with the texture-matrix consistency.
-	//static int debctr = 0;
-	//debctr++;
-	//printf("debctr: %d\n", debctr);
-	//if (debctr > 100) return;
-
-	bool isDataAvailable;
-	{
-		std::lock_guard<std::mutex> lock(m_BufferMutex);
-		isDataAvailable = (m_ReadBufferIndex != m_WrittenBufferIndex);
-		m_ReadBufferIndex = m_WrittenBufferIndex;
-
-		m_ServerCamera.Set(m_CurrentServerCamera);
-		m_ServerCubemapCameraGroup.Update();
-	}
-	if (isDataAvailable)
+	if (isTextureDataAvailable)
 	{
 		unsigned writeTextureIndex = 1 - m_CurrentTextureIndex;
 
@@ -725,8 +719,10 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	unsigned short* serverWidth, unsigned short* serverHeight,
 	const double* leftViewMatrix, const double* rightViewMatrix,
 	const double* leftProjMatrix, const double* rightProjMatrix,
-	double* viewMatrix, double* projMatrix)
+	double* viewMatrix, double* projMatrix, double time)
 {
+	// TODO: we are currently not synchronising dimesions.
+
 	// We assume, that the function is first called with the index = 0.
 	if (sideIndex == 0)
 	{
@@ -747,8 +743,6 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 				m_Buffers[GetBufferIndex(BufferType::Depth, i, j)].Resize(depthBufferSize);
 			}
 		}
-
-		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 
 		auto leftViewTr = ToRigidTransformation(leftViewMatrix);
 		auto rightViewTr = ToRigidTransformation(rightViewMatrix);
@@ -787,18 +781,19 @@ inline void SetCameraFromMatrices(Camera& camera, const double* modelMatrix, con
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
-void CubemapReprojector::SetNewServerCameraTransformations(int sideIndex, const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
-{
-	if (sideIndex == (int)CubemapSide::Front)
-	{
-		SetCameraFromMatrices(m_NewServerCamera, modelMatrix, viewMatrix, projMatrix);
-	}
-}
-
-void CubemapReprojector::SetClientCameraTransformations(const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
+void CubemapReprojector::SetReprojectionTransformations(
+	const double* clientModel, const double* clientView, const double* clientProj,
+	const double* serverModel, const double* serverView, const double* serverProj)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	SetCameraFromMatrices(m_ClientCameraCopy, modelMatrix, viewMatrix, projMatrix);
+	SetCameraFromMatrices(m_ClientCameraCopy, clientModel, clientView, clientProj);
+	SetCameraFromMatrices(m_ServerCameraCopy, serverModel, serverView, serverProj);
+}
+
+void CubemapReprojector::DebugUpdateMatrices(
+	const double* serverModel, const double* serverView, const double* serverProj)
+{
+	//SetCameraFromMatrices(m_ServerCameraCopy, serverModel, serverView, serverProj);
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)

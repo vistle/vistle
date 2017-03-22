@@ -42,8 +42,7 @@ class CubemapReprojector
 
 private:
 
-	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_NewServerCamera,
-		m_CurrentServerCamera, m_ServerCameraForAdjustment;
+	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy, m_ServerCameraForAdjustment;
 	EngineBuildingBlocks::Graphics::Camera m_ClientCamera, m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
@@ -68,7 +67,6 @@ private: // Buffers.
 
 	std::vector<Core::ByteVectorU> m_Buffers;
 	
-	std::mutex m_BufferMutex;
 	unsigned m_WriteBufferIndex;
 	unsigned m_WrittenBufferIndex;
 	unsigned m_ReadBufferIndex;
@@ -76,6 +74,8 @@ private: // Buffers.
 	void InitializeBuffers();
 	unsigned GetBufferIndex(BufferType type, unsigned sideIndex, unsigned dbIndex);
 	void IncrementWriteBufferIndex();
+
+	void SynchronizeWithUpdating(bool* pIsTextureDataAvailable);
 
 private: // Textures.
 
@@ -92,7 +92,7 @@ private: // Textures.
 	void SetDepthData(unsigned resourceIndex, unsigned char** ppData,
 		glm::uvec2* start, glm::uvec2* end);
 
-	void UpdateTextures();
+	void UpdateTextures(bool isTextureDataAvailable);
 
 private: // Configuration.
 
@@ -136,22 +136,26 @@ public:
 		unsigned short* serverWidth, unsigned short* serverHeight,
 		const double* leftViewMatrix, const double* rightViewMatrix,
 		const double* leftProjMatrix, const double* rightProjMatrix,
-		double* viewMatrix, double* projMatrix);
+		double* viewMatrix, double* projMatrix, double time);
 
-	void SetNewServerCameraTransformations(int sideIndex, const double* modelMatrix, const double* viewMatrix, const double* projMatrix);
-	void SetClientCameraTransformations(const double* modelMatrix, const double* viewMatrix, const double* projMatrix);
+	void SetReprojectionTransformations(
+		const double* clientModel, const double* clientView, const double* clientProj,
+		const double* serverModel, const double* serverView, const double* serverProj);
 
 	void ResizeView(int idx, int w, int h, GLenum depthFormat);
 
 	unsigned char* GetColorBuffer(unsigned index);
 	unsigned char* GetDepthBuffer(unsigned index);
-	void SwapBuffers();
+	void SwapFrame();
 
 private: // Temporary.
 
 	Core::ByteVectorU m_SwapVector;
 	void SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
 	void SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
+public:
+
+	void DebugUpdateMatrices(const double* serverModel, const double* serverView, const double* serverProj);
 };
 
 #endif
