@@ -645,15 +645,15 @@ void CubemapReprojector::UpdateTextures(bool isTextureDataAvailable)
 {
 	if (isTextureDataAvailable)
 	{
-		unsigned writeTextureIndex = 1 - m_CurrentTextureIndex;
+		m_CurrentTextureIndex = 1 - m_CurrentTextureIndex;
 
 		auto& checkBuffer = m_Buffers[GetBufferIndex(BufferType::Color, 0, m_ReadBufferIndex)];
-		auto& checkTextureDesc = m_ColorTextures[writeTextureIndex].GetTextureDescription();
+		auto& checkTextureDesc = m_ColorTextures[m_CurrentTextureIndex].GetTextureDescription();
 		if (NeedsResizing(checkBuffer.GetSizeInBytes(), checkTextureDesc.Width, checkTextureDesc.Height,
 			m_IsContainingAlpha))
 		{
-			InitializeColorCubemap(writeTextureIndex);
-			InitializeDepthTextureArrays(writeTextureIndex);
+			InitializeColorCubemap(m_CurrentTextureIndex);
+			InitializeDepthTextureArrays(m_CurrentTextureIndex);
 		}
 
 		unsigned char* colorDataPointers[c_CountCubemapSides];
@@ -681,15 +681,13 @@ void CubemapReprojector::UpdateTextures(bool isTextureDataAvailable)
 			depthDataPointers[i] = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_ReadBufferIndex)].GetArray();
 		}
 
-		SetColorCubemapData(writeTextureIndex, colorDataPointers, m_IsContainingAlpha,
+		SetColorCubemapData(m_CurrentTextureIndex, colorDataPointers, m_IsContainingAlpha,
 			colorSideStarts, colorSideEnds);
-		SetDepthData(writeTextureIndex, depthDataPointers, sideStarts, sideEnds);
+		SetDepthData(m_CurrentTextureIndex, depthDataPointers, sideStarts, sideEnds);
 
 		m_GridReprojector.SetTextureData(depthDataPointers, m_ServerWidth, m_ServerHeight,
 			m_IsContainingAlpha, m_SideVisiblePortion, m_PosZVisiblePortion,
 			m_ServerCubemapCameraGroup);
-
-		m_CurrentTextureIndex = writeTextureIndex;
 	}
 }
 
