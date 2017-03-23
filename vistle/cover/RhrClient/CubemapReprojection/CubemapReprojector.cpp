@@ -215,6 +215,7 @@ CubemapReprojector::CubemapReprojector()
 	, m_IsShuttingDown(false)
 	, m_ServerCamera(&m_SceneNodeHandler)
 	, m_ServerCameraCopy(&m_SceneNodeHandler)
+	, m_ServerCameraNew(&m_SceneNodeHandler)
 	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
 	, m_ClientCameraCopy(&m_SceneNodeHandler)
@@ -620,6 +621,8 @@ void CubemapReprojector::SwapFrame()
 	IncrementWriteBufferIndex();
 	if (m_WriteBufferIndex == m_ReadBufferIndex)
 		IncrementWriteBufferIndex();
+
+	m_ServerCameraCopy.Set(m_ServerCameraNew);
 }
 
 void CubemapReprojector::SynchronizeWithUpdating(bool* pIsTextureDataAvailable)
@@ -784,13 +787,19 @@ inline void SetCameraFromMatrices(Camera& camera, const double* modelMatrix, con
 	camera.SetProjection(ToProjection(projMatrix));
 }
 
-void CubemapReprojector::SetReprojectionTransformations(
-	const double* clientModel, const double* clientView, const double* clientProj,
-	const double* serverModel, const double* serverView, const double* serverProj)
+void CubemapReprojector::SetNewServerCamera(int index,
+	const double* model, const double* view, const double* proj)
+{
+	if (index == (int)CubemapSide::Front)
+	{
+		SetCameraFromMatrices(m_ServerCameraNew, model, view, proj);
+	}
+}
+
+void CubemapReprojector::SetClientCamera(const double* model, const double* view, const double* proj)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	SetCameraFromMatrices(m_ClientCameraCopy, clientModel, clientView, clientProj);
-	SetCameraFromMatrices(m_ServerCameraCopy, serverModel, serverView, serverProj);
+	SetCameraFromMatrices(m_ClientCameraCopy, model, view, proj);
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
