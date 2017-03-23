@@ -78,7 +78,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
         }
         {// data choice parameters
             std::stringstream s;
-            s << "Data" << i;
+            s << "data" << i;
             auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
             std::vector<std::string> choices;
             choices.push_back("(NONE)");
@@ -98,7 +98,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
        }
        {// 2d data choice parameters
           std::stringstream s;
-          s << "Data2d" << i;
+          s << "data2d" << i;
           auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
           std::vector<std::string> choices;
           choices.push_back("(NONE)");
@@ -287,7 +287,6 @@ void CaseInfo::parseResultfile() {
     //verification:
 //    for(index_t i=0;i<m_allParam.size();++i) {
 //        std::cerr << "m_allParam[" << i << "].varName = " << m_allParam[i].varName << std::endl;
-//        std::cerr << "m_allParam[" << i << "].existsOnlyInResfile = " << m_allParam[i].existsOnlyInResfile << std::endl;
 //        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].varDimension << std::endl;
 //        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].onlyMeaningfulOnBoundary << std::endl;
 //        for(index_t j=0;j<m_allParam[i].vectorIdwithZone.size();++j) {
@@ -1025,7 +1024,9 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
 }
 
 index_t ReadCFX::collect3dAreas() {
-    // read zone selection; m_coRestraintZones contains a bool array of which zones are selected
+    //write either selected zones or volumes (in selected zones) in a vector in a consecutively order
+
+    // read zone selection; m_coRestraintZones contains a bool array of selected zones
     //m_coRestraintZones(zone) = 1 zone is selected
     //m_coRestraintZones(zone) = 0 zone isn't selected
     //group = -1 zones are selected
@@ -1074,7 +1075,9 @@ index_t ReadCFX::collect3dAreas() {
 }
 
 index_t ReadCFX::collect2dAreas() {
-    //m_coRestraint2dAreas contains a bool array of which 2dAreas are selected
+    //write either selected zones or volumes (in selected zones) in a vector in a consecutively order
+
+    //m_coRestraint2dAreas contains a bool array of selected 2dAreas
     //m_coRestraint2dAreas(Area2d) = 1 Area2d is selected
     //m_coRestraint2dAreas(Area2d) = 0 Area2d isn't selected
     //group = -1 all Area2d are selected
@@ -1117,7 +1120,9 @@ index_t ReadCFX::collect2dAreas() {
 }
 
 bool ReadCFX::loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes) {
-   for (int i=0; i<NumPorts; ++i) {
+    //calles for each port the loadGrid and loadField function and the setDataObject function to get the object ready to be added to port
+
+    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::cerr << "field = " << field << std::endl;
 
@@ -1158,6 +1163,8 @@ bool ReadCFX::loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, i
 }
 
 bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+    //calles for each port the loadPolygon and load2dField function and the set2dDataObject function to get the object ready to be added to port
+
     for (int i=0; i<Num2dPorts; ++i) {
         std::string area2dField = m_2dOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
@@ -1193,6 +1200,8 @@ bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timest
 }
 
 bool ReadCFX::addVolumeDataToPorts() {
+    //adds the 3d data to ports
+
     for (int portnum=0; portnum<NumPorts; ++portnum) {
         if(m_currentVolumedata[portnum]) {
             addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
@@ -1202,6 +1211,8 @@ bool ReadCFX::addVolumeDataToPorts() {
 }
 
 bool ReadCFX::add2dDataToPorts() {
+    //adds the 2d data to ports
+
     for (int portnum=0; portnum<Num2dPorts; ++portnum) {
         if(m_current2dData[portnum]) {
             addObject(m_2dDataOut[portnum], m_current2dData[portnum]);
@@ -1211,6 +1222,8 @@ bool ReadCFX::add2dDataToPorts() {
 }
 
 bool ReadCFX::addGridToPort(int area3d) {
+    //adds the grid to the gridOut port
+
     std::cerr << "W1" << std::endl;
     if(m_gridsInTimestep[area3d]) {
         addObject(m_gridOut,m_gridsInTimestep[area3d]);
@@ -1219,6 +1232,8 @@ bool ReadCFX::addGridToPort(int area3d) {
 }
 
 bool ReadCFX::addPolygonToPort(int area2d) {
+    //adds the polygon to the polygonOut port
+
     if(m_polygonsInTimestep[area2d]) {
         addObject(m_polyOut,m_polygonsInTimestep[area2d]);
     }
@@ -1226,7 +1241,12 @@ bool ReadCFX::addPolygonToPort(int area2d) {
 }
 
 void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes) {
-   if (obj) {
+    //sets the timestep, the number of timesteps, the real time, the block number and total number of blocks and the transformation matrix for a vistle object
+    //timestep is -1 if ntimesteps is 0 or a variable is only in resfile
+    //timestep for data in .trn files is timestep (variable)
+    //timestep for data in .res files is last timestep (fix)
+
+    if (obj) {
        if(m_ntimesteps == 0) {
            obj->setTimestep(-1);
            obj->setNumTimesteps(-1);
@@ -1304,6 +1324,8 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
 }
 
 bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes) {
+    //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
+
     setMeta(grid,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
     setMeta(data,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
     data->setGrid(grid);
@@ -1313,6 +1335,8 @@ bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int 
 }
 
 bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+    //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
+
     setMeta(polygon,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
     setMeta(data,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
     data->setGrid(polygon);
@@ -1322,6 +1346,8 @@ bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d,
 }
 
 bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes) {
+    //reads all information (3d and 2d data) for a given timestep and adds them to the ports
+
     for(index_t i=0;i<numSel3dArea;++i) {
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSel3dArea) << std::endl;
         if(rankForVolumeAndTimestep(timestep,i,numSel3dArea) == rank()) {
@@ -1344,6 +1370,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
 }
 
 bool ReadCFX::compute() {
+    //starts reading the .res file and loops than over all timesteps
 #ifdef CFX_DEBUG
     std::cerr << "Compute Start. \n";
 #endif
