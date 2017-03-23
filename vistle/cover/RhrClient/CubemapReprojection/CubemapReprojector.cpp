@@ -544,7 +544,7 @@ void CubemapReprojector::IncrementWriteBufferIndex()
 	if (++m_WriteBufferIndex == c_TripleBuffering) m_WriteBufferIndex = 0;
 }
 
-void CubemapReprojector::SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
+inline void SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
 {
 	uint32_t temp;
 	assert(elementSize <= sizeof(uint32_t));
@@ -566,18 +566,23 @@ void CubemapReprojector::SwapX(void* pBuffer, unsigned width, unsigned height, u
 	}
 }
 
-void CubemapReprojector::SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize)
+inline void PrepareDepth(void* pBuffer, unsigned width, unsigned height)
 {
-	unsigned rowSize = width * elementSize;
-	m_SwapVector.Resize(rowSize);
-	auto tempPtr = m_SwapVector.GetArray();
-	auto ptr1 = reinterpret_cast<uint8_t*>(pBuffer);
-	auto ptr2 = ptr1 + (height - 1) * rowSize;
-	for (; ptr1 < ptr2; ptr1 += rowSize, ptr2 -= rowSize)
+	// Swapping Y and transforming from [0, 1] to [-1, 1].
+
+	auto ptr1 = reinterpret_cast<float*>(pBuffer);
+	auto ptr2 = ptr1 + (height - 1) * width;
+	for (; ptr1 < ptr2; ptr1 += width, ptr2 -= width)
 	{
-		memcpy(tempPtr, ptr1, rowSize);
-		memcpy(ptr1, ptr2, rowSize);
-		memcpy(ptr2, tempPtr, rowSize);
+		auto cPtr1 = ptr1;
+		auto cPtr2 = ptr2;
+		auto cPtr1Limit = ptr1 + width;
+		for (; cPtr1 < cPtr1Limit; ++cPtr1, ++cPtr2)
+		{
+			float temp = *cPtr1 * 2.0f - 1.0f;
+			*cPtr1 = *cPtr2 * 2.0f - 1.0f;
+			*cPtr2 = temp;
+		}
 	}
 }
 
@@ -591,7 +596,7 @@ void CubemapReprojector::SwapFrame()
 		auto& colorBuffer = m_Buffers[GetBufferIndex(BufferType::Color, i, m_WriteBufferIndex)];
 		auto& depthBuffer = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WriteBufferIndex)];
 		SwapX(colorBuffer.GetArray(), m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3);
-		SwapY(depthBuffer.GetArray(), m_ServerWidth, m_ServerHeight, sizeof(float));
+		PrepareDepth(depthBuffer.GetArray(), m_ServerWidth, m_ServerHeight);
 	}
 
 	if (c_IsDebuggingBuffers)
@@ -790,12 +795,6 @@ void CubemapReprojector::SetReprojectionTransformations(
 	SetCameraFromMatrices(m_ServerCameraCopy, serverModel, serverView, serverProj);
 }
 
-void CubemapReprojector::DebugUpdateMatrices(
-	const double* serverModel, const double* serverView, const double* serverProj)
-{
-	//SetCameraFromMatrices(m_ServerCameraCopy, serverModel, serverView, serverProj);
-}
-
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
 {
 	assert(idx == 0);
@@ -809,7 +808,5 @@ void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
 
 // TODO:
 //
-// - CHECK matrix-data consistency
-// - check swappings (here: X for color and Y for depth)
 // - check whether multisampling is working properly
 // - check stiching geometry (there seem to be some holes...)

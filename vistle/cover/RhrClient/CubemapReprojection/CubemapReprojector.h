@@ -147,15 +147,6 @@ public:
 	unsigned char* GetColorBuffer(unsigned index);
 	unsigned char* GetDepthBuffer(unsigned index);
 	void SwapFrame();
-
-private: // Temporary.
-
-	Core::ByteVectorU m_SwapVector;
-	void SwapX(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
-	void SwapY(void* pBuffer, unsigned width, unsigned height, unsigned elementSize);
-public:
-
-	void DebugUpdateMatrices(const double* serverModel, const double* serverView, const double* serverProj);
 };
 
 #endif
