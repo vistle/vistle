@@ -1408,13 +1408,13 @@ RhrClient::preFrame()
 		{
 			c_Debug_IsFirstFrame = false;
 
-			double view[] = {
+			double model[] = {
 				0.0, 1.0, 0.0, 0.0,
 				0.0, 0.0, 1.0, 0.0,
 				1.0, 0.0, 0.0, 0.0,
 				50.0, -1250.0, -200.0, 1.0 };
 
-			cover->setXformMat(osg::Matrix(view));
+			cover->setXformMat(osg::Matrix(model));
 		}
 	}
 
