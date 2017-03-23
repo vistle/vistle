@@ -8,8 +8,13 @@
 #include <Core/System/ThreadPool.h>
 
 #include <EngineBuildingBlocks/Graphics/Camera/Camera.h>
+#include <EngineBuildingBlocks/Graphics/Camera/FreeCamera.h>
 #include <EngineBuildingBlocks/Graphics/Camera/CubemapHelper.hpp>
 #include <EngineBuildingBlocks/SystemTime.h>
+#include <EngineBuildingBlocks/EventHandling.h>
+#include <EngineBuildingBlocks/Input/KeyHandler.h>
+#include <EngineBuildingBlocks/Input/MouseHandler.h>
+#include <EngineBuildingBlocks/Input/WindowsKeys.h>
 #include <OpenGLRender/Resources/Texture2D.h>
 #include <OpenGLRender/Resources/FrameBufferObject.h>
 
@@ -27,8 +32,17 @@ enum class BufferType
 };
 
 class CubemapReprojector
+	: public EngineBuildingBlocks::Input::IKeyStateProvider
+	, public EngineBuildingBlocks::Input::IMouseStateProvider
 {
 	EngineBuildingBlocks::PathHandler m_PathHandler;
+	EngineBuildingBlocks::EventManager m_EventManager;
+
+	EngineBuildingBlocks::Input::KeyHandler m_KeyHandler;
+	EngineBuildingBlocks::Input::MouseHandler m_MouseHandler;
+	EngineBuildingBlocks::Input::WindowsKeyMap m_WindowsKeys;
+
+	EngineBuildingBlocks::SystemTime m_SystemTime;
 
 	unsigned m_ClientWidth, m_ClientHeight, m_ServerWidth, m_ServerHeight,
 		m_CountSamples;
@@ -40,12 +54,25 @@ class CubemapReprojector
 
 	void InitializeGL(unsigned openGLContextID);
 
+public: // Keys and mouse.
+
+	EngineBuildingBlocks::Input::KeyState GetKeyState(EngineBuildingBlocks::Input::Keys key) const;
+
+	EngineBuildingBlocks::Input::MouseButtonState GetMouseButtonState(EngineBuildingBlocks::Input::MouseButton button) const;
+	void GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const;
+
+	void InitializeInput();
+	void UpdateInput();
+
 private:
 
 	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy, 
 		m_ServerCameraNew, m_ServerCameraForAdjustment;
-	EngineBuildingBlocks::Graphics::Camera m_ClientCamera, m_ClientCameraCopy;
+	EngineBuildingBlocks::Graphics::FreeCamera m_ClientCameraCopy;
+	EngineBuildingBlocks::Graphics::Camera m_ClientCamera;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
+
+	glm::mat4 m_ConstantViewInverse;
 
 	GridReprojector m_GridReprojector;
 	
@@ -149,6 +176,10 @@ public:
 	unsigned char* GetColorBuffer(unsigned index);
 	unsigned char* GetDepthBuffer(unsigned index);
 	void SwapFrame();
+
+	void GetFirstModelMatrix(double* model);
+	void GetModelMatrix(double* model, bool* pIsValid);
+	
 };
 
 #endif

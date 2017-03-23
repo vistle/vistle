@@ -20,6 +20,7 @@
 
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
+using namespace EngineBuildingBlocks::Input;
 using namespace OpenGLRender;
 using namespace CubemapStreaming;
 
@@ -218,12 +219,15 @@ CubemapReprojector::CubemapReprojector()
 	, m_ServerCameraNew(&m_SceneNodeHandler)
 	, m_ServerCameraForAdjustment(&m_SceneNodeHandler)
 	, m_ClientCamera(&m_SceneNodeHandler)
-	, m_ClientCameraCopy(&m_SceneNodeHandler)
+	, m_ClientCameraCopy(&m_SceneNodeHandler, &m_KeyHandler, &m_MouseHandler)
 	, m_ServerCubemapCameraGroup(&m_ServerCamera)
 	, m_ServerCubemapCameraGroupForAdjustment(&m_ServerCameraForAdjustment)
 	, m_GridReprojector(m_SceneNodeHandler, &m_IsShuttingDown)
 	, m_InitializedOpenGLContextId(Core::c_InvalidIndexU)
 	, m_IsVRGraphicsInitialized(false)
+	, m_KeyHandler(&m_EventManager)
+	, m_MouseHandler(&m_EventManager)
+	, m_ConstantViewInverse(0.0f)
 {
 	LoadConfiguration();
 
@@ -239,6 +243,8 @@ CubemapReprojector::CubemapReprojector()
 	}
 
 	InitializeBuffers();
+
+	InitializeInput();
 }
 
 void CubemapReprojector::InitializeGL(unsigned openGLContextID)
@@ -329,6 +335,8 @@ void CubemapReprojector::UpdateVRData()
 
 void CubemapReprojector::Render(unsigned openGLContextID)
 {
+	UpdateInput();
+
 	// Synchronising with updating thread.
 	bool isTextureDataAvailable;
 	SynchronizeWithUpdating(&isTextureDataAvailable);
@@ -780,11 +788,11 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	CreateFromMatrix(sideProjectionMatrix, projMatrix);
 }
 
-inline void SetCameraFromMatrices(Camera& camera, const double* modelMatrix, const double* viewMatrix, const double* projMatrix)
+inline void SetCameraFromMatrices(Camera& camera, const double* model, const double* view, const double* proj)
 {
-	auto modelView = ToMatrix(viewMatrix) * ToMatrix(modelMatrix);
+	auto modelView = ToMatrix(view) * ToMatrix(model);
 	camera.SetFromViewMatrix(modelView);
-	camera.SetProjection(ToProjection(projMatrix));
+	camera.SetProjection(ToProjection(proj));
 }
 
 void CubemapReprojector::SetNewServerCamera(int index,
@@ -800,6 +808,8 @@ void CubemapReprojector::SetClientCamera(const double* model, const double* view
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 	SetCameraFromMatrices(m_ClientCameraCopy, model, view, proj);
+
+	m_ConstantViewInverse = glm::inverse(ToMatrix(view));
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
@@ -817,3 +827,119 @@ void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
 //
 // - check whether multisampling is working properly
 // - check stiching geometry (there seem to be some holes...)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <Core/Windows.h>
+#include <EngineBuildingBlocks/Input/DefaultInputBinder.h>
+
+KeyState CubemapReprojector::GetKeyState(Keys key) const
+{
+	auto specificKey = m_WindowsKeys.GetSpecificKey(key);
+	if (specificKey != 0)
+	{
+		return (::GetKeyState(specificKey) & 0x8000
+			? KeyState::Pressed
+			: KeyState::Released);
+	}
+	return KeyState::Unhandled;
+}
+
+MouseButtonState CubemapReprojector::GetMouseButtonState(MouseButton button) const
+{
+	int specificButton = -1;
+	switch (button)
+	{
+	case MouseButton::Left: specificButton = VK_LBUTTON; break;
+	case MouseButton::Middle: specificButton = VK_MBUTTON; break;
+	case MouseButton::Right: specificButton = VK_RBUTTON; break;
+	}
+	if (specificButton == -1) return MouseButtonState::Released;
+
+	return (::GetAsyncKeyState(specificButton) & 0x8000
+		? MouseButtonState::Pressed
+		: MouseButtonState::Released);
+}
+
+void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
+{
+	POINT point;
+	::GetCursorPos(&point);
+	cursorPositionX = (float)point.x;
+	cursorPositionY = (float)point.y;
+}
+
+void CubemapReprojector::InitializeInput()
+{
+	m_KeyHandler.SetKeyStateProvider(this);
+	m_MouseHandler.SetMouseStateProvider(this);
+
+	m_SystemTime.Initialize();
+	m_KeyHandler.Initialize();
+	m_MouseHandler.Initialize();
+
+	DefaultInputBinder::Bind(&m_KeyHandler, &m_MouseHandler, &m_ClientCameraCopy);
+
+	m_ClientCameraCopy.SetMaxSpeed(300.0f);
+}
+
+void CubemapReprojector::UpdateInput()
+{
+	for (int generalKey = 0; generalKey < (int)Keys::COUNT; generalKey++)
+	{
+		auto keyState = GetKeyState((Keys)generalKey);
+		if (keyState != KeyState::Unhandled)
+		{
+			m_KeyHandler.OnKeyAction((Keys)generalKey, keyState);
+		}
+	}
+	static MouseButtonState previousButtonState[] = {
+		MouseButtonState::Released, MouseButtonState::Released, MouseButtonState::Released };
+	static glm::vec2 previousMousePosition(-1.0f, -1.0f);
+	for (int button = 0; button < (int)MouseButton::COUNT_HANDLED; button++)
+	{
+		auto buttonState = GetMouseButtonState((MouseButton)button);
+		if (buttonState != previousButtonState[button])
+		{
+			previousButtonState[button] = buttonState;
+			m_MouseHandler.OnMouseButtonAction((MouseButton)button, buttonState);
+		}
+	}
+	glm::vec2 mousePosition;
+	GetCursorPosition(mousePosition.x, mousePosition.y);
+	if (previousMousePosition != glm::vec2(-1.0f, -1.0f) && mousePosition != previousMousePosition)
+	{
+		m_MouseHandler.OnCursorPositionChanged(mousePosition.x, mousePosition.y);
+	}
+	previousMousePosition = mousePosition;
+
+	m_SystemTime.Update();
+
+	m_KeyHandler.Update(m_SystemTime);
+	m_MouseHandler.Update(m_SystemTime);
+
+	m_EventManager.HandleEvents();
+
+	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+	m_ClientCameraCopy.Update(m_SystemTime);
+}
+
+const double c_FirstModelMatrix[] = {
+	0.0, 1.0, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	1.0, 0.0, 0.0, 0.0,
+	50.0, -1250.0, -200.0, 1.0 };
+
+void CubemapReprojector::GetFirstModelMatrix(double* model)
+{
+	memcpy(model, c_FirstModelMatrix, sizeof(double) * 16);
+}
+
+void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
+{
+	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+	auto modelView = m_ClientCameraCopy.GetViewMatrix();
+	auto modelMatrix = m_ConstantViewInverse * modelView;
+	CreateFromMatrix(modelMatrix, model);
+	*pIsValid = (m_ConstantViewInverse != glm::mat4(0.0f));
+}

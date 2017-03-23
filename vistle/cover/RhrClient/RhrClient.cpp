@@ -7,7 +7,8 @@
  * \copyright GPL2+
  */
 
-const bool c_AllowDebugging = true;
+const bool c_AllowModelTransformationSetting = true;
+const bool c_AllowOwnInput = true;
 
 #include "RhrClient.h"
 
@@ -1401,20 +1402,26 @@ void
 RhrClient::preFrame()
 {
 	// DEBUG!!!!
-	if (c_AllowDebugging)
+	if (c_AllowModelTransformationSetting)
 	{
-		static bool c_Debug_IsFirstFrame = true;
-		if (c_Debug_IsFirstFrame)
+		double model[16];
+
+		static bool frameSetting_IsFirstFrame = true;
+		if (frameSetting_IsFirstFrame)
 		{
-			c_Debug_IsFirstFrame = false;
-
-			double model[] = {
-				0.0, 1.0, 0.0, 0.0,
-				0.0, 0.0, 1.0, 0.0,
-				1.0, 0.0, 0.0, 0.0,
-				50.0, -1250.0, -200.0, 1.0 };
-
+			frameSetting_IsFirstFrame = false;
+			m_CubemapReprojector.GetFirstModelMatrix(model);
 			cover->setXformMat(osg::Matrix(model));
+		}
+		else
+		{
+			if (m_mode == MultiChannelDrawer::Mode::ReprojectCubemap && c_AllowOwnInput)
+			{
+				bool isValid = false;
+				m_CubemapReprojector.GetModelMatrix(model, &isValid);
+				if(isValid)
+					cover->setXformMat(osg::Matrix(model));
+			}
 		}
 	}
 
