@@ -835,10 +835,17 @@ void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
 // - check whether multisampling is working properly
 // - check stiching geometry (there seem to be some holes...)
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////// INPUT HANDLING //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
+//
+// Note: this is ONLY for debugging the reprojection's behaviour.
+
+#include <EngineBuildingBlocks/Input/DefaultInputBinder.h>
+
+#ifdef IS_WINDOWS
 
 #include <Core/Windows.h>
-#include <EngineBuildingBlocks/Input/DefaultInputBinder.h>
 
 KeyState CubemapReprojector::GetKeyState(Keys key) const
 {
@@ -875,6 +882,28 @@ void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursor
 	cursorPositionX = (float)point.x;
 	cursorPositionY = (float)point.y;
 }
+
+#else
+
+// Dummy implementation.
+
+KeyState CubemapReprojector::GetKeyState(Keys key) const
+{
+	return KeyState::Unhandled;
+}
+
+MouseButtonState CubemapReprojector::GetMouseButtonState(MouseButton button) const
+{
+	return MouseButtonState::Released;
+}
+
+void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
+{
+	cursorPositionX = 0.0f;
+	cursorPositionY = 0.0f;
+}
+
+#endif
 
 void CubemapReprojector::InitializeInput()
 {
