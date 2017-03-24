@@ -1412,6 +1412,7 @@ RhrClient::preFrame()
 			frameSetting_IsFirstFrame = false;
 			m_CubemapReprojector.GetFirstModelMatrix(model);
 			cover->setXformMat(osg::Matrix(model));
+			m_CubemapReprojector.SetClientCameraMovementAllowed(c_AllowOwnInput);
 		}
 		else
 		{

@@ -34,6 +34,7 @@ enum class BufferType
 class CubemapReprojector
 	: public EngineBuildingBlocks::Input::IKeyStateProvider
 	, public EngineBuildingBlocks::Input::IMouseStateProvider
+	, public EngineBuildingBlocks::IEventListener
 {
 	EngineBuildingBlocks::PathHandler m_PathHandler;
 	EngineBuildingBlocks::EventManager m_EventManager;
@@ -58,6 +59,12 @@ public: // Keys and mouse.
 
 	EngineBuildingBlocks::Input::KeyState GetKeyState(EngineBuildingBlocks::Input::Keys key) const;
 
+	unsigned m_LoadClientCameraECI;
+	unsigned m_SaveClientCameraECI;
+	unsigned m_FlipIsUpdatingTextureECI;
+
+	bool HandleEvent(const EngineBuildingBlocks::Event* _event);
+
 	EngineBuildingBlocks::Input::MouseButtonState GetMouseButtonState(EngineBuildingBlocks::Input::MouseButton button) const;
 	void GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const;
 
@@ -68,11 +75,12 @@ private:
 
 	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy, 
 		m_ServerCameraNew, m_ServerCameraForAdjustment;
-	EngineBuildingBlocks::Graphics::FreeCamera m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::Camera m_ClientCamera;
+	EngineBuildingBlocks::Graphics::FreeCamera m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
 	glm::mat4 m_ConstantViewInverse;
+	bool m_IsClientCameraMovementAllowed = false;
 
 	GridReprojector m_GridReprojector;
 	
@@ -107,6 +115,8 @@ private: // Buffers.
 
 private: // Textures.
 
+	bool m_IsUpdatingTextures = true;
+
 	unsigned m_InitializedOpenGLContextId;
 	OpenGLRender::Texture2D m_ColorTextures[c_CountTextures];
 	OpenGLRender::Texture2D m_DepthTextures[c_CountTextures];
@@ -138,8 +148,8 @@ private: // Configuration.
 
 private: // Serialization.
 
-	void SaveCameraLocation();
-	void LoadCameraLocation();
+	void SaveClientCameraLocation();
+	void LoadClientCameraLocation();
 
 private: // VR.
 
@@ -180,6 +190,7 @@ public:
 	void GetFirstModelMatrix(double* model);
 	void GetModelMatrix(double* model, bool* pIsValid);
 	
+	void SetClientCameraMovementAllowed(bool isAllowed);
 };
 
 #endif

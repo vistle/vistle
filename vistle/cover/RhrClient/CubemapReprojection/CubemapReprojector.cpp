@@ -493,17 +493,20 @@ void CubemapReprojector::LoadConfiguration()
 	m_GridReprojector.LoadConfiguration(m_Configuration);
 }
 
-void CubemapReprojector::SaveCameraLocation()
+void CubemapReprojector::SaveClientCameraLocation()
 {
 	auto cameraLocationPath = m_PathHandler.GetPathFromRootDirectory("Temp/CameraLocation.bin");
 
 	Core::ByteVector bytes;
-	Core::SerializeSB(bytes, Core::ToPlaceHolder(m_ClientCamera.GetLocalOrientation()));
-	Core::SerializeSB(bytes, Core::ToPlaceHolder(m_ClientCamera.GetLocalPosition()));
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		Core::SerializeSB(bytes, Core::ToPlaceHolder(m_ClientCameraCopy.GetLocalOrientation()));
+		Core::SerializeSB(bytes, Core::ToPlaceHolder(m_ClientCameraCopy.GetLocalPosition()));
+	}
 	Core::WriteAllBytes(cameraLocationPath, bytes.GetArray(), bytes.GetSize());
 }
 
-void CubemapReprojector::LoadCameraLocation()
+void CubemapReprojector::LoadClientCameraLocation()
 {
 	auto cameraLocationPath = m_PathHandler.GetPathFromRootDirectory("Temp/CameraLocation.bin");
 
@@ -518,8 +521,9 @@ void CubemapReprojector::LoadCameraLocation()
 		Core::DeserializeSB(pBytes, Core::ToPlaceHolder(clientOrientation));
 		Core::DeserializeSB(pBytes, Core::ToPlaceHolder(clientPosition));
 
-		m_ClientCamera.SetLocalOrientation(clientOrientation);
-		m_ClientCamera.SetLocalPosition(clientPosition);
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		m_ClientCameraCopy.SetLocalOrientation(clientOrientation);
+		m_ClientCameraCopy.SetLocalPosition(clientPosition);
 	}
 }
 
@@ -599,6 +603,9 @@ const bool c_IsDebuggingBuffers = false;
 
 void CubemapReprojector::SwapFrame()
 {
+	if (!m_IsUpdatingTextures)
+		return;
+
 	// TODO: implement swappings in shader!
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
@@ -880,7 +887,24 @@ void CubemapReprojector::InitializeInput()
 
 	DefaultInputBinder::Bind(&m_KeyHandler, &m_MouseHandler, &m_ClientCameraCopy);
 
+	m_LoadClientCameraECI = m_KeyHandler.RegisterStateKeyEventListener("LoadClientCamera", this);
+	m_SaveClientCameraECI = m_KeyHandler.RegisterStateKeyEventListener("SaveClientCamera", this);
+	m_FlipIsUpdatingTextureECI = m_KeyHandler.RegisterStateKeyEventListener("FlipIsUpdatingTexture", this);
+	m_KeyHandler.BindEventToKey(m_LoadClientCameraECI, Keys::L);
+	m_KeyHandler.BindEventToKey(m_SaveClientCameraECI, Keys::K);
+	m_KeyHandler.BindEventToKey(m_FlipIsUpdatingTextureECI, Keys::J);
+
 	m_ClientCameraCopy.SetMaxSpeed(300.0f);
+}
+
+bool CubemapReprojector::HandleEvent(const Event* _event)
+{
+	auto eci = _event->ClassId;
+	if (eci == m_LoadClientCameraECI) LoadClientCameraLocation();
+	else if (eci == m_SaveClientCameraECI) SaveClientCameraLocation();
+	else if (eci == m_FlipIsUpdatingTextureECI) m_IsUpdatingTextures = !m_IsUpdatingTextures;
+	else return false;
+	return true;
 }
 
 void CubemapReprojector::UpdateInput()
@@ -920,8 +944,11 @@ void CubemapReprojector::UpdateInput()
 
 	m_EventManager.HandleEvents();
 
-	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	m_ClientCameraCopy.Update(m_SystemTime);
+	if (m_IsClientCameraMovementAllowed)
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		m_ClientCameraCopy.Update(m_SystemTime);
+	}
 }
 
 const double c_FirstModelMatrix[] = {
@@ -942,4 +969,9 @@ void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
 	auto modelMatrix = m_ConstantViewInverse * modelView;
 	CreateFromMatrix(modelMatrix, model);
 	*pIsValid = (m_ConstantViewInverse != glm::mat4(0.0f));
+}
+
+void CubemapReprojector::SetClientCameraMovementAllowed(bool isAllowed)
+{
+	m_IsClientCameraMovementAllowed = isAllowed;
 }
