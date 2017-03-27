@@ -1019,7 +1019,7 @@ void RhrClient::SetNumViewsAndChannelBase()
 {
 	if (m_mode == MultiChannelDrawer::ReprojectCubemap)
 	{
-		m_numViews = 6;
+		m_numViews = m_CubemapReprojector.GetCountSourceViews();
 		m_channelBase = 0;
 	}
 	else
@@ -1463,7 +1463,7 @@ RhrClient::preFrame()
    std::vector<matricesMsg> messages(m_numViews);
    if (m_mode == MultiChannelDrawer::ReprojectCubemap)
    {
-	   assert(m_numViews == 6);
+	   assert(m_numViews == m_CubemapReprojector.GetCountSourceViews());
 	   for (int i = 0; i < m_numViews; ++i) fillMatricesMessage(messages[i], 0, i, false);
    }
    else

@@ -116,6 +116,8 @@ private: // Buffers.
 
 	void SynchronizeWithUpdating(bool* pIsTextureDataAvailable);
 
+	void SaveImageData();
+
 private: // Textures.
 
 	bool m_IsUpdatingTextures = true;
@@ -165,6 +167,11 @@ private: // VR.
 	void InitializeVRGraphics(int prevDrawFBO);
 	void ReleaseVR();
 
+private: // Misc.
+
+	unsigned ViewToSideIndex(unsigned viewIndex) const;
+	unsigned SideToViewIndex(unsigned sideIndex) const;
+
 public:
 
 	CubemapReprojector();
@@ -172,22 +179,22 @@ public:
 	void Destroy();
 	void Render(unsigned openGLContextID);
 
-	void AdjustDimensionsAndMatrices(unsigned sideIndex, 
+	void AdjustDimensionsAndMatrices(unsigned viewIndex,
 		unsigned short clientWidth, unsigned short clientHeight,
 		unsigned short* serverWidth, unsigned short* serverHeight,
 		const double* leftViewMatrix, const double* rightViewMatrix,
 		const double* leftProjMatrix, const double* rightProjMatrix,
 		double* viewMatrix, double* projMatrix, double time);
 
-	void SetNewServerCamera(int index,
+	void SetNewServerCamera(int viewIndex,
 		const double* model, const double* view, const double* proj);
 
 	void SetClientCamera(const double* model, const double* view, const double* proj);
 
-	void ResizeView(int idx, int w, int h, GLenum depthFormat);
+	void ResizeView(int viewIndex, int w, int h, GLenum depthFormat);
 
-	unsigned char* GetColorBuffer(unsigned index);
-	unsigned char* GetDepthBuffer(unsigned index);
+	unsigned char* GetColorBuffer(unsigned viewIndex);
+	unsigned char* GetDepthBuffer(unsigned viewIndex);
 	void SwapFrame();
 
 	void GetFirstModelMatrix(double* model);
@@ -195,7 +202,7 @@ public:
 	
 	void SetClientCameraMovementAllowed(bool isAllowed);
 
-	void SaveImageData();
+	unsigned GetCountSourceViews() const;
 };
 
 #endif

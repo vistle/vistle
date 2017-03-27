@@ -548,14 +548,14 @@ unsigned CubemapReprojector::GetBufferIndex(BufferType type, unsigned sideIndex,
 	return ((unsigned)type * c_CountCubemapSides + sideIndex) * c_TripleBuffering + tbIndex;
 }
 
-unsigned char* CubemapReprojector::GetColorBuffer(unsigned index)
+unsigned char* CubemapReprojector::GetColorBuffer(unsigned viewIndex)
 {
-	return m_Buffers[GetBufferIndex(BufferType::Color, index, m_WriteBufferIndex)].GetArray();
+	return m_Buffers[GetBufferIndex(BufferType::Color, ViewToSideIndex(viewIndex), m_WriteBufferIndex)].GetArray();
 }
 
-unsigned char* CubemapReprojector::GetDepthBuffer(unsigned index)
+unsigned char* CubemapReprojector::GetDepthBuffer(unsigned viewIndex)
 {
-	return m_Buffers[GetBufferIndex(BufferType::Depth, index, m_WriteBufferIndex)].GetArray();
+	return m_Buffers[GetBufferIndex(BufferType::Depth, ViewToSideIndex(viewIndex), m_WriteBufferIndex)].GetArray();
 }
 
 void CubemapReprojector::IncrementWriteBufferIndex()
@@ -741,7 +741,48 @@ CameraProjection ToProjection(const double* values)
 	return projection;
 }
 
-void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
+unsigned CubemapReprojector::GetCountSourceViews() const
+{
+	unsigned countSides = 1;
+	if (m_SideVisiblePortion > 0.0f) countSides += 4;
+	if (m_PosZVisiblePortion > 0.0f) ++countSides;
+	return countSides;
+}
+
+unsigned CubemapReprojector::ViewToSideIndex(unsigned viewIndex) const
+{
+	assert(m_PosZVisiblePortion == 0.0f || m_SideVisiblePortion > 0.0f);
+	if (m_SideVisiblePortion == 0.0f)
+	{
+		assert(viewIndex == 0);
+		return (unsigned)CubemapSide::Front;
+	}
+	else if (m_PosZVisiblePortion == 0.0f)
+	{
+		assert(viewIndex < c_CountCubemapSides - 1);
+		if (viewIndex < (unsigned)CubemapSide::Back) return viewIndex;
+		return (unsigned)CubemapSide::Front;
+	}
+	return viewIndex;
+}
+
+unsigned CubemapReprojector::SideToViewIndex(unsigned sideIndex) const
+{
+	assert(m_PosZVisiblePortion == 0.0f || m_SideVisiblePortion > 0.0f);
+	if (m_SideVisiblePortion == 0.0f)
+	{
+		assert(sideIndex == (unsigned)CubemapSide::Front);
+		return 0;
+	}
+	else if (m_PosZVisiblePortion == 0.0f)
+	{
+		assert(sideIndex != (unsigned)CubemapSide::Back);
+		return std::min(sideIndex, (unsigned)CubemapSide::Back);
+	}
+	return sideIndex;
+}
+
+void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
 	unsigned short clientWidth, unsigned short clientHeight,
 	unsigned short* serverWidth, unsigned short* serverHeight,
 	const double* leftViewMatrix, const double* rightViewMatrix,
@@ -751,23 +792,32 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	// TODO: we are currently not synchronising dimesions.
 
 	// We assume, that the function is first called with the index = 0.
-	if (sideIndex == 0)
+	if (viewIndex == 0)
 	{
 		m_ClientWidth = clientWidth;
 		m_ClientHeight = clientHeight;
 
 		unsigned serverSize = std::max(*serverWidth, *serverHeight);
+		bool isResizingBuffers = (m_ServerWidth != serverSize);
 		m_ServerWidth = serverSize;
 		m_ServerHeight = serverSize;
 
-		unsigned colorBufferSize = m_ServerWidth * m_ServerHeight * (m_IsContainingAlpha ? 4 : 3);
-		unsigned depthBufferSize = m_ServerWidth * m_ServerHeight * sizeof(float);
-		for (unsigned i = 0; i < c_CountCubemapSides; i++)
+		if (isResizingBuffers)
 		{
-			for (unsigned j = 0; j < c_TripleBuffering; j++)
+			unsigned countPixels = m_ServerWidth * m_ServerHeight;
+			unsigned colorBufferSize = countPixels * (m_IsContainingAlpha ? 4 : 3);
+			unsigned depthBufferSize = countPixels * sizeof(float);
+			for (unsigned i = 0; i < c_CountCubemapSides; i++)
 			{
-				m_Buffers[GetBufferIndex(BufferType::Color, i, j)].Resize(colorBufferSize);
-				m_Buffers[GetBufferIndex(BufferType::Depth, i, j)].Resize(depthBufferSize);
+				for (unsigned j = 0; j < c_TripleBuffering; j++)
+				{
+					auto& cb = m_Buffers[GetBufferIndex(BufferType::Color, i, j)];
+					auto& db = m_Buffers[GetBufferIndex(BufferType::Depth, i, j)];
+					cb.Resize(colorBufferSize);
+					db.Resize(depthBufferSize);
+					cb.SetByte(0);
+					db.SetByte(0); // Expecting results in the [0, 1] range.
+				}
 			}
 		}
 
@@ -794,7 +844,7 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned sideIndex,
 	*serverWidth = m_ServerWidth;
 	*serverHeight = m_ServerHeight;
 
-	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[sideIndex];
+	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[ViewToSideIndex(viewIndex)];
 	auto& sideViewMatrix = camera->GetViewMatrix();
 	auto& sideProjectionMatrix = camera->GetProjectionMatrix();
 	CreateFromMatrix(sideViewMatrix, viewMatrix);
@@ -808,10 +858,10 @@ inline void SetCameraFromMatrices(Camera& camera, const double* model, const dou
 	camera.SetProjection(ToProjection(proj));
 }
 
-void CubemapReprojector::SetNewServerCamera(int index,
+void CubemapReprojector::SetNewServerCamera(int viewIndex,
 	const double* model, const double* view, const double* proj)
 {
-	if (index == (int)CubemapSide::Front)
+	if (ViewToSideIndex(viewIndex) == (int)CubemapSide::Front)
 	{
 		SetCameraFromMatrices(m_ServerCameraNew, model, view, proj);
 	}
@@ -834,9 +884,9 @@ void CubemapReprojector::SetClientCamera(const double* model, const double* view
 	}
 }
 
-void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
+void CubemapReprojector::ResizeView(int viewIndex, int w, int h, GLenum depthFormat)
 {
-	assert(idx == 0);
+	assert(viewIndex == 0);
 	
 	// Handling view resizing in the AdjustDimensionsAndMatrices(...) function.
 }

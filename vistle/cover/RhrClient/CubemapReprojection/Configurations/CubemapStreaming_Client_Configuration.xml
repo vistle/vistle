@@ -8,7 +8,7 @@
 
   <Property name="IsContainingAlpha" value="1" />
   <Property name="SideVisiblePortion" value="1" />
-  <Property name="PosZVisiblePortion" value="1" />
+  <Property name="PosZVisiblePortion" value="0" />
   
   <Property name="MinPosDiffForServer" value="1e-2" />
   <Property name="MinDirCrossForServer" value="1e-1" />
