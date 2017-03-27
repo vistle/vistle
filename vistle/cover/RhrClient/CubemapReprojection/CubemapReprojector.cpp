@@ -844,9 +844,23 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
 	*serverWidth = m_ServerWidth;
 	*serverHeight = m_ServerHeight;
 
-	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[ViewToSideIndex(viewIndex)];
+	auto sideIndex = ViewToSideIndex(viewIndex);
+	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[sideIndex];
 	auto& sideViewMatrix = camera->GetViewMatrix();
-	auto& sideProjectionMatrix = camera->GetProjectionMatrix();
+	auto& sideProjectionMatrix = camera->GetProjectionMatrix(); // REF!!!
+
+	//auto smallSideSize = (unsigned)std::round(m_ServerWidth * m_SideVisiblePortion);
+	//auto exactSideRatio = smallSideSize / (float)m_ServerWidth;
+
+	//if (sideIndex == (unsigned)CubemapSide::Left || sideIndex == (unsigned)CubemapSide::Right)
+	//{
+	//	*serverWidth = smallSideSize;
+	//}
+	//else if (sideIndex == (unsigned)CubemapSide::Bottom || sideIndex == (unsigned)CubemapSide::Top)
+	//{
+	//	*serverHeight = smallSideSize;
+	//}
+
 	CreateFromMatrix(sideViewMatrix, viewMatrix);
 	CreateFromMatrix(sideProjectionMatrix, projMatrix);
 }
