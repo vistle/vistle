@@ -106,9 +106,6 @@ void GridReprojector::Initialize(const std::string& shadersPath)
 	{
 		BuildShader(it.second);
 	}
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
 }
 
 void GridReprojector::CreatePrimitives()

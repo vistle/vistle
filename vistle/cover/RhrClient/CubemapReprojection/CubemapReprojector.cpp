@@ -290,8 +290,9 @@ void CubemapReprojector::InitializeGL(unsigned openGLContextID)
 
 void CubemapReprojector::CreateFBO()
 {
-	Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8, 1, m_CountSamples));
-	Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32, 1, m_CountSamples));
+	auto target = (m_CountSamples == 1 ? TextureTarget::Texture2D : TextureTarget::Texture2DMS);
+	Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8, 1, m_CountSamples, target));
+	Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32, 1, m_CountSamples, target));
 	m_FBO.Initialize();
 	m_FBO.Bind();
 	m_FBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
@@ -369,6 +370,11 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	if (m_GridReprojector.IsMultisamplingEnabled()) glEnable(GL_MULTISAMPLE);
 	else                                            glDisable(GL_MULTISAMPLE);
 
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CCW);
+
 	if (m_IsRenderingInVR)
 	{
 		UpdateVRData();
@@ -410,7 +416,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
-	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera);
+	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera, m_IsUsingWireframe);
 	//DebugSourceTexture(m_PathHandler, BufferType::Color);
 	//RenderProgressBar(m_PathHandler);
 }
@@ -813,10 +819,19 @@ void CubemapReprojector::SetNewServerCamera(int index,
 
 void CubemapReprojector::SetClientCamera(const double* model, const double* view, const double* proj)
 {
-	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
-	SetCameraFromMatrices(m_ClientCameraCopy, model, view, proj);
+	bool isFirstFrame = (m_ConstantViewInverse == glm::mat4(0.0f));
 
-	m_ConstantViewInverse = glm::inverse(ToMatrix(view));
+	// This condition is incorrect, we should update the client camera copy,
+	// but this way we can prevent control feedback. This is only used for debugging.
+	if (isFirstFrame || !m_IsClientCameraMovementAllowed)
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+		SetCameraFromMatrices(m_ClientCameraCopy, model, view, proj);
+	}
+	if (isFirstFrame)
+	{
+		m_ConstantViewInverse = glm::inverse(ToMatrix(view));
+	}
 }
 
 void CubemapReprojector::ResizeView(int idx, int w, int h, GLenum depthFormat)
@@ -919,9 +934,13 @@ void CubemapReprojector::InitializeInput()
 	m_LoadClientCameraECI = m_KeyHandler.RegisterStateKeyEventListener("LoadClientCamera", this);
 	m_SaveClientCameraECI = m_KeyHandler.RegisterStateKeyEventListener("SaveClientCamera", this);
 	m_FlipIsUpdatingTextureECI = m_KeyHandler.RegisterStateKeyEventListener("FlipIsUpdatingTexture", this);
+	m_FlipWireFrameECI = m_KeyHandler.RegisterStateKeyEventListener("FlipWireFrame", this);
+	m_SaveImageDataECI = m_KeyHandler.RegisterStateKeyEventListener("SaveImageData", this);
 	m_KeyHandler.BindEventToKey(m_LoadClientCameraECI, Keys::L);
 	m_KeyHandler.BindEventToKey(m_SaveClientCameraECI, Keys::K);
 	m_KeyHandler.BindEventToKey(m_FlipIsUpdatingTextureECI, Keys::J);
+	m_KeyHandler.BindEventToKey(m_FlipWireFrameECI, Keys::U);
+	m_KeyHandler.BindEventToKey(m_SaveImageDataECI, Keys::H);
 
 	m_ClientCameraCopy.SetMaxSpeed(300.0f);
 }
@@ -932,6 +951,8 @@ bool CubemapReprojector::HandleEvent(const Event* _event)
 	if (eci == m_LoadClientCameraECI) LoadClientCameraLocation();
 	else if (eci == m_SaveClientCameraECI) SaveClientCameraLocation();
 	else if (eci == m_FlipIsUpdatingTextureECI) m_IsUpdatingTextures = !m_IsUpdatingTextures;
+	else if (eci == m_FlipWireFrameECI) m_IsUsingWireframe = !m_IsUsingWireframe;
+	else if (eci == m_SaveImageDataECI) SaveImageData();
 	else return false;
 	return true;
 }
@@ -1003,4 +1024,61 @@ void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
 void CubemapReprojector::SetClientCameraMovementAllowed(bool isAllowed)
 {
 	m_IsClientCameraMovementAllowed = isAllowed;
+	m_ClientCameraCopy.SetFrozen(!isAllowed);
+}
+
+struct MetaData
+{
+	unsigned TextureWidth, TextureHeight;
+	bool IsContainingAlpha;
+	float SideVisiblePortion; // Side 0, 1, 2, 3.
+	float PosZVisiblePortion; // Side 4.
+	glm::mat3 CameraOrientation;
+	glm::vec3 CameraPosition;
+	EngineBuildingBlocks::Graphics::CameraProjection CameraProjection;
+};
+
+void CubemapReprojector::SaveImageData()
+{
+	Core::ByteVector imageData;
+	Core::ByteVector metaData;
+	{
+		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
+
+		metaData.Resize(sizeof(MetaData));
+		auto pMetaData = (MetaData*)metaData.GetArray();
+		pMetaData->TextureWidth = m_ServerWidth;
+		pMetaData->TextureHeight = m_ServerHeight;
+		pMetaData->IsContainingAlpha = m_IsContainingAlpha;
+		pMetaData->SideVisiblePortion = m_SideVisiblePortion;
+		pMetaData->PosZVisiblePortion = m_PosZVisiblePortion;
+		pMetaData->CameraOrientation = m_ClientCameraCopy.GetLocalOrientation();
+		pMetaData->CameraPosition = m_ClientCameraCopy.GetLocalPosition();
+		pMetaData->CameraProjection = m_ClientCameraCopy.GetProjection();
+
+		auto colorCopySize = m_ServerWidth * m_ServerHeight * (m_IsContainingAlpha ? 4 : 3);
+		auto depthCopySize = m_ServerWidth * m_ServerHeight * (unsigned)sizeof(float);
+		imageData.Resize(c_CountCubemapSides * (colorCopySize + depthCopySize));
+		auto pImage = imageData.GetArray();	
+		for (unsigned i = 0; i < c_CountCubemapSides; i++)
+		{
+			memcpy(pImage,
+				m_Buffers[GetBufferIndex(BufferType::Color, i, m_WrittenBufferIndex)].GetArray(),
+				colorCopySize);
+			pImage += colorCopySize;
+		}
+		for (unsigned i = 0; i < c_CountCubemapSides; i++)
+		{
+			memcpy(pImage,
+				m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WrittenBufferIndex)].GetArray(),
+				depthCopySize);
+			pImage += depthCopySize;
+		}
+	}
+
+	auto cubemapImageDataPath = m_PathHandler.GetPathFromRootDirectory("Temp/FakeCubemapImage.bin");
+	auto cubemapMetadataPath = m_PathHandler.GetPathFromRootDirectory("Temp/FakeCubemapMetadata.bin");
+
+	Core::WriteAllBytes(cubemapImageDataPath, imageData);
+	Core::WriteAllBytes(cubemapMetadataPath, metaData);
 }

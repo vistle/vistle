@@ -62,6 +62,8 @@ public: // Keys and mouse.
 	unsigned m_LoadClientCameraECI;
 	unsigned m_SaveClientCameraECI;
 	unsigned m_FlipIsUpdatingTextureECI;
+	unsigned m_FlipWireFrameECI;
+	unsigned m_SaveImageDataECI;
 
 	bool HandleEvent(const EngineBuildingBlocks::Event* _event);
 
@@ -83,6 +85,7 @@ private:
 	bool m_IsClientCameraMovementAllowed = false;
 
 	GridReprojector m_GridReprojector;
+	bool m_IsUsingWireframe = false;
 	
 	std::mutex m_RenderSyncMutex;
 
@@ -191,6 +194,8 @@ public:
 	void GetModelMatrix(double* model, bool* pIsValid);
 	
 	void SetClientCameraMovementAllowed(bool isAllowed);
+
+	void SaveImageData();
 };
 
 #endif

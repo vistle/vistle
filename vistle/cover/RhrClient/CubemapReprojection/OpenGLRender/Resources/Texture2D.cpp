@@ -11,6 +11,15 @@ using namespace OpenGLRender;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+inline bool IsSampleCountAndTargetConsistent(unsigned sampleCount, TextureTarget target)
+{
+	if (sampleCount == 0) return false;
+	return 
+		((sampleCount == 1)
+		== 
+		(target != TextureTarget::Texture2DMS && target != TextureTarget::Texture2DMSArray));
+}
+
 Texture2DDescription::Texture2DDescription()
 	: Width(0)
 	, Height(0)
@@ -20,6 +29,7 @@ Texture2DDescription::Texture2DDescription()
 	, Format(TextureFormat::Unknown)
 	, HasMipmaps(false)
 {
+	assert(IsSampleCountAndTargetConsistent(SampleCount, Target));
 }
 
 Texture2DDescription::Texture2DDescription(unsigned width, unsigned height, TextureFormat format,
@@ -32,6 +42,7 @@ Texture2DDescription::Texture2DDescription(unsigned width, unsigned height, Text
 	, Format(format)
 	, HasMipmaps(hasMipmaps)
 {
+	assert(IsSampleCountAndTargetConsistent(SampleCount, Target));
 }
 
 bool Texture2DDescription::IsCubemap() const
@@ -76,7 +87,13 @@ void Texture2D::Initialize(const Texture2DDescription& textureDesc, const Textur
 	m_Texture.Initialize();
 
 	Bind();
-	SetTextureSampler(textureDesc.Target, samplingDesc);
+
+	if (textureDesc.SampleCount == 1)
+	{
+		// Note that multisampled textures are not sampled at all, and an error is generated if one tries
+		// to set their sampler state.
+		SetTextureSampler(textureDesc.Target, samplingDesc);
+	}
 
 	auto target = (GLenum)textureDesc.Target;
 	auto format = (GLint)textureDesc.Format;

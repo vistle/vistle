@@ -8,7 +8,7 @@
  */
 
 const bool c_AllowModelTransformationSetting = true;
-const bool c_AllowOwnInput = true;
+const bool c_AllowOwnInput = false;
 
 #include "RhrClient.h"
 
