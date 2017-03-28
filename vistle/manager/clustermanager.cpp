@@ -50,7 +50,8 @@ void ClusterManager::Module::block(const message::Message &msg) {
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) {
-   //std::cerr << "UNBLOCK: " << msg << " (blocked: " << blocked << ")" << std::endl;
+   if (blocked)
+       std::cerr << "UNBLOCK: " << msg << std::endl;
    vassert(blocked);
    vassert(!blockers.empty());
 
