@@ -75,15 +75,18 @@ const boost::asio::ip::tcp::socket &UserInterface::socket() const {
 bool UserInterface::tryConnect() {
 
    assert(!isConnected());
+   std::string host = m_remoteHost;
+   if (host == m_hostname)
+       host = "localhost";
 
    asio::ip::tcp::resolver resolver(m_ioService);
-   asio::ip::tcp::resolver::query query(m_remoteHost, boost::lexical_cast<std::string>(m_remotePort));
+   asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(m_remotePort));
    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
    boost::system::error_code ec;
    asio::connect(socket(), endpoint_iterator, ec);
    if (ec) {
       std::cerr << "  userinterface [" << id() << "]: could not establish connection to "
-      << m_remoteHost << ":" << m_remotePort << std::endl;
+      << host << ":" << m_remotePort << std::endl;
       m_isConnected = false;
       return false;
    }

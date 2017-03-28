@@ -1,7 +1,9 @@
 #include "dataflowview.h"
 #include "modulebrowser.h"
 #include "dataflownetwork.h"
+#include "module.h"
 
+#include <QMenu>
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
@@ -9,10 +11,28 @@
 
 namespace gui {
 
+DataFlowView *DataFlowView::s_instance = nullptr;
+
 DataFlowView::DataFlowView(QWidget *parent)
    : QGraphicsView(parent)
 {
+    if (!s_instance)
+        s_instance = this;
+
+    createActions();
+    createMenu();
+
+    if (scene())
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
 }
+
+DataFlowView *DataFlowView::the() {
+    if (!s_instance)
+        s_instance = new DataFlowView();
+
+    return s_instance;
+}
+
 
 DataFlowNetwork *DataFlowView::scene() const
 {
@@ -67,6 +87,89 @@ void DataFlowView::dropEvent(QDropEvent *event)
            scene()->addModule(hubId, moduleName, newPos);
         }
     }
+}
+
+void DataFlowView::createActions()
+{
+    m_deleteAct = new QAction("Delete Selected", this);
+    m_deleteAct->setShortcuts(QKeySequence::Delete);
+    m_deleteAct->setStatusTip("Delete the selected modules and all their connections");
+    connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModules()));
+
+    m_execAct = new QAction("Execute", this);
+    m_execAct->setStatusTip("Execute the work flow");
+    connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModules()));
+}
+
+void DataFlowView::enableActions()
+{
+    if (selectedModules().empty()) {
+        m_deleteAct->setEnabled(false);
+    } else {
+        m_deleteAct->setEnabled(true);
+    }
+}
+
+void DataFlowView::createMenu()
+{
+   m_contextMenu = new QMenu();
+   m_contextMenu->addAction(m_execAct);
+   m_contextMenu->addSeparator();
+   m_contextMenu->addAction(m_deleteAct);
+}
+
+void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
+{
+    if (auto item = itemAt(event->pos())) {
+        QGraphicsView::contextMenuEvent(event);
+        return;
+    }
+
+    m_contextMenu->popup(event->globalPos());
+}
+
+QList<Module *> DataFlowView::selectedModules()
+{
+   QList<Module *> list;
+   for (auto item: scene()->selectedItems()) {
+       if (auto module = dynamic_cast<Module *>(item))
+           list.append(module);
+   }
+   return list;
+}
+
+void DataFlowView::setScene(QGraphicsScene *s)
+{
+    QGraphicsView::setScene(s);
+    if (scene())
+        connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+    enableActions();
+}
+
+void DataFlowView::execModules()
+{
+    auto selection = selectedModules();
+    if (selection.empty()) {
+        emit executeDataFlow();
+    } else {
+        for (auto m: selection)
+            m->execModule();
+    }
+}
+
+void DataFlowView::cancelExecModules()
+{
+    for (auto m: selectedModules())
+        m->cancelExecModule();
+}
+
+/*!
+ * \brief Module::deleteModule
+ */
+void DataFlowView::deleteModules()
+{
+    for (auto m: selectedModules())
+        m->deleteModule();
 }
 
 

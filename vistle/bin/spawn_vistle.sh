@@ -10,10 +10,12 @@ if [ -n "$4" ]; then
 fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
-
+cd /tmp
 export MV2_ENABLE_AFFINITY=0
 export MPI_UNBUFFERED_STDIO=1
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+
+export GMON_OUT_PREFIX=readcfx.out
 
 if [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none "$@"
@@ -21,8 +23,8 @@ if [ -n "$SLURM_JOB_ID" ]; then
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
-VALGRIND=""
-#VALGRIND="valgrind"
+WRAPPER=""
+#WRAPPER="valgrind"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then
@@ -36,7 +38,7 @@ case $(hostname) in
    viscluster70)
       BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster70 viscluster{51..60} viscluster{71..79}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster70 viscluster{71..79} viscluster{51..60} |sed -e 's/ /,/g')
       fi
       ;;
    viscluster*)
@@ -64,19 +66,20 @@ fi
 
 if [ "$OPENMPI" = "1" ]; then
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
 echo "default: $@"
-exec VALGRIND "$@"
+exec WRAPPER "$@"

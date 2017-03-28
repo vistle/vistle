@@ -108,9 +108,9 @@ public:
     IsoController(vistle::Module *module);
     bool changeParameter(const vistle::Parameter* param);
 #ifdef CUTTINGSURFACE
-    IsoDataFunctor newFunc(const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
+    IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
 #else
-    IsoDataFunctor newFunc(const vistle::Scalar *data) const;
+    IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *data) const;
 #endif
 
 private:

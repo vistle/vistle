@@ -609,11 +609,12 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
       vassert(!instances[rod->instId]);
       instances[rod->instId] = rod;
 
-      float identity[16];
+      float transform[16];
+      auto geoTransform = geometry->getTransform();
       for (int i=0; i<16; ++i) {
-         identity[i] = (i/4 == i%4) ? 1. : 0.;
+          transform[i] = geoTransform(i%4, i/4);
       }
-      rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
+      rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, transform);
       if (t == -1 || size_t(t) == m_timestep) {
          rtcEnable(m_scene, rod->instId);
          m_renderManager.setModified();

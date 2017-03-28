@@ -20,6 +20,8 @@ private:
     vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
     vistle::DataBase::Mapping m_vecmap, m_scamap;
     const vistle::Scalar *m_vx, *m_vy, *m_vz, *m_p;
+    vistle::Matrix4 m_transform, m_invTransform;
+    vistle::Matrix3 m_velocityTransform;
 
 public:
     BlockData(vistle::Index i,
@@ -35,5 +37,11 @@ public:
     vistle::DataBase::Mapping getScalMapping() const;
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> getIplVec();
     std::vector<vistle::Vec<vistle::Scalar>::ptr> getIplScal();
+
+    const vistle::Matrix4 &transform() const;
+    const vistle::Matrix4 &invTransform() const;
+    const vistle::Matrix3 &velocityTransform() const;
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 #endif

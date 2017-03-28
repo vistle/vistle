@@ -125,7 +125,6 @@ class V_MODULEEXPORT Module {
    bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
 
    ObjectList getObjects(const std::string &portName);
-   void removeObject(const std::string &portName, vistle::Object::const_ptr object);
    bool hasObject(const Port *port) const;
    bool hasObject(const std::string &portName) const;
    vistle::Object::const_ptr takeFirstObject(Port *port);

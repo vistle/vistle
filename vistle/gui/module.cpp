@@ -15,6 +15,8 @@
 
 #include <userinterface/vistleconnection.h>
 
+#include <boost/uuid/nil_generator.hpp>
+
 #include "module.h"
 #include "connection.h"
 #include "dataflownetwork.h"
@@ -24,6 +26,7 @@
 namespace gui {
 
 const double Module::portDistance = 3.;
+boost::uuids::nil_generator nil_uuid;
 
 /*!
  * \brief Module::Module
@@ -36,6 +39,7 @@ Module::Module(QGraphicsItem *parent, QString name)
 : Base(parent)
 , m_hub(0)
 , m_id(vistle::message::Id::Invalid)
+, m_spawnUuid(nil_uuid())
 , m_Status(SPAWNING)
 , m_validPosition(false)
 , m_fontHeight(0.)
@@ -60,7 +64,8 @@ Module::~Module()
     delete m_moduleMenu;
     delete m_execAct;
     delete m_cancelExecAct;
-    delete m_deleteAct;
+    delete m_deleteThisAct;
+    delete m_deleteSelAct;
 }
 
 void Module::execModule()
@@ -99,10 +104,15 @@ void Module::createGeometry()
  */
 void Module::createActions()
 {
-    m_deleteAct = new QAction("Delete", this);
-    m_deleteAct->setShortcuts(QKeySequence::Delete);
-    m_deleteAct->setStatusTip("Delete the module and all of its connections");
-    connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModule()));
+    m_deleteThisAct = new QAction("Delete", this);
+    m_deleteThisAct->setShortcuts(QKeySequence::Delete);
+    m_deleteThisAct->setStatusTip("Delete the module and all of its connections");
+    connect(m_deleteThisAct, SIGNAL(triggered()), this, SLOT(deleteModule()));
+
+    m_deleteSelAct = new QAction("Delete Selected", this);
+    m_deleteSelAct->setShortcuts(QKeySequence::Delete);
+    m_deleteSelAct->setStatusTip("Delete the selected modules and all their connections");
+    connect(m_deleteSelAct, SIGNAL(triggered()), DataFlowView::the(), SLOT(deleteModules()));
 
     m_execAct = new QAction("Execute", this);
     m_execAct->setStatusTip("Execute the module");
@@ -122,7 +132,8 @@ void Module::createMenus()
    m_moduleMenu->addAction(m_execAct);
    m_moduleMenu->addAction(m_cancelExecAct);
    m_moduleMenu->addSeparator();
-   m_moduleMenu->addAction(m_deleteAct);
+   m_moduleMenu->addAction(m_deleteThisAct);
+   m_moduleMenu->addAction(m_deleteSelAct);
 }
 
 void Module::doLayout() {
@@ -221,6 +232,13 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
+   if (isSelected()) {
+       m_deleteSelAct->setVisible(true);
+       m_deleteThisAct->setVisible(false);
+   } else {
+       m_deleteSelAct->setVisible(false);
+       m_deleteThisAct->setVisible(true);
+   }
    m_moduleMenu->popup(event->screenPos());
 }
 
@@ -398,7 +416,6 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 
    execModule();
-   Base::mouseReleaseEvent(event);
 }
 
 /*!

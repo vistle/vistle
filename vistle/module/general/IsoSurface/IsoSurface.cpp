@@ -182,6 +182,15 @@ bool IsoSurface::work(vistle::UnstructuredGrid::const_ptr gridS,
       result->copyAttributes(dataS);
 #endif
       result->copyAttributes(gridS, false);
+      result->setTransform(gridS->getTransform());
+      if (result->getTimestep() < 0) {
+          result->setTimestep(gridS->getTimestep());
+          result->setNumTimesteps(gridS->getNumTimesteps());
+      }
+      if (result->getBlock() < 0) {
+          result->setBlock(gridS->getBlock());
+          result->setNumBlocks(gridS->getNumBlocks());
+      }
       if (mapdata && mapresult) {
          mapresult->copyAttributes(mapdata);
          mapresult->setGrid(result);

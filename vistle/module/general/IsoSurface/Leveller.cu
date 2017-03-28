@@ -489,6 +489,7 @@ Leveller::Leveller(const IsoController &isocontrol, UnstructuredGrid::const_ptr 
       , m_processortype(processortype)
       , gmin(std::numeric_limits<Scalar>::max())
       , gmax(-std::numeric_limits<Scalar>::max())
+      , m_objectTransform(grid->getTransform())
    {
       m_triangles = Triangles::ptr(new Triangles(Object::Initialized));
       m_triangles->setMeta(grid->meta());
@@ -548,9 +549,9 @@ bool Leveller::process() {
 
          HostData HD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               m_isocontrol.newFunc(&dataobj->x()[0]),
+               m_isocontrol.newFunc(m_grid->getTransform(), &dataobj->x()[0]),
 #else
-               m_isocontrol.newFunc(&m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
+               m_isocontrol.newFunc(m_grid->getTransform(), &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
 #endif
                m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
@@ -662,9 +663,9 @@ bool Leveller::process() {
 
          DeviceData DD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               m_isocontrol.newFunc(&dataobj->x()[0]),
+               m_isocontrol.newFunc(m_grid->getTransform(), &dataobj->x()[0]),
 #else
-               m_isocontrol.newFunc(&m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
+               m_isocontrol.newFunc(m_grid->getTransform(), &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
 #endif
                m_grid->getNumElements(), m_grid->el(), m_grid->tl(), m_grid->getNumCorners(), m_grid->cl(), m_grid->getSize(), m_grid->x(), m_grid->y(), m_grid->z());
 

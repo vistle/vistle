@@ -20,7 +20,6 @@
 #include <cfxExport.h>  // linked but still qtcreator doesn't find it
 #include <getargs.h>    // linked but still qtcreator doesn't find it
 #include <iostream>
-//#include <mutex>
 //#include <unistd.h>
 
 //#include <boost/filesystem.hpp>
@@ -30,25 +29,25 @@
 
 #include "ReadCFX.h"
 
+#define CFX_DEBUG
+
 namespace bf = boost::filesystem;
 
 MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
-//std::mutex m;
-//static int counting_variable_processors;
-
 
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/MundP_3d_Visualisierung/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
     // timestep parameters
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
@@ -63,6 +62,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
     // mesh ports
     m_gridOut = createOutputPort("grid_out1");
+    m_polyOut = createOutputPort("poly_out1");
 
     // data ports and data choice parameters
     for (int i=0; i<NumPorts; ++i) {
@@ -83,14 +83,14 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     }
     //m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 0, Parameter::Boolean);
     //m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
-    m_boundarySelection = addStringParameter("boundaries","select boundary numbers e.g. 1,4,6-10","all");
+    m_2dAreaSelection = addStringParameter("2D area","select boundary or region numbers e.g. 1,4,6-10","all");
 
     // 2d data ports and 2d data choice parameters
-    for (int i=0; i<NumBoundaryPorts; ++i) {
+    for (int i=0; i<Num2dPorts; ++i) {
        {// 2d data ports
           std::stringstream s;
           s << "data_2d_out" << i;
-          m_boundaryDataOut.push_back(createOutputPort(s.str()));
+          m_2dDataOut.push_back(createOutputPort(s.str()));
        }
        {// 2d data choice parameters
           std::stringstream s;
@@ -99,27 +99,51 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
           std::vector<std::string> choices;
           choices.push_back("(NONE)");
           setParameterChoices(p, choices);
-          m_boundaryOut.push_back(p);
+          m_2dOut.push_back(p);
        }
     }
     //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);ll
+    m_portDatas.resize(NumPorts);
+    m_2dPortDatas.resize(Num2dPorts);
+    m_currentVolumedata.resize(NumPorts);
+    m_current2dData.resize(Num2dPorts);
 }
 
 ReadCFX::~ReadCFX() {
     cfxExportDone();
-    ExportDone = true;
+    m_ExportDone = true;
+}
+
+IdWithZoneFlag::IdWithZoneFlag()
+    : ID(0),
+      zoneFlag(0) {
+
+}
+
+IdWithZoneFlag::IdWithZoneFlag(index_t r
+               , index_t z)
+    : ID(r),
+      zoneFlag(z) {
+
 }
 
 Variable::Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone)
-    : m_VarName(Name),
-      m_VarDimension(Dimension),
-      m_onlyMeaningfulOnBoundary(onlyMeaningful) {
-    m_vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
+    : varName(Name),
+      varDimension(Dimension),
+      onlyMeaningfulOnBoundary(onlyMeaningful) {
+    vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
 }
 
 Boundary::Boundary(std::string Name, int ID, int zone)
-    : m_BoundName(Name) {
-    m_vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
+    : boundName(Name),
+      idWithZone(IdWithZoneFlag(ID,zone)) {
+
+}
+
+Region::Region(std::string Name, int ID, int zone)
+    : regionName(Name),
+      idWithZone(IdWithZoneFlag(ID,zone)) {
+
 }
 
 CaseInfo::CaseInfo()
@@ -172,8 +196,9 @@ bool CaseInfo::checkFile(const char *filename) {
 
 void CaseInfo::parseResultfile() {
     int dimension, corrected_boundary_node, length;
-    index_t nvars, nzones, nbounds;
+    index_t nvars, nzones, nbounds, nregions;
     m_numberOfBoundaries = 0;
+    m_numberOfRegions = 0;
     m_numberOfVariables = 0;
 
     nzones = cfxExportZoneCount();
@@ -190,7 +215,7 @@ void CaseInfo::parseResultfile() {
         for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
             const char *VariableName = cfxExportVariableName(varnum,ReadCFX::alias);
             auto it = find_if(m_allParam.begin(), m_allParam.end(), [&VariableName](const Variable& obj) {
-                return obj.m_VarName == VariableName;
+                return obj.varName == VariableName;
             });
             if (it == m_allParam.end()) {
                 if(!cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) {
@@ -201,7 +226,7 @@ void CaseInfo::parseResultfile() {
             }
             else {
                 auto index = std::distance(m_allParam.begin(), it);
-                m_allParam[index].m_vectorIdwithZone.push_back(IdWithZoneFlag(varnum,i));
+                m_allParam[index].vectorIdwithZone.push_back(IdWithZoneFlag(varnum,i));
             }
 
             cfxExportVariableFree(varnum);
@@ -210,38 +235,38 @@ void CaseInfo::parseResultfile() {
         //read all Boundaries into m_allBoundaries vector
         nbounds = cfxExportBoundaryCount();
         for(index_t boundnum=1;boundnum<=nbounds;boundnum++) {
-            const char *BoundaryName = cfxExportBoundaryName(boundnum);
-            auto it = find_if(m_allBoundaries.begin(), m_allBoundaries.end(), [&BoundaryName](const Boundary& obj) {
-                return obj.m_BoundName == BoundaryName;
-            });
-            if (it == m_allBoundaries.end()) {
-                m_allBoundaries.push_back(Boundary(BoundaryName,boundnum,i));
-                m_numberOfBoundaries++;
-            }
-            else {
-                auto index = std::distance(m_allBoundaries.begin(), it);
-                m_allBoundaries[index].m_vectorIdwithZone.push_back(IdWithZoneFlag(boundnum,i));
-            }
+            m_allBoundaries.push_back(Boundary(cfxExportBoundaryName(boundnum),boundnum,i));
+            m_numberOfBoundaries++;
+        }
+
+        //read all Boundaries into m_allBoundaries vector
+        nregions = cfxExportRegionCount();
+        for(index_t regnum=1;regnum<=nregions;regnum++) {
+            m_allRegions.push_back(Region(cfxExportRegionName(regnum),regnum,i));
+            m_numberOfRegions++;
         }
         cfxExportZoneFree();
     }
 
     //verification:
 //    for(index_t i=0;i<m_allParam.size();++i) {
-//        std::cerr << "m_allParam[" << i << "].m_VarName = " << m_allParam[i].m_VarName << std::endl;
-//        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].m_VarDimension << std::endl;
-//        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].m_onlyMeaningfulOnBoundary << std::endl;
-//        for(index_t j=0;j<m_allParam[i].m_vectorIdwithZone.size();++j) {
-//            std::cerr << "m_allParam[" << i << "].IdwZone.ID = " << m_allParam[i].m_vectorIdwithZone[j].ID << std::endl;
-//            std::cerr << "m_allParam[" << i << "].IdwZone.zoneFlag = " << m_allParam[i].m_vectorIdwithZone[j].zoneFlag << std::endl;
+//        std::cerr << "m_allParam[" << i << "].varName = " << m_allParam[i].varName << std::endl;
+//        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].varDimension << std::endl;
+//        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].onlyMeaningfulOnBoundary << std::endl;
+//        for(index_t j=0;j<m_allParam[i].vectorIdwithZone.size();++j) {
+//            std::cerr << "m_allParam[" << i << "].IdwZone.ID = " << m_allParam[i].vectorIdwithZone[j].ID << std::endl;
+//            std::cerr << "m_allParam[" << i << "].IdwZone.zoneFlag = " << m_allParam[i].vectorIdwithZone[j].zoneFlag << std::endl;
 //        }
 //    }
 //    for(index_t i=0;i<m_allBoundaries.size();++i) {
-//        std::cerr << "m_allBoundaries[" << i << "].m_BoundName = " << m_allBoundaries[i].m_BoundName << std::endl;
-//        for(index_t j=0;j<m_allBoundaries[i].m_vectorIdwithZone.size();++j) {
-//            std::cerr << "m_allBoundaries[" << i << "].IdwZone.ID = " << m_allBoundaries[i].m_vectorIdwithZone[j].ID << std::endl;
-//            std::cerr << "m_allBoundaries[" << i << "].IdwZone.zoneFlag = " << m_allBoundaries[i].m_vectorIdwithZone[j].zoneFlag << std::endl;
-//        }
+//        std::cerr << "m_allBoundaries[" << i << "].boundName = " << m_allBoundaries[i].boundName << std::endl;
+//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.ID = " << m_allBoundaries[i].idWithZone.ID << std::endl;
+//        std::cerr << "m_allBoundaries[" << i << "].IdwZone.zoneFlag = " << m_allBoundaries[i].idWithZone.zoneFlag << std::endl;
+//    }
+//    for(index_t i=0;i<m_allRegions.size();++i) {
+//        std::cerr << "m_allRegions[" << i << "].regionName = " << m_allRegions[i].regionName << std::endl;
+//        std::cerr << "m_allRegions[" << i << "].IdwZone.ID = " << m_allRegions[i].idWithZone.ID << std::endl;
+//        std::cerr << "m_allRegions[" << i << "].IdwZone.zoneFlag = " << m_allRegions[i].idWithZone.zoneFlag << std::endl;
 //    }
 
     return;
@@ -254,10 +279,10 @@ void CaseInfo::getFieldList() {
     m_field_param.push_back("(NONE)");
 
     for(index_t varnum=0;varnum<m_numberOfVariables;varnum++) {
-        if(m_allParam[varnum].m_onlyMeaningfulOnBoundary != 1) {
-            m_field_param.push_back(m_allParam[varnum].m_VarName);
+        if(m_allParam[varnum].onlyMeaningfulOnBoundary != 1) {
+            m_field_param.push_back(m_allParam[varnum].varName);
         }
-        m_boundary_param.push_back(m_allParam[varnum].m_VarName);
+        m_boundary_param.push_back(m_allParam[varnum].varName);
     }
     return;
 }
@@ -270,8 +295,16 @@ std::vector<Boundary> CaseInfo::getCopyOfAllBoundaries() {
     return m_allBoundaries;
 }
 
+std::vector<Region> CaseInfo::getCopyOfAllRegions() {
+    return m_allRegions;
+}
+
 index_t CaseInfo::getNumberOfBoundaries() {
     return m_numberOfBoundaries;
+}
+
+index_t CaseInfo::getNumberOfRegions() {
+    return m_numberOfRegions;
 }
 
 int ReadCFX::rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const {
@@ -280,8 +313,8 @@ int ReadCFX::rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) 
     return processor % size();
 }
 
-int ReadCFX::rankForBoundaryAndTimestep(int timestep, int boundary, int numBoundaries) const {
-    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*numBoundaries+boundary;
+int ReadCFX::rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const {
+    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*num2dAreas+area2d;
 
     return processor % size();
 }
@@ -295,15 +328,15 @@ bool ReadCFX::initializeResultfile() {
     m_nzones = cfxExportInit(resultfileName, counts);
     m_nnodes = counts[cfxCNT_NODE];
     //m_nelems = counts[cfxCNT_ELEMENT];
-    //m_nregions = counts[cfxCNT_REGION];
+    m_nregions = counts[cfxCNT_REGION];
     m_nvolumes = counts[cfxCNT_VOLUME];
     //m_nvars = counts[cfxCNT_VARIABLE];
-    ExportDone = false;
+    m_ExportDone = false;
 
     if (m_nzones < 0) {
         cfxExportDone();
         sendError("cfxExportInit could not open %s", resultfileName);
-        ExportDone = true;
+        m_ExportDone = true;
         return false;
     }
 
@@ -327,7 +360,7 @@ bool ReadCFX::changeParameter(const Parameter *p) {
 
             if (m_nzones > 0) {
                 cfxExportDone();
-                ExportDone = true;
+                m_ExportDone = true;
             }
 
             if(initializeResultfile()) {
@@ -348,14 +381,13 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     setParameter<Integer>(m_firsttimestep,0);
                     setParameterMaximum<Integer>(m_timeskip, 0);
                 }
-
                 //fill choice parameter
                 m_case.parseResultfile();
                 m_case.getFieldList();
                 for (auto out: m_fieldOut) {
                     setParameterChoices(out, m_case.m_field_param);
                 }
-                for (auto out: m_boundaryOut) {
+                for (auto out: m_2dOut) {
                     setParameterChoices(out, m_case.m_boundary_param);
                 }
                 if(rank() == 0) {
@@ -366,27 +398,24 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                         sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
                         cfxExportZoneFree();
                     }
-                    //print out boundary names
-                    sendInfo("Found %d boundaries", m_case.getNumberOfBoundaries());
+                    //print out 2D area names (boundaries and regions)
+                    sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
                     std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
                     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
+                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].boundName).c_str());
+                    }
+                    std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
+                    for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
+                        sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
                     }
                 }
                 cfxExportZoneFree();
-
-                //m.lock();
-                //counting_variable_processors++;
-                //m.unlock();
-                //std::cerr << "counting = " << counting_variable_processors << std::endl;
-                //if(counting_variable_processors == size()) {
-                    sendInfo("The initialisation was successfully done");
-                //}
-
+#ifdef CFX_DEBUG
+                sendInfo("The initialisation was successfully done");
+#endif
             }
         }
     }
-
     return Module::changeParameter(p);
 }
 
@@ -402,11 +431,10 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     nelmsInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS);
     nnodesInZone = cfxExportNodeCount();
     //std::cerr << "nodesInVolume = " << nnodesInVolume << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
-        //std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
-        //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+    //std::cerr << "nelmsInVolume = " << nelmsInVolume << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
-    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInZone)); //initialized with number of elements, number of connectivities, number of coordinates
+    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
 
     //load coords into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
@@ -416,24 +444,16 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     auto ptrOnZcoords = grid->z().data();
 
     int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
-    //std::vector<int> nodeListOfVolumeVec(nnodesInVolume);
-    //wuerde es auch gehen mit std::vector<int> = nodeListOfVolumeVec(nodeListOfVolume, nodeListOfVolume+nnodesInVolume); ???
-    //std::vector<int> = nodeListOfVolumeVec(nodeListOfVolume, nodeListOfVolume+nnodesInVolume);
-    //nodeListOfVolumeVec.reserve(nnodesInVolume);
+    std::vector<std::int32_t> nodeListOfVolumeVec;
+    nodeListOfVolumeVec.resize(nnodesInZone+1);
 
     for(index_t i=0;i<nnodesInVolume;++i) {
-        if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-        }
-        ptrOnXcoords[nodeListOfVolume[i]-1] = *x_coord.get();
-        ptrOnYcoords[nodeListOfVolume[i]-1] = *y_coord.get();
-        ptrOnZcoords[nodeListOfVolume[i]-1] = *z_coord.get();
-
-        //nodeListOfVolumeVec[i] = nodeListOfVolume[i];
+        cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get());   //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = *x_coord.get();
+        ptrOnYcoords[i] = *y_coord.get();
+        ptrOnZcoords[i] = *z_coord.get();
+        nodeListOfVolumeVec[nodeListOfVolume[i]] = i;
     }
-
-    //std::cerr << "nodeListOfVolumeVec.size() = " << nodeListOfVolumeVec.size() << "; nnodesInVolume = " << nnodesInVolume << std::endl;
-
 
     //Test, ob Einlesen funktioniert hat
     //        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
@@ -453,18 +473,15 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     auto ptrOnCl = grid->cl().data();
 
     int *elmListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_ELEMS); //query the elements that define the volume
-    //std::vector<int>::iterator it;
 
     for(index_t i=0;i<nelmsInVolume;++i) {
-        if(!cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get())) {
-            std::cerr << "error while reading elements out of .res file: elemid is out of range" << std::endl;
-        }
+        cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get());
         switch(*elemtype.get()) {
             case 4: {
                 ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
                 }
                 elemListCounter += 4;
                 break;
@@ -472,64 +489,10 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
             case 5: {
                 ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
                 ptrOnEl[i] = elemListCounter;
-//                for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
-//                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-//                }
-
-                // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-
-
-//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[0]);
-//                if(it==nodeListOfVolumeVec.end()) {
-//                    std::cerr << "error message" << std::endl;
-//                }
-//                else {
-//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
-//                    ptrOnCl[elemListCounter+0] = index;
-//                }
-//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[1]);
-//                if(it==nodeListOfVolumeVec.end()) {
-//                    std::cerr << "error message" << std::endl;
-//                }
-//                else {
-//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
-//                    ptrOnCl[elemListCounter+1] = index;
-//                }
-//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[2]);
-//                if(it==nodeListOfVolumeVec.end()) {
-//                    std::cerr << "error message" << std::endl;
-//                }
-//                else {
-//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
-//                    ptrOnCl[elemListCounter+2] = index;
-//                }
-//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[3]);
-//                if(it==nodeListOfVolumeVec.end()) {
-//                    std::cerr << "error message" << std::endl;
-//                }
-//                else {
-//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
-//                    ptrOnCl[elemListCounter+3] = index;
-//                }
-//                it = find(nodeListOfVolumeVec.begin(), nodeListOfVolumeVec.end(), nodesOfElm.get()[4]);
-//                if(it==nodeListOfVolumeVec.end()) {
-//                    std::cerr << "error message" << std::endl;
-//                }
-//                else {
-//                    auto index = std::distance(nodeListOfVolumeVec.begin(), it);
-//                    ptrOnCl[elemListCounter+4] = index;
-//                }
-
-                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[0]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[1]-1;
-                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[2]-1;
-                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[3]-1;
-                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[4]-1;
-
-
+                for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+                }
                 elemListCounter += 5;
-
-
                 break;
             }
             case 6: {
@@ -537,41 +500,28 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnEl[i] = elemListCounter;
 
                 // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[3]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[5]-1;
-                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[4]-1;
-                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[0]-1;
-                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[2]-1;
-                ptrOnCl[elemListCounter+5] = nodesOfElm.get()[1]-1;
-
-
-//                if(i<1680090) {
-//                    std::cerr << "nodesOfElm.get()[3]-1 = " << nodesOfElm.get()[3]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[5]-1 = " << nodesOfElm.get()[5]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[4]-1 = " << nodesOfElm.get()[4]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[0]-1 = " << nodesOfElm.get()[0]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[2]-1 = " << nodesOfElm.get()[2]-1 << std::endl;
-//                    std::cerr << "nodesOfElm.get()[1]-1 = " << nodesOfElm.get()[1]-1 << std::endl;
-//                    std::cerr << "i = " << i << std::endl << std::endl;
-//                }
-
+                ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
+                ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
+                ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
+                ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
+                ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
+                ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
                 elemListCounter += 6;
                 break;
             }
             case 8: {
                 ptrOnTl[i] = (UnstructuredGrid::HEXAHEDRON);
                 ptrOnEl[i] = elemListCounter;
-                //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
 
                 // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-                ptrOnCl[elemListCounter+0] = nodesOfElm.get()[4]-1;   //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
-                ptrOnCl[elemListCounter+1] = nodesOfElm.get()[6]-1;
-                ptrOnCl[elemListCounter+2] = nodesOfElm.get()[7]-1;
-                ptrOnCl[elemListCounter+3] = nodesOfElm.get()[5]-1;
-                ptrOnCl[elemListCounter+4] = nodesOfElm.get()[0]-1;
-                ptrOnCl[elemListCounter+5] = nodesOfElm.get()[2]-1;
-                ptrOnCl[elemListCounter+6] = nodesOfElm.get()[3]-1;
-                ptrOnCl[elemListCounter+7] = nodesOfElm.get()[1]-1;
+                ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
+                ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[6]];
+                ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[7]];
+                ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
+                ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
+                ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
+                ptrOnCl[elemListCounter+6] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
+                ptrOnCl[elemListCounter+7] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
 
                 elemListCounter += 8;
                 break;
@@ -580,12 +530,13 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
             }
         }
-
     }
 
     //element after last element
     ptrOnEl[nelmsInVolume] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
+
+    grid->cl().resize(elemListCounter); //correct initialization; initialized with connectivities in zone; connectivities in volume are <= connectivities in zone
 
 //    cfxElement *elems = cfxExportElementList();
 
@@ -614,9 +565,12 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 //        }
 
 //    std::cerr << "grid->el(grid->getNumElements())" << grid->el().at(grid->getNumElements()) << std::endl;
-//    std::cerr << "grid->getNumCorners()" << grid->getNumCorners() << std::endl;
-//    std::cerr << "nconnectivities = " << nconnectivities << std::endl;
 //    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
+//    std::cerr << "grid->getNumCorners()" << grid->getNumCorners() << std::endl;
+//    std::cerr << "grid->getNumVertices()" << grid->getNumVertices() << std::endl;
+//    std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
+//    std::cerr << "nconnectivities = " << nconnectivities << std::endl;
+//    std::cerr << "nnodesInVolume = " << nnodesInVolume << std::endl;
 
 //    for(int i=nelmsInVolume-10;i<=nelmsInVolume;++i) {
 //        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
@@ -631,19 +585,36 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     return grid;
 }
 
-Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
-    if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
+Polygons::ptr ReadCFX::loadPolygon(int area2d) {
+    if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
         std::cerr << "invalid zone number" << std::endl;
     }
 
-    index_t nNodesInZone, nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
-    nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
-    nNodesInZone = cfxExportNodeCount();
-    nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
-    nConnectInBoundary = 4*nFacesInBoundary; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
+    int *nodeListOf2dArea;
+    index_t nNodesInZone, nNodesIn2dArea, nConnectIn2dArea, nFacesIn2dArea;
 
-    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInZone)); //initialize Polygon with numFaces, numCorners, numVertices
-//    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
+    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+        nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+        nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+        nFacesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
+    }
+    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+        nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+        nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+        nFacesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
+    }
+    else {
+        std::cerr << "error in loadPolygon: no valid 2d area" << std::endl;
+        int dmy = 0;
+        nodeListOf2dArea = &dmy;
+        nNodesIn2dArea = 0;
+        nFacesIn2dArea = 0;
+    }
+
+    nNodesInZone = cfxExportNodeCount();
+    nConnectIn2dArea = 4*nFacesIn2dArea; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
+
+    Polygons::ptr polygon(new Polygons(nFacesIn2dArea,nConnectIn2dArea,nNodesIn2dArea)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
@@ -652,25 +623,41 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     auto ptrOnYcoords = polygon->y().data();
     auto ptrOnZcoords = polygon->z().data();
 
-    int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
-    for(index_t i=0;i<nNodesInBoundary;++i) {
-        if(!cfxExportNodeGet(nodeListOfBoundary[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-        }
-        ptrOnXcoords[nodeListOfBoundary[i]-1] = *x_coord.get(); //-1 start array with 0; nodeListofBoundary gives nodeID's starting minimum with 1
-        ptrOnYcoords[nodeListOfBoundary[i]-1] = *y_coord.get();
-        ptrOnZcoords[nodeListOfBoundary[i]-1] = *z_coord.get();
+    std::vector<std::int32_t> nodeListOf2dAreaVec;
+    nodeListOf2dAreaVec.resize(nNodesInZone+1);
+
+    for(index_t i=0;i<nNodesIn2dArea;++i) {
+        cfxExportNodeGet(nodeListOf2dArea[i],x_coord.get(),y_coord.get(),z_coord.get());  //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = *x_coord.get();
+        ptrOnYcoords[i] = *y_coord.get();
+        ptrOnZcoords[i] = *z_coord.get();
+        nodeListOf2dAreaVec[nodeListOf2dArea[i]] = i;
     }
 
     //Test, ob Einlesen funktioniert hat
-    //    std::cerr << "nNodesInBoundary = " << nNodesInBoundary << std::endl;
-    //    std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
-    //    for(int i=0;i<100;++i) {
-    //        std::cerr << "x,y,z (" << i << ") = " << polygon->x().at(i) << ", " << polygon->y().at(i) << ", " << polygon->z().at(i) << std::endl;
-    //    }
+//        std::cerr << "nNodesIn2dArea = " << nNodesIn2dArea << std::endl;
+//        std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
+//        for(int i=0;i<100;++i) {
+//            std::cerr << "x,y,z (" << i << ") = " << polygon->x().at(i) << ", " << polygon->y().at(i) << ", " << polygon->z().at(i) << std::endl;
+//        }
 
     cfxExportNodeFree();
-    cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+
+    //attention: cfxExportBoundary/RegionList(cfxREG_FACES) has to be called AFTER cfxExportBoundary/RegionList(cfxREG_NODES) and free2dArea
+    //if not, cfxExportBoundary/RegionList(cfxREG_NODES) gives unreasonable values for node id's
+    int *faceListOf2dArea;
+    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+        faceListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
+    }
+    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+        faceListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
+    }
+    else {
+        std::cerr << "error in loadPolygon: no valid 2D area" << std::endl;
+        int dmy = 0;
+        faceListOf2dArea = &dmy;
+    }
 
     //load face types, element list and connectivity list into polygon
     int elemListCounter=0;
@@ -678,19 +665,14 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     auto ptrOnEl = polygon->el().data();
     auto ptrOnCl = polygon->cl().data();
 
-    int *faceListofBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES); //query the faces that define the boundary
-
-    for(index_t i=0;i<nFacesInBoundary;++i) {
-        int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListofBoundary[i],nodesOfFace.get());
-        if(!NumOfVerticesDefiningFace) {
-            std::cerr << "error while reading faces out of .res file: faceId is out of range" << std::endl;
-        }
+    for(index_t i=0;i<nFacesIn2dArea;++i) {
+        int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListOf2dArea[i],nodesOfFace.get());
         assert(NumOfVerticesDefiningFace<=4); //see CFX Reference Guide p.57
         switch(NumOfVerticesDefiningFace) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace.get()[nodesOfElm_counter]];
             }
             elemListCounter += 3;
             break;
@@ -698,7 +680,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 4: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace.get()[nodesOfElm_counter]];
             }
             elemListCounter += 4;
             break;
@@ -709,28 +691,25 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         }
 
 //        if(i<20) {
-//            std::cerr << "faceListofBoundary[" << i << "] = " << faceListofBoundary[i] << std::endl;
+//            std::cerr << "faceListOf2dArea[" << i << "] = " << faceListOf2dArea[i] << std::endl;
 //            for(int j=0;j<4;++j) {
 //                std::cerr << "nodesOfFace[" << j << "] = " << nodesOfFace.get()[j] << std::endl;
 //            }
-//            std::cerr << "local face number[" << faceListofBoundary[i] << "] = " << cfxFACENUM(faceListofBoundary[i]) << std::endl;
-//            std::cerr << "local element number[" << faceListofBoundary[i] << "] = " << cfxELEMNUM(faceListofBoundary[i]) << std::endl;
+//            std::cerr << "local face number[" << faceListOf2dArea[i] << "] = " << cfxFACENUM(faceListOf2dArea[i]) << std::endl;
+//            std::cerr << "local element number[" << faceListOf2dArea[i] << "] = " << cfxELEMNUM(faceListOf2dArea[i]) << std::endl;
 //            std::cerr << "size of nodesOfFace = " << NumOfVerticesDefiningFace << std::endl;
 //        }
     }
 
-
     //element after last element in element list and connectivity list
-    ptrOnEl[nFacesInBoundary] = elemListCounter;
+    ptrOnEl[nFacesIn2dArea] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
-//    ptrOnCl.resize(elemListCounter);
     polygon->cl().resize(elemListCounter);
 
-
     //Test, ob Einlesen funktioniert hat
-//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << nConnectInBoundary << std::endl;
+//    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << nConnectIn2dArea << std::endl;
 //    std::cerr << "nodes_total = " << m_nnodes << "; node Count() = " << cfxExportNodeCount() << std::endl;
-//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << polygon->cl().size() << std::endl;
+//    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << polygon->cl().size() << std::endl;
 //    std::cerr <<"polygon->getNumVertices = " << polygon->getNumVertices() << std::endl;
 //    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
 //    std::cerr <<"polygon->getNumCorners = " << polygon->getNumCorners() << std::endl;
@@ -739,23 +718,21 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
 //    std::cerr << "polygon->cl().at(polygon->getNumCorners()-1) = " << polygon->cl().at(polygon->getNumCorners()-1) << std::endl;
 //    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
 
-//    for(index_t i=nFacesInBoundary-10;i<=nFacesInBoundary;++i) {
+//    for(index_t i=nFacesIn2dArea-10;i<=nFacesIn2dArea;++i) {
 //        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
 //    }
 //    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
 //        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
 //    }
 
-
-    cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
 
     return polygon;
 }
 
 DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
-
-    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
-        if(var.m_vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
+    for(index_t i=0;i<var.vectorIdwithZone.size();++i) {
+        if(var.vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
             if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
@@ -764,28 +741,25 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
             int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
 
             //read field parameters
-            index_t varnum = var.m_vectorIdwithZone[i].ID;
+            index_t varnum = var.vectorIdwithZone[i].ID;
 
-            if(var.m_VarDimension == 1) {
+            if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return s;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
                     ptrOnScalarData[j] = *value.get();
-//                                if(j<10) {
-//                                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//                                }
+//                    if(j<10) {
+//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                    }
                 }
                 cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
                 return s;
             }
-            else if(var.m_VarDimension == 3) {
+            else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
                 boost::shared_ptr<float_t> value(new float[3]);
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
@@ -794,10 +768,7 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 ptrOnVectorZData = v->z().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return v;
-                    }
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
@@ -811,73 +782,87 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
                 cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
                 return v;
             }
-
             cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
         }
     }
     return DataBase::ptr();
 }
 
-DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, Variable var) {
-    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
-        if(var.m_vectorIdwithZone[i].zoneFlag == m_boundariesSelected[boundaryNr].zoneFlag) {
-            if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,NULL) < 0) {
+bool ReadCFX::free2dArea(const char *area2dType, int area2d) {
+    if(!strcmp(area2dType,"boundary")) {
+        cfxExportBoundaryFree(m_2dAreasSelected[area2d].idWithZone.ID);
+    }
+    else if(!strcmp(area2dType,"region")) {
+        cfxExportRegionFree(m_2dAreasSelected[area2d].idWithZone.ID);
+    }
+    else {
+        std::cerr << "Fehler free2dArea" << std::endl;
+    }
+    return true;
+}
+
+DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
+    for(index_t i=0;i<var.vectorIdwithZone.size();++i) {
+        if(m_2dAreasSelected[area2d].idWithZone.zoneFlag == var.vectorIdwithZone[i].zoneFlag) {
+            if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            index_t nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
-            int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
+            index_t nNodesIn2dArea=0;
+            int *nodeListOf2dArea;
+            if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+                nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+                nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+            }
+            else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+                nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
+                nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
+            }
+            else {
+                std::cerr << "Fehler in load2dAreaField 1" << std::endl;
+            }
 
             //read field parameters
-            index_t varnum = var.m_vectorIdwithZone[i].ID;
-            if(var.m_VarDimension == 1) {
-                Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesInBoundary));
+            index_t varnum = var.vectorIdwithZone[i].ID;
+            if(var.varDimension == 1) {
+                Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesIn2dArea));
                 boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
-                for(index_t j=0;j<nNodesInBoundary;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return s;
-                    }
+                for(index_t j=0;j<nNodesIn2dArea;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
                     ptrOnScalarData[j] = *value.get();
-                    //            if(j<200) {
-                    //                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-                    //            }
+//                    if(j<100) {
+//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                    }
                 }
                 cfxExportVariableFree(varnum);
-                cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return s;
             }
-            else if(var.m_VarDimension == 3) {
-                Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesInBoundary));
+            else if(var.varDimension == 3) {
+                Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesIn2dArea));
                 boost::shared_ptr<float_t> value(new float[3]);
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
-                for(index_t j=0;j<nNodesInBoundary;++j) {
-                    if(cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get()) == 0) {
-                        std::cerr << "variable(" << var.m_VarName << ") is out of range" << std::endl;
-                        return v;
-                    }
+                for(index_t j=0;j<nNodesIn2dArea;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
                     ptrOnVectorXData[j] = value.get()[0];
                     ptrOnVectorYData[j] = value.get()[1];
                     ptrOnVectorZData[j] = value.get()[2];
-                    //            if(j<200) {
-                    //                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-                    //                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-                    //                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-                    //            }
+//                    if(j<100) {
+//                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//                    }
                 }
                 cfxExportVariableFree(varnum);
-                cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return v;
             }
-
-
-            cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+            free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
         }
     }
-
     return DataBase::ptr();
 }
 
@@ -892,7 +877,7 @@ index_t ReadCFX::collectVolumes() {
     m_coRestraintZones.get(val,group);
 
     index_t numberOfSelectedVolumes=0;
-    m_volumesSelected.reserve(m_nvolumes);
+    m_volumesSelected.resize(m_nvolumes);
 
     for(index_t i=1;i<=m_nzones;++i) {
         if(m_coRestraintZones(i)) {
@@ -908,6 +893,7 @@ index_t ReadCFX::collectVolumes() {
             }
         }
     }
+    m_volumesSelected.resize(numberOfSelectedVolumes);
 
     //zum Testen
 //    for(index_t i=0;i<numberOfSelectedVolumes;++i) {
@@ -917,170 +903,392 @@ index_t ReadCFX::collectVolumes() {
     return numberOfSelectedVolumes;
 }
 
-index_t ReadCFX::collectBoundaries() {
-        //m_coRestraintBoundaries contains a bool array of which boundaries are selected
-        //m_coRestraintBoundaries(zone) = 1 boundary ist selektiert
-        //m_coRestraintBoundaries(zone) = 0 boundary ist nicht selektiert
-        //group = -1 alle boundaries sind selektiert
-    m_coRestraintBoundaries.clear();
-    m_coRestraintBoundaries.add(m_boundarySelection->getValue());
-    ssize_t val = m_coRestraintBoundaries.getNumGroups(), group;
-    m_coRestraintBoundaries.get(val,group);
+index_t ReadCFX::collect2dAreas() {
+    //m_coRestraint2dAreas contains a bool array of which 2dAreas are selected
+    //m_coRestraint2dAreas(zone) = 1 2dAreas ist selektiert
+    //m_coRestraint2dAreas(zone) = 0 2dAreas ist nicht selektiert
+    //group = -1 alle 2dAreas sind selektiert
+    m_coRestraint2dAreas.clear();
+    m_coRestraint2dAreas.add(m_2dAreaSelection->getValue());
+    ssize_t val = m_coRestraint2dAreas.getNumGroups(), group;
+    m_coRestraint2dAreas.get(val,group);
 
-    index_t numberOfSelectedBoundaries=0;
-    m_boundariesSelected.reserve(m_case.getNumberOfBoundaries());
+    index_t numberOfSelected2dAreas=0;
+    m_2dAreasSelected.resize(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());
     std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
+    std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
 
     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-        if(m_coRestraintBoundaries(i)) {
-            for(index_t j=0;j<allBoundaries[i-1].m_vectorIdwithZone.size();++j) {
-                m_boundariesSelected[numberOfSelectedBoundaries]=IdWithZoneFlag(allBoundaries[i-1].m_vectorIdwithZone[j].ID,allBoundaries[i-1].m_vectorIdwithZone[j].zoneFlag);
-                numberOfSelectedBoundaries++;
-            }
+        if(m_coRestraint2dAreas(i)) {
+            m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allBoundaries[i-1].idWithZone.ID,allBoundaries[i-1].idWithZone.zoneFlag);
+            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "boundary";
+            numberOfSelected2dAreas++;
         }
     }
+    for(index_t i=m_case.getNumberOfBoundaries()+1;i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
+        if(m_coRestraint2dAreas(i)) {
+            m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.ID,allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.zoneFlag);
+            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "region";
+            numberOfSelected2dAreas++;
+        }
+    }
+
+    m_2dAreasSelected.resize(numberOfSelected2dAreas);
+
     //zum Testen
-//    for(int i=0;i<numberOfSelectedBoundaries;++i) {
-//        std::cerr << "m_boundariesSelected[" << i << "] = " << m_boundariesSelected[i].ID << "; zoneflag = " << m_boundariesSelected[i].zoneFlag << std::endl;
+//    if(rank()==0) {
+//        for(index_t i=0;i<numberOfSelected2dAreas;++i) {
+//            std::cerr << "m_2dAreasSelected[" << i << "] = " << m_2dAreasSelected[i].idWithZone.ID << "; zoneflag = " << m_2dAreasSelected[i].idWithZone.zoneFlag << std::endl;
+//        }
 //    }
 
     cfxExportZoneFree();
-    return numberOfSelectedBoundaries;
+    return numberOfSelected2dAreas;
 }
 
-bool ReadCFX::loadFields(int volumeNr, int processor, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes) {
+bool ReadCFX::loadFields(int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
-          return obj.m_VarName == field;});
+          return obj.varName == field;});
       if (it == allParam.end()) {
-          if(m_ResfileVolumedata[i]) {
-              m_currentVolumedata[processor][i]= m_ResfileVolumedata[i];
+          if(!m_portDatas[i].vectorResfileVolumeData.empty()) {
+              //values are only in resfile --> timestep = -1
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),setMetaTimestep,-1,numSelVolumes,trnOrRes);
           }
           else {
-              m_currentVolumedata[processor][i]= DataBase::ptr();
+              m_currentVolumedata[i] = DataBase::ptr();
           }
       }
       else {
+          if(!m_portDatas[i].vectorResfileVolumeData.empty() && trnOrRes) {
+              //resfile is last timestep
+              setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),m_portDatas[i].vectorVolumeDataVolumeNr.back(),0,0,numSelVolumes,0);
+              return true;
+          }
           auto index = std::distance(allParam.begin(), it);
           DataBase::ptr obj = loadField(volumeNr, allParam[index]);
-          setMeta(obj, volumeNr, setMetaTimestep, timestep, numBlocks, trnOrRes);
-          obj ->setGrid(m_currentGrid[processor]);
-          obj ->setMapping(DataBase::Vertex);
-          m_currentVolumedata[processor][i]= obj;
-          if(!trnOrRes) {
-              m_ResfileVolumedata[i]=obj;
+          if(trnOrRes) {
+              setDataObject(m_gridsInTimestep[volumeNr],obj,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
+              m_currentVolumedata[i]= obj;
+          }
+          else {
+              m_portDatas[i].vectorResfileVolumeData.push_back(obj);
+              m_portDatas[i].vectorVolumeDataVolumeNr.push_back(volumeNr);
+              if(m_ntimesteps==0) {
+                  setDataObject(m_ResfileGridVec.back(),m_portDatas[i].vectorResfileVolumeData.back(),volumeNr,setMetaTimestep,-1,numSelVolumes,trnOrRes);
+              }
           }
       }
    }
    return true;
 }
 
-bool ReadCFX::loadBoundaryFields(int boundaryNr, int setMetaTimestep, int timestep, index_t numBlocks, bool trnOrRes) {
-    for (int i=0; i<NumBoundaryPorts; ++i) {
-        std::string boundField = m_boundaryOut[i]->getValue();
+bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+    for (int i=0; i<Num2dPorts; ++i) {
+        std::string area2dField = m_2dOut[i]->getValue();
         std::vector<Variable> allParam = m_case.getCopyOfAllParam();
-        auto it = find_if(allParam.begin(), allParam.end(), [&boundField](const Variable& obj) {
-            return obj.m_VarName == boundField;});
-        if (!(it == allParam.end())) {
-            auto index = std::distance(allParam.begin(), it);
-            DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
-            if(obj) {
-                setMeta(obj, boundaryNr, setMetaTimestep, timestep, numBlocks, trnOrRes);
-                obj ->setGrid(loadPolygon(boundaryNr));
-                obj ->setMapping(DataBase::Vertex);
-                addObject(m_boundaryDataOut[i],obj);
-                if(!trnOrRes) {
-                    m_ResfileBoundarydata[i]=obj;
-                }
+        auto it = find_if(allParam.begin(), allParam.end(), [&area2dField](const Variable& obj) {
+            return obj.varName == area2dField;});
+        if (it == allParam.end()) {
+            if(!m_2dPortDatas[i].resfile2dDataVec.empty()) {
+                //values are only in resfile --> timestep = -1
+                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),setMetaTimestep,-1,numSel2dArea,trnOrRes);
             }
-        }
-        else {
-            if(m_ResfileBoundarydata[i]) {
-                addObject(m_boundaryDataOut[i],m_ResfileBoundarydata[i]);
+            else {
+               m_current2dData[i] = DataBase::ptr();
             }
-        }
+       }
+       else {
+            if(!m_2dPortDatas[i].resfile2dDataVec.empty() && trnOrRes) {
+                //resfile is last timestep
+                set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),m_2dPortDatas[i].resfile2dIdVec.back(),0,0,numSel2dArea,0);
+                return true;
+           }
+           auto index = std::distance(allParam.begin(), it);
+           DataBase::ptr obj = load2dField(area2d, allParam[index]);
+           if(trnOrRes) {
+               set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+               m_current2dData[i]= obj;
+           }
+           else {
+               m_2dPortDatas[i].resfile2dDataVec.push_back(obj);
+               m_2dPortDatas[i].resfile2dIdVec.push_back(area2d);
+               if(m_ntimesteps==0) {
+                   set2dObject(m_ResfilePolygonVec.back(),m_2dPortDatas[i].resfile2dDataVec.back(),area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
+               }
+           }
+       }
     }
     return true;
 }
 
-bool ReadCFX::addVolumeDataToPorts(int processor) {
+bool ReadCFX::addVolumeDataToPorts() {
     for (int portnum=0; portnum<NumPorts; ++portnum) {
-        auto &volumedata = m_currentVolumedata[processor];
-        if(volumedata.find(portnum) != volumedata.end()) {
-            if(volumedata[portnum]) {
-                addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+        if(!m_portDatas[portnum].vectorResfileVolumeData.empty()) {
+            auto &volumedata = m_portDatas[portnum].vectorResfileVolumeData.back();
+            if(volumedata) {
+                addObject(m_volumeDataOut[portnum], volumedata);
+            }
+            m_portDatas[portnum].vectorResfileVolumeData.pop_back();
+            m_portDatas[portnum].vectorVolumeDataVolumeNr.pop_back();
+        }
+        else {
+            if(m_currentVolumedata[portnum]) {
+                addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
             }
         }
     }
    return true;
 }
 
-bool ReadCFX::addGridToPort(int processor) {
-    addObject(m_gridOut,m_currentGrid[processor]);
+bool ReadCFX::add2dDataToPorts() {
+    for (int portnum=0; portnum<Num2dPorts; ++portnum) {
+        if(!m_2dPortDatas[portnum].resfile2dDataVec.empty()) {
+            auto &data2d = m_2dPortDatas[portnum].resfile2dDataVec.back();
+            if(data2d) {
+                //std::cerr << "addVolume(" << portnum << ")" << std::endl;
+                addObject(m_2dDataOut[portnum], data2d);
+            }
+            m_2dPortDatas[portnum].resfile2dDataVec.pop_back();
+            m_2dPortDatas[portnum].resfile2dIdVec.pop_back();
+        }
+        else {
+            if(m_current2dData[portnum]) {
+                addObject(m_2dDataOut[portnum], m_current2dData[portnum]);
+            }
+        }
+    }
     return true;
 }
 
-void ReadCFX::setMeta(Object::ptr obj, int volumeNr, int setMetaTimestep, int timestep, index_t numOfBlocks, bool trnOrRes) {
+bool ReadCFX::addGridToPort(int volumeNr) {
+    if(!m_ResfileGridVec.empty()) {
+        addObject(m_gridOut,m_ResfileGridVec.back());
+        m_ResfileGridVec.pop_back();
+    }
+    else {
+        addObject(m_gridOut,m_gridsInTimestep[volumeNr]);
+    }
+    return true;
+}
+
+bool ReadCFX::addPolygonToPort(int area2d) {
+    if(!m_ResfilePolygonVec.empty()) {
+        addObject(m_polyOut,m_ResfilePolygonVec.back());
+        m_ResfilePolygonVec.pop_back();
+    }
+    else {
+        addObject(m_polyOut,m_polygonsInTimestep[area2d]);
+    }
+    return true;
+}
+
+void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes) {
    if (obj) {
        if(m_ntimesteps == 0) {
+           obj->setTimestep(-1);
            obj->setNumTimesteps(-1);
-           obj->setTimestep(0);
            obj->setRealTime(0);
        }
        else {
-           obj->setNumTimesteps(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
-           if(trnOrRes) {
-               obj->setTimestep(setMetaTimestep);
-               obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
+           if(timestep == -1) {
+               obj->setNumTimesteps(-1);
+               obj->setTimestep(-1);
            }
            else {
-               obj->setTimestep(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
-               obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
+               if(trnOrRes) {
+                   obj->setNumTimesteps(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+                   obj->setTimestep(setMetaTimestep);
+                   obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
+               }
+               else {
+                   obj->setNumTimesteps(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+                   obj->setTimestep(((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
+                   obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
+               }
            }
        }
-      obj->setBlock(volumeNr);
-      obj->setNumBlocks(numOfBlocks == 0 ? 1 : numOfBlocks);
+      obj->setBlock(blockNr);
+      obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
+
+
+      double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+      double angularVel; //in radians per second
+      if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
+          cfxExportZoneMotionAction(cfxExportZoneGet(),cfxMOTION_USE);
+
+//          for(int i=0;i<3;++i) {
+//              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
+//          }
+//          for(int i=0;i<3;++i) {
+//              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
+//          }
+
+          double startTime = cfxExportTimestepTimeGet(1);
+          double currentTime = cfxExportTimestepTimeGet(timestep+1);
+          Scalar rot_angle = angularVel*(currentTime-startTime); //in radians
+
+          //std::cerr << "rot_angle = " << rot_angle << std::endl;
+
+          double x,y,z;
+          x = rotAxis[1][0]-rotAxis[0][0];
+          y = rotAxis[1][1]-rotAxis[0][1];
+          z = rotAxis[1][2]-rotAxis[0][2];
+          Vector3 rot_axis(x,y,z);
+          rot_axis.normalize();
+          //std::cerr << "rot_axis = " << rot_axis << std::endl;
+
+          Quaternion qrot(AngleAxis(rot_angle, rot_axis));
+          Matrix4 rotMat(Matrix4::Identity());
+          Matrix3 rotMat3(qrot.toRotationMatrix());
+          rotMat.block<3,3>(0,0) = rotMat3;
+
+          Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
+          Matrix4 translateMat(Matrix4::Identity());
+          translateMat.col(3) << translate, 1;
+
+          Matrix4 transform(Matrix4::Identity());
+          transform *= translateMat;
+          transform *= rotMat;
+          translate *= -1;
+          translateMat.col(3) << translate, 1;
+          transform *= translateMat;
+
+          Matrix4 t = obj->getTransform();
+          t *= transform;
+          obj->setTransform(t);
+      }
    }
 }
 
-bool ReadCFX::readTime(index_t numSelVolumes, index_t numSelBoundaries, int setMetaTimestep, int timestep, bool trnOrRes) {
+bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int volumeNr, int setMetaTimestep, int timestep, index_t numSelVolumes, bool trnOrRes) {
+    setMeta(grid,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
+    setMeta(data,volumeNr,setMetaTimestep,timestep,numSelVolumes,trnOrRes);
+    data->setGrid(grid);
+    data->setMapping(DataBase::Vertex);
+
+    return true;
+}
+
+bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+    setMeta(polygon,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+    setMeta(data,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
+    data->setGrid(polygon);
+    data->setMapping(DataBase::Vertex);
+
+    return true;
+}
+
+bool ReadCFX::readTime(index_t numSelVolumes, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes) {
     for(index_t i=0;i<numSelVolumes;++i) {
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSelVolumes << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSelVolumes) << std::endl;
-        if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {
-            int processor = rank();
+        if(rankForVolumeAndTimestep(timestep,i,numSelVolumes) == rank()) {                    
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
-
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(0,1) << ", timestep = " << 1 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(1,2) << ", timestep = " << 2 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(2,3) << ", timestep = " << 3 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(3,4) << ", timestep = " << 4 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(459,460) << ", timestep = " << 460 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(460,461) << ", timestep = " << 461 << std::endl;
-//            std::cerr << "GridChanged = " << cfxExportGridChanged(461,462) << ", timestep = " << 462 << std::endl;
-
-            UnstructuredGrid::ptr grid = loadGrid(i);
-            setMeta(grid, i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
-            m_currentGrid[processor] = grid;
-            loadFields(i, processor, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
-            addGridToPort(processor);
-            addVolumeDataToPorts(processor);
+            if(m_ntimesteps==0) {
+                m_ResfileGridVec.push_back(loadGrid(i));
+                loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                addGridToPort(i);
+                addVolumeDataToPorts();
+            }
+            else {
+                if(trnOrRes) {
+                    if(m_addToPortResfileVolumeData) {
+                        for(int j=0;j<NumPorts;++j) {
+                            if(!m_portDatas[j].vectorResfileVolumeData.empty()) {
+                                index_t nResfileDataSets = m_portDatas[j].vectorResfileVolumeData.size();
+                                for(index_t k=0;k<nResfileDataSets;++k) {
+                                    loadFields(0, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                                    addGridToPort(i);
+                                    addVolumeDataToPorts();
+                                }
+                            }
+                        }
+                        m_addToPortResfileVolumeData=false;
+                    }
+                    if(cfxExportZoneSet(m_volumesSelected[i].zoneFlag,NULL) < 0) { //set the right zone because cfxExportGridChanged depends on the zone
+                        std::cerr << "invalid zone number" << std::endl;
+                    }
+                    if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
+                        m_gridsInTimestep[i] = loadGrid(i);
+                    }
+                    m_gridsInTimestep[i] = loadGrid(i);
+                    loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                    addGridToPort(i);
+                    addVolumeDataToPorts();
+                }
+                else {
+                    m_ResfileGridVec.push_back(loadGrid(i));
+                    loadFields(i, setMetaTimestep, timestep, numSelVolumes, trnOrRes);
+                }
+            }
         }
     }
-    for(index_t i=0;i<numSelBoundaries;++i) {
-        if(rankForBoundaryAndTimestep(timestep,i,numSelBoundaries) == rank()) {
-            //std::cerr << "process mit rank() = " << rank() << "; berechnet boundary = " << i << "; in timestep = " << timestep << std::endl;
-            loadBoundaryFields(i, setMetaTimestep, timestep, numSelBoundaries, trnOrRes);
+
+    for(index_t i=0;i<numSel2dArea;++i) {
+        if(rankFor2dAreaAndTimestep(timestep,i,numSel2dArea) == rank()) {
+//            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in timestep = " << timestep << std::endl;
+            if(m_ntimesteps==0) {
+                m_ResfilePolygonVec.push_back(loadPolygon(i));
+                load2dFields(i,setMetaTimestep, timestep, numSel2dArea, trnOrRes);
+                addPolygonToPort(i);
+                add2dDataToPorts();
+            }
+            else {
+                if(trnOrRes) {
+                    if(m_addToPortResfile2dData) {
+                        for(int j=0;j<Num2dPorts;++j) {
+                            if(!m_2dPortDatas[j].resfile2dDataVec.empty()) {
+                                int nResfileDataSets = m_2dPortDatas[j].resfile2dDataVec.size();
+                                for(int k=0;k<nResfileDataSets;++k) {
+                                    load2dFields(0, setMetaTimestep, timestep, numSel2dArea, trnOrRes);
+                                    addPolygonToPort(0);
+                                    add2dDataToPorts();
+                                }
+                            }
+                        }
+                        m_addToPortResfile2dData=false;
+                    }
+                    if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
+                        m_polygonsInTimestep[i] = loadPolygon(i);
+                    }
+                    m_polygonsInTimestep[i] = loadPolygon(i);
+                    load2dFields(i, setMetaTimestep, timestep, numSel2dArea, trnOrRes);
+                    addPolygonToPort(i);
+                    add2dDataToPorts();
+                }
+                else {
+                    m_ResfilePolygonVec.push_back(loadPolygon(i));
+                    load2dFields(i, setMetaTimestep, timestep, numSel2dArea, trnOrRes);
+                }
+            }
         }
     }
+    m_previousTimestep = timestep+1;
+    return true;
+}
+
+bool ReadCFX::clearResfileData () {
+    for(int i=0;i<NumPorts;++i) {
+        m_portDatas[i].vectorResfileVolumeData.clear();
+        m_portDatas[i].vectorVolumeDataVolumeNr.clear();
+    }
+    for(int i=0;i<Num2dPorts;++i) {
+        m_2dPortDatas[i].resfile2dDataVec.clear();
+        m_2dPortDatas[i].resfile2dIdVec.clear();
+    }
+    m_ResfileGridVec.clear();
+    m_ResfilePolygonVec.clear();
 
     return true;
 }
 
 bool ReadCFX::compute() {
+#ifdef CFX_DEBUG
     std::cerr << "Compute Start. \n";
-    index_t numSelVolumes, numSelBoundaries, setMetaTimestep=0;
+#endif
+    index_t numSelVolumes, numSel2dArea, setMetaTimestep=0;
     index_t step = m_timeskip->getValue()+1;
     index_t firsttimestep = m_firsttimestep->getValue(), lasttimestep =  m_lasttimestep->getValue();
     bool trnOrRes;
@@ -1089,23 +1297,30 @@ bool ReadCFX::compute() {
         sendInfo("not a valid .res file entered: initialisation not yet done");
     }
     else {
-        if(ExportDone) {
+        if(m_ExportDone) {
             initializeResultfile();
             m_case.parseResultfile();
         }
-
-
-//        double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-//        double angularVel;
-//        if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
-//            cfxExportZoneMotionAction(zone,cfxMOTION_USE);
-//        }
-
         //read variables out of .res file
         trnOrRes = 0;
+#ifdef CFX_DEBUG
+        std::cerr << "Test1" << std::endl;
+#endif
+        m_addToPortResfileVolumeData = true;
+        m_addToPortResfile2dData = true;
+        clearResfileData();
+#ifdef CFX_DEBUG
+        std::cerr << "Test2" << std::endl;
+#endif
         numSelVolumes = collectVolumes();
-        numSelBoundaries = collectBoundaries();
-        readTime(numSelVolumes,numSelBoundaries,0,0,trnOrRes);
+        numSel2dArea = collect2dAreas();
+        m_gridsInTimestep.resize(numSelVolumes);
+        m_polygonsInTimestep.resize(numSel2dArea);
+        readTime(numSelVolumes,numSel2dArea,0,0,trnOrRes);
+#ifdef CFX_DEBUG
+        std::cerr << "Test3" << std::endl;
+        std::cerr << "numSel2dArea = " << numSel2dArea << std::endl;
+#endif
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
@@ -1117,21 +1332,47 @@ bool ReadCFX::compute() {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
                 else {
+                    if(rank() == 0 && timestep == firsttimestep) {
+                        //print variable names in .trn file
+                        sendInfo("Found %d variables in transient files", cfxExportVariableCount(usr_level));
+                        for(int i=1;i<=cfxExportVariableCount(usr_level);i++) {
+                            sendInfo("%d. %s",i,cfxExportVariableName(i,alias));
+                        }
+                    }
+#ifdef CFX_DEBUG
+                    std::cerr << "Test4" << std::endl;
+#endif
+
                     m_case.parseResultfile();
                     numSelVolumes = collectVolumes();
-                    numSelBoundaries = collectBoundaries();
-                    readTime(numSelVolumes,numSelBoundaries,setMetaTimestep,timestep,trnOrRes);
-
-                    m_currentVolumedata.clear();
-                    m_currentGrid.clear();
-                    m_ResfileVolumedata.clear();
-                    m_ResfileBoundarydata.clear();
+                    numSel2dArea = collect2dAreas();
+                    readTime(numSelVolumes,numSel2dArea,setMetaTimestep,timestep,trnOrRes);
+#ifdef CFX_DEBUG
+                    std::cerr << "Test5" << std::endl;
+#endif
                 }
                 setMetaTimestep++;
             }
             cfxExportDone();
-            ExportDone = true;
+            m_ExportDone = true;
         }
     }
+    clearResfileData();
+    m_fieldOut.clear();
+    m_2dOut.clear();
+    m_volumeDataOut.clear();
+    m_2dDataOut.clear();
+    m_volumesSelected.clear();
+    m_2dAreasSelected.clear();
+    m_gridsInTimestep.clear();
+    m_polygonsInTimestep.clear();
+    m_currentVolumedata.clear();
+    m_current2dData.clear();
+
+    grid.reset();
+
+#ifdef CFX_DEBUG
+                    std::cerr << "Test6" << std::endl;
+#endif
     return true;
 }

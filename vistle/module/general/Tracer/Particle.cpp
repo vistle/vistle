@@ -152,11 +152,14 @@ bool Particle::findCell(double time) {
 
         if (block.get() == m_block) {
             // don't try previous block again
-            m_block = nullptr;
+            UpdateBlock(nullptr);
             continue;
         }
         auto grid = block->getGrid();
-        m_el = grid->findCell(m_x, InvalidIndex, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
+        Vector4 x;
+        x << m_x,1;
+        x = block->invTransform() * x;
+        m_el = grid->findCell(x.block<3,1>(0,0)/x[3], InvalidIndex, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         if (m_el!=InvalidIndex) {
 
             if (!m_currentSegment) {
@@ -181,7 +184,10 @@ bool Particle::findCell(double time) {
 
 void Particle::EmitData() {
 
-   m_currentSegment->m_xhist.push_back(m_xold);
+   Vector4 x;
+   x << m_xold, 1;
+   x = m_block->transform() * x;
+   m_currentSegment->m_xhist.push_back(x.block<3,1>(0,0)/x[3]);
    m_currentSegment->m_vhist.push_back(m_v);
    m_currentSegment->m_steps.push_back(m_stp);
    m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
@@ -202,6 +208,7 @@ bool Particle::Step() {
    const auto &grid = m_block->getGrid();
    auto inter = grid->getInterpolator(m_el, m_x, m_block->m_vecmap);
    m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
+   m_v = m_block->velocityTransform() * m_v;
    if (m_block->m_p) {
       if (m_block->m_scamap != m_block->m_vecmap)
           inter = grid->getInterpolator(m_el, m_x, m_block->m_scamap);
@@ -487,6 +494,31 @@ void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {
 
 void Particle::UpdateBlock(BlockData *block) {
 
+    if (m_block) {
+        Vector4 x4;
+
+        x4 << m_x, 1;
+        x4 = m_block->transform() * x4;
+        m_x = x4.block<3,1>(0,0)/x4[3];
+
+        x4 << m_xold, 1;
+        x4 = m_block->transform() * x4;
+        m_xold = x4.block<3,1>(0,0)/x4[3];
+    }
+
     m_block = block;
+
+    if (m_block) {
+        Vector4 x4;
+
+        x4 << m_x, 1;
+        x4 = m_block->invTransform() * x4;
+        m_x = x4.block<3,1>(0,0)/x4[3];
+
+        x4 << m_xold, 1;
+        x4 = m_block->invTransform() * x4;
+        m_xold = x4.block<3,1>(0,0)/x4[3];
+    }
+
     m_integrator.UpdateBlock();
 }
