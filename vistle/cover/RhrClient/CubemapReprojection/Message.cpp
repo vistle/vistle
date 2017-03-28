@@ -55,6 +55,16 @@ namespace CubemapStreaming
 		}
 	}
 
+	void GetImageDataSideSize(unsigned width, unsigned height, float sideVisiblePortion, float posZVisiblePortion,
+		glm::uvec2* sizes)
+	{
+		glm::uvec2 sideStarts[c_CountCubemapSides], sideEnds[c_CountCubemapSides];
+		GetImageDataSideBounds(width, height, sideVisiblePortion, posZVisiblePortion,
+			sideStarts, sideEnds);
+		for (unsigned i = 0; i < c_CountCubemapSides; i++)
+			sizes[i] = (glm::uvec2)glm::abs((glm::ivec2)sideEnds[i] - (glm::ivec2)sideStarts[i]);
+	}
+
 	inline unsigned GetPixelCount(glm::uvec2* start, glm::uvec2* end, unsigned side)
 	{
 		auto diff = end[side] - start[side];

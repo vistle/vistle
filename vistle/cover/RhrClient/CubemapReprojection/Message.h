@@ -31,6 +31,10 @@ namespace CubemapStreaming
 		float sideVisiblePortion, float posZVisiblePortion,
 		glm::uvec2* start, glm::uvec2* end);
 
+	void GetImageDataSideSize(unsigned width, unsigned height,
+		float sideVisiblePortion, float posZVisiblePortion,
+		glm::uvec2* sizes);
+
 	unsigned GetImageDataSize(unsigned width, unsigned height,
 		bool isContainingAlpha,
 		float sideVisiblePortion, float posZVisiblePortion);

@@ -115,28 +115,34 @@ void CubemapReprojector::SetDepthData(unsigned resourceIndex, unsigned char** pp
 	}
 }
 
-void DebugSourceTexture(PathHandler& pathHandler, BufferType bufferType)
+inline void InitializeShaderProgram_VS_PS(const PathHandler& pathHandler,
+	const char* vsPath, const char* psPath, OpenGLRender::ShaderProgram& program)
+{
+	OpenGLRender::ShaderProgramDescription spd;
+	spd.Shaders =
+	{
+		ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
+		ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
+	};
+	program.Initialize(spd);
+}
+
+void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
 {
 	const bool isClearingBuffers = false;
 	static bool isInitializing = true;
-	static OpenGLRender::ShaderProgram showProgram;
+	static OpenGLRender::ShaderProgram colorShowProgram, depthShowProgram;
 	static Primitive quad;
 	if (isInitializing)
 	{
 		isInitializing = false;
 
 		auto vsPath = "Shaders/ShowBuffer_vs.glsl";
-		auto psPath = (bufferType == BufferType::Color
-			? "Shaders/ShowColorBuffer_ps.glsl"
-			: "Shaders/ShowDepthBuffer_ps.glsl");
+		auto colorPSPath = "Shaders/ShowColorBuffer_ps.glsl";
+		auto depthPSPath = "Shaders/ShowDepthBuffer_ps.glsl";
 
-		OpenGLRender::ShaderProgramDescription spd;
-		spd.Shaders =
-		{
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
-		};
-		showProgram.Initialize(spd);
+		InitializeShaderProgram_VS_PS(pathHandler, vsPath, colorPSPath, colorShowProgram);
+		InitializeShaderProgram_VS_PS(pathHandler, vsPath, depthPSPath, depthShowProgram);
 
 		Vertex_SOA_Data vertexData;
 		IndexData indexData;
@@ -144,7 +150,9 @@ void DebugSourceTexture(PathHandler& pathHandler, BufferType bufferType)
 		vertexData.RemoveVertexElement(c_PositionVertexElement);
 		vertexData.RemoveVertexElement(c_NormalVertexElement);
 		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
-		showProgram.SetInputLayout(vertexData.InputLayout);
+		
+		// Both shader program uses the same input layout.
+		colorShowProgram.SetInputLayout(vertexData.InputLayout);
 	}
 
 	if (isClearingBuffers)
@@ -152,14 +160,21 @@ void DebugSourceTexture(PathHandler& pathHandler, BufferType bufferType)
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
+
 	GLint prevDepthFunc;
 	glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
 	glDepthFunc(GL_LEQUAL);
 
-	showProgram.Bind();
-
-	if (bufferType == BufferType::Color) showProgram.SetUniformValue("ColorTexture", 0);
-	else                                 showProgram.SetUniformValue("DepthTexture", 1);
+	if (bufferType == BufferType::Color)
+	{
+		colorShowProgram.Bind();
+		colorShowProgram.SetUniformValue("ColorTexture", 0);
+	}
+	else
+	{
+		depthShowProgram.Bind();
+		depthShowProgram.SetUniformValue("DepthTexture", 1);
+	}
 
 	quad.Bind();
 	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
@@ -416,8 +431,15 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 
 void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 {
-	m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera, m_IsUsingWireframe);
-	//DebugSourceTexture(m_PathHandler, BufferType::Color);
+	switch (m_RenderMode)
+	{
+	case RenderMode::Default:
+		m_GridReprojector.Render(m_ServerCubemapCameraGroup, clientCamera, m_IsUsingWireframe); break;
+	case RenderMode::DebugColors:
+		DebugSourceTexture(m_PathHandler, BufferType::Color); break;
+	case RenderMode::DebugDepths:
+		DebugSourceTexture(m_PathHandler, BufferType::Depth); break;
+	}
 	//RenderProgressBar(m_PathHandler);
 }
 
@@ -613,12 +635,15 @@ void CubemapReprojector::SwapFrame()
 		return;
 
 	// TODO: implement swappings in shader!
+	glm::uvec2 sideSizes[c_CountCubemapSides];
+	GetImageDataSideSize(m_ServerWidth, m_ServerHeight, m_SideVisiblePortion, m_PosZVisiblePortion, sideSizes);
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
 		auto& colorBuffer = m_Buffers[GetBufferIndex(BufferType::Color, i, m_WriteBufferIndex)];
 		auto& depthBuffer = m_Buffers[GetBufferIndex(BufferType::Depth, i, m_WriteBufferIndex)];
-		SwapX(colorBuffer.GetArray(), m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3);
-		PrepareDepth(depthBuffer.GetArray(), m_ServerWidth, m_ServerHeight);
+		auto& size = sideSizes[i];
+		SwapX(colorBuffer.GetArray(), size.x, size.y, m_IsContainingAlpha ? 4 : 3);
+		PrepareDepth(depthBuffer.GetArray(), size.x, size.y);
 	}
 
 	if (c_IsDebuggingBuffers)
@@ -628,9 +653,10 @@ void CubemapReprojector::SwapFrame()
 			auto colorBuffer
 				= m_Buffers[GetBufferIndex(BufferType::Color, sideIndex, m_WriteBufferIndex)].GetArray();
 			char fileRelPath[32];
+			auto& size = sideSizes[sideIndex];
 			snprintf(fileRelPath, 32, "Temp/ColorBuffer_%d.png", sideIndex);
 			SaveImageToFile(colorBuffer,
-				Image2DDescription::ColorImage(m_ServerWidth, m_ServerHeight, m_IsContainingAlpha ? 4 : 3),
+				Image2DDescription::ColorImage(size.x, size.y, m_IsContainingAlpha ? 4 : 3),
 				m_PathHandler.GetPathFromRootDirectory(fileRelPath),
 				ImageSaveFlags::IsFlippingY);
 		}
@@ -841,28 +867,36 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
 		m_ServerCubemapCameraGroupForAdjustment.Update();
 	}
 
-	*serverWidth = m_ServerWidth;
-	*serverHeight = m_ServerHeight;
-
 	auto sideIndex = ViewToSideIndex(viewIndex);
 	auto camera = m_ServerCubemapCameraGroupForAdjustment.Cameras[sideIndex];
-	auto& sideViewMatrix = camera->GetViewMatrix();
-	auto& sideProjectionMatrix = camera->GetProjectionMatrix(); // REF!!!
 
-	//auto smallSideSize = (unsigned)std::round(m_ServerWidth * m_SideVisiblePortion);
-	//auto exactSideRatio = smallSideSize / (float)m_ServerWidth;
+	glm::uvec2 sideSizes[c_CountCubemapSides];
+	GetImageDataSideSize(m_ServerWidth, m_ServerHeight, m_SideVisiblePortion, m_PosZVisiblePortion, sideSizes);
+	*serverWidth = sideSizes[sideIndex].x;
+	*serverHeight = sideSizes[sideIndex].y;
 
-	//if (sideIndex == (unsigned)CubemapSide::Left || sideIndex == (unsigned)CubemapSide::Right)
-	//{
-	//	*serverWidth = smallSideSize;
-	//}
-	//else if (sideIndex == (unsigned)CubemapSide::Bottom || sideIndex == (unsigned)CubemapSide::Top)
-	//{
-	//	*serverHeight = smallSideSize;
-	//}
+	assert(*serverWidth > 0 && *serverHeight > 0);
 
-	CreateFromMatrix(sideViewMatrix, viewMatrix);
-	CreateFromMatrix(sideProjectionMatrix, projMatrix);
+	if (sideIndex < (unsigned)CubemapSide::Back && m_SideVisiblePortion < 1.0f)
+	{
+		assert(m_SideVisiblePortion > 0.0f);
+
+		auto sideRatio = std::min(*serverWidth, *serverHeight) / (float)m_ServerWidth;
+
+		auto projection = camera->GetProjection();
+		auto& pp = projection.Projection.Perspective;
+		switch ((CubemapSide)sideIndex)
+		{
+		case CubemapSide::Left: pp.Left = pp.Right - (pp.Right - pp.Left) * sideRatio; break;
+		case CubemapSide::Right: pp.Right = pp.Left + (pp.Right - pp.Left) * sideRatio; break;
+		case CubemapSide::Bottom: pp.Top = pp.Bottom + (pp.Top - pp.Bottom) * sideRatio; break;
+		case CubemapSide::Top: pp.Bottom = pp.Top - (pp.Top - pp.Bottom) * sideRatio; break;
+		}
+		camera->SetProjection(projection);
+	}
+
+	CreateFromMatrix(camera->GetViewMatrix(), viewMatrix);
+	CreateFromMatrix(camera->GetProjectionMatrix(), projMatrix);
 }
 
 inline void SetCameraFromMatrices(Camera& camera, const double* model, const double* view, const double* proj)
@@ -1000,11 +1034,13 @@ void CubemapReprojector::InitializeInput()
 	m_FlipIsUpdatingTextureECI = m_KeyHandler.RegisterStateKeyEventListener("FlipIsUpdatingTexture", this);
 	m_FlipWireFrameECI = m_KeyHandler.RegisterStateKeyEventListener("FlipWireFrame", this);
 	m_SaveImageDataECI = m_KeyHandler.RegisterStateKeyEventListener("SaveImageData", this);
+	m_StepRenderModeECI = m_KeyHandler.RegisterStateKeyEventListener("StepRenderMode", this);
 	m_KeyHandler.BindEventToKey(m_LoadClientCameraECI, Keys::L);
 	m_KeyHandler.BindEventToKey(m_SaveClientCameraECI, Keys::K);
 	m_KeyHandler.BindEventToKey(m_FlipIsUpdatingTextureECI, Keys::J);
 	m_KeyHandler.BindEventToKey(m_FlipWireFrameECI, Keys::U);
 	m_KeyHandler.BindEventToKey(m_SaveImageDataECI, Keys::H);
+	m_KeyHandler.BindEventToKey(m_StepRenderModeECI, Keys::G);
 
 	m_ClientCameraCopy.SetMaxSpeed(300.0f);
 }
@@ -1017,6 +1053,8 @@ bool CubemapReprojector::HandleEvent(const Event* _event)
 	else if (eci == m_FlipIsUpdatingTextureECI) m_IsUpdatingTextures = !m_IsUpdatingTextures;
 	else if (eci == m_FlipWireFrameECI) m_IsUsingWireframe = !m_IsUsingWireframe;
 	else if (eci == m_SaveImageDataECI) SaveImageData();
+	else if (eci == m_StepRenderModeECI)
+		m_RenderMode = (RenderMode)(((int)m_RenderMode + 1) % (int)RenderMode::COUNT);
 	else return false;
 	return true;
 }

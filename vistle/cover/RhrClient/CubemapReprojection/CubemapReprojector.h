@@ -64,6 +64,7 @@ public: // Keys and mouse.
 	unsigned m_FlipIsUpdatingTextureECI;
 	unsigned m_FlipWireFrameECI;
 	unsigned m_SaveImageDataECI;
+	unsigned m_StepRenderModeECI;
 
 	bool HandleEvent(const EngineBuildingBlocks::Event* _event);
 
@@ -168,6 +169,13 @@ private: // VR.
 	void ReleaseVR();
 
 private: // Misc.
+
+	enum class RenderMode
+	{
+		Default = 0, DebugColors, DebugDepths, COUNT
+	};
+
+	RenderMode m_RenderMode = RenderMode::Default;
 
 	unsigned ViewToSideIndex(unsigned viewIndex) const;
 	unsigned SideToViewIndex(unsigned sideIndex) const;
