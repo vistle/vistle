@@ -739,7 +739,7 @@ void WriteHDF5::reduce_performant() {
             typeToObjectDataElementInfoArray.push_back({it.first, static_cast<int>(objectDataElementInfoArray.size()), static_cast<int>(dataElementVector.size())});
 
             for (unsigned i = 0; i < dataElementVector.size(); i++) {
-                objectDataElementInfoArray.push_back({dataElementVector[i].first, static_cast<int>(nvpTagsArray.size())});
+                objectDataElementInfoArray.push_back({static_cast<int>(dataElementVector[i].first), static_cast<int>(nvpTagsArray.size())});
 
                 nvpTagsArray += dataElementVector[i].second + '\0';
             }
