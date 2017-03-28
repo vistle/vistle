@@ -507,16 +507,17 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
         ptrOnZcoords[i] = nodes[i].z;
     }
 #else
-    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    double x_coord[1], y_coord[1], z_coord[1];
     int *nodeListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_NODES); //query the nodes that define the volume
     index_t nnodesInZone = cfxExportNodeCount();
     std::vector<std::int32_t> nodeListOfVolumeVec;
     nodeListOfVolumeVec.resize(nnodesInZone+1);
     for(index_t i=0;i<nnodesIn3dArea;++i) {
-        cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get());   //get access to coordinates: [IN] nodeid [OUT] x,y,z
-        ptrOnXcoords[i] = *x_coord.get();
-        ptrOnYcoords[i] = *y_coord.get();
-        ptrOnZcoords[i] = *z_coord.get();
+        cfxExportNodeGet(nodeListOfVolume[i],x_coord,y_coord,z_coord);   //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = *x_coord;
+        ptrOnYcoords[i] = *y_coord;
+        ptrOnZcoords[i] = *z_coord;
         nodeListOfVolumeVec[nodeListOfVolume[i]] = i;
     }
 #endif
@@ -596,16 +597,17 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
         }
     }
 #else
-    boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
+    //boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
+    std::int32_t nodesOfElm[8], elemtype[1];
     int *elmListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_ELEMS); //query the elements that define the volume
     for(index_t i=0;i<nelmsIn3dArea;++i) {
-        cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get());
-        switch(*elemtype.get()) {
+        cfxExportElementGet(elmListOfVolume[i],elemtype,nodesOfElm);
+        switch(*elemtype) {
         case 4: {
             ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm[nodesOfElm_counter]];
             }
             elemListCounter += 4;
             break;
@@ -614,7 +616,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
             ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm.get()[nodesOfElm_counter]];
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOfVolumeVec[nodesOfElm[nodesOfElm_counter]];
             }
             elemListCounter += 5;
             break;
@@ -624,12 +626,12 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
             ptrOnEl[i] = elemListCounter;
 
             // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
-            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
-            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
-            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
-            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
-            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm[3]];
+            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm[5]];
+            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm[4]];
+            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm[0]];
+            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm[2]];
+            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm[1]];
             elemListCounter += 6;
             break;
         }
@@ -638,20 +640,20 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
             ptrOnEl[i] = elemListCounter;
 
             // indizee through comparison of Covise->Programmer's guide->COVISE Data Objects->Unstructured Grid Types with CFX Reference Guide p. 54
-            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm.get()[4]];
-            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm.get()[6]];
-            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm.get()[7]];
-            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm.get()[5]];
-            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm.get()[0]];
-            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm.get()[2]];
-            ptrOnCl[elemListCounter+6] = nodeListOfVolumeVec[nodesOfElm.get()[3]];
-            ptrOnCl[elemListCounter+7] = nodeListOfVolumeVec[nodesOfElm.get()[1]];
+            ptrOnCl[elemListCounter+0] = nodeListOfVolumeVec[nodesOfElm[4]];
+            ptrOnCl[elemListCounter+1] = nodeListOfVolumeVec[nodesOfElm[6]];
+            ptrOnCl[elemListCounter+2] = nodeListOfVolumeVec[nodesOfElm[7]];
+            ptrOnCl[elemListCounter+3] = nodeListOfVolumeVec[nodesOfElm[5]];
+            ptrOnCl[elemListCounter+4] = nodeListOfVolumeVec[nodesOfElm[0]];
+            ptrOnCl[elemListCounter+5] = nodeListOfVolumeVec[nodesOfElm[2]];
+            ptrOnCl[elemListCounter+6] = nodeListOfVolumeVec[nodesOfElm[3]];
+            ptrOnCl[elemListCounter+7] = nodeListOfVolumeVec[nodesOfElm[1]];
 
             elemListCounter += 8;
             break;
         }
         default: {
-            std::cerr << "Elementtype(" << *elemtype.get() << "not yet implemented." << std::endl;
+            std::cerr << "Elementtype(" << *elemtype << "not yet implemented." << std::endl;
         }
         }
     }
@@ -729,7 +731,8 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     Polygons::ptr polygon(new Polygons(nFacesIn2dArea,nConnectIn2dArea,nNodesIn2dArea)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
-    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+    double x_coord[1], y_coord[1], z_coord[2];
 
     auto ptrOnXcoords = polygon->x().data();
     auto ptrOnYcoords = polygon->y().data();
@@ -739,10 +742,10 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     nodeListOf2dAreaVec.resize(nNodesInZone+1);
 
     for(index_t i=0;i<nNodesIn2dArea;++i) {
-        cfxExportNodeGet(nodeListOf2dArea[i],x_coord.get(),y_coord.get(),z_coord.get());  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-        ptrOnXcoords[i] = *x_coord.get();
-        ptrOnYcoords[i] = *y_coord.get();
-        ptrOnZcoords[i] = *z_coord.get();
+        cfxExportNodeGet(nodeListOf2dArea[i],x_coord,y_coord,z_coord);  //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = *x_coord;
+        ptrOnYcoords[i] = *y_coord;
+        ptrOnZcoords[i] = *z_coord;
         nodeListOf2dAreaVec[nodeListOf2dArea[i]] = i;
     }
 
@@ -773,18 +776,19 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 
     //load face types, element list and connectivity list into polygon
     int elemListCounter=0;
-    boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
+    //boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
+    std::int32_t nodesOfFace[4];
     auto ptrOnEl = polygon->el().data();
     auto ptrOnCl = polygon->cl().data();
 
     for(index_t i=0;i<nFacesIn2dArea;++i) {
-        int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListOf2dArea[i],nodesOfFace.get());
+        int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListOf2dArea[i],nodesOfFace);
         assert(NumOfVerticesDefiningFace<=4); //see CFX Reference Guide p.57
         switch(NumOfVerticesDefiningFace) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace.get()[nodesOfElm_counter]];
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace[nodesOfElm_counter]];
             }
             elemListCounter += 3;
             break;
@@ -792,7 +796,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
         case 4: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace.get()[nodesOfElm_counter]];
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodeListOf2dAreaVec[nodesOfFace[nodesOfElm_counter]];
             }
             elemListCounter += 4;
             break;
@@ -805,7 +809,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 //        if(i<20) {
 //            std::cerr << "faceListOf2dArea[" << i << "] = " << faceListOf2dArea[i] << std::endl;
 //            for(int j=0;j<4;++j) {
-//                std::cerr << "nodesOfFace[" << j << "] = " << nodesOfFace.get()[j] << std::endl;
+//                std::cerr << "nodesOfFace[" << j << "] = " << nodesOfFace[j] << std::endl;
 //            }
 //            std::cerr << "local face number[" << faceListOf2dArea[i] << "] = " << cfxFACENUM(faceListOf2dArea[i]) << std::endl;
 //            std::cerr << "local element number[" << faceListOf2dArea[i] << "] = " << cfxELEMNUM(faceListOf2dArea[i]) << std::endl;
@@ -897,40 +901,42 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
 
             if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-                boost::shared_ptr<float_t> value(new float);
+                //boost::shared_ptr<float_t> value(new float);
+                float value[1];
                 scalar_t *ptrOnScalarData = s->x().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
-                    ptrOnScalarData[j] = *value.get();
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value);
+                    ptrOnScalarData[j] = *value;
 //                    if(j<10) {
 //                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
 //                    }
                 }
-                cfxExportVariableFree(varnum);
+                //cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
                 return s;
             }
             else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-                boost::shared_ptr<float_t> value(new float[3]);
+                //boost::shared_ptr<float_t> value(new float[3]);
+                float value[3];
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
-                    ptrOnVectorXData[j] = value.get()[0];
-                    ptrOnVectorYData[j] = value.get()[1];
-                    ptrOnVectorZData[j] = value.get()[2];
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value);
+                    ptrOnVectorXData[j] = value[0];
+                    ptrOnVectorYData[j] = value[1];
+                    ptrOnVectorZData[j] = value[2];
 //                    if(j<20) {
 //                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
 //                    }
                 }
-                cfxExportVariableFree(varnum);
+                //cfxExportVariableFree(varnum);
                 cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
                 return v;
             }
@@ -982,38 +988,40 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
             index_t varnum = var.vectorIdwithZone[i].ID;
             if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesIn2dArea));
-                boost::shared_ptr<float_t> value(new float);
+                //boost::shared_ptr<float_t> value(new float);
+                float value[1];
                 scalar_t *ptrOnScalarData = s->x().data();
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
-                    ptrOnScalarData[j] = *value.get();
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value);
+                    ptrOnScalarData[j] = *value;
 //                    if(j<100) {
 //                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
 //                    }
                 }
-                cfxExportVariableFree(varnum);
+                //cfxExportVariableFree(varnum);
                 free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return s;
             }
             else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesIn2dArea));
-                boost::shared_ptr<float_t> value(new float[3]);
+                //boost::shared_ptr<float_t> value(new float[3]);
+                float value[3];
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
                 ptrOnVectorXData = v->x().data();
                 ptrOnVectorYData = v->y().data();
                 ptrOnVectorZData = v->z().data();
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value.get());
-                    ptrOnVectorXData[j] = value.get()[0];
-                    ptrOnVectorYData[j] = value.get()[1];
-                    ptrOnVectorZData[j] = value.get()[2];
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value);
+                    ptrOnVectorXData[j] = value[0];
+                    ptrOnVectorYData[j] = value[1];
+                    ptrOnVectorZData[j] = value[2];
 //                    if(j<100) {
 //                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
 //                    }
                 }
-                cfxExportVariableFree(varnum);
+                //cfxExportVariableFree(varnum);
                 free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
                 return v;
             }
@@ -1185,12 +1193,12 @@ bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timest
             if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
                 set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
-                std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
+                //std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
             }
             else {
                 //variable exists in resfile and in transient files --> timestep = last
                 set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-                std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
+                //std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
 
             }
             m_current2dData[i]= obj;
@@ -1448,7 +1456,6 @@ bool ReadCFX::compute() {
     std::cerr << "B34" << std::endl;
     m_current2dData.clear();
     std::cerr << "B4" << std::endl;
-
     grid.reset();
     std::cerr << "B5" << std::endl;
 
