@@ -165,7 +165,7 @@ private: // VR.
 	EngineBuildingBlocks::Graphics::Camera* m_VRCameras[2];
 
 	void InitializeVR();
-	void InitializeVRGraphics(int prevDrawFBO);
+	void InitializeVRGraphics();
 	void ReleaseVR();
 
 private: // Misc.

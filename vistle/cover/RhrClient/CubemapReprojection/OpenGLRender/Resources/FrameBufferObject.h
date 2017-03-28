@@ -42,6 +42,8 @@ namespace OpenGLRender
 		void Initialize();
 		void Delete();
 		
+		const std::vector<Texture2D>& GetOwnedTextures();
+
 		// Calls Delete() and Initialize(). Useful for detaching
 		// the attached textures.
 		void Reset();

@@ -21,6 +21,11 @@ void FrameBufferObject::Delete()
 	m_OwnedTextures.clear();
 }
 
+const std::vector<Texture2D>& FrameBufferObject::GetOwnedTextures()
+{
+	return m_OwnedTextures;
+}
+
 void FrameBufferObject::Reset()
 {
 	Delete();

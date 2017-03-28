@@ -110,6 +110,7 @@ namespace OculusVR
 			const glm::mat3& inputViewOrientation,
 			glm::vec3& outputPosition,
 			glm::mat3& outputViewOrientation,
+			float cameraNear, float cameraFar,
 			PerspectiveProjectionParameters& projectionParameters)
 		{
 			// Setting camera view.
@@ -122,10 +123,9 @@ namespace OculusVR
 			outputViewOrientation = inputViewOrientation * eyeOrientation;
 
 			// Setting camera projection.
-			float n = 0.2f;
-			float f = 1000.0f;
+			float n = cameraNear;
 			projectionParameters.NearPlaneDistance = n;
-			projectionParameters.FarPlaneDistance = f;
+			projectionParameters.FarPlaneDistance = cameraFar;
 			projectionParameters.Left = -m_EyeRenderDesc[eyeIndex].Fov.LeftTan * n;
 			projectionParameters.Right = m_EyeRenderDesc[eyeIndex].Fov.RightTan * n;
 			projectionParameters.Bottom = -m_EyeRenderDesc[eyeIndex].Fov.DownTan * n;
