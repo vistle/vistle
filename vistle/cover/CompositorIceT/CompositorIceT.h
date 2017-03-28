@@ -14,7 +14,7 @@
 #include <IceTMPI.h>
 
 #include <cover/coVRPlugin.h>
-#include <PluginUtil/MultiChannelDrawer.h>
+#include <VistlePluginUtil/MultiChannelDrawer.h>
 
 class ReadBackCuda;
 struct CompositeCallback;
