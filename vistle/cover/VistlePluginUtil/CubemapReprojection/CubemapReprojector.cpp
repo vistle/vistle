@@ -5,6 +5,306 @@
 
 #include <CubemapReprojector.h>
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////// IMPLEMENTOR ///////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <Core/DataStructures/SimpleTypeVector.hpp>
+#include <Core/DataStructures/Properties.h>
+#include <Core/System/ThreadPool.h>
+
+#include <EngineBuildingBlocks/Graphics/Camera/Camera.h>
+#include <EngineBuildingBlocks/Graphics/Camera/FreeCamera.h>
+#include <EngineBuildingBlocks/Graphics/Camera/CubemapHelper.hpp>
+#include <EngineBuildingBlocks/SystemTime.h>
+#include <EngineBuildingBlocks/EventHandling.h>
+#include <EngineBuildingBlocks/Input/KeyHandler.h>
+#include <EngineBuildingBlocks/Input/MouseHandler.h>
+#include <EngineBuildingBlocks/Input/WindowsKeys.h>
+#include <OpenGLRender/Resources/Texture2D.h>
+#include <OpenGLRender/Resources/FrameBufferObject.h>
+
+#include <OculusVR/SimpleVR.h>
+
+#include <GridReprojector.h>
+#include <Message.h>
+#include <Settings.h>
+
+#include <atomic>
+
+enum class BufferType
+{
+	Color = 0, Depth, COUNT
+};
+
+class CubemapReprojectorImplementor
+	: public EngineBuildingBlocks::Input::IKeyStateProvider
+	, public EngineBuildingBlocks::Input::IMouseStateProvider
+	, public EngineBuildingBlocks::IEventListener
+{
+	EngineBuildingBlocks::PathHandler m_PathHandler;
+	EngineBuildingBlocks::EventManager m_EventManager;
+
+	EngineBuildingBlocks::Input::KeyHandler m_KeyHandler;
+	EngineBuildingBlocks::Input::MouseHandler m_MouseHandler;
+	EngineBuildingBlocks::Input::WindowsKeyMap m_WindowsKeys;
+
+	EngineBuildingBlocks::SystemTime m_SystemTime;
+
+	unsigned m_ClientWidth, m_ClientHeight, m_ServerWidth, m_ServerHeight,
+		m_CountSamples;
+
+	Core::ThreadPool m_ThreadPool;
+	std::atomic<bool> m_IsShuttingDown;
+
+	EngineBuildingBlocks::SceneNodeHandler m_SceneNodeHandler;
+
+	void InitializeGL(unsigned openGLContextID);
+
+public: // Keys and mouse.
+
+	EngineBuildingBlocks::Input::KeyState GetKeyState(EngineBuildingBlocks::Input::Keys key) const;
+
+	unsigned m_LoadClientCameraECI;
+	unsigned m_SaveClientCameraECI;
+	unsigned m_FlipIsUpdatingTextureECI;
+	unsigned m_FlipWireFrameECI;
+	unsigned m_SaveImageDataECI;
+	unsigned m_StepRenderModeECI;
+
+	bool HandleEvent(const EngineBuildingBlocks::Event* _event);
+
+	EngineBuildingBlocks::Input::MouseButtonState GetMouseButtonState(EngineBuildingBlocks::Input::MouseButton button) const;
+	void GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const;
+
+	void InitializeInput();
+	void UpdateInput();
+
+private:
+
+	EngineBuildingBlocks::Graphics::Camera m_ServerCamera, m_ServerCameraCopy,
+		m_ServerCameraNew, m_ServerCameraForAdjustment;
+	EngineBuildingBlocks::Graphics::Camera m_ClientCamera;
+	EngineBuildingBlocks::Graphics::FreeCamera m_ClientCameraCopy;
+	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
+
+	glm::mat4 m_ConstantViewInverse;
+	bool m_IsClientCameraMovementAllowed = false;
+
+	GridReprojector m_GridReprojector;
+	bool m_IsUsingWireframe = false;
+
+	std::mutex m_RenderSyncMutex;
+
+	OpenGLRender::FrameBufferObject m_FBO;
+
+	void CreateFBO();
+
+	void UpdateVRData();
+	void RenderReprojection(
+		EngineBuildingBlocks::Graphics::Camera& clientCamera);
+
+private: // Buffers.
+
+	static const unsigned c_CountCubemapSides = 6;
+	static const unsigned c_TripleBuffering = 3;
+	static const unsigned c_CountBuffers
+		= ((unsigned)BufferType::COUNT) * c_CountCubemapSides * c_TripleBuffering;
+
+	std::vector<Core::ByteVectorU> m_Buffers;
+
+	unsigned m_WriteBufferIndex;
+	unsigned m_WrittenBufferIndex;
+	unsigned m_ReadBufferIndex;
+
+	void InitializeBuffers();
+	unsigned GetBufferIndex(BufferType type, unsigned sideIndex, unsigned dbIndex);
+	void IncrementWriteBufferIndex();
+
+	void SynchronizeWithUpdating(bool* pIsTextureDataAvailable);
+
+	void SaveImageData();
+
+private: // Textures.
+
+	bool m_IsUpdatingTextures = true;
+
+	unsigned m_InitializedOpenGLContextId;
+	OpenGLRender::Texture2D m_ColorTextures[c_CountTextures];
+	OpenGLRender::Texture2D m_DepthTextures[c_CountTextures];
+
+	unsigned m_CurrentTextureIndex;
+
+	void InitializeColorCubemap(unsigned resourceIndex);
+	void InitializeDepthTextureArrays(unsigned resourceIndex);
+	void SetColorCubemapData(unsigned resourceIndex, unsigned char** ppData,
+		bool isContainigAlpha, glm::uvec2* start, glm::uvec2* end);
+	void SetDepthData(unsigned resourceIndex, unsigned char** ppData,
+		glm::uvec2* start, glm::uvec2* end);
+
+	void UpdateTextures(bool isTextureDataAvailable);
+
+private: // Configuration.
+
+	Core::Properties m_Configuration;
+
+	void LoadConfiguration();
+
+	bool m_IsRenderingInVR = false;
+	bool m_IsLoadingFakeCubemap = false;
+	bool m_IsContainingAlpha = false;
+	float m_SideVisiblePortion = 0.0f;
+	float m_PosZVisiblePortion = 0.0f;
+	float m_MinPosDiffForServer = 0.0f;
+	float m_MinDirCrossForServer = 0.0f;
+
+private: // Serialization.
+
+	void SaveClientCameraLocation();
+	void LoadClientCameraLocation();
+
+private: // VR.
+
+	std::unique_ptr<OculusVR::VR_Helper> m_VRHelper;
+	bool m_IsVRGraphicsInitialized;
+	OpenGLRender::FrameBufferObject m_FBOs[2];
+	EngineBuildingBlocks::Graphics::Camera* m_VRCameras[2];
+
+	void InitializeVR();
+	void InitializeVRGraphics();
+	void ReleaseVR();
+
+private: // Misc.
+
+	enum class RenderMode
+	{
+		Default = 0, DebugColors, DebugDepths, COUNT
+	};
+
+	RenderMode m_RenderMode = RenderMode::Default;
+
+	unsigned ViewToSideIndex(unsigned viewIndex) const;
+	unsigned SideToViewIndex(unsigned sideIndex) const;
+
+public:
+
+	CubemapReprojectorImplementor();
+
+	void Destroy();
+	void Render(unsigned openGLContextID);
+
+	void AdjustDimensionsAndMatrices(unsigned viewIndex,
+		unsigned short clientWidth, unsigned short clientHeight,
+		unsigned short* serverWidth, unsigned short* serverHeight,
+		const double* leftViewMatrix, const double* rightViewMatrix,
+		const double* leftProjMatrix, const double* rightProjMatrix,
+		double* viewMatrix, double* projMatrix);
+
+	void SetNewServerCamera(int viewIndex,
+		const double* model, const double* view, const double* proj);
+
+	void SetClientCamera(const double* model, const double* view, const double* proj);
+
+	void ResizeView(int viewIndex, int w, int h, unsigned depthFormat);
+
+	unsigned char* GetColorBuffer(unsigned viewIndex);
+	unsigned char* GetDepthBuffer(unsigned viewIndex);
+	void SwapFrame();
+
+	void GetFirstModelMatrix(double* model);
+	void GetModelMatrix(double* model, bool* pIsValid);
+
+	void SetClientCameraMovementAllowed(bool isAllowed);
+
+	unsigned GetCountSourceViews() const;
+};
+
+CubemapReprojector::CubemapReprojector()
+	: m_Implementor(new CubemapReprojectorImplementor())
+{
+}
+
+CubemapReprojector::~CubemapReprojector()
+{
+}
+
+void CubemapReprojector::Destroy()
+{
+	m_Implementor->Destroy();
+}
+
+void CubemapReprojector::Render(unsigned openGLContextID)
+{
+	m_Implementor->Render(openGLContextID);
+}
+
+void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
+	unsigned short clientWidth, unsigned short clientHeight,
+	unsigned short* serverWidth, unsigned short* serverHeight,
+	const double* leftViewMatrix, const double* rightViewMatrix,
+	const double* leftProjMatrix, const double* rightProjMatrix,
+	double* viewMatrix, double* projMatrix)
+{
+	m_Implementor->AdjustDimensionsAndMatrices(viewIndex, clientWidth, clientHeight,
+		serverWidth, serverHeight, leftViewMatrix, rightViewMatrix,
+		leftProjMatrix, rightProjMatrix, viewMatrix, projMatrix);
+}
+
+void CubemapReprojector::SetNewServerCamera(int viewIndex,
+	const double* model, const double* view, const double* proj)
+{
+	m_Implementor->SetNewServerCamera(viewIndex, model, view, proj);
+}
+
+void CubemapReprojector::SetClientCamera(const double* model, const double* view, const double* proj)
+{
+	m_Implementor->SetClientCamera(model, view, proj);
+}
+
+void CubemapReprojector::ResizeView(int viewIndex, int w, int h, unsigned depthFormat)
+{
+	m_Implementor->ResizeView(viewIndex, w, h, depthFormat);
+}
+
+unsigned char* CubemapReprojector::GetColorBuffer(unsigned viewIndex)
+{
+	return m_Implementor->GetColorBuffer(viewIndex);
+}
+
+unsigned char* CubemapReprojector::GetDepthBuffer(unsigned viewIndex)
+{
+	return m_Implementor->GetDepthBuffer(viewIndex);
+}
+
+void CubemapReprojector::SwapFrame()
+{
+	m_Implementor->SwapFrame();
+}
+
+void CubemapReprojector::GetFirstModelMatrix(double* model)
+{
+	m_Implementor->GetFirstModelMatrix(model);
+}
+
+void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
+{
+	m_Implementor->GetModelMatrix(model, pIsValid);
+}
+
+void CubemapReprojector::SetClientCameraMovementAllowed(bool isAllowed)
+{
+	m_Implementor->SetClientCameraMovementAllowed(isAllowed);
+}
+
+unsigned CubemapReprojector::GetCountSourceViews() const
+{
+	return m_Implementor->GetCountSourceViews();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include <Core/Constants.h>
 #include <Core/Percentage.hpp>
 #include <Core/Platform.h>
@@ -32,7 +332,7 @@ inline void PrintException(const std::exception& ex)
 
 ///////////////////////////////////// CUBEMAP TEXTURES /////////////////////////////////////
 
-void CubemapReprojector::InitializeColorCubemap(unsigned resourceIndex)
+void CubemapReprojectorImplementor::InitializeColorCubemap(unsigned resourceIndex)
 {
 	auto& texture = m_ColorTextures[resourceIndex];
 	texture.Delete();
@@ -57,7 +357,7 @@ void CubemapReprojector::InitializeColorCubemap(unsigned resourceIndex)
 	texture.GenerateMipmaps();
 }
 
-void CubemapReprojector::SetColorCubemapData(unsigned resourceIndex, unsigned char** ppData,
+void CubemapReprojectorImplementor::SetColorCubemapData(unsigned resourceIndex, unsigned char** ppData,
 	bool isContainigAlpha, glm::uvec2* start, glm::uvec2* end)
 {
 	auto& texture = m_ColorTextures[resourceIndex];
@@ -72,7 +372,7 @@ void CubemapReprojector::SetColorCubemapData(unsigned resourceIndex, unsigned ch
 	texture.GenerateMipmaps();
 }
 
-void CubemapReprojector::InitializeDepthTextureArrays(unsigned resourceIndex)
+void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resourceIndex)
 {
 	auto& texture = m_DepthTextures[resourceIndex];
 	texture.Delete();
@@ -102,7 +402,7 @@ void CubemapReprojector::InitializeDepthTextureArrays(unsigned resourceIndex)
 	texture.SetData(ppData[0], PixelDataFormat::Red, PixelDataType::Float);
 }
 
-void CubemapReprojector::SetDepthData(unsigned resourceIndex, unsigned char** ppData,
+void CubemapReprojectorImplementor::SetDepthData(unsigned resourceIndex, unsigned char** ppData,
 	glm::uvec2* start, glm::uvec2* end)
 {
 	auto& texture = m_DepthTextures[resourceIndex];
@@ -222,7 +522,7 @@ void RenderProgressBar(PathHandler& pathHandler)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CubemapReprojector::CubemapReprojector()
+CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	: m_ClientWidth(0)
 	, m_ClientHeight(0)
 	, m_ServerWidth(2)
@@ -262,7 +562,7 @@ CubemapReprojector::CubemapReprojector()
 	InitializeInput();
 }
 
-void CubemapReprojector::InitializeGL(unsigned openGLContextID)
+void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID)
 {
 	if (m_InitializedOpenGLContextId != Core::c_InvalidIndexU
 		&& m_InitializedOpenGLContextId != openGLContextID)
@@ -300,7 +600,7 @@ void CubemapReprojector::InitializeGL(unsigned openGLContextID)
 	}
 }
 
-void CubemapReprojector::CreateFBO()
+void CubemapReprojectorImplementor::CreateFBO()
 {
 	auto target = (m_CountSamples == 1 ? TextureTarget::Texture2D : TextureTarget::Texture2DMS);
 	Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8, 1, m_CountSamples, target));
@@ -311,7 +611,7 @@ void CubemapReprojector::CreateFBO()
 	m_FBO.Attach(std::move(depthTexture), FrameBufferAttachment::Depth);
 }
 
-void CubemapReprojector::Destroy()
+void CubemapReprojectorImplementor::Destroy()
 {
 	m_IsShuttingDown = true;
 	m_ThreadPool.Join();
@@ -323,7 +623,7 @@ void CubemapReprojector::Destroy()
 }
 
 // Calling this function twice per update for precise results.
-void CubemapReprojector::UpdateVRData()
+void CubemapReprojectorImplementor::UpdateVRData()
 {
 	glm::vec3 outputPosition;
 	glm::mat3 outputViewOrientation;
@@ -350,7 +650,7 @@ void CubemapReprojector::UpdateVRData()
 	}
 }
 
-void CubemapReprojector::Render(unsigned openGLContextID)
+void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 {
 	UpdateInput();
 
@@ -448,7 +748,7 @@ void CubemapReprojector::Render(unsigned openGLContextID)
 	CheckGLError();
 }
 
-void CubemapReprojector::RenderReprojection(Camera& clientCamera)
+void CubemapReprojectorImplementor::RenderReprojection(Camera& clientCamera)
 {
 	switch (m_RenderMode)
 	{
@@ -464,7 +764,7 @@ void CubemapReprojector::RenderReprojection(Camera& clientCamera)
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
 
-void CubemapReprojector::InitializeVR()
+void CubemapReprojectorImplementor::InitializeVR()
 {
 	m_VRHelper.reset(new OculusVR::VR_GL_Helper());
 	m_VRHelper->InitializeSDK();
@@ -475,7 +775,7 @@ void CubemapReprojector::InitializeVR()
 	}
 }
 
-void CubemapReprojector::ReleaseVR()
+void CubemapReprojectorImplementor::ReleaseVR()
 {
 	m_VRHelper->Release();
 
@@ -485,7 +785,7 @@ void CubemapReprojector::ReleaseVR()
 	}
 }
 
-void CubemapReprojector::InitializeVRGraphics()
+void CubemapReprojectorImplementor::InitializeVRGraphics()
 {
 	if (!m_IsVRGraphicsInitialized)
 	{
@@ -525,7 +825,7 @@ inline void InitializeRootProperty(const Core::Properties& configuration, const 
 	configuration.TryGetPropertyValue((std::string("Configuration.") + name).c_str(), property);
 }
 
-void CubemapReprojector::LoadConfiguration()
+void CubemapReprojectorImplementor::LoadConfiguration()
 {
 	m_Configuration.LoadFromXml(
 		m_PathHandler.GetPathFromRootDirectory("Configurations/CubemapStreaming_Client_Configuration.xml").c_str());
@@ -540,7 +840,7 @@ void CubemapReprojector::LoadConfiguration()
 	m_GridReprojector.LoadConfiguration(m_Configuration);
 }
 
-void CubemapReprojector::SaveClientCameraLocation()
+void CubemapReprojectorImplementor::SaveClientCameraLocation()
 {
 	auto cameraLocationPath = m_PathHandler.GetPathFromRootDirectory("Temp/CameraLocation.bin");
 
@@ -553,7 +853,7 @@ void CubemapReprojector::SaveClientCameraLocation()
 	Core::WriteAllBytes(cameraLocationPath, bytes.GetArray(), bytes.GetSize());
 }
 
-void CubemapReprojector::LoadClientCameraLocation()
+void CubemapReprojectorImplementor::LoadClientCameraLocation()
 {
 	auto cameraLocationPath = m_PathHandler.GetPathFromRootDirectory("Temp/CameraLocation.bin");
 
@@ -576,7 +876,7 @@ void CubemapReprojector::LoadClientCameraLocation()
 
 ///////////////////////////////////// DATA TRANSFER /////////////////////////////////////
 
-void CubemapReprojector::InitializeBuffers()
+void CubemapReprojectorImplementor::InitializeBuffers()
 {
 	m_Buffers.resize(c_CountBuffers);
 	m_WriteBufferIndex = 0;
@@ -584,22 +884,22 @@ void CubemapReprojector::InitializeBuffers()
 	m_ReadBufferIndex = Core::c_InvalidIndexU;
 }
 
-unsigned CubemapReprojector::GetBufferIndex(BufferType type, unsigned sideIndex, unsigned tbIndex)
+unsigned CubemapReprojectorImplementor::GetBufferIndex(BufferType type, unsigned sideIndex, unsigned tbIndex)
 {
 	return ((unsigned)type * c_CountCubemapSides + sideIndex) * c_TripleBuffering + tbIndex;
 }
 
-unsigned char* CubemapReprojector::GetColorBuffer(unsigned viewIndex)
+unsigned char* CubemapReprojectorImplementor::GetColorBuffer(unsigned viewIndex)
 {
 	return m_Buffers[GetBufferIndex(BufferType::Color, ViewToSideIndex(viewIndex), m_WriteBufferIndex)].GetArray();
 }
 
-unsigned char* CubemapReprojector::GetDepthBuffer(unsigned viewIndex)
+unsigned char* CubemapReprojectorImplementor::GetDepthBuffer(unsigned viewIndex)
 {
 	return m_Buffers[GetBufferIndex(BufferType::Depth, ViewToSideIndex(viewIndex), m_WriteBufferIndex)].GetArray();
 }
 
-void CubemapReprojector::IncrementWriteBufferIndex()
+void CubemapReprojectorImplementor::IncrementWriteBufferIndex()
 {
 	if (++m_WriteBufferIndex == c_TripleBuffering) m_WriteBufferIndex = 0;
 }
@@ -648,7 +948,7 @@ inline void PrepareDepth(void* pBuffer, unsigned width, unsigned height)
 
 const bool c_IsDebuggingBuffers = false;
 
-void CubemapReprojector::SwapFrame()
+void CubemapReprojectorImplementor::SwapFrame()
 {
 	if (!m_IsUpdatingTextures)
 		return;
@@ -691,7 +991,7 @@ void CubemapReprojector::SwapFrame()
 	m_ServerCameraCopy.Set(m_ServerCameraNew);
 }
 
-void CubemapReprojector::SynchronizeWithUpdating(bool* pIsTextureDataAvailable)
+void CubemapReprojectorImplementor::SynchronizeWithUpdating(bool* pIsTextureDataAvailable)
 {
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
@@ -710,7 +1010,7 @@ inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, 
 	return (bufferSize != width * height * pixelSize);
 }
 
-void CubemapReprojector::UpdateTextures(bool isTextureDataAvailable)
+void CubemapReprojectorImplementor::UpdateTextures(bool isTextureDataAvailable)
 {
 	if (isTextureDataAvailable)
 	{
@@ -786,7 +1086,7 @@ CameraProjection ToProjection(const double* values)
 	return projection;
 }
 
-unsigned CubemapReprojector::GetCountSourceViews() const
+unsigned CubemapReprojectorImplementor::GetCountSourceViews() const
 {
 	unsigned countSides = 1;
 	if (m_SideVisiblePortion > 0.0f) countSides += 4;
@@ -794,7 +1094,7 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 	return countSides;
 }
 
-unsigned CubemapReprojector::ViewToSideIndex(unsigned viewIndex) const
+unsigned CubemapReprojectorImplementor::ViewToSideIndex(unsigned viewIndex) const
 {
 	assert(m_PosZVisiblePortion == 0.0f || m_SideVisiblePortion > 0.0f);
 	if (m_SideVisiblePortion == 0.0f)
@@ -811,7 +1111,7 @@ unsigned CubemapReprojector::ViewToSideIndex(unsigned viewIndex) const
 	return viewIndex;
 }
 
-unsigned CubemapReprojector::SideToViewIndex(unsigned sideIndex) const
+unsigned CubemapReprojectorImplementor::SideToViewIndex(unsigned sideIndex) const
 {
 	assert(m_PosZVisiblePortion == 0.0f || m_SideVisiblePortion > 0.0f);
 	if (m_SideVisiblePortion == 0.0f)
@@ -827,12 +1127,12 @@ unsigned CubemapReprojector::SideToViewIndex(unsigned sideIndex) const
 	return sideIndex;
 }
 
-void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
+void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewIndex,
 	unsigned short clientWidth, unsigned short clientHeight,
 	unsigned short* serverWidth, unsigned short* serverHeight,
 	const double* leftViewMatrix, const double* rightViewMatrix,
 	const double* leftProjMatrix, const double* rightProjMatrix,
-	double* viewMatrix, double* projMatrix, double time)
+	double* viewMatrix, double* projMatrix)
 {
 	// TODO: we are currently not synchronising dimesions.
 
@@ -925,7 +1225,7 @@ inline void SetCameraFromMatrices(Camera& camera, const double* model, const dou
 	camera.SetProjection(ToProjection(proj));
 }
 
-void CubemapReprojector::SetNewServerCamera(int viewIndex,
+void CubemapReprojectorImplementor::SetNewServerCamera(int viewIndex,
 	const double* model, const double* view, const double* proj)
 {
 	if (ViewToSideIndex(viewIndex) == (int)CubemapSide::Front)
@@ -934,7 +1234,7 @@ void CubemapReprojector::SetNewServerCamera(int viewIndex,
 	}
 }
 
-void CubemapReprojector::SetClientCamera(const double* model, const double* view, const double* proj)
+void CubemapReprojectorImplementor::SetClientCamera(const double* model, const double* view, const double* proj)
 {
 	bool isFirstFrame = (m_ConstantViewInverse == glm::mat4(0.0f));
 
@@ -951,7 +1251,7 @@ void CubemapReprojector::SetClientCamera(const double* model, const double* view
 	}
 }
 
-void CubemapReprojector::ResizeView(int viewIndex, int w, int h, GLenum depthFormat)
+void CubemapReprojectorImplementor::ResizeView(int viewIndex, int w, int h, unsigned depthFormat)
 {
 	assert(viewIndex == 0);
 	
@@ -979,7 +1279,7 @@ void CubemapReprojector::ResizeView(int viewIndex, int w, int h, GLenum depthFor
 
 #include <Core/Windows.h>
 
-KeyState CubemapReprojector::GetKeyState(Keys key) const
+KeyState CubemapReprojectorImplementor::GetKeyState(Keys key) const
 {
 	auto specificKey = m_WindowsKeys.GetSpecificKey(key);
 	if (specificKey != 0)
@@ -991,7 +1291,7 @@ KeyState CubemapReprojector::GetKeyState(Keys key) const
 	return KeyState::Unhandled;
 }
 
-MouseButtonState CubemapReprojector::GetMouseButtonState(MouseButton button) const
+MouseButtonState CubemapReprojectorImplementor::GetMouseButtonState(MouseButton button) const
 {
 	int specificButton = -1;
 	switch (button)
@@ -1007,7 +1307,7 @@ MouseButtonState CubemapReprojector::GetMouseButtonState(MouseButton button) con
 		: MouseButtonState::Released);
 }
 
-void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
+void CubemapReprojectorImplementor::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
 {
 	POINT point;
 	::GetCursorPos(&point);
@@ -1037,7 +1337,7 @@ void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursor
 
 #endif
 
-void CubemapReprojector::InitializeInput()
+void CubemapReprojectorImplementor::InitializeInput()
 {
 	m_KeyHandler.SetKeyStateProvider(this);
 	m_MouseHandler.SetMouseStateProvider(this);
@@ -1064,7 +1364,7 @@ void CubemapReprojector::InitializeInput()
 	m_ClientCameraCopy.SetMaxSpeed(300.0f);
 }
 
-bool CubemapReprojector::HandleEvent(const Event* _event)
+bool CubemapReprojectorImplementor::HandleEvent(const Event* _event)
 {
 	auto eci = _event->ClassId;
 	if (eci == m_LoadClientCameraECI) LoadClientCameraLocation();
@@ -1078,7 +1378,7 @@ bool CubemapReprojector::HandleEvent(const Event* _event)
 	return true;
 }
 
-void CubemapReprojector::UpdateInput()
+void CubemapReprojectorImplementor::UpdateInput()
 {
 	for (int generalKey = 0; generalKey < (int)Keys::COUNT; generalKey++)
 	{
@@ -1128,12 +1428,12 @@ const double c_FirstModelMatrix[] = {
 	1.0, 0.0, 0.0, 0.0,
 	50.0, -1250.0, -200.0, 1.0 };
 
-void CubemapReprojector::GetFirstModelMatrix(double* model)
+void CubemapReprojectorImplementor::GetFirstModelMatrix(double* model)
 {
 	memcpy(model, c_FirstModelMatrix, sizeof(double) * 16);
 }
 
-void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
+void CubemapReprojectorImplementor::GetModelMatrix(double* model, bool* pIsValid)
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 	auto modelView = m_ClientCameraCopy.GetViewMatrix();
@@ -1142,7 +1442,7 @@ void CubemapReprojector::GetModelMatrix(double* model, bool* pIsValid)
 	*pIsValid = (m_ConstantViewInverse != glm::mat4(0.0f));
 }
 
-void CubemapReprojector::SetClientCameraMovementAllowed(bool isAllowed)
+void CubemapReprojectorImplementor::SetClientCameraMovementAllowed(bool isAllowed)
 {
 	m_IsClientCameraMovementAllowed = isAllowed;
 	m_ClientCameraCopy.SetFrozen(!isAllowed);
@@ -1159,7 +1459,7 @@ struct MetaData
 	EngineBuildingBlocks::Graphics::CameraProjection CameraProjection;
 };
 
-void CubemapReprojector::SaveImageData()
+void CubemapReprojectorImplementor::SaveImageData()
 {
 	Core::ByteVector imageData;
 	Core::ByteVector metaData;

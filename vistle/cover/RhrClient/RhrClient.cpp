@@ -554,9 +554,10 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 
    if (m_mode == MultiChannelDrawer::ReprojectCubemap)
    {
-	   m_CubemapReprojector.AdjustDimensionsAndMatrices(viewNum, msg.width, msg.height, &msg.width, &msg.height,
+	   m_drawer->GetCubemapReprojector()->AdjustDimensionsAndMatrices(
+		   viewNum, msg.width, msg.height, &msg.width, &msg.height,
 		   chan.leftView.ptr(), chan.rightView.ptr(),
-		   chan.leftProj.ptr(), chan.rightProj.ptr(), msg.view, msg.proj, msg.time);
+		   chan.leftProj.ptr(), chan.rightProj.ptr(), msg.view, msg.proj);
    }
 }
 
@@ -1019,7 +1020,7 @@ void RhrClient::SetNumViewsAndChannelBase()
 {
 	if (m_mode == MultiChannelDrawer::ReprojectCubemap)
 	{
-		m_numViews = m_CubemapReprojector.GetCountSourceViews();
+		m_numViews = m_drawer->GetCubemapReprojector()->GetCountSourceViews();
 		m_channelBase = 0;
 	}
 	else
@@ -1117,7 +1118,7 @@ bool RhrClient::init()
    std::cerr << "numChannels: " << GetCountChannels() << ", m_channelBase: " << m_channelBase << std::endl;
    std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
-   m_drawer = new MultiChannelDrawer(&m_CubemapReprojector, GetCountChannels(), true /* flip top/bottom */);
+   m_drawer = new MultiChannelDrawer(GetCountChannels(), true /* flip top/bottom */);
 
 #ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
@@ -1410,16 +1411,16 @@ RhrClient::preFrame()
 		if (frameSetting_IsFirstFrame)
 		{
 			frameSetting_IsFirstFrame = false;
-			m_CubemapReprojector.GetFirstModelMatrix(model);
+			m_drawer->GetCubemapReprojector()->GetFirstModelMatrix(model);
 			cover->setXformMat(osg::Matrix(model));
-			m_CubemapReprojector.SetClientCameraMovementAllowed(c_AllowOwnInput);
+			m_drawer->GetCubemapReprojector()->SetClientCameraMovementAllowed(c_AllowOwnInput);
 		}
 		else
 		{
 			if (m_mode == MultiChannelDrawer::Mode::ReprojectCubemap && c_AllowOwnInput)
 			{
 				bool isValid = false;
-				m_CubemapReprojector.GetModelMatrix(model, &isValid);
+				m_drawer->GetCubemapReprojector()->GetModelMatrix(model, &isValid);
 				if(isValid)
 					cover->setXformMat(osg::Matrix(model));
 			}

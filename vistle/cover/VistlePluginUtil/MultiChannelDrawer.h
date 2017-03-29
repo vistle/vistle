@@ -8,6 +8,8 @@
 #ifndef MULTICHANNELDRAWER_H
 #define MULTICHANNELDRAWER_H
 
+#include <CubemapReprojector.h>
+
 #include <osg/Matrix>
 #include <osg/Array>
 #include <osg/Geode>
@@ -46,6 +48,8 @@ struct ChannelData {
     osg::ref_ptr<osg::Program> reprojConstProgram;
     osg::ref_ptr<osg::Program> reprojAdaptProgram;
     osg::ref_ptr<osg::Program> reprojMeshProgram;
+	osg::ref_ptr<osg::Drawable> CubemapDrawable;
+	osg::ref_ptr<osg::Drawable::DrawCallback> CubemapDrawCB;
 
     ChannelData(int channel=-1)
         : channelNum(channel)
@@ -68,7 +72,8 @@ public:
         ReprojectAdaptive, //< reproject pixels and adapt their size based on viewer distance and reprojection matrix
         ReprojectAdaptiveWithNeighbors, //< reproject pixels and adapt their size so that gaps to neighbor pixels are filled
         ReprojectMesh, //< reproject as rectilinear mesh
-        ReprojectMeshWithHoles //< reprjoct as rectilinear mesh, but keep holes where pixels become heavily deformed
+		ReprojectMeshWithHoles, //< reproject as rectilinear mesh, but keep holes where pixels become heavily deformed
+		ReprojectCubemap // Reprojecting a cubemap using a rectilinear mesh.
    };
    Mode mode() const;
    void setMode(Mode mode);
@@ -86,6 +91,14 @@ public:
    std::vector<ChannelData> m_channelData;
    bool m_flipped;
    Mode m_mode;
+
+private:
+
+	CubemapReprojector m_CubemapReprojector;
+
+public:
+
+	CubemapReprojector* GetCubemapReprojector();
 };
 
 }

@@ -14,8 +14,6 @@
 #include <mutex>
 #include <thread>
 
-#include <CubemapReprojector.h>
-
 #include <cover/coVRPluginSupport.h>
 
 #include <rhr/rfbext.h>
@@ -83,8 +81,6 @@ class RhrClient: public coVRPlugin
     friend class RemoteConnection;
 
 private:
-
-	CubemapReprojector m_CubemapReprojector;
 
 	unsigned GetCountChannels() const;
 	void SetNumViewsAndChannelBase();
