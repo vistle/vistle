@@ -6,7 +6,7 @@
 #include <OculusVR/SimpleVR.h>
 #include <Core/Platform.h>
 
-#include <External/OculusSDK/LibOVR/Include/OVR_CAPI.h>
+#include <OculusSDK/LibOVR/Include/OVR_CAPI.h>
 
 #ifdef IS_WINDOWS
 

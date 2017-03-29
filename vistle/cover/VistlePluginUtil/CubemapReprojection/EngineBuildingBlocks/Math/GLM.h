@@ -5,15 +5,15 @@
 
 #define GLM_FORCE_RADIANS
 
-#include <External/glm-0.9.8.1/glm/glm.hpp>
-#include <External/glm-0.9.8.1/glm/gtx/transform.hpp>
-#include <External/glm-0.9.8.1/glm/gtx/matrix_operation.hpp>
-#include <External/glm-0.9.8.1/glm/gtc/matrix_transform.hpp>
-#include <External/glm-0.9.8.1/glm/gtc/matrix_access.hpp>
-#include <External/glm-0.9.8.1/glm/gtx/norm.hpp>
-#include <External/glm-0.9.8.1/glm/gtc/type_ptr.hpp>
-#include <External/glm-0.9.8.1/glm/gtx/euler_angles.hpp>
-#include <External/glm-0.9.8.1/glm/gtx/dual_quaternion.hpp>
+#include <glm-0.9.8.1/glm/glm.hpp>
+#include <glm-0.9.8.1/glm/gtx/transform.hpp>
+#include <glm-0.9.8.1/glm/gtx/matrix_operation.hpp>
+#include <glm-0.9.8.1/glm/gtc/matrix_transform.hpp>
+#include <glm-0.9.8.1/glm/gtc/matrix_access.hpp>
+#include <glm-0.9.8.1/glm/gtx/norm.hpp>
+#include <glm-0.9.8.1/glm/gtc/type_ptr.hpp>
+#include <glm-0.9.8.1/glm/gtx/euler_angles.hpp>
+#include <glm-0.9.8.1/glm/gtx/dual_quaternion.hpp>
 
 namespace EngineBuildingBlocks
 {

@@ -6,7 +6,7 @@
 #include <Core/Constants.h>
 #include <Core/String.hpp>
 
-#include <External/rapidxml/rapidxml.hpp>
+#include <rapidxml/rapidxml.hpp>
 
 #include <queue>
 #include <algorithm>
