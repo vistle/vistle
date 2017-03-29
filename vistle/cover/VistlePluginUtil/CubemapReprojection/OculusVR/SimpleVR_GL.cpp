@@ -10,7 +10,7 @@ using namespace OculusVR;
 // Including the Oculus SDK.
 #include <External/OculusSDK/LibOVR/Include/OVR_CAPI_GL.h>
 
-#include <External/glew-1.12.0/include/GL/glew.h>
+#include <glew/include/GL/glew.h>
 
 #ifndef IS_WINDOWS
 #include <GL/glx.h>

@@ -1,7 +1,7 @@
 // CubemapReprojector.h
 
 // Must be included before OpenGL includes.
-#include <External/glew-1.12.0/include/GL/glew.h>
+#include <glew/include/GL/glew.h>
 
 #include <CubemapReprojector.h>
 
