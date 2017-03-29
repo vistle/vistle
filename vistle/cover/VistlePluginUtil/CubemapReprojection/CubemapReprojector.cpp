@@ -708,20 +708,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 			m_FBOs[i].Bind();
 			RenderReprojection(*m_VRCameras[i]);
 		}
-		//m_VRHelper->OnRenderingFinished();
-
-		// DEBUG!!!
-		for (unsigned i = 0; i < 2; i++)
-		{
-			auto& td = m_FBOs[i].GetOwnedTextures()[0].GetTextureDescription();
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBOs[i].GetHandle());
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO.GetHandle());
-			glBlitFramebuffer(0, 0, td.Width, td.Height,
-				(i == 0 ? 0 : m_ClientWidth / 2), 0,
-				(i == 0 ? m_ClientWidth / 2 : m_ClientWidth), m_ClientHeight,
-				GL_COLOR_BUFFER_BIT, GL_LINEAR);
-		}
-
+		m_VRHelper->OnRenderingFinished();
 		glViewport(0, 0, m_ClientWidth, m_ClientHeight);
 	}
 	else
