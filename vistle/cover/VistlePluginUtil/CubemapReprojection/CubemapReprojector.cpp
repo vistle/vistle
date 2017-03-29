@@ -316,7 +316,6 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 
 // For debugging:
 #include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
-#include <EngineBuildingBlocks/Graphics/Resources/ImageHelper.h>
 
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
@@ -933,8 +932,6 @@ inline void PrepareDepth(void* pBuffer, unsigned width, unsigned height)
 	}
 }
 
-const bool c_IsDebuggingBuffers = false;
-
 void CubemapReprojectorImplementor::SwapFrame()
 {
 	if (!m_IsUpdatingTextures)
@@ -950,22 +947,6 @@ void CubemapReprojectorImplementor::SwapFrame()
 		auto& size = sideSizes[i];
 		SwapX(colorBuffer.GetArray(), size.x, size.y, m_IsContainingAlpha ? 4 : 3);
 		PrepareDepth(depthBuffer.GetArray(), size.x, size.y);
-	}
-
-	if (c_IsDebuggingBuffers)
-	{
-		for (unsigned sideIndex = 0; sideIndex < 6; sideIndex++)
-		{
-			auto colorBuffer
-				= m_Buffers[GetBufferIndex(BufferType::Color, sideIndex, m_WriteBufferIndex)].GetArray();
-			char fileRelPath[32];
-			auto& size = sideSizes[sideIndex];
-			snprintf(fileRelPath, 32, "Temp/ColorBuffer_%d.png", sideIndex);
-			SaveImageToFile(colorBuffer,
-				Image2DDescription::ColorImage(size.x, size.y, m_IsContainingAlpha ? 4 : 3),
-				m_PathHandler.GetPathFromRootDirectory(fileRelPath),
-				ImageSaveFlags::IsFlippingY);
-		}
 	}
 
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);

@@ -6,20 +6,6 @@
 
 using namespace EngineBuildingBlocks::Graphics;
 
-void CameraData::SerializeSXML(Core::SerializationSXMLData& data) const
-{
-	Core_SerializeSXML(data, Projection);
-	Core_SerializeSXML(data, LocalTransformation);
-}
-
-void CameraData::DeserializeSXML(Core::DeserializationSXMLData& data)
-{
-	Core_DeserializeSXML(data, Projection);
-	Core_DeserializeSXML(data, LocalTransformation);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////
-
 Camera::Camera(EngineBuildingBlocks::SceneNodeHandler* sceneNodeHandler)
 	: m_SceneNode(sceneNodeHandler, false, 0)
 	, m_IsViewProjectionMatrixRecomputationNeeded(true)

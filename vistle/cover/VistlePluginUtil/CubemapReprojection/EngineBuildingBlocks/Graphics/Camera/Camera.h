@@ -4,7 +4,6 @@
 #define _ENGINEBUILDINGBLOCKS_CAMERA_H_INCLUDED_
 
 #include <Core/SimpleBinarySerialization.hpp>
-#include <Core/SimpleXMLSerialization.hpp>
 
 #include <EngineBuildingBlocks/SceneNode.h>
 #include <EngineBuildingBlocks/Math/BoundingFrustum.h>
@@ -18,9 +17,6 @@ namespace EngineBuildingBlocks
 		{
 			CameraProjection Projection;
 			EngineBuildingBlocks::RigidTransformation LocalTransformation;
-
-			void SerializeSXML(Core::SerializationSXMLData& data) const;
-			void DeserializeSXML(Core::DeserializationSXMLData& data);
 		};
 
 		class Camera

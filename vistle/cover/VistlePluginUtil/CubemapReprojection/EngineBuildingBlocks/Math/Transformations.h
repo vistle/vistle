@@ -4,8 +4,7 @@
 #define _ENGINEBUILDINGBLOCKS_TRANSFORMATIONS_H_INCLUDED_
 
 #include <Core/SimpleBinarySerialization.hpp>
-#include <Core/SimpleXMLSerialization.hpp>
-#include <EngineBuildingBlocks/Math/GLMSerialization.hpp>
+#include <EngineBuildingBlocks/Math/GLM.h>
 
 #include <cassert>
 
@@ -157,24 +156,6 @@ namespace EngineBuildingBlocks
 		{
 			Core::DeserializeSB(bytes, Core::ToPlaceHolder(*this));
 		}
-
-		// We serialize the orientation in quaternion form since we want to avoid the singularities of the
-		// YPR or Euler-angle representation.
-
-		void SerializeSXML(Core::SerializationSXMLData& data) const
-		{
-			glm::quat rotation = glm::quat_cast(Orientation);
-			EngineBuildingBlocks::SerializeSXML(data, rotation, "Orientation");
-			EBB_SerializeSXML(data, Position);
-		}
-
-		void DeserializeSXML(Core::DeserializationSXMLData& data)
-		{
-			glm::quat rotation;
-			EngineBuildingBlocks::DeserializeSXML(data, rotation, "Orientation");
-			Orientation = glm::mat3_cast(rotation);
-			EBB_DeserializeSXML(data, Position);
-		}
 	};
 
 	// This structure represents a represents a transformation which may include multiple scalings, rotations and translations,
@@ -243,20 +224,6 @@ namespace EngineBuildingBlocks
 		void DeserializeSB(const unsigned char*& bytes)
 		{
 			Core::DeserializeSB(bytes, Core::ToPlaceHolder(*this));
-		}
-
-		// We serialize A as a matrix since it's not necessarily a unit rotation.
-
-		void SerializeSXML(Core::SerializationSXMLData& data) const
-		{
-			EngineBuildingBlocks::SerializeSXML(data, A, "A");
-			EBB_SerializeSXML(data, Position);
-		}
-
-		void DeserializeSXML(Core::DeserializationSXMLData& data)
-		{
-			EngineBuildingBlocks::DeserializeSXML(data, A, "Orientation");
-			EBB_DeserializeSXML(data, Position);
 		}
 	};
 

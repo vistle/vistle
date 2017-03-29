@@ -10,8 +10,6 @@
 #include <intrin.h>
 #include <cstring>
 
-#include <External/vectorclass/vectorclass.h>
-
 // Unary minus. Note that this operator requires 2 AVX operations.
 inline __forceinline __m128 operator-(const __m128& x)
 {
@@ -169,16 +167,6 @@ inline __forceinline __m256i operator-(const __m256i& x, const __m256i& y)
 inline __forceinline __m256i operator*(const __m256i& x, const __m256i& y)
 {
 	return _mm256_mullo_epi32(x, y);
-}
-
-inline __forceinline __m256i operator/(__m256i& a, int b)
-{
-	return reinterpret_cast<__m256i&>(reinterpret_cast<Vec8i&>(a) / Divisor_i(b));
-}
-
-inline __forceinline __m256i operator/(__m256i& a, Divisor_i& divisor)
-{
-	return reinterpret_cast<__m256i&>(reinterpret_cast<Vec8i&>(a) / divisor);
 }
 
 inline __forceinline bool operator==(const __m256i& x, const __m256i& y)

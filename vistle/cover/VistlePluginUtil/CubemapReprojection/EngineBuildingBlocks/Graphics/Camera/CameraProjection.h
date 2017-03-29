@@ -4,7 +4,6 @@
 #define _ENGINEBUILDINGBLOCKS_CAMERAPROJECTION_H_INCLUDED_
 
 #include <Core/SimpleBinarySerialization.hpp>
-#include <Core/SimpleXMLSerialization.hpp>
 
 #include <EngineBuildingBlocks/Math/GLM.h>
 
@@ -43,9 +42,6 @@ namespace EngineBuildingBlocks
 
 			void SerializeSB(Core::ByteVector& bytes) const;
 			void DeserializeSB(const unsigned char*& bytes);
-
-			void SerializeSXML(Core::SerializationSXMLData& data) const;
-			void DeserializeSXML(Core::DeserializationSXMLData& data);
 		};
 
 		struct CameraProjection
@@ -81,9 +77,6 @@ namespace EngineBuildingBlocks
 
 			void SerializeSB(Core::ByteVector& bytes) const;
 			void DeserializeSB(const unsigned char*& bytes);
-
-			void SerializeSXML(Core::SerializationSXMLData& data) const;
-			void DeserializeSXML(Core::DeserializationSXMLData& data);
 		
 			bool CreateFromMatrix(const glm::mat4& m);
 			void CreatePerspecive(float aspectRatio, float fovY, float near, float far,

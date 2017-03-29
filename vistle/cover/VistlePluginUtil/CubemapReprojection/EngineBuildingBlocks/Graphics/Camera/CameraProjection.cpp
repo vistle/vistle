@@ -81,28 +81,6 @@ void PerspectiveOrthographicProjection::DeserializeSB(const unsigned char*& byte
 	Core::DeserializeSB(bytes, Top);
 }
 
-void PerspectiveOrthographicProjection::SerializeSXML(Core::SerializationSXMLData& data) const
-{
-	Core_SerializeSXML(data, NearPlaneDistance);
-	Core_SerializeSXML(data, FarPlaneDistance);
-	Core_SerializeSXML(data, IsProjectingTo_0_1_Interval);
-	Core_SerializeSXML(data, Left);
-	Core_SerializeSXML(data, Right);
-	Core_SerializeSXML(data, Bottom);
-	Core_SerializeSXML(data, Top);
-}
-
-void PerspectiveOrthographicProjection::DeserializeSXML(Core::DeserializationSXMLData& data)
-{
-	Core_DeserializeSXML(data, NearPlaneDistance);
-	Core_DeserializeSXML(data, FarPlaneDistance);
-	Core_DeserializeSXML(data, IsProjectingTo_0_1_Interval);
-	Core_DeserializeSXML(data, Left);
-	Core_DeserializeSXML(data, Right);
-	Core_DeserializeSXML(data, Bottom);
-	Core_DeserializeSXML(data, Top);
-}
-
 float CameraProjection::Projection::Perspective::GetFovX() const
 {
 	return atanf(-Left / NearPlaneDistance) + atanf(Right / NearPlaneDistance);
@@ -158,26 +136,6 @@ void CameraProjection::DeserializeSB(const unsigned char*& bytes)
 	{
 	case ProjectionType::Perspective: Core::DeserializeSB(bytes, Projection.Perspective); break;
 	case ProjectionType::Orthographic: Core::DeserializeSB(bytes, Projection.Orthographic); break;
-	}
-}
-
-void CameraProjection::SerializeSXML(Core::SerializationSXMLData& data) const
-{
-	Core_SerializeSXML(data, Type);
-	switch (Type)
-	{
-	case ProjectionType::Perspective: Core_SerializeSXML(data, Projection.Perspective); break;
-	case ProjectionType::Orthographic: Core_SerializeSXML(data, Projection.Orthographic); break;
-	}
-}
-
-void CameraProjection::DeserializeSXML(Core::DeserializationSXMLData& data)
-{
-	Core_DeserializeSXML(data, Type);
-	switch (Type)
-	{
-	case ProjectionType::Perspective: Core_DeserializeSXML(data, Projection.Perspective); break;
-	case ProjectionType::Orthographic: Core_DeserializeSXML(data, Projection.Orthographic); break;
 	}
 }
 
