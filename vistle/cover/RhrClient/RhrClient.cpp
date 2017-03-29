@@ -1464,7 +1464,7 @@ RhrClient::preFrame()
    std::vector<matricesMsg> messages(m_numViews);
    if (m_mode == MultiChannelDrawer::ReprojectCubemap)
    {
-	   assert(m_numViews == m_CubemapReprojector.GetCountSourceViews());
+		assert(m_numViews = m_drawer->GetCubemapReprojector()->GetCountSourceViews());
 	   for (int i = 0; i < m_numViews; ++i) fillMatricesMessage(messages[i], 0, i, false);
    }
    else
