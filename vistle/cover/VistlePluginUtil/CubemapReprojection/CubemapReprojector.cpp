@@ -28,8 +28,8 @@
 #include <OculusVR/SimpleVR.h>
 
 #include <GridReprojector.h>
-#include <Message.h>
-#include <Settings.h>
+#include <CR_Message.h>
+#include <CR_Settings.h>
 
 #include <atomic>
 

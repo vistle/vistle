@@ -1,6 +1,6 @@
-// CubemapStreaming_Client/Message.cpp
+// CR_Message.cpp
 
-#include <Message.h>
+#include <CR_Message.h>
 #include <EngineBuildingBlocks/Graphics/Camera/CubemapHelper.hpp>
 
 #include <cmath>

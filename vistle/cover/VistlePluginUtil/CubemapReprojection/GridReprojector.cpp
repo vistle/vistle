@@ -6,8 +6,8 @@
 #include <GridReprojector.h>
 
 #include <GridGeometry.h>
-#include <Message.h>
-#include <Settings.h>
+#include <CR_Message.h>
+#include <CR_Settings.h>
 
 using namespace EngineBuildingBlocks::Graphics;
 using namespace OpenGLRender;
