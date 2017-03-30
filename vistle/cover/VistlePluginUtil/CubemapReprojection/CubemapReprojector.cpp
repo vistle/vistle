@@ -5,6 +5,8 @@
 
 #include <CubemapReprojector.h>
 
+#include <CR_Settings.h>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////// IMPLEMENTOR ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -25,11 +27,14 @@
 #include <OpenGLRender/Resources/Texture2D.h>
 #include <OpenGLRender/Resources/FrameBufferObject.h>
 
+#if(IS_OCULUS_ENABLED)
+
 #include <OculusVR/SimpleVR.h>
+
+#endif
 
 #include <GridReprojector.h>
 #include <CR_Message.h>
-#include <CR_Settings.h>
 
 #include <atomic>
 
@@ -164,6 +169,8 @@ private: // Serialization.
 	void SaveClientCameraLocation();
 	void LoadClientCameraLocation();
 
+#if(IS_OCULUS_ENABLED)
+
 private: // VR.
 
 	std::unique_ptr<OculusVR::VR_Helper> m_VRHelper;
@@ -175,6 +182,8 @@ private: // VR.
 	void InitializeVR();
 	void InitializeVRGraphics();
 	void ReleaseVR();
+
+#endif
 
 private: // Misc.
 
@@ -314,7 +323,12 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 #include <Core/System/SimpleIO.h>
 #include <Core/System/Filesystem.h>
 #include <EngineBuildingBlocks/ErrorHandling.h>
+
+#if(IS_OCULUS_ENABLED)
+
 #include <OculusVR/SimpleVR_GL.h>
+
+#endif
 
 // For debugging:
 #include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
@@ -592,10 +606,12 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	, m_ServerCubemapCameraGroupForAdjustment(&m_ServerCameraForAdjustment)
 	, m_GridReprojector(m_SceneNodeHandler, &m_IsShuttingDown)
 	, m_InitializedOpenGLContextId(Core::c_InvalidIndexU)
-	, m_IsVRGraphicsInitialized(false)
 	, m_KeyHandler(&m_EventManager)
 	, m_MouseHandler(&m_EventManager)
 	, m_ConstantViewInverse(0.0f)
+#if(IS_OCULUS_ENABLED)
+	, m_IsVRGraphicsInitialized(false)
+#endif
 {
 	LoadConfiguration();
 
@@ -605,10 +621,12 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	m_GridReprojector.SetClearingBuffers(m_IsRenderingInVR);
 	m_GridReprojector.SetCullingEnabled(true);
 
+#if(IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		InitializeVR();
 	}
+#endif
 
 	InitializeBuffers();
 
@@ -669,38 +687,12 @@ void CubemapReprojectorImplementor::Destroy()
 	m_IsShuttingDown = true;
 	m_ThreadPool.Join();
 
+#if(IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		ReleaseVR();
 	}
-}
-
-// Calling this function twice per update for precise results.
-void CubemapReprojectorImplementor::UpdateVRData()
-{
-	glm::vec3 outputPosition;
-	glm::mat3 outputViewOrientation;
-	OculusVR::PerspectiveProjectionParameters projParams;
-
-	auto& inputCameraProjection = m_ClientCamera.GetProjection().Projection.Perspective;
-	auto n = inputCameraProjection.NearPlaneDistance;
-	auto f = inputCameraProjection.FarPlaneDistance;
-
-	m_VRHelper->UpdateLocationTracking();
-
-	for (unsigned i = 0; i < 2; i++)
-	{
-		auto& inputCamera = m_ClientCamera;
-		auto& outputCamera = *m_VRCameras[i];
-
-		m_VRHelper->UpdateBeforeRendering(i, inputCamera.GetPosition(), inputCamera.GetViewOrientation(),
-			outputPosition, outputViewOrientation, n, f, projParams);
-
-		outputCamera.SetPosition(outputPosition);
-		outputCamera.SetViewOrientation(outputViewOrientation);
-		outputCamera.SetPerspectiveProjection(projParams.Left, projParams.Right, projParams.Bottom, projParams.Top,
-			projParams.NearPlaneDistance, projParams.FarPlaneDistance, projParams.IsProjectingFrom_0_To_1);
-	}
+#endif
 }
 
 void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
@@ -724,12 +716,14 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 
 	m_GridReprojector.Update();
 
+#if(IS_OCULUS_ENABLED)
 	// We have to postpone VR graphics initialization until this point, since the output FBO is not created
 	// at initialization time.
 	if (m_IsRenderingInVR)
 	{
 		InitializeVRGraphics();
 	}
+#endif
 
 	UpdateTextures(isTextureDataAvailable);
 
@@ -752,6 +746,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+#if(IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		UpdateVRData();
@@ -766,6 +761,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 		DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
 	}
 	else
+#endif
 	{
 		m_FBO.Bind();
 		RenderReprojection(m_ClientCamera);
@@ -804,6 +800,8 @@ void CubemapReprojectorImplementor::RenderReprojection(Camera& clientCamera)
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
+
+#if(IS_OCULUS_ENABLED)
 
 void CubemapReprojectorImplementor::InitializeVR()
 {
@@ -867,6 +865,36 @@ void CubemapReprojectorImplementor::InitializeVRGraphics()
 	}
 }
 
+// Calling this function twice per update for precise results.
+void CubemapReprojectorImplementor::UpdateVRData()
+{
+	glm::vec3 outputPosition;
+	glm::mat3 outputViewOrientation;
+	OculusVR::PerspectiveProjectionParameters projParams;
+
+	auto& inputCameraProjection = m_ClientCamera.GetProjection().Projection.Perspective;
+	auto n = inputCameraProjection.NearPlaneDistance;
+	auto f = inputCameraProjection.FarPlaneDistance;
+
+	m_VRHelper->UpdateLocationTracking();
+
+	for (unsigned i = 0; i < 2; i++)
+	{
+		auto& inputCamera = m_ClientCamera;
+		auto& outputCamera = *m_VRCameras[i];
+
+		m_VRHelper->UpdateBeforeRendering(i, inputCamera.GetPosition(), inputCamera.GetViewOrientation(),
+			outputPosition, outputViewOrientation, n, f, projParams);
+
+		outputCamera.SetPosition(outputPosition);
+		outputCamera.SetViewOrientation(outputViewOrientation);
+		outputCamera.SetPerspectiveProjection(projParams.Left, projParams.Right, projParams.Bottom, projParams.Top,
+			projParams.NearPlaneDistance, projParams.FarPlaneDistance, projParams.IsProjectingFrom_0_To_1);
+	}
+}
+
+#endif
+
 ///////////////////////////////////// CONFIGURATION, SERIALIZATION /////////////////////////////////////
 
 template <typename T>
@@ -886,6 +914,10 @@ void CubemapReprojectorImplementor::LoadConfiguration()
 	InitializeRootProperty(m_Configuration, "PosZVisiblePortion", m_PosZVisiblePortion);
 	InitializeRootProperty(m_Configuration, "MinPosDiffForServer", m_MinPosDiffForServer);
 	InitializeRootProperty(m_Configuration, "MinDirCrossForServer", m_MinDirCrossForServer);
+
+#if(!IS_OCULUS_ENABLED)
+	m_IsRenderingInVR = false;
+#endif
 
 	m_GridReprojector.LoadConfiguration(m_Configuration);
 }

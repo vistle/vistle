@@ -11,4 +11,6 @@ enum class ShaderId : unsigned
 // Double buffering the used texture.
 const unsigned c_CountTextures = 2;
 
+#define IS_OCULUS_ENABLED 1
+
 #endif
