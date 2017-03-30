@@ -23,8 +23,8 @@ if [ -n "$SLURM_JOB_ID" ]; then
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
-WRAPPER=""
-#WRAPPER="valgrind"
+#WRAPPER=""
+WRAPPER="valgrind"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then
