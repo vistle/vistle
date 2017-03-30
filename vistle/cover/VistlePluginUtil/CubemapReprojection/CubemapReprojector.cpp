@@ -1322,15 +1322,6 @@ void CubemapReprojectorImplementor::ResizeView(int viewIndex, int w, int h, unsi
 	// Handling view resizing in the AdjustDimensionsAndMatrices(...) function.
 }
 
-// Improvements:
-//
-// - use only some portion of the sides and don't use the +Z face.
-
-// TODO:
-//
-// - check whether multisampling is working properly
-// - check stiching geometry (there seem to be some holes...)
-
 ////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////// INPUT HANDLING //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
