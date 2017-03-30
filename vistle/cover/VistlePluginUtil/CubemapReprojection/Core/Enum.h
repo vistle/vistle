@@ -8,22 +8,22 @@
 #define UseEnumAsFlagSet(enumName)														\
 	inline enumName operator|(enumName a, enumName b)									\
 	{																					\
-	return static_cast<enumName>(static_cast<std::underlying_type_t<enumName>>(a)		\
-	| static_cast<std::underlying_type_t<enumName>>(b));								\
+	return static_cast<enumName>(static_cast<std::underlying_type<enumName>::type>(a)		\
+	| static_cast<std::underlying_type<enumName>::type>(b));								\
 	}																					\
 	inline enumName& operator|=(enumName& a, enumName b)								\
 	{																					\
-	a = static_cast<enumName>(static_cast<std::underlying_type_t<enumName>>(a)			\
-	| static_cast<std::underlying_type_t<enumName>>(b));								\
+	a = static_cast<enumName>(static_cast<std::underlying_type<enumName>::type>(a)			\
+	| static_cast<std::underlying_type<enumName>::type>(b));								\
 	return a;																			\
 	}																					\
 	inline bool HasFlag(enumName a, enumName b)											\
-	{return ((static_cast<std::underlying_type_t<enumName>>(a)							\
-	& static_cast<std::underlying_type_t<enumName>>(b)) != 0);							\
+        {return ((static_cast<std::underlying_type<enumName>::type>(a)							\
+	& static_cast<std::underlying_type<enumName>::type>(b)) != 0);							\
 	}																					\
 	inline bool IsSubset(enumName superSet, enumName subset)							\
-	{return ((~static_cast<std::underlying_type_t<enumName>>(superSet)					\
-	& static_cast<std::underlying_type_t<enumName>>(subset)) == 0);						\
+	{return ((~static_cast<std::underlying_type<enumName>::type>(superSet)					\
+	& static_cast<std::underlying_type<enumName>::type>(subset)) == 0);						\
 	}
 
 #endif

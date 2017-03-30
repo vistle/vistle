@@ -106,14 +106,14 @@ namespace Core
 		{
 			static T Parse(const char* str)
 			{
-				return static_cast<T>(Core::detail::Parse<std::underlying_type_t<T>>(str));
+				return static_cast<T>(Core::detail::Parse<std::underlying_type<T>::type>(str));
 			}
 		};
 
 		///////////////////////////////////////////////////////////////////////////////////
 
 		template <typename T>
-		using Parser = std::conditional_t<std::is_enum<T>::value, EnumParser<T>, TypeParser<T>>;
+		using Parser = typename std::conditional<std::is_enum<T>::value, EnumParser<T>, TypeParser<T>>::type;
 	};
 
 	template <typename T>

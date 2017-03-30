@@ -8,7 +8,7 @@
 #ifndef MULTICHANNELDRAWER_H
 #define MULTICHANNELDRAWER_H
 
-#include <CubemapReprojector.h>
+#include "CubemapReprojection/CubemapReprojector.h"
 
 #include <osg/Matrix>
 #include <osg/Array>

@@ -25,9 +25,9 @@ namespace Core
 		template <class Base, class T, class Derived, class... Args>
 		auto INVOKE(T Base::*pmf, Derived&& ref, Args&&... args)
 			noexcept(noexcept((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...)))
-			-> std::enable_if_t<std::is_function<T>::value &&
-			std::is_base_of<Base, std::decay_t<Derived>>::value,
-			decltype((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...))>
+                        -> typename std::enable_if<std::is_function<T>::value &&
+                        std::is_base_of<Base, typename std::decay<Derived>::type>::value,
+                        decltype((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...))>::type
 		{
 			return (std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...);
 		}
@@ -35,9 +35,9 @@ namespace Core
 		template <class Base, class T, class RefWrap, class... Args>
 		auto INVOKE(T Base::*pmf, RefWrap&& ref, Args&&... args)
 			noexcept(noexcept((ref.get().*pmf)(std::forward<Args>(args)...)))
-			-> std::enable_if_t<std::is_function<T>::value &&
-			is_reference_wrapper<std::decay_t<RefWrap>>::value,
-			decltype((ref.get().*pmf)(std::forward<Args>(args)...))>
+                        -> typename std::enable_if<std::is_function<T>::value &&
+                        is_reference_wrapper<typename std::decay<RefWrap>::type>::value,
+                        decltype((ref.get().*pmf)(std::forward<Args>(args)...))>::type
 
 		{
 			return (ref.get().*pmf)(std::forward<Args>(args)...);
@@ -46,10 +46,10 @@ namespace Core
 		template <class Base, class T, class Pointer, class... Args>
 		auto INVOKE(T Base::*pmf, Pointer&& ptr, Args&&... args)
 			noexcept(noexcept(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...)))
-			-> std::enable_if_t<std::is_function<T>::value &&
-			!is_reference_wrapper<std::decay_t<Pointer>>::value &&
-			!std::is_base_of<Base, std::decay_t<Pointer>>::value,
-			decltype(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...))>
+                        -> typename std::enable_if<std::is_function<T>::value &&
+                        !is_reference_wrapper<typename std::decay<Pointer>::type>::value &&
+                        !std::is_base_of<Base, typename std::decay<Pointer>::type>::value,
+                        decltype(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...))>::type
 		{
 			return ((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...);
 		}
@@ -57,9 +57,9 @@ namespace Core
 		template <class Base, class T, class Derived>
 		auto INVOKE(T Base::*pmd, Derived&& ref)
 			noexcept(noexcept(std::forward<Derived>(ref).*pmd))
-			-> std::enable_if_t<!std::is_function<T>::value &&
-			std::is_base_of<Base, std::decay_t<Derived>>::value,
-			decltype(std::forward<Derived>(ref).*pmd)>
+                        -> typename std::enable_if<!std::is_function<T>::value &&
+                        std::is_base_of<Base, typename std::decay<Derived>::type>::value,
+                        decltype(std::forward<Derived>(ref).*pmd)>::type
 		{
 			return std::forward<Derived>(ref).*pmd;
 		}
@@ -67,9 +67,9 @@ namespace Core
 		template <class Base, class T, class RefWrap>
 		auto INVOKE(T Base::*pmd, RefWrap&& ref)
 			noexcept(noexcept(ref.get().*pmd))
-			-> std::enable_if_t<!std::is_function<T>::value &&
-			is_reference_wrapper<std::decay_t<RefWrap>>::value,
-			decltype(ref.get().*pmd)>
+                        -> typename std::enable_if<!std::is_function<T>::value &&
+                        is_reference_wrapper<typename std::decay<RefWrap>::type>::value,
+                        decltype(ref.get().*pmd)>::type
 		{
 			return ref.get().*pmd;
 		}
@@ -77,10 +77,10 @@ namespace Core
 		template <class Base, class T, class Pointer>
 		auto INVOKE(T Base::*pmd, Pointer&& ptr)
 			noexcept(noexcept((*std::forward<Pointer>(ptr)).*pmd))
-			-> std::enable_if_t<!std::is_function<T>::value &&
-			!is_reference_wrapper<std::decay_t<Pointer>>::value &&
-			!std::is_base_of<Base, std::decay_t<Pointer>>::value,
-			decltype((*std::forward<Pointer>(ptr)).*pmd)>
+                        -> typename std::enable_if<!std::is_function<T>::value &&
+                        !is_reference_wrapper<typename std::decay<Pointer>::type>::value &&
+                        !std::is_base_of<Base, typename std::decay<Pointer>::type>::value,
+                        decltype((*std::forward<Pointer>(ptr)).*pmd)>::type
 		{
 			return (*std::forward<Pointer>(ptr)).*pmd;
 		}
@@ -88,8 +88,8 @@ namespace Core
 		template <class F, class... Args>
 		auto INVOKE(F&& f, Args&&... args)
 			noexcept(noexcept(std::forward<F>(f)(std::forward<Args>(args)...)))
-			-> std::enable_if_t<!std::is_member_pointer<std::decay_t<F>>::value,
-			decltype(std::forward<F>(f)(std::forward<Args>(args)...))>
+                        -> typename std::enable_if<!std::is_member_pointer<typename std::decay<F>::type>::value,
+                        decltype(std::forward<F>(f)(std::forward<Args>(args)...))>::type
 		{
 			return std::forward<F>(f)(std::forward<Args>(args)...);
 		}
@@ -117,7 +117,7 @@ namespace Core
 	constexpr decltype(auto) ApplyFunction(F&& f, Tuple&& t)
 	{
 		return detail::Apply_Impl(std::forward<F>(f), std::forward<Tuple>(t),
-			std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>{});
+                        std::make_index_sequence<std::tuple_size<typename std::decay<Tuple>::type>::value>{});
 	}
 
 	template <class F, class O, class Tuple>

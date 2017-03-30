@@ -513,7 +513,7 @@ namespace Core
 				SizeType oldSize = m_Size;
 				ResizeWithGrowing(index + 1);
 				for (SizeType i = oldSize; i < m_Size; ++i)
-					m_Allocator.construct<T>(m_Array + i, std::forward<Args>(args)...);
+					m_Allocator.construct(m_Array + i, std::forward<Args>(args)...);
 			}
 			m_Array[index] = value;
 		}
