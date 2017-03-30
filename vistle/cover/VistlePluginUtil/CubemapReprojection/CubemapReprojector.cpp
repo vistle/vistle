@@ -543,11 +543,11 @@ inline void DepthComposite(PathHandler& pathHandler,
 	auto& sourcetargetColor = (Texture2D&)sourcetargetTextures[0];
 	auto& sourcetargetDepth = (Texture2D&)sourcetargetTextures[1];
 	auto& s2Color = (Texture2D&)source2Textures[0];
-	auto& s2Depth = (Texture2D&)source2Textures[1];
 
 	auto& sourceTargetTD = sourcetargetColor.GetTextureDescription();
 	int width = sourceTargetTD.Width;
 	int height = sourceTargetTD.Height;
+	glm::vec2 tcMult = glm::vec2(1.0f / width, 1.0f / height);
 
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -556,22 +556,21 @@ inline void DepthComposite(PathHandler& pathHandler,
 
 	program.SetUniformValue("Width", width);
 	program.SetUniformValue("Height", height);
+	program.SetUniformValue("TCMult", tcMult);
 
 	program.SetUniformValue("SourceTargetColor", 0);
-	//program.SetUniformValue("SourceTargetDepth", 1);
-	//program.SetUniformValue("Source2Color", 2);
-	//program.SetUniformValue("Source2Depth", 3);
+	program.SetUniformValue("SourceTargetDepth", 1);
+	program.SetUniformValue("Source2Color", 2);
 
-	sourcetargetColor.Bind(0);
-	//sourcetargetDepth.Bind(1);
-	//s2Color.Bind(2);
-	//s2Depth.Bind(3);
+	glBindImageTexture(0, sourcetargetColor.GetHandle(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
+	sourcetargetDepth.Bind(1);
+	glBindImageTexture(2, s2Color.GetHandle(),           0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA8);
 
 	unsigned numGroupsX = GetThreadGroupCount(width, 8);
 	unsigned numGroupsY = GetThreadGroupCount(height, 4);
 
 	glDispatchCompute(numGroupsX, numGroupsY, 1);
-	glMemoryBarrier(GL_ALL_BARRIER_BITS);//GL_TEXTURE_UPDATE_BARRIER_BIT);
+	glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -764,14 +763,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 		}
 		m_VRHelper->OnRenderingFinished();
 		glViewport(0, 0, m_ClientWidth, m_ClientHeight);
-
-		{
-			glBindFramebuffer(GL_READ_FRAMEBUFFER, m_MirrorFBO.GetHandle());
-			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO.GetHandle());
-			glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
-				GL_COLOR_BUFFER_BIT, GL_NEAREST);
-		}
-		//DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
+		DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
 	}
 	else
 	{
