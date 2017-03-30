@@ -1,6 +1,8 @@
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system filesystem)
 using(GLEW)
 
+vistle_find_package(glm)
+
 set(pluginutil_SOURCES
    VistleRenderObject.cpp
    MultiChannelDrawer.cpp
