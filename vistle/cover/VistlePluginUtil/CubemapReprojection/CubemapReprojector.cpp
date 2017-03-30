@@ -13,6 +13,7 @@
 #include <Core/DataStructures/Properties.h>
 #include <Core/System/ThreadPool.h>
 
+#include <EngineBuildingBlocks/Graphics/Graphics.h>
 #include <EngineBuildingBlocks/Graphics/Camera/Camera.h>
 #include <EngineBuildingBlocks/Graphics/Camera/FreeCamera.h>
 #include <EngineBuildingBlocks/Graphics/Camera/CubemapHelper.hpp>
@@ -168,6 +169,7 @@ private: // VR.
 	std::unique_ptr<OculusVR::VR_Helper> m_VRHelper;
 	bool m_IsVRGraphicsInitialized;
 	OpenGLRender::FrameBufferObject m_FBOs[2];
+	OpenGLRender::FrameBufferObject m_MirrorFBO;
 	EngineBuildingBlocks::Graphics::Camera* m_VRCameras[2];
 
 	void InitializeVR();
@@ -519,6 +521,59 @@ void RenderProgressBar(PathHandler& pathHandler)
 	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
 }
 
+inline void DepthComposite(PathHandler& pathHandler,
+	FrameBufferObject& sourceTargetFBO, FrameBufferObject& sourceFBO2)
+{
+	static bool isInitializing = true;
+	static OpenGLRender::ShaderProgram program;
+	if (isInitializing)
+	{
+		isInitializing = false;
+
+		auto csPath = "Shaders/DepthComposite_cs.glsl";
+
+		OpenGLRender::ShaderProgramDescription spd;
+		spd.Shaders =
+		{ ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(csPath), ShaderType::Compute) };
+		program.Initialize(spd);
+	}
+
+	auto& sourcetargetTextures = sourceTargetFBO.GetOwnedTextures();
+	auto& source2Textures = sourceFBO2.GetOwnedTextures();
+	auto& sourcetargetColor = (Texture2D&)sourcetargetTextures[0];
+	auto& sourcetargetDepth = (Texture2D&)sourcetargetTextures[1];
+	auto& s2Color = (Texture2D&)source2Textures[0];
+	auto& s2Depth = (Texture2D&)source2Textures[1];
+
+	auto& sourceTargetTD = sourcetargetColor.GetTextureDescription();
+	int width = sourceTargetTD.Width;
+	int height = sourceTargetTD.Height;
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+	program.Bind();
+
+	program.SetUniformValue("Width", width);
+	program.SetUniformValue("Height", height);
+
+	program.SetUniformValue("SourceTargetColor", 0);
+	//program.SetUniformValue("SourceTargetDepth", 1);
+	//program.SetUniformValue("Source2Color", 2);
+	//program.SetUniformValue("Source2Depth", 3);
+
+	sourcetargetColor.Bind(0);
+	//sourcetargetDepth.Bind(1);
+	//s2Color.Bind(2);
+	//s2Depth.Bind(3);
+
+	unsigned numGroupsX = GetThreadGroupCount(width, 8);
+	unsigned numGroupsY = GetThreadGroupCount(height, 4);
+
+	glDispatchCompute(numGroupsX, numGroupsY, 1);
+	glMemoryBarrier(GL_ALL_BARRIER_BITS);//GL_TEXTURE_UPDATE_BARRIER_BIT);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CubemapReprojectorImplementor::CubemapReprojectorImplementor()
@@ -709,6 +764,14 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 		}
 		m_VRHelper->OnRenderingFinished();
 		glViewport(0, 0, m_ClientWidth, m_ClientHeight);
+
+		{
+			glBindFramebuffer(GL_READ_FRAMEBUFFER, m_MirrorFBO.GetHandle());
+			glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO.GetHandle());
+			glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
+				GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		}
+		//DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
 	}
 	else
 	{
@@ -778,11 +841,20 @@ void CubemapReprojectorImplementor::InitializeVRGraphics()
 		bool isMultisamplingEnabled = m_GridReprojector.IsMultisamplingEnabled();
 		unsigned sampleCount = (isMultisamplingEnabled ? 8 : 1);
 
+		{
+			Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8));
+			Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32F));
+			m_MirrorFBO.Initialize();
+			m_MirrorFBO.Bind();
+			m_MirrorFBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
+			m_MirrorFBO.Attach(std::move(depthTexture), FrameBufferAttachment::Depth);
+		}
+
 		OculusVR::VR_GL_InitData vrInitData;
 		vrInitData.WindowSize = glm::uvec2(m_ClientWidth, m_ClientHeight);
 		vrInitData.SampleCount = sampleCount;
 		vrInitData.Flags = OculusVR::VR_Flags::SetUpViewportForRendering;
-		vrInitData.OutputFBO = m_FBO.GetHandle();
+		vrInitData.OutputFBO = m_MirrorFBO.GetHandle();
 
 		for (unsigned i = 0; i < 2; i++)
 		{
