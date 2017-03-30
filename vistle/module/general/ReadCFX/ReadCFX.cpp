@@ -351,16 +351,29 @@ index_t CaseInfo::getNumberOfRegions() {
 }
 
 int ReadCFX::rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const {
-    //delivers a rank between 1 and size(). ranks are continually distributed to processors over timestep and volumes
+    //returns a rank between 0 and size(). ranks are continually distributed to processors over timestep and volumes
 
-    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*numVolumes+volume;
+    int processor;
+    if(timestep<m_firsttimestep->getValue()) {
+        processor = volume;
+    }
+    else {
+        processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*numVolumes+volume;
+    }
 
     return processor % size();
 }
 
 int ReadCFX::rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const {
-    //delivers a rank between 1 and size(). ranks are continually distributed to processors over timestep and volumes
-    int processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*num2dAreas+area2d;
+    //returns a rank between 0 and size(). ranks are continually distributed to processors over timestep and volumes
+
+    int processor;
+    if(timestep<m_firsttimestep->getValue()) {
+        processor = area2d;
+    }
+    else {
+        processor = ((timestep-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))*num2dAreas+area2d;
+    }
 
     return processor % size();
 }
@@ -433,7 +446,6 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 m_case.parseResultfile();
                 m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
                 initializeResultfile();
-                std::cerr << "nvars = " << cfxExportVariableCount(usr_level) << std::endl;
                 m_case.getFieldList();
                 for (auto out: m_fieldOut) {
                     setParameterChoices(out, m_case.m_field_param);
@@ -458,6 +470,13 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
                     for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
                         sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
+                    }
+                    //print variable names in .trn file
+                    std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
+                    sendInfo("Found %d variables in transient files", (int)trnVars.size());
+                    int j=1;
+                    for(std::vector<std::string>::iterator it = trnVars.begin(); it != trnVars.end(); ++it, ++j) {
+                        sendInfo("%d. %s",j,(*it).c_str());
                     }
                 }
                 cfxExportZoneFree();
@@ -1141,8 +1160,8 @@ bool ReadCFX::loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, i
       if (it == allParam.end()) {
               std::cerr << "Z2" << std::endl;
               m_currentVolumedata[i]= DataBase::ptr();
-              m_gridsInTimestep[i]= UnstructuredGrid::ptr();
-      }
+              m_gridsInTimestep[area3d]= UnstructuredGrid::ptr();
+              std::cerr << "Z3" << std::endl;      }
       else {
 //          std::cerr << "!m_gridsInTimestep[" << area3d << "] = " << !m_gridsInTimestep[area3d] << "cfxExportGridChanged("
 //                    << m_previousTimestep << "," << timestep+1 << ")" << cfxExportGridChanged(m_previousTimestep,timestep+1) << std::endl;
@@ -1180,7 +1199,7 @@ bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timest
         auto it = find_if(allParam.begin(), allParam.end(), [&area2dField](const Variable& obj) {
             return obj.varName == area2dField;});
         if (it == allParam.end()) {
-            m_polygonsInTimestep[i] = Polygons::ptr();
+            m_polygonsInTimestep[area2d] = Polygons::ptr();
             m_current2dData[i] = DataBase::ptr();
         }
         else {
@@ -1357,7 +1376,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     //reads all information (3d and 2d data) for a given timestep and adds them to the ports
 
     for(index_t i=0;i<numSel3dArea;++i) {
-        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << firsttimestep << "," << step << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,firsttimestep,step,i,numSel3dArea) << std::endl;
+        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,i,numSel3dArea) << std::endl;
         if(rankForVolumeAndTimestep(timestep,i,numSel3dArea) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
                 loadFieldsAndGrid(i, setMetaTimestep, timestep, numSel3dArea, trnOrRes);
@@ -1414,13 +1433,6 @@ bool ReadCFX::compute() {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
                 else {
-                    if(rank() == 0 && timestep == firsttimestep) {
-                        //print variable names in .trn file
-                        sendInfo("Found %d variables in transient files", cfxExportVariableCount(usr_level));
-                        for(int i=1;i<=cfxExportVariableCount(usr_level);i++) {
-                            sendInfo("%d. %s",i,cfxExportVariableName(i,alias));
-                        }
-                    }
                     std::cerr << "S1" << std::endl;
 
                     m_case.parseResultfile();
