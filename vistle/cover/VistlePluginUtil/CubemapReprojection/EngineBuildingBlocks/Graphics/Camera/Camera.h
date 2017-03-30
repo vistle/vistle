@@ -67,7 +67,7 @@ namespace EngineBuildingBlocks
 
 			const EngineBuildingBlocks::Math::BoundingFrustum& GetViewFrustum();
 
-			void SetFromViewMatrix(glm::mat4& viewMatrix);
+			void SetFromViewMatrix(const glm::mat4& viewMatrix);
 
 			static void SetViewMatrix(
 				const EngineBuildingBlocks::ScaledTransformation& worldTransformation,

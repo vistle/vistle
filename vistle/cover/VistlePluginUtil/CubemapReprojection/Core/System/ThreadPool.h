@@ -142,10 +142,10 @@ namespace Core
 		template <typename FunctionType, typename... Args>
 		void AddTask(FunctionType&& function, Args&&... args)
 		{
-			using FuncDecType = std::decay_t<FunctionType>;
-			auto task = m_ObjectCache.Request<FunctionTask<FuncDecType, std::decay_t<Args>...>>(
+                        using FuncDecType = typename std::decay<FunctionType>::type;
+                        auto task = m_ObjectCache.Request<FunctionTask<FuncDecType, typename std::decay<Args>::type...>>(
 				std::forward<FunctionType>(function),
-				std::tuple<std::decay_t<Args>...>(std::forward<Args>(args)...));
+                                std::tuple<typename std::decay<Args>::type...>(std::forward<Args>(args)...));
 			m_Tasks.push(task);
 		}
 
@@ -241,7 +241,7 @@ namespace Core
 		// Executes the given function using uniform interval splitting as
 		// static scheduling. Returning the number of threads that executed the tasks.
 		template <typename FunctionType, typename ObjectType,
-			typename = std::enable_if_t<std::is_member_function_pointer<FunctionType>::value>,
+                        typename = typename std::enable_if<std::is_member_function_pointer<FunctionType>::value>::type,
 			typename... Args>
 			inline unsigned ExecuteWithStaticScheduling(unsigned countTasks, FunctionType&& function, ObjectType* pObject, Args&&... args)
 		{
@@ -264,7 +264,7 @@ namespace Core
 		// Executes the given global function using uniform interval splitting as
 		// static scheduling. Returning the number of threads that executed the tasks.
 		template <typename FunctionType,
-			typename = std::enable_if_t<!std::is_member_function_pointer<FunctionType>::value>,
+                        typename = typename std::enable_if<!std::is_member_function_pointer<FunctionType>::value>::type,
 			typename... Args>
 			inline unsigned ExecuteWithStaticScheduling(unsigned countTasks, FunctionType&& function, Args&&... args)
 		{
@@ -285,7 +285,7 @@ namespace Core
 		}
 
 		template <typename FunctionType, typename ObjectType,
-			typename = std::enable_if_t<std::is_member_function_pointer<FunctionType>::value>>
+                        typename = typename std::enable_if<std::is_member_function_pointer<FunctionType>::value>::type>
 			inline unsigned ExecuteWithDynamicScheduling(unsigned countTasks, FunctionType&& function, ObjectType* pObject, unsigned taskPackageSize = 1)
 		{
 			m_DynamicTaskCount = countTasks;

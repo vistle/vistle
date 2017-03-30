@@ -4,7 +4,7 @@
 #define OPENGLRENDER_OPENGL_H_INCLUDED_
 
 // GLEW - Extension loading library.
-#include <glew/include/GL/glew.h>
+#include <GL/glew.h>
 
 namespace OpenGLRender
 {
