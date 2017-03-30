@@ -97,12 +97,12 @@ namespace Core
 		template<typename... Types>
 		void ConstructElement(T* pElement, Types... args)
 		{
-			m_Allocator.construct<T>(pElement, std::forward<Types>(args)...);
+			m_Allocator.construct(pElement, std::forward<Types>(args)...);
 		}
 
 		void DeleteElement(T* pElement)
 		{
-			m_Allocator.destroy<T>(pElement);
+			m_Allocator.destroy(pElement);
 		}
 
 		// Note that this function changes the element pointer order in 'm_UnusedElements'.

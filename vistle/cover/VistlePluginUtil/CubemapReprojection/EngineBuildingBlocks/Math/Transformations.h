@@ -29,7 +29,7 @@ namespace EngineBuildingBlocks
 	inline glm::dualquat AddSignAware(const glm::dualquat& dq0, const glm::dualquat& dq1)
 	{
 		float d = glm::dot(dq0.real, dq1.real);
-		if (d < 0.0f) return dq0 - dq1;
+                if (d < 0.0f) return dq0 + -dq1;
 		return dq0 + dq1;
 	}
 

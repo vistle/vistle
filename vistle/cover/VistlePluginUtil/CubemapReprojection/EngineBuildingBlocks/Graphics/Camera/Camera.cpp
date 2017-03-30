@@ -64,7 +64,7 @@ void Camera::DeserializeSB(const unsigned char*& bytes)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-void Camera::SetFromViewMatrix(glm::mat4& viewMatrix)
+void Camera::SetFromViewMatrix(const glm::mat4& viewMatrix)
 {
 	glm::mat3 a(viewMatrix);
 	auto aInv = glm::transpose(a);

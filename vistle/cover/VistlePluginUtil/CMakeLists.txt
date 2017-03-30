@@ -23,6 +23,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
         ${COVISE_INCLUDE_DIRS}
         ${COVER_INCLUDE_DIRS}
+        CubemapReprojection
 )
 
 vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})

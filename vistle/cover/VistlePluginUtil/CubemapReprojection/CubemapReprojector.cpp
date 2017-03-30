@@ -1,7 +1,7 @@
 // CubemapReprojector.h
 
 // Must be included before OpenGL includes.
-#include <glew/include/GL/glew.h>
+#include <GL/glew.h>
 
 #include <CubemapReprojector.h>
 
@@ -1287,17 +1287,17 @@ void CubemapReprojectorImplementor::GetCursorPosition(float& cursorPositionX, fl
 
 // Dummy implementation.
 
-KeyState CubemapReprojector::GetKeyState(Keys key) const
+KeyState CubemapReprojectorImplementor::GetKeyState(Keys key) const
 {
 	return KeyState::Unhandled;
 }
 
-MouseButtonState CubemapReprojector::GetMouseButtonState(MouseButton button) const
+MouseButtonState CubemapReprojectorImplementor::GetMouseButtonState(MouseButton button) const
 {
 	return MouseButtonState::Released;
 }
 
-void CubemapReprojector::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
+void CubemapReprojectorImplementor::GetCursorPosition(float& cursorPositionX, float& cursorPositionY) const
 {
 	cursorPositionX = 0.0f;
 	cursorPositionY = 0.0f;
