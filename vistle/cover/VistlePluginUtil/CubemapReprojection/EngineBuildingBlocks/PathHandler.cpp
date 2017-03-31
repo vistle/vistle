@@ -16,6 +16,8 @@
 
 #include <queue>
 
+#include <util/filesystem.h>
+
 namespace EngineBuildingBlocks
 {
 	std::string GetExecutablePath()
@@ -64,7 +66,7 @@ namespace EngineBuildingBlocks
 				{
 					auto dir = queue.front(); queue.pop();
 					if (Core::FileExists(dir + ending)) return dir;
-					namespace fs = std::experimental::filesystem;
+					namespace fs = vistle::filesystem;
 					fs::directory_iterator endIt;
 					for (fs::directory_iterator dirIt(dir); dirIt != endIt; ++dirIt)
 					{
