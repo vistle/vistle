@@ -107,21 +107,25 @@ namespace Core
 	namespace detail
 	{
 		template <class F, class Tuple, std::size_t... I>
-		constexpr decltype(auto) Apply_Impl(F&& f, Tuple&& t, std::index_sequence<I...>)
+		constexpr auto Apply_Impl(F&& f, Tuple&& t, std::index_sequence<I...>)
+			-> decltype(Invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(t))...))
 		{
 			return Invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(t))...);
 		}
 	}
 
 	template <class F, class Tuple>
-	constexpr decltype(auto) ApplyFunction(F&& f, Tuple&& t)
+	constexpr auto ApplyFunction(F&& f, Tuple&& t)
+		-> decltype(detail::Apply_Impl(std::forward<F>(f), std::forward<Tuple>(t),
+			std::make_index_sequence<std::tuple_size<typename std::decay<Tuple>::type>::value>{}))
 	{
 		return detail::Apply_Impl(std::forward<F>(f), std::forward<Tuple>(t),
                         std::make_index_sequence<std::tuple_size<typename std::decay<Tuple>::type>::value>{});
 	}
 
 	template <class F, class O, class Tuple>
-	constexpr decltype(auto) ApplyMemberFunction(F&& f, O&& o, Tuple&& t)
+	constexpr auto ApplyMemberFunction(F&& f, O&& o, Tuple&& t)
+		-> decltype(ApplyFunction(std::forward<F>(f), std::tuple_cat(std::forward<O>(o), std::forward<Tuple>(t))))
 	{
 		return ApplyFunction(std::forward<F>(f), std::tuple_cat(std::forward<O>(o), std::forward<Tuple>(t)));
 	}

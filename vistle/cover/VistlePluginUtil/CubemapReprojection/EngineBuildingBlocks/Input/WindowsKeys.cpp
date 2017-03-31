@@ -19,6 +19,8 @@ WindowsKeyMap::WindowsKeyMap()
 		m_SpecificToGeneral[i] = EngineBuildingBlocks::Input::Keys::Unknown;
 	}
 
+#ifdef IS_WINDOWS
+
 	// Adding entries.
 	AddEntry(VK_SPACE, EngineBuildingBlocks::Input::Keys::Space)
 	AddEntry(VK_OEM_7, EngineBuildingBlocks::Input::Keys::Apostrophe)
@@ -127,4 +129,6 @@ WindowsKeyMap::WindowsKeyMap()
 	AddEntry(VK_RMENU, EngineBuildingBlocks::Input::Keys::RightAlt)
 	AddEntry(0, EngineBuildingBlocks::Input::Keys::RightSuper)
 	AddEntry(VK_MENU, EngineBuildingBlocks::Input::Keys::Menu)
+
+#endif
 }
