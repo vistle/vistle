@@ -1,7 +1,7 @@
 // CubemapStreaming_Client/GridReprojector.cpp
 
 // Must be included before OpenGL includes.
-#include <glew/include/GL/glew.h>
+#include <GL/glew.h>
 
 #include <GridReprojector.h>
 
