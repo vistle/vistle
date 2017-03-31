@@ -1,9 +1,0 @@
-// EngineBuildingBlocks/Settings.h
-
-#ifndef _ENGINEBUILDINGBLOCKS_SETTINGS_H_INCLUDED_
-#define _ENGINEBUILDINGBLOCKS_SETTINGS_H_INCLUDED_
-
-#define IS_USING_AVX2 1
-#define IS_BUILDING_WITH_QT 0
-
-#endif

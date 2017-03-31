@@ -1,6 +1,6 @@
 // EngineBuildingBlocks/SceneNode.cpp
 
-#include <EngineBuildingBlocks/Settings.h>
+#include <Settings.h>
 
 #include <EngineBuildingBlocks/SceneNode.h>
 

@@ -5,7 +5,7 @@
 
 #include <CubemapReprojector.h>
 
-#include <CR_Settings.h>
+#include <Settings.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////// IMPLEMENTOR ///////////////////////////////////////////////
@@ -34,6 +34,7 @@
 #endif
 
 #include <GridReprojector.h>
+#include <CR_Common.h>
 #include <CR_Message.h>
 
 #include <atomic>
@@ -1515,17 +1516,6 @@ void CubemapReprojectorImplementor::SetClientCameraMovementAllowed(bool isAllowe
 	m_ClientCameraCopy.SetFrozen(!isAllowed);
 }
 
-struct MetaData
-{
-	unsigned TextureWidth, TextureHeight;
-	bool IsContainingAlpha;
-	float SideVisiblePortion; // Side 0, 1, 2, 3.
-	float PosZVisiblePortion; // Side 4.
-	glm::mat3 CameraOrientation;
-	glm::vec3 CameraPosition;
-	EngineBuildingBlocks::Graphics::CameraProjection CameraProjection;
-};
-
 void CubemapReprojectorImplementor::SaveImageData()
 {
 	Core::ByteVector imageData;
@@ -1533,8 +1523,8 @@ void CubemapReprojectorImplementor::SaveImageData()
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 
-		metaData.Resize(sizeof(MetaData));
-		auto pMetaData = (MetaData*)metaData.GetArray();
+		metaData.Resize(sizeof(Server_CubemapUpdateData));
+		auto pMetaData = (Server_CubemapUpdateData*)metaData.GetArray();
 		pMetaData->TextureWidth = m_ServerWidth;
 		pMetaData->TextureHeight = m_ServerHeight;
 		pMetaData->IsContainingAlpha = m_IsContainingAlpha;

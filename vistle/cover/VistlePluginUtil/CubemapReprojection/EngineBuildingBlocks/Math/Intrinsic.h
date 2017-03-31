@@ -3,7 +3,7 @@
 #ifndef _ENGINEBUILDINGBLOCKS_INTRINSIC_H_INCLUDED_
 #define _ENGINEBUILDINGBLOCKS_INTRINSIC_H_INCLUDED_
 
-#include <EngineBuildingBlocks/Settings.h>
+#include <Settings.h>
 
 #if(IS_USING_AVX2)
 

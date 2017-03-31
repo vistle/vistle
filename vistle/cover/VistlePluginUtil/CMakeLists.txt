@@ -99,7 +99,6 @@ set(pluginutil_HEADERS
    CubemapReprojection/EngineBuildingBlocks/EventHandling.h
    CubemapReprojection/EngineBuildingBlocks/PathHandler.h
    CubemapReprojection/EngineBuildingBlocks/SceneNode.h
-   CubemapReprojection/EngineBuildingBlocks/Settings.h
    CubemapReprojection/EngineBuildingBlocks/SystemTime.h
    CubemapReprojection/OculusVR/GraphicsAPI.h
    CubemapReprojection/OculusVR/SimpleVR.h
@@ -116,12 +115,13 @@ set(pluginutil_HEADERS
    CubemapReprojection/OpenGLRender/Resources/VertexArrayObject.h
    CubemapReprojection/OpenGLRender/Resources/VertexBuffer.h
    CubemapReprojection/OpenGLRender/OpenGL.h
+   CubemapReprojection/CR_Common.h
    CubemapReprojection/CR_Message.h
-   CubemapReprojection/CR_Settings.h
    CubemapReprojection/CubemapReprojector.h
    CubemapReprojection/GridGeometry.h
    CubemapReprojection/GridReprojector.h
    CubemapReprojection/OpenGLHelper.h
+   CubemapReprojection/Settings.h
 )
 
 include_directories(

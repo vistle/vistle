@@ -7,7 +7,7 @@
 
 #include <GridGeometry.h>
 #include <CR_Message.h>
-#include <CR_Settings.h>
+#include <CR_Common.h>
 
 using namespace EngineBuildingBlocks::Graphics;
 using namespace OpenGLRender;
