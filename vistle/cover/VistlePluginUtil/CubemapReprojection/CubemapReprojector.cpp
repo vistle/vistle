@@ -94,8 +94,9 @@ private:
 	EngineBuildingBlocks::Graphics::FreeCamera m_ClientCameraCopy;
 	EngineBuildingBlocks::Graphics::CubemapCameraGroup m_ServerCubemapCameraGroup, m_ServerCubemapCameraGroupForAdjustment;
 
-	glm::mat4 m_ConstantViewInverse;
+	glm::mat4 m_ViewMatrix;
 	bool m_IsClientCameraMovementAllowed = false;
+	bool m_IsClientCameraInitialized = false;
 
 	GridReprojector m_GridReprojector;
 	bool m_IsUsingWireframe = false;
@@ -209,7 +210,7 @@ public:
 		unsigned short* serverWidth, unsigned short* serverHeight,
 		const double* leftViewMatrix, const double* rightViewMatrix,
 		const double* leftProjMatrix, const double* rightProjMatrix,
-		double* viewMatrix, double* projMatrix);
+		double* modelMatrix, double* viewMatrix, double* projMatrix);
 
 	void SetNewServerCamera(int viewIndex,
 		const double* model, const double* view, const double* proj);
@@ -254,11 +255,11 @@ void CubemapReprojector::AdjustDimensionsAndMatrices(unsigned viewIndex,
 	unsigned short* serverWidth, unsigned short* serverHeight,
 	const double* leftViewMatrix, const double* rightViewMatrix,
 	const double* leftProjMatrix, const double* rightProjMatrix,
-	double* viewMatrix, double* projMatrix)
+	double* modelMatrix, double* viewMatrix, double* projMatrix)
 {
 	m_Implementor->AdjustDimensionsAndMatrices(viewIndex, clientWidth, clientHeight,
 		serverWidth, serverHeight, leftViewMatrix, rightViewMatrix,
-		leftProjMatrix, rightProjMatrix, viewMatrix, projMatrix);
+		leftProjMatrix, rightProjMatrix, modelMatrix, viewMatrix, projMatrix);
 }
 
 void CubemapReprojector::SetNewServerCamera(int viewIndex,
@@ -332,6 +333,7 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 
 // For debugging:
 #include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
+#include <EngineBuildingBlocks/Math/Matrix.h>
 
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
@@ -608,7 +610,7 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	, m_InitializedOpenGLContextId(Core::c_InvalidIndexU)
 	, m_KeyHandler(&m_EventManager)
 	, m_MouseHandler(&m_EventManager)
-	, m_ConstantViewInverse(0.0f)
+	, m_ViewMatrix(0.0f)
 #if(IS_OCULUS_ENABLED)
 	, m_IsVRGraphicsInitialized(false)
 #endif
@@ -1196,7 +1198,7 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 	unsigned short* serverWidth, unsigned short* serverHeight,
 	const double* leftViewMatrix, const double* rightViewMatrix,
 	const double* leftProjMatrix, const double* rightProjMatrix,
-	double* viewMatrix, double* projMatrix)
+	double* modelMatrix, double* viewMatrix, double* projMatrix)
 {
 	// TODO: we are currently not synchronising dimesions.
 
@@ -1230,12 +1232,13 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 			}
 		}
 
+		// Setting view matrix.
 		auto leftViewTr = ToRigidTransformation(leftViewMatrix);
 		auto rightViewTr = ToRigidTransformation(rightViewMatrix);
 		assert(leftViewTr.Orientation == rightViewTr.Orientation);
 		auto pos = (leftViewTr.Position + rightViewTr.Position) * 0.5f;
-		auto viewTr = RigidTransformation(leftViewTr.Orientation, pos);
-		m_ServerCameraForAdjustment.SetFromViewMatrix(viewTr.AsMatrix4());
+		m_ViewMatrix = RigidTransformation(leftViewTr.Orientation, pos).AsMatrix4();	 
+		m_ServerCameraForAdjustment.SetFromViewMatrix(m_ViewMatrix);
 
 		auto leftProj = ToProjection(leftProjMatrix);
 		auto rightProj = ToProjection(rightProjMatrix);
@@ -1280,6 +1283,17 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 
 	CreateFromMatrix(camera->GetViewMatrix(), viewMatrix);
 	CreateFromMatrix(camera->GetProjectionMatrix(), projMatrix);
+
+	// Setting model matrix.
+	if (m_IsClientCameraInitialized)
+	{
+		// TODO: apply DENOISED VR-view matrices here for VR!
+
+		auto clientModelView = m_ClientCameraCopy.GetViewMatrix();
+
+		auto model = glm::inverse(m_ViewMatrix) * clientModelView;
+		CreateFromMatrix(model, modelMatrix);
+	}
 }
 
 inline void SetCameraFromMatrices(Camera& camera, const double* model, const double* view, const double* proj)
@@ -1300,19 +1314,17 @@ void CubemapReprojectorImplementor::SetNewServerCamera(int viewIndex,
 
 void CubemapReprojectorImplementor::SetClientCamera(const double* model, const double* view, const double* proj)
 {
-	bool isFirstFrame = (m_ConstantViewInverse == glm::mat4(0.0f));
+	assert(m_ViewMatrix != glm::mat4(0.0f));
 
 	// This condition is incorrect, we should update the client camera copy,
 	// but this way we can prevent control feedback. This is only used for debugging.
-	if (isFirstFrame || !m_IsClientCameraMovementAllowed)
+	if (!m_IsClientCameraInitialized || !m_IsClientCameraMovementAllowed)
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 		SetCameraFromMatrices(m_ClientCameraCopy, model, view, proj);
 	}
-	if (isFirstFrame)
-	{
-		m_ConstantViewInverse = glm::inverse(ToMatrix(view));
-	}
+
+	m_IsClientCameraInitialized = true;
 }
 
 void CubemapReprojectorImplementor::ResizeView(int viewIndex, int w, int h, unsigned depthFormat)
@@ -1492,9 +1504,9 @@ void CubemapReprojectorImplementor::GetModelMatrix(double* model, bool* pIsValid
 {
 	std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 	auto modelView = m_ClientCameraCopy.GetViewMatrix();
-	auto modelMatrix = m_ConstantViewInverse * modelView;
+	auto modelMatrix = glm::inverse(m_ViewMatrix) * modelView;
 	CreateFromMatrix(modelMatrix, model);
-	*pIsValid = (m_ConstantViewInverse != glm::mat4(0.0f));
+	*pIsValid = (m_ViewMatrix != glm::mat4(0.0f));
 }
 
 void CubemapReprojectorImplementor::SetClientCameraMovementAllowed(bool isAllowed)

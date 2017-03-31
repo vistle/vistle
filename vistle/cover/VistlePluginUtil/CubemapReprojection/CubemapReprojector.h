@@ -26,7 +26,7 @@ public:
 		unsigned short* serverWidth, unsigned short* serverHeight,
 		const double* leftViewMatrix, const double* rightViewMatrix,
 		const double* leftProjMatrix, const double* rightProjMatrix,
-		double* viewMatrix, double* projMatrix);
+		double* modelMatrix, double* viewMatrix, double* projMatrix);
 
 	void SetNewServerCamera(int viewIndex,
 		const double* model, const double* view, const double* proj);
