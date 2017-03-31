@@ -99,7 +99,7 @@ void ThreadingHelper::GetTaskIndices(const unsigned* taskSizes, unsigned countTa
 			taskData.TaskSize = taskSizes[i];
 			taskDatas.push_back(taskData);
 		}
-		std::sort(taskDatas.begin(), taskDatas.end(), std::greater<>());
+		std::sort(taskDatas.begin(), taskDatas.end(), std::greater<TaskData>());
 	}
 
 	if (countThreads <= 32) // We use linear search and avoid every memory allocation.
