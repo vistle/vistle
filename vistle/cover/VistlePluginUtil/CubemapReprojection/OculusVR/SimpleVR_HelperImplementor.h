@@ -110,12 +110,13 @@ namespace OculusVR
 			const glm::mat3& inputViewOrientation,
 			glm::vec3& outputPosition,
 			glm::mat3& outputViewOrientation,
+			float eyePositionMultiplier,
 			float cameraNear, float cameraFar,
 			PerspectiveProjectionParameters& projectionParameters)
 		{
 			// Setting camera view.
 			auto eyePosition = glm::vec3(m_EyeRenderPose[eyeIndex].Position.x, m_EyeRenderPose[eyeIndex].Position.y,
-				m_EyeRenderPose[eyeIndex].Position.z);
+				m_EyeRenderPose[eyeIndex].Position.z) * eyePositionMultiplier;
 			auto eyeOrientation = glm::mat3_cast(glm::quat(m_EyeRenderPose[eyeIndex].Orientation.w, m_EyeRenderPose[eyeIndex].Orientation.x,
 				m_EyeRenderPose[eyeIndex].Orientation.y, m_EyeRenderPose[eyeIndex].Orientation.z));
 

@@ -66,6 +66,14 @@ void Camera::DeserializeSB(const unsigned char*& bytes)
 
 void Camera::SetFromViewMatrix(const glm::mat4& viewMatrix)
 {
+	m_ViewMatrix = viewMatrix;
+	m_SceneNode.SetLocation(ViewToTransformation(viewMatrix));
+	m_SceneNode.SetTransformationUpToDateForUser();
+	m_IsViewProjectionMatrixRecomputationNeeded = true;
+}
+
+glm::mat4 Camera::ViewToTransformation(const glm::mat4& viewMatrix)
+{
 	glm::mat3 a(viewMatrix);
 	auto aInv = glm::transpose(a);
 
@@ -75,22 +83,23 @@ void Camera::SetFromViewMatrix(const glm::mat4& viewMatrix)
 	transformation[2] = glm::vec4(glm::normalize(aInv[0]), 0.0f);
 	transformation[3] = glm::vec4(-aInv * glm::vec3(viewMatrix[3]), 1.0f);
 
-	m_ViewMatrix = viewMatrix;
-	m_SceneNode.SetLocation(transformation);
-	m_SceneNode.SetTransformationUpToDateForUser();
-	m_IsViewProjectionMatrixRecomputationNeeded = true;
+	return transformation;
 }
 
-void Camera::SetViewMatrix(const EngineBuildingBlocks::ScaledTransformation& worldTransformation, glm::mat4& viewMatrix)
+glm::mat4 Camera::TransformationToView(const glm::mat4& transformationMatrix)
 {
-	auto& position = worldTransformation.Position;
+	glm::vec3 position = transformationMatrix[3];
 
 	// Making the base orthonormal.
-	auto direction = glm::normalize(worldTransformation.A[0]);
-	auto right = glm::normalize(glm::cross(direction, worldTransformation.A[1]));
+	auto direction = glm::normalize((glm::vec3)transformationMatrix[0]);
+	auto right = glm::normalize(glm::cross(direction, (glm::vec3)transformationMatrix[1]));
 	auto up = glm::cross(right, direction);
 
-	// Computing view matrix.
+	glm::mat4 viewMatrix(glm::uninitialize);
+	viewMatrix[0][3] = 0.0f;
+	viewMatrix[1][3] = 0.0f;
+	viewMatrix[2][3] = 0.0f;
+	viewMatrix[3][3] = 1.0f;
 	viewMatrix[0][0] = right.x;
 	viewMatrix[1][0] = right.y;
 	viewMatrix[2][0] = right.z;
@@ -103,13 +112,15 @@ void Camera::SetViewMatrix(const EngineBuildingBlocks::ScaledTransformation& wor
 	viewMatrix[3][0] = -glm::dot(right, position);
 	viewMatrix[3][1] = -glm::dot(up, position);
 	viewMatrix[3][2] = glm::dot(direction, position);
+
+	return viewMatrix;
 }
 
 void Camera::UpdateViewMatrix()
 {
 	if (m_SceneNode.IsTransformationDirtyForUser())
 	{
-		SetViewMatrix(m_SceneNode.GetWorldTransformation(), m_ViewMatrix);
+		m_ViewMatrix = TransformationToView(m_SceneNode.GetWorldTransformation().AsMatrix4());
 
 		m_SceneNode.SetTransformationUpToDateForUser();
 

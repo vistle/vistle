@@ -50,11 +50,12 @@ void VR_Helper::UpdateBeforeRendering(unsigned eyeIndex,
 	const glm::mat3& inputViewOrientation,
 	glm::vec3& outputPosition,
 	glm::mat3& outputViewOrientation,
+	float eyePositionMultiplier,
 	float cameraNear, float cameraFar,
 	PerspectiveProjectionParameters& projectionParameters)
 {
 	m_Implementor->SetCamera(eyeIndex, inputPosition, inputViewOrientation, outputPosition, outputViewOrientation,
-		cameraNear, cameraFar, projectionParameters);
+		eyePositionMultiplier, cameraNear, cameraFar, projectionParameters);
 
 	if ((m_Implementor->Flags & VR_Flags::SetUpViewportForRendering) != 0)
 	{

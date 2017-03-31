@@ -10,8 +10,9 @@
   <Property name="SideVisiblePortion" value="0.5" />
   <Property name="PosZVisiblePortion" value="0" />
   
-  <Property name="MinPosDiffForServer" value="1e-2" />
-  <Property name="MinDirCrossForServer" value="1e-1" />
+  <Property name="VRServerViewPositionQuantum" value="10" />
+  <Property name="VRServerViewAngleQuantum" value="5" />
+  <Property name="EyePositionMultiplier" value="1.0" />
 
   <GridReprojection>
     <Property name="IsMultisamplingEnabled" value="1" />

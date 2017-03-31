@@ -69,9 +69,8 @@ namespace EngineBuildingBlocks
 
 			void SetFromViewMatrix(const glm::mat4& viewMatrix);
 
-			static void SetViewMatrix(
-				const EngineBuildingBlocks::ScaledTransformation& worldTransformation,
-				glm::mat4& viewMatrix);
+			static glm::mat4 ViewToTransformation(const glm::mat4& viewMatrix);
+			static glm::mat4 TransformationToView(const glm::mat4& transformationMatrix);
 
 		private: // Projection related functions.
 

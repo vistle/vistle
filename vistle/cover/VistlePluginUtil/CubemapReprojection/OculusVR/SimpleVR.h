@@ -74,6 +74,7 @@ namespace OculusVR
 			const glm::mat3& inputViewOrientation,
 			glm::vec3& outputPosition,
 			glm::mat3& outputViewOrientation,
+			float eyePositionMultiplier,
 			float cameraNear, float cameraFar,
 			PerspectiveProjectionParameters& projectionParameters);
 		void OnRenderingFinished();

@@ -163,8 +163,9 @@ private: // Configuration.
 	bool m_IsContainingAlpha = false;
 	float m_SideVisiblePortion = 0.0f;
 	float m_PosZVisiblePortion = 0.0f;
-	float m_MinPosDiffForServer = 0.0f;
-	float m_MinDirCrossForServer = 0.0f;
+	float m_VRServerViewPositionQuantum = 0.0f;
+	float m_VRServerViewAngleQuantum = 0.0f;
+	float m_EyePositionMultiplier = 1.0f;
 
 private: // Serialization.
 
@@ -184,6 +185,7 @@ private: // VR.
 	void InitializeVR();
 	void InitializeVRGraphics();
 	void ReleaseVR();
+	void DenoiseViewMatrix(glm::mat4& view);
 
 #endif
 
@@ -753,7 +755,12 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	if (m_IsRenderingInVR)
 	{
 		UpdateVRData();
+		if(m_RenderMode != RenderMode::Default)
+			glViewport(0, 0, m_ClientWidth, m_ClientHeight);
+	}
 
+	if (m_IsRenderingInVR && m_RenderMode == RenderMode::Default)
+	{
 		for (unsigned i = 0; i < 2; i++)
 		{
 			m_FBOs[i].Bind();
@@ -887,7 +894,7 @@ void CubemapReprojectorImplementor::UpdateVRData()
 		auto& outputCamera = *m_VRCameras[i];
 
 		m_VRHelper->UpdateBeforeRendering(i, inputCamera.GetPosition(), inputCamera.GetViewOrientation(),
-			outputPosition, outputViewOrientation, n, f, projParams);
+			outputPosition, outputViewOrientation, m_EyePositionMultiplier, n, f, projParams);
 
 		outputCamera.SetPosition(outputPosition);
 		outputCamera.SetViewOrientation(outputViewOrientation);
@@ -897,6 +904,23 @@ void CubemapReprojectorImplementor::UpdateVRData()
 }
 
 #endif
+
+void CubemapReprojectorImplementor::DenoiseViewMatrix(glm::mat4& view)
+{
+	auto transformation = Camera::ViewToTransformation(view);
+	
+	glm::vec3 position = transformation[3];
+	position = glm::round(position / m_VRServerViewPositionQuantum) * m_VRServerViewPositionQuantum;
+	
+	glm::vec3 eulerAngle;
+	glm::extractEulerAngleXYZ(transformation, eulerAngle.x, eulerAngle.y, eulerAngle.z);
+	eulerAngle = glm::radians(glm::round(glm::degrees(eulerAngle) / m_VRServerViewAngleQuantum) * m_VRServerViewAngleQuantum);
+	transformation = glm::eulerAngleXYZ(eulerAngle.x, eulerAngle.y, eulerAngle.z);
+	
+	reinterpret_cast<glm::vec3&>(transformation[3]) = position;
+
+	view = Camera::TransformationToView(transformation);
+}
 
 ///////////////////////////////////// CONFIGURATION, SERIALIZATION /////////////////////////////////////
 
@@ -915,8 +939,9 @@ void CubemapReprojectorImplementor::LoadConfiguration()
 	InitializeRootProperty(m_Configuration, "IsContainingAlpha", m_IsContainingAlpha);
 	InitializeRootProperty(m_Configuration, "SideVisiblePortion", m_SideVisiblePortion);
 	InitializeRootProperty(m_Configuration, "PosZVisiblePortion", m_PosZVisiblePortion);
-	InitializeRootProperty(m_Configuration, "MinPosDiffForServer", m_MinPosDiffForServer);
-	InitializeRootProperty(m_Configuration, "MinDirCrossForServer", m_MinDirCrossForServer);
+	InitializeRootProperty(m_Configuration, "VRServerViewPositionQuantum", m_VRServerViewPositionQuantum);
+	InitializeRootProperty(m_Configuration, "VRServerViewAngleQuantum", m_VRServerViewAngleQuantum);
+	InitializeRootProperty(m_Configuration, "EyePositionMultiplier", m_EyePositionMultiplier);
 
 #if(!IS_OCULUS_ENABLED)
 	m_IsRenderingInVR = false;
@@ -1288,10 +1313,16 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 	// Setting model matrix.
 	if (m_IsClientCameraInitialized)
 	{
-		// TODO: apply DENOISED VR-view matrices here for VR!
-
-		auto clientModelView = m_ClientCameraCopy.GetViewMatrix();
-
+		glm::mat4 clientModelView;
+		if (m_IsRenderingInVR)
+		{
+			clientModelView = (m_VRCameras[0]->GetViewMatrix() + m_VRCameras[1]->GetViewMatrix()) * 0.5f;
+			DenoiseViewMatrix(clientModelView);
+		}
+		else
+		{
+			clientModelView = m_ClientCameraCopy.GetViewMatrix();
+		}
 		auto model = glm::inverse(m_ViewMatrix) * clientModelView;
 		CreateFromMatrix(model, modelMatrix);
 	}
