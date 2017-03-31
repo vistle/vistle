@@ -139,7 +139,12 @@ include_directories(
 		$ENV{EXTERNLIBS}/glm
 )
 
-vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
+file(GLOB_RECURSE pluginutil_SHADERS "CubemapReprojection/Shaders/*.glsl")
+file(GLOB_RECURSE pluginutil_CONFIGS "CubemapReprojection/Configurations/*.xml")
+source_group("Shaders" FILES ${pluginutil_SHADERS})
+source_group("Configurations" FILES ${pluginutil_CONFIGS})
+
+vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS} ${pluginutil_SHADERS} ${pluginutil_CONFIGS})
 
 target_link_libraries(VistlePluginUtil
         ${Boost_LIBRARIES}
