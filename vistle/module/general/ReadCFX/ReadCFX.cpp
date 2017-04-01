@@ -32,7 +32,7 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
-//#define PARALLEL_ZONES
+#define PARALLEL_ZONES
 
 
 namespace bf = boost::filesystem;
@@ -679,7 +679,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
 #endif
 
-    grid->cl().resize(elemListCounter+1); //correct initialization; initialized with connectivities in zone; connectivities in 3dArea <= connectivities in zone
+    grid->cl().resize(elemListCounter+1); //correct initialization; initialized with connectivities in zone but connectivities in 3dArea are less equal (<=) than connectivities in zone
     //element after last element
     ptrOnEl[nelmsIn3dArea] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
@@ -837,9 +837,10 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     }
 
     //element after last element in element list and connectivity list
+    polygon->cl().resize(elemListCounter);
     ptrOnEl[nFacesIn2dArea] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
-    polygon->cl().resize(elemListCounter);
+
 
     //Test, ob Einlesen funktioniert hat
 //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << nConnectIn2dArea << std::endl;
@@ -1151,7 +1152,7 @@ bool ReadCFX::loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, i
 
     for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
-      std::cerr << "field = " << field << std::endl;
+//      std::cerr << "field = " << field << std::endl;
 
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
