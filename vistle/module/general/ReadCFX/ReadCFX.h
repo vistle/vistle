@@ -38,6 +38,14 @@ struct Variable {
     std::vector<IdWithZoneFlag> vectorIdwithZone;
 };
 
+struct Particle {
+    Particle(std::string Type, std::string Name, int Dimension, int ID, int zone);
+    std::string particleType;
+    std::string varName;
+    int varDimension;
+    std::vector<IdWithZoneFlag> vectorIdwithZone;
+};
+
 struct Boundary {
     Boundary(std::string Name, int ID, int zone);
     std::string boundName;
@@ -53,13 +61,14 @@ struct Region {
 class CaseInfo {
 public:
     CaseInfo();
-    std::vector<std::string> m_field_param, m_boundary_param, m_region_param;
+    std::vector<std::string> m_field_param, m_boundary_param, m_region_param, m_particle_types;
     std::vector<std::string> m_variableInTransientFile;
     bool m_valid;
     std::vector<Variable> m_allParam;
+    std::vector<Particle> m_allParticle;
     std::vector<Boundary> m_allBoundaries;
     std::vector<Region> m_allRegions;
-    index_t m_numberOfVariables, m_numberOfBoundaries, m_numberOfRegions;
+    index_t m_numberOfVariables, m_numberOfBoundaries, m_numberOfRegions, m_numberOfParticles;
 
     bool checkFile(const char *filename);
     void parseResultfile();
@@ -76,6 +85,7 @@ public:
 class ReadCFX: public vistle::Module {
     static const int NumPorts = 3;
     static const int Num2dPorts = 3;
+    static const int NumParticlePorts = 3;
     static const int correct = 1; //correct indicates whether to correct boundary node data according to the boundary condition (correct=1)
                                   //or not (correct=0) (result out of calculation), assuming that it exists.
 
@@ -93,19 +103,19 @@ class ReadCFX: public vistle::Module {
    bool m_ExportDone; // m_addToPortResfileVolumeData, m_addToPortResfile2dData;
 
    //Parameter
-   vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection;
+   vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection, *m_particleSelection;
    vistle::IntParameter *m_firsttimestep, *m_lasttimestep;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
-   std::vector<vistle::StringParameter *> m_fieldOut, m_2dOut;
-   vistle::coRestraint m_coRestraintZones, m_coRestraint2dAreas;
+   std::vector<vistle::StringParameter *> m_fieldOut, m_2dOut, m_particleOut;
+   vistle::coRestraint m_coRestraintZones, m_coRestraint2dAreas, m_coRestraintParticle;
 
    index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps, m_nregions; // m_nboundaries, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
    int m_previousTimestep = 1;
 
    //Ports
    vistle::Port *m_gridOut, *m_polyOut;
-   std::vector<vistle::Port *> m_volumeDataOut, m_2dDataOut;
+   std::vector<vistle::Port *> m_volumeDataOut, m_2dDataOut, m_particleDataOut;
 
    //Data
    CaseInfo m_case;
@@ -115,7 +125,7 @@ class ReadCFX: public vistle::Module {
    std::vector<Areas2d> m_2dAreasSelected;
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
-   std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData;
+   std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
@@ -137,6 +147,7 @@ class ReadCFX: public vistle::Module {
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes);
    bool free2dArea(const char *area2dType, int area2d);
+   bool loadParticles();
 
 };
 
