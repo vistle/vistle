@@ -43,7 +43,18 @@ struct Particle {
     std::string particleType;
     std::string varName;
     int varDimension;
-    std::vector<IdWithZoneFlag> vectorIdwithZone;
+    IdWithZoneFlag idWithZone;
+};
+
+struct ParticleData {
+    ParticleData();
+    std::float_t timestep;
+    std::vector<float> x_coord;
+    std::vector<float> y_coord;
+    std::vector<float> z_coord;
+    std::vector<float> x_value;
+    std::vector<float> y_value;
+    std::vector<float> z_value;
 };
 
 struct Boundary {
@@ -77,6 +88,7 @@ public:
     std::vector<Boundary> getCopyOfAllBoundaries();
     index_t getNumberOfBoundaries();
     std::vector<Region> getCopyOfAllRegions();
+    std::vector<Particle> getCopyOfAllParticles();
     std::vector<std::string> getCopyOfTrnVars();
     index_t getNumberOfRegions();
     bool checkWhichVariablesAreInTransientFile(index_t ntimesteps);
@@ -123,21 +135,29 @@ class ReadCFX: public vistle::Module {
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_3dAreasSelected;
    std::vector<Areas2d> m_2dAreasSelected;
+   std::vector<std::int32_t> m_particleTypesSelected;
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
+   vistle::Coords::ptr m_coordsOfParticleTime;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
+   std::vector<ParticleData> m_particleDataTimestepSorted;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
+   int rankForParticleTypeNumber(int particleTypeNumber) const;
    vistle::UnstructuredGrid::ptr loadGrid(int area3d);
    vistle::Polygons::ptr loadPolygon(int area2d);
+   vistle::Coords::ptr loadParticleTrackCoords();
    vistle::DataBase::ptr loadField(int area3d, Variable var);
    vistle::DataBase::ptr load2dField(int area2d, Variable var);
+   vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle);
    bool initializeResultfile();
    bool loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
+   bool loadParticles(int particleTypeNumber, index_t numSelParticles);
    index_t collect3dAreas();
    index_t collect2dAreas();
+   index_t collectParticles();
    bool addVolumeDataToPorts();
    bool add2dDataToPorts();
    bool addGridToPort(int area3d);
@@ -145,9 +165,10 @@ class ReadCFX: public vistle::Module {
    void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
-   bool readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, bool trnOrRes);
+   bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, bool trnOrRes);
    bool free2dArea(const char *area2dType, int area2d);
-   bool loadParticles();
+
+
 
 };
 
