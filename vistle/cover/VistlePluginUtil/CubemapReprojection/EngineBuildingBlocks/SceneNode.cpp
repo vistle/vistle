@@ -1,7 +1,5 @@
 // EngineBuildingBlocks/SceneNode.cpp
 
-#include <Settings.h>
-
 #include <EngineBuildingBlocks/SceneNode.h>
 
 #include <Core/Constants.h>
@@ -1079,7 +1077,7 @@ void SceneNodeHandler::UpdateTransformationsInThreadWithoutParent(unsigned threa
 	auto transformations = m_ScaledWorldTransformation.GetArray();
 	auto invTransformations = m_InverseScaledWorldTransformation.GetArray();
 
-#if(IS_USING_AVX2)
+#if(CR_IS_USING_AVX2)
 
 	unsigned laneIndex = 0;
 	const unsigned c_CountLanes = 8;
@@ -1187,7 +1185,7 @@ void SceneNodeHandler::UpdateTransformationsInThreadWithParent(unsigned threadId
 	auto transformations = m_ScaledWorldTransformation.GetArray();
 	auto invTransformations = m_InverseScaledWorldTransformation.GetArray();
 
-#if(IS_USING_AVX2)
+#if(CR_IS_USING_AVX2)
 
 	unsigned laneIndex = 0;
 	const unsigned c_CountLanes = 8;

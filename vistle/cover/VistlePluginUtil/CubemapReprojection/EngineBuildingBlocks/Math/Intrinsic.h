@@ -3,9 +3,7 @@
 #ifndef _ENGINEBUILDINGBLOCKS_INTRINSIC_H_INCLUDED_
 #define _ENGINEBUILDINGBLOCKS_INTRINSIC_H_INCLUDED_
 
-#include <Settings.h>
-
-#if(IS_USING_AVX2)
+#if(CR_IS_USING_AVX2)
 
 #include <intrin.h>
 #include <cstring>
@@ -266,6 +264,6 @@ inline __forceinline void ToInt(const __m256d& doubles1, const __m256d& doubles2
 		= _mm256_cvtpd_epi32(doubles2);
 }
 
-#endif // if(IS_USING_AVX2)
+#endif // if(CR_IS_USING_AVX2)
 
 #endif

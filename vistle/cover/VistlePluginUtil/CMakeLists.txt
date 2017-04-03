@@ -1,6 +1,11 @@
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system filesystem)
 using(GLEW)
 
+set(CR_IsUsingAVX2 1)
+set(CR_IsOculusEnabled 1)
+add_definitions(-DCR_IS_USING_AVX2=${CR_IsUsingAVX2})
+add_definitions(-DCR_IS_OCULUS_ENABLED=${CR_IsOculusEnabled})
+
 vistle_find_package(glm)
 
 set(pluginutil_SOURCES
@@ -25,8 +30,6 @@ set(pluginutil_SOURCES
    CubemapReprojection/EngineBuildingBlocks/PathHandler.cpp
    CubemapReprojection/EngineBuildingBlocks/SceneNode.cpp
    CubemapReprojection/EngineBuildingBlocks/SystemTime.cpp
-   CubemapReprojection/OculusVR/SimpleVR.cpp
-   CubemapReprojection/OculusVR/SimpleVR_GL.cpp
    CubemapReprojection/OpenGLRender/Resources/Buffer.cpp
    CubemapReprojection/OpenGLRender/Resources/FrameBufferObject.cpp
    CubemapReprojection/OpenGLRender/Resources/IndexBuffer.cpp
@@ -41,8 +44,6 @@ set(pluginutil_SOURCES
    CubemapReprojection/GridGeometry.cpp
    CubemapReprojection/GridReprojector.cpp
    CubemapReprojection/OpenGLHelper.cpp
-
-   CubemapReprojection/CubemapReprojector.cpp
 )
 
 set(pluginutil_HEADERS
@@ -100,10 +101,6 @@ set(pluginutil_HEADERS
    CubemapReprojection/EngineBuildingBlocks/PathHandler.h
    CubemapReprojection/EngineBuildingBlocks/SceneNode.h
    CubemapReprojection/EngineBuildingBlocks/SystemTime.h
-   CubemapReprojection/OculusVR/GraphicsAPI.h
-   CubemapReprojection/OculusVR/SimpleVR.h
-   CubemapReprojection/OculusVR/SimpleVR_GL.h
-   CubemapReprojection/OculusVR/SimpleVR_HelperImplementor.h
    CubemapReprojection/OpenGLRender/Resources/Buffer.h
    CubemapReprojection/OpenGLRender/Resources/FrameBufferObject.h
    CubemapReprojection/OpenGLRender/Resources/IndexBuffer.h
@@ -121,7 +118,6 @@ set(pluginutil_HEADERS
    CubemapReprojection/GridGeometry.h
    CubemapReprojection/GridReprojector.h
    CubemapReprojection/OpenGLHelper.h
-   CubemapReprojection/Settings.h
 )
 
 include_directories(
@@ -139,6 +135,17 @@ include_directories(
 		$ENV{EXTERNLIBS}/glm
 )
 
+if(${CR_IsOculusEnabled})
+	list(APPEND pluginutil_SOURCES
+		CubemapReprojection/OculusVR/SimpleVR.cpp
+		CubemapReprojection/OculusVR/SimpleVR_GL.cpp)
+	list(APPEND pluginutil_HEADERS
+		CubemapReprojection/OculusVR/GraphicsAPI.h
+		CubemapReprojection/OculusVR/SimpleVR.h
+		CubemapReprojection/OculusVR/SimpleVR_GL.h
+		CubemapReprojection/OculusVR/SimpleVR_HelperImplementor.h)
+endif()
+
 file(GLOB_RECURSE pluginutil_SHADERS "CubemapReprojection/Shaders/*.glsl")
 file(GLOB_RECURSE pluginutil_CONFIGS "CubemapReprojection/Configurations/*.xml")
 source_group("Shaders" FILES ${pluginutil_SHADERS})
@@ -151,7 +158,10 @@ target_link_libraries(VistlePluginUtil
         ${OPENSCENEGRAPH_LIBRARIES}
         ${COVER_LIBRARY}
         vistle_core
-
-		$ENV{EXTERNLIBS}/OculusSDK/LibOVR/Lib/Windows/x64/Release/VS2015/LibOVR.lib
-		$ENV{EXTERNLIBS}/OculusSDK/LibOVRKernel/Lib/Windows/x64/Release/VS2015/LibOVRKernel.lib
 )
+
+if(${CR_IsOculusEnabled})
+	target_link_libraries(VistlePluginUtil
+		$ENV{EXTERNLIBS}/OculusSDK/LibOVR/Lib/Windows/x64/Release/VS2015/LibOVR.lib
+		$ENV{EXTERNLIBS}/OculusSDK/LibOVRKernel/Lib/Windows/x64/Release/VS2015/LibOVRKernel.lib)
+endif()

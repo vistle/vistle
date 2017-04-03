@@ -5,8 +5,6 @@
 
 #include <CubemapReprojector.h>
 
-#include <Settings.h>
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////// IMPLEMENTOR ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,7 +25,7 @@
 #include <OpenGLRender/Resources/Texture2D.h>
 #include <OpenGLRender/Resources/FrameBufferObject.h>
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 
 #include <OculusVR/SimpleVR.h>
 
@@ -172,7 +170,7 @@ private: // Serialization.
 	void SaveClientCameraLocation();
 	void LoadClientCameraLocation();
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 
 private: // VR.
 
@@ -328,7 +326,7 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 #include <Core/System/Filesystem.h>
 #include <EngineBuildingBlocks/ErrorHandling.h>
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 
 #include <OculusVR/SimpleVR_GL.h>
 
@@ -614,7 +612,7 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	, m_KeyHandler(&m_EventManager)
 	, m_MouseHandler(&m_EventManager)
 	, m_ViewMatrix(0.0f)
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 	, m_IsVRGraphicsInitialized(false)
 #endif
 {
@@ -626,7 +624,7 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	m_GridReprojector.SetClearingBuffers(m_IsRenderingInVR);
 	m_GridReprojector.SetCullingEnabled(true);
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		InitializeVR();
@@ -692,7 +690,7 @@ void CubemapReprojectorImplementor::Destroy()
 	m_IsShuttingDown = true;
 	m_ThreadPool.Join();
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		ReleaseVR();
@@ -721,7 +719,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 
 	m_GridReprojector.Update();
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 	// We have to postpone VR graphics initialization until this point, since the output FBO is not created
 	// at initialization time.
 	if (m_IsRenderingInVR)
@@ -751,7 +749,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 	if (m_IsRenderingInVR)
 	{
 		UpdateVRData();
@@ -811,7 +809,7 @@ void CubemapReprojectorImplementor::RenderReprojection(Camera& clientCamera)
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
 
-#if(IS_OCULUS_ENABLED)
+#if(CR_IS_OCULUS_ENABLED)
 
 void CubemapReprojectorImplementor::InitializeVR()
 {
@@ -903,24 +901,24 @@ void CubemapReprojectorImplementor::UpdateVRData()
 	}
 }
 
-#endif
-
 void CubemapReprojectorImplementor::DenoiseViewMatrix(glm::mat4& view)
 {
 	auto transformation = Camera::ViewToTransformation(view);
-	
+
 	glm::vec3 position = transformation[3];
 	position = glm::round(position / m_VRServerViewPositionQuantum) * m_VRServerViewPositionQuantum;
-	
+
 	glm::vec3 eulerAngle;
 	glm::extractEulerAngleXYZ(transformation, eulerAngle.x, eulerAngle.y, eulerAngle.z);
 	eulerAngle = glm::radians(glm::round(glm::degrees(eulerAngle) / m_VRServerViewAngleQuantum) * m_VRServerViewAngleQuantum);
 	transformation = glm::eulerAngleXYZ(eulerAngle.x, eulerAngle.y, eulerAngle.z);
-	
+
 	reinterpret_cast<glm::vec3&>(transformation[3]) = position;
 
 	view = Camera::TransformationToView(transformation);
 }
+
+#endif
 
 ///////////////////////////////////// CONFIGURATION, SERIALIZATION /////////////////////////////////////
 
@@ -943,7 +941,7 @@ void CubemapReprojectorImplementor::LoadConfiguration()
 	InitializeRootProperty(m_Configuration, "VRServerViewAngleQuantum", m_VRServerViewAngleQuantum);
 	InitializeRootProperty(m_Configuration, "EyePositionMultiplier", m_EyePositionMultiplier);
 
-#if(!IS_OCULUS_ENABLED)
+#if(!CR_IS_OCULUS_ENABLED)
 	m_IsRenderingInVR = false;
 #endif
 
@@ -1314,12 +1312,14 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 	if (m_IsClientCameraInitialized)
 	{
 		glm::mat4 clientModelView;
+#if(CR_IS_OCULUS_ENABLED)
 		if (m_IsRenderingInVR)
 		{
 			clientModelView = (m_VRCameras[0]->GetViewMatrix() + m_VRCameras[1]->GetViewMatrix()) * 0.5f;
 			DenoiseViewMatrix(clientModelView);
 		}
 		else
+#endif
 		{
 			clientModelView = m_ClientCameraCopy.GetViewMatrix();
 		}

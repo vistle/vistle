@@ -3,9 +3,7 @@
 #ifndef _ENGINEBUILDINGBLOCKS_VECTOR256_H_INCLUDED_
 #define _ENGINEBUILDINGBLOCKS_VECTOR256_H_INCLUDED_
 
-#include <Settings.h>
-
-#if(IS_USING_AVX2)
+#if(CR_IS_USING_AVX2)
 
 #include <EngineBuildingBlocks/Math/Intrinsic.h>
 
@@ -637,5 +635,5 @@ namespace EngineBuildingBlocks
 	}
 }
 
-#endif // #if(IS_USING_AVX2)
+#endif // #if(CR_IS_USING_AVX2)
 #endif // #ifndef _ENGINEBUILDINGBLOCKS_VECTOR256_H_INCLUDED_
