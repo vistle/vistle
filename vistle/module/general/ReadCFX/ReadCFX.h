@@ -152,7 +152,7 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr load2dField(int area2d, Variable var);
    vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle);
    bool initializeResultfile();
-   bool loadFieldsAndGrid(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
+   bool loadFields(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
    bool loadParticles(int particleTypeNumber, index_t numSelParticles);
    index_t collect3dAreas();
