@@ -6,7 +6,6 @@
   <Property name="IsLoadingClientCameraLocation" value="0" />
   <Property name="IsSavingFakeCubemapImages" value="0" />
 
-  <Property name="IsContainingAlpha" value="1" />
   <Property name="SideVisiblePortion" value="0.5" />
   <Property name="PosZVisiblePortion" value="0" />
   

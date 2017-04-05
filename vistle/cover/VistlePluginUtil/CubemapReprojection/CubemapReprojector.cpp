@@ -64,7 +64,8 @@ class CubemapReprojectorImplementor
 
 	EngineBuildingBlocks::SceneNodeHandler m_SceneNodeHandler;
 
-	void InitializeGL(unsigned openGLContextID);
+	void InitializeGL(unsigned openGLContextID, 
+		const glm::uvec2& serverSize, const glm::uvec2& clientSize);
 
 public: // Keys and mouse.
 
@@ -104,7 +105,7 @@ private:
 
 	OpenGLRender::FrameBufferObject m_FBO;
 
-	void CreateFBO();
+	void CreateFBO(const glm::uvec2& clientSize);
 
 	void UpdateVRData();
 	void RenderReprojection(
@@ -127,7 +128,8 @@ private: // Buffers.
 	unsigned GetBufferIndex(BufferType type, unsigned sideIndex, unsigned dbIndex);
 	void IncrementWriteBufferIndex();
 
-	void SynchronizeWithUpdating(bool* pIsTextureDataAvailable);
+	void SynchronizeWithUpdating(bool* pIsTextureDataAvailable,
+		glm::uvec2* pServerSize, glm::uvec2* pClientSize);
 
 	void SaveImageData();
 
@@ -141,14 +143,18 @@ private: // Textures.
 
 	unsigned m_CurrentTextureIndex;
 
-	void InitializeColorCubemap(unsigned resourceIndex);
-	void InitializeDepthTextureArrays(unsigned resourceIndex);
+	void InitializeColorCubemap(unsigned resourceIndex, const glm::uvec2& textureSize);
+	void InitializeDepthTextureArrays(unsigned resourceIndex, const glm::uvec2& textureSize);
 	void SetColorCubemapData(unsigned resourceIndex, unsigned char** ppData,
 		bool isContainigAlpha, glm::uvec2* start, glm::uvec2* end);
 	void SetDepthData(unsigned resourceIndex, unsigned char** ppData,
 		glm::uvec2* start, glm::uvec2* end);
 
-	void UpdateTextures(bool isTextureDataAvailable);
+	void UpdateTextures(bool isTextureDataAvailable, const glm::uvec2& textureSize);
+
+private: // Fixed by VISTLE.
+
+	bool m_IsContainingAlpha = true;
 
 private: // Configuration.
 
@@ -158,7 +164,6 @@ private: // Configuration.
 
 	bool m_IsRenderingInVR = false;
 	bool m_IsLoadingFakeCubemap = false;
-	bool m_IsContainingAlpha = false;
 	float m_SideVisiblePortion = 0.0f;
 	float m_PosZVisiblePortion = 0.0f;
 	float m_VRServerViewPositionQuantum = 0.0f;
@@ -181,7 +186,7 @@ private: // VR.
 	EngineBuildingBlocks::Graphics::Camera* m_VRCameras[2];
 
 	void InitializeVR();
-	void InitializeVRGraphics();
+	void InitializeVRGraphics(const glm::uvec2& clientSize);
 	void ReleaseVR();
 	void DenoiseViewMatrix(glm::mat4& view);
 
@@ -350,13 +355,13 @@ inline void PrintException(const std::exception& ex)
 
 ///////////////////////////////////// CUBEMAP TEXTURES /////////////////////////////////////
 
-void CubemapReprojectorImplementor::InitializeColorCubemap(unsigned resourceIndex)
+void CubemapReprojectorImplementor::InitializeColorCubemap(unsigned resourceIndex, const glm::uvec2& textureSize)
 {
 	auto& texture = m_ColorTextures[resourceIndex];
 	texture.Delete();
 	OpenGLRender::Texture2DDescription textureDesc;
-	textureDesc.Width = m_ServerWidth;
-	textureDesc.Height = m_ServerHeight;
+	textureDesc.Width = textureSize.x;
+	textureDesc.Height = textureSize.y;
 	textureDesc.ArraySize = 1;
 	textureDesc.Target = TextureTarget::TextureCubemap;
 	textureDesc.Format = TextureFormat::RGBA8;
@@ -368,7 +373,7 @@ void CubemapReprojectorImplementor::InitializeColorCubemap(unsigned resourceInde
 	texture.Initialize(textureDesc, samplingDesc);
 
 	// Setting 0 initially.
-	Core::ByteVectorU initData(c_CountCubemapSides * m_ServerWidth * m_ServerHeight * 4, 0);
+	Core::ByteVectorU initData(c_CountCubemapSides * textureSize.x * textureSize.y * 4, 0);
 
 	texture.Bind();
 	texture.SetData(initData.GetArray(), PixelDataFormat::RGBA, PixelDataType::Uint8);
@@ -390,13 +395,13 @@ void CubemapReprojectorImplementor::SetColorCubemapData(unsigned resourceIndex, 
 	texture.GenerateMipmaps();
 }
 
-void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resourceIndex)
+void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resourceIndex, const glm::uvec2& textureSize)
 {
 	auto& texture = m_DepthTextures[resourceIndex];
 	texture.Delete();
 	OpenGLRender::Texture2DDescription textureDesc;
-	textureDesc.Width = m_ServerWidth;
-	textureDesc.Height = m_ServerHeight;
+	textureDesc.Width = textureSize.x;
+	textureDesc.Height = textureSize.y;
 	textureDesc.ArraySize = 6;
 	textureDesc.Target = TextureTarget::Texture2DArray;
 	textureDesc.Format = TextureFormat::R32F;
@@ -408,12 +413,12 @@ void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resour
 	texture.Initialize(textureDesc, samplingDesc);
 
 	// Setting 1.0f initially.
-	Core::SimpleTypeVector<float> initData(c_CountCubemapSides * m_ServerWidth * m_ServerHeight, 1.0f);
+	Core::SimpleTypeVector<float> initData(c_CountCubemapSides * textureSize.x * textureSize.y, 1.0f);
 	unsigned char* ppData[c_CountCubemapSides];
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
 		ppData[i] = reinterpret_cast<unsigned char*>(
-			initData.GetArray() + i * m_ServerWidth * m_ServerHeight);
+			initData.GetArray() + i * textureSize.x * textureSize.y);
 	}
 
 	texture.Bind();
@@ -636,7 +641,8 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	InitializeInput();
 }
 
-void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID)
+void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID,
+	const glm::uvec2& serverSize, const glm::uvec2& clientSize)
 {
 	if (m_InitializedOpenGLContextId != Core::c_InvalidIndexU
 		&& m_InitializedOpenGLContextId != openGLContextID)
@@ -651,12 +657,10 @@ void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID)
 
 		auto shadersPath = m_PathHandler.GetPathFromRootDirectory("Shaders/");
 
-		m_IsContainingAlpha = true;
-
 		for (unsigned i = 0; i < c_CountTextures; i++)
 		{
-			InitializeColorCubemap(i);
-			InitializeDepthTextureArrays(i);
+			InitializeColorCubemap(i, serverSize);
+			InitializeDepthTextureArrays(i, serverSize);
 		}
 		m_CurrentTextureIndex = 0;
 
@@ -670,15 +674,15 @@ void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID)
 
 		m_InitializedOpenGLContextId = openGLContextID;
 
-		CreateFBO();
+		CreateFBO(clientSize);
 	}
 }
 
-void CubemapReprojectorImplementor::CreateFBO()
+void CubemapReprojectorImplementor::CreateFBO(const glm::uvec2& clientSize)
 {
 	auto target = (m_CountSamples == 1 ? TextureTarget::Texture2D : TextureTarget::Texture2DMS);
-	Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8, 1, m_CountSamples, target));
-	Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32, 1, m_CountSamples, target));
+	Texture2D colorTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::RGBA8, 1, m_CountSamples, target));
+	Texture2D depthTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::DepthComponent32, 1, m_CountSamples, target));
 	m_FBO.Initialize();
 	m_FBO.Bind();
 	m_FBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
@@ -704,7 +708,8 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 
 	// Synchronising with updating thread.
 	bool isTextureDataAvailable;
-	SynchronizeWithUpdating(&isTextureDataAvailable);
+	glm::uvec2 serverSize, clientSize;
+	SynchronizeWithUpdating(&isTextureDataAvailable, &serverSize, &clientSize);
 
 	// Getting previous state.
 	GLint prevActiveTexture, prevProgram, prevReadFBO, prevDrawFBO;
@@ -715,7 +720,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevDrawFBO);
 	}
 
-	InitializeGL(openGLContextID);
+	InitializeGL(openGLContextID, serverSize, clientSize);
 
 	m_GridReprojector.Update();
 
@@ -724,11 +729,11 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	// at initialization time.
 	if (m_IsRenderingInVR)
 	{
-		InitializeVRGraphics();
+		InitializeVRGraphics(clientSize);
 	}
 #endif
 
-	UpdateTextures(isTextureDataAvailable);
+	UpdateTextures(isTextureDataAvailable, serverSize);
 
 	m_ColorTextures[m_CurrentTextureIndex].Bind(0);
 	m_DepthTextures[m_CurrentTextureIndex].Bind(1);
@@ -737,7 +742,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	{
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevDrawFBO);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO.GetHandle());
-		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
+		glBlitFramebuffer(0, 0, clientSize.x, clientSize.y, 0, 0, clientSize.x, clientSize.y,
 			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 	}
 
@@ -754,7 +759,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	{
 		UpdateVRData();
 		if(m_RenderMode != RenderMode::Default)
-			glViewport(0, 0, m_ClientWidth, m_ClientHeight);
+			glViewport(0, 0, clientSize.x, clientSize.y);
 	}
 
 	if (m_IsRenderingInVR && m_RenderMode == RenderMode::Default)
@@ -765,7 +770,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 			RenderReprojection(*m_VRCameras[i]);
 		}
 		m_VRHelper->OnRenderingFinished();
-		glViewport(0, 0, m_ClientWidth, m_ClientHeight);
+		glViewport(0, 0, clientSize.x, clientSize.y);
 		DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
 	}
 	else
@@ -779,7 +784,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	{
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO.GetHandle());
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, prevDrawFBO);
-		glBlitFramebuffer(0, 0, m_ClientWidth, m_ClientHeight, 0, 0, m_ClientWidth, m_ClientHeight,
+		glBlitFramebuffer(0, 0, clientSize.x, clientSize.y, 0, 0, clientSize.x, clientSize.y,
 			GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, prevReadFBO);
 	}
@@ -832,7 +837,7 @@ void CubemapReprojectorImplementor::ReleaseVR()
 	}
 }
 
-void CubemapReprojectorImplementor::InitializeVRGraphics()
+void CubemapReprojectorImplementor::InitializeVRGraphics(const glm::uvec2& clientSize)
 {
 	if (!m_IsVRGraphicsInitialized)
 	{
@@ -840,8 +845,8 @@ void CubemapReprojectorImplementor::InitializeVRGraphics()
 		unsigned sampleCount = (isMultisamplingEnabled ? 8 : 1);
 
 		{
-			Texture2D colorTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::RGBA8));
-			Texture2D depthTexture(OpenGLRender::Texture2DDescription(m_ClientWidth, m_ClientHeight, TextureFormat::DepthComponent32F));
+			Texture2D colorTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::RGBA8));
+			Texture2D depthTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::DepthComponent32F));
 			m_MirrorFBO.Initialize();
 			m_MirrorFBO.Bind();
 			m_MirrorFBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
@@ -849,7 +854,7 @@ void CubemapReprojectorImplementor::InitializeVRGraphics()
 		}
 
 		OculusVR::VR_GL_InitData vrInitData;
-		vrInitData.WindowSize = glm::uvec2(m_ClientWidth, m_ClientHeight);
+		vrInitData.WindowSize = clientSize;
 		vrInitData.SampleCount = sampleCount;
 		vrInitData.Flags = OculusVR::VR_Flags::SetUpViewportForRendering;
 		vrInitData.OutputFBO = m_MirrorFBO.GetHandle();
@@ -934,7 +939,6 @@ void CubemapReprojectorImplementor::LoadConfiguration()
 		m_PathHandler.GetPathFromRootDirectory("Configurations/CubemapStreaming_Client_Configuration.xml").c_str());
 	InitializeRootProperty(m_Configuration, "IsRenderingInVR", m_IsRenderingInVR);
 	InitializeRootProperty(m_Configuration, "IsLoadingFakeCubemap", m_IsLoadingFakeCubemap);
-	InitializeRootProperty(m_Configuration, "IsContainingAlpha", m_IsContainingAlpha);
 	InitializeRootProperty(m_Configuration, "SideVisiblePortion", m_SideVisiblePortion);
 	InitializeRootProperty(m_Configuration, "PosZVisiblePortion", m_PosZVisiblePortion);
 	InitializeRootProperty(m_Configuration, "VRServerViewPositionQuantum", m_VRServerViewPositionQuantum);
@@ -1081,7 +1085,8 @@ void CubemapReprojectorImplementor::SwapFrame()
 	m_ServerCameraCopy.Set(m_ServerCameraNew);
 }
 
-void CubemapReprojectorImplementor::SynchronizeWithUpdating(bool* pIsTextureDataAvailable)
+void CubemapReprojectorImplementor::SynchronizeWithUpdating(bool* pIsTextureDataAvailable,
+	glm::uvec2* pServerSize, glm::uvec2* pClientSize)
 {
 	{
 		std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
@@ -1090,37 +1095,34 @@ void CubemapReprojectorImplementor::SynchronizeWithUpdating(bool* pIsTextureData
 
 		m_ClientCamera.Set(m_ClientCameraCopy);
 		m_ServerCamera.Set(m_ServerCameraCopy);
+
+		pServerSize->x = m_ServerWidth;
+		pServerSize->y = m_ServerHeight;
+
+		pClientSize->x = m_ClientWidth;
+		pClientSize->y = m_ClientHeight;
 	}
 	m_ServerCubemapCameraGroup.Update();
 }
 
-inline bool NeedsResizing(unsigned bufferSize, unsigned width, unsigned height, bool isContainingAlpha)
-{
-	unsigned pixelSize = (isContainingAlpha ? 4 : 3);
-	return (bufferSize != width * height * pixelSize);
-}
-
-void CubemapReprojectorImplementor::UpdateTextures(bool isTextureDataAvailable)
+void CubemapReprojectorImplementor::UpdateTextures(bool isTextureDataAvailable, const glm::uvec2& textureSize)
 {
 	if (isTextureDataAvailable)
 	{
 		m_CurrentTextureIndex = 1 - m_CurrentTextureIndex;
 
-		auto& checkBuffer = m_Buffers[GetBufferIndex(BufferType::Color, 0, m_ReadBufferIndex)];
 		auto& checkTextureDesc = m_ColorTextures[m_CurrentTextureIndex].GetTextureDescription();
-		if (NeedsResizing(checkBuffer.GetSizeInBytes(), checkTextureDesc.Width, checkTextureDesc.Height,
-			m_IsContainingAlpha))
+		if (textureSize.x != checkTextureDesc.Width || textureSize.y != checkTextureDesc.Height)
 		{
-			InitializeColorCubemap(m_CurrentTextureIndex);
-			InitializeDepthTextureArrays(m_CurrentTextureIndex);
+			InitializeColorCubemap(m_CurrentTextureIndex, textureSize);
+			InitializeDepthTextureArrays(m_CurrentTextureIndex, textureSize);
 		}
 
 		unsigned char* colorDataPointers[c_CountCubemapSides];
 		unsigned char* depthDataPointers[c_CountCubemapSides];
 
-		glm::uvec2 totalSize(m_ServerWidth, m_ServerHeight);
 		glm::uvec2 sideStarts[c_CountCubemapSides], sideEnds[c_CountCubemapSides];
-		GetImageDataSideBounds(m_ServerWidth, m_ServerHeight, m_SideVisiblePortion, m_PosZVisiblePortion,
+		GetImageDataSideBounds(textureSize.x, textureSize.y, m_SideVisiblePortion, m_PosZVisiblePortion,
 			sideStarts, sideEnds);
 
 		// Modifying starts and ends for flipped ranges.
@@ -1130,8 +1132,8 @@ void CubemapReprojectorImplementor::UpdateTextures(bool isTextureDataAvailable)
 			unsigned yIndex;
 			if (i == 2 || i == 3) yIndex = 5 - i;
 			else yIndex = i;
-			colorSideStarts[i] = glm::uvec2(totalSize.x - sideEnds[i].x, sideStarts[yIndex].y);
-			colorSideEnds[i] = glm::uvec2(totalSize.x - sideStarts[i].x, sideEnds[yIndex].y);
+			colorSideStarts[i] = glm::uvec2(textureSize.x - sideEnds[i].x, sideStarts[yIndex].y);
+			colorSideEnds[i] = glm::uvec2(textureSize.x - sideStarts[i].x, sideEnds[yIndex].y);
 		}
 
 		for (unsigned i = 0; i < c_CountCubemapSides; i++)
@@ -1144,7 +1146,7 @@ void CubemapReprojectorImplementor::UpdateTextures(bool isTextureDataAvailable)
 			colorSideStarts, colorSideEnds);
 		SetDepthData(m_CurrentTextureIndex, depthDataPointers, sideStarts, sideEnds);
 
-		m_GridReprojector.SetTextureData(depthDataPointers, m_ServerWidth, m_ServerHeight,
+		m_GridReprojector.SetTextureData(depthDataPointers, textureSize.x, textureSize.y,
 			m_IsContainingAlpha, m_SideVisiblePortion, m_PosZVisiblePortion,
 			m_ServerCubemapCameraGroup);
 	}
@@ -1224,18 +1226,21 @@ void CubemapReprojectorImplementor::AdjustDimensionsAndMatrices(unsigned viewInd
 	const double* leftProjMatrix, const double* rightProjMatrix,
 	double* modelMatrix, double* viewMatrix, double* projMatrix)
 {
-	// TODO: we are currently not synchronising dimesions.
-
 	// We assume, that the function is first called with the index = 0.
 	if (viewIndex == 0)
 	{
-		m_ClientWidth = clientWidth;
-		m_ClientHeight = clientHeight;
+		bool isResizingBuffers;
+		{
+			std::lock_guard<std::mutex> lock(m_RenderSyncMutex);
 
-		unsigned serverSize = std::max(*serverWidth, *serverHeight);
-		bool isResizingBuffers = (m_ServerWidth != serverSize);
-		m_ServerWidth = serverSize;
-		m_ServerHeight = serverSize;
+			m_ClientWidth = clientWidth;
+			m_ClientHeight = clientHeight;
+
+			unsigned serverSize = std::max(*serverWidth, *serverHeight);
+			isResizingBuffers = (m_ServerWidth != serverSize);
+			m_ServerWidth = serverSize;
+			m_ServerHeight = serverSize;
+		}
 
 		if (isResizingBuffers)
 		{
