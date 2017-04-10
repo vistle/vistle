@@ -6,9 +6,11 @@
 #include <Core/System/Filesystem.h>
 #include <EngineBuildingBlocks/ErrorHandling.h>
 
-#ifdef IS_WINDOWS
+#if defined(IS_WINDOWS)
 #include <Core/String.hpp>
 #include "Windows.h"
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
 #else
 #include <sys/types.h>
 #include <unistd.h>
@@ -16,14 +18,14 @@
 
 #include <queue>
 
+#include <cover/coVRFileManager.h>
 #include <util/filesystem.h>
 
 namespace EngineBuildingBlocks
 {
 	std::string GetExecutablePath()
 	{
-		// Getting executable path.
-#ifdef IS_WINDOWS
+#if defined(IS_WINDOWS)
 
 		wchar_t buffer[MAX_PATH];
 		GetModuleFileNameW(nullptr, buffer, MAX_PATH);
@@ -32,6 +34,17 @@ namespace EngineBuildingBlocks
 			EngineBuildingBlocks::RaiseException("Error getting executable path.");
 		}
 		return Core::ToString(buffer);
+
+#elif defined(__APPLE__)
+
+		char path[1024];
+		uint32_t size = sizeof(path);
+		auto res = _NSGetExecutablePath(path, &size);
+		if (res != 0)
+		{
+			EngineBuildingBlocks::RaiseException("Error getting executable path.");
+		}
+		return std::string(path);
 
 #else
 		// Works in Linux.
