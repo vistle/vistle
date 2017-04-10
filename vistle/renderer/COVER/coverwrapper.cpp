@@ -25,8 +25,10 @@
 #define str(s) xstr(s)
 
 int main(int argc, char *argv[]) {
-#ifdef WIN32
+#if defined(WIN32)
 	const char libcover[] = "mpicover.dll";
+#elif defined(__APPLE__)
+	const char libcover[] = "libmpicover.dylib";
 #else
 	const char libcover[] = "libmpicover.so";
 #endif
