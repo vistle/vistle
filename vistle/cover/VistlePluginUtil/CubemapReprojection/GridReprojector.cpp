@@ -240,7 +240,7 @@ void GridReprojector::Render(CubemapCameraGroup& serverCubemapCameraGroup, Camer
 	{
 		m_GridVAO.Bind();
 		SetGridRasterizationShader(serverCubemapCameraGroup, clientCamera);
-		glDrawElementsInstanced(GL_TRIANGLE_STRIP, m_CountGridIndices, GL_UNSIGNED_INT, 0,
+		glDrawElementsInstancedEXT(GL_TRIANGLE_STRIP, m_CountGridIndices, GL_UNSIGNED_INT, 0,
 			m_TileInstanceData.GetSize());
 	}
 
