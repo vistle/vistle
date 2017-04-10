@@ -5,6 +5,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <climits>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 #ifndef _WIN32
 #include <unistd.h>
 #include <dirent.h>
@@ -69,11 +72,19 @@ std::string getbindir(int argc, char *argv[]) {
    }
 #else
    char buf[PATH_MAX];
+#ifdef __APPLE__
+   uint32_t size = sizeof(buf);
+   if (_NSGetExecutablePath(buf, &size) == 0) {
+      executable = buf;
+   } else
+#else
    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf));
    if(len != -1) {
 
       executable = std::string(buf, len);
-   } else if (argc >= 1) {
+   } else
+#endif
+      if (argc >= 1) {
 
       bool found = false;
       if (!strchr(argv[0], '/')) {
