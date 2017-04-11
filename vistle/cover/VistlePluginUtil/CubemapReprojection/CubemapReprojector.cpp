@@ -1367,8 +1367,6 @@ void CubemapReprojectorImplementor::SetClientCamera(const double* model, const d
 
 void CubemapReprojectorImplementor::ResizeView(int viewIndex, int w, int h, unsigned depthFormat)
 {
-	assert(viewIndex == 0);
-	
 	// Handling view resizing in the AdjustDimensionsAndMatrices(...) function.
 }
 
