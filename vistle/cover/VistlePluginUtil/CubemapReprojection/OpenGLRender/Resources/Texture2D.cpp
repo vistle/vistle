@@ -95,7 +95,6 @@ void Texture2D::Initialize(const Texture2DDescription& textureDesc, const Textur
 		SetTextureSampler(textureDesc.Target, samplingDesc);
 	}
 
-	auto handle = GetHandle();
 	auto target = (GLenum)textureDesc.Target;
 	auto format = (GLint)textureDesc.Format;
 	auto width = textureDesc.Width;
@@ -106,11 +105,11 @@ void Texture2D::Initialize(const Texture2DDescription& textureDesc, const Textur
 	switch (textureDesc.Target)
 	{
 	case TextureTarget::Texture2D:
-	case TextureTarget::TextureCubemap: glTextureStorage2DEXT(handle, target, countLevels, format, width, height); break;
-	case TextureTarget::Texture2DArray: glTextureStorage3DEXT(handle, target, countLevels, format, width, height, arraySize); break;
-	case TextureTarget::TextureCubemapArray: glTextureStorage3DEXT(handle, target, countLevels, format, width, height, arraySize * 6); break;
-	case TextureTarget::Texture2DMS: glTextureStorage2DMultisampleEXT(handle, target, countSamples, format, width, height, GL_TRUE); break;
-	case TextureTarget::Texture2DMSArray: glTextureStorage3DMultisampleEXT(handle, target, countSamples, format, width, height, arraySize, GL_TRUE); break;
+	case TextureTarget::TextureCubemap: glTexStorage2D(target, countLevels, format, width, height); break;
+	case TextureTarget::Texture2DArray: glTexStorage3D(target, countLevels, format, width, height, arraySize); break;
+	case TextureTarget::TextureCubemapArray: glTexStorage3D(target, countLevels, format, width, height, arraySize * 6); break;
+	case TextureTarget::Texture2DMS: glTexStorage2DMultisample(target, countSamples, format, width, height, GL_TRUE); break;
+	case TextureTarget::Texture2DMSArray: glTexStorage3DMultisample(target, countSamples, format, width, height, arraySize, GL_TRUE); break;
 	default: break;
 	}
 
