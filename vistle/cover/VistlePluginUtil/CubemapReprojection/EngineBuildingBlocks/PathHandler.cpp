@@ -3,7 +3,6 @@
 #include <EngineBuildingBlocks/PathHandler.h>
 
 #include <Core/Platform.h>
-#include <Core/System/Filesystem.h>
 #include <EngineBuildingBlocks/ErrorHandling.h>
 
 #if defined(IS_WINDOWS)
@@ -64,22 +63,22 @@ namespace EngineBuildingBlocks
 
 	std::string FindRootDirectory(const char* rootName, bool searchInChildrenDirs)
 	{
+		namespace fs = vistle::filesystem;
 		auto ending = std::string("/") + rootName + ".root";
 		std::queue<std::string> queue;
-		for (auto currentDirectory = Core::GetParentPath(GetExecutablePath()); !currentDirectory.empty();
-			currentDirectory = Core::GetParentPath(currentDirectory))
+		for (auto currentDirectory = fs::path(GetExecutablePath()).parent_path(); !currentDirectory.empty();
+			currentDirectory = currentDirectory.parent_path())
 		{
-			if (Core::FileExists(currentDirectory + ending)) return currentDirectory;
+			if (fs::exists(currentDirectory.string() + ending)) return currentDirectory.string();
 			if (searchInChildrenDirs)
 			{
 				assert(queue.empty());
-				queue.push(currentDirectory);
+				queue.push(currentDirectory.string());
 
 				while (!queue.empty())
 				{
 					auto dir = queue.front(); queue.pop();
-					if (Core::FileExists(dir + ending)) return dir;
-					namespace fs = vistle::filesystem;
+					if (fs::exists(dir + ending)) return dir;			
 					fs::directory_iterator endIt;
 					for (fs::directory_iterator dirIt(dir); dirIt != endIt; ++dirIt)
 					{
@@ -113,7 +112,7 @@ PathHandler::PathHandler()
 // Note that this only works for EXISTING paths.
 std::string PathHandler::CompletePath(const std::string& path) const
 {
-	if (Core::IsDirectory(path))
+	if (vistle::filesystem::is_directory(path))
 	{
 		char lastChar = path[path.length() - 1];
 		if (lastChar != '/' && lastChar != '\\')

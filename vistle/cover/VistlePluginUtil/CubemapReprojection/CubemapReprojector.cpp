@@ -328,7 +328,6 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 #include <Core/Platform.h>
 #include <Core/String.hpp>
 #include <Core/System/SimpleIO.h>
-#include <Core/System/Filesystem.h>
 #include <EngineBuildingBlocks/ErrorHandling.h>
 
 #if(CR_IS_OCULUS_ENABLED)
@@ -340,6 +339,8 @@ unsigned CubemapReprojector::GetCountSourceViews() const
 // For debugging:
 #include <EngineBuildingBlocks/Graphics/Primitives/PrimitiveCreation.h>
 #include <EngineBuildingBlocks/Math/Matrix.h>
+
+#include <util/filesystem.h>
 
 using namespace EngineBuildingBlocks;
 using namespace EngineBuildingBlocks::Graphics;
@@ -969,7 +970,7 @@ void CubemapReprojectorImplementor::LoadClientCameraLocation()
 {
 	auto cameraLocationPath = m_PathHandler.GetPathFromRootDirectory("Temp/CameraLocation.bin");
 
-	if (Core::FileExists(cameraLocationPath))
+	if (vistle::filesystem::exists(cameraLocationPath))
 	{
 		Core::ByteVector bytes;
 		Core::ReadAllBytes(cameraLocationPath, bytes);

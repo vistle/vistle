@@ -131,7 +131,7 @@ namespace OpenGLRender
 
 	void InitializeGLDebugging()
 	{
-		glDebugMessageCallback((GLDEBUGPROC)DebugCallback, nullptr);
+		if(glDebugMessageCallback != nullptr) glDebugMessageCallback((GLDEBUGPROC)DebugCallback, nullptr);
 #ifdef GL_ARB_debug_output
 		if (glewIsExtensionSupported("GL_ARB_debug_output")) glDebugMessageCallbackARB((GLDEBUGPROCARB)DebugCallback, nullptr);
 #endif
