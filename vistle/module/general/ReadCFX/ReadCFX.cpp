@@ -389,7 +389,7 @@ void CaseInfo::getFieldList() {
     for(index_t particleVarNum=0; particleVarNum<m_numberOfParticles; ++particleVarNum) {
         if(!strcmp((m_allParticle[particleVarNum].particleType).c_str(),(m_allParticle[0].particleType).c_str())) {
             std::string varName = m_allParticle[particleVarNum].varName;
-            varName.pop_back(); //because each variable name has the number of type at the end; in the list a general specifier is listed
+            varName.pop_back(); //because each variable name has the typenumber at the end; in the list a general specifier is listed
             m_particle_types.push_back(varName);
         }
     }
@@ -428,7 +428,7 @@ int ReadCFX::rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) 
     //returns a rank between 0 and size(). ranks are continually distributed to processors over timestep and volumes
 
     int processor;
-    if(timestep<m_firsttimestep->getValue()) {
+    if(timestep<m_firsttimestep->getValue()) { //this can occur for the .res file. There timestep is set to 0. m_firsttimestep is variable.
         processor = volume;
     }
     else {
@@ -442,7 +442,7 @@ int ReadCFX::rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) 
     //returns a rank between 0 and size(). ranks are continually distributed to processors over timestep and volumes
 
     int processor;
-    if(timestep<m_firsttimestep->getValue()) {
+    if(timestep<m_firsttimestep->getValue()) {  //this can occur for the .res file. There timestep is set to 0. m_firsttimestep is variable.
         processor = area2d;
     }
     else {
@@ -773,7 +773,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     ptrOnEl[nelmsIn3dArea] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
 
-    //Test, ob Einlesen funktioniert hat
+    //Verification:
 //    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
 //    //std::cerr <<"no. elems total = " << m_nelems << std::endl;
 //    std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
@@ -857,7 +857,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
         nodeListOf2dAreaVec[nodeListOf2dArea[i]] = i;
     }
 
-    //Test, ob Einlesen funktioniert hat
+    //Verfification
 //        std::cerr << "nNodesIn2dArea = " << nNodesIn2dArea << std::endl;
 //        std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
 //        for(int i=0;i<100;++i) {
@@ -931,7 +931,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     ptrOnCl[elemListCounter] = 0;
 
 
-    //Test, ob Einlesen funktioniert hat
+    //Verfification
 //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << nConnectIn2dArea << std::endl;
 //    std::cerr << "nodes_total = " << m_nnodes << "; node Count() = " << cfxExportNodeCount() << std::endl;
 //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << polygon->cl().size() << std::endl;
@@ -1303,7 +1303,7 @@ index_t ReadCFX::collect2dAreas() {
 
     m_2dAreasSelected.resize(numberOfSelected2dAreas);
 
-    //zum Testen
+    //Verification
 //    if(rank()==0) {
 //        for(index_t i=0;i<numberOfSelected2dAreas;++i) {
 //            std::cerr << "m_2dAreasSelected[" << i << "] = " << m_2dAreasSelected[i].idWithZone.ID << "; zoneflag = " << m_2dAreasSelected[i].idWithZone.zoneFlag << std::endl;
@@ -1338,7 +1338,7 @@ index_t ReadCFX::collectParticles() {
     }
     m_particleTypesSelected.resize(numberOfSelectedParticles);
 
-    //zum Testen
+    //Verification
 //    if(rank()==0) {
 //        for(index_t i=0;i<numberOfSelectedParticles;++i) {
 //            std::cerr << "m_particleTypesSelected[" << i << "] = " << m_particleTypesSelected[i] << std::endl;
@@ -1354,8 +1354,6 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
 
     for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
-//      std::cerr << "field = " << field << std::endl;
-
       std::vector<Variable> allParam = m_case.getCopyOfAllParam();
       std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
@@ -1372,12 +1370,10 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
           if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
               //variable exists only in resfile --> timestep = -1
               setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,-1,numSel3dArea,trnOrRes);
-//              std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
           }
           else {
               //variable exists in resfile and in transient files --> timestep = last
               setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
-//              std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
           }
           m_currentVolumedata[i]= obj;
           std::cerr << "A1" << std::endl;
@@ -1386,7 +1382,7 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
    return true;
 }
 
-bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
+bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes) {
     //calles for each port the loadPolygon and load2dField function and the set2dDataObject function to get the object ready to be added to port
 
     for (int i=0; i<Num2dPorts; ++i) {
@@ -1396,25 +1392,19 @@ bool ReadCFX::load2dFieldsAndPolygon(int area2d, int setMetaTimestep, int timest
         auto it = find_if(allParam.begin(), allParam.end(), [&area2dField](const Variable& obj) {
             return obj.varName == area2dField;});
         if (it == allParam.end()) {
-            m_polygonsInTimestep[area2d] = Polygons::ptr();
             m_current2dData[i] = DataBase::ptr();
         }
         else {
-            if(!m_polygonsInTimestep[area2d] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
-                m_polygonsInTimestep[area2d] = loadPolygon(area2d);
-            }
             auto index = std::distance(allParam.begin(), it);
             DataBase::ptr obj = load2dField(area2d, allParam[index]);
 
             if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
                 set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,-1,numSel2dArea,trnOrRes);
-                //std::cerr << allParam[index].varName << " exists only in resfile." << std::endl;
             }
             else {
                 //variable exists in resfile and in transient files --> timestep = last
                 set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-                //std::cerr << allParam[index].varName << " exists in resfile and in transient." << std::endl;
 
             }
             m_current2dData[i]= obj;
@@ -1545,7 +1535,7 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
            }
            else {
                if(trnOrRes) {   //trnOrRes == 1 --> data belong to transient file
-                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
                    obj->setTimestep(setMetaTimestep);
                    obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
                }
@@ -1613,7 +1603,7 @@ bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int 
     //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
     setMeta(grid,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
     setMeta(data,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
-    data->setGrid(grid);
+    //data->setGrid(grid);
     data->setMapping(DataBase::Vertex);
 
     return true;
@@ -1624,7 +1614,7 @@ bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d,
 
     setMeta(polygon,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
     setMeta(data,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-    data->setGrid(polygon);
+    //data->setGrid(polygon);
     data->setMapping(DataBase::Vertex);
 
     return true;
@@ -1650,9 +1640,12 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(timestep,i,numSel2dArea) == rank()) {
 //            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in timestep = " << timestep << std::endl;
-                load2dFieldsAndPolygon(i,setMetaTimestep, timestep, numSel2dArea, trnOrRes);
-                addPolygonToPort(i);
-                add2dDataToPorts();
+            if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
+                m_polygonsInTimestep[i] = loadPolygon(i);
+            }
+            addPolygonToPort(i);
+            load2dFields(i,setMetaTimestep, timestep, numSel2dArea, trnOrRes);
+            add2dDataToPorts();
         }
     }
     m_previousTimestep = timestep+1;
@@ -1703,7 +1696,8 @@ bool ReadCFX::compute() {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
                 else {
-                    std::cerr << "S1" << std::endl;
+                    std::cerr << "setMetaTimestep = " << setMetaTimestep << std::endl;
+                    std::cerr << "timestep = " << timestep << std::endl;
                     m_case.parseResultfile();
                     std::cerr << "S2" << std::endl;
                     numSel3dArea = collect3dAreas();
