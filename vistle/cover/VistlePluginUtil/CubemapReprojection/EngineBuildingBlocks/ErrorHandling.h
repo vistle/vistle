@@ -18,12 +18,12 @@ namespace EngineBuildingBlocks
 
 	inline void RaiseException(const std::string& str)
 	{
-		throw std::runtime_error(str.c_str());
+		RaiseException(str.c_str());
 	}
 
 	inline void RaiseException(const std::stringstream& ss)
 	{
-		throw std::runtime_error(ss.str().c_str());
+		RaiseException(ss.str().c_str());
 	}
 
 	inline void RaiseWarning(const char* str)
