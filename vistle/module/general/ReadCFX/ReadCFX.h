@@ -46,17 +46,6 @@ struct Particle {
     IdWithZoneFlag idWithZone;
 };
 
-struct ParticleData {
-    ParticleData();
-    std::float_t timestep;
-    std::vector<float> x_coord;
-    std::vector<float> y_coord;
-    std::vector<float> z_coord;
-    std::vector<float> x_value;
-    std::vector<float> y_value;
-    std::vector<float> z_value;
-};
-
 struct Boundary {
     Boundary(std::string Name, int ID, int zone);
     std::string boundName;
@@ -140,7 +129,6 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
    vistle::Coords::ptr m_coordsOfParticleTime;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
-   std::vector<ParticleData> m_particleDataTimestepSorted;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;

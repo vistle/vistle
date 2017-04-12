@@ -166,17 +166,6 @@ Particle::Particle(std::string Type, std::string Name, int Dimension, int ID, in
 
 }
 
-ParticleData::ParticleData()
-    : timestep(0),
-      x_coord(0),
-      y_coord(0),
-      z_coord(0),
-      x_value(0),
-      y_value(0),
-      z_value(0) {
-
-}
-
 Boundary::Boundary(std::string Name, int ID, int zone)
     : boundName(Name),
       idWithZone(IdWithZoneFlag(ID,zone)) {
