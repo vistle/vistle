@@ -114,16 +114,6 @@ void Primitive::Bind()
 
 ///////////////////////////////////// SHADER REBUILDING /////////////////////////////////////
 
-void SetShaderVersion(OpenGLRender::ShaderDescription& shaderDescription)
-{
-	shaderDescription.Version = "450 core";
-}
-
-void AddEmptyShaderDefines(OpenGLRender::ShaderDescription& shaderDescription)
-{
-	SetShaderVersion(shaderDescription);
-}
-
 void InitializeShader(ShaderProgramData& data)
 {
 	data.NeedsRebuild = true;

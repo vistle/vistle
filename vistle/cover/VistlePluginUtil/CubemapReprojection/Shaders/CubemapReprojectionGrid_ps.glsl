@@ -1,9 +1,11 @@
 // CubemapReprojectionGrid_ps.glsl
 
+#extension GL_EXT_gpu_shader4 : enable
+
 in vec2 TexC;
 flat in uint RegionIndex;
 
-out vec4 ResultColor;
+varying out vec4 ResultColor;
 
 uniform samplerCube ColorTexture;
 
@@ -16,15 +18,15 @@ vec4 GetColor(vec2 texCoord, uint regionIndex)
 	vec3 direction;
 	switch (regionIndex)
 	{
-	case 0: direction = vec3(1.0f, direction2.y, direction2.x); break;
-	case 1: direction = vec3(-1.0f, direction2.y, -direction2.x); break;
-	case 2: direction = vec3(-direction2.x, 1.0f, -direction2.y); break;
-	case 3: direction = vec3(-direction2.x, -1.0f, direction2.y); break;
-	case 4: direction = vec3(-direction2.x, direction2.y, 1.0f); break;
-	case 5: direction = vec3(direction2, -1.0f); break;
+	case 0U: direction = vec3(1.0f, direction2.y, direction2.x); break;
+	case 1U: direction = vec3(-1.0f, direction2.y, -direction2.x); break;
+	case 2U: direction = vec3(-direction2.x, 1.0f, -direction2.y); break;
+	case 3U: direction = vec3(-direction2.x, -1.0f, direction2.y); break;
+	case 4U: direction = vec3(-direction2.x, direction2.y, 1.0f); break;
+	case 5U: direction = vec3(direction2, -1.0f); break;
 	}
 
-	return vec4(texture(ColorTexture, direction).xyz, 1.0f);
+	return vec4(textureCube(ColorTexture, direction).xyz, 1.0f);
 }
 
 void main()

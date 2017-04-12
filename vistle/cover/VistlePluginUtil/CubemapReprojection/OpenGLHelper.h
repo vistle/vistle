@@ -40,8 +40,6 @@ struct Primitive
 
 //////////////////////////// SHADER REBUILDING ////////////////////////////
 
-typedef void(*ShaderDefinesAddingFunction)(OpenGLRender::ShaderDescription& shaderDescription);
-
 struct ShaderData
 {
 	OpenGLRender::ShaderDescription Description;
@@ -53,12 +51,8 @@ struct ShaderProgramData
 	bool NeedsRebuild;
 	bool IsBound;
 	OpenGLRender::ShaderProgram* Program;
-	ShaderDefinesAddingFunction DefinesAddingFunction;
 	std::vector<ShaderData> Shaders;
 };
-
-void SetShaderVersion(OpenGLRender::ShaderDescription& shaderDescription);
-void AddEmptyShaderDefines(OpenGLRender::ShaderDescription& shaderDescription);
 
 void InitializeShader(ShaderProgramData& data);
 void BuildShader(ShaderProgramData& data);

@@ -85,7 +85,6 @@ void GridReprojector::Initialize(const std::string& shadersPath)
 		{
 			ShaderProgramData spData;
 			InitializeShader(spData);
-			spData.DefinesAddingFunction = &AddEmptyShaderDefines;
 			spData.Shaders.push_back({ ShaderDescription::FromFile(gridRasterVSPath, ShaderType::Vertex) });
 			spData.Shaders.push_back({ ShaderDescription::FromFile(gridRasterPSPath, ShaderType::Fragment) });
 			shaderPrograms[(unsigned)ShaderId::GridRasterization] = std::move(spData);
@@ -95,7 +94,6 @@ void GridReprojector::Initialize(const std::string& shadersPath)
 		{
 			ShaderProgramData spData;
 			InitializeShader(spData);
-			spData.DefinesAddingFunction = &AddEmptyShaderDefines;
 			spData.Shaders.push_back({ ShaderDescription::FromFile(gridEdgeRasterVSPath, ShaderType::Vertex) });
 			spData.Shaders.push_back({ ShaderDescription::FromFile(gridEdgeRasterPSPath, ShaderType::Fragment) });
 			shaderPrograms[(unsigned)ShaderId::GridEdgeRasterization] = std::move(spData);
@@ -198,7 +196,12 @@ void GridReprojector::SetGridRasterizationShader(CubemapCameraGroup& serverCamer
 	pProgram->SetUniformValueArray("Transformations", transformations, c_CountCubemapSides);
 
 	pProgram->SetUniformValue("ColorTexture", 0);
-	pProgram->SetUniformValue("DepthTexture", 1);
+	for (int i = 0; i < c_CountCubemapSides; i++)
+	{
+		char name[32];
+		snprintf(name, 32, "DepthTextures[%d]", i);
+		pProgram->SetUniformValue(name, i + 1);
+	}
 }
 
 void GridReprojector::SetGridEdgeRasterizationShader(CubemapCameraGroup& serverCameraGroup, Camera& clientCamera)
@@ -217,7 +220,12 @@ void GridReprojector::SetGridEdgeRasterizationShader(CubemapCameraGroup& serverC
 	pProgram->SetUniformValueArray("Transformations", transformations, c_CountCubemapSides);
 
 	pProgram->SetUniformValue("ColorTexture", 0);
-	pProgram->SetUniformValue("DepthTexture", 1);
+	for (int i = 0; i < c_CountCubemapSides; i++)
+	{
+		char name[32];
+		snprintf(name, 32, "DepthTextures[%d]", i);
+		pProgram->SetUniformValue(name, i + 1);
+	}
 }
 
 void GridReprojector::Render(CubemapCameraGroup& serverCubemapCameraGroup, Camera& clientCamera, bool useWireframe)

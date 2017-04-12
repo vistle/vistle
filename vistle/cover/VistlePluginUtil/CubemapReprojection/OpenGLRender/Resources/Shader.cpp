@@ -45,7 +45,7 @@ bool ShaderDefine::operator<(const ShaderDefine& other) const
 
 inline std::string GetShaderVersion(const std::string& version)
 {
-	if(version.empty()) return  "450 core";
+	if(version.empty()) return "120";
 	return version;
 }
 

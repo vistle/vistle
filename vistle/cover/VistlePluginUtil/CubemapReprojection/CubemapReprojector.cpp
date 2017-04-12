@@ -139,7 +139,7 @@ private: // Textures.
 
 	unsigned m_InitializedOpenGLContextId;
 	OpenGLRender::Texture2D m_ColorTextures[c_CountTextures];
-	OpenGLRender::Texture2D m_DepthTextures[c_CountTextures];
+	OpenGLRender::Texture2D m_DepthTextures[c_CountTextures][c_CountCubemapSides];
 
 	unsigned m_CurrentTextureIndex;
 
@@ -398,43 +398,41 @@ void CubemapReprojectorImplementor::SetColorCubemapData(unsigned resourceIndex, 
 
 void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resourceIndex, const glm::uvec2& textureSize)
 {
-	auto& texture = m_DepthTextures[resourceIndex];
-	texture.Delete();
-	OpenGLRender::Texture2DDescription textureDesc;
-	textureDesc.Width = textureSize.x;
-	textureDesc.Height = textureSize.y;
-	textureDesc.ArraySize = 6;
-	textureDesc.Target = TextureTarget::Texture2DArray;
-	textureDesc.Format = TextureFormat::R32F;
-	textureDesc.HasMipmaps = true;
-	TextureSamplingDescription samplingDesc;
-	samplingDesc.MinifyingFilter = TextureMinifyingFilter::Linear_Mipmap_Nearest;
-	samplingDesc.MagnificationFilter = TextureMagnificationFilter::Linear;
-	samplingDesc.WrapMode = TextureWrapMode::ClampToEdge;
-	texture.Initialize(textureDesc, samplingDesc);
-
 	// Setting 1.0f initially.
-	Core::SimpleTypeVector<float> initData(c_CountCubemapSides * textureSize.x * textureSize.y, 1.0f);
-	unsigned char* ppData[c_CountCubemapSides];
+	Core::SimpleTypeVector<float> initData(textureSize.x * textureSize.y, 1.0f);
+
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
-		ppData[i] = reinterpret_cast<unsigned char*>(
-			initData.GetArray() + i * textureSize.x * textureSize.y);
-	}
+		auto& texture = m_DepthTextures[resourceIndex][i];
+		texture.Delete();
+		OpenGLRender::Texture2DDescription textureDesc;
+		textureDesc.Width = textureSize.x;
+		textureDesc.Height = textureSize.y;
+		textureDesc.ArraySize = 1;
+		textureDesc.Target = TextureTarget::Texture2D;
+		textureDesc.Format = TextureFormat::R32F;
+		textureDesc.HasMipmaps = false;
+		TextureSamplingDescription samplingDesc;
+		samplingDesc.MinifyingFilter = TextureMinifyingFilter::Linear;
+		samplingDesc.MagnificationFilter = TextureMagnificationFilter::Linear;
+		samplingDesc.WrapMode = TextureWrapMode::ClampToEdge;
+		texture.Initialize(textureDesc, samplingDesc);
 
-	texture.Bind();
-	texture.SetData(ppData[0], PixelDataFormat::Red, PixelDataType::Float);
+		texture.Bind();
+		texture.SetData(initData.GetArray(), PixelDataFormat::Red, PixelDataType::Float);
+	}
 }
 
 void CubemapReprojectorImplementor::SetDepthData(unsigned resourceIndex, unsigned char** ppData,
 	glm::uvec2* start, glm::uvec2* end)
 {
-	auto& texture = m_DepthTextures[resourceIndex];
-	texture.Bind();
 	for (unsigned i = 0; i < 6; i++)
 	{
-		unsigned offset[] = { start[i].x, start[i].y, i };
-		unsigned size[] = { end[i].x - start[i].x, end[i].y - start[i].y, 1 };
+		auto& texture = m_DepthTextures[resourceIndex][i];
+		texture.Bind();
+
+		unsigned offset[] = { start[i].x, start[i].y };
+		unsigned size[] = { end[i].x - start[i].x, end[i].y - start[i].y };
 		texture.SetData(ppData[i], PixelDataFormat::Red, PixelDataType::Float, offset, size, 0);
 	}
 }
@@ -737,7 +735,10 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 	UpdateTextures(isTextureDataAvailable, serverSize);
 
 	m_ColorTextures[m_CurrentTextureIndex].Bind(0);
-	m_DepthTextures[m_CurrentTextureIndex].Bind(1);
+	for (unsigned i = 0; i < c_CountCubemapSides; i++)
+	{
+		m_DepthTextures[m_CurrentTextureIndex][i].Bind(i + 1);
+	}
 
 	// Reading current content from the target FBO.
 	{
