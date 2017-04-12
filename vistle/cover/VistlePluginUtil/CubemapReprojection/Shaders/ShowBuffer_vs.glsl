@@ -1,8 +1,10 @@
 // ShowColorBuffer_vs.glsl
 
+#extension GL_EXT_gpu_shader4 : enable
+
 in vec2 TextureCoordinate;
 
-out vec2 TexC;
+varying out vec2 TexC;
 
 void main()
 {

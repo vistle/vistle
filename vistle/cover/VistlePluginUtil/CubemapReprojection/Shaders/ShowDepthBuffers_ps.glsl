@@ -1,10 +1,17 @@
 // ShowDepthBuffer_ps.glsl
 
+#extension GL_EXT_gpu_shader4 : enable
+
 in vec2 TexC;
 
-out vec4 ResultColor;
+varying out vec4 ResultColor;
 
-uniform sampler2DArray DepthTexture;
+uniform sampler2D DepthTextures[6];
+
+float GetDepth(vec2 texCoord, uint regionIndex)
+{
+	return texture2D(DepthTextures[regionIndex], texCoord).x;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +42,7 @@ vec3 VisualizeDepth(float depth)
 
 vec4 GetColor(vec2 texCoord, uint regionIndex)
 {
-	return vec4(VisualizeDepth(textureLod(DepthTexture, vec3(texCoord, regionIndex), 0.0f).x), 1.0f);
+	return vec4(VisualizeDepth(GetDepth(texCoord, regionIndex)), 1.0f);
 }
 
 void AddLine(float texCoord, float lineValue, float lineWidth, vec3 lineColor, inout vec4 color)
@@ -45,11 +52,11 @@ void AddLine(float texCoord, float lineValue, float lineWidth, vec3 lineColor, i
 
 void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2 imTexCoord)
 {
-	if     (texCoord.x <= c_OneOverThree) { regionIndex = 0;  imTexCoord.x = texCoord.x;                   }
-	else if(texCoord.x <= c_TwoOverThree) { regionIndex = 1;  imTexCoord.x = texCoord.x - c_OneOverThree;  }
-	else                                  { regionIndex = 2;  imTexCoord.x = texCoord.x - c_TwoOverThree;  }
-	if     (texCoord.y <= 0.5f)           { regionIndex += 3; imTexCoord.y = texCoord.y;                   }
-	else                                  {                   imTexCoord.y = texCoord.y - 0.5f;            }
+	if     (texCoord.x <= c_OneOverThree) { regionIndex = 0U;  imTexCoord.x = texCoord.x;                   }
+	else if(texCoord.x <= c_TwoOverThree) { regionIndex = 1U;  imTexCoord.x = texCoord.x - c_OneOverThree;  }
+	else                                  { regionIndex = 2U;  imTexCoord.x = texCoord.x - c_TwoOverThree;  }
+	if     (texCoord.y <= 0.5f)           { regionIndex += 3U; imTexCoord.y = texCoord.y;                   }
+	else                                  {                    imTexCoord.y = texCoord.y - 0.5f;            }
 	imTexCoord *= vec2(3.0f, 2.0f);
 }
 

@@ -438,7 +438,7 @@ void CubemapReprojectorImplementor::SetDepthData(unsigned resourceIndex, unsigne
 }
 
 inline void InitializeShaderProgram_VS_PS(const PathHandler& pathHandler,
-	const char* vsPath, const char* psPath, OpenGLRender::ShaderProgram& program)
+	const char* vsPath, const char* psPath, ShaderProgram* program)
 {
 	OpenGLRender::ShaderProgramDescription spd;
 	spd.Shaders =
@@ -446,7 +446,20 @@ inline void InitializeShaderProgram_VS_PS(const PathHandler& pathHandler,
 		ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
 		ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
 	};
-	program.Initialize(spd);
+	program->Initialize(spd);
+}
+
+inline void InitializeFullscreenQuad(Primitive* primitive, ShaderProgram* program)
+{
+	Vertex_SOA_Data vertexData;
+	IndexData indexData;
+	CreateQuadGeometry(vertexData, indexData, PrimitiveRange::_Minus1_To_Plus1);
+	vertexData.RemoveVertexElement(c_PositionVertexElement);
+	vertexData.RemoveVertexElement(c_NormalVertexElement);
+	primitive->Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
+
+	program->Bind();
+	program->SetInputLayout(vertexData.InputLayout);
 }
 
 void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
@@ -460,21 +473,13 @@ void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
 		isInitializing = false;
 
 		auto vsPath = "Shaders/ShowBuffer_vs.glsl";
-		auto colorPSPath = "Shaders/ShowColorBuffer_ps.glsl";
-		auto depthPSPath = "Shaders/ShowDepthBuffer_ps.glsl";
+		auto colorPSPath = "Shaders/ShowColorBuffers_ps.glsl";
+		auto depthPSPath = "Shaders/ShowDepthBuffers_ps.glsl";
 
-		InitializeShaderProgram_VS_PS(pathHandler, vsPath, colorPSPath, colorShowProgram);
-		InitializeShaderProgram_VS_PS(pathHandler, vsPath, depthPSPath, depthShowProgram);
+		InitializeShaderProgram_VS_PS(pathHandler, vsPath, colorPSPath, &colorShowProgram);
+		InitializeShaderProgram_VS_PS(pathHandler, vsPath, depthPSPath, &depthShowProgram);
 
-		Vertex_SOA_Data vertexData;
-		IndexData indexData;
-		CreateQuadGeometry(vertexData, indexData, PrimitiveRange::_Minus1_To_Plus1);
-		vertexData.RemoveVertexElement(c_PositionVertexElement);
-		vertexData.RemoveVertexElement(c_NormalVertexElement);
-		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
-		
-		// Both shader program uses the same input layout.
-		colorShowProgram.SetInputLayout(vertexData.InputLayout);
+		InitializeFullscreenQuad(&quad, &colorShowProgram); // Both shader program uses the same input layout.
 	}
 
 	if (isClearingBuffers)
@@ -495,7 +500,12 @@ void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
 	else
 	{
 		depthShowProgram.Bind();
-		depthShowProgram.SetUniformValue("DepthTexture", 1);
+		for (int i = 0; i < c_CountCubemapSides; i++)
+		{
+			char name[32];
+			snprintf(name, 32, "DepthTextures[%d]", i);
+			depthShowProgram.SetUniformValue(name, i + 1);
+		}
 	}
 
 	quad.Bind();
@@ -504,61 +514,9 @@ void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
 	glDepthFunc(prevDepthFunc);
 }
 
-void RenderProgressBar(PathHandler& pathHandler)
-{
-	static bool isInitializing = true;
-	static OpenGLRender::ShaderProgram pbProgram;
-	static Primitive quad;
-	static unsigned countFrames = 0;
-	if (isInitializing)
-	{
-		isInitializing = false;
-
-		auto vsPath = "Shaders/ProgressBar_vs.glsl";
-		auto psPath = "Shaders/ProgressBar_ps.glsl";
-
-		OpenGLRender::ShaderProgramDescription spd;
-		spd.Shaders =
-		{
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(vsPath), ShaderType::Vertex),
-			ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(psPath), ShaderType::Fragment)
-		};
-		pbProgram.Initialize(spd);
-
-		Vertex_SOA_Data vertexData;
-		IndexData indexData;
-		CreateQuadGeometry(vertexData, indexData, PrimitiveRange::_Minus1_To_Plus1);
-		vertexData.RemoveVertexElement(c_PositionVertexElement);
-		vertexData.RemoveVertexElement(c_NormalVertexElement);
-		quad.Initialize(OpenGLRender::BufferUsage::StaticDraw, vertexData, indexData);
-		pbProgram.SetInputLayout(vertexData.InputLayout);
-	}
-
-	pbProgram.Bind();
-
-	pbProgram.SetUniformValue("CountFrames", ++countFrames);
-
-	quad.Bind();
-	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
-}
-
 inline void DepthComposite(PathHandler& pathHandler,
 	FrameBufferObject& sourceTargetFBO, FrameBufferObject& sourceFBO2)
 {
-	static bool isInitializing = true;
-	static OpenGLRender::ShaderProgram program;
-	if (isInitializing)
-	{
-		isInitializing = false;
-
-		auto csPath = "Shaders/DepthComposite_cs.glsl";
-
-		OpenGLRender::ShaderProgramDescription spd;
-		spd.Shaders =
-		{ ShaderDescription::FromFile(pathHandler.GetPathFromRootDirectory(csPath), ShaderType::Compute) };
-		program.Initialize(spd);
-	}
-
 	auto& sourcetargetTextures = sourceTargetFBO.GetOwnedTextures();
 	auto& source2Textures = sourceFBO2.GetOwnedTextures();
 	auto& sourcetargetColor = (Texture2D&)sourcetargetTextures[0];
@@ -568,30 +526,39 @@ inline void DepthComposite(PathHandler& pathHandler,
 	auto& sourceTargetTD = sourcetargetColor.GetTextureDescription();
 	int width = sourceTargetTD.Width;
 	int height = sourceTargetTD.Height;
-	glm::vec2 tcMult = glm::vec2(1.0f / width, 1.0f / height);
 
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	static bool isInitializing = true;
+	static ShaderProgram program;
+	static Primitive quad;
+	if (isInitializing)
+	{
+		isInitializing = false;
+
+		auto vsPath = "Shaders/ShowBuffer_vs.glsl";
+		auto psPath = "Shaders/ShowColorBuffer_ps.glsl";
+
+		InitializeShaderProgram_VS_PS(pathHandler, vsPath, psPath, &program);
+
+		InitializeFullscreenQuad(&quad, &program);
+	}
+
+	GLint prevDepthFunc;
+	glGetIntegerv(GL_DEPTH_FUNC, &prevDepthFunc);
+	glDepthFunc(GL_LEQUAL);
+	glDepthMask(GL_FALSE);
+
+	sourceTargetFBO.Bind();
 
 	program.Bind();
 
-	program.SetUniformValue("Width", width);
-	program.SetUniformValue("Height", height);
-	program.SetUniformValue("TCMult", tcMult);
+	program.SetUniformValue("ColorTexture", 0);
+	s2Color.Bind(0);
 
-	program.SetUniformValue("SourceTargetColor", 0);
-	program.SetUniformValue("SourceTargetDepth", 1);
-	program.SetUniformValue("Source2Color", 2);
+	quad.Bind();
+	glDrawElements(GL_TRIANGLES, quad.CountIndices, GL_UNSIGNED_INT, 0);
 
-	glBindImageTexture(0, sourcetargetColor.GetHandle(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
-	sourcetargetDepth.Bind(1);
-	glBindImageTexture(2, s2Color.GetHandle(),           0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA8);
-
-	unsigned numGroupsX = GetThreadGroupCount(width, 8);
-	unsigned numGroupsY = GetThreadGroupCount(height, 4);
-
-	glDispatchCompute(numGroupsX, numGroupsY, 1);
-	glMemoryBarrier(GL_TEXTURE_UPDATE_BARRIER_BIT);
+	glDepthFunc(prevDepthFunc);
+	glDepthMask(GL_TRUE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +778,6 @@ void CubemapReprojectorImplementor::RenderReprojection(Camera& clientCamera)
 	case RenderMode::DebugDepths:
 		DebugSourceTexture(m_PathHandler, BufferType::Depth); break;
 	}
-	//RenderProgressBar(m_PathHandler);
 }
 
 /////////////////////////////////////////// VR ///////////////////////////////////////////
