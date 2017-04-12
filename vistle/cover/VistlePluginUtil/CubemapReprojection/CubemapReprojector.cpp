@@ -57,7 +57,7 @@ class CubemapReprojectorImplementor
 	EngineBuildingBlocks::SystemTime m_SystemTime;
 
 	unsigned m_ClientWidth, m_ClientHeight, m_ServerWidth, m_ServerHeight,
-		m_CountSamples;
+		m_CountSamples, m_MaxSamples;
 
 	Core::ThreadPool m_ThreadPool;
 	std::atomic<bool> m_IsShuttingDown;
@@ -568,6 +568,8 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	, m_ClientHeight(0)
 	, m_ServerWidth(2)
 	, m_ServerHeight(2)
+	, m_CountSamples(0)
+	, m_MaxSamples(0)
 	, m_ThreadPool(1)
 	, m_IsShuttingDown(false)
 	, m_ServerCamera(&m_SceneNodeHandler)
@@ -583,14 +585,12 @@ CubemapReprojectorImplementor::CubemapReprojectorImplementor()
 	, m_KeyHandler(&m_EventManager)
 	, m_MouseHandler(&m_EventManager)
 	, m_ViewMatrix(0.0f)
+
 #if(CR_IS_OCULUS_ENABLED)
 	, m_IsVRGraphicsInitialized(false)
 #endif
 {
 	LoadConfiguration();
-
-	if (!m_IsRenderingInVR && m_GridReprojector.IsMultisamplingEnabled()) m_CountSamples = 8;
-	else m_CountSamples = 1;
 
 	m_GridReprojector.SetClearingBuffers(m_IsRenderingInVR);
 	m_GridReprojector.SetCullingEnabled(true);
@@ -620,6 +620,13 @@ void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID,
 	{
 		InitializeGLEW();
 		InitializeGLDebugging();
+
+		GLint maxSamples;
+		glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSamples);
+		m_MaxSamples = std::min(maxSamples, 8);
+
+		if (!m_IsRenderingInVR && m_GridReprojector.IsMultisamplingEnabled()) m_CountSamples = m_MaxSamples;
+		else m_CountSamples = 1;
 
 		auto shadersPath = m_PathHandler.GetPathFromRootDirectory("Shaders/");
 
@@ -810,7 +817,7 @@ void CubemapReprojectorImplementor::InitializeVRGraphics(const glm::uvec2& clien
 	if (!m_IsVRGraphicsInitialized)
 	{
 		bool isMultisamplingEnabled = m_GridReprojector.IsMultisamplingEnabled();
-		unsigned sampleCount = (isMultisamplingEnabled ? 8 : 1);
+		unsigned sampleCount = (isMultisamplingEnabled ? m_MaxSamples : 1);
 
 		{
 			Texture2D colorTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::RGBA8));
