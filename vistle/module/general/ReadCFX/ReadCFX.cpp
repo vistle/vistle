@@ -569,7 +569,6 @@ bool ReadCFX::changeParameter(const Parameter *p) {
 
 UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     //load an unstructured grid with connectivity, element and coordinate list. Each area3d gets an own unstructured grid.
-
     index_t nelmsIn3dArea, nconnectivities, nnodesIn3dArea;
     if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,counts) < 0) {
         std::cerr << "invalid zone number" << std::endl;
@@ -596,8 +595,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     auto ptrOnZcoords = grid->z().data();
 
 #ifdef PARALLEL_ZONES
-    cfxNode *nodes;
-    nodes = cfxExportNodeList();
+    cfxNode *nodes = cfxExportNodeList();
     for(index_t i=0;i<nnodesIn3dArea;++i) {
         ptrOnXcoords[i] = nodes[i].x;
         ptrOnYcoords[i] = nodes[i].y;
@@ -605,16 +603,16 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     }
 #else
     //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-    double x_coord[1], y_coord[1], z_coord[1];
     int *nodeListOfVolume = cfxExportVolumeList(m_3dAreasSelected[area3d].ID,cfxVOL_NODES); //query the nodes that define the volume
     index_t nnodesInZone = cfxExportNodeCount();
     std::vector<std::int32_t> nodeListOfVolumeVec;
     nodeListOfVolumeVec.resize(nnodesInZone+1);
     for(index_t i=0;i<nnodesIn3dArea;++i) {
-        cfxExportNodeGet(nodeListOfVolume[i],x_coord,y_coord,z_coord);   //get access to coordinates: [IN] nodeid [OUT] x,y,z
-        ptrOnXcoords[i] = *x_coord;
-        ptrOnYcoords[i] = *y_coord;
-        ptrOnZcoords[i] = *z_coord;
+        double xc, yc, zc;
+        cfxExportNodeGet(nodeListOfVolume[i], &xc, &yc, &zc);   //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = xc;
+        ptrOnYcoords[i] = yc;
+        ptrOnZcoords[i] = zc;
         nodeListOfVolumeVec[nodeListOfVolume[i]] = i;
     }
 #endif
@@ -635,8 +633,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     auto ptrOnCl = grid->cl().data();
 
 #ifdef PARALLEL_ZONES
-    cfxElement *elems;
-    elems = cfxExportElementList();
+    cfxElement *elems = cfxExportElementList();
     for(index_t i=0;i<nelmsIn3dArea;++i) {
         switch(elems[i].type) {
             case 4: {
@@ -755,12 +752,11 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
         }
     }
     cfxExportVolumeFree(m_3dAreasSelected[area3d].ID);
+    grid->cl().resize(elemListCounter); //correct initialization; initialized with connectivities in zone but connectivities in 3dArea are less equal (<=) than connectivities in zone
 #endif
 
-    grid->cl().resize(elemListCounter+1); //correct initialization; initialized with connectivities in zone but connectivities in 3dArea are less equal (<=) than connectivities in zone
     //element after last element
     ptrOnEl[nelmsIn3dArea] = elemListCounter;
-    ptrOnCl[elemListCounter] = 0;
 
     //Verification:
 //    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
@@ -802,7 +798,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     }
 
     int *nodeListOf2dArea;
-    index_t nNodesInZone, nNodesIn2dArea, nConnectIn2dArea, nFacesIn2dArea;
+    index_t nNodesIn2dArea, nFacesIn2dArea;
 
     if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
         nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
@@ -816,14 +812,11 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     }
     else {
         std::cerr << "error in loadPolygon: no valid 2d area" << std::endl;
-        int dmy = 0;
-        nodeListOf2dArea = &dmy;
-        nNodesIn2dArea = 0;
-        nFacesIn2dArea = 0;
+        return Polygons::ptr();
     }
 
-    nNodesInZone = cfxExportNodeCount();
-    nConnectIn2dArea = 4*nFacesIn2dArea; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
+    index_t nNodesInZone = cfxExportNodeCount();
+    index_t nConnectIn2dArea = 4*nFacesIn2dArea; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
 
     Polygons::ptr polygon(new Polygons(nFacesIn2dArea,nConnectIn2dArea,nNodesIn2dArea)); //initialize Polygon with numFaces, numCorners, numVertices
 
@@ -917,8 +910,6 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     //element after last element in element list and connectivity list
     polygon->cl().resize(elemListCounter);
     ptrOnEl[nFacesIn2dArea] = elemListCounter;
-    ptrOnCl[elemListCounter] = 0;
-
 
     //Verfification
 //    std::cerr << "nodes = " << nNodesIn2dArea << "; faces = " << nFacesIn2dArea << "; connect = " << nConnectIn2dArea << std::endl;
@@ -1590,9 +1581,10 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
 
 bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes) {
     //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
+
     setMeta(grid,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
     setMeta(data,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
-    //data->setGrid(grid);
+    data->setGrid(grid);
     data->setMapping(DataBase::Vertex);
 
     return true;
@@ -1603,7 +1595,7 @@ bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d,
 
     setMeta(polygon,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
     setMeta(data,area2d,setMetaTimestep,timestep,numSel2dArea,trnOrRes);
-    //data->setGrid(polygon);
+    data->setGrid(polygon);
     data->setMapping(DataBase::Vertex);
 
     return true;
@@ -1617,6 +1609,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
         if(rankForVolumeAndTimestep(timestep,i,numSel3dArea) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
 
+            std::cerr << "X1" << std::endl;
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
             }
