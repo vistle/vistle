@@ -6,6 +6,80 @@
 #include <CubemapReprojector.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <OpenGLRender/OpenGL.h>
+
+#include <Core/Constants.h>
+#include <EngineBuildingBlocks/ErrorHandling.h>
+
+#include <cassert>
+
+using namespace EngineBuildingBlocks;
+
+namespace OpenGLRender
+{
+	class OldColorDepthFBO
+	{
+		GLuint m_FBOHandle, m_ColorBufferHandle, m_DepthBufferHandle;
+
+		void CreateRenderBuffer(unsigned width, unsigned height, unsigned countSamples, GLenum format,
+			GLenum attachment, GLuint* pHandle)
+		{
+			glGenRenderbuffersEXT(1, pHandle);
+			glBindRenderbufferEXT(GL_RENDERBUFFER, *pHandle);
+
+			if (countSamples == 1)
+			{
+				glRenderbufferStorageEXT(GL_RENDERBUFFER, format, width, height);
+			}
+			else
+			{
+				glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, countSamples, format, width, height);
+			}
+
+			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, *pHandle);
+		}
+
+	public:
+
+		OldColorDepthFBO()
+			: m_FBOHandle(Core::c_InvalidIndexU)
+			, m_ColorBufferHandle(Core::c_InvalidIndexU)
+			, m_DepthBufferHandle(Core::c_InvalidIndexU)
+		{}
+
+		void Initialize(unsigned width, unsigned height, unsigned countSamples,
+			GLenum colorBufferFormat, GLenum depthBufferFormat)
+		{
+			assert(countSamples > 0);
+
+			glGenFramebuffersEXT(1, &m_FBOHandle);
+			glBindFramebufferEXT(GL_FRAMEBUFFER, m_FBOHandle);
+
+			CreateRenderBuffer(width, height, countSamples, colorBufferFormat, GL_COLOR_ATTACHMENT0, &m_ColorBufferHandle);
+			CreateRenderBuffer(width, height, countSamples, depthBufferFormat, GL_DEPTH_ATTACHMENT, &m_DepthBufferHandle);
+
+			GLenum drawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+			glDrawBuffers(1, drawBuffers);
+
+			if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				RaiseException("An FBO is incomplete.");
+		}
+
+		~OldColorDepthFBO()
+		{
+			if (m_FBOHandle != Core::c_InvalidIndexU) glDeleteFramebuffersEXT(1, &m_FBOHandle);
+			if (m_ColorBufferHandle != Core::c_InvalidIndexU) glDeleteRenderbuffersEXT(1, &m_ColorBufferHandle);
+			if (m_DepthBufferHandle != Core::c_InvalidIndexU) glDeleteRenderbuffersEXT(1, &m_DepthBufferHandle);
+		}
+
+		GLuint GetHandle() const { return m_FBOHandle; }
+
+		void Bind() { glBindFramebufferEXT(GL_FRAMEBUFFER, m_FBOHandle); }
+	};
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////// IMPLEMENTOR ///////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -103,7 +177,7 @@ private:
 
 	std::mutex m_RenderSyncMutex;
 
-	OpenGLRender::FrameBufferObject m_FBO;
+	OpenGLRender::OldColorDepthFBO m_FBO;
 
 	void CreateFBO(const glm::uvec2& clientSize);
 
@@ -515,17 +589,10 @@ void DebugSourceTexture(const PathHandler& pathHandler, BufferType bufferType)
 }
 
 inline void DepthComposite(PathHandler& pathHandler,
-	FrameBufferObject& sourceTargetFBO, FrameBufferObject& sourceFBO2)
+	OldColorDepthFBO& sourceTargetFBO, FrameBufferObject& sourceFBO2,
+	unsigned width, unsigned height)
 {
-	auto& sourcetargetTextures = sourceTargetFBO.GetOwnedTextures();
-	auto& source2Textures = sourceFBO2.GetOwnedTextures();
-	auto& sourcetargetColor = (Texture2D&)sourcetargetTextures[0];
-	auto& sourcetargetDepth = (Texture2D&)sourcetargetTextures[1];
-	auto& s2Color = (Texture2D&)source2Textures[0];
-
-	auto& sourceTargetTD = sourcetargetColor.GetTextureDescription();
-	int width = sourceTargetTD.Width;
-	int height = sourceTargetTD.Height;
+	auto& s2Color = (Texture2D&)sourceFBO2.GetOwnedTextures()[0];
 
 	static bool isInitializing = true;
 	static ShaderProgram program;
@@ -653,13 +720,8 @@ void CubemapReprojectorImplementor::InitializeGL(unsigned openGLContextID,
 
 void CubemapReprojectorImplementor::CreateFBO(const glm::uvec2& clientSize)
 {
-	auto target = (m_CountSamples == 1 ? TextureTarget::Texture2D : TextureTarget::Texture2DMS);
-	Texture2D colorTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::RGBA8, 1, m_CountSamples, target));
-	Texture2D depthTexture(OpenGLRender::Texture2DDescription(clientSize.x, clientSize.y, TextureFormat::DepthComponent32, 1, m_CountSamples, target));
-	m_FBO.Initialize();
-	m_FBO.Bind();
-	m_FBO.Attach(std::move(colorTexture), FrameBufferAttachment::Color);
-	m_FBO.Attach(std::move(depthTexture), FrameBufferAttachment::Depth);
+	m_FBO.Initialize(clientSize.x, clientSize.y, m_CountSamples,
+		(GLenum)TextureFormat::RGBA8, (GLenum)TextureFormat::DepthComponent32);
 }
 
 void CubemapReprojectorImplementor::Destroy()
@@ -747,7 +809,7 @@ void CubemapReprojectorImplementor::Render(unsigned openGLContextID)
 		}
 		m_VRHelper->OnRenderingFinished();
 		glViewport(0, 0, clientSize.x, clientSize.y);
-		DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO);
+		DepthComposite(m_PathHandler, m_FBO, m_MirrorFBO, clientSize.x, clientSize.y);
 	}
 	else
 #endif
