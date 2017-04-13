@@ -48,6 +48,13 @@ class GridReprojector
 	EngineBuildingBlocks::Graphics::ViewFrustumCuller m_ViewFrustumCuller;
 	Core::SimpleTypeVectorU<TileInstanceData> m_TileInstanceData;
 
+	struct SideInstanceDrawData
+	{
+		unsigned Offset;
+		unsigned Count;
+	};
+	SideInstanceDrawData m_SideInstanceData[c_CountCubemapSides];
+
 	void SetGridRasterizationShader(
 		EngineBuildingBlocks::Graphics::CubemapCameraGroup& serverCameraGroup,
 		EngineBuildingBlocks::Graphics::Camera& clientCamera);

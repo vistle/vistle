@@ -2,13 +2,11 @@
 
 #extension GL_ARB_gpu_shader4 : enable
 
-in vec2 TexC;
-
-varying out vec4 ResultColor;
+varying vec2 TexC;
 
 uniform sampler2D ColorTexture;
 
 void main()
 {
-	ResultColor = texture2D(ColorTexture, TexC);
+	gl_FragColor = texture2D(ColorTexture, TexC);
 }

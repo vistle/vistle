@@ -137,7 +137,7 @@ void GridReprojector::CreatePrimitives()
 
 		VertexInputLayout instaceBufferIL;
 		instaceBufferIL.Elements.push_back({ "TexCoordOffset", VertexElementType::Float, (unsigned)sizeof(float), 2U });
-		instaceBufferIL.Elements.push_back({ "RegionIndexIn", VertexElementType::Uint32, (unsigned)sizeof(unsigned), 1U });
+		instaceBufferIL.Elements.push_back({ "RegionIndex", VertexElementType::Uint32, (unsigned)sizeof(unsigned), 1U });
 		m_GridTileInstanceVBO.Initialize(OpenGLRender::BufferUsage::DynamicDraw, countTiles, instaceBufferIL);
 		program->SetInputLayout(instaceBufferIL, 1);
 
@@ -177,8 +177,17 @@ void GridReprojector::SetTextureData(unsigned char** depthDataPointers,
 
 void GridReprojector::SetGridRasterizationShader(CubemapCameraGroup& serverCameraGroup, Camera& clientCamera)
 {
-	auto cViewProj = clientCamera.GetViewProjectionMatrix();
+	glm::mat3 texCoordToDirections[] =
+	{
+		glm::mat3(0.0f, 0.0f, 2.0f, 0.0f, 2.0f, 0.0f, 1.0f, -1.0f, -1.0f),
+		glm::mat3(0.0f, 0.0f, -2.0f, 0.0f, 2.0f, 0.0f, -1.0f, -1.0f, 1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 0.0f, -2.0f, 1.0f, 1.0f, 1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, 1.0f, -1.0f, -1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, 1.0f, -1.0f, 1.0f),
+		glm::mat3(2.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, -1.0f, -1.0f, -1.0f)
+	};
 
+	auto cViewProj = clientCamera.GetViewProjectionMatrix();
 	glm::mat4 transformations[c_CountCubemapSides];
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
@@ -193,6 +202,7 @@ void GridReprojector::SetGridRasterizationShader(CubemapCameraGroup& serverCamer
 	m_GridTileInstanceVBO.Write(m_TileInstanceData.GetArray(), 0U,
 		m_TileInstanceData.GetSize() * (unsigned)sizeof(TileInstanceData));
 
+	pProgram->SetUniformValueArray("TexCoordToDirections", texCoordToDirections, c_CountCubemapSides);
 	pProgram->SetUniformValueArray("Transformations", transformations, c_CountCubemapSides);
 
 	pProgram->SetUniformValue("ColorTexture", 0);
@@ -206,8 +216,17 @@ void GridReprojector::SetGridRasterizationShader(CubemapCameraGroup& serverCamer
 
 void GridReprojector::SetGridEdgeRasterizationShader(CubemapCameraGroup& serverCameraGroup, Camera& clientCamera)
 {
-	auto cViewProj = clientCamera.GetViewProjectionMatrix();
+	glm::mat3 texCoordToDirections[] =
+	{
+		glm::mat3(0.0f, 0.0f, 2.0f, 0.0f, 2.0f, 0.0f, 1.0f, -1.0f, -1.0f),
+		glm::mat3(0.0f, 0.0f, -2.0f, 0.0f, 2.0f, 0.0f, -1.0f, -1.0f, 1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 0.0f, -2.0f, 1.0f, 1.0f, 1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 2.0f, 1.0f, -1.0f, -1.0f),
+		glm::mat3(-2.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, 1.0f, -1.0f, 1.0f),
+		glm::mat3(2.0f, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f, -1.0f, -1.0f, -1.0f)
+	};
 
+	auto cViewProj = clientCamera.GetViewProjectionMatrix();
 	glm::mat4 transformations[c_CountCubemapSides];
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
@@ -217,6 +236,8 @@ void GridReprojector::SetGridEdgeRasterizationShader(CubemapCameraGroup& serverC
 
 	auto pProgram = m_ShaderRebuilder.ShaderPrograms[(unsigned)ShaderId::GridEdgeRasterization].Program;
 	pProgram->Bind();
+
+	pProgram->SetUniformValueArray("TexCoordToDirections", texCoordToDirections, c_CountCubemapSides);
 	pProgram->SetUniformValueArray("Transformations", transformations, c_CountCubemapSides);
 
 	pProgram->SetUniformValue("ColorTexture", 0);
@@ -325,8 +346,13 @@ void GridReprojector::UpdateTileData(CubemapCameraGroup& serverCameraGroup, Came
 	m_TileInstanceData.ClearAndReserve(countTiles);
 
 	unsigned index = 0;
+	unsigned instanceOffset = 0;
 	for (unsigned i = 0; i < c_CountCubemapSides; i++)
 	{
+		auto& sideInstanceData = m_SideInstanceData[i];
+		sideInstanceData.Offset = instanceOffset;
+		sideInstanceData.Count = 0;
+
 		for (unsigned j = 0; j < m_CountGridTilesY; j++)
 		{
 			for (unsigned k = 0; k < m_CountGridTilesX; k++, index++)
@@ -338,9 +364,12 @@ void GridReprojector::UpdateTileData(CubemapCameraGroup& serverCameraGroup, Came
 					auto& data = m_TileInstanceData.UnsafePushBackPlaceHolder();
 					data.RegionIndex = i;
 					data.TexCoordOffset = m_TileOffsets[index];
+					sideInstanceData.Count++;
 				}
 			}
 		}
+
+		instanceOffset += sideInstanceData.Count;
 	}
 
 	m_TileRatio = (float)m_TileInstanceData.GetSize() / (float)countTiles;

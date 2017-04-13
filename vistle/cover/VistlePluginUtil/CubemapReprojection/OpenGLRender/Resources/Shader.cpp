@@ -422,95 +422,16 @@ void ShaderProgram::SetUniformValue(GLint location, const glm::dvec4& value)
 	glUniform4dv(location, 1, glm::value_ptr(value));
 }
 
+void ShaderProgram::SetUniformValue(GLint location, const glm::mat3& value)
+{
+	assert(location != -1);
+	glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(value));
+}
+
 void ShaderProgram::SetUniformValue(GLint location, const glm::mat4& value)
 {
 	assert(location != -1);
 	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
-}
-
-void ShaderProgram::SetUniformValue(const char* name, int value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, unsigned value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, float value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, double value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::ivec2& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::uvec2& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::vec2& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::dvec2& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::ivec3& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::uvec3& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::vec3& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::dvec3& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::ivec4& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::uvec4& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::vec4& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::dvec4& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
-}
-
-void ShaderProgram::SetUniformValue(const char* name, const glm::mat4& value)
-{
-	SetUniformValue(GetUniformLocation(name), value);
 }
 
 void ShaderProgram::SetUniformValueArray(GLint location, const int* pValue, GLsizei count)
@@ -609,93 +530,14 @@ void ShaderProgram::SetUniformValueArray(GLint location, const glm::dvec4* pValu
 	glUniform4dv(location, count, reinterpret_cast<const double*>(pValue));
 }
 
+void ShaderProgram::SetUniformValueArray(GLint location, const glm::mat3* pValue, GLsizei count)
+{
+	assert(location != -1);
+	glUniformMatrix3fv(location, count, GL_FALSE, reinterpret_cast<const float*>(pValue));
+}
+
 void ShaderProgram::SetUniformValueArray(GLint location, const glm::mat4* pValue, GLsizei count)
 {
 	assert(location != -1);
 	glUniformMatrix4fv(location, count, GL_FALSE, reinterpret_cast<const float*>(pValue));
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const int* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const unsigned* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const float* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const double* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::ivec2* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::uvec2* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::vec2* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::dvec2* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::ivec3* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::uvec3* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::vec3* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::dvec3* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::ivec4* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::uvec4* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::vec4* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::dvec4* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
-}
-
-void ShaderProgram::SetUniformValueArray(const char* name, const glm::mat4* pValue, GLsizei count)
-{
-	SetUniformValueArray(GetUniformLocation(name), pValue, count);
 }

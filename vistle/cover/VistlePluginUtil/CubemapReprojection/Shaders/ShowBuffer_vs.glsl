@@ -2,9 +2,9 @@
 
 #extension GL_EXT_gpu_shader4 : enable
 
-in vec2 TextureCoordinate;
+attribute vec2 TextureCoordinate;
 
-varying out vec2 TexC;
+varying vec2 TexC;
 
 void main()
 {

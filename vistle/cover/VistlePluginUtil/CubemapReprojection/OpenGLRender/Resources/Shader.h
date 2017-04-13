@@ -159,25 +159,8 @@ namespace OpenGLRender
 		void SetUniformValue(GLint location, const glm::uvec4& value);
 		void SetUniformValue(GLint location, const glm::vec4& value);
 		void SetUniformValue(GLint location, const glm::dvec4& value);
+		void SetUniformValue(GLint location, const glm::mat3& value);
 		void SetUniformValue(GLint location, const glm::mat4& value);
-
-		void SetUniformValue(const char* name, int value);
-		void SetUniformValue(const char* name, unsigned value);
-		void SetUniformValue(const char* name, float value);
-		void SetUniformValue(const char* name, double value);
-		void SetUniformValue(const char* name, const glm::ivec2& value);
-		void SetUniformValue(const char* name, const glm::uvec2& value);
-		void SetUniformValue(const char* name, const glm::vec2& value);
-		void SetUniformValue(const char* name, const glm::dvec2& value);
-		void SetUniformValue(const char* name, const glm::ivec3& value);
-		void SetUniformValue(const char* name, const glm::uvec3& value);
-		void SetUniformValue(const char* name, const glm::vec3& value);
-		void SetUniformValue(const char* name, const glm::dvec3& value);
-		void SetUniformValue(const char* name, const glm::ivec4& value);
-		void SetUniformValue(const char* name, const glm::uvec4& value);
-		void SetUniformValue(const char* name, const glm::vec4& value);
-		void SetUniformValue(const char* name, const glm::dvec4& value);
-		void SetUniformValue(const char* name, const glm::mat4& value);
 
 		void SetUniformValueArray(GLint location, const int* pValue, GLsizei count);
 		void SetUniformValueArray(GLint location, const unsigned* pValue, GLsizei count);
@@ -195,25 +178,20 @@ namespace OpenGLRender
 		void SetUniformValueArray(GLint location, const glm::uvec4* pValue, GLsizei count);
 		void SetUniformValueArray(GLint location, const glm::vec4* pValue, GLsizei count);
 		void SetUniformValueArray(GLint location, const glm::dvec4* pValue, GLsizei count);
+		void SetUniformValueArray(GLint location, const glm::mat3* pValue, GLsizei count);
 		void SetUniformValueArray(GLint location, const glm::mat4* pValue, GLsizei count);
 
-		void SetUniformValueArray(const char* name, const int* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const unsigned* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const float* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const double* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::ivec2* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::uvec2* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::vec2* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::dvec2* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::ivec3* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::uvec3* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::vec3* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::dvec3* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::ivec4* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::uvec4* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::vec4* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::dvec4* pValue, GLsizei count);
-		void SetUniformValueArray(const char* name, const glm::mat4* pValue, GLsizei count);
+		template <typename T>
+		void SetUniformValue(const char* name, const T& value)
+		{
+			SetUniformValue(GetUniformLocation(name), value);
+		}
+
+		template <typename T>
+		void SetUniformValueArray(const char* name, const T* pValue, GLsizei count)
+		{
+			SetUniformValueArray(GetUniformLocation(name), pValue, count);
+		}
 	};
 }
 

@@ -3,15 +3,15 @@
 #extension GL_EXT_gpu_shader4 : enable
 
 // Per vertex.
-in vec2 TextureCoordinate;
+attribute vec2 TextureCoordinate;
 
 // Per instance.
-in vec2 TexCoordOffset;
-in uint RegionIndexIn;
+attribute vec2 TexCoordOffset;
+attribute unsigned int RegionIndex;
 
-varying out vec2 TexC;
-flat varying out uint RegionIndex;
+varying vec3 Direction;
 
+uniform mat3 TexCoordToDirections[6];
 uniform mat4 Transformations[6];
 uniform sampler2D DepthTextures[6];
 
@@ -25,11 +25,9 @@ float GetDepth(vec2 texCoord, uint regionIndex)
 void main()
 {
 	vec2 texCoord = TextureCoordinate + TexCoordOffset;
-	uint regionIndex = RegionIndexIn;
 
-	float depth = GetDepth(texCoord, regionIndex);
-	gl_Position = Transformations[regionIndex] * vec4(texCoord * 2.0f - 1.0f, depth, 1.0f);
+	float depth = GetDepth(texCoord, RegionIndex);
+	gl_Position = Transformations[RegionIndex] * vec4(texCoord * 2.0f - 1.0f, depth, 1.0f);
 	gl_Position.z = min(gl_Position.z, gl_Position.w * LastDepth);
-	TexC = texCoord;
-	RegionIndex = regionIndex;
+	Direction = TexCoordToDirections[RegionIndex] * vec3(texCoord, 1.0f);
 }

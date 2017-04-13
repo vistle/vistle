@@ -2,9 +2,7 @@
 
 #extension GL_EXT_gpu_shader4 : enable
 
-in vec2 TexC;
-
-varying out vec4 ResultColor;
+varying vec2 TexC;
 
 uniform samplerCube ColorTexture;
 
@@ -60,5 +58,5 @@ void main()
 	AddLine(TexC.x, c_TwoOverThree, lineWidth, lineColor, color);
 	AddLine(TexC.y, 0.5f,           lineWidth, lineColor, color);
 	
-	ResultColor = color;
+	gl_FragColor = color;
 }
