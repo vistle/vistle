@@ -6,7 +6,7 @@ varying vec2 TexC;
 
 uniform sampler2D DepthTextures[6];
 
-float GetDepth(vec2 texCoord, uint regionIndex)
+float GetDepth(vec2 texCoord, unsigned int regionIndex)
 {
 	return texture2D(DepthTextures[regionIndex], texCoord).x;
 }
@@ -38,7 +38,7 @@ vec3 VisualizeDepth(float depth)
 	return vec3(r, g, b) + w;
 }
 
-vec4 GetColor(vec2 texCoord, uint regionIndex)
+vec4 GetColor(vec2 texCoord, unsigned int regionIndex)
 {
 	return vec4(VisualizeDepth(GetDepth(texCoord, regionIndex)), 1.0f);
 }
@@ -48,7 +48,7 @@ void AddLine(float texCoord, float lineValue, float lineWidth, vec3 lineColor, i
 	color += smoothstep(0.0f, lineWidth, lineWidth - abs(texCoord - lineValue)) * vec4(lineColor, 0.0f);
 }
 
-void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2 imTexCoord)
+void GetRegionIndexAndTextureCoord(vec2 texCoord, out unsigned int regionIndex, out vec2 imTexCoord)
 {
 	if     (texCoord.x <= c_OneOverThree) { regionIndex = 0U;  imTexCoord.x = texCoord.x;                   }
 	else if(texCoord.x <= c_TwoOverThree) { regionIndex = 1U;  imTexCoord.x = texCoord.x - c_OneOverThree;  }
@@ -60,7 +60,7 @@ void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2
 
 void main()
 {
-	uint regionIndex;
+	unsigned int regionIndex;
 	vec2 imTexCoord;
 	GetRegionIndexAndTextureCoord(TexC, regionIndex, imTexCoord);
 

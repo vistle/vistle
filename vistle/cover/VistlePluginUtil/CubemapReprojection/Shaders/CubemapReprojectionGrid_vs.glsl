@@ -17,7 +17,7 @@ uniform sampler2D DepthTextures[6];
 
 const float LastDepth = 0.999999f;
 
-float GetDepth(vec2 texCoord, uint regionIndex)
+float GetDepth(vec2 texCoord, unsigned int regionIndex)
 {
 	return texture2D(DepthTextures[regionIndex], texCoord).x;
 }

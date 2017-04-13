@@ -12,7 +12,7 @@ uniform samplerCube ColorTexture;
 const float c_OneOverThree = 0.333333f;
 const float c_TwoOverThree = 0.666667f;
 
-vec4 GetColor(vec2 texCoord, uint regionIndex)
+vec4 GetColor(vec2 texCoord, unsigned int regionIndex)
 {
 	vec2 direction2 = texCoord * 2.0f - 1.0f;
 	vec3 direction;
@@ -34,7 +34,7 @@ void AddLine(float texCoord, float lineValue, float lineWidth, vec3 lineColor, i
 	color += smoothstep(0.0f, lineWidth, lineWidth - abs(texCoord - lineValue)) * vec4(lineColor, 0.0f);
 }
 
-void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2 imTexCoord)
+void GetRegionIndexAndTextureCoord(vec2 texCoord, out unsigned int regionIndex, out vec2 imTexCoord)
 {
 	if     (texCoord.x <= c_OneOverThree) { regionIndex = 0U;  imTexCoord.x = texCoord.x;                   }
 	else if(texCoord.x <= c_TwoOverThree) { regionIndex = 1U;  imTexCoord.x = texCoord.x - c_OneOverThree;  }
@@ -46,7 +46,7 @@ void GetRegionIndexAndTextureCoord(vec2 texCoord, out uint regionIndex, out vec2
 
 void main()
 {
-	uint regionIndex;
+	unsigned int regionIndex;
 	vec2 imTexCoord;
 	GetRegionIndexAndTextureCoord(TexC, regionIndex, imTexCoord);
 
