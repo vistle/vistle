@@ -385,32 +385,32 @@ void GridReprojector::SetTileDepthMinMax(unsigned id, unsigned start, unsigned e
 	GetImageDataSideBounds(m_GridSize, m_GridSize, m_SideVisiblePortion, m_PosZVisiblePortion,
 		sideStarts, sideEnds);
 
-	unsigned countTilesPerSide = m_CountGridTilesX * m_CountGridTilesY;
-	unsigned xSize = m_GridSize / m_CountGridTilesX;
-	unsigned ySize = m_GridSize / m_CountGridTilesY;
+	int countTilesPerSide = m_CountGridTilesX * m_CountGridTilesY;
+	int xSize = m_GridSize / m_CountGridTilesX;
+	int ySize = m_GridSize / m_CountGridTilesY;
 	for (unsigned i = start; i < end; i++)
 	{
-		unsigned side = i / countTilesPerSide;
-		unsigned sideIndex = i - side * countTilesPerSide;
-		unsigned tileY = sideIndex / m_CountGridTilesX;
-		unsigned tileX = sideIndex - tileY * m_CountGridTilesX;
-		int xStart = xSize * tileX - (tileX == m_CountGridTilesX - 1 ? 1 : 0);
-		int yStart = ySize * tileY - (tileY == m_CountGridTilesY - 1 ? 1 : 0);
-		int xEnd = xStart + xSize;
-		int yEnd = yStart + ySize;
+		int side = i / countTilesPerSide;
+		int sideIndex = i - side * countTilesPerSide;
+		int tileY = sideIndex / m_CountGridTilesX;
+		int tileX = sideIndex - tileY * m_CountGridTilesX;
+		int xStart = xSize * tileX - 1;
+		int yStart = ySize * tileY - 1;
+		int xEnd = xStart + xSize + 1;
+		int yEnd = yStart + ySize + 1;
 		auto depths = reinterpret_cast<const float*>(depthDataPointers[side]);
 
 		float minDepth = 1.0f;
 		float maxDepth = -1.0f; // Fits for both OpenGL and DirectX.
 
-		int width = sideEnds[side].x - sideStarts[side].x;
-		int height = sideEnds[side].y - sideStarts[side].y;
+		int width = (int)sideEnds[side].x - (int)sideStarts[side].x;
+		int height = (int)sideEnds[side].y - (int)sideStarts[side].y;
 
 		// Setting limits to received data limits.
 		xStart = std::max(xStart - (int)sideStarts[side].x, 0);
 		yStart = std::max(yStart - (int)sideStarts[side].y, 0);
-		xEnd = std::min(xEnd - (int)sideStarts[side].x, width);
-		yEnd = std::min(yEnd - (int)sideStarts[side].y, height);
+		xEnd = std::min(xEnd - (int)sideStarts[side].x, width - 1);
+		yEnd = std::min(yEnd - (int)sideStarts[side].y, height - 1);
 
 		for (int j = yStart; j <= yEnd; j++)
 		{
@@ -437,8 +437,10 @@ void GridReprojector::SetTileDepthMinMax(unsigned id, unsigned start, unsigned e
 		float maxZ = -projection.GetLinearDepth(maxDepth);
 
 		assert(maxZ >= minZ);
-		const float depthEpsilon = 1e-3f;
-		if (maxZ - minZ < depthEpsilon) maxZ = minZ + depthEpsilon;
+		const float depthAddEpsilon = 1e-3f;
+		const float depthMultEpsilon = 1e-3f;
+		maxZ = std::max(maxZ, minZ + depthAddEpsilon);
+		maxZ = std::max(maxZ, minZ * (1.0f + depthMultEpsilon));
 
 		const float farEpsilon = 1e-3f;
 		m_TileIsBackground[i] = (minZ >= farDistance * (1.0f - farEpsilon));
