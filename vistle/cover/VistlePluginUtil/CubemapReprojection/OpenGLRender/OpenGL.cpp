@@ -8,30 +8,6 @@
 
 namespace OpenGLRender
 {
-	void CheckGLError()
-	{
-		auto errorCode = glGetError();
-		if (errorCode != GL_NO_ERROR)
-		{
-			std::stringstream ss;
-			ss << "An OpenGL error has been occured: " << glewGetErrorString(errorCode) << "\n";
-			EngineBuildingBlocks::RaiseException(ss);
-		}
-	}
-
-	void InitializeGLEW()
-	{
-		glewExperimental = GL_TRUE;
-		GLenum initResult = glewInit();
-		if (initResult != GLEW_OK)
-		{
-			throw initResult;
-		}
-
-		// GLEW initialization casuses error: flushing it.
-		glGetError();
-	}
-
 	inline void GetSourceString(GLenum source, std::string& str)
 	{
 		switch (source)
@@ -98,9 +74,55 @@ namespace OpenGLRender
 		}
 	}
 
-	void GLAPIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
-		const GLchar* message, void* userParam)
+	void CheckGLError()
 	{
+		auto errorCode = glGetError();
+		if (errorCode != GL_NO_ERROR)
+		{
+			std::string errorStr;
+			GetErrorIdString(errorCode, errorStr);
+			std::stringstream ss;
+			ss << "An OpenGL error has been occured: " << errorStr << "\n";
+			EngineBuildingBlocks::RaiseException(ss);
+		}
+	}
+
+	void InitializeGLEW()
+	{
+		glewExperimental = GL_TRUE;
+		GLenum initResult = glewInit();
+		if (initResult != GLEW_OK)
+		{
+			std::stringstream ss;
+			ss << "An error has been occured while initializing GLEW: " << glewGetErrorString(initResult) << "\n";
+			EngineBuildingBlocks::RaiseException(ss);
+		}
+
+		// GLEW initialization casuses error: flushing it.
+		glGetError();
+	}
+
+	void GLAPIENTRY DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length,
+		const GLchar* message, const void* userParam)
+	{
+		// Filtering some error messages.
+		const bool isFilteringEnabled = true;
+		if (isFilteringEnabled)
+		{
+			if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+			{
+				const unsigned filteredIds[] =
+				{
+					131185 // NVidia: Buffer object ... will use VIDEO memory as the source for buffer object operations.
+				};
+				auto endPtr = filteredIds + sizeof(filteredIds) / sizeof(*filteredIds);
+				if (std::find(filteredIds, endPtr, id) != endPtr)
+				{
+					return;
+				}
+			}
+		}
+
 		std::string sourceString, typeString, severityString, errorIdString;
 
 		GetSourceString(source, sourceString);
@@ -125,22 +147,21 @@ namespace OpenGLRender
 		ss << "Message:  " << message << std::endl << std::endl;
 		ss << "*********************************************" << std::endl << std::endl;
 
-		if (severity == GL_DEBUG_SEVERITY_HIGH) EngineBuildingBlocks::RaiseException(ss);
-		else EngineBuildingBlocks::RaiseWarning(ss);
+		if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) EngineBuildingBlocks::RaiseWarning(ss);
+		else EngineBuildingBlocks::RaiseException(ss);
 	}
 
 	void InitializeGLDebugging()
 	{
-		if(glDebugMessageCallback != nullptr) glDebugMessageCallback((GLDEBUGPROC)DebugCallback, nullptr);
-#ifdef GL_ARB_debug_output
-		if (glewIsExtensionSupported("GL_ARB_debug_output")) glDebugMessageCallbackARB((GLDEBUGPROCARB)DebugCallback, nullptr);
-#endif
+		if (glDebugMessageCallback != nullptr)
+			glDebugMessageCallback(DebugCallback, nullptr);
+		else if (glDebugMessageCallbackARB != nullptr)
+			glDebugMessageCallbackARB(DebugCallback, nullptr);
 
 		glEnable(GL_DEBUG_OUTPUT);
 
 		// Enable synchronous callback. This ensures that the callback function is called
-		// right after an error has occurred. This capability is not defined in the AMD
-		// version.
+		// right after an error has occurred. This capability is not defined in the AMD version.
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	}
 }
