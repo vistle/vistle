@@ -13,6 +13,7 @@ namespace EngineBuildingBlocks
 {
 	inline void RaiseException(const char* str)
 	{
+		printf("\n\n************** CR ERROR: %s\n\n", str);
 		throw std::runtime_error(str);
 	}
 
