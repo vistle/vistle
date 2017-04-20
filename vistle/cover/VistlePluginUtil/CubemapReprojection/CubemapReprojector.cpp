@@ -484,7 +484,7 @@ void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resour
 		textureDesc.Height = textureSize.y;
 		textureDesc.ArraySize = 1;
 		textureDesc.Target = TextureTarget::Texture2D;
-		textureDesc.Format = TextureFormat::R32F;
+		textureDesc.Format = TextureFormat::DepthComponent32F;
 		textureDesc.HasMipmaps = false;
 		TextureSamplingDescription samplingDesc;
 		samplingDesc.MinifyingFilter = TextureMinifyingFilter::Linear;
@@ -493,7 +493,7 @@ void CubemapReprojectorImplementor::InitializeDepthTextureArrays(unsigned resour
 		texture.Initialize(textureDesc, samplingDesc);
 
 		texture.Bind();
-		texture.SetData(initData.GetArray(), PixelDataFormat::Red, PixelDataType::Float);
+		texture.SetData(initData.GetArray(), PixelDataFormat::DepthComponent, PixelDataType::Float);
 	}
 }
 
@@ -507,7 +507,7 @@ void CubemapReprojectorImplementor::SetDepthData(unsigned resourceIndex, unsigne
 
 		unsigned offset[] = { start[i].x, start[i].y };
 		unsigned size[] = { end[i].x - start[i].x, end[i].y - start[i].y };
-		texture.SetData(ppData[i], PixelDataFormat::Red, PixelDataType::Float, offset, size, 0);
+		texture.SetData(ppData[i], PixelDataFormat::DepthComponent, PixelDataType::Float, offset, size, 0);
 	}
 }
 
