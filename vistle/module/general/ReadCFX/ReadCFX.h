@@ -115,7 +115,7 @@ class ReadCFX: public vistle::Module {
    int m_previousTimestep = 1;
 
    //Ports
-   vistle::Port *m_gridOut, *m_polyOut;
+   vistle::Port *m_gridOut, *m_polyOut, *m_particleTime;
    std::vector<vistle::Port *> m_volumeDataOut, m_2dDataOut, m_particleDataOut;
 
    //Data
@@ -127,7 +127,7 @@ class ReadCFX: public vistle::Module {
    std::vector<std::int32_t> m_particleTypesSelected;
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
-   vistle::Coords::ptr m_coordsOfParticleTime;
+   vistle::Coords::ptr m_coordsOfParticles;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
@@ -135,10 +135,11 @@ class ReadCFX: public vistle::Module {
    int rankForParticleTypeNumber(int particleTypeNumber) const;
    vistle::UnstructuredGrid::ptr loadGrid(int area3d);
    vistle::Polygons::ptr loadPolygon(int area2d);
-   vistle::Coords::ptr loadParticleTrackCoords();
+   vistle::Coords::ptr loadParticleTrackCoords(int particleTypeNumber, const index_t NumVertices);
    vistle::DataBase::ptr loadField(int area3d, Variable var);
    vistle::DataBase::ptr load2dField(int area2d, Variable var);
-   vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle);
+   vistle::DataBase::ptr loadParticleTime(int particleTypeNumber, const index_t NumVertices);
+   vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle, const index_t NumVertices);
    bool initializeResultfile();
    bool loadFields(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
@@ -150,6 +151,7 @@ class ReadCFX: public vistle::Module {
    bool add2dDataToPorts();
    bool addGridToPort(int area3d);
    bool addPolygonToPort(int area2d);
+   bool addParticleToPorts();
    void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);

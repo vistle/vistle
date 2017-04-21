@@ -110,6 +110,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
 //particle selection
     m_particleSelection = addStringParameter("particle type","select particle type e.g. 1,4,6-10","all");
+    m_particleTime = createOutputPort("particle_time");
 
     // particle data ports and particle choice parameters
     for (int i=0; i<NumParticlePorts; ++i) {
@@ -130,7 +131,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     }
     m_currentVolumedata.resize(NumPorts);
     m_current2dData.resize(Num2dPorts);
-    m_currentParticleData.resize(NumParticlePorts);
+    m_currentParticleData.resize(NumParticlePorts+1);
 }
 
 ReadCFX::~ReadCFX() {
@@ -822,7 +823,6 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 
     //load coords into polygon
     //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-    double x_coord[1], y_coord[1], z_coord[2];
 
     auto ptrOnXcoords = polygon->x().data();
     auto ptrOnYcoords = polygon->y().data();
@@ -832,10 +832,11 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     nodeListOf2dAreaVec.resize(nNodesInZone+1);
 
     for(index_t i=0;i<nNodesIn2dArea;++i) {
-        cfxExportNodeGet(nodeListOf2dArea[i],x_coord,y_coord,z_coord);  //get access to coordinates: [IN] nodeid [OUT] x,y,z
-        ptrOnXcoords[i] = *x_coord;
-        ptrOnYcoords[i] = *y_coord;
-        ptrOnZcoords[i] = *z_coord;
+        double x_coord, y_coord, z_coord;
+        cfxExportNodeGet(nodeListOf2dArea[i],&x_coord,&y_coord,&z_coord);  //get access to coordinates: [IN] nodeid [OUT] x,y,z
+        ptrOnXcoords[i] = x_coord;
+        ptrOnYcoords[i] = y_coord;
+        ptrOnZcoords[i] = z_coord;
         nodeListOf2dAreaVec[nodeListOf2dArea[i]] = i;
     }
 
@@ -935,30 +936,28 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     return polygon;
 }
 
-vistle::Coords::ptr ReadCFX::loadParticleTrackCoords() {
-    //std::cerr << "m_particleTypesSelected[" << particleTypeNumber << "] = " << m_particleTypesSelected[particleTypeNumber] << std::endl;
-    //int numParticleTypes = cfxExportGetNumberOfParticleTypes();
+//vistle::Coords::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, const index_t NumVertices) {
+//    std::cerr << "m_particleTypesSelected[" << particleTypeNumber << "] = " << m_particleTypesSelected[particleTypeNumber] << std::endl;
 
-//    std::cerr << "cfxExportGetNumberOfTracks(" << m_particleTypesSelected[particleTypeNumber] << ") = " << cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]) << std::endl;
-//    std::cerr << "cfxExportGetParticleName(" << m_particleTypesSelected[particleTypeNumber] << ") = " << cfxExportGetParticleName(m_particleTypesSelected[particleTypeNumber]) << std::endl;
-//    for(int j=1; j<=5; ++j) {
-//        int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);
-//        std::cerr << "cfxExportGetNumberOfPointsOnParticleTrack(" << m_particleTypesSelected[particleTypeNumber] << "," << j << ") = " << cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j) << std::endl;
-//        float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],j,&NumOfPointsOnTrack);
-//        float *ParticleTrackTime = cfxExportGetParticleTrackTimeByTrack(m_particleTypesSelected[particleTypeNumber],j,&NumOfPointsOnTrack);
-//        for(int k=0;k<cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);++k) {
-//            if(k<10 || k>(cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j)-5)) {
-//                //                            if(k<10 || k>(cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j)-10)) {
-//                std::cerr << "ParticleTrackCoords_x[" << k*3 << "] " << ParticleTrackCoords[k*3] << std::endl;
-//                std::cerr << "ParticleTrackCoords_y[" << k*3+1 << "] " << ParticleTrackCoords[k*3+1] << std::endl;
-//                std::cerr << "ParticleTrackCoords_z[" << k*3+2 << "] " << ParticleTrackCoords[k*3+2] << std::endl;
-//                std::cerr << "ParticleTrackTime[" << k << "] " << ParticleTrackTime[k] << std::endl;
-//            }
+//    Coords::ptr coords(new Coords(,, ,NumVertices)); //new Coords(Object::InitializedFlags, Data *data, ,const Index numVertices, const Meta &meta = Meta())
+//    auto ptrOnXCoords = coords->x().data();
+//    auto ptrOnYCoords = coords->y().data();
+//    auto ptrOnZCoords = coords->z().data();
+
+//    int pointsOnTrackCounter = 0;
+//    for(int i=1; i<=cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]);++i) {
+//        int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
+//        float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],i,&NumOfPointsOnTrack);
+//        for(int k=0;k<NumOfPointsOnTrack;++k) {
+//            ptrOnXCoords = ParticleTrackCoords[pointsOnTrackCounter + k*3];
+//            ptrOnYCoords = ParticleTrackCoords[pointsOnTrackCounter + k*3+1];
+//            ptrOnZCoords = ParticleTrackCoords[pointsOnTrackCounter + k*3+2];
 //        }
+//        pointsOnTrackCounter += NumOfPointsOnTrack*3;
 //    }
 
-    return vistle::Coords::ptr();
-}
+//    return vistle::Coords::ptr();
+//}
 
 DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
     //load scalar data in Vec and vector data in Vec3 for the area3d
@@ -1145,56 +1144,63 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
     return DataBase::ptr();
 }
 
+//vistle::DataBase::ptr ReadCFX::loadParticleTime(int particleTypeNumber, const index_t NumVertices) {
+//    // loads the time values for each point on every track of the particle type
 
-vistle::DataBase::ptr ReadCFX::loadParticleValues(int particleTypeNumber, Particle particle) {
-    //
-
-//    std::cerr << "m_particleTypesSelected[" << particleTypeNumber << "] = " << m_particleTypesSelected[particleTypeNumber] << std::endl;
-//    //int numParticleTypes = cfxExportGetNumberOfParticleTypes();
-
-//    std::cerr << "cfxExportGetNumberOfTracks(" << m_particleTypesSelected[particleTypeNumber] << ") = " << cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]) << std::endl;
-//    std::cerr << "cfxExportGetParticleName(" << m_particleTypesSelected[particleTypeNumber] << ") = " << cfxExportGetParticleName(m_particleTypesSelected[particleTypeNumber]) << std::endl;
-//    for(int j=1; j<=5; ++j) {
+//    int pointsOnTrackCounter = 0;
+//    for(int j=1; j<=cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]); ++j) {
 //        int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);
-//        std::cerr << "cfxExportGetNumberOfPointsOnParticleTrack(" << m_particleTypesSelected[particleTypeNumber] << "," << j << ") = " << cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j) << std::endl;
-//        float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],j,&NumOfPointsOnTrack);
 //        float *ParticleTrackTime = cfxExportGetParticleTrackTimeByTrack(m_particleTypesSelected[particleTypeNumber],j,&NumOfPointsOnTrack);
-//        for(int k=0;k<cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);++k) {
-//            if(k<10 || k>(cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j)-5)) {
-//                //                            if(k<10 || k>(cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j)-10)) {
-//                std::cerr << "ParticleTrackCoords_x[" << k*3 << "] " << ParticleTrackCoords[k*3] << std::endl;
-//                std::cerr << "ParticleTrackCoords_y[" << k*3+1 << "] " << ParticleTrackCoords[k*3+1] << std::endl;
-//                std::cerr << "ParticleTrackCoords_z[" << k*3+2 << "] " << ParticleTrackCoords[k*3+2] << std::endl;
-//                std::cerr << "ParticleTrackTime[" << k << "] " << ParticleTrackTime[k] << std::endl;
-//            }
+//        Vec<Scalar>::ptr s(new Vec<Scalar>(NumVertices));
+//        scalar_t *ptrOnScalarData = s->x().data();
+//        for(int k=0;k<NumOfPointsOnTrack;++k) {
+//            ptrOnScalarData = ParticleTrackTime[pointsOnTrackCounter + k];
+//            return s;
 //        }
+//        pointsOnTrackCounter += NumOfPointsOnTrack;
 //    }
 
-//                int varCount = cfxExportGetParticleTypeVarCount(m_particleTypesSelected[particleTypeNumber]);
-//                std::cerr << "cfxExportGetParticleTypeVarCount(" << m_particleTypesSelected[particleTypeNumber] << " = " << cfxExportGetParticleTypeVarCount(m_particleTypesSelected[particleTypeNumber]) << std::endl;
-//                for(int j=1; j<=varCount; ++j) {
-//                    std::cerr << "cfxExportGetParticleTypeVarName(" << m_particleTypesSelected[particleTypeNumber] << "," << j << ",1) = " << cfxExportGetParticleTypeVarName(m_particleTypesSelected[particleTypeNumber],j,1)  << std::endl;
-//                    std::cerr << "cfxExportGetParticleTypeVarDimension(" << m_particleTypesSelected[particleTypeNumber] << "," << j << ") = " << cfxExportGetParticleTypeVarDimension(m_particleTypesSelected[particleTypeNumber],j)  << std::endl;
-//                    for(int trackIndex=1; trackIndex<=5; ++trackIndex) {
-//                        int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],trackIndex);
-//                        float *ParticleVar = cfxExportGetParticleTypeVar(m_particleTypesSelected[particleTypeNumber],j,trackIndex);
-//                        for(int pointIndex=0; pointIndex<NumOfPointsOnTrack; ++pointIndex) {
-//                            if(pointIndex < 5 || pointIndex>(NumOfPointsOnTrack-5)) {
-//                                if(cfxExportGetParticleTypeVarDimension(m_particleTypesSelected[particleTypeNumber],j) == 1) {
-//                                    std::cerr << "ParticleVar[" << pointIndex << "] = " << ParticleVar[pointIndex]  << std::endl;
-//                                }
-//                                else if(cfxExportGetParticleTypeVarDimension(m_particleTypesSelected[particleTypeNumber],j) == 3) {
-//                                    std::cerr << "ParticleVar_x[" << pointIndex*3 << "] = " << ParticleVar[pointIndex*3]  << std::endl;
-//                                    std::cerr << "ParticleVar_y[" << pointIndex*3+1 << "] = " << ParticleVar[pointIndex*3+1]  << std::endl;
-//                                    std::cerr << "ParticleVar_z[" << pointIndex*3+2 << "] = " << ParticleVar[pointIndex*3+2]  << std::endl;
-//                                }
-//                            }
-//                        }
-//                    }
+//    return DataBase::ptr();
+//}
 
 
-    return DataBase::ptr();
-}
+//vistle::DataBase::ptr ReadCFX::loadParticleValues(int particleTypeNumber, Particle particle, const index_t NumVertices) {
+//    //loads the values for each point on every track of the given particle type and variable
+
+//    int pointsOnTrackCounter = 0;
+
+//    if(particle.varDimension == 1) {
+//        Vec<Scalar>::ptr s(new Vec<Scalar>(NumVertices));
+//        scalar_t *ptrOnScalarData = s->x().data();
+//        for(int j=1; j<=cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]); ++j) {
+//            int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);
+//            float *particleVar = cfxExportGetParticleTypeVar(m_particleTypesSelected[particleTypeNumber],particle.idWithZone.ID,j);
+//            for(int k=0;k<NumOfPointsOnTrack;++k) {
+//                ptrOnScalarData[k] = particleVar[pointsOnTrackCounter + k];
+//            }
+//            pointsOnTrackCounter += NumOfPointsOnTrack;
+//        }
+//        return s;
+//    }
+//    if(particle.varDimension == 3) {
+//        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(NumVertices));
+//        scalar_t *ptrOnVectorXData = v->x().data();
+//        scalar_t *ptrOnVectorYData = v->y().data();
+//        scalar_t *ptrOnVectorZData = v->z().data();
+//        for(int j=1; j<=cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]); ++j) {
+//            int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);
+//            float *particleVar = cfxExportGetParticleTypeVar(m_particleTypesSelected[particleTypeNumber],particle.idWithZone.ID,j);
+//            for(int k=0;k<NumOfPointsOnTrack;++k) {
+//                ptrOnVectorXData[k] = particleVar[pointsOnTrackCounter + 3*k];
+//                ptrOnVectorYData[k] = particleVar[pointsOnTrackCounter + 3*k+1];
+//                ptrOnVectorZData[k] = particleVar[pointsOnTrackCounter + 3*k+2];
+//            }
+//            pointsOnTrackCounter += 3*NumOfPointsOnTrack;
+//        }
+//        return v;
+//    }
+//    return DataBase::ptr();
+//}
 
 index_t ReadCFX::collect3dAreas() {
     //write either selected zones or volumes (in selected zones) in a vector in a consecutively order
@@ -1393,67 +1399,42 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_
     return true;
 }
 
-bool ReadCFX::loadParticles(int particleTypeNumber, index_t numSelParticles) {
-    //
-    std::vector<Particle> allParticle = m_case.getCopyOfAllParticles();
-    if(cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag,NULL) < 0) {
-        std::cerr << "invalid zone number" << std::endl;
-    }
+//bool ReadCFX::loadParticles(int particleTypeNumber, index_t numSelParticles) {
+//    //calles loadParticleTrackCoords, loads the time of the particles and calles loadParticleValues for each variable, sets the coords to the values and calles addParticlesToPort
 
+//    std::vector<Particle> allParticle = m_case.getCopyOfAllParticles();
+//    if(cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag,NULL) < 0) {
+//        std::cerr << "invalid zone number" << std::endl;
+//    }
 
-    // der Particle Type hat eine gewisse Anzahl an Tracks
-    //hier muss eine Interpolation von *Time, *Coords und *Value für jede Track geschehen
+//    index_t NumVertices = 0;
+//    for(int i=1; i<= cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]);++i) {
+//        NumVertices += cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
+//    }
 
-    //Ausgangspunkt, dass *Time, *Coords, *Value in gleichen Zeitschritten Werte gespeichert haben.
-    //cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber])
-//    int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],j);
-//    float *Coords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],trackNumber,&NumOfPointsOnTrack);
-//    float *Time = cfxExportGetParticleTrackTimeByTrack(m_particleTypesSelected[particleTypeNumber],trackNumber,&NumOfPointsOnTrack);
-//    float *ParticleVar = cfxExportGetParticleTypeVar(m_particleTypesSelected[particleTypeNumber],allParticle[index].ID,trackIndex);
+//    m_coordsOfParticles = loadParticleTrackCoords(particleTypeNumber, NumVertices);
+//    m_currentParticleData[0] = loadParticleTime(particleTypeNumber, NumVertices);
 
-    for(int trackIndex=0;trackIndex<cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]);++trackIndex) {
-        for(int j=0;j<cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],trackIndex);++j) {
-//            m_particleDataTimestepSorted.p
-        }
-    }
+//    for (int i=0; i<NumParticlePorts; ++i) {
+//        std::string field = m_particleOut[i]->getValue();
+//        std::string s=std::to_string(particleTypeNumber);
+//        field.append(s.c_str());
+//        std::cerr << "field = " << field << std::endl;
 
+//        auto it = find_if(allParticle.begin(), allParticle.end(), [&field](const Particle& obj) {
+//            return obj.varName == field;});
+//        if (it == allParticle.end()) {
+//            m_currentParticleData[i]= DataBase::ptr();
+//        }
+//        else {
+//            auto index = std::distance(allParticle.begin(), it);
+//            m_currentParticleData[i+1] = loadParticleValues(particleTypeNumber, allParticle[index], NumVertices);
+//        }
+//    }
+//    addParticleToPorts();
 
-
-
-    //index_t numTimestep = Time.size();
-    //Schleife über alle Zeitschritte: for(int timestep=0;timestep<numTimestep;++timestep)
-    m_coordsOfParticleTime = loadParticleTrackCoords();
-
-    for (int i=0; i<NumParticlePorts; ++i) {
-      std::string field = m_particleOut[i]->getValue();
-      std::string s=std::to_string(particleTypeNumber);
-      field.append(s.c_str());
-      std::cerr << "field = " << field << std::endl;
-
-
-      auto it = find_if(allParticle.begin(), allParticle.end(), [&field](const Particle& obj) {
-          return obj.varName == field;});
-      if (it == allParticle.end()) {
-              m_currentParticleData[i]= DataBase::ptr();
-      }
-      else {
-          //auto index = std::distance(allParticle.begin(), it);
-          //DataBase::ptr obj = loadParticleValues(particleTypeNumber, allParticle[index]);
-
-//              setDataObject(m_coordsOfParticleTime,obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
-//          m_currentParticleData[i]= obj;
-
-//          obj->setTimestep(timestep);
-//          obj->setNumTimesteps(numTimestep);
-//          obj->setRealTime(Time[timestep]);
-//          obj->setBlock(particleTypeNumber);
-//          obj->setNumBlocks(numSelParticles == 0 ? 1 : numSelParticles);
-//          data->setGrid(grid);
-//          data->setMapping(DataBase::Vertex);
-      }
-   }
-   return true;
-}
+//    return true;
+//}
 
 bool ReadCFX::addVolumeDataToPorts() {
     //adds the 3d data to ports
@@ -1492,6 +1473,22 @@ bool ReadCFX::addPolygonToPort(int area2d) {
 
     if(m_polygonsInTimestep[area2d]) {
         addObject(m_polyOut,m_polygonsInTimestep[area2d]);
+    }
+    return true;
+}
+
+bool ReadCFX::addParticleToPorts() {
+    //adds particles to port: one time port and NumParticlePorts data ports
+
+    for (int portnum=0; portnum<=NumParticlePorts; ++portnum) {
+        if(m_currentParticleData[portnum]) {
+            if(portnum == 0) {
+                addObject(m_particleTime, m_currentParticleData[portnum]);
+            }
+            else {
+                addObject(m_particleDataOut[portnum], m_currentParticleData[portnum-1]);
+            }
+        }
     }
     return true;
 }
@@ -1660,13 +1657,16 @@ bool ReadCFX::compute() {
         numSelParticles = collectParticles();
         m_gridsInTimestep.resize(numSel3dArea);
         m_polygonsInTimestep.resize(numSel2dArea);
-
         readTime(numSel3dArea,numSel2dArea,0,0,trnOrRes);
-        for(index_t i=0;i<numSelParticles;++i) {
-            if(rankForParticleTypeNumber(i) == rank()) {
-                //loadParticles(i, numSelParticles);
-            }
-        }
+
+        //read particles
+//        if(numSelParticles>0) {
+//            for(index_t i=0;i<numSelParticles;++i) {
+//                if(rankForParticleTypeNumber(i) == rank()) {
+//                    loadParticles(i, numSelParticles);
+//                }
+//            }
+//        }
 
         //read variables out of timesteps .trn file
         if(m_ntimesteps!=0) {
@@ -1704,14 +1704,11 @@ bool ReadCFX::compute() {
     m_volumeDataOut.clear();
     m_2dDataOut.clear();
     m_particleDataOut.clear();
-    m_3dAreasSelected.clear();
-    m_2dAreasSelected.clear();
-    m_particleTypesSelected.clear();
     std::cerr << "B31" << std::endl;
     m_gridsInTimestep.clear();
     std::cerr << "B32" << std::endl;
     m_polygonsInTimestep.clear();
-    m_coordsOfParticleTime.reset();
+    m_coordsOfParticles.reset();
     std::cerr << "B33" << std::endl;
     m_currentVolumedata.clear();
     std::cerr << "B34" << std::endl;
