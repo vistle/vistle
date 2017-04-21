@@ -33,7 +33,7 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
-//#define PARALLEL_ZONES
+#define PARALLEL_ZONES
 
 
 namespace bf = boost::filesystem;
@@ -1014,13 +1014,12 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
 
             if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-                //boost::shared_ptr<float_t> value(new float);
-                float value[1];
                 scalar_t *ptrOnScalarData = s->x().data();
 
                 for(index_t j=0;j<nnodesInVolume;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value);
-                    ptrOnScalarData[j] = *value;
+                    float value;
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],&value);
+                    ptrOnScalarData[j] = value;
 //                    if(j<10) {
 //                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
 //                    }
@@ -1031,7 +1030,6 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
             }
             else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-                //boost::shared_ptr<float_t> value(new float[3]);
                 float value[3];
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
                 ptrOnVectorXData = v->x().data();
@@ -1102,11 +1100,11 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
             if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesIn2dArea));
                 //boost::shared_ptr<float_t> value(new float);
-                float value[1];
                 scalar_t *ptrOnScalarData = s->x().data();
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],value);
-                    ptrOnScalarData[j] = *value;
+                    float value;
+                    cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],&value);
+                    ptrOnScalarData[j] = value;
 //                    if(j<100) {
 //                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
 //                    }
@@ -1414,6 +1412,7 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_
 
 //    m_coordsOfParticles = loadParticleTrackCoords(particleTypeNumber, NumVertices);
 //    m_currentParticleData[0] = loadParticleTime(particleTypeNumber, NumVertices);
+//    m_currentParticleData[0]->setGrid(m_coordsOfParticles);
 
 //    for (int i=0; i<NumParticlePorts; ++i) {
 //        std::string field = m_particleOut[i]->getValue();
@@ -1430,6 +1429,7 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, index_
 //            auto index = std::distance(allParticle.begin(), it);
 //            m_currentParticleData[i+1] = loadParticleValues(particleTypeNumber, allParticle[index], NumVertices);
 //        }
+//    m_currentParticleData[i+1]->setGrid(m_coordsOfParticles);
 //    }
 //    addParticleToPorts();
 
@@ -1512,7 +1512,7 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
            }
            else {
                if(trnOrRes) {   //trnOrRes == 1 --> data belong to transient file
-                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
+                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
                    obj->setTimestep(setMetaTimestep);
                    obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
                }
@@ -1527,52 +1527,51 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
       obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
 
 
-      double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-      double angularVel; //in radians per second
-      if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
-          cfxExportZoneMotionAction(cfxExportZoneGet(),cfxMOTION_USE);
+//      double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+//      double angularVel; //in radians per second
+//      if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
+//          cfxExportZoneMotionAction(cfxExportZoneGet(),cfxMOTION_USE);
 
-//          for(int i=0;i<3;++i) {
-//              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
-//          }
-//          for(int i=0;i<3;++i) {
-//              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
-//          }
+// //          for(int i=0;i<3;++i) {
+// //              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
+// //          }
+// //          for(int i=0;i<3;++i) {
+// //              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
+// //          }
 
-          double startTime = cfxExportTimestepTimeGet(1);
-          double currentTime = cfxExportTimestepTimeGet(timestep+1);
-          Scalar rot_angle = angularVel*(currentTime-startTime); //in radians
+//          double startTime = cfxExportTimestepTimeGet(1);
+//          double currentTime = cfxExportTimestepTimeGet(timestep+1);
+//          Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
 
-          //std::cerr << "rot_angle = " << rot_angle << std::endl;
+//          //std::cerr << "rot_angle = " << rot_angle << std::endl;
+//          double x,y,z;
+//          x = rotAxis[1][0]-rotAxis[0][0];
+//          y = rotAxis[1][1]-rotAxis[0][1];
+//          z = rotAxis[1][2]-rotAxis[0][2];
+//          Vector3 rot_axis(x,y,z);
+//          rot_axis.normalize();
+//          //std::cerr << "rot_axis = " << rot_axis << std::endl;
 
-          double x,y,z;
-          x = rotAxis[1][0]-rotAxis[0][0];
-          y = rotAxis[1][1]-rotAxis[0][1];
-          z = rotAxis[1][2]-rotAxis[0][2];
-          Vector3 rot_axis(x,y,z);
-          rot_axis.normalize();
-          //std::cerr << "rot_axis = " << rot_axis << std::endl;
+//          Quaternion qrot(AngleAxis(rot_angle, rot_axis));
+//          Matrix4 rotMat(Matrix4::Identity());
+//          Matrix3 rotMat3(qrot.toRotationMatrix());
+//          rotMat.block<3,3>(0,0) = rotMat3;
 
-          Quaternion qrot(AngleAxis(rot_angle, rot_axis));
-          Matrix4 rotMat(Matrix4::Identity());
-          Matrix3 rotMat3(qrot.toRotationMatrix());
-          rotMat.block<3,3>(0,0) = rotMat3;
+//          Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
+//          Matrix4 translateMat(Matrix4::Identity());
+//          translateMat.col(3) << translate, 1;
 
-          Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
-          Matrix4 translateMat(Matrix4::Identity());
-          translateMat.col(3) << translate, 1;
+//          Matrix4 transform(Matrix4::Identity());
+//          transform *= translateMat;
+//          transform *= rotMat;
+//          translate *= -1;
+//          translateMat.col(3) << translate, 1;
+//          transform *= translateMat;
 
-          Matrix4 transform(Matrix4::Identity());
-          transform *= translateMat;
-          transform *= rotMat;
-          translate *= -1;
-          translateMat.col(3) << translate, 1;
-          transform *= translateMat;
-
-          Matrix4 t = obj->getTransform();
-          t *= transform;
-          obj->setTransform(t);
-      }
+//          Matrix4 t = obj->getTransform();
+//          t *= transform;
+//          obj->setTransform(t);
+//      }
    }
 }
 
@@ -1695,27 +1694,27 @@ bool ReadCFX::compute() {
         }
     }
 
-    std::cerr << "B1" << std::endl;
+//    std::cerr << "B1" << std::endl;
 
-    m_fieldOut.clear();
-    m_2dOut.clear();
-    m_particleOut.clear();
-    std::cerr << "B2" << std::endl;
-    m_volumeDataOut.clear();
-    m_2dDataOut.clear();
-    m_particleDataOut.clear();
-    std::cerr << "B31" << std::endl;
-    m_gridsInTimestep.clear();
-    std::cerr << "B32" << std::endl;
-    m_polygonsInTimestep.clear();
-    m_coordsOfParticles.reset();
-    std::cerr << "B33" << std::endl;
-    m_currentVolumedata.clear();
-    std::cerr << "B34" << std::endl;
-    m_current2dData.clear();
-    m_currentParticleData.clear();
-    std::cerr << "B4" << std::endl;
-    grid.reset();
+//    m_fieldOut.clear();
+//    m_2dOut.clear();
+//    m_particleOut.clear();
+//    std::cerr << "B2" << std::endl;
+//    m_volumeDataOut.clear();
+//    m_2dDataOut.clear();
+//    m_particleDataOut.clear();
+//    std::cerr << "B31" << std::endl;
+//    m_gridsInTimestep.clear();
+//    std::cerr << "B32" << std::endl;
+//    m_polygonsInTimestep.clear();
+//    m_coordsOfParticles.reset();
+//    std::cerr << "B33" << std::endl;
+//    m_currentVolumedata.clear();
+//    std::cerr << "B34" << std::endl;
+//    m_current2dData.clear();
+//    m_currentParticleData.clear();
+//    std::cerr << "B4" << std::endl;
+//    grid.reset();
     std::cerr << "B5" << std::endl;
 
     return true;
