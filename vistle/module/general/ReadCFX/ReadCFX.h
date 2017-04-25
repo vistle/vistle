@@ -8,7 +8,8 @@
 #include <core/unstr.h>
 #include <core/index.h>
 #include <core/polygons.h>
-#include <map>
+//#include <map>
+#include <core/lines.h>
 
 #include <util/sysdep.h>
 #include <module/module.h>
@@ -127,7 +128,7 @@ class ReadCFX: public vistle::Module {
    std::vector<std::int32_t> m_particleTypesSelected;
    std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
    std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
-   vistle::Coords::ptr m_coordsOfParticles;
+   vistle::Lines::ptr m_coordsOfParticles;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
@@ -135,7 +136,7 @@ class ReadCFX: public vistle::Module {
    int rankForParticleTypeNumber(int particleTypeNumber) const;
    vistle::UnstructuredGrid::ptr loadGrid(int area3d);
    vistle::Polygons::ptr loadPolygon(int area2d);
-   vistle::Coords::ptr loadParticleTrackCoords(int particleTypeNumber, const index_t NumVertices);
+   vistle::Lines::ptr loadParticleTrackCoords(int particleTypeNumber, const index_t numVertices);
    vistle::DataBase::ptr loadField(int area3d, Variable var);
    vistle::DataBase::ptr load2dField(int area2d, Variable var);
    vistle::DataBase::ptr loadParticleTime(int particleTypeNumber, const index_t NumVertices);
