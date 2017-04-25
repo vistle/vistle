@@ -33,7 +33,7 @@
 #include "ReadCFX.h"
 
 //#define CFX_DEBUG
-#define PARALLEL_ZONES
+//#define PARALLEL_ZONES
 
 
 namespace bf = boost::filesystem;
@@ -1343,9 +1343,7 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
       auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
           return obj.varName == field;});
       if (it == allParam.end()) {
-              std::cerr << "Z2" << std::endl;
               m_currentVolumedata[i]= DataBase::ptr();
-              std::cerr << "Z3" << std::endl;
       }
       else {
           auto index = std::distance(allParam.begin(), it);
@@ -1360,7 +1358,6 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, index_t 
               setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numSel3dArea,trnOrRes);
           }
           m_currentVolumedata[i]= obj;
-          std::cerr << "A1" << std::endl;
       }
    }
    return true;
@@ -1461,7 +1458,6 @@ bool ReadCFX::add2dDataToPorts() {
 bool ReadCFX::addGridToPort(int area3d) {
     //adds the grid to the gridOut port
 
-    std::cerr << "W1" << std::endl;
     if(m_gridsInTimestep[area3d]) {
         addObject(m_gridOut,m_gridsInTimestep[area3d]);
     }
@@ -1511,14 +1507,19 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
                obj->setTimestep(-1);
            }
            else {
+               std::cerr << "trnOrRes = " << trnOrRes << std::endl;
+              // std::cerr << "NumTimestep = " << std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1 << std::endl;
+               std::cerr << "Timestep = " << setMetaTimestep << std::endl;
+               std::cerr << "blockNr = " << blockNr << std::endl;
+              // std::cerr << "NumBlocks = " << totalBlockNr << std::endl;
                if(trnOrRes) {   //trnOrRes == 1 --> data belong to transient file
-                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
                    obj->setTimestep(setMetaTimestep);
                    obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
                }
                else {
-                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
-                   obj->setTimestep(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+2);
+                   obj->setNumTimesteps(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
+                   obj->setTimestep(std::floor((m_lasttimestep->getValue()-m_firsttimestep->getValue())/(m_timeskip->getValue()+1))+1);
                    obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
                }
            }
@@ -1605,7 +1606,6 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
         if(rankForVolumeAndTimestep(timestep,i,numSel3dArea) == rank()) {
             //std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in timestep = " << timestep << std::endl;
 
-            std::cerr << "X1" << std::endl;
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
             }
@@ -1668,7 +1668,7 @@ bool ReadCFX::compute() {
 //        }
 
         //read variables out of timesteps .trn file
-        if(m_ntimesteps!=0) {
+        if(m_ntimesteps!=0 && (lasttimestep==0)) {
             trnOrRes = 1;
             for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=(m_timeskip->getValue()+1)) {
                 index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
@@ -1677,15 +1677,10 @@ bool ReadCFX::compute() {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
                 else {
-                    std::cerr << "setMetaTimestep = " << setMetaTimestep << std::endl;
-                    std::cerr << "timestep = " << timestep << std::endl;
                     m_case.parseResultfile();
-                    std::cerr << "S2" << std::endl;
                     numSel3dArea = collect3dAreas();
                     numSel2dArea = collect2dAreas();
-                    std::cerr << "S3" << std::endl;
                     readTime(numSel3dArea,numSel2dArea,setMetaTimestep,timestep,trnOrRes);
-                    std::cerr << "S4" << std::endl;
                 }
                 setMetaTimestep++;
             }
@@ -1715,7 +1710,6 @@ bool ReadCFX::compute() {
 //    m_currentParticleData.clear();
 //    std::cerr << "B4" << std::endl;
 //    grid.reset();
-    std::cerr << "B5" << std::endl;
 
     return true;
 }
