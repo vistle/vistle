@@ -133,18 +133,18 @@ class ReadCFX: public vistle::Module {
 
    int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
    int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
-   int rankForParticleTypeNumber(int particleTypeNumber) const;
+   int trackStartandEndForRank(int rank, int *firstTrackForRank, int *lastTrackForRank, int numberOfTracks);
    vistle::UnstructuredGrid::ptr loadGrid(int area3d);
    vistle::Polygons::ptr loadPolygon(int area2d);
-   vistle::Lines::ptr loadParticleTrackCoords(int particleTypeNumber, const index_t numVertices);
+   vistle::Lines::ptr loadParticleTrackCoords(int particleTypeNumber, const index_t numVertices, int firstTrackForRank, int lastTrackForRank);
    vistle::DataBase::ptr loadField(int area3d, Variable var);
    vistle::DataBase::ptr load2dField(int area2d, Variable var);
-   vistle::DataBase::ptr loadParticleTime(int particleTypeNumber, const index_t NumVertices);
-   vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle, const index_t NumVertices);
+   vistle::DataBase::ptr loadParticleTime(int particleTypeNumber, const index_t NumVertices, int firstTrackForRank, int lastTrackForRank);
+   vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle, const index_t NumVertices, int firstTrackForRank, int lastTrackForRank);
    bool initializeResultfile();
    bool loadFields(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
    bool load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
-   bool loadParticles(int particleTypeNumber, index_t numSelParticles);
+   bool loadParticles(int particleTypeNumber);
    index_t collect3dAreas();
    index_t collect2dAreas();
    index_t collectParticles();
