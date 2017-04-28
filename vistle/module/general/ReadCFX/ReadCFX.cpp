@@ -30,6 +30,8 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/cstdint.hpp>
 
+#include <util/stopwatch.h>
+
 
 #include "ReadCFX.h"
 
@@ -47,10 +49,10 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -487,9 +489,10 @@ bool ReadCFX::initializeResultfile() {
     char *resultfileName = strdup(resultfiledir);
     m_nzones = cfxExportInit(resultfileName, counts);
     m_nnodes = counts[cfxCNT_NODE];
-    //m_nelems = counts[cfxCNT_ELEMENT];
+//    m_nelems = counts[cfxCNT_ELEMENT];
     m_nregions = counts[cfxCNT_REGION];
     m_nvolumes = counts[cfxCNT_VOLUME];
+
     //m_nvars = counts[cfxCNT_VARIABLE];
     m_ExportDone = false;
 
@@ -506,6 +509,8 @@ bool ReadCFX::initializeResultfile() {
 
 bool ReadCFX::changeParameter(const Parameter *p) {
     //set some initialization variables if another resfile is loaded
+
+    static double startchangeParameter = vistle::Clock::time();
     if (p == m_resultfiledir) {
         std::string c = m_resultfiledir->getValue();
         const char *resultfiledir;
@@ -588,6 +593,9 @@ bool ReadCFX::changeParameter(const Parameter *p) {
 
                 }
                 cfxExportZoneFree();
+
+                static double endchangeParameter = vistle::Clock::time();
+                std::cerr << "Time change parameter = " << endchangeParameter-startchangeParameter << std::endl;
 #ifdef CFX_DEBUG
                 sendInfo("The initialisation was successfully done");
 #endif
@@ -1446,11 +1454,8 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     for(int i=firstTrackForRank; i<=lastTrackForRank;++i) {
         NumVertices += cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
     }
-    std::cerr << "A1 " << std::endl;
     m_coordsOfParticles = loadParticleTrackCoords(particleTypeNumber, NumVertices, firstTrackForRank, lastTrackForRank);
-    std::cerr << "A2 " << std::endl;
     m_currentParticleData[0] = loadParticleTime(particleTypeNumber, NumVertices, firstTrackForRank, lastTrackForRank);
-    std::cerr << "A3 " << std::endl;
 
     m_coordsOfParticles->setNumBlocks(numberOfBlocks);
     m_currentParticleData[0]->setNumBlocks(numberOfBlocks);
@@ -1477,9 +1482,7 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
         }
         else {
             auto index = std::distance(allParticle.begin(), it);
-            std::cerr << "A4 " << std::endl;
             m_currentParticleData[i+1] = loadParticleValues(particleTypeNumber, allParticle[index], NumVertices, firstTrackForRank, lastTrackForRank);
-            std::cerr << "A5 " << std::endl;
         }
         if(m_currentParticleData[i+1]) {
             m_currentParticleData[i+1]->setNumBlocks(numberOfBlocks);
@@ -1493,11 +1496,8 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
             }
             m_currentParticleData[i+1]->setGrid(m_coordsOfParticles);
         }
-        std::cerr << "A6 " << std::endl;
     }
-    std::cerr << "A7 " << std::endl;
     addParticleToPorts();
-    std::cerr << "A8 " << std::endl;
 
     return true;
 }
@@ -1715,10 +1715,17 @@ bool ReadCFX::compute() {
     }
     else {
         if(m_ExportDone) {
+            static double startInitialize = vistle::Clock::time();
+
             initializeResultfile();
             m_case.parseResultfile();
+
+            static double endInitialize = vistle::Clock::time();
+            std::cerr << "Time Initialize = " << endInitialize-startInitialize << std::endl;
         }
         //read variables out of .res file
+        static double startRestCompute = vistle::Clock::time();
+
         trnOrRes = 0;
         index_t numSel3dArea = collect3dAreas();
         index_t numSel2dArea = collect2dAreas();
@@ -1754,6 +1761,8 @@ bool ReadCFX::compute() {
             cfxExportDone();
             m_ExportDone = true;
         }
+        static double endRestCompute = vistle::Clock::time();
+        std::cerr << "Time Rest of Compute = " << endRestCompute-startRestCompute << std::endl;
     }
 
 // #####################################################################################################################################
@@ -1774,6 +1783,8 @@ bool ReadCFX::compute() {
 //    m_current2dData.clear();
 //    m_currentParticleData.clear();
 //    grid.reset();
+
+
 
     return true;
 }
