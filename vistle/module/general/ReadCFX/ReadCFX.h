@@ -131,8 +131,8 @@ class ReadCFX: public vistle::Module {
    vistle::Lines::ptr m_coordsOfParticles;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
 
-   int rankForVolumeAndTimestep(int timestep, int volume, int numVolumes) const;
-   int rankFor2dAreaAndTimestep(int timestep, int area2d, int num2dAreas) const;
+   int rankForVolumeAndTimestep(int setMetaTimestep, int volume, int numVolumes) const;
+   int rankFor2dAreaAndTimestep(int setMetaTimestep, int area2d, int num2dAreas) const;
    int trackStartandEndForRank(int rank, int *firstTrackForRank, int *lastTrackForRank, int numberOfTracks);
    vistle::UnstructuredGrid::ptr loadGrid(int area3d);
    vistle::Polygons::ptr loadPolygon(int area2d);
@@ -142,8 +142,8 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr loadParticleTime(int particleTypeNumber, const index_t NumVertices, int firstTrackForRank, int lastTrackForRank);
    vistle::DataBase::ptr loadParticleValues(int particleTypeNumber, Particle particle, const index_t NumVertices, int firstTrackForRank, int lastTrackForRank);
    bool initializeResultfile();
-   bool loadFields(int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
-   bool load2dFields(int area2d, int setMetaTimestep, int timestep, index_t numSel2dArea, bool trnOrRes);
+   bool loadFields(int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile);
+   bool load2dFields(int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile);
    bool loadParticles(int particleTypeNumber);
    index_t collect3dAreas();
    index_t collect2dAreas();
@@ -153,10 +153,10 @@ class ReadCFX: public vistle::Module {
    bool addGridToPort(int area3d);
    bool addPolygonToPort(int area2d);
    bool addParticleToPorts();
-   void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, index_t totalBlockNr, bool trnOrRes);
-   bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
-   bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, index_t numSel3dArea, bool trnOrRes);
-   bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, bool trnOrRes);
+   void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile);
+   bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile);
+   bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile);
+   bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile);
    bool free2dArea(const char *area2dType, int area2d);
 
 
