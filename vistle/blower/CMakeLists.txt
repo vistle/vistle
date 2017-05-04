@@ -5,7 +5,6 @@ endif()
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${PYTHON_INCLUDE_PATH}
-        ../core
         ..
 )
 

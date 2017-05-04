@@ -22,10 +22,4 @@
    }
 #endif
 
-#ifdef assert
-#undef assert
-#endif
-
-#define assert(x) vassert(x)
-
 #endif

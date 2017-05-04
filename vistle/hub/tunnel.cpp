@@ -3,6 +3,7 @@
 #include <boost/system/error_code.hpp>
 
 #include <core/messages.h>
+#include <core/assert.h>
 
 
 namespace asio = boost::asio;

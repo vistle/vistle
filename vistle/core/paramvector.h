@@ -5,7 +5,7 @@
 #include <util/exception.h>
 #include <ostream>
 #include <vector>
-#include <core/assert.h>
+#include <cassert>
 #include <util/sysdep.h>
 #include "scalar.h"
 #include "dimensions.h"

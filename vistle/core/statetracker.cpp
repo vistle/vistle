@@ -6,6 +6,7 @@
 #include "parameter.h"
 #include "port.h"
 #include "porttracker.h"
+#include "assert.h"
 
 #include "statetracker.h"
 

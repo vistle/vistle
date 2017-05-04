@@ -1,5 +1,6 @@
 #include "message.h"
 #include "messagerouter.h"
+#include "assert.h"
 
 
 namespace vistle {

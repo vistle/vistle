@@ -1,7 +1,7 @@
 #ifndef VECTOR_IMPL_H
 #define VECTOR_IMPL_H
 
-#include <core/assert.h>
+#include <cassert>
 #include <cstring>
 #include <limits>
 #include <boost/lexical_cast.hpp>

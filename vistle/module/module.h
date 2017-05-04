@@ -8,6 +8,7 @@
 #include <mpi.h>
 #else
 #include <boost/mpi.hpp>
+#include <boost/serialization/vector.hpp>
 #endif
 
 #include <iostream>

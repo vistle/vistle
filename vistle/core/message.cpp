@@ -3,6 +3,7 @@
 #include "shm.h"
 #include "parameter.h"
 #include "port.h"
+#include "assert.h"
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/nil_generator.hpp>

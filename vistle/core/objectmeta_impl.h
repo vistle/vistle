@@ -1,6 +1,7 @@
 #ifndef OBJECTMETA_IMPL_H
 #define OBJECTMETA_IMPL_H
 
+#include <cassert>
 #include "archives.h"
 #include "serialize.h"
 

@@ -1,6 +1,7 @@
 #include "portmanager.h"
 #include "clustermanager.h"
 #include <core/message.h>
+#include <core/assert.h>
 #include <iostream>
 #include <algorithm>
 

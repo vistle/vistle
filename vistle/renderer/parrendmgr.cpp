@@ -2,6 +2,7 @@
 #include "renderobject.h"
 #include "renderer.h"
 #include <core/points.h>
+#include <boost/serialization/vector.hpp>
 
 namespace mpi = boost::mpi;
 

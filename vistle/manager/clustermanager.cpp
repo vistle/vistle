@@ -23,6 +23,7 @@
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
+#include <core/assert.h>
 #include <util/directory.h>
 
 #include "clustermanager.h"

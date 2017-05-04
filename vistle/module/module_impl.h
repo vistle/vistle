@@ -3,6 +3,7 @@
 
 #include <core/message.h>
 #include <core/messages.h>
+#include <core/assert.h>
 
 namespace vistle {
 

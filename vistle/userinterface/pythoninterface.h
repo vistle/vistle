@@ -3,6 +3,7 @@
 
 // include this before any Qt headers
 
+#include <cassert>
 #include <string>
 #include <iostream>
 #include <boost/python/object.hpp>

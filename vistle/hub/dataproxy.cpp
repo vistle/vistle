@@ -2,6 +2,7 @@
 #include "hub.h"
 #include <core/tcpmessage.h>
 #include <core/message.h>
+#include <core/assert.h>
 #include <condition_variable>
 
 #define CERR std::cerr << "DataProxy: "
