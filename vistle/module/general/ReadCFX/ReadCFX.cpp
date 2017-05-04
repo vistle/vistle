@@ -51,8 +51,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -965,9 +965,8 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 }
 
 vistle::Lines::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, const index_t numVertices, int firstTrackForRank, int lastTrackForRank) {
-    //std::cerr << "m_particleTypesSelected[" << particleTypeNumber << "] = " << m_particleTypesSelected[particleTypeNumber] << std::endl;
+    //reads all tracks one after another in a lines object with x,y,z coordinates, connectivity list and element list
 
-    std::cerr << "numberVertices = " << numVertices << std::endl;
     Lines::ptr lines(new Lines((lastTrackForRank-firstTrackForRank)+1, numVertices, numVertices)); //element list and corner list are initialized with number of vertices, because only "dot elements" are used in the line
     auto ptrOnXCoords = lines->x().data();
     auto ptrOnYCoords = lines->y().data();
@@ -977,14 +976,9 @@ vistle::Lines::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, cons
 
     int pointsOnTrackCounter = 0, elemListCounter = 0;
     for(int i=firstTrackForRank; i<=lastTrackForRank;++i) {
-        static double startParticle;
-        if(rank() == 0 && elemListCounter == 0) {
-            startParticle = vistle::Clock::time();
-        }
         int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
         float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],i,&NumOfPointsOnTrack);
         ptrOnEl[elemListCounter]=pointsOnTrackCounter;
-        std::cerr << "Track Nr = " << i << std::endl;
         for(int k=0;k<NumOfPointsOnTrack;++k) {
             ptrOnXCoords[pointsOnTrackCounter+k] = ParticleTrackCoords[k*3];
             ptrOnYCoords[pointsOnTrackCounter+k] = ParticleTrackCoords[k*3+1];
@@ -992,10 +986,6 @@ vistle::Lines::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, cons
             ptrOnCl[pointsOnTrackCounter+k] = pointsOnTrackCounter+k;
         }
         pointsOnTrackCounter += NumOfPointsOnTrack;
-        if(rank()==0 && elemListCounter == 10) {
-            static double endParticle = vistle::Clock::time();
-            std::cerr << "Time Partikel rank 0 and 10 Tracks = " << endParticle - startParticle << std::endl;
-        }
         elemListCounter++;
     }
 
@@ -1454,10 +1444,6 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     int firstTrackForRank, lastTrackForRank;
     int numberOfBlocks = trackStartandEndForRank(rank(),&firstTrackForRank,&lastTrackForRank,numberOfTracks);
 
-    std::cerr << "numberofTrack = " << numberOfTracks << std::endl;
-    std::cerr << "rank = (" << rank() << "/" << size() << "); first = " << firstTrackForRank << "; last = " << lastTrackForRank << std::endl;
-
-
     index_t NumVertices = 0;
     for(int i=firstTrackForRank; i<=lastTrackForRank;++i) {
         NumVertices += cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
@@ -1593,7 +1579,6 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
                    obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
                }
                obj->setNumTimesteps(numTimesteps);
-               std::cerr << "rank = " << rank() << "; setMetaTimestep = " << setMetaTimestep << std::endl;
                obj->setTimestep(setMetaTimestep);
            }
        }
@@ -1676,7 +1661,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     for(index_t i=0;i<numSel3dArea;++i) {
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,i,numSel3dArea) << std::endl;
         if(rankForVolumeAndTimestep(setMetaTimestep,i,numSel3dArea) == rank()) {
-            std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
+//            std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
 
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
