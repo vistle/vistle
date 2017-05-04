@@ -51,8 +51,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -968,25 +968,40 @@ vistle::Lines::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, cons
     //std::cerr << "m_particleTypesSelected[" << particleTypeNumber << "] = " << m_particleTypesSelected[particleTypeNumber] << std::endl;
 
     std::cerr << "numberVertices = " << numVertices << std::endl;
-    Lines::ptr lines(new Lines(numVertices, numVertices, numVertices)); //element list and corner list are initialized with number of vertices, because only "dot elements" are used in the line
+    Lines::ptr lines(new Lines((lastTrackForRank-firstTrackForRank)+1, numVertices, numVertices)); //element list and corner list are initialized with number of vertices, because only "dot elements" are used in the line
     auto ptrOnXCoords = lines->x().data();
     auto ptrOnYCoords = lines->y().data();
     auto ptrOnZCoords = lines->z().data();
+    auto ptrOnEl = lines->el().data();
+    auto ptrOnCl = lines->cl().data();
 
-    int pointsOnTrackCounter = 0;
+    int pointsOnTrackCounter = 0, elemListCounter = 0;
     for(int i=firstTrackForRank; i<=lastTrackForRank;++i) {
+        static double startParticle;
+        if(rank() == 0 && elemListCounter == 0) {
+            startParticle = vistle::Clock::time();
+        }
         int NumOfPointsOnTrack = cfxExportGetNumberOfPointsOnParticleTrack(m_particleTypesSelected[particleTypeNumber],i);
         float *ParticleTrackCoords = cfxExportGetParticleTrackCoordinatesByTrack(m_particleTypesSelected[particleTypeNumber],i,&NumOfPointsOnTrack);
+        ptrOnEl[elemListCounter]=pointsOnTrackCounter;
         std::cerr << "Track Nr = " << i << std::endl;
         for(int k=0;k<NumOfPointsOnTrack;++k) {
-            ptrOnXCoords[pointsOnTrackCounter + k] = ParticleTrackCoords[k*3];
-            ptrOnYCoords[pointsOnTrackCounter + k] = ParticleTrackCoords[k*3+1];
-            ptrOnZCoords[pointsOnTrackCounter + k] = ParticleTrackCoords[k*3+2];
+            ptrOnXCoords[pointsOnTrackCounter+k] = ParticleTrackCoords[k*3];
+            ptrOnYCoords[pointsOnTrackCounter+k] = ParticleTrackCoords[k*3+1];
+            ptrOnZCoords[pointsOnTrackCounter+k] = ParticleTrackCoords[k*3+2];
+            ptrOnCl[pointsOnTrackCounter+k] = pointsOnTrackCounter+k;
         }
         pointsOnTrackCounter += NumOfPointsOnTrack;
+        if(rank()==0 && elemListCounter == 10) {
+            static double endParticle = vistle::Clock::time();
+            std::cerr << "Time Partikel rank 0 and 10 Tracks = " << endParticle - startParticle << std::endl;
+        }
+        elemListCounter++;
     }
 
-    std::cerr << "pointsOnTrackCounter = " << pointsOnTrackCounter << std::endl;
+    //element entry after last element
+    ptrOnEl[elemListCounter]=pointsOnTrackCounter;
+
     return lines;
 }
 
