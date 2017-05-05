@@ -28,7 +28,7 @@ struct IdWithZoneFlag {
 
 struct Areas2d {
     IdWithZoneFlag idWithZone;
-    std::string area2dType;
+    bool boundary;
 };
 
 struct Variable {
@@ -157,7 +157,7 @@ class ReadCFX: public vistle::Module {
    bool setDataObject(vistle::UnstructuredGrid::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile);
    bool set2dObject(vistle::Polygons::ptr grid, vistle::DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile);
    bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile);
-   bool free2dArea(const char *area2dType, int area2d);
+   bool free2dArea(bool boundary, int area2d);
 
 
 

@@ -821,7 +821,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
 
 Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     //load polygon with connectivity, element and coordinate list. Each area2d gets an own polygon
-
     if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
         std::cerr << "invalid zone number" << std::endl;
     }
@@ -829,19 +828,15 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     int *nodeListOf2dArea;
     index_t nNodesIn2dArea, nFacesIn2dArea;
 
-    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+    if(m_2dAreasSelected[area2d].boundary) {
         nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
         nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
         nFacesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
     }
-    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+    else  {
         nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
         nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
         nFacesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
-    }
-    else {
-        std::cerr << "error in loadPolygon: no valid 2d area" << std::endl;
-        return Polygons::ptr();
     }
 
     index_t nNodesInZone = cfxExportNodeCount();
@@ -850,8 +845,6 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     Polygons::ptr polygon(new Polygons(nFacesIn2dArea,nConnectIn2dArea,nNodesIn2dArea)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
-    //boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-
     auto ptrOnXcoords = polygon->x().data();
     auto ptrOnYcoords = polygon->y().data();
     auto ptrOnZcoords = polygon->z().data();
@@ -859,8 +852,8 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     std::vector<std::int32_t> nodeListOf2dAreaVec;
     nodeListOf2dAreaVec.resize(nNodesInZone+1);
 
+    double x_coord, y_coord, z_coord;
     for(index_t i=0;i<nNodesIn2dArea;++i) {
-        double x_coord, y_coord, z_coord;
         cfxExportNodeGet(nodeListOf2dArea[i],&x_coord,&y_coord,&z_coord);  //get access to coordinates: [IN] nodeid [OUT] x,y,z
         ptrOnXcoords[i] = x_coord;
         ptrOnYcoords[i] = y_coord;
@@ -876,21 +869,16 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 //        }
 
     cfxExportNodeFree();
-    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+    free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
 
     //attention: cfxExportBoundary/RegionList(cfxREG_FACES) has to be called AFTER cfxExportBoundary/RegionList(cfxREG_NODES) and free2dArea
     //if not, cfxExportBoundary/RegionList(cfxREG_NODES) gives unreasonable values for node id's
     int *faceListOf2dArea;
-    if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+    if(m_2dAreasSelected[area2d].boundary) {
         faceListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
     }
-    else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
-        faceListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
-    }
     else {
-        std::cerr << "error in loadPolygon: no valid 2D area" << std::endl;
-        int dmy = 0;
-        faceListOf2dArea = &dmy;
+        faceListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
     }
 
     //load face types, element list and connectivity list into polygon
@@ -959,7 +947,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 //        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
 //    }
 
-    free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+    free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
 
     return polygon;
 }
@@ -1095,19 +1083,17 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
     return DataBase::ptr();
 }
 
-bool ReadCFX::free2dArea(const char *area2dType, int area2d) {
+bool ReadCFX::free2dArea(bool boundary, int area2d) {
     //function to call cfxExportFree... depending which kind of 2d area is read.
     //cfx API requires that after a call of cfxBoundaryGet oder cfxRegionGet the memory needs to be freed
     //area2d can either be boundaries or regions
-    if(!strcmp(area2dType,"boundary")) {
+    if(boundary) {
         cfxExportBoundaryFree(m_2dAreasSelected[area2d].idWithZone.ID);
     }
-    else if(!strcmp(area2dType,"region")) {
+    else {
         cfxExportRegionFree(m_2dAreasSelected[area2d].idWithZone.ID);
     }
-    else {
-        std::cerr << "Fehler free2dArea" << std::endl;
-    }
+
     return true;
 }
 
@@ -1121,39 +1107,33 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
             cfxExportZoneMotionAction(m_2dAreasSelected[area2d].idWithZone.zoneFlag,cfxMOTION_IGNORE);
             index_t nNodesIn2dArea=0;
             int *nodeListOf2dArea;
-            if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"boundary")) {
+            if(m_2dAreasSelected[area2d].boundary) {
                 nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
                 nodeListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
             }
-            else if(!strcmp((m_2dAreasSelected[area2d].area2dType).c_str(),"region")) {
+            else {
                 nNodesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
                 nodeListOf2dArea = cfxExportRegionList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES); //query the nodes that define the 2dArea
-            }
-            else {
-                std::cerr << "Fehler in load2dAreaField 1" << std::endl;
             }
 
             //read field parameters
             index_t varnum = var.vectorIdwithZone[i].ID;
             if(var.varDimension == 1) {
                 Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesIn2dArea));
-                //boost::shared_ptr<float_t> value(new float);
                 scalar_t *ptrOnScalarData = s->x().data();
+                float value;
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
-                    float value;
                     cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],&value);
                     ptrOnScalarData[j] = value;
-//                    if(j<100) {
-//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//                    }
+                    if(j<20) {
+                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+                    }
                 }
-                //cfxExportVariableFree(varnum);
-                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+                free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
                 return s;
             }
             else if(var.varDimension == 3) {
                 Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesIn2dArea));
-                //boost::shared_ptr<float_t> value(new float[3]);
                 float value[3];
                 scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
                 ptrOnVectorXData = v->x().data();
@@ -1170,11 +1150,10 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
 //                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
 //                    }
                 }
-                //cfxExportVariableFree(varnum);
-                free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+                free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
                 return v;
             }
-            free2dArea((m_2dAreasSelected[area2d].area2dType).c_str(), area2d);
+            free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
         }
     }
     return DataBase::ptr();
@@ -1310,14 +1289,14 @@ index_t ReadCFX::collect2dAreas() {
     for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
         if(m_coRestraint2dAreas(i)) {
             m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allBoundaries[i-1].idWithZone.ID,allBoundaries[i-1].idWithZone.zoneFlag);
-            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "boundary";
+            m_2dAreasSelected[numberOfSelected2dAreas].boundary = true;
             numberOfSelected2dAreas++;
         }
     }
     for(index_t i=m_case.getNumberOfBoundaries()+1;i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
         if(m_coRestraint2dAreas(i)) {
             m_2dAreasSelected[numberOfSelected2dAreas].idWithZone=IdWithZoneFlag(allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.ID,allRegions[i-m_case.getNumberOfBoundaries()-1].idWithZone.zoneFlag);
-            m_2dAreasSelected[numberOfSelected2dAreas].area2dType = "region";
+            m_2dAreasSelected[numberOfSelected2dAreas].boundary = false;
             numberOfSelected2dAreas++;
         }
     }
@@ -1647,6 +1626,14 @@ bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int 
 bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
     //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
 
+    bool dat=false, pol=false;
+    if(polygon) {
+        pol=true;
+    }
+    if(data) {
+        dat=true;
+    }
+    std::cerr << "set2dObject with area2d =  " << area2d << " setMetaTimestep = " << setMetaTimestep << " polygon ok = " << pol << " data ok = " << dat << std::endl;
     setMeta(polygon,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
     setMeta(data,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
     data->setGrid(polygon);
@@ -1675,12 +1662,24 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(setMetaTimestep,i,numSel2dArea) == rank()) {
 //            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
+            static double startPolygon=0, endPolygon=0, startaddPol=0, endaddPol=0, endField=0, endaddField=0;
             if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
+                startPolygon = vistle::Clock::time();
                 m_polygonsInTimestep[i] = loadPolygon(i);
+                endPolygon = vistle::Clock::time();
             }
+            startaddPol = vistle::Clock::time();
             addPolygonToPort(i);
+            endaddPol = vistle::Clock::time();
             load2dFields(i,setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile);
+            endField = vistle::Clock::time();
             add2dDataToPorts();
+            endaddField = vistle::Clock::time();
+
+            std::cerr << "loadPolygon = " << endPolygon-startPolygon << std::endl;
+            std::cerr << "addPolygon = " << endaddPol-startaddPol << std::endl;
+            std::cerr << "loadFields = " << endField-endaddPol << std::endl;
+            std::cerr << "addField = " << endaddField-endField << std::endl;
         }
     }
     m_previousTimestep = timestep+1;
