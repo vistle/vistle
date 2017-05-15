@@ -51,8 +51,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -1125,9 +1125,9 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
                 for(index_t j=0;j<nNodesIn2dArea;++j) {
                     cfxExportVariableGet(varnum,correct,nodeListOf2dArea[j],&value);
                     ptrOnScalarData[j] = value;
-                    if(j<20) {
-                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-                    }
+//                    if(j<20) {
+//                        std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                    }
                 }
                 free2dArea(m_2dAreasSelected[area2d].boundary, area2d);
                 return s;
@@ -1367,11 +1367,17 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, int numT
 
           if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
               //variable exists only in resfile --> timestep = -1
-              setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
+              setDataObject(m_gridsInTimestepForResfile[area3d],obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
           }
           else {
               //variable exists in resfile and in transient files --> timestep = last
-              setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+              if(m_gridChanged[area3d]) {
+                  setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+              }
+              else {
+                  vistle::UnstructuredGrid::ptr grid = m_gridsInTimestep[area3d]->clone();
+                  setDataObject(grid,obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+              }
           }
           m_currentVolumedata[i]= obj;
       }
@@ -1397,12 +1403,17 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, int nu
 
             if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
-                set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
+                set2dObject(m_polygonsInTimestepForResfile[area2d],obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
             }
             else {
                 //variable exists in resfile and in transient files --> timestep = last
-                set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-
+                if(m_polygonChanged[area2d]) {
+                    set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
+                }
+                else {
+                    vistle::Polygons::ptr polyg = m_polygonsInTimestep[area2d]->clone();
+                    set2dObject(polyg,obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
+                }
             }
             m_current2dData[i]= obj;
         }
@@ -1551,8 +1562,6 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
            else {
                if(readTransientFile) {   //readTransientFile == 1 --> data belong to transient file
                    obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
-//                   std::cerr << "NumTimesteps = " << numTimesteps << std::endl;
-//                   std::cerr << "setMetaTimestep = " << setMetaTimestep << std::endl;
                }
                else {
                    obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
@@ -1626,14 +1635,6 @@ bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int 
 bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
     //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
 
-    bool dat=false, pol=false;
-    if(polygon) {
-        pol=true;
-    }
-    if(data) {
-        dat=true;
-    }
-    std::cerr << "set2dObject with area2d =  " << area2d << " setMetaTimestep = " << setMetaTimestep << " polygon ok = " << pol << " data ok = " << dat << std::endl;
     setMeta(polygon,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
     setMeta(data,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
     data->setGrid(polygon);
@@ -1652,6 +1653,13 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
 
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
+                if(!readTransientFile) {
+                    m_gridsInTimestepForResfile[i] = m_gridsInTimestep[i]->clone();
+                }
+                m_gridChanged[i] = 1;
+            }
+            else {
+                m_gridChanged[i] = 0;
             }
             //setMeta(m_gridsInTimestep[i],i,setMetaTimestep,timestep,numSel3dArea,readTransientFile);
             addGridToPort(i);
@@ -1662,24 +1670,19 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(setMetaTimestep,i,numSel2dArea) == rank()) {
 //            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
-            static double startPolygon=0, endPolygon=0, startaddPol=0, endaddPol=0, endField=0, endaddField=0;
             if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
-                startPolygon = vistle::Clock::time();
                 m_polygonsInTimestep[i] = loadPolygon(i);
-                endPolygon = vistle::Clock::time();
+                if(!readTransientFile) {
+                    m_polygonsInTimestepForResfile[i] = m_polygonsInTimestep[i]->clone();
+                }
+                m_polygonChanged[i] = 1;
             }
-            startaddPol = vistle::Clock::time();
+            else {
+                m_polygonChanged[i] = 0;
+            }
             addPolygonToPort(i);
-            endaddPol = vistle::Clock::time();
             load2dFields(i,setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile);
-            endField = vistle::Clock::time();
             add2dDataToPorts();
-            endaddField = vistle::Clock::time();
-
-            std::cerr << "loadPolygon = " << endPolygon-startPolygon << std::endl;
-            std::cerr << "addPolygon = " << endaddPol-startaddPol << std::endl;
-            std::cerr << "loadFields = " << endField-endaddPol << std::endl;
-            std::cerr << "addField = " << endaddField-endField << std::endl;
         }
     }
     m_previousTimestep = timestep+1;
@@ -1719,7 +1722,11 @@ bool ReadCFX::compute() {
         index_t numSel2dArea = collect2dAreas();
         index_t numSelParticleTypes = collectParticles();
         m_gridsInTimestep.resize(numSel3dArea);
+        m_gridsInTimestepForResfile.resize(numSel3dArea);
+        m_gridChanged.resize(numSel3dArea);
         m_polygonsInTimestep.resize(numSel2dArea);
+        m_polygonsInTimestepForResfile.resize(numSel2dArea);
+        m_polygonChanged.resize(numSel2dArea);
         readTime(numSel3dArea,numSel2dArea,numTimesteps-1,0,numTimesteps,readTransientFile);
 
         //read particles
@@ -1734,7 +1741,6 @@ bool ReadCFX::compute() {
             readTransientFile = 1;
             for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=(timeskip+1)) {
                 index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
-                //cfxExportTimestepTimeGet(timestepNumber);
                 if(cfxExportTimestepSet(timestepNumber)<0) {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;
                 }
@@ -1764,13 +1770,16 @@ bool ReadCFX::compute() {
 //    m_volumeDataOut.clear();
 //    m_2dDataOut.clear();
 //    m_particleDataOut.clear();
-      m_gridsInTimestep.clear();
-      m_polygonsInTimestep.clear();
+    m_gridsInTimestep.clear();
+    m_gridsInTimestepForResfile.clear();
+    m_gridChanged.clear();
+    m_polygonsInTimestep.clear();
+    m_polygonsInTimestepForResfile.clear();
+    m_polygonChanged.clear();
 //    m_coordsOfParticles.reset();
 //    m_currentVolumedata.clear();
 //    m_current2dData.clear();
 //    m_currentParticleData.clear();
-//    grid.reset();
 
 
 

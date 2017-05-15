@@ -122,12 +122,14 @@ class ReadCFX: public vistle::Module {
    //Data
    CaseInfo m_case;
    int counts[cfxCNT_SIZE];
-   vistle::UnstructuredGrid::ptr grid;
+//   vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_3dAreasSelected;
    std::vector<Areas2d> m_2dAreasSelected;
    std::vector<std::int32_t> m_particleTypesSelected;
-   std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep;
-   std::vector<vistle::Polygons::ptr> m_polygonsInTimestep;
+   std::vector<vistle::UnstructuredGrid::ptr> m_gridsInTimestep, m_gridsInTimestepForResfile;
+   std::vector<bool> m_gridChanged;
+   std::vector<vistle::Polygons::ptr> m_polygonsInTimestep, m_polygonsInTimestepForResfile;
+   std::vector<bool> m_polygonChanged;
    vistle::Lines::ptr m_coordsOfParticles;
    std::vector<vistle::DataBase::ptr> m_currentVolumedata, m_current2dData, m_currentParticleData;
 
