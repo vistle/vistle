@@ -51,8 +51,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -1349,7 +1349,7 @@ index_t ReadCFX::collectParticles() {
 }
 
 
-bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile) {
+bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile) {
     //calles for each port the loadGrid and loadField function and the setDataObject function to get the object ready to be added to port
 
     for (int i=0; i<NumPorts; ++i) {
@@ -1367,17 +1367,15 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, int numT
 
           if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
               //variable exists only in resfile --> timestep = -1
-              setDataObject(m_gridsInTimestepForResfile[area3d],obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
+              setMeta(obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
+              obj->setGrid(m_gridsInTimestepForResfile[area3d]);
+              obj->setMapping(DataBase::Vertex);
           }
           else {
               //variable exists in resfile and in transient files --> timestep = last
-              if(m_gridChanged[area3d]) {
-                  setDataObject(m_gridsInTimestep[area3d],obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
-              }
-              else {
-                  vistle::UnstructuredGrid::ptr grid = m_gridsInTimestep[area3d]->clone();
-                  setDataObject(grid,obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
-              }
+              setMeta(obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+              obj->setGrid(grid);
+              obj->setMapping(DataBase::Vertex);
           }
           m_currentVolumedata[i]= obj;
       }
@@ -1385,7 +1383,7 @@ bool ReadCFX::loadFields(int area3d, int setMetaTimestep, int timestep, int numT
    return true;
 }
 
-bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
+bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
     //calles for each port the loadPolygon and load2dField function and the set2dDataObject function to get the object ready to be added to port
 
     for (int i=0; i<Num2dPorts; ++i) {
@@ -1403,17 +1401,15 @@ bool ReadCFX::load2dFields(int area2d, int setMetaTimestep, int timestep, int nu
 
             if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
-                set2dObject(m_polygonsInTimestepForResfile[area2d],obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
+                setMeta(obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
+                obj->setGrid(m_polygonsInTimestepForResfile[area2d]);
+                obj->setMapping(DataBase::Vertex);
             }
             else {
                 //variable exists in resfile and in transient files --> timestep = last
-                if(m_polygonChanged[area2d]) {
-                    set2dObject(m_polygonsInTimestep[area2d],obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-                }
-                else {
-                    vistle::Polygons::ptr polyg = m_polygonsInTimestep[area2d]->clone();
-                    set2dObject(polyg,obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-                }
+                setMeta(obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
+                obj->setGrid(polyg);
+                obj->setMapping(DataBase::Vertex);
             }
             m_current2dData[i]= obj;
         }
@@ -1508,20 +1504,20 @@ bool ReadCFX::add2dDataToPorts() {
     return true;
 }
 
-bool ReadCFX::addGridToPort(int area3d) {
+bool ReadCFX::addGridToPort(UnstructuredGrid::ptr grid) {
     //adds the grid to the gridOut port
 
-    if(m_gridsInTimestep[area3d]) {
-        addObject(m_gridOut,m_gridsInTimestep[area3d]);
+    if(grid) {
+        addObject(m_gridOut,grid);
     }
     return true;
 }
 
-bool ReadCFX::addPolygonToPort(int area2d) {
+bool ReadCFX::addPolygonToPort(Polygons::ptr polyg) {
     //adds the polygon to the polygonOut port
 
-    if(m_polygonsInTimestep[area2d]) {
-        addObject(m_polyOut,m_polygonsInTimestep[area2d]);
+    if(polyg) {
+        addObject(m_polyOut,polyg);
     }
     return true;
 }
@@ -1621,28 +1617,6 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
    }
 }
 
-bool ReadCFX::setDataObject(UnstructuredGrid::ptr grid, DataBase::ptr data, int area3d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel3dArea, bool readTransientFile) {
-    //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
-
-    setMeta(grid,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
-    setMeta(data,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
-    data->setGrid(grid);
-    data->setMapping(DataBase::Vertex);
-
-    return true;
-}
-
-bool ReadCFX::set2dObject(Polygons::ptr polygon, DataBase::ptr data, int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
-    //function guarantees that each vistle object gets all necessary meta information (timestep, number of timestep, ...)
-
-    setMeta(polygon,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-    setMeta(data,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-    data->setGrid(polygon);
-    data->setMapping(DataBase::Vertex);
-
-    return true;
-}
-
 bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile) {
     //reads all information (3d and 2d data) for a given timestep and adds them to the ports
 
@@ -1650,39 +1624,48 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
         //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,i,numSel3dArea) << std::endl;
         if(rankForVolumeAndTimestep(setMetaTimestep,i,numSel3dArea) == rank()) {
 //            std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
-
+            vistle::UnstructuredGrid::ptr grid;
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
                 if(!readTransientFile) {
                     m_gridsInTimestepForResfile[i] = m_gridsInTimestep[i]->clone();
+                    setMeta(m_gridsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
                 }
-                m_gridChanged[i] = 1;
+                grid = m_gridsInTimestep[i];
             }
             else {
-                m_gridChanged[i] = 0;
+                grid = m_gridsInTimestep[i]->clone();
             }
-            //setMeta(m_gridsInTimestep[i],i,setMetaTimestep,timestep,numSel3dArea,readTransientFile);
-            addGridToPort(i);
-            loadFields(i, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile);
+            setMeta(grid,i,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+
+            addGridToPort(grid);
+            loadFields(grid, i, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile);
             addVolumeDataToPorts();
+            grid.reset();
         }
     }
+
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(setMetaTimestep,i,numSel2dArea) == rank()) {
 //            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
+            vistle::Polygons::ptr polyg;
             if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_polygonsInTimestep[i] = loadPolygon(i);
                 if(!readTransientFile) {
                     m_polygonsInTimestepForResfile[i] = m_polygonsInTimestep[i]->clone();
+                    setMeta(m_polygonsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
                 }
-                m_polygonChanged[i] = 1;
+                polyg = m_polygonsInTimestep[i];
             }
             else {
-                m_polygonChanged[i] = 0;
+                polyg = m_polygonsInTimestep[i]->clone();
             }
-            addPolygonToPort(i);
-            load2dFields(i,setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile);
+            setMeta(polyg,i,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
+
+            addPolygonToPort(polyg);
+            load2dFields(polyg, i,setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile);
             add2dDataToPorts();
+            polyg.reset();
         }
     }
     m_previousTimestep = timestep+1;
@@ -1723,10 +1706,8 @@ bool ReadCFX::compute() {
         index_t numSelParticleTypes = collectParticles();
         m_gridsInTimestep.resize(numSel3dArea);
         m_gridsInTimestepForResfile.resize(numSel3dArea);
-        m_gridChanged.resize(numSel3dArea);
         m_polygonsInTimestep.resize(numSel2dArea);
         m_polygonsInTimestepForResfile.resize(numSel2dArea);
-        m_polygonChanged.resize(numSel2dArea);
         readTime(numSel3dArea,numSel2dArea,numTimesteps-1,0,numTimesteps,readTransientFile);
 
         //read particles
@@ -1764,24 +1745,20 @@ bool ReadCFX::compute() {
     // ReadCFX crashes when all vectors are cleared and ReadCFX is executed twice
     // gridsInTimestep is uncommented because if all grids are stored there can't be made a zone selection anymore
 // #####################################################################################################################################
-//    m_fieldOut.clear();
-//    m_2dOut.clear();
-//    m_particleOut.clear();
-//    m_volumeDataOut.clear();
-//    m_2dDataOut.clear();
-//    m_particleDataOut.clear();
+    m_fieldOut.clear();
+    m_2dOut.clear();
+    m_particleOut.clear();
+    m_volumeDataOut.clear();
+    m_2dDataOut.clear();
+    m_particleDataOut.clear();
     m_gridsInTimestep.clear();
     m_gridsInTimestepForResfile.clear();
-    m_gridChanged.clear();
     m_polygonsInTimestep.clear();
     m_polygonsInTimestepForResfile.clear();
-    m_polygonChanged.clear();
-//    m_coordsOfParticles.reset();
-//    m_currentVolumedata.clear();
-//    m_current2dData.clear();
-//    m_currentParticleData.clear();
-
-
+    m_coordsOfParticles.reset();
+    m_currentVolumedata.clear();
+    m_current2dData.clear();
+    m_currentParticleData.clear();
 
     return true;
 }
