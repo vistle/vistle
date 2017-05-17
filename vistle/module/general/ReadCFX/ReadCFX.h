@@ -90,6 +90,7 @@ class ReadCFX: public vistle::Module {
     static const int NumParticlePorts = 3;
     static const int correct = 1; //correct indicates whether to correct boundary node data according to the boundary condition (correct=1)
                                   //or not (correct=0) (result out of calculation), assuming that it exists.
+    int ignoreZoneMotionForData = 0; //cfxMOTION_USE = 0, cfxMOTION_IGNORE = 1
 
  public:
    ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
@@ -108,7 +109,7 @@ class ReadCFX: public vistle::Module {
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection, *m_particleSelection;
    vistle::IntParameter *m_firsttimestep, *m_lasttimestep;
    vistle::IntParameter *m_timeskip;
-   vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
+   vistle::IntParameter *m_ignoreZoneMotionForData;
    std::vector<vistle::StringParameter *> m_fieldOut, m_2dOut, m_particleOut;
    vistle::coRestraint m_coRestraintZones, m_coRestraint2dAreas, m_coRestraintParticle;
 

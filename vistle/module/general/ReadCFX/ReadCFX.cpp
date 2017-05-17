@@ -66,6 +66,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
 
+    //use rotated data or not
+    m_ignoreZoneMotionForData = addIntParameter("no rotation for data", "if zone is rotating, the data can be read rotated or not", 1, Parameter::Boolean);
     //zone selection
     m_zoneSelection = addStringParameter("zones","select zone numbers e.g. 1,4,6-10","all");
 
@@ -536,6 +538,9 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     setParameter<Integer>(m_firsttimestep,0);
                     setParameterMaximum<Integer>(m_timeskip, 0);
                 }
+
+                ignoreZoneMotionForData = m_ignoreZoneMotionForData->getValue();
+
                 //fill choice parameter
                 m_case.parseResultfile();
                 m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
@@ -990,7 +995,14 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
             if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,cfxMOTION_IGNORE);
+
+            double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+            double angularVel; //in radians per second
+            if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
+                cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,ignoreZoneMotionForData);
+            } else {
+                cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,cfxMOTION_IGNORE);
+            }
 
 #ifdef PARALLEL_ZONES
             index_t nnodesInZone = cfxExportNodeCount();
@@ -1104,7 +1116,13 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
             if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            cfxExportZoneMotionAction(m_2dAreasSelected[area2d].idWithZone.zoneFlag,cfxMOTION_IGNORE);
+            double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+            double angularVel; //in radians per second
+            if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
+                cfxExportZoneMotionAction(m_3dAreasSelected[area2d].zoneFlag,ignoreZoneMotionForData);
+            } else {
+                cfxExportZoneMotionAction(m_3dAreasSelected[area2d].zoneFlag,cfxMOTION_IGNORE);
+            }
             index_t nNodesIn2dArea=0;
             int *nodeListOf2dArea;
             if(m_2dAreasSelected[area2d].boundary) {
@@ -1424,7 +1442,13 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     if(cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,cfxMOTION_IGNORE);
+    double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+    double angularVel; //in radians per second
+    if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
+        cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,ignoreZoneMotionForData);
+    } else {
+        cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,cfxMOTION_IGNORE);
+    }
     int numberOfTracks = cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]);
 
     int firstTrackForRank, lastTrackForRank;
@@ -1487,6 +1511,13 @@ bool ReadCFX::addVolumeDataToPorts() {
 
     for (int portnum=0; portnum<NumPorts; ++portnum) {
         if(m_currentVolumedata[portnum]) {
+//            Matrix4 t = m_currentVolumedata[portnum]->getTransform();
+//            std::cerr << "Zone = " << cfxExportZoneGet() << std::endl;
+//            std::cerr << m_currentVolumedata[portnum]->meta() << std::endl;
+//            for(int i=0;i<4;++i) {
+//                std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
+//            }
+
             addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
         }
     }
@@ -1498,6 +1529,14 @@ bool ReadCFX::add2dDataToPorts() {
 
     for (int portnum=0; portnum<Num2dPorts; ++portnum) {
         if(m_current2dData[portnum]) {
+//            Matrix4 t = m_current2dData[portnum]->getTransform();
+//            std::cerr << "Zone = " << cfxExportZoneGet() << std::endl;
+//            std::cerr << m_current2dData[portnum]->meta() << std::endl;
+//            for(int i=0;i<4;++i) {
+//                std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
+//            }
+
+
             addObject(m_2dDataOut[portnum], m_current2dData[portnum]);
         }
     }
@@ -1544,77 +1583,85 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
     //timestep for data in .trn files is timestep (variable)
     //timestep for data in .res files is last timestep (fix)
 
-    if (obj) {
-       if(m_ntimesteps == 0) {
-           obj->setTimestep(-1);
-           obj->setNumTimesteps(-1);
-           obj->setRealTime(0);
-       }
-       else {
-           if(timestep == -1 || (m_lasttimestep->getValue() == 0)) {
-               obj->setNumTimesteps(-1);
-               obj->setTimestep(-1);
-           }
-           else {
-               if(readTransientFile) {   //readTransientFile == 1 --> data belong to transient file
-                   obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
-               }
-               else {
-                   obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
-               }
-               obj->setNumTimesteps(numTimesteps);
-               obj->setTimestep(setMetaTimestep);
-           }
-       }
-      obj->setBlock(blockNr);
-      obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
+    if(!obj)
+        return;
+
+    if(m_ntimesteps == 0) {
+        obj->setTimestep(-1);
+        obj->setNumTimesteps(-1);
+        obj->setRealTime(0);
+    } else {
+        if(timestep == -1 || (m_lasttimestep->getValue() == 0)) {
+            obj->setNumTimesteps(-1);
+            obj->setTimestep(-1);
+        } else {
+            if(readTransientFile) {   //readTransientFile == 1 --> data belong to transient file
+                obj->setRealTime(cfxExportTimestepTimeGet(timestep+1)); //+1 because cfxExport API's start with Index 1
+            } else {
+                obj->setRealTime(cfxExportTimestepTimeGet(m_lasttimestep->getValue()+1)+cfxExportTimestepTimeGet(1));  //+1 because cfxExport API's start with Index 1
+            }
+            obj->setNumTimesteps(numTimesteps);
+            obj->setTimestep(setMetaTimestep);
+        }
+    }
+    obj->setBlock(blockNr);
+    obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
 
 
-      double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-      double angularVel; //in radians per second
-      if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
+    double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+    double angularVel; //in radians per second
 
- //          for(int i=0;i<3;++i) {
- //              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
- //          }
- //          for(int i=0;i<3;++i) {
- //              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
- //          }
+//    if(obj->type() || obj == vistle::Polygons::ptr) {
+//        std::cerr << "grid or polygon" << std::endl;
+//    } else if (obj == vistle::DataBase::ptr) {
+//        std::cerr << "data" << std::endl;
+//    } else {
+//        std::cerr << "nothing of all" << std::endl;
+//    }
 
-          double startTime = cfxExportTimestepTimeGet(1);
-          double currentTime = cfxExportTimestepTimeGet(timestep+1);
-          Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
+    if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
 
-          //std::cerr << "rot_angle = " << rot_angle << std::endl;
-          double x,y,z;
-          x = rotAxis[1][0]-rotAxis[0][0];
-          y = rotAxis[1][1]-rotAxis[0][1];
-          z = rotAxis[1][2]-rotAxis[0][2];
-          Vector3 rot_axis(x,y,z);
-          rot_axis.normalize();
-          //std::cerr << "rot_axis = " << rot_axis << std::endl;
+        //          for(int i=0;i<3;++i) {
+        //              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
+        //          }
+        //          for(int i=0;i<3;++i) {
+        //              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
+        //          }
 
-          Quaternion qrot(AngleAxis(rot_angle, rot_axis));
-          Matrix4 rotMat(Matrix4::Identity());
-          Matrix3 rotMat3(qrot.toRotationMatrix());
-          rotMat.block<3,3>(0,0) = rotMat3;
+        double startTime = cfxExportTimestepTimeGet(1);
+        double currentTime = cfxExportTimestepTimeGet(timestep+1);
+        Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
 
-          Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
-          Matrix4 translateMat(Matrix4::Identity());
-          translateMat.col(3) << translate, 1;
+        //std::cerr << "rot_angle = " << rot_angle << std::endl;
+        double x,y,z;
+        x = rotAxis[1][0]-rotAxis[0][0];
+        y = rotAxis[1][1]-rotAxis[0][1];
+        z = rotAxis[1][2]-rotAxis[0][2];
+        Vector3 rot_axis(x,y,z);
+        rot_axis.normalize();
+        //std::cerr << "rot_axis = " << rot_axis << std::endl;
 
-          Matrix4 transform(Matrix4::Identity());
-          transform *= translateMat;
-          transform *= rotMat;
-          translate *= -1;
-          translateMat.col(3) << translate, 1;
-          transform *= translateMat;
+        Quaternion qrot(AngleAxis(rot_angle, rot_axis));
+        Matrix4 rotMat(Matrix4::Identity());
+        Matrix3 rotMat3(qrot.toRotationMatrix());
+        rotMat.block<3,3>(0,0) = rotMat3;
 
-          Matrix4 t = obj->getTransform();
-          t *= transform;
-          obj->setTransform(t);
-      }
-   }
+        Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
+        Matrix4 translateMat(Matrix4::Identity());
+        translateMat.col(3) << translate, 1;
+
+        Matrix4 transform(Matrix4::Identity());
+        transform *= translateMat;
+        transform *= rotMat;
+        translate *= -1;
+        translateMat.col(3) << translate, 1;
+        transform *= translateMat;
+
+        obj->setTransform(transform);
+    }
+    else {
+        obj->setTransform(Matrix4::Identity());
+    }
 }
 
 bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile) {
@@ -1632,9 +1679,11 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
                     setMeta(m_gridsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
                 }
                 grid = m_gridsInTimestep[i];
+//                std::cerr << "Block = " << i << " in Timestep = " << timestep << " is not cloned" << std::endl;
             }
             else {
                 grid = m_gridsInTimestep[i]->clone();
+//                std::cerr << "Block = " << i << " in Timestep = " << timestep << " is cloned" << std::endl;
             }
             setMeta(grid,i,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
 
@@ -1740,11 +1789,6 @@ bool ReadCFX::compute() {
         std::cerr << "Time Rest of Compute = " << endRestCompute-startRestCompute << std::endl;
     }
 
-// #####################################################################################################################################
-    // ATTENTION: Memorymanagement must be fixed!!!
-    // ReadCFX crashes when all vectors are cleared and ReadCFX is executed twice
-    // gridsInTimestep is uncommented because if all grids are stored there can't be made a zone selection anymore
-// #####################################################################################################################################
     m_fieldOut.clear();
     m_2dOut.clear();
     m_particleOut.clear();
