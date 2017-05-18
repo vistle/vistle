@@ -442,7 +442,9 @@ bool ClusterManager::handle(const message::Buffer &message) {
    if (message::Id::isModule(message.destId())) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
-         if (message.type() != message::EXECUTE && message.type() != message::CANCELEXECUTE) {
+         if (message.type() != message::EXECUTE
+                 && message.type() != message::CANCELEXECUTE
+                 && message.type() != message::SETPARAMETER) {
             return sendMessage(message.destId(), message);
          }
       } else {
