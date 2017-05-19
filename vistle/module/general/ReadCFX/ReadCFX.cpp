@@ -62,12 +62,14 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
     setParameterMinimum<Integer>(m_firsttimestep, 0);
     m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 0);
-    setParameterMinimum<Integer>(m_lasttimestep, 0);
+    setParameterMinimum<Integer>(m_lasttimestep, -1);
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
 
     //use rotated data or not
-    m_ignoreZoneMotionForData = addIntParameter("no rotation for data", "if zone is rotating, the data can be read rotated or not", 1, Parameter::Boolean);
+    m_readDataTransformed = addIntParameter("transformData", "if true, the data are read transformed with cfxExportZoneMotionAction(cfxMOTION_IGNORE), if false a transformation matrix is added", 1, Parameter::Boolean);
+    m_readGridTransformed = addIntParameter("transformGrid", "if true, the grid coordinates are read transformed with cfxExportZoneMotionAction(cfxMOTION_IGNORE), if false a transformation matrix is added", 1, Parameter::Boolean);
+
     //zone selection
     m_zoneSelection = addStringParameter("zones","select zone numbers e.g. 1,4,6-10","all");
 
@@ -93,7 +95,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
         }
     }
     //m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 0, Parameter::Boolean);
-    m_2dAreaSelection = addStringParameter("2D area","select boundary or region numbers e.g. 1,4,6-10","all");
+    m_2dAreaSelection = addStringParameter("2D area","select boundary or region numbers e.g. 1,4,6-10","0");
 
     // 2d data ports and 2d data choice parameters
     for (int i=0; i<Num2dPorts; ++i) {
@@ -114,7 +116,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     }
 
 //particle selection
-    m_particleSelection = addStringParameter("particle type","select particle type e.g. 1,4,6-10","all");
+    m_particleSelection = addStringParameter("particle type","select particle type e.g. 1,4,6-10","0");
     m_particleTime = createOutputPort("particle_time");
 
     // particle data ports and particle choice parameters
@@ -539,8 +541,6 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                     setParameterMaximum<Integer>(m_timeskip, 0);
                 }
 
-                ignoreZoneMotionForData = m_ignoreZoneMotionForData->getValue();
-
                 //fill choice parameter
                 m_case.parseResultfile();
                 m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
@@ -597,6 +597,15 @@ bool ReadCFX::changeParameter(const Parameter *p) {
             }
         }
     }
+    if(p == m_readDataTransformed) {
+        std::cerr << "ignore Data = " << !m_readDataTransformed->getValue() << std::endl;
+        ignoreZoneMotionForData = !m_readDataTransformed->getValue();
+    }
+    if(p == m_readGridTransformed) {
+        std::cerr << "ignore Grid = " << !m_readGridTransformed->getValue() << std::endl;
+        ignoreZoneMotionForGrid = !m_readGridTransformed->getValue();
+    }
+
     return Module::changeParameter(p);
 }
 
@@ -606,7 +615,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,counts) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,cfxMOTION_IGNORE);
+    cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,ignoreZoneMotionForGrid);
 #ifdef PARALLEL_ZONES
     nnodesIn3dArea = cfxExportNodeCount();
     nelmsIn3dArea = cfxExportElementCount();
@@ -654,10 +663,12 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     //Test, ob Einlesen funktioniert hat
 //    std::cerr << "m_nnodes = " << m_nnodes << std::endl;
 //    std::cerr << "nnodesIn3dArea = " << nnodesIn3dArea << std::endl;
-//    std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
-//    for(int i=0;i<20;++i) {
-//        std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
-//    }
+    //    std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
+    if(m_3dAreasSelected[area3d].zoneFlag==3 && rank()==4) {
+        for(int i=50;i<150;++i) {
+                std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
+            }
+    }
 //    std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
 
     //load element types, element list and connectivity list into unstructured grid
@@ -829,7 +840,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
         std::cerr << "invalid zone number" << std::endl;
     }
-    cfxExportZoneMotionAction(m_2dAreasSelected[area2d].idWithZone.zoneFlag,cfxMOTION_IGNORE);
+    cfxExportZoneMotionAction(m_2dAreasSelected[area2d].idWithZone.zoneFlag,ignoreZoneMotionForGrid);
     int *nodeListOf2dArea;
     index_t nNodesIn2dArea, nFacesIn2dArea;
 
@@ -995,14 +1006,7 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
             if(cfxExportZoneSet(m_3dAreasSelected[area3d].zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-
-            double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-            double angularVel; //in radians per second
-            if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
-                cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,ignoreZoneMotionForData);
-            } else {
-                cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,cfxMOTION_IGNORE);
-            }
+            cfxExportZoneMotionAction(m_3dAreasSelected[area3d].zoneFlag,ignoreZoneMotionForData);
 
 #ifdef PARALLEL_ZONES
             index_t nnodesInZone = cfxExportNodeCount();
@@ -1032,7 +1036,7 @@ DataBase::ptr ReadCFX::loadField(int area3d, Variable var) {
                     ptrOnVectorXData[j] = variableList[3*j];
                     ptrOnVectorYData[j] = variableList[3*j+1];
                     ptrOnVectorZData[j] = variableList[3*j+2];
-//                    if(j<20) {
+//                    if(j<100 || j>(nnodesInZone-100)) {
 //                        std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
 //                        std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
@@ -1116,13 +1120,9 @@ DataBase::ptr ReadCFX::load2dField(int area2d, Variable var) {
             if(cfxExportZoneSet(m_2dAreasSelected[area2d].idWithZone.zoneFlag,NULL) < 0) {
                 std::cerr << "invalid zone number" << std::endl;
             }
-            double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-            double angularVel; //in radians per second
-            if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
-                cfxExportZoneMotionAction(m_3dAreasSelected[area2d].zoneFlag,ignoreZoneMotionForData);
-            } else {
-                cfxExportZoneMotionAction(m_3dAreasSelected[area2d].zoneFlag,cfxMOTION_IGNORE);
-            }
+
+            cfxExportZoneMotionAction(m_3dAreasSelected[area2d].zoneFlag,ignoreZoneMotionForData);
+
             index_t nNodesIn2dArea=0;
             int *nodeListOf2dArea;
             if(m_2dAreasSelected[area2d].boundary) {
@@ -1265,7 +1265,6 @@ index_t ReadCFX::collect3dAreas() {
             }
             int nvolumes = cfxExportVolumeCount();
             for(int j=1;j<=nvolumes;++j) {
-                //std::cerr << "volumeName no. " << j << " in zone. " << i << " = " << cfxExportVolumeName(j) << std::endl;
                 m_3dAreasSelected[numberOfSelected3dAreas]=IdWithZoneFlag(j,i);
                 numberOfSelected3dAreas++;
             }
@@ -1278,7 +1277,7 @@ index_t ReadCFX::collect3dAreas() {
 #endif
 
 
-    //zum Testen
+    //Verification
 //    for(index_t i=0;i<numberOfSelected3dAreas;++i) {
 //        std::cerr << "m_3dAreasSelected[" << i << "].ID = " << m_3dAreasSelected[i].ID << " m_3dAreasSelected.zoneFlag" << m_3dAreasSelected[i].zoneFlag << std::endl;
 //    }
@@ -1385,13 +1384,15 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
 
           if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
               //variable exists only in resfile --> timestep = -1
-              setMeta(obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
+              Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
+              setMeta(obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile,t);
               obj->setGrid(m_gridsInTimestepForResfile[area3d]);
               obj->setMapping(DataBase::Vertex);
           }
           else {
               //variable exists in resfile and in transient files --> timestep = last
-              setMeta(obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
+              Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
+              setMeta(obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile,t);
               obj->setGrid(grid);
               obj->setMapping(DataBase::Vertex);
           }
@@ -1419,13 +1420,15 @@ bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep,
 
             if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
                 //variable exists only in resfile --> timestep = -1
-                setMeta(obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
+                Matrix4 t = getTransformationMatrix(m_2dAreasSelected[area2d].idWithZone.zoneFlag,timestep,ignoreZoneMotionForData);
+                setMeta(obj,area2d,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile,t);
                 obj->setGrid(m_polygonsInTimestepForResfile[area2d]);
                 obj->setMapping(DataBase::Vertex);
             }
             else {
                 //variable exists in resfile and in transient files --> timestep = last
-                setMeta(obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
+                Matrix4 t = getTransformationMatrix(m_2dAreasSelected[area2d].idWithZone.zoneFlag,timestep,ignoreZoneMotionForData);
+                setMeta(obj,area2d,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile,t);
                 obj->setGrid(polyg);
                 obj->setMapping(DataBase::Vertex);
             }
@@ -1442,13 +1445,9 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     if(cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-    double angularVel; //in radians per second
-    if(cfxExportZoneIsRotating(rotAxis,&angularVel)) {
-        cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,ignoreZoneMotionForData);
-    } else {
-        cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,cfxMOTION_IGNORE);
-    }
+
+    cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,ignoreZoneMotionForData);
+
     int numberOfTracks = cfxExportGetNumberOfTracks(m_particleTypesSelected[particleTypeNumber]);
 
     int firstTrackForRank, lastTrackForRank;
@@ -1512,7 +1511,7 @@ bool ReadCFX::addVolumeDataToPorts() {
     for (int portnum=0; portnum<NumPorts; ++portnum) {
         if(m_currentVolumedata[portnum]) {
 //            Matrix4 t = m_currentVolumedata[portnum]->getTransform();
-//            std::cerr << "Zone = " << cfxExportZoneGet() << std::endl;
+//            std::cerr << "Zone(data) = " << cfxExportZoneGet() << std::endl;
 //            std::cerr << m_currentVolumedata[portnum]->meta() << std::endl;
 //            for(int i=0;i<4;++i) {
 //                std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
@@ -1547,7 +1546,14 @@ bool ReadCFX::addGridToPort(UnstructuredGrid::ptr grid) {
     //adds the grid to the gridOut port
 
     if(grid) {
+        Matrix4 t = grid->getTransform();
+        std::cerr << "Zone(grid) = " << cfxExportZoneGet() << std::endl;
+        std::cerr << grid->meta() << std::endl;
+        for(int i=0;i<4;++i) {
+            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
+        }
         addObject(m_gridOut,grid);
+
     }
     return true;
 }
@@ -1556,6 +1562,12 @@ bool ReadCFX::addPolygonToPort(Polygons::ptr polyg) {
     //adds the polygon to the polygonOut port
 
     if(polyg) {
+        Matrix4 t = polyg->getTransform();
+        std::cerr << "Zone(polyg) = " << cfxExportZoneGet() << std::endl;
+        std::cerr << polyg->meta() << std::endl;
+        for(int i=0;i<4;++i) {
+            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
+        }
         addObject(m_polyOut,polyg);
     }
     return true;
@@ -1577,11 +1589,59 @@ bool ReadCFX::addParticleToPorts() {
     return true;
 }
 
-void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile) {
+Matrix4 ReadCFX::getTransformationMatrix(int zoneFlag, int timestep, bool setTransformation) {
+    // calculates the transformation matrix out of the rotation axis and angular velocity from cfxExportZoneIsRotating
+    if(cfxExportZoneSet(zoneFlag,NULL) < 0) {
+        std::cerr << "invalid zone number" << std::endl;
+    }
+    double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
+    double angularVel; //in radians per second
+    if(!setTransformation || !cfxExportZoneIsRotating(rotAxis,&angularVel)) //1 if zone is rotating, 0 if zone is not rotating
+        return Matrix4::Identity();
+
+
+//    for(int i=0;i<3;++i) {
+//        std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
+//    }
+//    for(int i=0;i<3;++i) {
+//        std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
+//    }
+
+    double startTime = cfxExportTimestepTimeGet(1);
+    double currentTime = cfxExportTimestepTimeGet(timestep+1);
+    Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
+
+    //std::cerr << "rot_angle = " << rot_angle << std::endl;
+    double x,y,z;
+    x = rotAxis[1][0]-rotAxis[0][0];
+    y = rotAxis[1][1]-rotAxis[0][1];
+    z = rotAxis[1][2]-rotAxis[0][2];
+    Vector3 rot_axis(x,y,z);
+    rot_axis.normalize();
+    //std::cerr << "rot_axis = " << rot_axis << std::endl;
+
+    Quaternion qrot(AngleAxis(rot_angle, rot_axis));
+    Matrix4 rotMat(Matrix4::Identity());
+    Matrix3 rotMat3(qrot.toRotationMatrix());
+    rotMat.block<3,3>(0,0) = rotMat3;
+
+    Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
+    Matrix4 translateMat(Matrix4::Identity());
+    translateMat.col(3) << translate, 1;
+
+    Matrix4 transform(Matrix4::Identity());
+    transform *= translateMat;
+    transform *= rotMat;
+    translate *= -1;
+    translateMat.col(3) << translate, 1;
+    transform *= translateMat;
+
+    return transform;
+}
+
+void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile, Matrix4 transformMatrix) {
     //sets the timestep, the number of timesteps, the real time, the block number and total number of blocks and the transformation matrix for a vistle object
-    //timestep is -1 if ntimesteps is 0 or a variable is only in resfile
-    //timestep for data in .trn files is timestep (variable)
-    //timestep for data in .res files is last timestep (fix)
+    //timestep is -1 or if ntimesteps is 0 a variable is only in resfile
 
     if(!obj)
         return;
@@ -1591,7 +1651,7 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
         obj->setNumTimesteps(-1);
         obj->setRealTime(0);
     } else {
-        if(timestep == -1 || (m_lasttimestep->getValue() == 0)) {
+        if(timestep == -1 || m_lasttimestep->getValue()==-1) {
             obj->setNumTimesteps(-1);
             obj->setTimestep(-1);
         } else {
@@ -1606,62 +1666,7 @@ void ReadCFX::setMeta(Object::ptr obj, int blockNr, int setMetaTimestep, int tim
     }
     obj->setBlock(blockNr);
     obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
-
-
-    double rotAxis[2][3] = {{0.0, 0.0, 0.0},{0.0, 0.0, 0.0}};
-    double angularVel; //in radians per second
-
-//    if(obj->type() || obj == vistle::Polygons::ptr) {
-//        std::cerr << "grid or polygon" << std::endl;
-//    } else if (obj == vistle::DataBase::ptr) {
-//        std::cerr << "data" << std::endl;
-//    } else {
-//        std::cerr << "nothing of all" << std::endl;
-//    }
-
-    if(cfxExportZoneIsRotating(rotAxis,&angularVel)) { //1 if zone is rotating, 0 if zone is not rotating
-
-        //          for(int i=0;i<3;++i) {
-        //              std::cerr << "rotAxis[0][" << i << "] = " << rotAxis[0][i] << std::endl;
-        //          }
-        //          for(int i=0;i<3;++i) {
-        //              std::cerr << "rotAxis[1][" << i << "] = " << rotAxis[1][i] << std::endl;
-        //          }
-
-        double startTime = cfxExportTimestepTimeGet(1);
-        double currentTime = cfxExportTimestepTimeGet(timestep+1);
-        Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
-
-        //std::cerr << "rot_angle = " << rot_angle << std::endl;
-        double x,y,z;
-        x = rotAxis[1][0]-rotAxis[0][0];
-        y = rotAxis[1][1]-rotAxis[0][1];
-        z = rotAxis[1][2]-rotAxis[0][2];
-        Vector3 rot_axis(x,y,z);
-        rot_axis.normalize();
-        //std::cerr << "rot_axis = " << rot_axis << std::endl;
-
-        Quaternion qrot(AngleAxis(rot_angle, rot_axis));
-        Matrix4 rotMat(Matrix4::Identity());
-        Matrix3 rotMat3(qrot.toRotationMatrix());
-        rotMat.block<3,3>(0,0) = rotMat3;
-
-        Vector3 translate(-rotAxis[0][0],-rotAxis[0][1],-rotAxis[0][2]);
-        Matrix4 translateMat(Matrix4::Identity());
-        translateMat.col(3) << translate, 1;
-
-        Matrix4 transform(Matrix4::Identity());
-        transform *= translateMat;
-        transform *= rotMat;
-        translate *= -1;
-        translateMat.col(3) << translate, 1;
-        transform *= translateMat;
-
-        obj->setTransform(transform);
-    }
-    else {
-        obj->setTransform(Matrix4::Identity());
-    }
+    obj->setTransform(transformMatrix);
 }
 
 bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile) {
@@ -1676,17 +1681,16 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
                 m_gridsInTimestep[i] = loadGrid(i);
                 if(!readTransientFile) {
                     m_gridsInTimestepForResfile[i] = m_gridsInTimestep[i]->clone();
-                    setMeta(m_gridsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile);
+                    Matrix4 t = getTransformationMatrix(m_3dAreasSelected[i].zoneFlag,timestep,ignoreZoneMotionForGrid);
+                    setMeta(m_gridsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile,t);
                 }
                 grid = m_gridsInTimestep[i];
-//                std::cerr << "Block = " << i << " in Timestep = " << timestep << " is not cloned" << std::endl;
             }
             else {
                 grid = m_gridsInTimestep[i]->clone();
-//                std::cerr << "Block = " << i << " in Timestep = " << timestep << " is cloned" << std::endl;
             }
-            setMeta(grid,i,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile);
-
+            Matrix4 t = getTransformationMatrix(m_3dAreasSelected[i].zoneFlag,timestep,ignoreZoneMotionForGrid);
+            setMeta(grid,i,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile,t);
             addGridToPort(grid);
             loadFields(grid, i, setMetaTimestep, timestep, numTimesteps, numSel3dArea, readTransientFile);
             addVolumeDataToPorts();
@@ -1702,15 +1706,16 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
                 m_polygonsInTimestep[i] = loadPolygon(i);
                 if(!readTransientFile) {
                     m_polygonsInTimestepForResfile[i] = m_polygonsInTimestep[i]->clone();
-                    setMeta(m_polygonsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile);
+                    Matrix4 t = getTransformationMatrix(m_2dAreasSelected[i].idWithZone.zoneFlag,timestep,ignoreZoneMotionForGrid);
+                    setMeta(m_polygonsInTimestepForResfile[i],i,setMetaTimestep,-1,numTimesteps,numSel2dArea,readTransientFile,t);
                 }
                 polyg = m_polygonsInTimestep[i];
             }
             else {
                 polyg = m_polygonsInTimestep[i]->clone();
             }
-            setMeta(polyg,i,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile);
-
+            Matrix4 t = getTransformationMatrix(m_2dAreasSelected[i].idWithZone.zoneFlag,timestep,ignoreZoneMotionForGrid);
+            setMeta(polyg,i,setMetaTimestep,timestep,numTimesteps,numSel2dArea,readTransientFile,t);
             addPolygonToPort(polyg);
             load2dFields(polyg, i,setMetaTimestep, timestep, numTimesteps, numSel2dArea, readTransientFile);
             add2dDataToPorts();
@@ -1729,7 +1734,8 @@ bool ReadCFX::compute() {
 #endif
 
     index_t setMetaTimestep=0;
-    index_t firsttimestep=m_firsttimestep->getValue(), lasttimestep=m_lasttimestep->getValue(), timeskip=m_timeskip->getValue();
+    index_t firsttimestep=m_firsttimestep->getValue(), timeskip=m_timeskip->getValue();
+    int lasttimestep=m_lasttimestep->getValue();
     index_t numTimesteps = ((lasttimestep-firsttimestep)/(timeskip+1))+2;
     bool readTransientFile;
 
@@ -1749,7 +1755,6 @@ bool ReadCFX::compute() {
         //read variables out of .res file
         static double startRestCompute = vistle::Clock::time();
 
-        readTransientFile = 0;
         index_t numSel3dArea = collect3dAreas();
         index_t numSel2dArea = collect2dAreas();
         index_t numSelParticleTypes = collectParticles();
@@ -1757,6 +1762,7 @@ bool ReadCFX::compute() {
         m_gridsInTimestepForResfile.resize(numSel3dArea);
         m_polygonsInTimestep.resize(numSel2dArea);
         m_polygonsInTimestepForResfile.resize(numSel2dArea);
+        readTransientFile = 0;
         readTime(numSel3dArea,numSel2dArea,numTimesteps-1,0,numTimesteps,readTransientFile);
 
         //read particles
@@ -1767,9 +1773,9 @@ bool ReadCFX::compute() {
         }
 
         //read variables out of timesteps .trn file
-        if(m_ntimesteps!=0 && (lasttimestep!=0)) {
+        if(m_ntimesteps!=0 && (lasttimestep!=-1)) {
             readTransientFile = 1;
-            for(index_t timestep = firsttimestep; timestep<=lasttimestep; timestep+=(timeskip+1)) {
+            for(int timestep = firsttimestep; timestep<=lasttimestep; timestep+=(timeskip+1)) {
                 index_t timestepNumber = cfxExportTimestepNumGet(timestep+1);
                 if(cfxExportTimestepSet(timestepNumber)<0) {
                     std::cerr << "cfxExportTimestepSet: invalid timestep number(" << timestepNumber << ")" << std::endl;

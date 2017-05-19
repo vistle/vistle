@@ -90,7 +90,6 @@ class ReadCFX: public vistle::Module {
     static const int NumParticlePorts = 3;
     static const int correct = 1; //correct indicates whether to correct boundary node data according to the boundary condition (correct=1)
                                   //or not (correct=0) (result out of calculation), assuming that it exists.
-    int ignoreZoneMotionForData = 0; //cfxMOTION_USE = 0, cfxMOTION_IGNORE = 1
 
  public:
    ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
@@ -109,12 +108,13 @@ class ReadCFX: public vistle::Module {
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection, *m_particleSelection;
    vistle::IntParameter *m_firsttimestep, *m_lasttimestep;
    vistle::IntParameter *m_timeskip;
-   vistle::IntParameter *m_ignoreZoneMotionForData;
+   vistle::IntParameter *m_readDataTransformed, *m_readGridTransformed;
    std::vector<vistle::StringParameter *> m_fieldOut, m_2dOut, m_particleOut;
    vistle::coRestraint m_coRestraintZones, m_coRestraint2dAreas, m_coRestraintParticle;
 
    index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps, m_nregions; // m_nboundaries, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
    int m_previousTimestep = 1;
+   int ignoreZoneMotionForData, ignoreZoneMotionForGrid; //cfxMOTION_USE = 0, cfxMOTION_IGNORE = 1
 
    //Ports
    vistle::Port *m_gridOut, *m_polyOut, *m_particleTime;
@@ -154,7 +154,8 @@ class ReadCFX: public vistle::Module {
    bool addGridToPort(vistle::UnstructuredGrid::ptr grid);
    bool addPolygonToPort(vistle::Polygons::ptr polyg);
    bool addParticleToPorts();
-   void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile);
+   vistle::Matrix4 getTransformationMatrix(int zoneFlag, int timestep, bool setTransformation);
+   void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile, vistle::Matrix4 transformMatrix);
    bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile);
    bool free2dArea(bool boundary, int area2d);
 
