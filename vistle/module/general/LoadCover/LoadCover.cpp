@@ -17,7 +17,7 @@ LoadCover::LoadCover(const std::string &shmname, const std::string &name, int mo
 
    createOutputPort("grid_out");
    addStringParameter("filename", "name of file (%1%: rank)", "");
-   addIntParameter("rank", "rank of node where to load (-1: all nodes)", -1);
+   addIntParameter("rank", "rank of node where to load (-1: all nodes)", 0);
 }
 
 LoadCover::~LoadCover() {
