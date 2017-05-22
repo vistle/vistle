@@ -348,10 +348,12 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
             }
         }
     }
-    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || rank() == recv.rank())
+    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || rank() == recv.rank()) {
+        assert(obj);
         addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-    else
+    } else {
         addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), placeholder);
+    }
 
     return true;
 }

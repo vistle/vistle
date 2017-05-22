@@ -565,26 +565,6 @@ bool Module::sendObject(Object::const_ptr obj, int destRank) const {
         comm().send(destRank, 0, ent.data, ent.size);
     }
     return true;
-#if 0
-    vecostreambuf<char> memstr;
-    vistle::oarchive memar(memstr);
-    auto saver = std::make_shared<DeepArchiveSaver>();
-    memar.setSaver(saver);
-    obj->save(memar);
-    const std::vector<char> &mem = memstr.get_vector();
-    uint64_t len = mem.size();
-    std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
-    const char *data = mem.data();
-
-    MPI_Request r1, r2;
-    MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
-    MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
-    MPI_Wait(&r1, MPI_STATUS_IGNORE);
-    MPI_Wait(&r2, MPI_STATUS_IGNORE);
-    //FIXME: directory
-
-    return true;
-#endif
 }
 
 Object::const_ptr Module::receiveObject(int sourceRank) const {
@@ -609,35 +589,9 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
     memar.setFetcher(fetcher);
     Object::ptr p(Object::load(memar));
+    //p->unref();
+    std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
     return p;
-#if 0
-    obj.reset(Object::load(memar));
-
-    uint64_t len = 0;
-    MPI_Request r;
-    MPI_Irecv(&len, 1, MPI_UINT64_T, sourceRank, 0, MPI_COMM_WORLD, &r);
-    MPI_Wait(&r, MPI_STATUS_IGNORE);
-    if (len > 0) {
-        //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
-        std::vector<char> mem(len);
-        char *data = mem.data();
-        vistle::SubArchiveDirectory dir;
-        std::map<std::string, std::vector<char>> objects, arrays;
-        MPI_Request r;
-        MPI_Irecv(data, mem.size(), MPI_BYTE, sourceRank, 0, MPI_COMM_WORLD, &r);
-        MPI_Wait(&r, MPI_STATUS_IGNORE);
-        //FIXME: directory
-
-        vecistreambuf<char> membuf(mem);
-        vistle::iarchive memar(membuf);
-        auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
-        memar.setFetcher(fetcher);
-        Object::ptr obj(Object::load(memar));
-        return obj;
-    }
-
-    return Object::const_ptr();
-#endif
 }
 
 bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
@@ -676,6 +630,8 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
         memar.setFetcher(fetcher);
         obj.reset(Object::load(memar));
+        std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
+        //obj->unref();
     }
 
     return true;
