@@ -36,7 +36,12 @@ int main(int argc, char *argv[]) {
 
 	std::string bindir = vistle::getbindir(argc, argv);
 
-	MPI_Init(&argc, &argv);
+   int provided = MPI_THREAD_SINGLE;
+   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+   if (provided == MPI_THREAD_SINGLE) {
+      std::cerr << "no thread support in MPI" << std::endl;
+      exit(1);
+   }
 
 	int rank = -1;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
