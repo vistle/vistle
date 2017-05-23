@@ -10,6 +10,8 @@
 
 #include <util/tools.h>
 
+#include <util/exception.h>
+
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
 #endif
@@ -479,9 +481,9 @@ void Object::setTransform(const Matrix4 &transform) {
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
    TypeMap::const_iterator it = typeMap().find(id);
    if (it == typeMap().end()) {
-      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)" << std::endl;
-      assert(it != typeMap().end());
-      exit(1);
+      std::stringstream str;
+      str << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)";
+      throw vistle::exception(str.str());
    }
    return (*it).second;
 }

@@ -87,15 +87,21 @@ int main(int argc, char ** argv) {
                switch(info.type) {
                case 'O':
                    if (info.handle) {
-                       std::shared_ptr<const Object> obj = Shm::the().getObjectFromHandle(info.handle);
+                       std::shared_ptr<const Object> obj;
+                       try {
+                          obj = Shm::the().getObjectFromHandle(info.handle);
+                       } catch (vistle::exception e) {
+                          std::cout << " ERR " << e.what() << std::endl;
+                          continue;
+                       }
                        if (obj) {
                            std::cout << " type " << obj->getType();
                            std::cout << " ref " << obj->refcount() << std::endl;
                        } else {
-                           std::cout << "ERR" << std::endl;
+                           std::cout << " ERR" << std::endl;
                        }
                    } else {
-                       std::cout << "no handle" << std::endl;
+                       std::cout << " no handle" << std::endl;
                    }
                    break;
                case 'V':
