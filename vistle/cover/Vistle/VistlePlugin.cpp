@@ -451,14 +451,18 @@ bool OsgRenderer::render() {
          if (t >= 0) {
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
-         if (!ro->coverRenderObject->isPlaceHolder()) {
-             const char *filename = ro->coverRenderObject->getAttribute("_model_file");
-             if (filename) {
-                 osg::Node *filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
-                 if (filenode) {
-                     m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
-                 }
+         const char *filename = ro->coverRenderObject->getAttribute("_model_file");
+         if (filename) {
+             osg::Node *filenode = nullptr;
+             if (!ro->coverRenderObject->isPlaceHolder()) {
+                 filenode = coVRFileManager::instance()->loadFile(filename, NULL, transform, ro->coverRenderObject->getName());
              }
+             if (!filenode) {
+                 filenode = new osg::Node();
+                 filenode->setName(filename);
+                 transform->addChild(filenode);
+             }
+             m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
          }
          osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
          parent->addChild(transform);
