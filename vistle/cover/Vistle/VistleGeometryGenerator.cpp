@@ -486,6 +486,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             vistle::DataBase::Mapping mapping = tex->guessMapping();
             if (mapping == vistle::DataBase::Unspecified) {
                 std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
+            } else if (!tex->coords()) {
+                std::cerr << "VistleGeometryGenerator: invalid Texture1D: no coords" << std::endl;
             } else {
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setDataVariance(osg::Object::DYNAMIC);
@@ -511,8 +513,13 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                      }
                   } else {
                      const auto numCoords = coords->getNumCoords();
-                     for (Index index = 0; index < numCoords; ++index) {
-                        tc->push_back(tex->coords()[index]);
+                     const auto ntc = tex->getNumCoords();
+                     if (numCoords == ntc) {
+                         for (Index index = 0; index < numCoords; ++index) {
+                             tc->push_back(tex->coords()[index]);
+                         }
+                     } else {
+                         std::cerr << "VistleGeometryGenerator: Texture1D mismatch: #coord=" << numCoords << ", #texcoord=" << ntc << std::endl;
                      }
                   }
                } else if (mapping == vistle::DataBase::Element) {

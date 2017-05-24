@@ -196,9 +196,11 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
 
    std::shared_ptr<RenderObject> ro;
 #if 1
-   std::cout << "++++++Renderer addInputObject " << object->getType()
+   std::cout << "++++++Renderer addInputObject " << object->getName()
+             << " type " << object->getType()
              << " creator " << object->getCreator()
              << " exec " << object->getExecutionCounter()
+             << " iter " << object->getIteration()
              << " block " << object->getBlock()
              << " timestep " << object->getTimestep() << std::endl;
 #endif
