@@ -478,28 +478,6 @@ void Object::setTransform(const Matrix4 &transform) {
     d()->meta.setTransform(transform);
 }
 
-const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
-   TypeMap::const_iterator it = typeMap().find(id);
-   if (it == typeMap().end()) {
-      std::stringstream str;
-      str << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)";
-      throw vistle::exception(str.str());
-   }
-   return (*it).second;
-}
-
-#define REG_WITH_ARCHIVE(type, func_name) \
-   template<> \
-   void ObjectTypeRegistry::registerArchiveType(type &ar) { \
-      TypeMap::key_type key; \
-      TypeMap::mapped_type funcs; \
-      BOOST_FOREACH(boost::tie(key, funcs), typeMap()) { \
-         funcs.func_name(ar); \
-      } \
-   }
-REG_WITH_ARCHIVE(oarchive, registerOArchive)
-REG_WITH_ARCHIVE(iarchive, registerIArchive)
-
 void Object::addAttribute(const std::string &key, const std::string &value) {
    d()->addAttribute(key, value);
 }
@@ -729,6 +707,29 @@ bool Object::Data::removeAttachment(const std::string &key) {
 void Object::Data::unresolvedReference() {
     ++unresolvedReferences;
 }
+
+const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
+   TypeMap::const_iterator it = typeMap().find(id);
+   if (it == typeMap().end()) {
+      std::stringstream str;
+      str << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)";
+      throw vistle::exception(str.str());
+   }
+   return (*it).second;
+}
+
+#define REG_WITH_ARCHIVE(type, func_name) \
+   template<> \
+   void ObjectTypeRegistry::registerArchiveType(type &ar) { \
+      TypeMap::key_type key; \
+      TypeMap::mapped_type funcs; \
+      BOOST_FOREACH(boost::tie(key, funcs), typeMap()) { \
+         funcs.func_name(ar); \
+      } \
+   }
+REG_WITH_ARCHIVE(oarchive, registerOArchive)
+REG_WITH_ARCHIVE(iarchive, registerIArchive)
+
 
 ObjectTypeRegistry::CreateFunc ObjectTypeRegistry::getCreator(int id) {
    return getType(id).create;
