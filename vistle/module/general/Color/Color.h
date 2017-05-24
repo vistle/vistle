@@ -37,7 +37,7 @@ class Color: public vistle::Module {
    bool compute() override;
    bool reduce(int timestep) override;
 
-   void process(const vistle::DataBase::const_ptr data, int iteration=-1);
+   void process(const vistle::DataBase::const_ptr data);
 
    typedef std::map<vistle::Scalar, vistle::Vector> TF;
    std::map<int, TF> transferFunctions;

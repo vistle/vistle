@@ -563,13 +563,12 @@ bool Color::reduce(int timestep) {
     return true;
 }
 
-void Color::process(const DataBase::const_ptr data, int iteration) {
+void Color::process(const DataBase::const_ptr data) {
 
    auto out(addTexture(data, m_min, m_max, *m_colors));
    out->setGrid(data->grid());
    out->setMeta(data->meta());
    out->copyAttributes(data);
-   out->setIteration(iteration);
 
    addObject("data_out", out);
 }

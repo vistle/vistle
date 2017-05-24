@@ -880,7 +880,7 @@ void Module::updateMeta(vistle::Object::ptr obj) const {
    if (obj) {
       obj->setCreator(id());
       obj->setExecutionCounter(m_executionCount);
-      if (obj->getIteration() == -1)
+      if (obj->getIteration() < m_iteration)
           obj->setIteration(m_iteration);
    }
 }
