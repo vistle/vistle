@@ -38,6 +38,7 @@ struct V_COREEXPORT ArrayLoader {
             auto arr = Shm::the().getArrayFromName<T>(m_name);
             if (arr) {
                 std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
+                m_unreffer.reset(new Unreffer<T>(arr));
                 return;
             }
             auto &ar = const_cast<vistle::iarchive &>(m_ar);
