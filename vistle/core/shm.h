@@ -120,6 +120,9 @@ class V_COREEXPORT Shm {
    std::string createArrayId(const std::string &name="");
    std::string createObjectId(const std::string &name="");
 
+   void lockObjects() const;
+   void unlockObjects() const;
+
    std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
    shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
@@ -152,6 +155,8 @@ class V_COREEXPORT Shm {
    int m_arrayId;
    static Shm *s_singleton;
    boost::interprocess::managed_shared_memory *m_shm;
+   mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
+   mutable int m_lockCount = 0;
 };
 
 template<typename T>

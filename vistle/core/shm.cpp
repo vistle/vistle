@@ -124,6 +124,8 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 
       m_allocator = new void_allocator(shm().get_segment_manager());
 
+      m_shmDeletionMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdelete_mutex")();
+
 #ifdef SHMDEBUG
       s_shmdebugMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
       s_shmdebug = m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
@@ -187,6 +189,22 @@ std::string Shm::shmIdFilename() {
    name << "/tmp/vistle_shmids_" << getuid() << ".txt";
 #endif
    return name.str();
+}
+
+void Shm::lockObjects() const {
+   if (m_lockCount != 0)
+       std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
+   //assert(m_lockCount==0);
+   ++m_lockCount;
+   m_shmDeletionMutex->lock();
+}
+
+void Shm::unlockObjects() const {
+   m_shmDeletionMutex->unlock();
+   --m_lockCount;
+   //assert(m_lockCount==0);
+   if (m_lockCount != 0)
+       std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
 }
 
 namespace {
@@ -440,15 +458,20 @@ ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {
 
    // we have to use char here, otherwise boost-internal consistency checks fail
+   lockObjects();
    auto mem = getObjectDataFromName(name);
    if (mem) {
-      if (mem->isComplete() || !onlyComplete)
-          return Object::create(mem);
+      if (mem->isComplete() || !onlyComplete) {
+          Object::const_ptr obj = Object::create(mem);
+          unlockObjects();
+          return obj;
+      }
       std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
    } else {
        std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
    }
 
+   unlockObjects();
    return Object::const_ptr();
 }
 

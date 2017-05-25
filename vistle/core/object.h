@@ -403,11 +403,15 @@ private:
          ar & V_NAME("name", name); \
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
+         Shm::the().lockObjects(); \
          if (auto data = Shm::the().getObjectDataFromName(name)) { \
             Object::m_data = data; \
+            Object::m_data->ref(); \
+            Shm::the().unlockObjects(); \
             if (!ar.currentObject()) \
                 ar.setCurrentObject(Object::m_data); \
          } else { \
+            Shm::the().unlockObjects(); \
             std::cerr << "Object::load: creating " << name << std::endl; \
             Object::m_data = Data::createNamed(ObjType::type(), name); \
             if (!ar.currentObject()) \
@@ -527,11 +531,17 @@ private:
    ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
       Data *t = nullptr; \
       try { \
+          Shm::the().lockObjects(); \
           t = shm<Data>::construct(name)(id, name, Meta()); \
           publish(t); \
+          Shm::the().unlockObjects(); \
       } catch (boost::interprocess::interprocess_exception ex) { \
           t = static_cast<Data *>(Shm::the().getObjectDataFromName(name)); \
+          Shm::the().unlockObjects(); \
           if (!t) throw(ex); \
+      } catch (...) { \
+          Shm::the().unlockObjects(); \
+          throw; \
       } \
       return t; \
    }
