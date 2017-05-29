@@ -44,6 +44,7 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 
    auto ret = new MessageQueue(n, open_only);
    message_queue::remove(n.c_str());
+   std::cerr << "MessageQueue: opened and removed " << n << std::endl;
    return ret;
 }
 

@@ -74,13 +74,13 @@ Object *Object::load(Archive &ar) {
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
    ar & V_NAME("object", p);
+   p->ref();
    assert(ar.currentObject() == p->d());
    if (p->d()->unresolvedReferences == 0) {
        p->refresh();
        if (ar.objectCompletionHandler())
            ar.objectCompletionHandler()();
    }
-   p->ref();
    return p;
 }
 
