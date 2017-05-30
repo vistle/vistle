@@ -112,7 +112,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_2dOut, m_particleOut;
    vistle::coRestraint m_coRestraintZones, m_coRestraint2dAreas, m_coRestraintParticle;
 
-   index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps, m_nregions; // m_nboundaries, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   index_t m_nzones, m_nvolumes, m_nnodes, m_ntimesteps, m_nregions; // m_nboundaries, m_nnodes, m_nelems, m_nvars
    int m_previousTimestep = 1;
    int ignoreZoneMotionForData, ignoreZoneMotionForGrid; //cfxMOTION_USE = 0, cfxMOTION_IGNORE = 1
 
@@ -123,7 +123,6 @@ class ReadCFX: public vistle::Module {
    //Data
    CaseInfo m_case;
    int counts[cfxCNT_SIZE];
-//   vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_3dAreasSelected;
    std::vector<Areas2d> m_2dAreasSelected;
    std::vector<std::int32_t> m_particleTypesSelected;
@@ -158,9 +157,6 @@ class ReadCFX: public vistle::Module {
    void setMeta(vistle::Object::ptr obj, int blockNr, int setMetaTimestep, int timestep, int numTimesteps, index_t totalBlockNr, bool readTransientFile, vistle::Matrix4 transformMatrix);
    bool readTime(index_t numSel3dArea, index_t numSel2dArea,int setMetaTimestep, int timestep, int numTimesteps, bool readTransientFile);
    bool free2dArea(bool boundary, int area2d);
-
-
-
 };
 
 #endif

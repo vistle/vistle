@@ -426,6 +426,7 @@ int ReadCFX::rankForVolumeAndTimestep(int setMetaTimestep, int volume, int numVo
 
     int processor;
     processor = setMetaTimestep*numVolumes+volume;
+//    processor = volume;
 
     return processor % size();
 }
@@ -435,6 +436,7 @@ int ReadCFX::rankFor2dAreaAndTimestep(int setMetaTimestep, int area2d, int num2d
 
     int processor;
     processor = setMetaTimestep*num2dAreas+area2d;
+//    processor = area2d;
 
     return processor % size();
 }
@@ -483,11 +485,10 @@ bool ReadCFX::initializeResultfile() {
     char *resultfileName = strdup(resultfiledir);
     m_nzones = cfxExportInit(resultfileName, counts);
     m_nnodes = counts[cfxCNT_NODE];
-//    m_nelems = counts[cfxCNT_ELEMENT];
     m_nregions = counts[cfxCNT_REGION];
     m_nvolumes = counts[cfxCNT_VOLUME];
-
-    //m_nvars = counts[cfxCNT_VARIABLE];
+//    m_nelems = counts[cfxCNT_ELEMENT];
+//    m_nvars = counts[cfxCNT_VARIABLE];
     m_ExportDone = false;
 
     if (m_nzones < 0) {
@@ -623,11 +624,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     nnodesIn3dArea = cfxExportVolumeSize(m_3dAreasSelected[area3d].ID,cfxVOL_NODES);
     nelmsIn3dArea = cfxExportVolumeSize(m_3dAreasSelected[area3d].ID,cfxVOL_ELEMS);
 #endif
-//    std::cerr << "m_3dAreasSelected[area3d].ID = " << m_3dAreasSelected[area3d].ID << std::endl;
-//    std::cerr << "m_3dAreasSelected[area3d].zoneFlag = " << m_3dAreasSelected[area3d].zoneFlag << std::endl;
-//    std::cerr << "nodesInVolume = " << nnodesIn3dArea << "; nodesInZone = " << cfxExportNodeCount() << std::endl;
-//    std::cerr << "nelmsIn3dArea = " << nelmsIn3dArea << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
-//    std::cerr << "area3d = " << area3d << std::endl;
     nconnectivities = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
 
     UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsIn3dArea, nconnectivities, nnodesIn3dArea)); //initialized with number of elements, number of connectivities, number of coordinates
@@ -660,15 +656,16 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
     }
 #endif
     cfxExportNodeFree();
-    //Test, ob Einlesen funktioniert hat
+    //Verification
 //    std::cerr << "m_nnodes = " << m_nnodes << std::endl;
 //    std::cerr << "nnodesIn3dArea = " << nnodesIn3dArea << std::endl;
-    //    std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
-    if(m_3dAreasSelected[area3d].zoneFlag==3 && rank()==4) {
-        for(int i=50;i<150;++i) {
-                std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
-            }
-    }
+//    std::cerr << "nelmsIn3dArea = " << nelmsIn3dArea << "; tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+//    std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
+//    if(m_3dAreasSelected[area3d].zoneFlag==3) {
+//        for(int i=50;i<150;++i) {
+//                std::cerr <<  i << " : " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
+//            }
+//    }
 //    std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
 
     //load element types, element list and connectivity list into unstructured grid
@@ -928,16 +925,6 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
             std::cerr << "number of vertices defining the face(" << NumOfVerticesDefiningFace << ") not implemented." << std::endl;
         }
         }
-
-//        if(i<20) {
-//            std::cerr << "faceListOf2dArea[" << i << "] = " << faceListOf2dArea[i] << std::endl;
-//            for(int j=0;j<4;++j) {
-//                std::cerr << "nodesOfFace[" << j << "] = " << nodesOfFace[j] << std::endl;
-//            }
-//            std::cerr << "local face number[" << faceListOf2dArea[i] << "] = " << cfxFACENUM(faceListOf2dArea[i]) << std::endl;
-//            std::cerr << "local element number[" << faceListOf2dArea[i] << "] = " << cfxELEMNUM(faceListOf2dArea[i]) << std::endl;
-//            std::cerr << "size of nodesOfFace = " << NumOfVerticesDefiningFace << std::endl;
-//        }
     }
 
     //element after last element in element list and connectivity list
@@ -1510,13 +1497,6 @@ bool ReadCFX::addVolumeDataToPorts() {
 
     for (int portnum=0; portnum<NumPorts; ++portnum) {
         if(m_currentVolumedata[portnum]) {
-//            Matrix4 t = m_currentVolumedata[portnum]->getTransform();
-//            std::cerr << "Zone(data) = " << cfxExportZoneGet() << std::endl;
-//            std::cerr << m_currentVolumedata[portnum]->meta() << std::endl;
-//            for(int i=0;i<4;++i) {
-//                std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
-//            }
-
             addObject(m_volumeDataOut[portnum], m_currentVolumedata[portnum]);
         }
     }
@@ -1528,14 +1508,6 @@ bool ReadCFX::add2dDataToPorts() {
 
     for (int portnum=0; portnum<Num2dPorts; ++portnum) {
         if(m_current2dData[portnum]) {
-//            Matrix4 t = m_current2dData[portnum]->getTransform();
-//            std::cerr << "Zone = " << cfxExportZoneGet() << std::endl;
-//            std::cerr << m_current2dData[portnum]->meta() << std::endl;
-//            for(int i=0;i<4;++i) {
-//                std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
-//            }
-
-
             addObject(m_2dDataOut[portnum], m_current2dData[portnum]);
         }
     }
@@ -1546,14 +1518,14 @@ bool ReadCFX::addGridToPort(UnstructuredGrid::ptr grid) {
     //adds the grid to the gridOut port
 
     if(grid) {
-        Matrix4 t = grid->getTransform();
-        std::cerr << "Zone(grid) = " << cfxExportZoneGet() << std::endl;
-        std::cerr << grid->meta() << std::endl;
-        for(int i=0;i<4;++i) {
-            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
-        }
+//        Check which transformation matrix is added
+//        Matrix4 t = m_currentVolumedata[portnum]->getTransform();
+//        std::cerr << "Zone(data) = " << cfxExportZoneGet() << std::endl;
+//        std::cerr << m_currentVolumedata[portnum]->meta() << std::endl;
+//        for(int i=0;i<4;++i) {
+//            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
+//        }
         addObject(m_gridOut,grid);
-
     }
     return true;
 }
@@ -1562,12 +1534,6 @@ bool ReadCFX::addPolygonToPort(Polygons::ptr polyg) {
     //adds the polygon to the polygonOut port
 
     if(polyg) {
-        Matrix4 t = polyg->getTransform();
-        std::cerr << "Zone(polyg) = " << cfxExportZoneGet() << std::endl;
-        std::cerr << polyg->meta() << std::endl;
-        for(int i=0;i<4;++i) {
-            std::cerr << t(i,0) << " " << t(i,1) << " " << t(i,2) << " " << t(i,3) << std::endl;
-        }
         addObject(m_polyOut,polyg);
     }
     return true;
@@ -1611,14 +1577,12 @@ Matrix4 ReadCFX::getTransformationMatrix(int zoneFlag, int timestep, bool setTra
     double currentTime = cfxExportTimestepTimeGet(timestep+1);
     Scalar rot_angle = fmod((angularVel*(currentTime-startTime)),(2*M_PI)); //in radians
 
-    //std::cerr << "rot_angle = " << rot_angle << std::endl;
     double x,y,z;
     x = rotAxis[1][0]-rotAxis[0][0];
     y = rotAxis[1][1]-rotAxis[0][1];
     z = rotAxis[1][2]-rotAxis[0][2];
     Vector3 rot_axis(x,y,z);
     rot_axis.normalize();
-    //std::cerr << "rot_axis = " << rot_axis << std::endl;
 
     Quaternion qrot(AngleAxis(rot_angle, rot_axis));
     Matrix4 rotMat(Matrix4::Identity());
@@ -1673,9 +1637,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
     //reads all information (3d and 2d data) for a given timestep and adds them to the ports
 
     for(index_t i=0;i<numSel3dArea;++i) {
-        //std::cerr << "rankForVolumeAndTimestep(" << timestep << "," << i << "," << numSel3dArea << ") = " << rankForVolumeAndTimestep(timestep,i,numSel3dArea) << std::endl;
         if(rankForVolumeAndTimestep(setMetaTimestep,i,numSel3dArea) == rank()) {
-//            std::cerr << "process mit rank() = " << rank() << "; berechnet volume = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
             vistle::UnstructuredGrid::ptr grid;
             if(!m_gridsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_gridsInTimestep[i] = loadGrid(i);
@@ -1700,7 +1662,6 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
 
     for(index_t i=0;i<numSel2dArea;++i) {
         if(rankFor2dAreaAndTimestep(setMetaTimestep,i,numSel2dArea) == rank()) {
-//            std::cerr << "process mit rank() = " << rank() << "; berechnet area2d = " << i << "; in setMetaTimestep = " << setMetaTimestep << std::endl;
             vistle::Polygons::ptr polyg;
             if(!m_polygonsInTimestep[i] || cfxExportGridChanged(m_previousTimestep,timestep+1)) {
                 m_polygonsInTimestep[i] = loadPolygon(i);
