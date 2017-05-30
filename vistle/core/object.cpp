@@ -526,7 +526,7 @@ void Object::Data::addAttribute(const std::string &key, const std::string &value
    const Key skey(key.c_str(), Shm::the().allocator());
    std::pair<AttributeMap::iterator, bool> res = attributes.insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
    AttributeList &a = res.first->second;
-   a.push_back(Attribute(value.c_str(), Shm::the().allocator()));
+   a.emplace_back(value.c_str(), Shm::the().allocator());
 }
 
 void Object::Data::setAttributeList(const std::string &key, const std::vector<std::string> &values) {
@@ -536,7 +536,7 @@ void Object::Data::setAttributeList(const std::string &key, const std::vector<st
    AttributeList &a = res.first->second;
    a.clear();
    for (size_t i=0; i<values.size(); ++i) {
-      a.push_back(Attribute(values[i].c_str(), Shm::the().allocator()));
+      a.emplace_back(values[i].c_str(), Shm::the().allocator());
    }
 }
 
@@ -558,7 +558,7 @@ void Object::Data::copyAttributes(const ObjectData *src, bool replace) {
             if (replace)
                dest.clear();
             for (AttributeList::const_iterator ait = values.begin(); ait != values.end(); ++ait) {
-               dest.push_back(*ait);
+               dest.emplace_back(*ait);
             }
          }
       }
@@ -579,7 +579,7 @@ std::string Object::Data::getAttribute(const std::string &key) const {
    if (it == attributes.end())
       return std::string();
    const AttributeList &a = it->second;
-   return a.back().c_str();
+   return std::string(a.back().c_str(), a.back().length());
 }
 
 std::vector<std::string> Object::Data::getAttributes(const std::string &key) const {
