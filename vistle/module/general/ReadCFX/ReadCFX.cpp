@@ -1419,6 +1419,9 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     if(cfxExportZoneSet(allParticle[0].idWithZone.zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
+    if(m_currentParticleData.size() == 0) {
+        m_currentParticleData.resize(NumParticlePorts+1);
+    }
     cfxExportZoneMotionAction(allParticle[0].idWithZone.zoneFlag,ignoreZoneMotionForData);
     int numberOfTracks = cfxExportGetNumberOfTracks(particleTypeNumber);
     int firstTrackForRank, lastTrackForRank;
