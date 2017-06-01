@@ -51,8 +51,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/data/IET/AXIALZYKLON/120929_ML_AXIALZYKLON_P160_OPT_SSG_AB_V2_STATIONAER/Steady_grob_V44_P_test_160_5percent_001.res", Parameter::Directory);
 
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
@@ -457,12 +457,8 @@ int ReadCFX::trackStartandEndForRank(int rank, int *firstTrackForRank, int *last
         return 1;
     }
     else {
-        if(rank == 0) {
-            *firstTrackForRank = 1;
-        }
-        else {
-            *firstTrackForRank = rank*(tracksPerRank+1)+1;
-        }
+
+        *firstTrackForRank = rank*tracksPerRank+1;
 
         if(rank == (size()-1)) {
             *lastTrackForRank = numberOfTracks;
@@ -472,7 +468,7 @@ int ReadCFX::trackStartandEndForRank(int rank, int *firstTrackForRank, int *last
         }
     }
 
-    return (size()+1);
+    return size();
 }
 
 bool ReadCFX::initializeResultfile() {
@@ -504,8 +500,6 @@ bool ReadCFX::initializeResultfile() {
 
 bool ReadCFX::changeParameter(const Parameter *p) {
     //set some initialization variables if another resfile is loaded
-
-    static double startchangeParameter = vistle::Clock::time();
     if (p == m_resultfiledir) {
         std::string c = m_resultfiledir->getValue();
         const char *resultfiledir;
@@ -589,9 +583,6 @@ bool ReadCFX::changeParameter(const Parameter *p) {
 
                 }
                 cfxExportZoneFree();
-
-                static double endchangeParameter = vistle::Clock::time();
-                std::cerr << "Time change parameter = " << endchangeParameter-startchangeParameter << std::endl;
 #ifdef CFX_DEBUG
                 sendInfo("The initialisation was successfully done");
 #endif
@@ -599,11 +590,9 @@ bool ReadCFX::changeParameter(const Parameter *p) {
         }
     }
     if(p == m_readDataTransformed) {
-        std::cerr << "ignore Data = " << !m_readDataTransformed->getValue() << std::endl;
         ignoreZoneMotionForData = !m_readDataTransformed->getValue();
     }
     if(p == m_readGridTransformed) {
-        std::cerr << "ignore Grid = " << !m_readGridTransformed->getValue() << std::endl;
         ignoreZoneMotionForGrid = !m_readGridTransformed->getValue();
     }
 
@@ -802,10 +791,10 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int area3d) {
 
     //Verification:
 //    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-//    //std::cerr <<"no. elems total = " << m_nelems << std::endl;
+//    std::cerr <<"no. elems total = " << m_nelems << std::endl;
 //    std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
 //    for(index_t i = nelmsIn3dArea-5;i<nelmsIn3dArea;++i) {
-//        //std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
+//        std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
 //        std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
 //        for(index_t j = 0;j<1;++j) {
 //            std::cerr << "cl(" << i*8+j << ") = " << grid->cl().at(i*8+j) << std::endl;
@@ -977,11 +966,37 @@ vistle::Lines::ptr ReadCFX::loadParticleTrackCoords(int particleTypeNumber, cons
             ptrOnCl[pointsOnTrackCounter+k] = pointsOnTrackCounter+k;
         }
         pointsOnTrackCounter += NumOfPointsOnTrack;
+        std::cerr << "TrackNr = " << i << std::endl;
         elemListCounter++;
     }
 
     //element entry after last element
     ptrOnEl[elemListCounter]=pointsOnTrackCounter;
+
+    std::cerr << "grid->getNumCoords()" << lines->getNumCoords() << std::endl;
+    std::cerr << "grid->getNumVertices()" << lines->getNumVertices() << std::endl;
+    std::cerr << "grid->getNumElements()" << lines->getNumElements() << std::endl;
+    std::cerr << "grid->getNumCorners()" << lines->getNumCorners() << std::endl;
+    for(int i=0;i<20;i++) {
+        std::cerr << "ptrOnXCoords[" << i << "] = " << ptrOnXCoords[i] << std::endl;
+        std::cerr << "ptrOnYCoords[" << i << "] = " << ptrOnYCoords[i] << std::endl;
+        std::cerr << "ptrOnZCoords[" << i << "] = " << ptrOnZCoords[i] << std::endl;
+    }
+    for(index_t i=ptrOnEl[1]-10;i<ptrOnEl[1]+5;i++) {
+        std::cerr << "ptrOnXCoords[" << i << "] = " << ptrOnXCoords[i] << std::endl;
+        std::cerr << "ptrOnYCoords[" << i << "] = " << ptrOnYCoords[i] << std::endl;
+        std::cerr << "ptrOnZCoords[" << i << "] = " << ptrOnZCoords[i] << std::endl;
+    }
+    for(index_t i=ptrOnEl[2]-10;i<ptrOnEl[2]+5;i++) {
+        std::cerr << "ptrOnXCoords[" << i << "] = " << ptrOnXCoords[i] << std::endl;
+        std::cerr << "ptrOnYCoords[" << i << "] = " << ptrOnYCoords[i] << std::endl;
+        std::cerr << "ptrOnZCoords[" << i << "] = " << ptrOnZCoords[i] << std::endl;
+    }
+    for(index_t i=ptrOnEl[lines->getNumElements()]-10;i<ptrOnEl[lines->getNumElements()];i++) {
+        std::cerr << "ptrOnXCoords[" << i << "] = " << ptrOnXCoords[i] << std::endl;
+        std::cerr << "ptrOnYCoords[" << i << "] = " << ptrOnYCoords[i] << std::endl;
+        std::cerr << "ptrOnZCoords[" << i << "] = " << ptrOnZCoords[i] << std::endl;
+    }
 
     return lines;
 }
@@ -1450,12 +1465,12 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
     m_coordsOfParticles->setNumBlocks(numberOfBlocks);
     m_currentParticleData[0]->setNumBlocks(numberOfBlocks);
     if(numberOfBlocks > 1) {
-        m_coordsOfParticles->setBlock(rank()+1);
-        m_currentParticleData[0]->setBlock(rank()+1);
+        m_coordsOfParticles->setBlock(rank());
+        m_currentParticleData[0]->setBlock(rank());
     }
     else {
-        m_coordsOfParticles->setBlock(1);
-        m_currentParticleData[0]->setBlock(1);
+        m_coordsOfParticles->setBlock(0);
+        m_currentParticleData[0]->setBlock(0);
     }
     m_currentParticleData[0]->setGrid(m_coordsOfParticles);
 
@@ -1463,12 +1478,11 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
         std::string field = m_particleOut[i]->getValue();
         std::string s=std::to_string(particleTypeNumber);
         field.append(s.c_str());
-        std::cerr << "field = " << field << std::endl;
 
         auto it = find_if(allParticle.begin(), allParticle.end(), [&field](const Particle& obj) {
             return obj.varName == field;});
         if (it == allParticle.end()) {
-            m_currentParticleData[i]= DataBase::ptr();
+            m_currentParticleData[i+1]= DataBase::ptr();
         }
         else {
             auto index = std::distance(allParticle.begin(), it);
@@ -1477,12 +1491,10 @@ bool ReadCFX::loadParticles(int particleTypeNumber) {
         if(m_currentParticleData[i+1]) {
             m_currentParticleData[i+1]->setNumBlocks(numberOfBlocks);
             if(numberOfBlocks > 1) {
-                m_coordsOfParticles->setBlock(rank()+1);
-                m_currentParticleData[i+1]->setBlock(rank()+1);
+                m_currentParticleData[i+1]->setBlock(rank());
             }
             else {
-                m_coordsOfParticles->setBlock(1);
-                m_currentParticleData[i+1]->setBlock(1);
+                m_currentParticleData[i+1]->setBlock(0);
             }
             m_currentParticleData[i+1]->setGrid(m_coordsOfParticles);
         }
@@ -1548,7 +1560,7 @@ bool ReadCFX::addParticleToPorts() {
                 addObject(m_particleTime, m_currentParticleData[portnum]);
             }
             else {
-                addObject(m_particleDataOut[portnum], m_currentParticleData[portnum-1]);
+                addObject(m_particleDataOut[portnum-1], m_currentParticleData[portnum]);
             }
         }
     }
@@ -1705,17 +1717,10 @@ bool ReadCFX::compute() {
     }
     else {
         if(m_ExportDone) {
-            static double startInitialize = vistle::Clock::time();
-
             initializeResultfile();
             m_case.parseResultfile();
-
-            static double endInitialize = vistle::Clock::time();
-            std::cerr << "Time Initialize = " << endInitialize-startInitialize << std::endl;
         }
         //read variables out of .res file
-        static double startRestCompute = vistle::Clock::time();
-
         index_t numSel3dArea = collect3dAreas();
         index_t numSel2dArea = collect2dAreas();
         index_t numSelParticleTypes = collectParticles();
@@ -1752,8 +1757,6 @@ bool ReadCFX::compute() {
             cfxExportDone();
             m_ExportDone = true;
         }
-        static double endRestCompute = vistle::Clock::time();
-        std::cerr << "Time Rest of Compute = " << endRestCompute-startRestCompute << std::endl;
     }
 
     m_fieldOut.clear();
