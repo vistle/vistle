@@ -730,6 +730,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             CERR << "got hub id " << m_hubId << std::endl;
             if (m_managerConnected) {
                sendManager(set);
+               for (auto &mod: m_localModules) {
+                   mod.hub = m_hubId;
+                   AvailableModule::Key key(mod.hub, mod.name);
+                   m_availableModules.emplace(key, mod);
+                   message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
+                   m_stateTracker.handle(avail);
+                   sendMaster(avail);
+               }
+               m_localModules.clear();
             }
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
@@ -747,8 +756,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             mod.hub = mm.hub();
             mod.name = mm.name();
             mod.path = mm.path();
-            AvailableModule::Key key(mm.hub(), mm.name());
-            m_availableModules.emplace(key, mod);
+            if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
+                mod.hub = m_hubId;
+            }
+            if (mod.hub == Id::Invalid && senderType == Identify::MANAGER) {
+                m_localModules.emplace_back(mod);
+            } else {
+                AvailableModule::Key key(mod.hub, mod.name);
+                m_availableModules.emplace(key, mod);
+            }
             break;
          }
          case message::QUIT: {

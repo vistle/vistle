@@ -460,21 +460,6 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
    switch (message.type()) {
 
-      case IDENTIFY: {
-
-         const Identify &id = message.as<Identify>();
-         CERR << "Identify message: " << id << std::endl;
-         vassert(id.identity() == Identify::REQUEST);
-         if (getRank() == 0) {
-            sendHub(Identify(Identify::MANAGER));
-            auto avail = availableModules();
-            for(const auto &mod: avail) {
-               sendHub(message::ModuleAvailable(hubId, mod.name, mod.path));
-            }
-         }
-         break;
-      }
-
       case message::QUIT: {
 
          result = false;

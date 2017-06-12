@@ -1017,6 +1017,9 @@ bool StateTracker::handlePriv(const message::SendText &info)
 
 bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
 
+    if (avail.hub() == Id::Invalid)
+        return true;
+
     AvailableModule mod;
     mod.hub = avail.hub();
     mod.name = avail.name();

@@ -86,6 +86,7 @@ private:
    bool m_quitting;
 
    AvailableMap m_availableModules;
+   std::vector<AvailableModule> m_localModules;
 
    bool m_isMaster;
    std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;

@@ -147,11 +147,12 @@ bool Communicator::scanModules(const std::string &dir) {
 
    bool result = true;
    if (getRank() == 0) {
-      AvailableMap availableModules;
-      result = vistle::scanModules(dir, m_hubId, availableModules);
+      static AvailableMap availableModules;
+      if (availableModules.empty())
+          result = vistle::scanModules(dir, m_hubId, availableModules);
       for (auto &p: availableModules) {
          const auto &m = p.second;
-         message::ModuleAvailable msg(m.hub, m.name, m.path);
+         message::ModuleAvailable msg(m_hubId, m.name, m.path);
          sendHub(msg);
       }
    }
@@ -370,6 +371,14 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          message::DefaultSender::init(m_hubId, m_rank);
          scanModules(m_moduleDir);
          return connectData();
+         break;
+      }
+      case message::IDENTIFY: {
+         auto &id = message.as<message::Identify>();
+         CERR << "Identify message: " << id << std::endl;
+         vassert(id.identity() == message::Identify::REQUEST);
+         sendHub(message::Identify(message::Identify::MANAGER));
+         scanModules(m_moduleDir);
          break;
       }
       default: {
