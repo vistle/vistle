@@ -34,6 +34,33 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceDirection,
       (Backward)
 )
 
+template<class Value>
+bool agree(const boost::mpi::communicator &comm, const Value &value) {
+    int mismatch = 0;
+
+    std::vector<Value> vals(comm.size());
+    boost::mpi::all_gather(comm, value, vals);
+    for (int i=0; i<comm.size(); ++i) {
+        if (value != vals[i])
+            ++mismatch;
+    }
+
+    const int minmismatch = boost::mpi::all_reduce(comm, mismatch, boost::mpi::minimum<int>());
+    int rank = comm.size();
+    if (mismatch>0 && mismatch==minmismatch)
+        rank = comm.rank();
+    const int minrank = boost::mpi::all_reduce(comm, rank, boost::mpi::minimum<int>());
+    if (comm.rank() == minrank) {
+        std::cerr << "agree on rank " << comm.rank() << ": common value " << value << std::endl;
+        for (int i=0; i<comm.size(); ++i) {
+            if (vals[i] != value)
+                std::cerr << "\t" << "agree on rank " << comm.rank() << ": common value " << value << std::endl;
+        }
+    }
+
+    return mismatch==0;
+}
+
 Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Tracer", shmname, name, moduleID) {
 
@@ -288,12 +315,15 @@ bool Tracer::reduce(int timestep) {
    std::set<std::shared_ptr<Particle>> activeParticles;
 
    std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
-   auto checkActivity = [&checkSet, &allParticles](const mpi::communicator &comm) -> Index {
+   int checkActivityCounter = 0;
+   auto checkActivity = [&checkActivityCounter, &checkSet, &allParticles](const mpi::communicator &comm) -> Index {
+       agree(comm, checkActivityCounter);
+       ++checkActivityCounter;
        for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
            ++next;
 
            auto particle = allParticles[*it];
-           bool active = mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
+           const bool active = mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
            if (!active) {
                particle->Deactivate(Particle::OutOfDomain);
                checkSet.erase(it);
