@@ -1,5 +1,6 @@
 #include "hostname.h"
 
+#include <cstdlib>
 #include <boost/asio/ip/host_name.hpp>
 
 namespace vistle {
@@ -17,7 +18,11 @@ std::string hostname() {
       hostname[HOSTNAMESIZE-1] = '\0';
       hname = hostname;
 #else
-      hname = boost::asio::ip::host_name();
+      const char *hn = getenv("VISTLE_HOSTNAME");
+      if (hn)
+          hname = hn;
+      else
+          hname = boost::asio::ip::host_name();
 #endif
    }
    return hname;
