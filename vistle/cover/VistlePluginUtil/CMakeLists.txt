@@ -29,5 +29,6 @@ target_link_libraries(VistlePluginUtil
         ${Boost_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         ${COVER_LIBRARY}
+        ${OPENGL_LIBRARIES}
         vistle_core
 )
