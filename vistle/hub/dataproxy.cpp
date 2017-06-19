@@ -166,7 +166,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
                  lock_guard lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
 
-                 assert(m_boost_archive_version == 0);
+                 assert(m_boost_archive_version == 0 || m_boost_archive_version == id.boost_archive_version());
                  m_boost_archive_version = id.boost_archive_version();
             }
 
