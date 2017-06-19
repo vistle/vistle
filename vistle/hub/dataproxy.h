@@ -36,6 +36,7 @@ private:
    std::vector<std::thread> m_threads;
    std::map<int, std::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket
    std::map<int, std::shared_ptr<tcp_socket>> m_remoteDataSocket; // hub id -> socket
+   int m_boost_archive_version;
    void startAccept();
    void handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
    void handleConnect(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);

@@ -49,13 +49,14 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
    const char *name() const;
    int id() const;
    int rank() const;
+   int boost_archive_version() const;
 
  private:
    Identity m_identity;
    text_t m_name;
    int m_id;
    int m_rank;
-
+   int m_boost_archive_version;
 };
 static_assert(sizeof(Identify) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Identity, Identify)

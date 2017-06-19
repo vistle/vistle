@@ -11,6 +11,7 @@
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/archive/basic_archive.hpp>
 
 #include <algorithm>
 
@@ -32,6 +33,7 @@ Identify::Identify(Identity id, const std::string &name)
 : m_identity(id)
 , m_id(Id::Invalid)
 , m_rank(-1)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
    if (id == UNKNOWN) {
        std::cerr << backtrace() << std::endl;
@@ -43,6 +45,7 @@ Identify::Identify(Identity id, int rank)
 : m_identity(id)
 , m_id(Id::Invalid)
 , m_rank(rank)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
    vassert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
 
@@ -67,6 +70,11 @@ int Identify::id() const {
 int Identify::rank() const {
 
    return m_rank;
+}
+
+int Identify::boost_archive_version() const {
+
+   return m_boost_archive_version;
 }
 
 AddHub::AddHub(int id, const std::string &name)

@@ -24,6 +24,7 @@ DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 : m_hub(hub)
 , m_port(basePort)
 , m_acceptor(m_io)
+, m_boost_archive_version(0)
 {
    for (bool connected = false; !connected; ) {
       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
@@ -140,6 +141,15 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
             {
                  lock_guard lock(m_mutex);
                  m_remoteDataSocket[id.senderId()] = sock;
+
+                 if (id.boost_archive_version() != m_boost_archive_version) {
+                    std::cerr << "Boost.Archive version on hub " << m_hub.id()  << " is " << m_boost_archive_version << ", but hub " << id.id() << " connected with version " << id.boost_archive_version() << std::endl;
+                    if (m_boost_archive_version < id.boost_archive_version()) {
+                       std::cerr << "Receiving of remote objects from hub " << id.id() << " will fail" << std::endl;
+                    } else {
+                       std::cerr << "Receiving of objects sent to hub " << id.id() << " will fail" << std::endl;
+                    }
+                 }
             }
             Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
@@ -155,6 +165,9 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
             {
                  lock_guard lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
+
+                 assert(m_boost_archive_version == 0);
+                 m_boost_archive_version = id.boost_archive_version();
             }
 
             Identify ident(Identify::LOCALBULKDATA, -1);
