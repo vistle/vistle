@@ -86,7 +86,6 @@ public:
 
     template<class T>
     void saveArray(const vistle::ShmVector<T> &t) {
-        std::cerr << "oarchive: serializing array " << t.name() << std::endl;
         if (m_saver)
             m_saver->saveArray(t.name(), t->type(), &t);
     }

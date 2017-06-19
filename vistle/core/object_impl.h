@@ -3,6 +3,7 @@
 
 #include "archives.h"
 #include "serialize.h"
+#include <boost/archive/basic_archive.hpp>
 
 
 namespace boost {
@@ -73,7 +74,17 @@ Object *Object::load(Archive &ar) {
 
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
-   ar & V_NAME("object", p);
+   try {
+      ar & V_NAME("object", p);
+   } catch (const boost::archive::archive_exception &ex) {
+      std::cerr << "Boost.Archive exception: " << ex.what() << std::endl;
+      if (ex.code == boost::archive::archive_exception::unsupported_version) {
+         std::cerr << "***" << std::endl;
+         std::cerr << "*** received archive from Boost.Archive version " << ar.get_library_version() << ", supported is up to " << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
+         std::cerr << "***" << std::endl;
+      }
+      return p;
+   }
    p->ref();
    assert(ar.currentObject() == p->d());
    if (p->d()->unresolvedReferences == 0) {
