@@ -34,7 +34,7 @@
 //                     User defined sphere geometry                         //
 // ======================================================================== //
 
-unmasked void sphereBoundsFunc(void *uniform ptr, uniform size_t item, uniform RTCBounds &bounds_o)
+unmasked void sphereBoundsFunc(void *uniform ptr, uniform item_t item, uniform RTCBounds &bounds_o)
 {
   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];
@@ -46,7 +46,7 @@ unmasked void sphereBoundsFunc(void *uniform ptr, uniform size_t item, uniform R
   bounds_o.upper_z = sphere.p.z+sphere.r;
 }
 
-void sphereIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
+void sphereIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform item_t item)
 {
   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];
@@ -61,7 +61,7 @@ unmasked void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
                                            uniform size_t N,                 /*< number of rays in ray packet */
-                                           uniform size_t item              /*< item to intersect */)
+                                           uniform item_t item              /*< item to intersect */)
 {
     const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     const uniform Sphere& sphere = data->spheres[item];
@@ -95,7 +95,7 @@ unmasked void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer
     }
 }
 
-void sphereOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
+void sphereOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform item_t item)
 {
   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];

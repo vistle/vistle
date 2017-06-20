@@ -50,4 +50,10 @@ export void ispcRenderTile(uniform const SceneData *uniform sceneData, uniform c
 
 export void forceExportVertex(uniform Vertex *uniform vertex);
 
+#if RTCORE_VERSION >= 21602
+typedef uintptr_t item_t;
+#else
+typedef size_t item_t;
+#endif
+
 #endif

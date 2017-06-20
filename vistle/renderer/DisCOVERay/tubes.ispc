@@ -220,7 +220,7 @@ inline bool sphereSectorIsect(const uniform Sphere &sphere, const uniform Plane 
 //                     User defined tube geometry                         //
 // ======================================================================== //
 
-unmasked void tubeBoundsFunc(void *uniform ptr, uniform size_t item, uniform RTCBounds &bounds_o) {
+unmasked void tubeBoundsFunc(void *uniform ptr, uniform item_t item, uniform RTCBounds &bounds_o) {
    const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
    const uniform unsigned int flags = data->primitiveFlags[item];
    if (flags == PFNone) {
@@ -256,7 +256,7 @@ unmasked void tubeBoundsFunc(void *uniform ptr, uniform size_t item, uniform RTC
    bounds_o.upper_z = upper.z;
 }
 
-void tubeIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
+void tubeIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform item_t item)
 {
   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform TubeSection& section0 = data->spheres[item];
@@ -334,7 +334,7 @@ void tubeIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid m
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
                                            uniform size_t N,                 /*< number of rays in ray packet */
-                                           uniform size_t item              /*< item to intersect */)
+                                           uniform item_t item              /*< item to intersect */)
 {
     const uniform TubeSection& section0 = data->spheres[item];
     const uniform TubeSection& section1 = data->spheres[item+1];
@@ -420,7 +420,7 @@ void tubeIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid m
 }
 #endif
 
-void tubeOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
+void tubeOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform item_t item)
 {
   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform TubeSection& section = data->spheres[item];
