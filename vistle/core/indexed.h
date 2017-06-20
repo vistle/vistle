@@ -93,9 +93,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(Indexed)
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::Indexed);
+#endif
 
 #ifdef VISTLE_IMPL
 #include "indexed_impl.h"
-#endif
-
 #endif

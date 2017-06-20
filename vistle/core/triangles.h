@@ -39,8 +39,8 @@ class V_COREEXPORT Triangles: public Coords, virtual public ElementInterface {
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::Triangles)
+#endif
 
 #ifdef VISTLE_IMPL
 #include "triangles_impl.h"
-#endif
 #endif

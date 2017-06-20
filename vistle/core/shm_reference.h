@@ -126,7 +126,6 @@ class shm_ref {
 };
 
 } // namespace vistle
+#endif
 
 #include "shm_reference_impl.h"
-
-#endif

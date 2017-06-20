@@ -45,8 +45,8 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::Texture1D);
+#endif
 
 #ifdef VISTLE_IMPL
 #include "texture1d_impl.h"
-#endif
 #endif

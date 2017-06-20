@@ -4,7 +4,7 @@
 #include "export.h"
 #include "scalar.h"
 #include "index.h"
-#include "shm.h"
+//#include "shm.h"
 
 namespace vistle {
 

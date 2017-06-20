@@ -167,9 +167,9 @@ namespace boost {
 template<typename S, typename I, int d>
 struct is_virtual_base_of<typename vistle::Celltree<S,I,d>::Base, vistle::Celltree<S,I,d>>: public mpl::true_ {};
 }
+#endif
 
 #ifdef VISTLE_IMPL
 // include only where actually required
 //#include "celltree_impl.h"
-#endif
 #endif

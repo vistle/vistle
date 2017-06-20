@@ -18,6 +18,7 @@
 
 #include <util/enum.h>
 
+#include "shm_array.h"
 #include "shm.h"
 #include "objectmeta.h"
 #include "scalars.h"
@@ -548,5 +549,4 @@ V_ENUM_OUTPUT_OP(Type, Object)
 #ifdef VISTLE_IMPL
 #include "object_impl.h"
 #endif
-
 #endif

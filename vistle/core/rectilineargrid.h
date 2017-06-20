@@ -71,9 +71,8 @@ private:
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::RectilinearGrid)
+#endif /* RECTILINEAR_GRID_H */
 
 #ifdef VISTLE_IMPL
 #include "rectilineargrid_impl.h"
 #endif
-
-#endif /* RECTILINEAR_GRID_H */

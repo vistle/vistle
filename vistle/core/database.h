@@ -44,8 +44,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(DataBase)
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::DataBase);
+#endif
 
 #ifdef VISTLE_IMPL
 #include "database_impl.h"
-#endif
 #endif

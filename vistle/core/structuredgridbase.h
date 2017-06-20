@@ -103,9 +103,8 @@ public:
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGridBase)
 
 } // namespace vistle
+#endif /* STRUCTURED_GRID_BASE_H */
 
 #ifdef VISTLE_IMPL
 #include "structuredgridbase_impl.h"
 #endif
-
-#endif /* STRUCTURED_GRID_BASE_H */

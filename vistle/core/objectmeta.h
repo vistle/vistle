@@ -10,9 +10,9 @@
 
 #include <boost/serialization/access.hpp>
 
-#include "shm.h"
-#include "vector.h"
 #include "export.h"
+#include "vector.h"
+#include "shm.h"
 
 //#define DEBUG_SERIALIZATION
 #ifdef DEBUG_SERIALIZATION
@@ -71,8 +71,8 @@ class V_COREEXPORT Meta {
 V_COREEXPORT std::ostream &operator<<(std::ostream &out, const Meta &meta);
 
 } // namespace vistle
+#endif
 
 #ifdef VISTLE_IMPL
 #include "objectmeta_impl.h"
-#endif
 #endif

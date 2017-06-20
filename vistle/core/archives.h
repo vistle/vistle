@@ -13,7 +13,7 @@
 #include <boost/mpl/vector.hpp>
 
 #include <util/vecstreambuf.h>
-#include "shm.h"
+//#include "shm.h"
 #include "findobjectreferenceoarchive.h"
 
 namespace vistle {

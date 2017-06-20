@@ -1,3 +1,4 @@
+#include "shm_array.h"
 #include "objectmeta.h"
 #include "objectmeta_impl.h"
 

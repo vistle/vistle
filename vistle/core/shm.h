@@ -8,12 +8,11 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <boost/serialization/access.hpp>
-#include <boost/serialization/array.hpp>
 
 #include <util/exception.h>
-#include "index.h"
-#include "export.h"
 
+#include "export.h"
+#include "index.h"
 #include "shm_array.h"
 
 //#define SHMDEBUG

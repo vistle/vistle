@@ -1,11 +1,13 @@
 #ifndef SHM_ARRAY_H
 #define SHM_ARRAY_H
 
+#include <cassert>
 #include <atomic>
+#include <cstring>
 #include <boost/type_traits.hpp>
 
 #include <boost/serialization/access.hpp>
-#include <boost/serialization/array.hpp>
+#include <boost/serialization/array_wrapper.hpp>
 
 #include <util/exception.h>
 #include "export.h"
@@ -187,6 +189,16 @@ class shm_array {
    shm_array(const shm_array &other) = delete;
    shm_array &operator=(const shm_array &rhs) = delete;
 };
+
+} // namespace vistle
+#endif
+
+#ifndef SHM_ARRAY_IMPL_H
+#define SHM_ARRAY_IMPL_H
+
+#include <boost/serialization/array_wrapper.hpp>
+
+namespace vistle {
 
 template<typename T, class allocator>
 template<class Archive>

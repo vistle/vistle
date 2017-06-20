@@ -39,9 +39,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(CoordsWithRadius)
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::CoordsWithRadius);
+#endif
 
 #ifdef VISTLE_IMPL
 #include "coordswradius_impl.h"
-#endif
-
 #endif

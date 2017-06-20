@@ -78,8 +78,8 @@ namespace boost {
 template<typename S, int d>
 struct is_virtual_base_of<typename vistle::Vec<S,d>::Base, vistle::Vec<S,d>>: public mpl::true_ {};
 }
+#endif
 
 #ifdef VISTLE_IMPL
 #include "vec_impl.h"
-#endif
 #endif

@@ -1,4 +1,6 @@
 //#include "shm.h"
+#ifndef SHM_REFERENCE_IMPL_H
+#define SHM_REFERENCE_IMPL_H
 
 namespace vistle {
 
@@ -76,3 +78,4 @@ const shm_name_t &shm_ref<T>::name() const {
 }
 
 }
+#endif

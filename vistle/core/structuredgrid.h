@@ -79,9 +79,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGrid)
 } // namespace vistle
 
 V_OBJECT_DECLARE(vistle::StructuredGrid)
+#endif /* STRUCTURED_GRID_H */
 
 #ifdef VISTLE_IMPL
 #include "structuredgrid_impl.h"
 #endif
-
-#endif /* STRUCTURED_GRID_H */
