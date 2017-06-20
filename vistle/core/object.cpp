@@ -332,19 +332,20 @@ struct instantiate_load {
 };
 
 struct instantiate_save {
+   instantiate_save(Object::const_ptr obj): obj(obj) {}
+   Object::const_ptr obj;
    template<class Archive>
    void operator()(wrap<Archive>) {
       Archive ar(std::cout);
-      Object::const_ptr obj;
       obj->save(ar);
    }
 };
 
 }
 
-void instantiate_all_io() {
+void instantiate_all_io(Object::const_ptr obj) {
       mpl::for_each<InputArchives, wrap<mpl::_1> >(instantiate_load());
-      mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save());
+      mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save(obj));
 }
 
 void ObjectData::ref() const {
