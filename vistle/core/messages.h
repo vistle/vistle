@@ -47,14 +47,12 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
    Identify(Identity id, int rank);
    Identity identity() const;
    const char *name() const;
-   int id() const;
    int rank() const;
    int boost_archive_version() const;
 
  private:
    Identity m_identity;
    text_t m_name;
-   int m_id;
    int m_rank;
    int m_boost_archive_version;
 };

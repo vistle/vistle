@@ -31,7 +31,6 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 Identify::Identify(Identity id, const std::string &name)
 : m_identity(id)
-, m_id(Id::Invalid)
 , m_rank(-1)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
@@ -43,7 +42,6 @@ Identify::Identify(Identity id, const std::string &name)
 
 Identify::Identify(Identity id, int rank)
 : m_identity(id)
-, m_id(Id::Invalid)
 , m_rank(rank)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
@@ -60,11 +58,6 @@ Identify::Identity Identify::identity() const {
 const char *Identify::name() const {
 
    return m_name.data();
-}
-
-int Identify::id() const {
-
-   return m_id;
 }
 
 int Identify::rank() const {
