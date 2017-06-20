@@ -282,6 +282,14 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
                     }
                 });
             } else if (ident.identity() == Identify::REMOTEBULKDATA) {
+                if (ident.boost_archive_version() != m_boost_archive_version) {
+                    std::cerr << "Boost.Archive version on hub " << m_hub.id()  << " is " << m_boost_archive_version << ", but hub " << ident.id() << " connected with version " << ident.boost_archive_version() << std::endl;
+                    if (m_boost_archive_version < ident.boost_archive_version()) {
+                        std::cerr << "Receiving of remote objects from hub " << ident.id() << " will fail" << std::endl;
+                    } else {
+                        std::cerr << "Receiving of objects sent to hub " << ident.id() << " will fail" << std::endl;
+                    }
+                 }
             } else {
                 CERR << "invalid identity " << ident.identity() << " connected to remote data port" << std::endl;
             }
