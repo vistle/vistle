@@ -4,10 +4,15 @@
 #include <cassert>
 #include <atomic>
 #include <cstring>
-#include <boost/type_traits.hpp>
 
+#include <boost/type_traits.hpp>
+#include <boost/version.hpp>
 #include <boost/serialization/access.hpp>
+#if BOOST_VERSION >= 106400
 #include <boost/serialization/array_wrapper.hpp>
+#else
+#include <boost/serialization/array.hpp>
+#endif
 
 #include <util/exception.h>
 #include "export.h"
@@ -195,8 +200,6 @@ class shm_array {
 
 #ifndef SHM_ARRAY_IMPL_H
 #define SHM_ARRAY_IMPL_H
-
-#include <boost/serialization/array_wrapper.hpp>
 
 namespace vistle {
 
