@@ -34,6 +34,7 @@ namespace boost {
 namespace archive {
 
 template class V_COREEXPORT detail::archive_serializer_map<vistle::oarchive>;
+template class V_COREEXPORT detail::common_oarchive<vistle::oarchive>;
 template class basic_binary_oprimitive<
     vistle::oarchive,
     std::ostream::char_type, 
@@ -46,6 +47,7 @@ template class binary_oarchive_impl<
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
+
 
 // explicitly instantiate for this type of stream
 template class V_COREEXPORT detail::archive_serializer_map<vistle::iarchive>;

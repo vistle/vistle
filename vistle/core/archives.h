@@ -38,6 +38,7 @@ extern template class V_COREEXPORT basic_binary_iprimitive<
     std::istream::char_type, 
     std::istream::traits_type
 >;
+extern template class V_COREEXPORT detail::common_oarchive<vistle::oarchive>;
 } // namespace archive
 } // namespace boost
 
