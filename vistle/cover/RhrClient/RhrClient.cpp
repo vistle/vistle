@@ -288,10 +288,18 @@ class RemoteConnection {
             send(msg);
         }
 
+        requestTimestep(plugin->m_visibleTimestep);
+    }
+
+    bool requestTimestep(int t, int numTime=-1) {
+
         animationMsg msg;
-        msg.current = plugin->m_visibleTimestep;
-        msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-        send(msg);
+        msg.current = t;
+        if (numTime == -1)
+            msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+        else
+            msg.total = numTime;
+        return send(msg);
     }
 
     bool handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim) {
@@ -1426,6 +1434,9 @@ RhrClient::preFrame()
                }
            }
            if (sendUpdate) {
+               if (m_requestedTimestep != -1) {
+                   m_remote->requestTimestep(m_requestedTimestep);
+               }
                sendLightsMessage(m_remote);
                sendMatricesMessage(m_remote, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
@@ -1693,6 +1704,7 @@ void RhrClient::setTimestep(int t) {
     }
     if (m_requestedTimestep >= 0) {
         std::cerr << "setTimestep(" << t << "), but requested was " << m_requestedTimestep << std::endl;
+        m_requestedTimestep = -1;
     }
    m_visibleTimestep = t;
    if (checkSwapFrame())
@@ -1719,10 +1731,7 @@ void RhrClient::requestTimestep(int t) {
     } else if (t != m_requestedTimestep) {
         bool requested = false;
         if (m_remote && m_remote->isConnected()) {
-            animationMsg msg;
-            msg.current = t;
-            msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-            requested = m_remote->send(msg);
+            requested = m_remote->requestTimestep(t);
         }
         requested = coVRMSController::instance()->syncBool(requested);
         if (requested) {
