@@ -491,6 +491,7 @@ void MultiChannelDrawer::createGeometry(ChannelData &cd)
    }
 
    cd.geode = geometryNode;
+   cd.geode->setNodeMask(cd.geode->getNodeMask() & (~Isect::Intersection) & (~Isect::Pick));
 }
 
 
