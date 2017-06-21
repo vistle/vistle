@@ -20,6 +20,8 @@ class V_RENDEREREXPORT RhrController {
    std::string listenHost() const;
 
  private:
+   bool initializeServer();
+
    vistle::Module *m_module;
    int m_displayRank;
 

@@ -54,23 +54,38 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    choices.push_back("24 bit + 3 bits/pixel");
    module->setParameterChoices(m_depthPrec, choices);
 
-   if (module->rank() == rootRank())
-      m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
+   initializeServer();
+}
+
+bool RhrController::initializeServer() {
+
+   if (m_module->rank() != rootRank()) {
+       m_rhr.reset();
+       return true;
+   }
+
+   if (m_rhr && m_rhr->port() != m_rhrBasePort->getValue()) {
+       m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
+   }
+
+   m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
+
+   m_rhr->setDepthPrecision(m_prec);
+   m_rhr->enableDepthZfp(m_zfp);
+   m_rhr->setZfpMode(m_zfpMode);
+   m_rhr->enableDepthSnappy(m_snappy);
+   m_rhr->enableQuantization(m_quant);
+   m_rhr->setColorCodec(m_rgbaCodec);
+   m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
+
+   return true;
 }
 
 bool RhrController::handleParam(const vistle::Parameter *p) {
 
    if (p == m_rhrBasePort) {
 
-      if (m_module->rank() == rootRank()) {
-         if (!m_rhr || m_rhr->port() != m_rhrBasePort->getValue()) {
-            m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
-            m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
-         }
-      } else {
-         m_rhr.reset();
-      }
-      return true;
+      return initializeServer();
    } else if (p == m_rhrConnectionMethod) {
       if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) || m_forwardPort != m_rhrBasePort->getValue()) {
           if (m_module->rank() == 0) {
