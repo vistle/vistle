@@ -40,7 +40,7 @@ class RayCaster: public vistle::Renderer {
    static RayCaster *s_instance;
 
  public:
-   static void rtcErrorCallback(RTCError code, const char *desc) {
+   static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc) {
 
       std::string err = "Error: Unknown RTC error.";
 
@@ -155,7 +155,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
        std::cerr << "Ray: failed to create device" << std::endl;
        throw(vistle::exception("failed to create Embree device"));
    }
-   rtcDeviceSetErrorFunction(m_device, rtcErrorCallback);
+   rtcDeviceSetErrorFunction2(m_device, rtcErrorCallback, nullptr);
    m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 }
@@ -163,7 +163,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 
 RayCaster::~RayCaster() {
 
-   vassert(s_instance == this);
+   assert(s_instance == this);
    s_instance = nullptr;
 }
 
@@ -603,7 +603,7 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
 
    auto rod = ro->data.get();
    if (rod->scene) {
-      rod->instId = rtcNewInstance(m_scene, rod->scene);
+      rod->instId = rtcNewInstance3(m_scene, rod->scene, 1);
       if (instances.size() <= rod->instId)
          instances.resize(rod->instId+1);
       vassert(!instances[rod->instId]);
@@ -614,7 +614,7 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
       for (int i=0; i<16; ++i) {
           transform[i] = geoTransform(i%4, i/4);
       }
-      rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, transform);
+      rtcSetTransform2(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, transform, 0);
       if (t == -1 || size_t(t) == m_timestep) {
          rtcEnable(m_scene, rod->instId);
          m_renderManager.setModified();

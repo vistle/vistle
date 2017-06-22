@@ -333,7 +333,7 @@ void tubeIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid m
                                            RenderObjectData *uniform data,                /*!< pointer to geometry user data */
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
-                                           uniform size_t N,                 /*< number of rays in ray packet */
+                                           uniform item_t N,                 /*< number of rays in ray packet */
                                            uniform item_t item              /*< item to intersect */)
 {
     const uniform TubeSection& section0 = data->spheres[item];

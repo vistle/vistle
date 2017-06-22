@@ -60,7 +60,7 @@ unmasked void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer
                                            void *uniform ptr,                /*!< pointer to geometry user data */
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
-                                           uniform size_t N,                 /*< number of rays in ray packet */
+                                           uniform item_t N,                 /*< number of rays in ray packet */
                                            uniform item_t item              /*< item to intersect */)
 {
     const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
@@ -108,8 +108,8 @@ unmasked void sphereOccludedFuncN(const uniform int* uniform valid, /*! pointer 
                                            void *uniform ptr,                /*!< pointer to geometry user data */
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
-                                           uniform size_t N,                 /*< number of rays in ray packet */
-                                           uniform size_t item              /*< item to intersect */)
+                                           uniform item_t N,                 /*< number of rays in ray packet */
+                                           uniform item_t item              /*< item to intersect */)
 {
     const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     const uniform Sphere& sphere = data->spheres[item];
