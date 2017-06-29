@@ -303,7 +303,7 @@ bool RhrServer::init(unsigned short port) {
 
 void RhrServer::resetClient() {
 
-    finishTiles(true /* finish */, false /* send */);
+    finishTiles(RhrServer::ViewParameters(), true /* finish */, false /* send */);
 
     ++m_updateCount;
     ++lightsUpdateCount;
@@ -999,10 +999,10 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
        }
     }
 
-    finishTiles(lastView);
+    finishTiles(param, lastView);
 }
 
-bool RhrServer::finishTiles(bool finish, bool sendTiles) {
+bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles) {
 
     static int framecount=0;
     ++framecount;
@@ -1013,7 +1013,7 @@ bool RhrServer::finishTiles(bool finish, bool sendTiles) {
         tileReady = false;
         tileMsg *msg = nullptr;
         if (m_queuedTiles == 0 && finish) {
-           msg = newTileMsg(m_imageParam, RhrServer::ViewParameters(), -1, 0, 0, 0, 0);
+           msg = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;

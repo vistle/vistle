@@ -215,7 +215,7 @@ public:
        ViewParameters()
        : frameNumber(0)
        , requestNumber(0)
-       , timestep(0)
+       , timestep(-1)
        , matrixTime(0.)
        , width(1)
        , height(1)
@@ -287,7 +287,7 @@ private:
    void sendBoundsMessage(std::shared_ptr<socket> sock);
 
    void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
-   bool finishTiles(bool wait, bool sendTiles=true);
+   bool finishTiles(const ViewParameters &param, bool wait, bool sendTiles=true);
 
    struct EncodeResult {
 
