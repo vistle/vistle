@@ -99,6 +99,7 @@ class V_COREEXPORT Shm {
  public:
    static std::string instanceName(const std::string &host, unsigned short port);
    static Shm & the();
+   static bool remove(const std::string &shmname, const int moduleID, const int rank);
    static Shm & create(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);
    static Shm & attach(const std::string &shmname, const int moduleID, const int rank,

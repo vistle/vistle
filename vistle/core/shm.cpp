@@ -206,7 +206,7 @@ bool Shm::cleanAll(int rank) {
 
    std::fstream shmlist;
    shmlist.open(shmIdFilename().c_str(), std::ios::in);
-   remove(shmIdFilename().c_str());
+   ::remove(shmIdFilename().c_str());
 
    bool ret = true;
 
@@ -258,6 +258,12 @@ Shm &Shm::the() {
 
 bool Shm::isAttached() {
     return s_singleton;
+}
+
+bool Shm::remove(const std::string &name, const int moduleID, const int rank) {
+
+   std::string n = shmSegName(name, rank);
+   return interprocess::shared_memory_object::remove(n.c_str());
 }
 
 Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
