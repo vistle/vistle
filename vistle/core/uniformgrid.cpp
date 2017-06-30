@@ -169,9 +169,9 @@ Scalar UniformGrid::exitDistance(Index elem, const Vector &point, const Vector &
     Vector raydir(dir.normalized());
 
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-    assert(n[0] < m_numDivisions[0]);
-    assert(n[1] < m_numDivisions[1]);
-    assert(n[2] < m_numDivisions[2]);
+    assert(n[0] < m_numDivisions[0]-1);
+    assert(n[1] < m_numDivisions[1]-1);
+    assert(n[2] < m_numDivisions[2]-1);
     Scalar exitDist = -1;
     Scalar t0[3], t1[3];
     for (int c=0; c<3; ++c) {

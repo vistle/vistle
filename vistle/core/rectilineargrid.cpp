@@ -146,9 +146,9 @@ bool RectilinearGrid::inside(Index elem, const Vector &point) const {
         return false;
 
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-    assert(n[0] < m_numDivisions[0]);
-    assert(n[1] < m_numDivisions[1]);
-    assert(n[2] < m_numDivisions[2]);
+    assert(n[0] < m_numDivisions[0]-1);
+    assert(n[1] < m_numDivisions[1]-1);
+    assert(n[2] < m_numDivisions[2]-1);
     for (int c=0; c<3; ++c) {
         Scalar x0 = m_coords[c][n[c]], x1 = m_coords[c][n[c]+1];
         if (point[c] < x0)
@@ -168,9 +168,9 @@ Scalar RectilinearGrid::exitDistance(Index elem, const Vector &point, const Vect
     Vector raydir(dir.normalized());
 
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-    assert(n[0] < m_numDivisions[0]);
-    assert(n[1] < m_numDivisions[1]);
-    assert(n[2] < m_numDivisions[2]);
+    assert(n[0] < m_numDivisions[0]-1);
+    assert(n[1] < m_numDivisions[1]-1);
+    assert(n[2] < m_numDivisions[2]-1);
     Scalar exitDist = -1;
     Scalar t0[3], t1[3];
     for (int c=0; c<3; ++c) {
