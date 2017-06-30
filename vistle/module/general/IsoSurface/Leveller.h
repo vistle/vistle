@@ -6,6 +6,7 @@
 #include <core/vec.h>
 #include <core/scalar.h>
 #include <core/unstr.h>
+#include <core/rectilineargrid.h>
 #include <core/triangles.h>
 #include <util/enum.h>
 
@@ -20,6 +21,7 @@ class Leveller  {
 
    const IsoController &m_isocontrol;
    vistle::UnstructuredGrid::const_ptr m_grid;
+   vistle::RectilinearGrid::const_ptr m_rgrid;
 #ifndef CUTTINGSURFACE
    vistle::Vec<vistle::Scalar>::const_ptr m_data;
 #endif
@@ -38,6 +40,7 @@ class Leveller  {
 
 public:
    Leveller(const IsoController &isocontrol, vistle::UnstructuredGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
+   Leveller(const IsoController &isocontrol, vistle::RectilinearGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
 
    bool process();
 #ifndef CUTTINGSURFACE

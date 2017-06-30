@@ -8,6 +8,8 @@
 
 namespace vistle {
 
+constexpr std::array<Index,8> StructuredGridBase::HexahedronIndices[3];
+
 
 // IS GHOST CELL CHECK
 //-------------------------------------------------------------------------

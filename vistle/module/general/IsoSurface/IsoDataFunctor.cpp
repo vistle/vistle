@@ -105,6 +105,22 @@ IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const
     return IsoDataFunctor(vertex, point, direction, x, y, z, m_option->getValue());
 #endif
 }
+
+IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const vistle::Index dims[3], const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const {
+    Vector vertex = m_module->getVectorParameter("vertex");
+    Vector point = m_module->getVectorParameter("point");
+    Vector direction = m_module->getVectorParameter("direction");
+    auto inv = objTransform.inverse();
+    auto normalTransform = inv.block<3,3>(0,0).inverse().transpose();
+    vertex = normalTransform * vertex;
+    point = transformPoint(inv, point);
+
+#ifdef TOGGLESIGN
+    return IsoDataFunctor(vertex, point, direction, dims, x, y, z, m_option->getValue(), m_flip->getValue());
+#else
+    return IsoDataFunctor(vertex, point, direction, dims, x, y, z, m_option->getValue());
+#endif
+}
 #else
 IsoDataFunctor IsoController::newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *data) const {
     return IsoDataFunctor(data);

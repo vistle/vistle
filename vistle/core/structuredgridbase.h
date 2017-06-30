@@ -30,6 +30,7 @@ public:
        Bottom,
        Top
    };
+   static constexpr std::array<Index,8> HexahedronIndices[3] = {{{0,1,1,0,0,1,1,0}}, {{0,0,1,1,0,0,1,1}}, {{0,0,0,0,1,1,1,1}}};
 
    // static inline method to obtain a cell index from (x,y,z) indices and max grid dimensions
    static inline Index vertexIndex(const Index ix, const Index iy, const Index iz, const Index dims[3]) {
@@ -70,16 +71,12 @@ public:
        return coords;
    }
    static inline std::array<Index,8> cellVertices(Index el, const Index dims[3]) {
+       auto &H = HexahedronIndices;
        std::array<Index,3> n = cellCoordinates(el, dims);
        std::array<Index,8> cl;
-       cl[0] = vertexIndex(n[0], n[1], n[2], dims);
-       cl[1] = vertexIndex(n[0]+1, n[1], n[2], dims);
-       cl[2] = vertexIndex(n[0]+1, n[1]+1, n[2], dims);
-       cl[3] = vertexIndex(n[0], n[1]+1, n[2], dims);
-       cl[4] = vertexIndex(n[0], n[1], n[2]+1, dims);
-       cl[5] = vertexIndex(n[0]+1, n[1], n[2]+1, dims);
-       cl[6] = vertexIndex(n[0]+1, n[1]+1, n[2]+1, dims);
-       cl[7] = vertexIndex(n[0], n[1]+1, n[2]+1, dims);
+       for (int i=0; i<8; ++i) {
+           cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
+       }
        return cl;
    }
 

@@ -4,6 +4,7 @@
 #include <core/message.h>
 #include <core/object.h>
 #include <core/unstr.h>
+#include <core/rectilineargrid.h>
 #include <core/vec.h>
 #include <core/triangles.h>
 #include <core/vector.h>
@@ -314,25 +315,33 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    if (!grid_object || !data_object)
       return Object::ptr();
 
-   UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
-
-   if (!grid || !data) {
-      std::cerr << "IsoSurface: incompatible input" << std::endl;
+   if (!data) {
+      std::cerr << "IsoSurface: incompatible data input: no Scalars" << std::endl;
       return Object::ptr();
    }
 
-   Leveller l(grid, isoValue);
-   l.addData(data);
-   l.process();
+   RectilinearGrid::const_ptr rgrid = RectilinearGrid::as(grid_object);
+   if (rgrid) {
+   }
 
-   auto range = l.range();
-   if (range.first < min)
-      min = range.first;
-   if (range.second > max)
-      max = range.second;
+   UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
+   if (grid) {
+       Leveller l(grid, isoValue);
+       l.addData(data);
+       l.process();
 
-   return l.result();
+       auto range = l.range();
+       if (range.first < min)
+           min = range.first;
+       if (range.second > max)
+           max = range.second;
+
+       return l.result();
+   }
+
+   std::cerr << "IsoSurface: incompatible grid input: no UnstructuredGrid or RectilinearGrid" << std::endl;
+   return Object::ptr();
 }
 
 

@@ -42,9 +42,7 @@ struct HostData {
    std::vector<Index> m_numVertices;
    std::vector<Index> m_LocationList;
    std::vector<Index> m_ValidCellVector;
-   const Scalar *m_x;
-   const Scalar *m_y;
-   const Scalar *m_z;
+   Index m_nvert[3];
    std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
    std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
    std::vector<const Scalar*> m_inVertPtr, m_inCellPtr;
@@ -73,25 +71,42 @@ struct HostData {
       , m_el(el)
       , m_cl(cl)
       , m_tl(tl)
-      , m_x(x)
-      , m_y(y)
-      , m_z(z)
+      , m_nvert{0,0,0}
    {
-      m_inVertPtr.push_back(&x[0]);
-      m_inVertPtr.push_back(&y[0]);
-      m_inVertPtr.push_back(&z[0]);
+      addmappeddata(&x[0]);
+      addmappeddata(&y[0]);
+      addmappeddata(&z[0]);
+   }
 
-      for(size_t i = 0; i < m_inVertPtr.size(); i++){
-         m_outVertData.emplace_back(vistle::ShmVector<Scalar>::create(0));
-         m_outVertPtr.push_back(NULL);
-      }
-      m_numInVertData = m_inVertPtr.size();
+   HostData(Scalar isoValue
+            , IsoDataFunctor isoFunc
+            , Index nx
+            , Index ny
+            , Index nz
+            , const Scalar *x
+            , const Scalar *y
+            , const Scalar *z
+            )
+      : m_isovalue(isoValue)
+      , m_numInVertData(0)
+      , m_numInVertDataI(0)
+      , m_numInCellData(0)
+      , m_numInCellDataI(0)
+      , m_isoFunc(isoFunc)
+      , m_el(nullptr)
+      , m_cl(nullptr)
+      , m_tl(nullptr)
+      , m_nvert{nx,ny,nz}
+   {
+      addmappeddata(&x[0]);
+      addmappeddata(&y[0]);
+      addmappeddata(&z[0]);
    }
 
    void addmappeddata(const Scalar *mapdata){
 
       m_inVertPtr.push_back(mapdata);
-      m_outVertData.push_back(vistle::ShmVector<Scalar>::create(0));
+      m_outVertData.emplace_back(vistle::ShmVector<Scalar>::create(0));
       m_outVertPtr.push_back(NULL);
       m_numInVertData = m_inVertPtr.size();
    }
@@ -206,28 +221,9 @@ struct process_Cell {
    void operator()(Index ValidCellIndex) {
 
       const Index CellNr = m_data.m_ValidCellVector[ValidCellIndex];
-      const Index Cellbegin = m_data.m_el[CellNr];
-      const Index Cellend = m_data.m_el[CellNr+1];
-      const Index numVert = m_data.m_numVertices[ValidCellIndex];
-      const auto &cl = &m_data.m_cl[Cellbegin];
-
-#define INTER(triTable, edgeTable) \
-    const unsigned int edge = triTable[m_data.m_caseNums[ValidCellIndex]][idx]; \
-    const unsigned int v1 = edgeTable[0][edge]; \
-    const unsigned int v2 = edgeTable[1][edge]; \
-    const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
-    Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
-    for(int j = 0; j < m_data.m_numInVertData; j++) { \
-        m_data.m_outVertPtr[j][outvertexindex] = \
-            lerp(m_data.m_inVertPtr[j][cl[v1]], m_data.m_inVertPtr[j][cl[v2]], t); \
-    } \
-    for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
-        m_data.m_outVertPtrI[j][outvertexindex] = \
-            lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
-    }
 
       for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]/3; idx++) {
-          Index outcellindex = m_data.m_LocationList[ValidCellIndex]/3+idx; \
+          Index outcellindex = m_data.m_LocationList[ValidCellIndex]/3+idx;
           for(int j = 0; j < m_data.m_numInCellData; j++) {
               m_data.m_outCellPtr[j][outcellindex] = m_data.m_inCellPtr[j][CellNr];
           }
@@ -235,6 +231,26 @@ struct process_Cell {
               m_data.m_outCellPtrI[j][outcellindex] = m_data.m_inCellPtrI[j][CellNr];
           }
       }
+
+      if (m_data.m_el) {
+      const Index Cellbegin = m_data.m_el[CellNr];
+      const Index Cellend = m_data.m_el[CellNr+1];
+      const auto &cl = &m_data.m_cl[Cellbegin];
+
+#define INTER(nc, triTable, edgeTable) \
+    const unsigned int edge = triTable[m_data.m_caseNums[ValidCellIndex]][idx]; \
+    const unsigned int v1 = edgeTable[0][edge]; \
+    const unsigned int v2 = edgeTable[1][edge]; \
+    const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
+    Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
+    for(int j = nc; j < m_data.m_numInVertData; j++) { \
+        m_data.m_outVertPtr[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtr[j][cl[v1]], m_data.m_inVertPtr[j][cl[v2]], t); \
+    } \
+    for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
+        m_data.m_outVertPtrI[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
+    }
 
       switch (m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT) {
 
@@ -246,7 +262,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-               INTER(hexaTriTable, hexaEdgeTable);
+               INTER(0, hexaTriTable, hexaEdgeTable);
             }
             break;
          }
@@ -259,7 +275,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-               INTER(tetraTriTable, tetraEdgeTable);
+               INTER(0, tetraTriTable, tetraEdgeTable);
             }
             break;
          }
@@ -272,7 +288,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-                INTER(pyrTriTable, pyrEdgeTable);
+                INTER(0, pyrTriTable, pyrEdgeTable);
             }
             break;
          }
@@ -285,7 +301,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-                INTER(prismTriTable, prismEdgeTable);
+                INTER(0, prismTriTable, prismEdgeTable);
             }
             break;
          }
@@ -297,6 +313,7 @@ struct process_Cell {
 
             const auto &cl = m_data.m_cl;
 
+            const Index numVert = m_data.m_numVertices[ValidCellIndex];
             Index numAvg = 0;
             Scalar middleData[MaxNumData];
             Index middleDataI[MaxNumData];
@@ -384,6 +401,26 @@ struct process_Cell {
             break;
          }
       }
+      } else {
+
+          auto cl = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
+          Scalar field[8];
+          for (int idx = 0; idx < 8; idx ++) {
+              field[idx] = m_data.m_isoFunc(cl[idx]);
+          }
+
+          for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
+              INTER(3, hexaTriTable, hexaEdgeTable);
+
+              auto vc1 = StructuredGridBase::vertexCoordinates(cl[v1], m_data.m_nvert);
+              auto vc2 = StructuredGridBase::vertexCoordinates(cl[v2], m_data.m_nvert);
+
+              for(int j = 0; j < 3; j++) {
+                  m_data.m_outVertPtr[j][outvertexindex] =
+                          lerp(m_data.m_inVertPtr[j][vc1[j]], m_data.m_inVertPtr[j][vc2[j]], t);
+              }
+          }
+      }
    }
 };
 
@@ -415,6 +452,26 @@ struct checkcell {
       }
       return 0;
    }
+
+   __host__ __device__ int operator()(const Index Cell) const {
+
+      int havelower = 0;
+      int havehigher = 0;
+      auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
+      for (int i=0; i<8; ++i) {
+         float val = m_data.m_isoFunc(verts[i]);
+         if (val>m_data.m_isovalue) {
+            havelower=1;
+            if (havehigher)
+               return 1;
+         } else {
+            havehigher=1;
+            if (havelower)
+               return 1;
+         }
+      }
+      return 0;
+   }
 };
 
 template<class Data>
@@ -426,59 +483,67 @@ struct classify_cell {
 
    __host__ __device__ thrust::tuple<Index,Index> operator()(Index CellNr) {
 
-      const auto &cl = m_data.m_cl;
+       int tableIndex = 0;
+       int numVerts = 0;
+       if (m_data.m_el) {
+           const auto &cl = m_data.m_cl;
 
-      int tableIndex = 0;
-      Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
-      Index nvert = end-begin;
-      unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
-      int numVerts = 0;
-      if (CellType != UnstructuredGrid::POLYHEDRON) {
-         for (Index idx = 0; idx < nvert; idx ++) {
-            tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);
-         }
-      }
-      switch (CellType) {
-
-         case UnstructuredGrid::HEXAHEDRON:
-            numVerts = hexaNumVertsTable[tableIndex];
-            break;
-
-         case UnstructuredGrid::TETRAHEDRON:
-            numVerts = tetraNumVertsTable[tableIndex];
-            break;
-
-         case UnstructuredGrid::PYRAMID:
-            numVerts = pyrNumVertsTable[tableIndex];
-            break;
-
-         case UnstructuredGrid::PRISM:
-            numVerts = prismNumVertsTable[tableIndex];
-            break;
-
-         case UnstructuredGrid::POLYHEDRON: {
-
-            Index vertcounter = 0;
-            for (Index i = begin; i < end; i += cl[i]+1) {
-               const Index N = cl[i];
-               Index prev = cl[i+N];
-               for (Index k=i+1; k<i+N+1; ++k) {
-                   Index v = cl[k];
-
-                   if (m_data.m_isoFunc(prev) <= m_data.m_isovalue && m_data.m_isoFunc(v) > m_data.m_isovalue) {
-                       ++vertcounter;
-                   } else if(m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
-                       ++vertcounter;
-                   }
-
-                   prev = v;
+           Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
+           Index nvert = end-begin;
+           unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
+           if (CellType != UnstructuredGrid::POLYHEDRON) {
+               for (Index idx = 0; idx < nvert; idx ++) {
+                   tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);
                }
-            }
-            numVerts = vertcounter + vertcounter/2;
-            break;
-         }
-      };
-      return thrust::make_tuple<Index, Index> (tableIndex, numVerts);
+           }
+           switch (CellType) {
+
+           case UnstructuredGrid::HEXAHEDRON:
+               numVerts = hexaNumVertsTable[tableIndex];
+               break;
+
+           case UnstructuredGrid::TETRAHEDRON:
+               numVerts = tetraNumVertsTable[tableIndex];
+               break;
+
+           case UnstructuredGrid::PYRAMID:
+               numVerts = pyrNumVertsTable[tableIndex];
+               break;
+
+           case UnstructuredGrid::PRISM:
+               numVerts = prismNumVertsTable[tableIndex];
+               break;
+
+           case UnstructuredGrid::POLYHEDRON: {
+
+               Index vertcounter = 0;
+               for (Index i = begin; i < end; i += cl[i]+1) {
+                   const Index N = cl[i];
+                   Index prev = cl[i+N];
+                   for (Index k=i+1; k<i+N+1; ++k) {
+                       Index v = cl[k];
+
+                       if (m_data.m_isoFunc(prev) <= m_data.m_isovalue && m_data.m_isoFunc(v) > m_data.m_isovalue) {
+                           ++vertcounter;
+                       } else if(m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
+                           ++vertcounter;
+                       }
+
+                       prev = v;
+                   }
+               }
+               numVerts = vertcounter + vertcounter/2;
+               break;
+           }
+           };
+       } else {
+           auto verts = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
+           for (int idx = 0; idx < 8; ++idx) {
+               tableIndex += (((int) (m_data.m_isoFunc(verts[idx]) > m_data.m_isovalue)) << idx);
+           }
+           numVerts = hexaNumVertsTable[tableIndex];
+       }
+       return thrust::make_tuple<Index, Index> (tableIndex, numVerts);
    }
 };
 
@@ -495,42 +560,68 @@ Leveller::Leveller(const IsoController &isocontrol, UnstructuredGrid::const_ptr 
       m_triangles->setMeta(grid->meta());
    }
 
+Leveller::Leveller(const IsoController &isocontrol, RectilinearGrid::const_ptr grid, const Scalar isovalue, Index processortype)
+      : m_isocontrol(isocontrol)
+      , m_rgrid(grid)
+      , m_isoValue(isovalue)
+      , m_processortype(processortype)
+      , gmin(std::numeric_limits<Scalar>::max())
+      , gmax(-std::numeric_limits<Scalar>::max())
+      , m_objectTransform(grid->getTransform())
+   {
+      m_triangles = Triangles::ptr(new Triangles(Object::Initialized));
+      m_triangles->setMeta(grid->meta());
+   }
+
 template<class Data, class pol>
 Index Leveller::calculateSurface(Data &data) {
 
-   thrust::counting_iterator<int> first(0);
-   thrust::counting_iterator<int> last = first + m_grid->getNumElements();
-   typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
-   typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-   ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
-   data.m_ValidCellVector.resize(m_grid->getNumElements());
-   typename Data::VectorIndexIterator end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_ValidCellVector.begin(), checkcell<Data>(data));
-   size_t numValidCells = end-data.m_ValidCellVector.begin();
-   data.m_caseNums.resize(numValidCells);
-   data.m_numVertices.resize(numValidCells);
-   data.m_LocationList.resize(numValidCells);
-   thrust::transform(pol(), data.m_ValidCellVector.begin(), end, thrust::make_zip_iterator(thrust::make_tuple(data.m_caseNums.begin(),data.m_numVertices.begin())), classify_cell<Data>(data));
-   thrust::exclusive_scan(pol(), data.m_numVertices.begin(), data.m_numVertices.end(), data.m_LocationList.begin());
-   Index totalNumVertices = 0;
-   if (!data.m_numVertices.empty())
-      totalNumVertices += data.m_numVertices.back();
-   if (!data.m_LocationList.empty())
-      totalNumVertices += data.m_LocationList.back();
-   for(int i = 0; i < data.m_numInVertData; i++){
-      data.m_outVertData[i]->resize(totalNumVertices);
-   }
-   for(int i = 0; i < data.m_numInVertDataI; i++){
-      data.m_outVertDataI[i]->resize(totalNumVertices);
-   }
-   for (int i=0; i<data.m_numInCellData; ++i) {
-       data.m_outCellData[i]->resize(totalNumVertices/3);
-   }
-   for (int i=0; i<data.m_numInCellDataI; ++i) {
-       data.m_outCellDataI[i]->resize(totalNumVertices/3);
-   }
-   thrust::counting_iterator<Index> start(0), finish(numValidCells);
-   thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
-   return totalNumVertices;
+    typename Data::VectorIndexIterator end;
+
+    if (m_rgrid) {
+
+        thrust::counting_iterator<int> first(0);
+        thrust::counting_iterator<int> last = first + m_rgrid->getNumElements();
+        data.m_ValidCellVector.resize(m_rgrid->getNumElements());
+        end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0), data.m_ValidCellVector.begin(), checkcell<Data>(data));
+    } else if (m_grid) {
+
+        thrust::counting_iterator<int> first(0);
+        thrust::counting_iterator<int> last = first + m_grid->getNumElements();
+        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
+        typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
+        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
+        data.m_ValidCellVector.resize(m_grid->getNumElements());
+        end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_ValidCellVector.begin(), checkcell<Data>(data));
+    }
+
+    size_t numValidCells = end-data.m_ValidCellVector.begin();
+    data.m_caseNums.resize(numValidCells);
+    data.m_numVertices.resize(numValidCells);
+    data.m_LocationList.resize(numValidCells);
+    thrust::transform(pol(), data.m_ValidCellVector.begin(), end, thrust::make_zip_iterator(thrust::make_tuple(data.m_caseNums.begin(),data.m_numVertices.begin())), classify_cell<Data>(data));
+    thrust::exclusive_scan(pol(), data.m_numVertices.begin(), data.m_numVertices.end(), data.m_LocationList.begin());
+    Index totalNumVertices = 0;
+    if (!data.m_numVertices.empty())
+        totalNumVertices += data.m_numVertices.back();
+    if (!data.m_LocationList.empty())
+        totalNumVertices += data.m_LocationList.back();
+    for(int i = 0; i < data.m_numInVertData; i++){
+        data.m_outVertData[i]->resize(totalNumVertices);
+    }
+    for(int i = 0; i < data.m_numInVertDataI; i++){
+        data.m_outVertDataI[i]->resize(totalNumVertices);
+    }
+    for (int i=0; i<data.m_numInCellData; ++i) {
+        data.m_outCellData[i]->resize(totalNumVertices/3);
+    }
+    for (int i=0; i<data.m_numInCellDataI; ++i) {
+        data.m_outCellDataI[i]->resize(totalNumVertices/3);
+    }
+    thrust::counting_iterator<Index> start(0), finish(numValidCells);
+    thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
+
+    return totalNumVertices;
 }
 
 bool Leveller::process() {
@@ -547,13 +638,25 @@ bool Leveller::process() {
 
       case Host: {
 
-         HostData HD(m_isoValue,
-#ifndef CUTTINGSURFACE
-               m_isocontrol.newFunc(m_grid->getTransform(), &dataobj->x()[0]),
+       Index dims[3] = {0,0,0};
+       if (m_rgrid) {
+           dims[0] = m_rgrid->getNumDivisions(0);
+           dims[1] = m_rgrid->getNumDivisions(1);
+           dims[2] = m_rgrid->getNumDivisions(2);
+       }
+#ifdef CUTTINGSURFACE
+       IsoDataFunctor isofunc = m_grid
+               ? m_isocontrol.newFunc(m_grid->getTransform(), &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0])
+               : m_isocontrol.newFunc(m_rgrid->getTransform(), dims, &m_rgrid->coords(0)[0], &m_rgrid->coords(1)[0], &m_rgrid->coords(2)[0]);
 #else
-               m_isocontrol.newFunc(m_grid->getTransform(), &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
+       IsoDataFunctor isofunc = m_isocontrol.newFunc(m_grid ? m_grid->getTransform() : m_rgrid->getTransform(), &dataobj->x()[0]);
 #endif
-               m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+
+         HostData HD = m_grid
+             ? HostData(m_isoValue, isofunc,
+               m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z())
+             : HostData(m_isoValue, isofunc,
+               dims[0], dims[1], dims[2], m_rgrid->coords(0), m_rgrid->coords(1), m_rgrid->coords(2));
 
          for (size_t i=0; i<m_vertexdata.size(); ++i) {
             if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_vertexdata[i])){

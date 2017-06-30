@@ -21,19 +21,17 @@ class IsoSurface: public vistle::Module {
                                        int processorType
                                         );
 
-   std::vector<vistle::UnstructuredGrid::const_ptr> m_grids;
+   std::vector<vistle::Object::const_ptr> m_grids;
    std::vector<vistle::Vec<vistle::Scalar>::const_ptr> m_datas;
    std::vector<vistle::DataBase::const_ptr> m_mapdatas;
 
-   bool work(vistle::UnstructuredGrid::const_ptr grid,
+   bool work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr data,
              vistle::DataBase::const_ptr mapdata);
    virtual bool compute() override;
    virtual bool prepare() override;
    virtual bool reduce(int timestep) override;
    bool changeParameter(const vistle::Parameter *param) override;
-
-
 
    vistle::FloatParameter *m_isovalue;
    vistle::VectorParameter *m_isopoint;

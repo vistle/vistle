@@ -9,6 +9,7 @@
 #include <core/message.h>
 #include <core/object.h>
 #include <core/unstr.h>
+#include <core/rectilineargrid.h>
 #include <core/vec.h>
 #include "IsoSurface.h"
 #include "Leveller.h"
@@ -99,10 +100,11 @@ bool IsoSurface::reduce(int timestep) {
        Vector point = m_isopoint->getValue();
        for (size_t i=0; i<m_grids.size(); ++i) {
            if (m_datas[i]->getTimestep() == 0 || m_datas[i]->getTimestep() == -1) {
-               Index cell = m_grids[i]->findCell(point);
+               auto gi = m_grids[i]->getInterface<GridInterface>();
+               Index cell = gi->findCell(point);
                if (cell != InvalidIndex) {
                    found = 1;
-                   auto interpol = m_grids[i]->getInterpolator(cell, point);
+                   auto interpol = gi->getInterpolator(cell, point);
                    value = interpol(m_datas[i]->x());
                }
            }
@@ -146,7 +148,7 @@ bool IsoSurface::reduce(int timestep) {
    return Module::reduce(timestep);
 }
 
-bool IsoSurface::work(vistle::UnstructuredGrid::const_ptr gridS,
+bool IsoSurface::work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr dataS,
              vistle::DataBase::const_ptr mapdata) {
 
@@ -157,7 +159,11 @@ bool IsoSurface::work(vistle::UnstructuredGrid::const_ptr gridS,
    const Scalar isoValue = getFloatParameter("isovalue");
 #endif
 
-   Leveller l(isocontrol, gridS, isoValue, processorType);
+   auto unstr = UnstructuredGrid::as(grid);
+   auto rect = RectilinearGrid::as(grid);
+
+   Leveller l = unstr ? Leveller(isocontrol, unstr, isoValue, processorType)
+                      : Leveller(isocontrol, rect, isoValue, processorType);
 
 #ifndef CUTTINGSURFACE
    l.setIsoData(dataS);
@@ -181,15 +187,15 @@ bool IsoSurface::work(vistle::UnstructuredGrid::const_ptr gridS,
 #ifndef CUTTINGSURFACE
       result->copyAttributes(dataS);
 #endif
-      result->copyAttributes(gridS, false);
-      result->setTransform(gridS->getTransform());
+      result->copyAttributes(grid, false);
+      result->setTransform(grid->getTransform());
       if (result->getTimestep() < 0) {
-          result->setTimestep(gridS->getTimestep());
-          result->setNumTimesteps(gridS->getNumTimesteps());
+          result->setTimestep(grid->getTimestep());
+          result->setNumTimesteps(grid->getNumTimesteps());
       }
       if (result->getBlock() < 0) {
-          result->setBlock(gridS->getBlock());
-          result->setNumBlocks(gridS->getNumBlocks());
+          result->setBlock(grid->getBlock());
+          result->setNumBlocks(grid->getNumBlocks());
       }
       if (mapdata && mapresult) {
          mapresult->copyAttributes(mapdata);
@@ -211,7 +217,9 @@ bool IsoSurface::compute() {
    auto mapdata = expect<DataBase>(m_mapDataIn);
    if (!mapdata)
        return true;
-   auto  gridS = UnstructuredGrid::as(mapdata->grid());
+   auto grid = mapdata->grid();
+   auto unstr = UnstructuredGrid::as(mapdata->grid());
+   auto rect = RectilinearGrid::as(mapdata->grid());
 #else
    auto mapdata = accept<DataBase>(m_mapDataIn);
    auto dataS = expect<Vec<Scalar>>("data_in");
@@ -221,21 +229,23 @@ bool IsoSurface::compute() {
       sendError("need per-vertex mapping on data_in");
       return true;
    }
-   auto  gridS = UnstructuredGrid::as(dataS->grid());
+   auto grid = dataS->grid();
+   auto unstr = UnstructuredGrid::as(dataS->grid());
+   auto rect = RectilinearGrid::as(dataS->grid());
 #endif
-   if (!gridS) {
+   if (!unstr && !rect) {
        sendError("grid required on input data");
        return true;
    }
 
 #ifdef CUTTINGSURFACE
-    return work(gridS, nullptr, mapdata);
+    return work(grid, nullptr, mapdata);
 #else
     if (m_pointOrValue->getValue() == Value) {
-        return work(gridS, dataS, mapdata);
+        return work(grid, dataS, mapdata);
     } else {
-        //gridS->getCelltree();
-        m_grids.push_back(gridS);
+        //unstr->getCelltree();
+        m_grids.push_back(grid);
         m_datas.push_back(dataS);
         m_mapdatas.push_back(mapdata);
         return true;

@@ -9,6 +9,7 @@
 #include <core/index.h>
 #include <core/vector.h>
 #include <core/parameter.h>
+#include <core/structuredgridbase.h>
 
 namespace vistle {
 class Module;
@@ -49,7 +50,8 @@ inline vistle::Scalar __host__ __device__ tinterp(vistle::Scalar iso, const vist
 struct IsoDataFunctor {
 
    IsoDataFunctor(const vistle::Vector &vertex, const vistle::Vector &point, const vistle::Vector &direction, const vistle::Scalar* x, const vistle::Scalar* y, const vistle::Scalar* z, int option, bool flip=false)
-      : m_x(x)
+      : m_dims{0,0,0}
+      , m_x(x)
       , m_y(y)
       , m_z(z)
       , m_vertex(vertex)
@@ -59,9 +61,26 @@ struct IsoDataFunctor {
       , m_option(option)
       , m_radius2((m_option==Sphere ? m_point-m_vertex : m_direction.cross(m_point-m_vertex)).squaredNorm())
       , m_sign(flip ? -1. : 1.)
+      , m_coords(true)
+   {}
+
+   IsoDataFunctor(const vistle::Vector &vertex, const vistle::Vector &point, const vistle::Vector &direction, const vistle::Index dims[3], const vistle::Scalar* x, const vistle::Scalar* y, const vistle::Scalar* z, int option, bool flip=false)
+      : m_dims{dims[0], dims[1], dims[2]}
+      , m_x(x)
+      , m_y(y)
+      , m_z(z)
+      , m_vertex(vertex)
+      , m_point(point)
+      , m_direction(direction)
+      , m_distance(vertex.dot(point))
+      , m_option(option)
+      , m_radius2((m_option==Sphere ? m_point-m_vertex : m_direction.cross(m_point-m_vertex)).squaredNorm())
+      , m_sign(flip ? -1. : 1.)
+      , m_coords(false)
    {}
 
    __host__ __device__ vistle::Scalar operator()(vistle::Index i) {
+      if (m_coords) {
       vistle::Vector coordinates(m_x[i], m_y[i], m_z[i]);
       switch(m_option) {
          case Plane: {
@@ -75,7 +94,24 @@ struct IsoDataFunctor {
             return m_sign*((m_direction.cross(coordinates - m_vertex)).squaredNorm() - m_radius2);
          }
       }
+      } else {
+          auto idx = vistle::StructuredGridBase::vertexCoordinates(i, m_dims);
+          vistle::Vector coordinates(m_x[idx[0]], m_y[idx[1]], m_z[idx[2]]);
+          switch(m_option) {
+          case Plane: {
+              return m_sign*(m_distance - m_vertex.dot(coordinates));
+          }
+          case Sphere: {
+              return m_sign*((coordinates-m_vertex).squaredNorm() - m_radius2);
+          }
+          default: {
+              // all cylinders
+              return m_sign*((m_direction.cross(coordinates - m_vertex)).squaredNorm() - m_radius2);
+          }
+          }
+      }
    }
+   const vistle::Index m_dims[3];
    const vistle::Scalar* m_x;
    const vistle::Scalar* m_y;
    const vistle::Scalar* m_z;
@@ -86,6 +122,7 @@ struct IsoDataFunctor {
    const int m_option;
    const vistle::Scalar m_radius2;
    const vistle::Scalar m_sign;
+   const bool m_coords;
 };
 
 #else
@@ -109,6 +146,7 @@ public:
     bool changeParameter(const vistle::Parameter* param);
 #ifdef CUTTINGSURFACE
     IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
+    IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Index dims[3], const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
 #else
     IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *data) const;
 #endif
