@@ -67,9 +67,11 @@ Executor::Executor(int argc, char *argv[])
 
    // determine first rank on each host
    bool first = true;
+#ifndef SHMPERRANK
    for (int index = 0; index < m_rank; index ++)
       if (hostnames[index] == hostname)
          first = false;
+#endif
 
    if (first) {
       vistle::Shm::remove(m_name, 0, m_rank);

@@ -6,6 +6,10 @@ include_directories(
         ..
 )
 
+if (VISTLE_SHM_PER_RANK)
+   add_definitions(-DSHMPERRANK)
+endif()
+
 vistle_add_executable(vistle_manager
    vistle_manager.cpp
    clustermanager.h
