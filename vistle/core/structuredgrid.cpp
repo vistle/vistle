@@ -10,7 +10,7 @@
 #include <core/assert.h>
 #include "cellalgorithm.h"
 
-#define INTERPOL_DEBUG
+//#define INTERPOL_DEBUG
 
 namespace vistle {
 
@@ -334,9 +334,9 @@ Vector StructuredGrid::getVertex(Index v) const {
 //-------------------------------------------------------------------------
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
+#ifdef INTERPOL_DEBUG
    vassert(inside(elem, point));
 
-#ifdef INTERPOL_DEBUG
    if (!inside(elem, point)) {
       return Interpolator();
    }

@@ -49,6 +49,9 @@ public:
        coords[1] = v%dims[1];
        v /= dims[1];
        coords[0] = v;
+       assert(coords[0] < dims[0]);
+       assert(coords[1] < dims[1]);
+       assert(coords[2] < dims[2]);
        return coords;
    }
 
@@ -68,6 +71,9 @@ public:
        coords[1] = el%(dims[1]-1);
        el /= dims[1]-1;
        coords[0] = el;
+       assert(coords[0] < dims[0]-1);
+       assert(coords[1] < dims[1]-1);
+       assert(coords[2] < dims[2]-1);
        return coords;
    }
    static inline std::array<Index,8> cellVertices(Index el, const Index dims[3]) {
