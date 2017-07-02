@@ -5,8 +5,10 @@
 #include <core/index.h>
 #include <core/vec.h>
 #include <core/scalar.h>
-#include <core/unstr.h>
+#include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
+#include <core/unstr.h>
 #include <core/triangles.h>
 #include <util/enum.h>
 
@@ -20,8 +22,13 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThrustBackend,
 class Leveller  {
 
    const IsoController &m_isocontrol;
-   vistle::UnstructuredGrid::const_ptr m_grid;
-   vistle::RectilinearGrid::const_ptr m_rgrid;
+   vistle::Object::const_ptr m_grid;
+   vistle::UniformGrid::const_ptr m_uni;
+   vistle::RectilinearGrid::const_ptr m_rect;
+   vistle::StructuredGrid::const_ptr m_str;
+   vistle::UnstructuredGrid::const_ptr m_unstr;
+   vistle::StructuredGridBase::const_ptr m_strbase;
+   vistle::Coords::const_ptr m_coord;
 #ifndef CUTTINGSURFACE
    vistle::Vec<vistle::Scalar>::const_ptr m_data;
 #endif
@@ -39,8 +46,7 @@ class Leveller  {
    vistle::Index calculateSurface(Data &data);
 
 public:
-   Leveller(const IsoController &isocontrol, vistle::UnstructuredGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
-   Leveller(const IsoController &isocontrol, vistle::RectilinearGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
+   Leveller(const IsoController &isocontrol, vistle::Object::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
 
    bool process();
 #ifndef CUTTINGSURFACE

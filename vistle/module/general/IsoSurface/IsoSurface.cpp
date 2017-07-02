@@ -9,7 +9,9 @@
 #include <core/message.h>
 #include <core/object.h>
 #include <core/unstr.h>
+#include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
 #include <core/vec.h>
 #include "IsoSurface.h"
 #include "Leveller.h"
@@ -159,11 +161,7 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
    const Scalar isoValue = getFloatParameter("isovalue");
 #endif
 
-   auto unstr = UnstructuredGrid::as(grid);
-   auto rect = RectilinearGrid::as(grid);
-
-   Leveller l = unstr ? Leveller(isocontrol, unstr, isoValue, processorType)
-                      : Leveller(isocontrol, rect, isoValue, processorType);
+   Leveller l(isocontrol, grid, isoValue, processorType);
 
 #ifndef CUTTINGSURFACE
    l.setIsoData(dataS);
@@ -218,8 +216,6 @@ bool IsoSurface::compute() {
    if (!mapdata)
        return true;
    auto grid = mapdata->grid();
-   auto unstr = UnstructuredGrid::as(mapdata->grid());
-   auto rect = RectilinearGrid::as(mapdata->grid());
 #else
    auto mapdata = accept<DataBase>(m_mapDataIn);
    auto dataS = expect<Vec<Scalar>>("data_in");
@@ -230,10 +226,12 @@ bool IsoSurface::compute() {
       return true;
    }
    auto grid = dataS->grid();
-   auto unstr = UnstructuredGrid::as(dataS->grid());
-   auto rect = RectilinearGrid::as(dataS->grid());
 #endif
-   if (!unstr && !rect) {
+   auto uni = UniformGrid::as(grid);
+   auto rect = RectilinearGrid::as(grid);
+   auto str = StructuredGrid::as(grid);
+   auto unstr = UnstructuredGrid::as(grid);
+   if (!uni && !rect && !str && !unstr) {
        sendError("grid required on input data");
        return true;
    }
