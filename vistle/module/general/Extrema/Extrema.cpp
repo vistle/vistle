@@ -237,6 +237,9 @@ bool Extrema::compute() {
 
    if (auto str = StructuredGridBase::as(obj)) {
        auto mm = str->getBounds();
+       auto t = obj->getTransform();
+       mm.first = transformPoint(t, mm.first);
+       mm.second = transformPoint(t, mm.second);
        for (int c=0; c<3; ++c) {
            if (mm.first[c] < min[c]) {
                min[c] = mm.first[c];
@@ -286,6 +289,7 @@ bool Extrema::compute() {
    if (perBlock) {
        Lines::ptr box = makeBox(min, max);
        box->copyAttributes(obj);
+       box->setTransform(Matrix4::Identity(4,4));
        addObject("grid_out", box);
    }
 #else
@@ -342,7 +346,6 @@ bool Extrema::reduce(int timestep) {
 #ifdef BOUNDINGBOX
    bool perBlock = getIntParameter("per_block");
    if (!perBlock && haveGeometry && rank() == 0) {
-
 
       Lines::ptr box = makeBox(gmin, gmax);
       addObject("grid_out", box);
