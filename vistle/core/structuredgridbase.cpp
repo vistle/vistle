@@ -28,7 +28,7 @@ bool StructuredGridBase::isGhostCell(Index elem) const {
 
       for (int c=0; c<3; ++c) {
           if (cellCoords[c] < getNumGhostLayers(c, Bottom)
-                  || cellCoords[c] >= (dims[c]-1)-getNumGhostLayers(c, Top)) {
+                  || cellCoords[c]+getNumGhostLayers(c, Top)+1 >= dims[c]) {
               return true;
           }
       }

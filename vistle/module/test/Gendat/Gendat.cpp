@@ -226,6 +226,11 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
         }
         numVert = dim[0]*dim[1]*dim[2];
 
+        for (int c=0; c<3; ++c) {
+            min[c] -= ghostWidth[c][0]*dist[c];
+            max[c] += ghostWidth[c][1]*dist[c];
+        }
+
         if (geoMode == Uniform_Grid) {
             UniformGrid::ptr u(new UniformGrid(dim[0], dim[1], dim[2]));
 
@@ -244,7 +249,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
             // generate test data
             for (int c=0; c<3; ++c) {
                 for (Index i = 0; i < dim[c]; ++i) {
-                    r->coords(c)[i] = min[c]+(i-ghostWidth[c][0])*dist[c];
+                    r->coords(c)[i] = min[c]+i*dist[c];
                 }
             }
             setStructuredGridGhostLayers(r, ghostWidth);
@@ -264,9 +269,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
 #pragma omp parallel for
                     for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
-                        y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];
-                        z[idx] = min[2]+(k-ghostWidth[2][0])*dist[2];
+                        x[idx] = min[0]+i*dist[0];
+                        y[idx] = min[1]+j*dist[1];
+                        z[idx] = min[2]+k*dist[2];
                     }
                 }
             }
@@ -287,9 +292,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
 #pragma omp parallel for
                     for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
-                        y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];
-                        z[idx] = min[2]+(k-ghostWidth[2][0])*dist[2];
+                        x[idx] = min[0]+i*dist[0];
+                        y[idx] = min[1]+j*dist[1];
+                        z[idx] = min[2]+k*dist[2];
                     }
                 }
             }
@@ -314,9 +319,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
                         cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
                         cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
 
-                        if ((ix < ghostWidth[0][0] || ix >= nx-ghostWidth[0][1])
-                                || (iy < ghostWidth[1][0] || iy >= ny-ghostWidth[1][1])
-                                || (iz < ghostWidth[2][0] || iz >= nz-ghostWidth[2][1])) {
+                        if ((ix < ghostWidth[0][0] || ix+ghostWidth[0][1] >= nx)
+                                || (iy < ghostWidth[1][0] || iy+ghostWidth[1][1] >= ny)
+                                || (iz < ghostWidth[2][0] || iz+ghostWidth[2][1] >= nz)) {
                             tl[elem] = UnstructuredGrid::GHOST_HEXAHEDRON;
                         } else {
                             tl[elem] = UnstructuredGrid::HEXAHEDRON;
