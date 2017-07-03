@@ -76,7 +76,7 @@ class shm_array {
    }
 
    ~shm_array() {
-      reserve(0);
+      reserve_or_shrink(0);
    }
 
    int type() const { return m_type; }
@@ -145,7 +145,11 @@ class shm_array {
    }
 
    size_t capacity() const { return m_capacity; }
-   void reserve(const size_t capacity) {
+   void reserve(const size_t new_capacity) {
+       if (new_capacity > capacity())
+           reserve_or_shrink(new_capacity);
+   }
+   void reserve_or_shrink(const size_t capacity) {
       pointer new_data = capacity>0 ? m_allocator.allocate(capacity) : nullptr;
       const size_t n = capacity<m_size ? capacity : m_size;
       if (m_data && new_data) {
@@ -168,7 +172,7 @@ class shm_array {
       m_data = new_data;
       m_capacity = capacity;
    }
-   void shrink_to_fit() { reserve(m_size); assert(m_capacity == m_size); }
+   void shrink_to_fit() { reserve_or_shrink(m_size); assert(m_capacity == m_size); }
 
    int ref() const { return ++m_refcount; }
    int unref() const { return --m_refcount; }
