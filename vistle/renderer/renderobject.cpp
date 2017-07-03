@@ -50,23 +50,51 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       }
    }
 
+   Matrix4 T = geometry->getTransform();
    if (auto coords = CoordsWithRadius::as(geometry)) {
+      Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
+      for (int i=0; i<8; ++i) {
+          Vector3 v(0,0,0);
+          if (i%2) {
+              v += Vector(1,0,0);
+          } else {
+              v -= Vector(1,0,0);
+          }
+          if ((i/2)%2) {
+              v += Vector(0,1,0);
+          } else {
+              v -= Vector(0,1,0);
+          }
+          if ((i/4)%2) {
+              v += Vector(0,0,1);
+          } else {
+              v -= Vector(0,0,1);
+          }
+          Vector3 vv = transformPoint(T, v);
+          for (int c=0; c<3; ++c) {
+              rMin[c] = std::min(rMin[c], vv[c]);
+              rMax[c] = std::max(rMax[c], vv[c]);
+          }
+      }
       for (Index i=0; i<coords->getNumCoords(); ++i) {
+         Scalar r = coords->r()[i];
+         Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
+         Vector pp = transformPoint(T, p);
          for (int c=0; c<3; ++c) {
-            if (coords->x(c)[i]-coords->r()[i] < bMin[c])
-               bMin[c] = coords->x(c)[i]-coords->r()[i];
-            if (coords->x(c)[i]+coords->r()[i] > bMax[c])
-               bMax[c] = coords->x(c)[i]+coords->r()[i];
+             bMin[c] = std::min(bMin[c], pp[c]+r*rMin[c]);
+             bMax[c] = std::max(bMax[c], pp[c]+r*rMax[c]);
          }
       }
    } else if (auto coords = Coords::as(geometry)) {
 
       for (Index i=0; i<coords->getNumCoords(); ++i) {
+         Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
+         Vector3 pp = transformPoint(T, p);
          for (int c=0; c<3; ++c) {
-            if (coords->x(c)[i] < bMin[c])
-               bMin[c] = coords->x(c)[i];
-            if (coords->x(c)[i] > bMax[c])
-               bMax[c] = coords->x(c)[i];
+            if (pp[c] < bMin[c])
+               bMin[c] = pp[c];
+            if (pp[c] > bMax[c])
+               bMax[c] = pp[c];
          }
       }
    }
