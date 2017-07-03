@@ -41,18 +41,20 @@ class Leveller  {
    std::vector<vistle::DataBase::ptr> m_outcellData;
    vistle::Scalar gmin, gmax;
    vistle::Matrix4 m_objectTransform;
+   bool m_computeNormals;
 
    template<class Data, class pol>
    vistle::Index calculateSurface(Data &data);
 
 public:
    Leveller(const IsoController &isocontrol, vistle::Object::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
+   void setComputeNormals(bool value);
+   void addMappedData(vistle::DataBase::const_ptr mapobj );
 
    bool process();
 #ifndef CUTTINGSURFACE
    void setIsoData(vistle::Vec<vistle::Scalar>::const_ptr obj);
 #endif
-   void addMappedData(vistle::DataBase::const_ptr mapobj );
    vistle::Object::ptr result();
    vistle::DataBase::ptr mapresult() const;
    vistle::DataBase::ptr cellresult() const;

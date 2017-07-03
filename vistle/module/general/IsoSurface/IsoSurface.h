@@ -37,6 +37,7 @@ class IsoSurface: public vistle::Module {
    vistle::VectorParameter *m_isopoint;
    vistle::IntParameter *m_pointOrValue;
    vistle::IntParameter *m_processortype;
+   vistle::IntParameter *m_computeNormals;
    vistle::Port *m_mapDataIn, *m_dataOut;
 
    vistle::Scalar m_min, m_max;

@@ -53,6 +53,8 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
    m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);
 
+   m_computeNormals = addIntParameter("compute_normals", "compute normals (structured grids only)", 1, Parameter::Boolean);
+
    m_paraMin = m_paraMax = 0.f;
 }
 
@@ -162,6 +164,7 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
 #endif
 
    Leveller l(isocontrol, grid, isoValue, processorType);
+   l.setComputeNormals(m_computeNormals->getValue());
 
 #ifndef CUTTINGSURFACE
    l.setIsoData(dataS);

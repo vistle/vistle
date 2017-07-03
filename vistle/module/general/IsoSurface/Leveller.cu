@@ -43,6 +43,7 @@ struct HostData {
    std::vector<Index> m_LocationList;
    std::vector<Index> m_ValidCellVector;
    Index m_nvert[3];
+   Index m_nghost[3][2];
    std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
    std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
    std::vector<const Scalar*> m_inVertPtr, m_inCellPtr;
@@ -50,7 +51,9 @@ struct HostData {
    std::vector<Scalar*> m_outVertPtr, m_outCellPtr;
    std::vector<Index *> m_outVertPtrI, m_outCellPtrI;
    bool m_haveCoords;
+   bool m_computeNormals;
 
+   typedef const u_char *TypeIterator;
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
 
@@ -73,7 +76,9 @@ struct HostData {
       , m_cl(cl)
       , m_tl(tl)
       , m_nvert{0,0,0}
+      , m_nghost{{0,0}, {0,0}, {0,0}}
       , m_haveCoords(true)
+      , m_computeNormals(false)
    {
       addmappeddata(&x[0]);
       addmappeddata(&y[0]);
@@ -99,8 +104,15 @@ struct HostData {
       , m_cl(nullptr)
       , m_tl(nullptr)
       , m_nvert{nx,ny,nz}
+      , m_nghost{{0,0}, {0,0}, {0,0}}
       , m_haveCoords(false)
+      , m_computeNormals(false)
    {
+      // allocate storage for normals
+      addmappeddata((Scalar *)nullptr);
+      addmappeddata((Scalar *)nullptr);
+      addmappeddata((Scalar *)nullptr);
+
       addmappeddata(&x[0]);
       addmappeddata(&y[0]);
       addmappeddata(&z[0]);
@@ -108,6 +120,17 @@ struct HostData {
 
    void setHaveCoords(bool val) {
        m_haveCoords = val;
+   }
+
+   void setGhostLayers(Index ghost[3][2]) {
+       for (int c=0; c<3; ++c) {
+           for (int i=0; i<2; ++i)
+               m_nghost[c][i] = ghost[c][i];
+       }
+   }
+
+   void setComputeNormals(bool val) {
+       m_computeNormals = val;
    }
 
    void addmappeddata(const Scalar *mapdata){
@@ -416,20 +439,60 @@ struct process_Cell {
               field[idx] = m_data.m_isoFunc(cl[idx]);
           }
 
+          Scalar grad[8][3];
+          if (m_data.m_computeNormals) {
+              const auto &H = StructuredGridBase::HexahedronIndices;
+              auto n = vistle::StructuredGridBase::cellCoordinates(CellNr, m_data.m_nvert);
+              for (int idx = 0; idx < 8; idx ++) {
+                  Index x[3], xl[3], xu[3];
+                  for (int c=0; c<3; ++c) {
+                      x[c] = n[c]+H[c][idx];
+                  }
+                  for (int c=0; c<3; ++c) {
+                      xl[c] = x[c] > 0 ? x[c]-1 : x[c];
+                      xu[c] = x[c] < m_data.m_nvert[c]-1 ? x[c]+1 : x[c];
+                  }
+                  for (int c=0; c<3; ++c) {
+                      Index xx = x[c];
+                      x[c] = xl[c];
+                      Index l = StructuredGridBase::vertexIndex(x, m_data.m_nvert);
+                      x[c] = xu[c];
+                      Index u = StructuredGridBase::vertexIndex(x, m_data.m_nvert);
+                      x[c] = xx;
+                      grad[idx][c] = m_data.m_isoFunc(u) - m_data.m_isoFunc(l);
+                      if (m_data.m_haveCoords) {
+                          grad[idx][c] /= (m_data.m_inVertPtr[3+c][u] - m_data.m_inVertPtr[3+c][l]);
+                      } else {
+                          grad[idx][c] /= (m_data.m_inVertPtr[3+c][xu[c]] - m_data.m_inVertPtr[3+c][xl[c]]);
+                      }
+                  }
+              }
+          }
+
           if (m_data.m_haveCoords) {
               for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-                  INTER(0, hexaTriTable, hexaEdgeTable);
+                  INTER(3, hexaTriTable, hexaEdgeTable);
+                  if (m_data.m_computeNormals) {
+                      for(int j = 0; j < 3; j++) {
+                          m_data.m_outVertPtr[j][outvertexindex] = lerp(grad[v1][j], grad[v2][j], t);
+                      }
+                  }
               }
           } else {
               for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-                  INTER(3, hexaTriTable, hexaEdgeTable);
+                  INTER(6, hexaTriTable, hexaEdgeTable);
+
+                  if (m_data.m_computeNormals) {
+                      for(int j = 0; j < 3; j++) {
+                          m_data.m_outVertPtr[j][outvertexindex] = lerp(grad[v1][j], grad[v2][j], t);
+                      }
+                  }
 
                   auto vc1 = StructuredGridBase::vertexCoordinates(cl[v1], m_data.m_nvert);
                   auto vc2 = StructuredGridBase::vertexCoordinates(cl[v2], m_data.m_nvert);
-
                   for(int j = 0; j < 3; j++) {
-                      m_data.m_outVertPtr[j][outvertexindex] =
-                              lerp(m_data.m_inVertPtr[j][vc1[j]], m_data.m_inVertPtr[j][vc2[j]], t);
+                      m_data.m_outVertPtr[3+j][outvertexindex] =
+                              lerp(m_data.m_inVertPtr[3+j][vc1[j]], m_data.m_inVertPtr[3+j][vc2[j]], t);
                   }
               }
           }
@@ -445,12 +508,16 @@ struct checkcell {
    Data &m_data;
    checkcell(Data &data) : m_data(data) {}
 
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index> iCell) const {
+   // for unstructured grids
+   __host__ __device__ int operator()(const thrust::tuple<Index,Index,u_char> iCell) const {
 
       int havelower = 0;
       int havehigher = 0;
       Index Cell = iCell.get<0>();
       Index nextCell = iCell.get<1>();
+      u_char cellType = iCell.get<2>();
+      if (cellType & UnstructuredGrid::GHOST_BIT)
+          return 0;
       for (Index i=Cell; i<nextCell; i++) {
          float val = m_data.m_isoFunc(m_data.m_cl[i]);
          if (val>m_data.m_isovalue) {
@@ -466,11 +533,20 @@ struct checkcell {
       return 0;
    }
 
+   // for all types of structured grids
    __host__ __device__ int operator()(const Index Cell) const {
 
+      auto cc = vistle::StructuredGridBase::cellCoordinates(Cell, m_data.m_nvert);
+      for (int c=0; c<3; ++c) {
+          if (cc[c] < m_data.m_nghost[c][0])
+              return 0;
+          if (cc[c]+m_data.m_nghost[c][1]+1 >= m_data.m_nvert[c])
+              return 0;
+      }
+
+      auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
       int havelower = 0;
       int havehigher = 0;
-      auto verts = vistle::StructuredGridBase::cellVertices(Cell, m_data.m_nvert);
       for (int i=0; i<8; ++i) {
          float val = m_data.m_isoFunc(verts[i]);
          if (val>m_data.m_isovalue) {
@@ -583,21 +659,16 @@ template<class Data, class pol>
 Index Leveller::calculateSurface(Data &data) {
 
     typename Data::VectorIndexIterator end;
+    Index nelem = m_strbase ? m_strbase->getNumElements() : m_unstr->getNumElements();
+    thrust::counting_iterator<Index> first(0), last = first + nelem;;
+    data.m_ValidCellVector.resize(nelem);
 
     if (m_strbase) {
-
-        thrust::counting_iterator<int> first(0);
-        thrust::counting_iterator<int> last = first + m_strbase->getNumElements();
-        data.m_ValidCellVector.resize(m_strbase->getNumElements());
         end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0), data.m_ValidCellVector.begin(), checkcell<Data>(data));
     } else if (m_unstr) {
-
-        thrust::counting_iterator<int> first(0);
-        thrust::counting_iterator<int> last = first + m_unstr->getNumElements();
-        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
+        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator> Iteratortuple;
         typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
-        data.m_ValidCellVector.resize(m_unstr->getNumElements());
+        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
         end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_ValidCellVector.begin(), checkcell<Data>(data));
     }
 
@@ -612,7 +683,7 @@ Index Leveller::calculateSurface(Data &data) {
         totalNumVertices += data.m_numVertices.back();
     if (!data.m_LocationList.empty())
         totalNumVertices += data.m_LocationList.back();
-    for(int i = 0; i < data.m_numInVertData; i++){
+    for(int i = (m_computeNormals || m_unstr ? 0 : 3); i < data.m_numInVertData; i++){
         data.m_outVertData[i]->resize(totalNumVertices);
     }
     for(int i = 0; i < data.m_numInVertDataI; i++){
@@ -638,8 +709,6 @@ bool Leveller::process() {
 #else
 #endif
 
-   Index totalNumVertices = 0;
-
    switch (m_processortype) {
 
       case Host: {
@@ -660,7 +729,7 @@ bool Leveller::process() {
                if (dims[i] > 1)
                    dist = (m_uni->max()[i]-m_uni->min()[i])/(dims[i]-1);
                Scalar val = m_uni->min()[i];
-               for (int j=0; j<dims[i]; ++j) {
+               for (Index j=0; j<dims[i]; ++j) {
                    unicoords[i][j] = val;
                    val += dist;
                }
@@ -686,6 +755,15 @@ bool Leveller::process() {
              : HostData(m_isoValue, isofunc,
                dims[0], dims[1], dims[2], coords[0], coords[1], coords[2]);
          HD.setHaveCoords(m_coord ? true : false);
+         if (m_strbase) {
+             Index ghost[3][2];
+             for (int c=0; c<3; ++c) {
+                 ghost[c][0] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Bottom);
+                 ghost[c][1] = m_strbase->getNumGhostLayers(c, StructuredGridBase::Top);
+             }
+             HD.setGhostLayers(ghost);
+         }
+         HD.setComputeNormals(m_computeNormals);
 
          for (size_t i=0; i<m_vertexdata.size(); ++i) {
             if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_vertexdata[i])){
@@ -714,13 +792,27 @@ bool Leveller::process() {
             }
          }
 
-         totalNumVertices = calculateSurface<HostData, thrust::detail::host_t>(HD);
+         Index totalNumVertices = calculateSurface<HostData, thrust::detail::host_t>(HD);
 
          {
              size_t idx=0;
+             Normals::ptr norm;
+             if (m_strbase) {
+                 if (m_computeNormals) {
+                     norm.reset(new Normals(Object::Initialized));
+                     norm->d()->x[0] = HD.m_outVertData[idx++];
+                     norm->d()->x[1] = HD.m_outVertData[idx++];
+                     norm->d()->x[2] = HD.m_outVertData[idx++];
+                     //FIXME: norm->setMeta();
+                     norm->setMapping(DataBase::Vertex);
+                 } else {
+                     idx = 3;
+                 }
+             }
              m_triangles->d()->x[0] = HD.m_outVertData[idx++];
              m_triangles->d()->x[1] = HD.m_outVertData[idx++];
              m_triangles->d()->x[2] = HD.m_outVertData[idx++];
+             m_triangles->setNormals(norm);
 
              size_t idxI=0;
              for (size_t i=0; i<m_vertexdata.size(); ++i) {
@@ -792,6 +884,8 @@ bool Leveller::process() {
       }
 
       case Device: {
+         std::cerr << "untested Device code path" << std::endl;
+         assert("don't use the Device code path" == 0);
 
          DeviceData DD(m_isoValue,
 #ifndef CUTTINGSURFACE
@@ -802,7 +896,9 @@ bool Leveller::process() {
                m_unstr->getNumElements(), m_unstr->el(), m_unstr->tl(), m_unstr->getNumCorners(), m_unstr->cl(), m_unstr->getSize(), m_unstr->x(), m_unstr->y(), m_unstr->z());
 
 #if 0
-         totalNumVertices = calculateSurface<DeviceData, thrust::device>(DD);
+         Index totalNumVertices = calculateSurface<DeviceData, thrust::device>(DD);
+#else
+         Index totalNumVertices = 0;
 #endif
 
          m_triangles->x().resize(totalNumVertices);
@@ -849,6 +945,10 @@ void Leveller::setIsoData(Vec<Scalar>::const_ptr obj) {
    m_data = obj;
 }
 #endif
+
+void Leveller::setComputeNormals(bool value) {
+    m_computeNormals = value;
+}
 
 void Leveller::addMappedData(DataBase::const_ptr mapobj ){
     if (mapobj->mapping() == DataBase::Element)
