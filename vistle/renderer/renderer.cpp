@@ -209,6 +209,8 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
        if (auto grid = vistle::Coords::as(tex->grid())) {
          ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), tex);
        }
+   } else if (auto grid = vistle::Coords::as(object)) {
+       ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr);
    } else if (auto data = vistle::DataBase::as(object)) {
        if (auto grid = vistle::Coords::as(data->grid())) {
          ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr);
