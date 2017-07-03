@@ -924,10 +924,14 @@ void UnstructuredGrid::refreshImpl() const {
    m_tl = (d && d->tl.valid()) ? d->tl->data() : nullptr;
 }
 
+void UnstructuredGrid::Data::initData() {
+}
+
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
 : UnstructuredGrid::Base::Data(o, n)
 , tl(o.tl)
 {
+    initData();
 }
 
 UnstructuredGrid::Data::Data(const Index numElements,
@@ -938,6 +942,7 @@ UnstructuredGrid::Data::Data(const Index numElements,
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
          Object::UNSTRUCTUREDGRID, name, meta)
 {
+   initData();
    tl.construct(numElements);
 }
 

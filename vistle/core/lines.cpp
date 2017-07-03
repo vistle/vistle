@@ -25,9 +25,13 @@ bool Lines::checkImpl() const {
    return true;
 }
 
+void Lines::Data::initData() {
+}
+
 Lines::Data::Data(const Data &other, const std::string &name)
 : Lines::Base::Data(other, name)
 {
+   initData();
 }
 
 Lines::Data::Data(const Index numElements, const Index numCorners,
@@ -36,6 +40,7 @@ Lines::Data::Data(const Index numElements, const Index numCorners,
    : Lines::Base::Data(numElements, numCorners, numVertices,
          Object::LINES, name, meta)
 {
+   initData();
 }
 
 

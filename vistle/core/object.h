@@ -442,6 +442,7 @@ private:
       friend class boost::serialization::access; \
       template<class Archive> \
       void serialize(Archive &ar, const unsigned int version); \
+      void initData(); \
    }
 
 #define V_OBJECT_DECLARE(ObjType) \
@@ -522,7 +523,7 @@ private:
 
 #define V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \
-   : ObjType::Base::Data(id, name, meta) {} \
+   : ObjType::Base::Data(id, name, meta) { initData(); } \
    ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
       Data *t = nullptr; \
       try { \

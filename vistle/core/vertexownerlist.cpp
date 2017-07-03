@@ -16,6 +16,10 @@ void VertexOwnerList::refreshImpl() const {
     m_cellList = (d && d->cellList.valid()) ? d->cellList->data() : nullptr;
 }
 
+void VertexOwnerList::Data::initData() {
+    cellList.construct(0);
+}
+
 VertexOwnerList::Data::Data(const VertexOwnerList::Data &o, const std::string &n)
 : VertexOwnerList::Base::Data(o, n)
 , vertexList(o.vertexList)
@@ -28,8 +32,8 @@ VertexOwnerList::Data::Data(const std::string &name, const Index numVertices,
                      const Meta &meta)
 : VertexOwnerList::Base::Data(Object::Type(Object::VERTEXOWNERLIST), name, meta)
 {
+    initData();
     vertexList.construct(numVertices+1);
-    cellList.construct(0);
 }
 
 VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, const Index size,

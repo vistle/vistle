@@ -56,6 +56,11 @@ void Tubes::setCapStyles(Tubes::CapStyle start, Tubes::CapStyle joint, Tubes::Ca
    (*d()->style)[2] = end;
 }
 
+void Tubes::Data::initData() {
+   style.construct(3);
+   (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
+}
+
 Tubes::Data::Data(const Index numTubes,
              const Index numCoords,
              const std::string & name,
@@ -63,26 +68,26 @@ Tubes::Data::Data(const Index numTubes,
    : Tubes::Base::Data(numCoords,
          Object::TUBES, name, meta)
 {
+   initData();
    components.construct(numTubes+1);
-   style.construct(3);
    (*components)[0] = 0;
-   (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
 }
 
 Tubes::Data::Data(const Tubes::Data &o, const std::string &n)
 : Tubes::Base::Data(o, n)
 , components(o.components)
-, style(o.style)
 {
+   initData();
+   for (int i=0; i<style->size(); ++i)
+      (*style)[i] = (*o.style)[i];
 }
 
 Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 : Tubes::Base::Data(o, n, Object::TUBES)
 {
+   initData();
    components.construct(1);
-   style.construct(3);
    (*components)[0] = 0;
-   (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
 }
 
 Tubes::Data *Tubes::Data::create(const Index numTubes, const Index numCoords, const Meta &meta) {

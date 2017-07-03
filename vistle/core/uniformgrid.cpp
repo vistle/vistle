@@ -276,37 +276,42 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
    return Interpolator(weights, indices);
 }
 
-// DATA OBJECT - CONSTRUCTOR FROM NAME & META
-//-------------------------------------------------------------------------
-UniformGrid::Data::Data(const std::string & name, Index xdim, Index ydim, Index zdim, const Meta &meta)
-    : UniformGrid::Base::Data(Object::UNIFORMGRID, name, meta) {
+void UniformGrid::Data::initData() {
+
     numDivisions.construct(3);
     min.construct(3);
     max.construct(3);
 
+    for (int i=0; i<3; ++i) {
+        (*numDivisions)[i] = 0;
+        ghostLayers[i].construct(2);
+        (*ghostLayers[i])[0] = (*ghostLayers[i])[1] = 0;
+    }
+}
+
+// DATA OBJECT - CONSTRUCTOR FROM NAME & META
+//-------------------------------------------------------------------------
+UniformGrid::Data::Data(const std::string & name, Index xdim, Index ydim, Index zdim, const Meta &meta)
+    : UniformGrid::Base::Data(Object::UNIFORMGRID, name, meta) {
+
+    initData();
+
     (*numDivisions)[0] = xdim;
     (*numDivisions)[1] = ydim;
     (*numDivisions)[2] = zdim;
-
-    for (int i=0; i<3; ++i) {
-        ghostLayers[i].construct(2);
-    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
 UniformGrid::Data::Data(const UniformGrid::Data &o, const std::string &n)
 : UniformGrid::Base::Data(o, n) {
-    numDivisions.construct(3);
-    min.construct(3);
-    max.construct(3);
+
+    initData();
 
     for (int i=0; i<3; ++i) {
         (*min)[i] = (*o.min)[i];
         (*max)[i] = (*o.max)[i];
         (*numDivisions)[i] = (*o.numDivisions)[i];
-
-        ghostLayers[i].construct(2);
     }
 }
 

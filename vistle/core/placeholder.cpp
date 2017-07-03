@@ -23,6 +23,10 @@ bool PlaceHolder::checkImpl() const {
    return true;
 }
 
+void PlaceHolder::Data::initData() {
+   originalType = Object::UNKNOWN;
+}
+
 PlaceHolder::Data::Data(const PlaceHolder::Data &o, const std::string &n)
 : PlaceHolder::Base::Data(o, n)
 , real(o.real)

@@ -406,29 +406,38 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
    return Interpolator(weights, indices);
 }
 
+void StructuredGrid::Data::initData() {
+
+    numDivisions.construct(3);
+
+    for (int i=0; i<3; ++i) {
+        (*numDivisions)[i] = 0;
+        ghostLayers[i].construct(2);
+        (*ghostLayers[i])[0] = (*ghostLayers[i])[1] = 0;
+    }
+}
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
 StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta)
     : StructuredGrid::Base::Data(numVert_x*numVert_y*numVert_z, Object::STRUCTUREDGRID, name, meta)
 {
-    numDivisions.construct(3);
+    initData();
+
     (*numDivisions)[0] = numVert_x;
     (*numDivisions)[1] = numVert_y;
     (*numDivisions)[2] = numVert_z;
-
-    for (int i=0; i<3; ++i) {
-        ghostLayers[i].construct(2);
-    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
 StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n)
-    : StructuredGrid::Base::Data(o, n)
-    , numDivisions(o.numDivisions) {
+    : StructuredGrid::Base::Data(o, n) {
+
+    initData();
 
     for (int c=0; c<3; ++c) {
+        (*numDivisions)[c] = (*o.numDivisions)[c];
         ghostLayers[c] = o.ghostLayers[c];
     }
 }

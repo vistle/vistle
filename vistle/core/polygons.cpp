@@ -25,9 +25,13 @@ bool Polygons::checkImpl() const {
    return true;
 }
 
+void Polygons::Data::initData() {
+}
+
 Polygons::Data::Data(const Polygons::Data &o, const std::string &n)
 : Polygons::Base::Data(o, n)
 {
+   initData();
 }
 
 Polygons::Data::Data(const Index numElements, const Index numCorners,
@@ -36,6 +40,7 @@ Polygons::Data::Data(const Index numElements, const Index numCorners,
    : Polygons::Base::Data(numElements, numCorners, numVertices,
          Object::POLYGONS, name, meta)
 {
+   initData();
 }
 
 

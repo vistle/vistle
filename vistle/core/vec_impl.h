@@ -97,9 +97,14 @@ std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::
 }
 
 template <class T, int Dim>
+void Vec<T,Dim>::Data::initData() {
+}
+
+template <class T, int Dim>
 Vec<T,Dim>::Data::Data(Object::Type id, const std::string &name, const Meta &m)
 : Vec<T,Dim>::Base::Data(id, name, m)
 {
+   initData();
 }
 
 template <class T, int Dim>
@@ -107,6 +112,7 @@ Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
+   initData();
    for (int c=0; c<Dim; ++c)
       x[c].construct(size);
 }
@@ -124,6 +130,8 @@ Vec<T,Dim>::Data::Data(const Index size, Type id, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(id, name, m)
 {
+   initData();
+
    for (int c=0; c<Dim; ++c)
        x[c].construct(size);
 }
@@ -132,6 +140,8 @@ template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const Data &o, const std::string &n, Type id)
     : Vec<T,Dim>::Base::Data(o, n, id==Object::UNKNOWN ? o.type : id)
 {
+   initData();
+
    for (int c=0; c<Dim; ++c)
       x[c] = o.x[c];
 }

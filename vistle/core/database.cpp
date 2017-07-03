@@ -37,6 +37,11 @@ void DataBase::copyAttributes(Object::const_ptr src, bool replace) {
     }
 }
 
+void DataBase::Data::initData() {
+
+    mapping = DataBase::Unspecified;
+}
+
 DataBase::Data::Data(Type id, const std::string &name, const Meta &meta)
    : DataBase::Base::Data(id, name, meta)
    , mapping(DataBase::Unspecified)

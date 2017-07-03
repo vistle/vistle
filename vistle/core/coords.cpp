@@ -31,6 +31,9 @@ std::pair<Vector, Vector> Coords::getBounds() const {
     return getMinMax();
 }
 
+void Coords::Data::initData() {
+}
+
 Coords::Data::Data(const Index numVertices,
       Type id, const std::string &name,
       const Meta &meta)
@@ -38,17 +41,20 @@ Coords::Data::Data(const Index numVertices,
          id, name,
          meta)
 {
+   initData();
 }
 
 Coords::Data::Data(const Coords::Data &o, const std::string &n)
 : Coords::Base::Data(o, n)
 , normals(o.normals)
 {
+   initData();
 }
 
 Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 : Coords::Base::Data(o, n, id)
 {
+   initData();
 }
 
 Coords::Data *Coords::Data::create(const std::string &objId, Type id, const Index numVertices,

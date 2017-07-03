@@ -24,12 +24,19 @@ bool Texture1D::checkImpl() const {
    return true;
 }
 
+void Texture1D::Data::initData() {
+   min = max = 0.f;
+}
+
 Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
 : Texture1D::Base::Data(o, n)
 , min(o.min)
 , max(o.max)
 , pixels(o.pixels)
 {
+   initData();
+   min = o.min;
+   max = o.max;
 }
 
 Texture1D::Data::Data(const std::string &name, const Index width,
@@ -39,6 +46,9 @@ Texture1D::Data::Data(const std::string &name, const Index width,
    , min(mi)
    , max(ma)
 {
+   initData();
+   min = mi;
+   max = ma;
    pixels.construct(width * 4);
 }
 

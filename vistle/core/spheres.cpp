@@ -28,22 +28,28 @@ Index Spheres::getNumSpheres() const {
    return getNumCoords();
 }
 
+void Spheres::Data::initData() {
+}
+
 Spheres::Data::Data(const Index numSpheres,
              const std::string & name,
              const Meta &meta)
    : Spheres::Base::Data(numSpheres,
          Object::SPHERES, name, meta)
 {
+   initData();
 }
 
 Spheres::Data::Data(const Spheres::Data &o, const std::string &n)
 : Spheres::Base::Data(o, n)
 {
+   initData();
 }
 
 Spheres::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 : Spheres::Base::Data(o, n, Object::SPHERES)
 {
+   initData();
 }
 
 Spheres::Data *Spheres::Data::create(const Index numSpheres, const Meta &meta) {

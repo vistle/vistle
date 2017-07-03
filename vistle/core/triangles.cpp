@@ -33,10 +33,14 @@ bool Triangles::checkImpl() const {
    return true;
 }
 
+void Triangles::Data::initData() {
+}
+
 Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
 : Triangles::Base::Data(o, n)
 , cl(o.cl)
 {
+   initData();
 }
 
 Triangles::Data::Data(const Index numCorners, const Index numCoords,
@@ -46,6 +50,7 @@ Triangles::Data::Data(const Index numCorners, const Index numCoords,
          Object::TRIANGLES, name,
          meta)
 {
+   initData();
    cl.construct(numCorners);
 }
 

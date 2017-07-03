@@ -275,26 +275,33 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
 
 }
 
+void RectilinearGrid::Data::initData() {
+
+    for (int c=0; c<3; ++c) {
+        ghostLayers[c].construct(2);
+        (*ghostLayers[c])[0] = (*ghostLayers[c])[1] = 0;
+    }
+}
+
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
 RectilinearGrid::Data::Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string & name, const Meta &meta)
     : RectilinearGrid::Base::Data(Object::RECTILINEARGRID, name, meta) {
+    initData();
     coords[0].construct(numDivX);
     coords[1].construct(numDivY);
     coords[2].construct(numDivZ);
-
-    for (int c=0; c<3; ++c) {
-        ghostLayers[c].construct(2);
-    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
 RectilinearGrid::Data::Data(const RectilinearGrid::Data &o, const std::string &n)
     : RectilinearGrid::Base::Data(o, n) {
+    initData();
     for (int c=0; c<3; ++c) {
         coords[c] = o.coords[c];
-        ghostLayers[c].construct(2);
+        for (int i=0; i<2; ++i)
+            (*ghostLayers[c])[i] = (*o.ghostLayers[c])[i];
     }
 }
 

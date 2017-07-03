@@ -27,6 +27,9 @@ bool CoordsWithRadius::checkImpl() const {
    return true;
 }
 
+void CoordsWithRadius::Data::initData() {
+}
+
 CoordsWithRadius::Data::Data(const Index numCoords,
              Type id,
              const std::string & name,
@@ -34,6 +37,7 @@ CoordsWithRadius::Data::Data(const Index numCoords,
    : CoordsWithRadius::Base::Data(numCoords,
          id, name, meta)
 {
+   initData();
    r.construct(numCoords);
 }
 
@@ -41,11 +45,13 @@ CoordsWithRadius::Data::Data(const CoordsWithRadius::Data &o, const std::string 
 : CoordsWithRadius::Base::Data(o, n)
 , r(o.r)
 {
+   initData();
 }
 
 CoordsWithRadius::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 : CoordsWithRadius::Base::Data(o, n, id)
 {
+    initData();
     r.construct(o.x[0]->size());
 }
 

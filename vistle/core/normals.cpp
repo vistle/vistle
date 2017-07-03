@@ -28,22 +28,28 @@ Index Normals::getNumNormals() const {
    return getSize();
 }
 
+void Normals::Data::initData() {
+}
+
 Normals::Data::Data(const Index numNormals,
              const std::string & name,
              const Meta &meta)
    : Normals::Base::Data(numNormals,
          Object::NORMALS, name, meta)
 {
+   initData();
 }
 
 Normals::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 : Normals::Base::Data(o, n, Object::NORMALS)
 {
+   initData();
 }
 
 Normals::Data::Data(const Normals::Data &o, const std::string &n)
 : Normals::Base::Data(o, n)
 {
+   initData();
 }
 
 Normals::Data *Normals::Data::create(const Index numNormals, const Meta &meta) {

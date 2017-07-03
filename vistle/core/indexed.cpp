@@ -359,6 +359,9 @@ void Indexed::refreshImpl() const {
     m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
 }
 
+void Indexed::Data::initData() {
+}
+
 Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Index numVertices,
              Type id, const std::string & name,
@@ -366,6 +369,7 @@ Indexed::Data::Data(const Index numElements, const Index numCorners,
    : Indexed::Base::Data(numVertices, id, name,
          meta)
 {
+   initData();
    el.construct(numElements+1);
    cl.construct(numCorners);
    (*el)[0] = 0;
@@ -376,6 +380,7 @@ Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
 , el(o.el)
 , cl(o.cl)
 {
+   initData();
 }
 
 Indexed::Data *Indexed::Data::create(const std::string &objId, Type id,

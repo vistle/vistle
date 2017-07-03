@@ -384,6 +384,14 @@ bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
+void Celltree<Scalar, Index, NumDimensions>::Data::initData() {
+
+   m_bounds.construct(2*NumDimensions);
+   m_nodes.construct(1);
+   (*m_nodes)[0] = Node(0, 0);
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::string &n)
 : Celltree::Base::Data(o, n)
 , m_bounds(o.m_bounds)
@@ -396,6 +404,7 @@ template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(Object::Type id, const std::string &name, const Meta &meta)
 : Base::Data(id, name, meta)
 {
+   initData();
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -403,9 +412,9 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, cons
                      const Meta &meta)
 : Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
 {
-   m_bounds.construct(2*NumDimensions);
+   initData();
+
    m_cells.construct(numCells);
-   m_nodes.construct(1);
 
    Index *cells = m_cells->data();
    for (Index i=0; i<numCells; ++i) {
