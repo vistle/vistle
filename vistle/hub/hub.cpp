@@ -588,6 +588,31 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          break;
       }
+      case message::CONNECT: {
+         //CERR << "handling connect: " << msg << std::endl;
+         auto &mm = static_cast<const Connect &>(msg);
+         if (m_isMaster) {
+             if (mm.isNotification()) {
+                 CERR << "discarding notification on master: " << msg << std::endl;
+                 return true;
+             }
+             if (m_stateTracker.handleConnect(mm)) {
+                 handlePriv(mm);
+             } else {
+                 //CERR << "delaying connect: " << msg << std::endl;
+                 m_queue.emplace_back(msg);
+                 return true;
+             }
+         } else {
+             if (mm.isNotification()) {
+                 sendManager(mm);
+                 sendUi(mm);
+             } else {
+                 sendMaster(mm);
+             }
+         }
+         break;
+      }
       default:
          break;
    }
@@ -767,6 +792,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             }
             break;
          }
+
          case message::QUIT: {
 
             std::cerr << "hub: got quit: " << msg << std::endl;
@@ -824,6 +850,27 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
+         case message::ADDPORT:
+         case message::DISCONNECT:
+         {
+             //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
+             decltype (m_queue) queue;
+             for (auto &m: m_queue) {
+                 if (m.type() == message::CONNECT) {
+                     auto &mm = m.as<Connect>();
+                     if (m_stateTracker.handleConnect(mm)) {
+                         handlePriv(mm);
+                     } else {
+                         queue.push_back(m);
+                     }
+                 } else {
+                     std::cerr << "message other than Connect in queue: " << m << std::endl;
+                     queue.push_back(m);
+                 }
+             }
+             std::swap(m_queue, queue);
+             break;
+         }
          default: {
             break;
          }
@@ -1132,7 +1179,18 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
 
 bool Hub::handlePriv(const message::RequestTunnel &tunnel) {
 
-   return m_tunnelManager.processRequest(tunnel);
+    return m_tunnelManager.processRequest(tunnel);
+}
+
+bool Hub::handlePriv(const message::Connect &conn) {
+
+    message::Connect c(conn);
+    c.setNotify(true);
+    sendUi(c);
+    sendManager(c);
+    sendSlaves(c);
+
+    return true;
 }
 
 int main(int argc, char *argv[]) {

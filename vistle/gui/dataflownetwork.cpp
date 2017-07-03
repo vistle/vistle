@@ -194,7 +194,7 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
       qDebug() << "already have connection";
       c = it->second;
    } else {
-      qDebug() << "new connection";
+      //qDebug() << "new connection";
       c = new Connection(portFrom, portTo, sendToController ? Connection::ToEstablish : Connection::Established);
       m_connections[key] = c;
       addItem(c);

@@ -707,6 +707,16 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
 bool ClusterManager::handlePriv(const message::Connect &connect) {
 
+    if (connect.isNotification()) {
+        m_stateTracker.handle(connect);
+        int modFrom = connect.getModuleA();
+        int modTo = connect.getModuleB();
+        sendMessage(modFrom, connect);
+        sendMessage(modTo, connect);
+    } else {
+        sendHub(connect);
+    }
+#if 0
    int modFrom = connect.getModuleA();
    int modTo = connect.getModuleB();
    const char *portFrom = connect.getPortAName();
@@ -731,6 +741,7 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
    } else {
       return false;
    }
+#endif
    return true;
 }
 
@@ -982,8 +993,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
-      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      vassert(port);
+      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      //vassert(port);
       return true;
    }
    const Port::ConstPortSet *list = portManager().getConnectionList(port);

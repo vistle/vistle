@@ -653,6 +653,15 @@ bool StateTracker::handlePriv(const message::Started &started) {
    return true;
 }
 
+bool StateTracker::handleConnect(const message::Connect &connect) {
+
+    if (!handlePriv(connect)) {
+        m_queue.emplace_back(connect);
+        return false;
+    }
+    return true;
+}
+
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
    ++m_graphChangeCount;

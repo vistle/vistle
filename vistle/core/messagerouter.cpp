@@ -29,13 +29,13 @@ void Router::initRoutingTable() {
    rt[EXECUTE]               = Special|HandleOnMaster;
    rt[CANCELEXECUTE]         = Special|HandleOnMaster;
    rt[MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
-   rt[ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0|HandleOnMaster;
    rt[REMOVEPORT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
    rt[REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
-   rt[CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
-   rt[DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
+   rt[CONNECT]               = Special;
+   rt[DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0|HandleOnMaster;
    rt[SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
    rt[PING]                  = DestManager|DestModules|HandleOnDest;
    rt[PONG]                  = DestUi|HandleOnDest;
