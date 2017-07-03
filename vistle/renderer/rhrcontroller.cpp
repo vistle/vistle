@@ -68,7 +68,8 @@ bool RhrController::initializeServer() {
        m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
    }
 
-   m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
+   if (!m_rhr)
+       m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
 
    m_rhr->setDepthPrecision(m_prec);
    m_rhr->enableDepthZfp(m_zfp);
