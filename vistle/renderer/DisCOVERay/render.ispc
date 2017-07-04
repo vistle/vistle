@@ -124,8 +124,38 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 ambientColor.x *= ambientFactor;
                 ambientColor.y *= ambientFactor;
                 ambientColor.z *= ambientFactor;
-                const Vec3f Ng = make_Vec3f(ray.Ngx,ray.Ngy,ray.Ngz);
-                Vec3f normal = normalize(Ng);
+                Vec3f normal;
+                if (ro->normals[0]) {
+                    const float &u = ray.u;
+                    const float &v = ray.v;
+                    const float w = 1.f - u - v;
+                    if (ro->normalsPerPrimitiveMapping) {
+                        if (ro->indexBuffer) {
+                            const unsigned int idx = ro->indexBuffer[ray.primID].elem;
+                            normal = normalize(make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]));
+                        } else {
+                            const unsigned int idx = ray.primID;
+                            normal = normalize(make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]));
+                        }
+                    } else if (ro->indexBuffer) {
+                        const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
+                        const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
+                        const unsigned int v2 = ro->indexBuffer[ray.primID].v2;
+                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
+                        const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
+                        normal = normalize(w*n0 + u*n1 + v*n2);
+                    } else {
+                        const unsigned int v0 = ray.primID;
+                        const unsigned int v1 = ray.primID + 1;
+                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
+                        normal = normalize(w*n0 + u*n1);
+                    }
+                } else {
+                    const Vec3f Ng = make_Vec3f(ray.Ngx,ray.Ngy,ray.Ngz);
+                    normal = normalize(Ng);
+                }
                 if (twoSided && dot(normal, dir) > 0.f)
                     normal = neg(normal);
 

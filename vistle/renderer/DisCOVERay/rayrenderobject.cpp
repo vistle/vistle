@@ -41,6 +41,10 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    data->lighted = 1;
    data->hasSolidColor = hasSolidColor;
    data->perPrimitiveMapping = 0;
+   data->normalsPerPrimitiveMapping = 0;
+   for (int c=0; c<3; ++c) {
+       data->normals[c] = nullptr;
+   }
    for (int c=0; c<4; ++c) {
       data->solidColor[c] = solidColor[c];
    }
@@ -52,13 +56,13 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       data->texData = this->texture->pixels().data();
       data->texCoords = &this->texture->coords()[0];
    }
-
    if (geometry->isEmpty()) {
       return;
    }
 
    data->scene = rtcDeviceNewScene(data->device, RTC_SCENE_STATIC|sceneFlags, intersections);
 
+   bool useNormals = true;
    if (auto tri = Triangles::as(geometry)) {
 
       Index numElem = tri->getNumElements();
@@ -138,6 +142,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       vassert(t == ntri);
       rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
    } else if (auto sph = Spheres::as(geometry)) {
+      useNormals = false;
 
       Index nsph = sph->getNumSpheres();
       //std::cerr << "Spheres: #sph: " << nsph << std::endl;
@@ -207,6 +212,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       data->lighted = 0;
       data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints-1);
    } else if (auto tube = Tubes::as(geometry)) {
+      useNormals= false;
 
       Index nStrips = tube->getNumTubes();
       Index nPoints = tube->getNumCoords();
@@ -275,6 +281,16 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       }
       vassert(idx == nPoints);
       data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints > 0 ? nPoints-1 : 0);
+   }
+
+   if (this->normals && useNormals) {
+
+      if (this->normals->guessMapping(geometry) == DataBase::Element)
+         data->normalsPerPrimitiveMapping = 1;
+
+      for (int c=0; c<3; ++c) {
+          data->normals[c] = &this->normals->x(c)[0];
+      }
    }
 
    rtcCommit(data->scene);

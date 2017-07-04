@@ -37,6 +37,8 @@ struct RenderObjectData {
    unsigned int texWidth; //!< size of 1D texture (color table size)
    const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
    const float *texCoords; //!< 1D texture coordinates (mapped data)
+   unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
+   const float *normals[3]; //!< normals
 };
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);
