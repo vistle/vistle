@@ -37,6 +37,7 @@ struct RenderObjectData {
    unsigned int texWidth; //!< size of 1D texture (color table size)
    const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
    const float *texCoords; //!< 1D texture coordinates (mapped data)
+   Vec3f normalTransform[3]; //!< how normals are to be transformed
    unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
    const float *normals[3]; //!< normals
 };

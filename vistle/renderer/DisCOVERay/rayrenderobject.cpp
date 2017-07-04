@@ -43,6 +43,11 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    data->perPrimitiveMapping = 0;
    data->normalsPerPrimitiveMapping = 0;
    for (int c=0; c<3; ++c) {
+       data->normalTransform[c].x = c==0 ? 1 : 0;
+       data->normalTransform[c].y = c==1 ? 1 : 0;
+       data->normalTransform[c].z = c==2 ? 1 : 0;
+   }
+   for (int c=0; c<3; ++c) {
        data->normals[c] = nullptr;
    }
    for (int c=0; c<4; ++c) {

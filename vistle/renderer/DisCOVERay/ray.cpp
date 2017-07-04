@@ -614,6 +614,12 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
       for (int i=0; i<16; ++i) {
           transform[i] = geoTransform(i%4, i/4);
       }
+      auto inv = geoTransform.inverse().transpose();
+      for (int c=0; c<3; ++c) {
+          rod->normalTransform[c].x = inv(c,0);
+          rod->normalTransform[c].y = inv(c,1);
+          rod->normalTransform[c].z = inv(c,2);
+      }
       rtcSetTransform2(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, transform, 0);
       if (t == -1 || size_t(t) == m_timestep) {
          rtcEnable(m_scene, rod->instId);
