@@ -122,9 +122,10 @@ private:
    bool connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
    void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
    bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
-   bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote);
+   bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote, bool updateOnly=false);
    void fillMatricesMessage(matricesMsg &msg, int channel, int view, bool second=false);
    std::vector<matricesMsg> m_oldMatrices;
+   lightsMsg m_oldLights;
 
    //! server connection
    asio::io_service m_io;

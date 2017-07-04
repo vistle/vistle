@@ -576,7 +576,7 @@ bool RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, st
 }
 
 //! send lighting parameters to server
-bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
+bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote, bool updateOnly) {
 
    if (!remote)
       return false;
@@ -635,7 +635,12 @@ bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
 #undef COPY_VEC
    }
 
-   return remote->send(msg);
+   if (!updateOnly || msg != m_oldLights) {
+       m_oldLights = msg;
+       return remote->send(msg);
+   }
+
+   return true;
 }
 
 //! Task structure for submitting to Intel Threading Building Blocks work //queue
@@ -1353,8 +1358,10 @@ RhrClient::preFrame()
        clientCleanup(m_remote);
    }
 
+   bool needUpdate = false;
    bool connected = coVRMSController::instance()->syncBool(m_remote && m_remote->isConnected());
    if (m_haveConnection != connected) {
+       needUpdate = true;
        if (connected)
            cover->getScene()->addChild(m_drawer);
        else
@@ -1411,7 +1418,8 @@ RhrClient::preFrame()
    int ntiles = 0;
    {
        if (coVRMSController::instance()->isMaster()) {
-           bool sendUpdate = false;
+           sendLightsMessage(m_remote, !needUpdate);
+           bool sendUpdate = needUpdate;
            {
                bool changed = messages.size() != m_oldMatrices.size();
                for (size_t i=0; !changed && i<messages.size(); ++i) {
@@ -1437,7 +1445,6 @@ RhrClient::preFrame()
                if (m_requestedTimestep != -1) {
                    m_remote->requestTimestep(m_requestedTimestep);
                }
-               sendLightsMessage(m_remote);
                sendMatricesMessage(m_remote, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
                std::swap(m_oldMatrices, messages);

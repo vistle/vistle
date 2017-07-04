@@ -143,6 +143,37 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
 
          attenuation[0] = 1;
       }
+
+      bool operator!=(const Light &o) {
+
+          if (enabled != o.enabled)
+              return true;
+
+          for (int i=0; i<4; ++i) {
+              if (position[i] != o.position[i])
+                  return true;
+              if (ambient[i] != o.ambient[i])
+                  return true;
+              if (diffuse[i] != o.diffuse[i])
+                  return true;
+              if (specular[i] != o.specular[i])
+                  return true;
+          }
+
+          for (int i=0; i<3; ++i) {
+              if (spot_direction[i] != o.spot_direction[i])
+                  return true;
+              if (attenuation[i] != o.attenuation[i])
+                  return true;
+          }
+
+          if (spot_cutoff != o.spot_cutoff)
+              return true;
+          if (spot_exponent != o.spot_exponent)
+              return true;
+
+          return false;
+      }
    };
 
    int16_t viewNum; //!< number of window that these lights apply to
@@ -150,6 +181,16 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
 
    //! all light sources
    Light lights[NumLights];
+
+   bool operator!=(const lightsMsg &o) {
+       if (viewNum != o.viewNum)
+           return true;
+       for (int i=0; i<NumLights; ++i) {
+           if (lights[i] != o.lights[i])
+               return true;
+       }
+       return false;
+   }
 };
 static_assert(sizeof(lightsMsg) < RhrMessageSize, "RHR message too large");
 

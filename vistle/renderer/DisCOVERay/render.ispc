@@ -185,7 +185,7 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                             const Vec3f halfway = normalize(lv-dir);
                             const float hdot = max(0.f, dot(normal, halfway));
                             if (hdot > 0.f) {
-                                //shaded = shaded + specColor * atten * powf(hdot, specExp) * light.specular;
+                                shaded = shaded + specColor * atten * powf(hdot, specExp) * light.specular;
                             }
                         }
                     }
