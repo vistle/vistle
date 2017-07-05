@@ -238,18 +238,21 @@ bool Extrema::compute() {
    if (auto str = StructuredGridBase::as(obj)) {
        auto mm = str->getBounds();
        auto t = obj->getTransform();
-       mm.first = transformPoint(t, mm.first);
-       mm.second = transformPoint(t, mm.second);
+       Vector3 corner[2];
+       corner[0] = transformPoint(t, mm.first);
+       corner[1] = transformPoint(t, mm.second);
        for (int c=0; c<3; ++c) {
-           if (mm.first[c] < min[c]) {
-               min[c] = mm.first[c];
-               minIndex[c] = InvalidIndex;
-               minBlock[c] = obj->getBlock();
-           }
-           if (mm.second[c] > max[c]) {
-               max[c] = mm.second[c];
-               maxIndex[c] = InvalidIndex;
-               maxBlock[c] = obj->getBlock();
+           for (int i=0; i<2; ++i) {
+               if (corner[i][c] < min[c]) {
+                   min[c] = corner[i][c];
+                   minIndex[c] = InvalidIndex;
+                   minBlock[c] = obj->getBlock();
+               }
+               if (corner[i][c] > max[c]) {
+                   max[c] = corner[i][c];
+                   maxIndex[c] = InvalidIndex;
+                   maxBlock[c] = obj->getBlock();
+               }
            }
        }
        min.dim = 3;
