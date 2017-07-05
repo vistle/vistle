@@ -13,6 +13,7 @@
 #include <map>
 #include <cctype>
 #include <fstream>
+#include <algorithm>
 
 #include <cstdlib>
 
@@ -161,7 +162,12 @@ ReadItlrBin::ReadItlrBin(const std::string &shmname, const std::string &name, in
     , m_dims{0,0,0} {
 
     m_gridFilename = addStringParameter("grid_filename", ".bin file for grid", "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin");
-    m_filename = addStringParameter("filename", ".lst or .bin file for data", "/data/itlr/itlmer-Case11114_VISUS/funs.lst");
+    for (int i=0; i<NumPorts; ++i) {
+        if (i == 0)
+            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "/data/itlr/itlmer-Case11114_VISUS/funs.lst");
+        else
+            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "");
+    }
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
     setParameterRange(m_numPartitions, (Integer)-1, std::numeric_limits<Integer>::max());
@@ -174,7 +180,9 @@ ReadItlrBin::ReadItlrBin(const std::string &shmname, const std::string &name, in
     m_stepSkip = addIntParameter("skip_step", "number of steps to skip", 99);
     setParameterRange(m_stepSkip, (Integer)0, std::numeric_limits<Integer>::max());
 
-    m_dataOut = createOutputPort("data", "data output");
+    for (int i=0; i<NumPorts; ++i) {
+        m_dataOut[i] = createOutputPort("data"+std::to_string(i), "data output");
+    }
 }
 
 ReadItlrBin::~ReadItlrBin() {
@@ -400,17 +408,41 @@ bool ReadItlrBin::compute() {
     auto grids = readGridBlocks(gridFile, m_nparts);
     assert(grids.size() == m_nparts);
 
-    std::string scalarFile = m_filename->getValue();
-    std::vector<std::string> fileList{scalarFile};
+    std::string scalarFile[NumPorts];
+    std::vector<std::string> fileList[NumPorts];
+    filesystem::path directory[NumPorts];
+    int numFiles = -1;
     bool haveListFile = false;
-    if (boost::algorithm::ends_with(scalarFile, ".lst")) {
-        fileList = readListFile(scalarFile);
-        haveListFile = true;
-    }
-    filesystem::path listFilePath(scalarFile);
-    auto directory = listFilePath.parent_path();
+    for (int port=0; port<NumPorts; ++port) {
+        scalarFile[port] = m_filename[port]->getValue();
+        if (scalarFile[port].empty())
+            continue;
 
-    int numFiles = fileList.size() > 1 ? fileList.size() : -1;
+        fileList[port].push_back(scalarFile[port]);
+        bool haveList = false;
+        if (boost::algorithm::ends_with(scalarFile[port], ".lst")) {
+            fileList[port] = readListFile(scalarFile[port]);
+            haveList = true;
+        }
+        filesystem::path listFilePath(scalarFile[port]);
+        directory[port] = listFilePath.parent_path();
+
+        if (numFiles < 0) {
+            haveListFile = haveList;
+        } else {
+            if (haveList != haveListFile) {
+                sendError("Selection of a .bin or a .list file has to match on all ports");
+                return true;
+            }
+        }
+
+        if (numFiles < 0) {
+            numFiles = fileList[port].size();
+        } else {
+            numFiles = std::min<int>(numFiles, fileList[port].size());
+        }
+    }
+
     int first = m_firstStep->getValue();
     int inc = m_stepSkip->getValue()+1;
     int last = m_lastStep->getValue();
@@ -424,24 +456,29 @@ bool ReadItlrBin::compute() {
         inc = 1;
     }
     for (int idx = first; idx <= last; idx += inc) {
-        auto file = fileList[idx];
-        filesystem::path filename;
-        if (haveListFile) {
-            filename = directory;
-            filename.append(file);
-        } else {
-            filename = fileList[idx];
-        }
         for (int block=0; block<m_nparts; ++block) {
             if (rankForBlockAndTimestep(block, step) == rank()) {
-                auto scal = readFieldBlock(filename.string(), block);
-                if (scal) {
-                    scal->setGrid(grids[block]);
-                    if (numSteps > 1) {
-                        scal->setTimestep(step);
-                        scal->setNumTimesteps(numSteps);
+                for (int port=0; port<NumPorts; ++port) {
+                    if (scalarFile[port].empty())
+                        continue;
+                    auto file = fileList[port][idx];
+                    filesystem::path filename;
+                    if (haveListFile) {
+                        filename = directory[port];
+                        filename.append(file);
+                    } else {
+                        filename = fileList[port][idx];
                     }
-                    addObject(m_dataOut, scal);
+
+                    auto scal = readFieldBlock(filename.string(), block);
+                    if (scal) {
+                        scal->setGrid(grids[block]);
+                        if (numSteps > 1) {
+                            scal->setTimestep(step);
+                            scal->setNumTimesteps(numSteps);
+                        }
+                        addObject(m_dataOut[port], scal);
+                    }
                 }
             }
         }

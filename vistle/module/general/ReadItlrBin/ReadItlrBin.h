@@ -14,6 +14,8 @@ class ReadItlrBin: public vistle::Module {
    ~ReadItlrBin();
 
 private:
+   static const int NumPorts = 3;
+
    bool changeParameter(const vistle::Parameter *p) override;
    bool compute() override;
    int rankForBlockAndTimestep(int block, int timestep);
@@ -22,10 +24,10 @@ private:
    std::vector<std::string> readListFile(const std::string &filename) const;
    vistle::DataBase::ptr readFieldBlock(const std::string &filename, int part) const;
 
-   vistle::StringParameter *m_gridFilename, *m_filename;
+   vistle::StringParameter *m_gridFilename, *m_filename[NumPorts];
    vistle::IntParameter *m_numPartitions, *m_distributeTimesteps;
    vistle::IntParameter *m_firstStep, *m_lastStep, *m_stepSkip;
-   vistle::Port *m_dataOut;
+   vistle::Port *m_dataOut[NumPorts];
 
    int m_nparts;
    vistle::Index m_dims[3];
