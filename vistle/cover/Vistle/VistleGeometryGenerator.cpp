@@ -323,6 +323,14 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             }
          }
 
+         if (m_ro->hasSolidColor) {
+             const auto &c = m_ro->solidColor;
+             osg::Vec4Array *colArray = new osg::Vec4Array();
+             colArray->push_back(osg::Vec4(c[0], c[1], c[2], c[3]));
+             geom->setColorArray(colArray);
+             geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+         }
+
          state->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
          state->setAttributeAndModes(new osg::LineWidth(2.f), osg::StateAttribute::ON);
 

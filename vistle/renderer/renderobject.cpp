@@ -26,9 +26,15 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
    bMin = Vector(smax, smax, smax);
    bMax = Vector(-smax, -smax, -smax);
 
+   std::string color;
    if (geometry && geometry->hasAttribute("_color")) {
+       color = geometry->getAttribute("_color");
+   } else if (container && container->hasAttribute("_color")) {
+       color = container->getAttribute("_color");
+   }
 
-      std::stringstream str(geometry->getAttribute("_color"));
+   if (!color.empty()) {
+      std::stringstream str(color);
       char ch;
       str >> ch;
       if (ch == '#') {
