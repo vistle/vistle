@@ -267,7 +267,8 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
     for (int i=0; i<3; ++i) {
         m_dims[i] = coords[i].size();
     }
-    sendInfo("grid dimensions: %d %d %d", (int)m_dims[0], (int)m_dims[1], (int)m_dims[2]);
+    if (rank() == 0)
+       sendInfo("grid dimensions: %d %d %d", (int)m_dims[0], (int)m_dims[1], (int)m_dims[2]);
 
     for (int part=0; part<nparts; ++part) {
         auto b = computeBlock(part);
