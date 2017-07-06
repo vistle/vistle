@@ -381,13 +381,15 @@ void Renderer::getBounds(Vector &min, Vector &max, int t) {
          for (int c=0; c<3; ++c) {
             bounds[0][c] = ro->bMin[c];
             bounds[1][c] = ro->bMax[c];
+#if 0
             Matrix4 T = Matrix4::Identity();
             if (ro->geometry) {
                 T = ro->geometry->getTransform();
             }
+#endif
 
             for (int i=0; i<2; ++i) {
-                bounds[i] = transformPoint(T, bounds[i]);
+                //bounds[i] = transformPoint(T, bounds[i]);
                 if (bounds[i][c] < min[c])
                     min[c] = bounds[i][c];
                 if (bounds[i][c] > max[c])
