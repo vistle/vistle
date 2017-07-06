@@ -723,9 +723,9 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
 
    if (m_stateTracker.handle(c)) {
       // inform modules about connections
+       sendMessage(modFrom, c);
+       sendMessage(modTo, c);
       if (Communicator::the().isMaster()) {
-         sendMessage(modFrom, c);
-         sendMessage(modTo, c);
          sendUi(c);
       }
    } else {
@@ -761,9 +761,10 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    
    if (m_stateTracker.handle(d)) {
 
+       sendMessage(modFrom, d);
+       sendMessage(modTo, d);
+
        if (Communicator::the().isMaster()) {
-         sendMessage(modFrom, d);
-         sendMessage(modTo, d);
          sendUi(d);
       }
    } else {
