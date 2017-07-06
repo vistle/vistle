@@ -559,6 +559,8 @@ ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
 
    m_broadcast = true;
 
+   setSenderId(add.senderId());
+
    std::string port(add.getSenderPort());
    COPY_STRING(senderPort, port);
    COPY_STRING(portName, p);

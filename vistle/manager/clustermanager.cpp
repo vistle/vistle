@@ -1059,7 +1059,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
           || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
          message::ObjectReceived recv(addObj, addObj.getDestPort());
          recv.setUuid(addObj.uuid());
-         recv.setSenderId(destId);
+         recv.setDestId(destId);
 
          if (!Communicator::the().broadcastAndHandleMessage(recv))
             return false;
