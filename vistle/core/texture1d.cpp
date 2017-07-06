@@ -20,8 +20,9 @@ bool Texture1D::isEmpty() const {
 
 bool Texture1D::checkImpl() const {
 
-   //V_CHECK (d()->min <= d()->max);
-   return true;
+    V_CHECK(d()->pixels);
+    //V_CHECK (d()->min <= d()->max);
+    return true;
 }
 
 void Texture1D::Data::initData() {
