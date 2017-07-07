@@ -112,13 +112,14 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	std::string vistleplugin = bindir + "/../../../" + env["ARCHSUFFIX"] + "/lib/OpenCOVER/plugins/";
+    //std::string vistleplugin = bindir + "/../../../" + env["ARCHSUFFIX"] + "/lib/OpenCOVER/plugins/";
+    std::string vistleplugin;
 #ifdef __APPLE__
-	vistleplugin += "libVistlePlugin.so";
+	vistleplugin += "libVistle.so";
 #elif WIN32
-	vistleplugin += "VistlePlugin.dll";
+	vistleplugin += "Vistle.dll";
 #else
-	vistleplugin += "libVistlePlugin.so";
+	vistleplugin += "libVistle.so";
 #endif
 #ifdef _WIN32
 	std::cerr << "Vistle plugin: " << vistleplugin << std::endl;

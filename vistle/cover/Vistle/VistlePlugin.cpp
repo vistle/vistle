@@ -541,12 +541,13 @@ VistlePlugin::~VistlePlugin() {
 
 bool VistlePlugin::init() {
 
-   VRMenu *covise = VRPinboard::instance()->namedMenu("COVISE");
+   std::string visMenu = getName();
+   VRMenu *covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
    if (!covise)
    {
-      VRPinboard::instance()->addMenu("COVISE", VRPinboard::instance()->mainMenu->getCoMenu());
-      covise = VRPinboard::instance()->namedMenu("COVISE");
-      cover->addSubmenuButton("COVISE...", NULL, "COVISE", false, NULL, -1, this);
+      VRPinboard::instance()->addMenu(visMenu.c_str(), VRPinboard::instance()->mainMenu->getCoMenu());
+      covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
+      cover->addSubmenuButton((visMenu+"...").c_str(), NULL, visMenu.c_str(), false, NULL, -1, this);
    }
    vrui::coMenu *coviseMenu = covise->getCoMenu();
    executeButton = new vrui::coButtonMenuItem("Execute");
