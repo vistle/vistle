@@ -44,7 +44,7 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 , m_currentView(-1)
 , m_frameComplete(true)
 {
-   m_continuousRendering = m_module->addIntParameter("continuous_rendering", "render even though nothing has changed", 1, Parameter::Boolean);
+   m_continuousRendering = m_module->addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_delay = m_module->addFloatParameter("delay", "artificial delay (s)", m_delaySec);
    m_module->setParameterRange(m_delay, 0., 3.);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
