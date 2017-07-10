@@ -58,6 +58,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_referrer(boost::uuids::nil_generator()())
 , m_payloadSize(0)
 , m_broadcast(false)
+, m_notification(false)
 {
 
    vassert(m_size <= MESSAGE_SIZE);
@@ -157,6 +158,16 @@ bool Message::isBroadcast() const {
 
 void Message::setBroadcast(bool enable) {
     m_broadcast = enable;
+}
+
+bool Message::isNotification() const {
+
+    return m_notification;
+}
+
+void Message::setNotify(bool enable) {
+
+    m_notification = enable;
 }
 
 } // namespace message

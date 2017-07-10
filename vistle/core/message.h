@@ -148,6 +148,10 @@ class V_COREEXPORT Message {
    bool isBroadcast() const;
    //! mark message for broadcast to all ranks on destination
    void setBroadcast(bool enable=true);
+   //! message is not a request for action, just a notification that an action has been taken
+   bool isNotification() const;
+   //! mark message as notification
+   void setNotify(bool enable);
 
    //! id of message destination
    int destId() const;
@@ -188,6 +192,8 @@ class V_COREEXPORT Message {
    uint64_t m_payloadSize;
    //! broadcast to all ranks?
    bool m_broadcast;
+   //! message is not a request for action
+   bool m_notification;
 };
 
 class V_COREEXPORT Buffer: public Message {

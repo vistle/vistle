@@ -593,7 +593,7 @@ Object::Type ObjectReceived::objectType() const {
 
 Connect::Connect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
-   : moduleA(moduleIDA), moduleB(moduleIDB), m_notification(false) {
+   : moduleA(moduleIDA), moduleB(moduleIDB) {
 
         COPY_STRING(portAName, portA);
         COPY_STRING(portBName, portB);
@@ -623,16 +623,6 @@ void Connect::reverse() {
 
    std::swap(moduleA, moduleB);
    std::swap(portAName, portBName);
-}
-
-bool Connect::isNotification() const {
-
-    return m_notification;
-}
-
-void Connect::setNotify(bool enable) {
-
-    m_notification = enable;
 }
 
 Disconnect::Disconnect(const int moduleIDA, const std::string & portA,

@@ -410,17 +410,12 @@ class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT> {
 
    void reverse(); //! swap source and destination
 
-   bool isNotification() const;
-   void setNotify(bool enable);
-
  private:
    port_name_t portAName;
    port_name_t portBName;
 
    int moduleA;
    int moduleB;
-
-   bool m_notification;
 };
 static_assert(sizeof(Connect) <= Message::MESSAGE_SIZE, "message too large");
 
