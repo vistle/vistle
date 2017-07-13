@@ -73,6 +73,14 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
    //std::cerr << "SHM_NAME_T load: '" << name.data() << "'" << std::endl;
 }
 
+#ifdef NO_SHMEM
+#else
+template<typename T>
+typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
+    return Shm::the().shm().construct<T>(name.c_str());
+}
+#endif
+
 } // namespace vistle
 
 #endif

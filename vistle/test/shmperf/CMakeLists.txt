@@ -1,3 +1,7 @@
+if(NOT VISTLE_USE_SHARED_MEMORY)
+   return()
+endif()
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}

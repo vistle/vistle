@@ -58,7 +58,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const {
    if (m_celltree)
        return m_celltree;
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
    if (!hasAttachment("celltree")) {
       refresh();
       createCelltree(getNumElements(), &el()[0], &cl()[0]);
@@ -139,7 +139,7 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
    if (m_vertexOwnerList)
        return m_vertexOwnerList;
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
    if (!hasAttachment("vertexownerlist")) {
       refresh();
       createVertexOwnerList();

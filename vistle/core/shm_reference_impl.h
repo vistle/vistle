@@ -64,12 +64,20 @@ const T &shm_ref<T>::operator*() const {
 
 template<class T>
 T *shm_ref<T>::operator->() {
+#ifdef NO_SHMEM
+    return m_p;
+#else
     return m_p.get();
+#endif
 }
 
 template<class T>
 const T *shm_ref<T>::operator->() const {
+#ifdef NO_SHMEM
+    return m_p;
+#else
     return m_p.get();
+#endif
 }
 
 template<class T>

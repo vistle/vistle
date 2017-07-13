@@ -5,9 +5,14 @@
 #include <util/sysdep.h>
 #include <memory>
 
+#ifdef NO_SHMEM
+#include <map>
+#include <string>
+#else
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#endif
 #include <boost/interprocess/exceptions.hpp>
 
 #include <boost/serialization/access.hpp>
@@ -31,7 +36,10 @@ namespace vistle {
 
 namespace interprocess = boost::interprocess;
 
+#ifdef NO_SHMEM
+#else
 typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
+#endif
 
 class oarchive;
 class iarchive;
@@ -210,7 +218,13 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(Object)
 struct ObjectData {
     Object::Type type;
     shm_name_t name;
+#ifdef NO_SHMEM
+    mutable std::mutex ref_mutex; //< protects refcount
+    typedef std::lock_guard<std::mutex> ref_mutex_lock_type;
+#else
     mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
+    typedef std::lock_guard<boost::interprocess::interprocess_mutex> ref_mutex_lock_type;
+#endif
     mutable int refcount;
 
     int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
@@ -222,7 +236,11 @@ struct ObjectData {
     typedef shm<Attribute>::vector AttributeList;
     typedef std::pair<const Key, AttributeList> AttributeMapValueType;
     typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
+#ifdef NO_SHMEM
+    typedef std::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
+#else
     typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
+#endif
     AttributeMap attributes;
     void addAttribute(const std::string &key, const std::string &value = "");
     void setAttributeList(const std::string &key, const std::vector<std::string> &values);
@@ -232,11 +250,22 @@ struct ObjectData {
     std::vector<std::string> getAttributes(const std::string &key) const;
     std::vector<std::string> getAttributeList() const;
 
+#ifdef NO_SHMEM
+    mutable std::recursive_mutex attachment_mutex;
+    typedef std::lock_guard<std::recursive_mutex> attachment_mutex_lock_type;
+    typedef const ObjectData *Attachment;
+#else
     mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
-    typedef interprocess::offset_ptr<ObjectData> Attachment;
+    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> attachment_mutex_lock_type;
+    typedef interprocess::offset_ptr<const ObjectData> Attachment;
+#endif
     typedef std::pair<const Key, Attachment> AttachmentMapValueType;
     typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
+#ifdef NO_SHMEM
+    typedef std::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
+#else
     typedef interprocess::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
+#endif
     AttachmentMap attachments;
     bool addAttachment(const std::string &key, Object::const_ptr att);
     void copyAttachments(const ObjectData *src, bool replace);
@@ -247,10 +276,12 @@ struct ObjectData {
     V_COREEXPORT ObjectData(Object::Type id = Object::UNKNOWN, const std::string &name = "", const Meta &m=Meta());
     V_COREEXPORT ObjectData(const ObjectData &other, const std::string &name, Object::Type id=Object::UNKNOWN); //! shallow copy, except for attributes
     V_COREEXPORT ~ObjectData();
+#ifndef NO_SHMEM
     V_COREEXPORT void *operator new(size_t size);
     V_COREEXPORT void *operator new (std::size_t size, void* ptr);
     V_COREEXPORT void operator delete(void *ptr);
     V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
+#endif
     V_COREEXPORT void ref() const;
     V_COREEXPORT void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);

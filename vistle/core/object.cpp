@@ -130,7 +130,7 @@ const char *Object::toString(Type v) {
     return buf;
 }
 
-Object::ptr Object::create(Object::Data *data) {
+Object::ptr Object::create(Data *data) {
 
    if (!data)
       return Object::ptr();
@@ -145,7 +145,11 @@ bool Object::isComplete() const {
 void Object::publish(const Object::Data *d) {
 
 #if defined(SHMDEBUG) || defined(SHMPUBLISH)
+#ifdef NO_SHMEM
+   shm_handle_t handle = (void *)d;
+#else
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(d);
+#endif
 #else
    (void)d;
 #endif
@@ -187,7 +191,7 @@ ObjectData::~ObjectData() {
 
    //std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
 
-    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+    attachment_mutex_lock_type lock(attachment_mutex);
     for (auto &objd: attachments) {
         // referenced in addAttachment
         objd.second->unref();
@@ -196,7 +200,7 @@ ObjectData::~ObjectData() {
 
 bool Object::Data::isComplete() const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(ref_mutex);
+   ref_mutex_lock_type lock(ref_mutex);
    // a reference is only established upon return from Object::load
    return refcount>0 && unresolvedReferences==0;
 }
@@ -210,6 +214,7 @@ void Object::Data::referenceResolved(const std::function<void()> &completeCallba
     }
 }
 
+#ifndef NO_SHMEM
 void *Object::Data::operator new(size_t size) {
    return Shm::the().shm().allocate(size);
 }
@@ -225,6 +230,7 @@ void Object::Data::operator delete(void *p) {
 void Object::Data::operator delete(void *p, void *voidp2) {
    return Shm::the().shm().deallocate(p);
 }
+#endif
 
 
 ObjectData *ObjectData::create(Object::Type id, const std::string &objId, const Meta &m) {
@@ -349,7 +355,7 @@ void instantiate_all_io(Object::const_ptr obj) {
 }
 
 void ObjectData::ref() const {
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(ref_mutex);
+   ref_mutex_lock_type lock(ref_mutex);
    ++refcount;
 }
 
@@ -640,7 +646,7 @@ bool Object::removeAttachment(const std::string &key) const {
 
 bool Object::Data::hasAttachment(const std::string &key) const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+   attachment_mutex_lock_type lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::const_iterator it = attachments.find(skey);
    return it != attachments.end();
@@ -648,18 +654,18 @@ bool Object::Data::hasAttachment(const std::string &key) const {
 
 Object::const_ptr ObjectData::getAttachment(const std::string &key) const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+   attachment_mutex_lock_type lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::const_iterator it = attachments.find(skey);
    if (it == attachments.end()) {
       return Object::ptr();
    }
-   return Object::create(it->second.get());
+   return Object::create(const_cast<Object::Data *>(&*it->second));
 }
 
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+   attachment_mutex_lock_type lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::const_iterator it = attachments.find(skey);
    if (it != attachments.end()) {
@@ -695,7 +701,7 @@ void Object::Data::copyAttachments(const ObjectData *src, bool replace) {
 
 bool Object::Data::removeAttachment(const std::string &key) {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+   attachment_mutex_lock_type lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::iterator it = attachments.find(skey);
    if (it == attachments.end()) {

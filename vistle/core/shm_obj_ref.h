@@ -101,13 +101,13 @@ class shm_obj_ref {
    typename ObjType::const_ptr getObject() const {
        if (!valid())
            return nullptr;
-       return ObjType::as(Object::create(const_cast<typename ObjType::Data *>(m_d.get())));
+       return ObjType::as(Object::create(const_cast<typename ObjType::Data *>(&*m_d)));
    }
 
    const typename ObjType::Data *getData() const {
        if (!valid())
            return nullptr;
-       return m_d.get();
+       return &*m_d;
    }
 
    operator bool() const {
@@ -120,7 +120,11 @@ class shm_obj_ref {
 
  private:
    shm_name_t m_name;
+#ifdef NO_SHMEM
+   const ObjData *m_d;
+#else
    boost::interprocess::offset_ptr<const ObjData> m_d;
+#endif
 
    void ref() {
        if (m_d) {

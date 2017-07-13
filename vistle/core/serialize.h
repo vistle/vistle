@@ -14,15 +14,18 @@
 
 #include <boost/serialization/level.hpp>
 
+#ifndef NO_SHMEM
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>
+#endif
 
 
 namespace boost { 
 namespace serialization {
 
 
+#ifndef NO_SHMEM
 /* serialize boost::container::map */
 
 template<class Archive, class Type, class Key, class Compare, class Allocator >
@@ -68,8 +71,10 @@ inline void serialize(
 ){
     boost::serialization::split_free(ar, t, file_version);
 }
+#endif
 
 
+#ifndef NO_SHMEM
 /* serialize boost::container::vector */
 
 template<class Archive, class U, class Allocator>
@@ -115,7 +120,9 @@ inline void serialize(
 ){
     boost::serialization::split_free(ar, t, file_version);
 }
+#endif
 
+#ifndef NO_SHMEM
 /* serialize boost::container::string */
 
 template<class Archive, class CharT, class Allocator >
@@ -161,6 +168,7 @@ inline void serialize(
 ){
     boost::serialization::split_free(ar, t, file_version);
 }
+#endif
 
 } // namespace serialization
 } // namespace boost

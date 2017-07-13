@@ -96,7 +96,11 @@ class shm_ref {
 
  private:
    shm_name_t m_name;
+#ifdef NO_SHMEM
+   T *m_p;
+#else
    boost::interprocess::offset_ptr<T> m_p;
+#endif
    void ref() {
        if (m_p) {
            assert(!m_name.empty());
@@ -110,7 +114,7 @@ class shm_ref {
             assert(!m_name.empty());
             assert(m_p->refcount() > 0);
             if (m_p->unref() == 0) {
-                shm<T>::destroy_ptr(m_p.get());
+                shm<T>::destroy(m_name);
                 m_p = nullptr;
             }
        }

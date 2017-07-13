@@ -13,8 +13,12 @@ enable_testing()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
-if(NOT ${VISTLE_MULTI_PROCESS})
+option(VISTLE_USE_SHARED_MEMORY "use shared memory even within a process" OFF)
+if(NOT VISTLE_MULTI_PROCESS)
    add_definitions(-DMODULE_THREAD)
+   if(NOT VISTLE_USE_SHARED_MEMORY)
+      add_definitions(-DNO_SHMEM)
+   endif()
 endif()
 
 option(TEMPLATES_IN_HEADERS "define templates in headers" ON)

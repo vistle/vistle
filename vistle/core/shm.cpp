@@ -50,10 +50,15 @@ template<> size_t memorySize<8>() {
    }
 }
 
-Shm* Shm::s_singleton = NULL;
+Shm* Shm::s_singleton = nullptr;
 #ifdef SHMDEBUG
-shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
-boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = NULL;
+#ifdef NO_SHMEM
+shm<ShmDebugInfo>::vector *Shm::s_shmdebug = new shm<ShmDebugInfo>::vector;
+std::recursive_mutex *Shm::s_shmdebugMutex = new std::recursive_mutex;
+#else
+shm<ShmDebugInfo>::vector *Shm::s_shmdebug = nullptr;
+boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = nullptr;
+#endif
 #endif
 
 shm_name_t::shm_name_t(const std::string &s) {
@@ -112,7 +117,13 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
    , m_moduleId(m)
    , m_rank(r)
    , m_objectId(0)
-   , m_arrayId(0) {
+   , m_arrayId(0)
+   , m_allocator(nullptr)
+   , m_shmDeletionMutex(nullptr)
+#ifndef NO_SHMEM
+   , m_shm(nullptr)
+#endif
+{
 
 #ifdef SHMDEBUG
       if (create) {
@@ -121,6 +132,10 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       }
 #endif
 
+#ifdef NO_SHMEM
+      m_allocator = new void_allocator();
+      m_shmDeletionMutex = new std::recursive_mutex;
+#else
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
       } else {
@@ -135,18 +150,20 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       s_shmdebugMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
       s_shmdebug = m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
+#endif
 }
 
 Shm::~Shm() {
 
+#ifndef NO_SHMEM
    if (m_remove) {
       shared_memory_object::remove(m_name.c_str());
       std::cerr << "removed shm " << m_name << std::endl;
    }
+   delete m_shm;
+#endif
 
    delete m_allocator;
-
-   delete m_shm;
 }
 
 void Shm::detach() {
@@ -362,6 +379,7 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
    return *s_singleton;
 }
 
+#ifndef NO_SHMEM
 managed_shared_memory & Shm::shm() {
 
    return *m_shm;
@@ -371,6 +389,7 @@ const managed_shared_memory & Shm::shm() const {
 
    return *m_shm;
 }
+#endif
 
 std::string Shm::createObjectId(const std::string &id) {
 
@@ -429,26 +448,38 @@ void Shm::addObject(const std::string &name, const shm_handle_t &handle) {
 
 shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) const {
 
+#ifdef NO_SHMEM
+   return object->d();
+#else
    try {
       return m_shm->get_handle_from_address(object->d());
 
    } catch (interprocess_exception &ex) { }
 
    return 0;
+#endif
 }
 
 shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 
+#ifdef NO_SHMEM
+   return object->d();
+#else
    try {
       return m_shm->get_handle_from_address(object->d());
 
    } catch (interprocess_exception &ex) { }
 
    return 0;
+#endif
 }
 
 Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
+#ifdef NO_SHMEM
+    Object::Data *od = static_cast<Object::Data *>(handle);
+    return Object::create(od);
+#else
    try {
       Object::Data *od = static_cast<Object::Data *>
          (m_shm->get_address_from_handle(handle));
@@ -457,6 +488,7 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
    } catch (interprocess_exception &ex) { }
 
    return Object::const_ptr();
+#endif
 }
 
 ObjectData *Shm::getObjectDataFromName(const std::string &name) const {

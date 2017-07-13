@@ -106,7 +106,11 @@ int main(int argc, char ** argv) {
                    break;
                case 'V':
                    if (info.handle) {
+#ifdef NO_SHMEM
+                       const void *p = info.handle;
+#else
                        const void *p = Shm::the().shm().get_address_from_handle(info.handle);
+#endif
                        const ShmVector<int> *v = static_cast<const ShmVector<int> *>(p);
                        std::cout << " ref " << (*v)->refcount() << std::endl;
                    } else {

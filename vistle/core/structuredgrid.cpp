@@ -105,7 +105,7 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
 
    if (m_celltree)
        return m_celltree;
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   Data::attachment_mutex_lock_type lock(d()->attachment_mutex);
    if (!hasAttachment("celltree")) {
       refresh();
       createCelltree(m_numDivisions);

@@ -2,10 +2,18 @@
 #define SHM_H
 
 #include <memory>
+#include <mutex>
 
+#ifdef NO_SHMEM
+#include <memory>
+#include <string>
+#include <vector>
+#include <map>
+#else
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
+#endif
 
 #include <boost/serialization/access.hpp>
 
@@ -20,7 +28,11 @@
 
 namespace vistle {
 
+#ifdef NO_SHMEM
+typedef void *shm_handle_t;
+#else
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
+#endif
 
 struct V_COREEXPORT shm_name_t {
    std::array<char, 32> name;
@@ -78,15 +90,42 @@ struct ShmDebugInfo {
 
 template<typename T>
 struct shm {
+#ifdef NO_SHMEM
+   typedef std::allocator<T> allocator;
+   typedef std::basic_string<T> string;
+   typedef std::vector<T> vector;
+   typedef vistle::shm_array<T, allocator> array;
+   typedef array *array_ptr;
+   struct Constructor {
+       std::string name;
+       Constructor(const std::string &name): name(name) {}
+
+#if 1
+       template<typename... Args>
+       T *operator()(Args&&... args);
+#else
+       template<typename... Args>
+       T *operator()(Args&&... args) {
+           Shm::the().lockObjects();
+           T *t = new T(std::forward<Args>(args)...);
+           m_objectDictionary[name] = t;
+           Shm::the().unlockObjects();
+       }
+#endif
+    };
+   static Constructor construct(const std::string &name) {
+       return Constructor(name);
+   }
+#else
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef vistle::shm_array<T, allocator> array;
    typedef boost::interprocess::offset_ptr<array> array_ptr;
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
+#endif
    static T *find(const std::string &name);
    static bool destroy(const std::string &name);
-   static void destroy_ptr(T *ptr);
 };
 
 template<class T>
@@ -95,6 +134,8 @@ template<class T>
 using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
 
 class V_COREEXPORT Shm {
+    template<typename T>
+    friend struct shm;
 
  public:
    static std::string instanceName(const std::string &host, unsigned short port);
@@ -112,11 +153,15 @@ class V_COREEXPORT Shm {
    std::string name() const;
    const std::string &instanceName() const;
 
+#ifdef NO_SHMEM
+   typedef std::allocator<void> void_allocator;
+#else
    typedef boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager> void_allocator;
-   const void_allocator &allocator() const;
-
    boost::interprocess::managed_shared_memory &shm();
    const boost::interprocess::managed_shared_memory &shm() const;
+#endif
+   const void_allocator &allocator() const;
+
    std::string createArrayId(const std::string &name="");
    std::string createObjectId(const std::string &name="");
 
@@ -137,8 +182,13 @@ class V_COREEXPORT Shm {
    void markAsRemoved(const std::string &name);
    void addObject(const std::string &name, const shm_handle_t &handle);
 #ifdef SHMDEBUG
+#ifdef NO_SHMEM
+   static std::vector<ShmDebugInfo, vistle::shm<ShmDebugInfo>::allocator> *s_shmdebug;
+   static std::recursive_mutex *s_shmdebugMutex;
+#else
    static boost::interprocess::vector<ShmDebugInfo, vistle::shm<ShmDebugInfo>::allocator> *s_shmdebug;
    static boost::interprocess::interprocess_recursive_mutex *s_shmdebugMutex;
+#endif
 #endif
 
  private:
@@ -153,32 +203,61 @@ class V_COREEXPORT Shm {
    const int m_rank;
    std::atomic<int> m_objectId, m_arrayId;
    static Shm *s_singleton;
-   boost::interprocess::managed_shared_memory *m_shm;
+#ifdef NO_SHMEM
+   mutable std::recursive_mutex *m_shmDeletionMutex;
+   std::map<std::string, void*> m_objectDictionary;
+#else
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
+   boost::interprocess::managed_shared_memory *m_shm;
+#endif
    mutable int m_lockCount = 0;
 };
 
 template<typename T>
-typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
-   return Shm::the().shm().construct<T>(name.c_str());
-}
-
-template<typename T>
 T *shm<T>::find(const std::string &name) {
+#ifdef NO_SHMEM
+    auto &dict = Shm::the().m_objectDictionary;
+    auto it = dict.find(name);
+    if (it == dict.end())
+        return nullptr;
+    return static_cast<T *>(it->second);
+#else
    return Shm::the().shm().find<T>(name.c_str()).first;
-}
-
-template<typename T>
-void shm<T>::destroy_ptr(T *ptr) {
-   return Shm::the().shm().destroy_ptr<T>(ptr);
+#endif
 }
 
 template<typename T>
 bool shm<T>::destroy(const std::string &name) {
+#ifdef NO_SHMEM
+    auto &dict = Shm::the().m_objectDictionary;
+    auto it = dict.find(name);
+    bool ret = true;
+    if (it == dict.end()) {
+        ret = false;
+    } else {
+        T *t = static_cast<T *>(it->second);
+        dict.erase(it);
+        delete t;
+    }
+#else
     const bool ret = Shm::the().shm().destroy<T>(name.c_str());
+#endif
     Shm::the().markAsRemoved(name);
     return ret;
 }
+
+#ifdef NO_SHMEM
+template<typename T>
+template<typename... Args>
+T *shm<T>::Constructor::operator()(Args&&... args) {
+    Shm::the().lockObjects();
+    auto &dict = Shm::the().m_objectDictionary;
+    T *t = new T(std::forward<Args>(args)...);
+    dict[name] = t;
+    Shm::the().unlockObjects();
+    return t;
+}
+#endif
 
 } // namespace vistle
 
