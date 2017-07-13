@@ -12,6 +12,11 @@ enable_testing()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" ON)
+if(NOT ${VISTLE_MULTI_PROCESS})
+   add_definitions(-DMODULE_THREAD)
+endif()
+
 option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
 if(${TEMPLATES_IN_HEADERS})
    add_definitions(-DTEMPLATES_IN_HEADERS)
@@ -38,10 +43,19 @@ macro(vistle_add_executable targetname)
 endmacro(vistle_add_executable)
 
 macro(add_module targetname)
-    add_executable(${targetname} ${ARGN})
-    set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+    if(VISTLE_MULTI_PROCESS)
+       add_executable(${targetname} ${ARGN})
+       set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+       install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
+    else()
+       add_library(${targetname} MODULE ${ARGN})
+       set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+       set_target_properties(${targetname} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+       install(TARGETS ${targetname}
+          RUNTIME DESTINATION lib/module
+          LIBRARY DESTINATION lib/module)
+    endif()
     set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
-    install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
 endmacro(add_module)
 
 

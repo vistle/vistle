@@ -148,6 +148,14 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
 
 
+bool Module::setup(const std::string &shmname, int moduleID, int rank) {
+
+#ifndef MODULE_THREAD
+    Shm::attach(shmname, moduleID, rank);
+#endif
+    return Shm::isAttached();
+}
+
 Module::Module(const std::string &desc, const std::string &shmname,
       const std::string &moduleName, const int moduleId)
 : m_name(moduleName)
@@ -170,7 +178,11 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_traceMessages(message::INVALID)
 , m_benchmark(false)
 , m_avgComputeTime(1.)
+#ifdef MODULE_THREAD
+, m_comm(MPI_COMM_WORLD, mpi::comm_duplicate)
+#else
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
+#endif
 , m_numTimesteps(-1)
 , m_cancelRequested(false)
 , m_cancelExecuteCalled(false)
@@ -182,14 +194,9 @@ Module::Module(const std::string &desc, const std::string &shmname,
    m_size = comm().size();
    m_rank = comm().rank();
 
+#ifndef MODULE_THREAD
    message::DefaultSender::init(m_id, m_rank);
-
-   try {
-      Shm::attach(shmname, id(), rank());
-   } catch (interprocess::interprocess_exception &ex) {
-      std::stringstream str;
-      throw vistle::exception(std::string("attaching to shared memory ") + shmname + ": " + ex.what());
-   }
+#endif
 
    // names are swapped relative to communicator
    std::string smqName = message::MessageQueue::createName("recv", id(), rank());
@@ -258,7 +265,9 @@ void Module::prepareQuit() {
 
         m_cache.clear();
         m_cache.clearOld();
+#ifndef MODULE_THREAD
         Shm::the().detach();
+#endif
     }
 
     m_readyForQuit = true;
@@ -272,8 +281,10 @@ const HubData &Module::getHub() const {
 
 void Module::initDone() {
 
+#ifndef MODULE_THREAD
    m_streambuf = new msgstreambuf<char>(this);
    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
+#endif
 
    message::Started start(name());
    start.setDestId(Id::ForBroadcast);
@@ -770,6 +781,7 @@ void Module::updateCacheMode() {
 
 void Module::updateOutputMode() {
 
+#ifndef MODULE_THREAD
    const Integer r = getIntParameter("_error_output_rank");
    const Integer m = getIntParameter("_error_output_mode");
 
@@ -784,6 +796,7 @@ void Module::updateOutputMode() {
       sbuf->set_console_output(false);
       sbuf->set_gui_output(false);
    }
+#endif
 }
 
 Integer Module::getIntParameter(const std::string & name) const {
@@ -1159,8 +1172,10 @@ bool Module::dispatch() {
    bool again = true;
 
    try {
+#ifndef MODULE_THREAD
       if (parentProcessDied())
          throw(except::parent_died());
+#endif
 
       message::Buffer buf;
       if (!messageBacklog.empty()) {
@@ -1230,8 +1245,17 @@ void Module::sendMessage(const message::Message &message) const {
          && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
       CERR << "SEND: " << message << std::endl;
    }
-   if (rank() == 0 || message::Router::the().toRank0(message))
+   if (rank() == 0 || message::Router::the().toRank0(message)) {
+#ifdef MODULE_THREAD
+       message::Buffer buf(message);
+       buf.setSenderId(id());
+       buf.setRank(rank());
+
+       sendMessageQueue->send(buf);
+#else
        sendMessageQueue->send(message);
+#endif
+   }
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {
@@ -1902,6 +1926,14 @@ Module::~Module() {
        CERR << "Emergency quit" << std::endl;
 
    }
+}
+
+void Module::eventLoop() {
+
+    initDone();
+    while (dispatch())
+        ;
+    prepareQuit();
 }
 
 namespace {

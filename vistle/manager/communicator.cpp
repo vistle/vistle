@@ -130,6 +130,10 @@ bool Communicator::connectHub(std::string host, unsigned short port, unsigned sh
    return ret;
 }
 
+const AvailableMap &Communicator::localModules() {
+    return m_localModules;
+}
+
 bool Communicator::connectData() {
 
     return m_dataManager->connect(m_dataEndpoint);
@@ -146,11 +150,11 @@ bool Communicator::sendHub(const message::Message &message) {
 bool Communicator::scanModules(const std::string &dir) {
 
    bool result = true;
+   if (m_localModules.empty()) {
+       result = vistle::scanModules(dir, 0, m_localModules);
+   }
    if (getRank() == 0) {
-      static AvailableMap availableModules;
-      if (availableModules.empty())
-          result = vistle::scanModules(dir, m_hubId, availableModules);
-      for (auto &p: availableModules) {
+      for (auto &p: m_localModules) {
          const auto &m = p.second;
          message::ModuleAvailable msg(m_hubId, m.name, m.path);
          sendHub(msg);

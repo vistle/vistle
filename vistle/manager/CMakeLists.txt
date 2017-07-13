@@ -30,6 +30,9 @@ target_link_libraries(vistle_manager
         vistle_core
         vistle_boost_mpi
 )
+if(NOT VISTLE_MULTI_PROCESS)
+   target_link_libraries(vistle_manager ${CMAKE_DL_LIBS} vistle_module)
+endif()
 
 vistle_add_executable(clean_vistle clean_vistle.cpp)
 target_link_libraries(clean_vistle

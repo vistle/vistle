@@ -101,13 +101,18 @@ std::string operator+(const std::string &s, const shm_name_t &n) {
 std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
    std::stringstream str;
-   str << "vistle_" << host << "_" << getuid() << "_" << port;
+   str << "vistle_" << host << "_u" << getuid() << "_p" << port;
    return str.str();
 }
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
-   : m_name(name), m_remove(create), m_moduleId(m), m_rank(r), m_objectId(0), m_arrayId(0) {
+   : m_name(name)
+   , m_remove(create)
+   , m_moduleId(m)
+   , m_rank(r)
+   , m_objectId(0)
+   , m_arrayId(0) {
 
 #ifdef SHMDEBUG
       if (create) {
@@ -211,10 +216,10 @@ namespace {
 
 std::string shmSegName(const std::string &name, const int rank) {
 #ifdef SHMPERRANK
-    return name + "_" + std::to_string(rank) + "_shmem";
+    return name + "_r" + std::to_string(rank);
 #else
     (void)rank;
-    return name + "_shmem";
+    return name;
 #endif
 }
 
@@ -233,15 +238,18 @@ bool Shm::cleanAll(int rank) {
       shmlist >> shmid;
       if (!shmid.empty()) {
          bool ok = true;
+         bool log = true;
 
          if (shmid.find("_send_") != std::string::npos || shmid.find("_recv_") != std::string::npos) {
-            std::cerr << "removing message queue: id " << shmid << std::flush;
+            //std::cerr << "removing message queue: id " << shmid << std::flush;
             ok = message::MessageQueue::message_queue::remove(shmid.c_str());
+            log = false;
          } else {
             std::cerr << "removing shared memory: id " << shmid << std::flush;
             ok = shared_memory_object::remove(shmSegName(shmid.c_str(), rank).c_str());
          }
-         std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
+         if (log)
+             std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
 
          if (!ok)
             ret = false;
@@ -268,9 +276,11 @@ const Shm::void_allocator &Shm::allocator() const {
 }
 
 Shm &Shm::the() {
+#ifndef MODULE_THREAD
    assert(s_singleton && "make sure to create or attach to a shm segment first");
    if (!s_singleton)
       exit(1);
+#endif
    return *s_singleton;
 }
 
@@ -344,7 +354,7 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
 
    if (!s_singleton) {
 
-      throw(shm_exception("failed to attach to shared memory segment"));
+      throw(shm_exception("failed to attach to shared memory segment "+name));
    }
 
    assert(s_singleton && "failed to attach to shared memory");

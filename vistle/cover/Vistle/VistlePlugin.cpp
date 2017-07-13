@@ -524,6 +524,7 @@ VistlePlugin::VistlePlugin()
    const std::string &name = coCommandLine::argv(2);
    int moduleID = atoi(coCommandLine::argv(3));
 
+   vistle::Module::setup(shmname, moduleID, rank);
    m_module = new OsgRenderer(shmname, name, moduleID);
 }
 

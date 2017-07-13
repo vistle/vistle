@@ -20,9 +20,10 @@ std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
-   mqID << Shm::the().instanceName() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID;
+   mqID << Shm::the().instanceName() << "_" << prefix << "_m" << moduleID;
 #ifndef SHMPERRANK
-   mqID << "_" << std::setw(8) << std::setfill('0') << rank;
+   // each rank needs its own message queue, even when shared memory arena is shared between ranks
+   mqID << "_r" << rank;
 #endif
 
    return mqID.str();
@@ -44,7 +45,7 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 
    auto ret = new MessageQueue(n, open_only);
    message_queue::remove(n.c_str());
-   std::cerr << "MessageQueue: opened and removed " << n << std::endl;
+   //std::cerr << "MessageQueue: opened and removed " << n << std::endl;
    return ret;
 }
 

@@ -145,10 +145,19 @@ if (ENABLE_ISPC_SUPPORT)
    if ((CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
       set(ISPC_COMPILE_FLAGS "-g")
    endif()
-   add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
-      render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
-   set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
-   install(TARGETS DisCOVERay RUNTIME DESTINATION libexec/module)
+   if(VISTLE_MULTI_PROCESS)
+      add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
+         render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
+      set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+      install(TARGETS DisCOVERay RUNTIME DESTINATION libexec/module)
+   else()
+      add_ispc_library(DisCOVERay MODULE rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
+         render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
+      set_target_properties(DisCOVERay PROPERTIES
+         RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module
+         LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+      install(TARGETS DisCOVERay LIBRARY DESTINATION lib/module)
+   endif()
 else()
    add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc common.h  rayrenderobject.h)
 endif()

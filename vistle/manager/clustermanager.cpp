@@ -30,6 +30,13 @@
 #include "datamanager.h"
 #include "communicator.h"
 
+#ifdef MODULE_THREAD
+#include <util/filesystem.h>
+#include <module/module.h>
+#include <boost/dll/import.hpp>
+#include <boost/function.hpp>
+#endif
+
 //#define QUEUE_DEBUG
 #define BARRIER_DEBUG
 //#define DEBUG
@@ -261,7 +268,7 @@ bool ClusterManager::dispatch(bool &received) {
       if (mod.hub == Communicator::the().hubId()) {
          bool recv = false;
          message::Buffer buf;
-         message::MessageQueue *mq = nullptr;
+         std::shared_ptr<message::MessageQueue> mq;
          auto it = runningMap.find(modId);
          if (it != runningMap.end()) {
             it->second.update();
@@ -669,20 +676,19 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    }
 
    int newId = spawn.spawnId();
+   std::string name(spawn.getName());
 
    Module &mod = runningMap[newId];
    std::string smqName = message::MessageQueue::createName("send", newId, m_rank);
    std::string rmqName = message::MessageQueue::createName("recv", newId, m_rank);
 
    try {
-      mod.sendQueue = message::MessageQueue::create(smqName);
-      mod.recvQueue = message::MessageQueue::create(rmqName);
+      mod.sendQueue.reset(message::MessageQueue::create(smqName));
+      mod.recvQueue.reset(message::MessageQueue::create(rmqName));
    } catch (bi::interprocess_exception &ex) {
 
-      delete mod.sendQueue;
-      mod.sendQueue = nullptr;
-      delete mod.recvQueue;
-      mod.recvQueue = nullptr;
+      mod.sendQueue.reset();
+      mod.recvQueue.reset();
       CERR << "spawn mq " << ex.what() << std::endl;
       exit(-1);
    }
@@ -691,10 +697,32 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
    MPI_Barrier(MPI_COMM_WORLD);
 
+#ifdef MODULE_THREAD
+   //AvailableModule::Key key(Communicator::the().hubId(), name);
+   AvailableModule::Key key(0, name);
+   auto avail = Communicator::the().localModules();
+   auto it = avail.find(key);
+   if (it != avail.end()) {
+       auto &m = it->second;
+       mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
+       if (mod.newModule) {
+           std::thread t([newId, name, &mod]() {
+               std::cerr << "thread for module " << name << ":" << newId << std::endl;
+               mod.instance = mod.newModule(name, newId);
+               if (mod.instance)
+                   mod.instance->eventLoop();
+               mod.instance.reset();
+               mod.newModule.clear();
+           });
+           std::swap(mod.thread, t);
+       }
+   }
+#else
    message::SpawnPrepared prep(spawn);
    prep.setDestId(Id::LocalHub);
    if (getRank() == 0)
       sendHub(prep);
+#endif
 
    // inform newly started module about current parameter values of other modules
    auto state = m_stateTracker.getState();

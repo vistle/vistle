@@ -151,8 +151,7 @@ class V_COREEXPORT Shm {
    bool m_remove;
    const int m_moduleId;
    const int m_rank;
-   int m_objectId;
-   int m_arrayId;
+   std::atomic<int> m_objectId, m_arrayId;
    static Shm *s_singleton;
    boost::interprocess::managed_shared_memory *m_shm;
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;

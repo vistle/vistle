@@ -743,6 +743,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          case message::SPAWNPREPARED: {
 
+#ifndef MODULE_THREAD
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             vassert(spawn.hubId() == m_hubId);
 
@@ -770,6 +771,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 			} else {
 				std::cerr << "program " << argv[0] << " failed to start" << std::endl;
 			}
+#endif
             break;
          }
 

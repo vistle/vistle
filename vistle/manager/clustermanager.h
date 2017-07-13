@@ -13,6 +13,12 @@
 
 #include "portmanager.h"
 
+#ifdef MODULE_THREAD
+#include <module/module.h>
+#include <boost/function.hpp>
+#include <thread>
+#endif
+
 namespace vistle {
 
 namespace message {
@@ -105,8 +111,13 @@ class ClusterManager {
    const int m_size;
 
    struct Module {
-      message::MessageQueue *sendQueue;
-      message::MessageQueue *recvQueue;
+#ifdef MODULE_THREAD
+      typedef std::shared_ptr<vistle::Module> (NewModuleFunc)(const std::string &name, int id);
+      boost::function<NewModuleFunc> newModule;
+      std::shared_ptr<vistle::Module> instance;
+      std::thread thread;
+#endif
+      std::shared_ptr<message::MessageQueue> sendQueue, recvQueue;
       int ranksStarted, ranksFinished;
       bool reducing;
       bool prepared, reduced;
@@ -116,15 +127,16 @@ class ClusterManager {
       std::deque<message::Buffer> delayedMessages;
       std::vector<int> objectCount; // no. of available object tuples on each rank
 
-      Module(): sendQueue(nullptr), recvQueue(nullptr),
-         ranksStarted(0), ranksFinished(0), reducing(false),
+      Module(): ranksStarted(0), ranksFinished(0), reducing(false),
          prepared(false), reduced(true),
          busyCount(0), blocked(false)
          {}
       ~Module() {
-         delete sendQueue;
-         delete recvQueue;
+#ifdef MODULE_THREAD
+          thread.join();
+#endif
       }
+
       void block(const message::Message &msg);
       void unblock(const message::Message &msg);
       bool send(const message::Message &msg) const;

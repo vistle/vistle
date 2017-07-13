@@ -10,6 +10,7 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
 #endif
+#include <boost/config.hpp>
 
 #include <iostream>
 #include <list>
@@ -25,6 +26,10 @@
 
 #include "objectcache.h"
 #include "export.h"
+
+#ifdef MODULE_THREAD
+#include <boost/dll/alias.hpp>
+#endif
 
 namespace vistle {
 
@@ -46,10 +51,13 @@ class V_MODULEEXPORT Module {
    friend class Renderer;
 
  public:
+   static bool setup(const std::string &shmname, int moduleID, int rank);
+
    Module(const std::string &description, const std::string &shmname,
           const std::string &name, const int moduleID);
    virtual ~Module();
-   void initDone(); // to be called from MODULE_MAIN after module ctor has run
+   void eventLoop(); // called from MODULE_MAIN
+   void initDone(); // to be called from eventLoop after module ctor has run
 
    virtual bool dispatch();
 
@@ -313,6 +321,15 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #define V_HAVE_MPICH 0
 #endif
 
+#ifdef MODULE_THREAD
+#define MODULE_MAIN(X) \
+    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId) { \
+       return std::shared_ptr<X>(new X("dummy shm", name, moduleId)); \
+    } \
+    BOOST_DLL_ALIAS(newModuleInstance, newModule);
+
+#define MODULE_DEBUG(X)
+#else
 // MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
@@ -324,6 +341,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
       } \
       vistle::registerTypes(); \
       int rank=-1, size=-1; \
+      std::string shmname; \
       try { \
          if (argc != 4) { \
             std::cerr << "module requires exactly 4 parameters" << std::endl; \
@@ -332,15 +350,13 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
          } \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
-         const std::string shmname = argv[1]; \
+         shmname = argv[1]; \
          const std::string name = argv[2]; \
          int moduleID = atoi(argv[3]); \
-         {  \
+         vistle::Module::setup(shmname, moduleID, rank); \
+         { \
             X module(shmname, name, moduleID); \
-            module.initDone(); \
-            while (module.dispatch()) \
-               ; \
-            module.prepareQuit(); \
+            module.eventLoop(); \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
@@ -366,6 +382,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
    std::cerr << "   attach debugger within 10 s" << std::endl; \
    sleep(10); \
    std::cerr << "   continuing..." << std::endl;
+#endif
 #endif
 
 #ifdef VISTLE_IMPL
