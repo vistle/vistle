@@ -1,4 +1,5 @@
 set(SOURCES
+   OsgRenderer.cpp
    VistlePlugin.cpp
    VistleGeometryGenerator.h
    VistleGeometryGenerator.cpp
