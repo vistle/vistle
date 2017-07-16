@@ -2,12 +2,19 @@
 #define OSG_RENDERER_H
 
 #include <future>
+#include <string>
+
+#include <osg/Group>
+#include <osg/Sequence>
+
 #include <renderer/renderobject.h>
 #include <renderer/renderer.h>
 #include <core/messages.h>
 #include <VistlePluginUtil/VistleRenderObject.h>
 #include "VistleInteractor.h"
 #include "VistleGeometryGenerator.h"
+
+#include "export.h"
 
 namespace opencover {
 class coVRPlugin;
@@ -31,13 +38,15 @@ class PluginRenderObject: public vistle::RenderObject {
    std::shared_ptr<VistleRenderObject> coverRenderObject;
 };
 
-class OsgRenderer: public vistle::Renderer {
+class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
  public:
    OsgRenderer(const std::string &shmname,
          const std::string &name, int moduleId);
    ~OsgRenderer();
    static OsgRenderer *the();
+
+   void eventLoop() override;
 
    void setPlugin(opencover::coVRPlugin *plugin);
 

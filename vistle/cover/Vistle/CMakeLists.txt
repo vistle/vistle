@@ -1,10 +1,5 @@
 set(SOURCES
-   OsgRenderer.cpp
    VistlePlugin.cpp
-   VistleGeometryGenerator.h
-   VistleGeometryGenerator.cpp
-   VistleInteractor.h
-   VistleInteractor.cpp
    )
 
 if(WIN32)
@@ -25,5 +20,5 @@ include_directories(
 add_definitions(-DCOVER_PLUGIN)
 
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
-target_link_libraries(VistlePlugin VistlePluginUtil vistle_renderer vistle_boost_mpi)
+target_link_libraries(VistlePlugin VistlePluginUtil vistle_cover vistle_renderer vistle_boost_mpi)
 set_target_properties(VistlePlugin PROPERTIES OUTPUT_NAME "Vistle")

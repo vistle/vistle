@@ -5,7 +5,7 @@
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
 
-#include "OsgRenderer.h"
+#include <renderer/COVER/OsgRenderer.h>
 
 // vistle
 #include <util/exception.h>
@@ -33,11 +33,12 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    vrui::coButtonMenuItem *executeButton;
 };
 
-using opencover::coCommandLine;
-
 VistlePlugin::VistlePlugin()
 : m_module(nullptr)
 {
+#if 0
+    using opencover::coCommandLine;
+
    int initialized = 0;
    MPI_Initialized(&initialized);
    if (!initialized) {
@@ -62,43 +63,54 @@ VistlePlugin::VistlePlugin()
 
    vistle::Module::setup(shmname, moduleID, rank);
    m_module = new OsgRenderer(shmname, name, moduleID);
-   m_module->setPlugin(this);
+#endif
 }
 
 VistlePlugin::~VistlePlugin() {
 
    if (m_module) {
-      MPI_Barrier(MPI_COMM_WORLD);
+      m_module->comm().barrier();
       m_module->prepareQuit();
+#if 0
       delete m_module;
+#endif
       m_module = nullptr;
    }
 }
 
 bool VistlePlugin::init() {
 
-   std::string visMenu = getName();
-   VRMenu *covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
-   if (!covise)
-   {
-      VRPinboard::instance()->addMenu(visMenu.c_str(), VRPinboard::instance()->mainMenu->getCoMenu());
-      covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
-      cover->addSubmenuButton((visMenu+"...").c_str(), NULL, visMenu.c_str(), false, NULL, -1, this);
-   }
-   vrui::coMenu *coviseMenu = covise->getCoMenu();
-   executeButton = new vrui::coButtonMenuItem("Execute");
-   executeButton->setMenuListener(this);
-   coviseMenu->add(executeButton);
+   m_module = OsgRenderer::the();
+   if (m_module) {
+       m_module->setPlugin(this);
 
-   return m_module;
+       std::string visMenu = getName();
+       VRMenu *covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
+       if (!covise)
+       {
+           VRPinboard::instance()->addMenu(visMenu.c_str(), VRPinboard::instance()->mainMenu->getCoMenu());
+           covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
+           cover->addSubmenuButton((visMenu+"...").c_str(), NULL, visMenu.c_str(), false, NULL, -1, this);
+       }
+       vrui::coMenu *coviseMenu = covise->getCoMenu();
+       executeButton = new vrui::coButtonMenuItem("Execute");
+       executeButton->setMenuListener(this);
+       coviseMenu->add(executeButton);
+
+       return true;
+   }
+
+   return false;
 }
 
 bool VistlePlugin::destroy() {
 
    if (m_module) {
-      MPI_Barrier(MPI_COMM_WORLD);
+      m_module->comm().barrier();
       m_module->prepareQuit();
+#if 0
       delete m_module;
+#endif
       m_module = nullptr;
    }
 
@@ -114,7 +126,11 @@ void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 
 void VistlePlugin::preFrame() {
 
-   MPI_Barrier(MPI_COMM_WORLD);
+#ifndef NDEBUG
+   if (m_module) {
+       m_module->comm().barrier();
+   }
+#endif
    try {
        if (m_module && !m_module->dispatch()) {
            std::cerr << "Vistle requested COVER to quit" << std::endl;
@@ -132,15 +148,22 @@ void VistlePlugin::preFrame() {
 
 void VistlePlugin::requestQuit(bool killSession)
 {
-   MPI_Barrier(MPI_COMM_WORLD);
-   m_module->prepareQuit();
-   delete m_module;
-   m_module = nullptr;
+    if (m_module) {
+        m_module->comm().barrier();
+        m_module->prepareQuit();
+#if 0
+        delete m_module;
+#endif
+        m_module = nullptr;
+    }
 }
 
 bool VistlePlugin::executeAll() {
 
-   return m_module->executeAll();
+    if (m_module) {
+        return m_module->executeAll();
+    }
+    return false;
 }
 
 COVERPLUGIN(VistlePlugin);

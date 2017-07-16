@@ -45,7 +45,7 @@ endif()
 
 add_module(OsgRenderer
    OSGRenderer.cpp
-   ../../cover/Vistle/VistleGeometryGenerator.cpp
+   ../COVER/VistleGeometryGenerator.cpp
    EnableGLDebugOperation.cpp
    )
 
@@ -64,7 +64,7 @@ include_directories(
         ${ICET_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
         ${PROJECT_SOURCE_DIR}
-        ../../cover/Vistle
+        ../COVER
 )
 if(NOT APPLE AND X11_FOUND)
    add_definitions(-DUSE_X11)

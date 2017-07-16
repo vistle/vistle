@@ -16,8 +16,18 @@ ADD_DEFINITIONS(-DRENAME_MAIN=realmain)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
+        ${OPENSCENEGRAPH_INCLUDE_DIRS}
+        ${COVER_INCLUDE_DIRS}
+        ../../cover
         ..
 )
 
+vistle_add_library(vistle_cover SHARED 
+   OsgRenderer.cpp OsgRenderer.h
+   VistleInteractor.cpp VistleInteractor.h
+   VistleGeometryGenerator.h VistleGeometryGenerator.cpp
+)
+target_link_libraries(vistle_cover ${EXTRA_LIBS} vistle_renderer vistle_util ${CMAKE_DL_LIBS} VistlePluginUtil)
+
 add_module(COVER coverwrapper.cpp)
-target_link_libraries(COVER ${EXTRA_LIBS} vistle_util ${CMAKE_DL_LIBS})
+target_link_libraries(COVER ${EXTRA_LIBS} vistle_util ${CMAKE_DL_LIBS} vistle_cover)
