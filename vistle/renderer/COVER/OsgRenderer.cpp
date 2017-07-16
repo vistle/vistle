@@ -117,14 +117,12 @@ OsgRenderer::Creator &OsgRenderer::getCreator(int id) {
 }
 
 
-OsgRenderer::OsgRenderer(const std::string &shmname,
-      const std::string &name, int moduleId)
-: vistle::Renderer("COVER", shmname, name, moduleId)
+OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicator comm)
+: vistle::Renderer("VR renderer for immersive environments", name, moduleId, comm)
 {
    assert(!s_instance);
    s_instance = this;
 
-   vistle::registerTypes();
    //createInputPort("data_in"); - already done by Renderer base class
 
    vistleRoot = new osg::Group;
@@ -217,7 +215,8 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
 void OsgRenderer::prepareQuit() {
 
    removeAllObjects();
-   cover->getObjectsRoot()->removeChild(vistleRoot);
+   if (cover)
+       cover->getObjectsRoot()->removeChild(vistleRoot);
    vistleRoot.release();
 
    Renderer::prepareQuit();
@@ -396,8 +395,7 @@ bool OsgRenderer::render() {
       ++numReady;
    }
 
-   int numAdd = 0;
-   MPI_Allreduce(&numReady, &numAdd, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+   int numAdd = boost::mpi::all_reduce(comm(), numReady, boost::mpi::minimum<int>());
 
    //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
    for (int i=0; i<numAdd; ++i) {
@@ -442,9 +440,8 @@ bool OsgRenderer::render() {
 }
 
 
-static std::string setupEnvAndGetLibDir(const std::string &bindir) {
-    int rank = -1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
+    int rank = comm().rank();
 
     std::map<std::string, std::string> env;
     std::map<std::string, bool> envToSet;
@@ -518,7 +515,7 @@ static std::string setupEnvAndGetLibDir(const std::string &bindir) {
     std::string ldpath, dyldpath, dyldfwpath, covisepath;
 
     int numvars = env.size();
-    MPI_Bcast(&numvars, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&numvars, 1, MPI_INT, 0, (MPI_Comm)comm());
     auto it = env.begin();
     for (int i = 0; i < numvars; ++i) {
         std::string name;
@@ -528,16 +525,16 @@ static std::string setupEnvAndGetLibDir(const std::string &bindir) {
             value = it->second;
         }
 
-        auto sync_string = [rank](std::string &s) {
+        auto sync_string = [this, rank](std::string &s) {
             std::vector<char> buf;
             int len = -1;
             if (rank == 0)
                 len = s.length() + 1;
-            MPI_Bcast(&len, 1, MPI_INT, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&len, 1, MPI_INT, 0, (MPI_Comm)comm());
             buf.resize(len);
             if (rank == 0)
                 strcpy(buf.data(), s.c_str());
-            MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, 0, MPI_COMM_WORLD);
+            MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, 0, (MPI_Comm)comm());
             s = buf.data();
         };
         sync_string(name);
@@ -575,15 +572,15 @@ static std::string setupEnvAndGetLibDir(const std::string &bindir) {
     return coviselibdir;
 }
 
-int runMain(int argc, char *argv[]) {
+int OsgRenderer::runMain(int argc, char *argv[]) {
 
     std::string bindir = vistle::getbindir(argc, argv);
     std::string abslib = setupEnvAndGetLibDir(bindir) + libcover;
 
     int ret = 0;
-    const char mainname[] = STR(RENAME_MAIN);
-    typedef int(*main_t)(int, char *[]);
-    main_t realmain = NULL;
+    const char mainname[] = "mpi_main";
+    typedef int(*mpi_main_t)(MPI_Comm comm, int, char *[]);
+    mpi_main_t mpi_main = NULL;
 #ifdef WIN32
     void *handle = LoadLibraryA(abslib.c_str());
 #else
@@ -601,17 +598,17 @@ int runMain(int argc, char *argv[]) {
     }
 
 #ifdef WIN32
-    realmain = (main_t)GetProcAddress((HINSTANCE)handle, mainname);;
+    mpi_main = (main_t)GetProcAddress((HINSTANCE)handle, mainname);;
 #else
-    realmain = (main_t)dlsym(handle, mainname);
+    mpi_main = (mpi_main_t)dlsym(handle, mainname);
 #endif
-    if (!realmain) {
+    if (!mpi_main) {
         std::cerr << "could not find " << mainname << " in " << libcover << std::endl;
         ret = 1;
         goto finish;
     }
 
-    ret = realmain(argc, argv);
+    ret = mpi_main((MPI_Comm)comm(), argc, argv);
 
 finish:
     if (handle)

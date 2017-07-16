@@ -6,7 +6,7 @@
 class LoadCover: public vistle::Module {
 
  public:
-   LoadCover(const std::string &shmname, const std::string &name, int moduleID);
+   LoadCover(const std::string &name, int moduleID, mpi::communicator comm);
    ~LoadCover();
 
  private:

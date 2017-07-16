@@ -31,6 +31,8 @@
 #include <boost/dll/alias.hpp>
 #endif
 
+namespace mpi = boost::mpi;
+
 namespace vistle {
 
 class StateTracker;
@@ -53,8 +55,8 @@ class V_MODULEEXPORT Module {
  public:
    static bool setup(const std::string &shmname, int moduleID, int rank);
 
-   Module(const std::string &description, const std::string &shmname,
-          const std::string &name, const int moduleID);
+   Module(const std::string &description,
+          const std::string &name, const int moduleID, mpi::communicator comm);
    virtual ~Module();
    virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
@@ -323,8 +325,9 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 #ifdef MODULE_THREAD
 #define MODULE_MAIN(X) \
-    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId) { \
-       return std::shared_ptr<X>(new X("dummy shm", name, moduleId)); \
+    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, boost::mpi::communicator comm) { \
+       vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
+       return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     BOOST_DLL_ALIAS(newModuleInstance, newModule);
 
@@ -355,7 +358,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
          int moduleID = atoi(argv[3]); \
          vistle::Module::setup(shmname, moduleID, rank); \
          { \
-            X module(shmname, name, moduleID); \
+            X module(name, moduleID, boost::mpi::communicator()); \
             module.eventLoop(); \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \

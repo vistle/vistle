@@ -34,7 +34,7 @@ class ReadHDF5 : public vistle::Module {
     friend class boost::serialization::access;
     friend struct ShmVectorReader;
 
-   ReadHDF5(const std::string &shmname, const std::string &name, int moduleID);
+   ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadHDF5();
 
  private:

@@ -6,7 +6,7 @@
 class ToPoints: public vistle::Module {
 
  public:
-   ToPoints(const std::string &shmname, const std::string &name, int moduleID);
+   ToPoints(const std::string &name, int moduleID, mpi::communicator comm);
    ~ToPoints();
 
  private:

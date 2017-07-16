@@ -19,7 +19,7 @@ using namespace vistle;
 class Extrema: public vistle::Module {
 
  public:
-   Extrema(const std::string &shmname, const std::string &name, int moduleID);
+   Extrema(const std::string &name, int moduleID, mpi::communicator comm);
    ~Extrema();
 
  private:
@@ -110,8 +110,8 @@ class Extrema: public vistle::Module {
 
 using namespace vistle;
 
-Extrema::Extrema(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("Extrema", shmname, name, moduleID)
+Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("compute extremal values", name, moduleID, comm)
 {
 
    setReducePolicy(message::ReducePolicy::OverAll);

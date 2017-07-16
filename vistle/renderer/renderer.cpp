@@ -25,9 +25,9 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
 (AllNodes)
 )
 
-Renderer::Renderer(const std::string &description, const std::string &shmname,
-                   const std::string &name, const int moduleID)
-   : Module(description, shmname, name, moduleID)
+Renderer::Renderer(const std::string &description,
+                   const std::string &name, const int moduleID, mpi::communicator comm)
+   : Module(description, name, moduleID, comm)
    , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Local)
 {
 
@@ -79,15 +79,12 @@ bool Renderer::dispatch() {
           haveMessage = true;
       }
 
-      int sync = 0, allsync = 0;
-
+      int sync = 0;
       if (haveMessage) {
          if (needsSync(message))
             sync = 1;
       }
-
-      MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-
+      int allsync = boost::mpi::all_reduce(comm(), sync, boost::mpi::maximum<int>());
       vistle::adaptive_wait(haveMessage || allsync);
 
       do {
@@ -135,15 +132,13 @@ bool Renderer::dispatch() {
       } while(allsync && !sync);
 
       int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
-      int maxNumMessages = 0;
-      MPI_Allreduce(&numMessages, &maxNumMessages, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+      int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
       ++numSync;
       checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame;
 
    } while (checkAgain && !quit);
 
-   int doQuit = 0;
-   MPI_Allreduce(&quit, &doQuit, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+   int doQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
    if (doQuit) {
       prepareQuit();
       vistle::message::ModuleExit m;
@@ -326,10 +321,10 @@ bool Renderer::handle(const message::ObjectReceived &recv) {
     Object::const_ptr obj, placeholder;
     if (recv.rank() == rank()) {
         obj = Shm::the().getObjectFromName(recv.objectName());
+        assert(obj);
         auto ph = std::make_shared<PlaceHolder>(recv.objectName(), recv.meta(), recv.objectType());
         ph->copyAttributes(obj);
         placeholder = ph;
-        assert(obj);
         assert(placeholder);
     }
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());

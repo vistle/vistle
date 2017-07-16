@@ -45,7 +45,7 @@ class WriteHDF5 : public vistle::Module {
     friend class boost::serialization::access;
     friend struct ShmVectorWriterOrganized;
 
-   WriteHDF5(const std::string &shmname, const std::string &name, int moduleID);
+   WriteHDF5(const std::string &name, int moduleID, mpi::communicator comm);
    ~WriteHDF5();
 
  private:

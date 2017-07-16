@@ -76,8 +76,8 @@ ColorMap::~ColorMap() {
    delete[] data;
 }
 
-Color::Color(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("Color", shmname, name, moduleID) {
+Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("Color", name, moduleID, comm) {
 
    createInputPort("data_in");
    createOutputPort("data_out");

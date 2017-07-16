@@ -488,8 +488,8 @@ size_t TimestepHandler::numTimesteps() const {
    return m_animated->getNumChildren();
 }
 
-OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, int moduleID)
-   : Renderer("OSGRenderer", shmname, name, moduleID), osgViewer::Viewer()
+OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicator comm)
+   : Renderer("OpenSceneGraph renderer", name, moduleID, comm), osgViewer::Viewer()
    , m_renderManager(this, nullptr)
    , m_numViewsToComposite(0)
    , m_numFramesToComposite(0)

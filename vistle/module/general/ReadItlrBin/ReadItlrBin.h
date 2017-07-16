@@ -10,7 +10,7 @@
 class ReadItlrBin: public vistle::Module {
 
  public:
-   ReadItlrBin(const std::string &shmname, const std::string &name, int moduleID);
+   ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadItlrBin();
 
 private:

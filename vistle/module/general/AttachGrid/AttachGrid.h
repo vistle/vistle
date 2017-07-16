@@ -7,7 +7,7 @@
 class AttachGrid: public vistle::Module {
 
  public:
-   AttachGrid(const std::string &shmname, const std::string &name, int moduleID);
+   AttachGrid(const std::string &name, int moduleID, mpi::communicator comm);
    ~AttachGrid();
 
  private:

@@ -11,7 +11,7 @@
 class ReadModel: public vistle::Module {
 
  public:
-   ReadModel(const std::string &shmname, const std::string &name, int moduleID);
+   ReadModel(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadModel();
 
  private:

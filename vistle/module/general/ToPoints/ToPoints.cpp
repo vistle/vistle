@@ -10,8 +10,8 @@ MODULE_MAIN(ToPoints)
 
 using namespace vistle;
 
-ToPoints::ToPoints(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ToPoints", shmname, name, moduleID) {
+ToPoints::ToPoints(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("reduce geometry to underlying points", name, moduleID, comm) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

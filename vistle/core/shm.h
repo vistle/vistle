@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <mutex>
+#include <atomic>
 
 #ifdef NO_SHMEM
 #include <memory>
@@ -210,16 +211,20 @@ class V_COREEXPORT Shm {
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
    boost::interprocess::managed_shared_memory *m_shm;
 #endif
-   mutable int m_lockCount = 0;
+   mutable std::atomic<int> m_lockCount;
 };
 
 template<typename T>
 T *shm<T>::find(const std::string &name) {
 #ifdef NO_SHMEM
+    Shm::the().lockObjects();
     auto &dict = Shm::the().m_objectDictionary;
     auto it = dict.find(name);
-    if (it == dict.end())
+    if (it == dict.end()) {
+        Shm::the().unlockObjects();
         return nullptr;
+    }
+    Shm::the().unlockObjects();
     return static_cast<T *>(it->second);
 #else
    return Shm::the().shm().find<T>(name.c_str()).first;
@@ -229,6 +234,7 @@ T *shm<T>::find(const std::string &name) {
 template<typename T>
 bool shm<T>::destroy(const std::string &name) {
 #ifdef NO_SHMEM
+    Shm::the().lockObjects();
     auto &dict = Shm::the().m_objectDictionary;
     auto it = dict.find(name);
     bool ret = true;
@@ -239,6 +245,7 @@ bool shm<T>::destroy(const std::string &name) {
         dict.erase(it);
         delete t;
     }
+    Shm::the().unlockObjects();
 #else
     const bool ret = Shm::the().shm().destroy<T>(name.c_str());
 #endif

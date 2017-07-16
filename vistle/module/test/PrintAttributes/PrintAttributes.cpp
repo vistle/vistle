@@ -7,8 +7,8 @@ MODULE_MAIN(PrintAttributes)
 
 using namespace vistle;
 
-PrintAttributes::PrintAttributes(const std::string &shmname, const std::string &name, int moduleID)
-    : Module("show object attributes", shmname, name, moduleID) {
+PrintAttributes::PrintAttributes(const std::string &name, int moduleID, mpi::communicator comm)
+    : Module("show object attributes", name, moduleID, comm) {
 
     createInputPort("data_in");
 }

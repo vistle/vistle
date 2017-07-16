@@ -68,7 +68,7 @@ class PrintMetaData : public vistle::Module {
        void serialize(Archive &ar, const unsigned int version);
     };
 
-   PrintMetaData(const std::string &shmname, const std::string &name, int moduleID);
+   PrintMetaData(const std::string &name, int moduleID, mpi::communicator comm);
    ~PrintMetaData();
 
  private:

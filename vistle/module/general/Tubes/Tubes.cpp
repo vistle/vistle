@@ -20,8 +20,8 @@ MODULE_MAIN(ToTubes)
 
 using namespace vistle;
 
-ToTubes::ToTubes(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("Tubes", shmname, name, moduleID) {
+ToTubes::ToTubes(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("transform lines to tubes", name, moduleID, comm) {
 
    createInputPort("grid_in");
    createInputPort("data_in");

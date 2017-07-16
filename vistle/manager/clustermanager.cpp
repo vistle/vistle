@@ -706,9 +706,10 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
        auto &m = it->second;
        mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
        if (mod.newModule) {
-           std::thread t([newId, name, &mod]() {
+           boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
+           std::thread t([newId, name, ncomm, &mod]() {
                std::cerr << "thread for module " << name << ":" << newId << std::endl;
-               mod.instance = mod.newModule(name, newId);
+               mod.instance = mod.newModule(name, newId, ncomm);
                if (mod.instance)
                    mod.instance->eventLoop();
                mod.instance.reset();
@@ -1110,6 +1111,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       if (!checkExecuteObject(destId))
           return false;
 
+      // FIXME: obj already deleted
       if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
           || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
          message::ObjectReceived recv(addObj, addObj.getDestPort());

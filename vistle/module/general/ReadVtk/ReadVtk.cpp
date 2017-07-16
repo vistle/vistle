@@ -222,8 +222,8 @@ void ReadVtk::setChoices(vtkDataSet *ds) {
     }
 }
 
-ReadVtk::ReadVtk(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadVtk", shmname, name, moduleID)
+ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read VTK data", name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

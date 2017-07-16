@@ -52,6 +52,7 @@ class Communicator {
    DataManager &dataManager() const;
    bool connectHub(std::string host, unsigned short port, unsigned short dataPort);
    const AvailableMap &localModules();
+   boost::mpi::communicator comm() const;
 
  private:
    bool sendHub(const message::Message &message);

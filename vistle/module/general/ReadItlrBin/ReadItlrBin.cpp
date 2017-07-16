@@ -156,8 +156,8 @@ bool skipFloatArray(FILE *fp, const size_t num) {
     return skipArray<Scalar>(fp, num);
 }
 
-ReadItlrBin::ReadItlrBin(const std::string &shmname, const std::string &name, int moduleID)
-    : Module("Read ITLR binary data", shmname, name, moduleID)
+ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm)
+    : Module("Read ITLR binary data", name, moduleID, comm)
     , m_nparts(size())
     , m_dims{0,0,0} {
 

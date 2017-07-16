@@ -7,7 +7,7 @@
 class ExtractGrid: public vistle::Module {
 
  public:
-   ExtractGrid(const std::string &shmname, const std::string &name, int moduleID);
+   ExtractGrid(const std::string &name, int moduleID, mpi::communicator comm);
    ~ExtractGrid();
 
  private:

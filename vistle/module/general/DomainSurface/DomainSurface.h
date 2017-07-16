@@ -8,7 +8,7 @@
 class DomainSurface: public vistle::Module {
 
  public:
-   DomainSurface(const std::string &shmname, const std::string &name, int moduleID);
+   DomainSurface(const std::string &name, int moduleID, mpi::communicator comm);
    ~DomainSurface();
 
 private:

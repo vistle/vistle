@@ -11,8 +11,8 @@ MODULE_MAIN(LoadCover)
 
 using namespace vistle;
 
-LoadCover::LoadCover(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("instruct COVER to load a file", shmname, name, moduleID)
+LoadCover::LoadCover(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("instruct COVER to load a file", name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

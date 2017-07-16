@@ -49,8 +49,8 @@ unsigned ReadHDF5::s_numMetaMembers = 0;
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadHDF5", shmname, name, moduleID) {
+ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read Vistle data stored in HDF5 format", name, moduleID, comm) {
 
    // add module parameters
    m_fileName = addStringParameter("File Name", "Name of File that will read from", "");
@@ -59,7 +59,7 @@ ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int modu
    setReducePolicy(message::ReducePolicy::OverAll);
 
    // variable setup
-   m_isRootNode = (comm().rank() == 0);
+   m_isRootNode = (this->comm().rank() == 0);
    m_numPorts = 0;
 
    // obtain meta member count

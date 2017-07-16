@@ -6,7 +6,7 @@
 class ToTubes: public vistle::Module {
 
  public:
-   ToTubes(const std::string &shmname, const std::string &name, int moduleID);
+   ToTubes(const std::string &name, int moduleID, mpi::communicator comm);
    ~ToTubes();
 
  private:

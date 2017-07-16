@@ -6,7 +6,7 @@
 class ToSpheres: public vistle::Module {
 
  public:
-   ToSpheres(const std::string &shmname, const std::string &name, int moduleID);
+   ToSpheres(const std::string &name, int moduleID, mpi::communicator comm);
    ~ToSpheres();
 
  private:

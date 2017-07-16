@@ -20,7 +20,7 @@ public:
 class Color: public vistle::Module {
 
  public:
-   Color(const std::string &shmname, const std::string &name, int moduleID);
+   Color(const std::string &name, int moduleID, mpi::communicator comm);
    ~Color();
 
  private:

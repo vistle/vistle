@@ -7,7 +7,7 @@
 class AttachNormals: public vistle::Module {
 
  public:
-   AttachNormals(const std::string &shmname, const std::string &name, int moduleID);
+   AttachNormals(const std::string &name, int moduleID, mpi::communicator comm);
    ~AttachNormals();
 
  private:

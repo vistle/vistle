@@ -47,8 +47,8 @@ MODULE_MAIN(PrintMetaData)
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-PrintMetaData::PrintMetaData(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("PrintMetaData", shmname, name, moduleID) {
+PrintMetaData::PrintMetaData(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("PrintMetaData", name, moduleID, comm) {
 
    // create ports
    createInputPort("data_in");

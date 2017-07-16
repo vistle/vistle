@@ -12,8 +12,8 @@ MODULE_MAIN(ToPolyhedra)
 
 using namespace vistle;
 
-ToPolyhedra::ToPolyhedra(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("transform unstructured cells into polyhedral cells", shmname, name, moduleID) {
+ToPolyhedra::ToPolyhedra(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("transform unstructured cells into polyhedral cells", name, moduleID, comm) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

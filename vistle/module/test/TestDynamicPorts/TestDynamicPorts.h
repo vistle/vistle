@@ -6,7 +6,7 @@
 class TestDynamicPorts: public vistle::Module {
 
  public:
-   TestDynamicPorts(const std::string &shmname, const std::string &name, int moduleID);
+   TestDynamicPorts(const std::string &name, int moduleID, mpi::communicator comm);
    ~TestDynamicPorts();
 
    int m_numPorts;

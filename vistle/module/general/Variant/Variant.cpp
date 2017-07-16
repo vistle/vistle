@@ -7,7 +7,7 @@ using namespace vistle;
 class Variant: public vistle::Module {
 
  public:
-   Variant(const std::string &shmname, const std::string &name, int moduleID);
+   Variant(const std::string &name, int moduleID, mpi::communicator comm);
    ~Variant();
 
  private:
@@ -25,8 +25,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Visibility, (DontChange)(Visible)(Hidden));
 
 using namespace vistle;
 
-Variant::Variant(const std::string &shmname, const std::string &name, int moduleID)
-: Module("add variant attribute", shmname, name, moduleID)
+Variant::Variant(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("add variant attribute", name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

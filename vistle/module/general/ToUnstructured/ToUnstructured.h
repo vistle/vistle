@@ -26,7 +26,7 @@ class ToUnstructured : public vistle::Module {
  public:
 
 
-   ToUnstructured(const std::string &shmname, const std::string &name, int moduleID);
+   ToUnstructured(const std::string &name, int moduleID, mpi::communicator comm);
    ~ToUnstructured();
 
  private:

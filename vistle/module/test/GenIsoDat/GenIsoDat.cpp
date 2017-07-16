@@ -15,8 +15,8 @@ MODULE_MAIN(GenIsoDat)
 
 using namespace vistle;
 
-GenIsoDat::GenIsoDat(const std::string &shmname, const std::string &name, int moduleID)
-    : Module("GenIsoDat", shmname, name, moduleID) {
+GenIsoDat::GenIsoDat(const std::string &name, int moduleID, mpi::communicator comm)
+    : Module("generate test data for IsoSurface module", name, moduleID, comm) {
 
     createOutputPort("data_out");
     createOutputPort("mapdata_out");

@@ -41,8 +41,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(DataMode,
                                     (Cosine_Z)
                                     (Random))
 
-Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("Gendat", shmname, name, moduleID) {
+Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("generate test data", name, moduleID, comm) {
 
    createOutputPort("grid_out", "only grid");
    createOutputPort("data_out0", "scalar data");

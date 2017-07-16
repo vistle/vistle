@@ -32,8 +32,8 @@ MODULE_MAIN(ReadCovise)
 
 using namespace vistle;
 
-ReadCovise::ReadCovise(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadCovise", shmname, name, moduleID)
+ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read COVISE data", name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

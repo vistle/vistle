@@ -20,8 +20,8 @@ MODULE_MAIN(ReadModel)
 
 using namespace vistle;
 
-ReadModel::ReadModel(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadModel", shmname, name, moduleID)
+ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read polygonal models with Assimp", name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

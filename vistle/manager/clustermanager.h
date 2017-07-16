@@ -112,7 +112,7 @@ class ClusterManager {
 
    struct Module {
 #ifdef MODULE_THREAD
-      typedef std::shared_ptr<vistle::Module> (NewModuleFunc)(const std::string &name, int id);
+      typedef std::shared_ptr<vistle::Module> (NewModuleFunc)(const std::string &name, int id, mpi::communicator comm);
       boost::function<NewModuleFunc> newModule;
       std::shared_ptr<vistle::Module> instance;
       std::thread thread;

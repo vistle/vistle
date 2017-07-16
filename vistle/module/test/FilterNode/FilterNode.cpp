@@ -11,8 +11,8 @@ using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (Rank)(BlockNumber)(Timestep))
 
-FilterNode::FilterNode(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("FilterNode", shmname, name, moduleID) {
+FilterNode::FilterNode(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("filter data objects", name, moduleID, comm) {
 
    createInputPort("data_in");
    createOutputPort("data_out");

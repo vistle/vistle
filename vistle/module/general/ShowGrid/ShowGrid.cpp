@@ -13,8 +13,8 @@ MODULE_MAIN(ShowUSG)
 
 using namespace vistle;
 
-ShowUSG::ShowUSG(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("show outlines of grid cells", shmname, name, moduleID) {
+ShowUSG::ShowUSG(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("show outlines of grid cells", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

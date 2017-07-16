@@ -8,8 +8,8 @@ using namespace vistle;
 
 MODULE_MAIN(AttachNormals)
 
-AttachNormals::AttachNormals(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("AttachNormals", shmname, name, moduleID) {
+AttachNormals::AttachNormals(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("AttachNormals", name, moduleID, comm) {
 
    m_gridIn = createInputPort("grid_in");
    m_dataIn = createInputPort("data_in");

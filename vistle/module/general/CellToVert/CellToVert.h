@@ -7,7 +7,7 @@
 class CellToVert: public vistle::Module {
 
  public:
-   CellToVert(const std::string &shmname, const std::string &name, int moduleID);
+   CellToVert(const std::string &name, int moduleID, mpi::communicator comm);
    ~CellToVert();
 
  private:

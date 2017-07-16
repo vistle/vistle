@@ -8,7 +8,7 @@ using namespace vistle;
 class CreateVertexOwnerList: public vistle::Module {
 
  public:
-   CreateVertexOwnerList(const std::string &shmname, const std::string &name, int moduleID);
+   CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm);
    ~CreateVertexOwnerList();
 
  private:
@@ -17,8 +17,8 @@ class CreateVertexOwnerList: public vistle::Module {
 
 using namespace vistle;
 
-CreateVertexOwnerList::CreateVertexOwnerList(const std::string &shmname, const std::string &name, int moduleID)
-: Module("CreateVertexOwnerList", shmname, name, moduleID)
+CreateVertexOwnerList::CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("CreateVertexOwnerList", name, moduleID, comm)
 {
 
    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);

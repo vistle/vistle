@@ -20,7 +20,7 @@ using namespace vistle;
 class MpiInfo: public vistle::Module {
 
  public:
-   MpiInfo(const std::string &shmname, const std::string &name, int moduleID);
+   MpiInfo(const std::string &name, int moduleID, mpi::communicator comm);
    ~MpiInfo();
 
  private:
@@ -33,8 +33,8 @@ class MpiInfo: public vistle::Module {
 
 using namespace vistle;
 
-MpiInfo::MpiInfo(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("MPI info", shmname, name, moduleID)
+MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("MPI info", name, moduleID, comm)
 {
    std::stringstream str;
    str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;

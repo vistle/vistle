@@ -9,7 +9,7 @@ using namespace vistle;
 class Transform: public vistle::Module {
 
  public:
-   Transform(const std::string &shmname, const std::string &name, int moduleID);
+   Transform(const std::string &name, int moduleID, mpi::communicator comm);
    ~Transform();
 
  private:
@@ -26,8 +26,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimationMode, (Keep)(Deanimate)(Animate)(Ti
 
 using namespace vistle;
 
-Transform::Transform(const std::string &shmname, const std::string &name, int moduleID)
-: Module("add color attribute", shmname, name, moduleID)
+Transform::Transform(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("add color attribute", name, moduleID, comm)
 {
 
    data_in = createInputPort("data_in", "input data");

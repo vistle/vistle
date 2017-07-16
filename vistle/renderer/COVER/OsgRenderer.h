@@ -41,8 +41,7 @@ class PluginRenderObject: public vistle::RenderObject {
 class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
  public:
-   OsgRenderer(const std::string &shmname,
-         const std::string &name, int moduleId);
+   OsgRenderer(const std::string &name, int moduleId, mpi::communicator comm);
    ~OsgRenderer();
    static OsgRenderer *the();
 
@@ -118,6 +117,9 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
    opencover::coVRPlugin *m_plugin = nullptr;
    static OsgRenderer *s_instance;
+
+   std::string setupEnvAndGetLibDir(const std::string &bindir);
+   int runMain(int argc, char *argv[]);
 };
 
 #endif

@@ -17,8 +17,8 @@ MODULE_MAIN(FlattenTriangles)
 
 using namespace vistle;
 
-FlattenTriangles::FlattenTriangles(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("transform Polygons into Triangles", shmname, name, moduleID) {
+FlattenTriangles::FlattenTriangles(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("transform Polygons into Triangles", name, moduleID, comm) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

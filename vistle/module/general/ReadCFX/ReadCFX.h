@@ -92,7 +92,7 @@ class ReadCFX: public vistle::Module {
                                   //or not (correct=0) (result out of calculation), assuming that it exists.
 
  public:
-   ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
+   ReadCFX(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadCFX();
    virtual bool compute() override;
    static const int usr_level = 0; // Query the number of variables at interest level usr_level or below. If usr_level is 0, then the

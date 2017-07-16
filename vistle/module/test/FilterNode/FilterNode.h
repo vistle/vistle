@@ -8,7 +8,7 @@
 class FilterNode: public vistle::Module {
 
  public:
-   FilterNode(const std::string &shmname, const std::string &name, int moduleID);
+   FilterNode(const std::string &name, int moduleID, mpi::communicator comm);
    ~FilterNode();
 
  private:

@@ -22,8 +22,8 @@ MODULE_MAIN(ToUnstructured)
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-ToUnstructured::ToUnstructured(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ToUnstructured", shmname, name, moduleID) {
+ToUnstructured::ToUnstructured(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("transform structured grids to equivalent unstructured grid", name, moduleID, comm) {
 
    // create ports
    createInputPort("data_in");

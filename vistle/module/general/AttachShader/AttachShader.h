@@ -6,7 +6,7 @@
 class AttachShader: public vistle::Module {
 
  public:
-   AttachShader(const std::string &shmname, const std::string &name, int moduleID);
+   AttachShader(const std::string &name, int moduleID, mpi::communicator comm);
    ~AttachShader();
 
  private:

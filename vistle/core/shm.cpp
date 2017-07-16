@@ -112,13 +112,13 @@ std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
-   : m_name(name)
+   : m_allocator(nullptr)
+   , m_name(name)
    , m_remove(create)
    , m_moduleId(m)
    , m_rank(r)
    , m_objectId(0)
    , m_arrayId(0)
-   , m_allocator(nullptr)
    , m_shmDeletionMutex(nullptr)
 #ifndef NO_SHMEM
    , m_shm(nullptr)
@@ -151,6 +151,8 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       s_shmdebug = m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
 #endif
+
+      m_lockCount = 0;
 }
 
 Shm::~Shm() {

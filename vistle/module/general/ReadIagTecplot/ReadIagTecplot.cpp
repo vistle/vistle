@@ -34,8 +34,8 @@ void ReadIagTecplot::setChoices() {
 }
 
 
-ReadIagTecplot::ReadIagTecplot(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadIagTecplot", shmname, name, moduleID)
+ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read IAG Tecplot data", name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

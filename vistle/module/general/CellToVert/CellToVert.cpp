@@ -15,8 +15,8 @@ using namespace vistle;
 
 MODULE_MAIN(CellToVert)
 
-CellToVert::CellToVert(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("CellToVert", shmname, name, moduleID) {
+CellToVert::CellToVert(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("CellToVert", name, moduleID, comm) {
 
    createInputPort("data_in");
 

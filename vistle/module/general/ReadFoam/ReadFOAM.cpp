@@ -44,8 +44,8 @@ namespace mpi = boost::mpi;
 
 using namespace vistle;
 
-ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int moduleId)
-: Module("ReadFoam", shmname, name, moduleId)
+ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm)
+: Module("ReadFoam", name, moduleId, comm)
 , m_boundOut(nullptr)
 {
    // file browser parameter

@@ -61,8 +61,8 @@ bool agree(const boost::mpi::communicator &comm, const Value &value) {
     return mismatch==0;
 }
 
-Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("Tracer", shmname, name, moduleID) {
+Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("compute particle traces", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::PerTimestep);

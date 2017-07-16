@@ -10,8 +10,8 @@ namespace vistle {
 class V_RENDEREREXPORT Renderer: public Module {
 
  public:
-   Renderer(const std::string &desc, const std::string &shmname,
-            const std::string &name, const int moduleID);
+   Renderer(const std::string &desc, const std::string &name,
+            const int moduleID, mpi::communicator comm);
    virtual ~Renderer();
 
    bool dispatch() override;

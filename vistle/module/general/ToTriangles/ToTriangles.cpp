@@ -19,8 +19,8 @@ MODULE_MAIN(ToTriangles)
 
 using namespace vistle;
 
-ToTriangles::ToTriangles(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("transform Polygons into Triangles", shmname, name, moduleID) {
+ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("transform Polygons into Triangles", name, moduleID, comm) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

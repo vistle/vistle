@@ -7,7 +7,7 @@
 class CuttingSurface: public vistle::Module {
 
  public:
-   CuttingSurface(const std::string &shmname, const std::string &name, int moduleID);
+   CuttingSurface(const std::string &name, int moduleID, mpi::communicator comm);
    ~CuttingSurface();
 
  private:

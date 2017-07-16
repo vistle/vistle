@@ -6,7 +6,7 @@
 class VectorField: public vistle::Module {
 
  public:
-   VectorField(const std::string &shmname, const std::string &name, int moduleID);
+   VectorField(const std::string &name, int moduleID, mpi::communicator comm);
    ~VectorField();
 
  private:

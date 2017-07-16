@@ -7,7 +7,7 @@
 class MetaData: public vistle::Module {
 
  public:
-   MetaData(const std::string &shmname, const std::string &name, int moduleID);
+   MetaData(const std::string &name, int moduleID, mpi::communicator comm);
    ~MetaData();
 
  private:

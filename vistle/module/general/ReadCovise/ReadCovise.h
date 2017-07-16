@@ -67,7 +67,7 @@ struct Element {
 class ReadCovise: public vistle::Module {
 
  public:
-   ReadCovise(const std::string &shmname, const std::string &name, int moduleID);
+   ReadCovise(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadCovise();
 
  private:

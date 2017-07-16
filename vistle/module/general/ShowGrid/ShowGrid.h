@@ -6,7 +6,7 @@
 class ShowUSG: public vistle::Module {
 
  public:
-   ShowUSG(const std::string &shmname, const std::string &name, int moduleID);
+   ShowUSG(const std::string &name, int moduleID, mpi::communicator comm);
    ~ShowUSG();
 
  private:

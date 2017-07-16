@@ -11,8 +11,8 @@
 
 using namespace vistle;
 
-DomainSurface::DomainSurface(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("DomainSurface", shmname, name, moduleID) {
+DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("DomainSurface", name, moduleID, comm) {
    createInputPort("data_in");
    createOutputPort("data_out");
    addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);

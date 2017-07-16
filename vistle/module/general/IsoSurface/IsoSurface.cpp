@@ -25,14 +25,14 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue,
                                     (Value)
 )
 
-IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int moduleID)
+IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator comm)
    : Module(
 #ifdef CUTTINGSURFACE
 "cut through grids"
 #else
 "extract isosurfaces"
 #endif
-, shmname, name, moduleID)
+, name, moduleID, comm)
 , isocontrol(this) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);

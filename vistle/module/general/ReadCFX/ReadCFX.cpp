@@ -45,8 +45,8 @@ MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
 
-ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadCFX", shmname, name, moduleID) {
+ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("read ANSYS CFX data", name, moduleID, comm) {
 
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);

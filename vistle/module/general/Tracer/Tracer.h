@@ -55,7 +55,7 @@ private:
 class Tracer: public vistle::Module {
 
 public:
-    Tracer(const std::string &shmname, const std::string &name, int moduleID);
+    Tracer(const std::string &name, int moduleID, mpi::communicator comm);
     ~Tracer();
 
 

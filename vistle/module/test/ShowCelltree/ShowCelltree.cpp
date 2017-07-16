@@ -16,8 +16,8 @@ enum ShowWhat {
     ShowRight = 2,
 };
 
-ShowCelltree::ShowCelltree(const std::string &shmname, const std::string &name, int moduleID)
-: Module("ShowCelltree", shmname, name, moduleID) {
+ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("ShowCelltree", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

@@ -156,8 +156,8 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank) {
     return Shm::isAttached();
 }
 
-Module::Module(const std::string &desc, const std::string &shmname,
-      const std::string &moduleName, const int moduleId)
+Module::Module(const std::string &desc,
+      const std::string &moduleName, const int moduleId, mpi::communicator comm)
 : m_name(moduleName)
 , m_rank(-1)
 , m_size(-1)
@@ -178,11 +178,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_traceMessages(message::INVALID)
 , m_benchmark(false)
 , m_avgComputeTime(1.)
-#ifdef MODULE_THREAD
-, m_comm(MPI_COMM_WORLD, mpi::comm_duplicate)
-#else
-, m_comm(MPI_COMM_WORLD, mpi::comm_attach)
-#endif
+, m_comm(comm)
 , m_numTimesteps(-1)
 , m_cancelRequested(false)
 , m_cancelExecuteCalled(false)
@@ -191,8 +187,8 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_reduced(false)
 , m_readyForQuit(false)
 {
-   m_size = comm().size();
-   m_rank = comm().rank();
+   m_size = m_comm.size();
+   m_rank = m_comm.rank();
 
 #ifndef MODULE_THREAD
    message::DefaultSender::init(m_id, m_rank);
@@ -1943,7 +1939,7 @@ using namespace boost;
 class InstModule: public Module {
 public:
    InstModule()
-   : Module("description", "shmid", "name", 1)
+   : Module("description", "name", 1, boost::mpi::communicator())
    {}
    bool compute() { return true; }
 };

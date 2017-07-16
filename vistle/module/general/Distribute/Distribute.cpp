@@ -7,7 +7,7 @@ namespace mpi = boost::mpi;
 class Distribute: public vistle::Module {
 
  public:
-   Distribute(const std::string &shmname, const std::string &name, int moduleID);
+   Distribute(const std::string &name, int moduleID, mpi::communicator comm);
    ~Distribute();
 
  private:
@@ -16,8 +16,8 @@ class Distribute: public vistle::Module {
 
 using namespace vistle;
 
-Distribute::Distribute(const std::string &shmname, const std::string &name, int moduleID)
-: Module("broadcast input objects", shmname, name, moduleID)
+Distribute::Distribute(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("broadcast input objects", name, moduleID, comm)
 {
    setSchedulingPolicy(message::SchedulingPolicy::Gang);
 

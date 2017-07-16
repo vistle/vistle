@@ -8,7 +8,7 @@ class vtkDataSet;
 class ReadVtk: public vistle::Module {
 
  public:
-   ReadVtk(const std::string &shmname, const std::string &name, int moduleID);
+   ReadVtk(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadVtk();
 
  private:

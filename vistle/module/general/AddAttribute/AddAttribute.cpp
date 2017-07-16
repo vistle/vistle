@@ -9,7 +9,7 @@ using namespace vistle;
 class AddAttribute: public vistle::Module {
 
  public:
-   AddAttribute(const std::string &shmname, const std::string &name, int moduleID);
+   AddAttribute(const std::string &name, int moduleID, mpi::communicator comm);
    ~AddAttribute();
 
  private:
@@ -21,8 +21,8 @@ class AddAttribute: public vistle::Module {
 
 using namespace vistle;
 
-AddAttribute::AddAttribute(const std::string &shmname, const std::string &name, int moduleID)
-: Module("add attributes", shmname, name, moduleID)
+AddAttribute::AddAttribute(const std::string &name, int moduleID, mpi::communicator comm)
+: Module("add attributes", name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

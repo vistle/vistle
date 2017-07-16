@@ -90,7 +90,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    friend struct OsgViewData;
 
  public:
-   OSGRenderer(const std::string &shmname, const std::string &name, int moduleID);
+   OSGRenderer(const std::string &name, int moduleID, mpi::communicator comm);
    ~OSGRenderer();
 
  private:

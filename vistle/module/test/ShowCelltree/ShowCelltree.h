@@ -6,7 +6,7 @@
 class ShowCelltree: public vistle::Module {
 
  public:
-   ShowCelltree(const std::string &shmname, const std::string &name, int moduleID);
+   ShowCelltree(const std::string &name, int moduleID, mpi::communicator comm);
    ~ShowCelltree();
 
  private:

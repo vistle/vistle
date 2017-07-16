@@ -8,7 +8,7 @@
 class ReadIagTecplot: public vistle::Module {
 
  public:
-   ReadIagTecplot(const std::string &shmname, const std::string &name, int moduleID);
+   ReadIagTecplot(const std::string &name, int moduleID, mpi::communicator comm);
    ~ReadIagTecplot();
 
  private:

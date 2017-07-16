@@ -61,7 +61,7 @@ class RayCaster: public vistle::Renderer {
       unsigned char r, g, b, a;
    };
 
-   RayCaster(const std::string &shmname, const std::string &name, int moduleId);
+   RayCaster(const std::string &name, int moduleId, mpi::communicator comm);
    ~RayCaster();
    void prepareQuit() override;
 
@@ -116,8 +116,8 @@ class RayCaster: public vistle::Renderer {
 RayCaster *RayCaster::s_instance = nullptr;
 
 
-RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
-: Renderer("RayCaster", shmname, name, moduleId)
+RayCaster::RayCaster(const std::string &name, int moduleId, mpi::communicator comm)
+: Renderer("CPU ray casting renderer", name, moduleId, comm)
 #ifdef ICET_CALLBACK
 , m_renderManager(this, RayCaster::drawCallback)
 #else

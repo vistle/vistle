@@ -134,6 +134,11 @@ const AvailableMap &Communicator::localModules() {
     return m_localModules;
 }
 
+mpi::communicator Communicator::comm() const {
+
+    return m_comm;
+}
+
 bool Communicator::connectData() {
 
     return m_dataManager->connect(m_dataEndpoint);
