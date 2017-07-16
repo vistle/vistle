@@ -56,7 +56,7 @@ class V_MODULEEXPORT Module {
    Module(const std::string &description, const std::string &shmname,
           const std::string &name, const int moduleID);
    virtual ~Module();
-   void eventLoop(); // called from MODULE_MAIN
+   virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
 
    virtual bool dispatch();
