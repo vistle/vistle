@@ -78,7 +78,7 @@ Tubes::Data::Data(const Tubes::Data &o, const std::string &n)
 , components(o.components)
 {
    initData();
-   for (int i=0; i<style->size(); ++i)
+   for (size_t i=0; i<style->size(); ++i)
       (*style)[i] = (*o.style)[i];
 }
 
