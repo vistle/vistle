@@ -216,8 +216,9 @@ std::string Shm::shmIdFilename() {
 }
 
 void Shm::lockObjects() const {
-   if (m_lockCount != 0)
-       std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
+   if (m_lockCount != 0) {
+       //std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
+   }
    //assert(m_lockCount==0);
    ++m_lockCount;
    m_shmDeletionMutex->lock();
@@ -227,8 +228,9 @@ void Shm::unlockObjects() const {
    m_shmDeletionMutex->unlock();
    --m_lockCount;
    //assert(m_lockCount==0);
-   if (m_lockCount != 0)
-       std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
+   if (m_lockCount != 0) {
+       //std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
+   }
 }
 
 namespace {

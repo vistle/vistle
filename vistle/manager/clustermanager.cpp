@@ -708,7 +708,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
        if (mod.newModule) {
            boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
            std::thread t([newId, name, ncomm, &mod]() {
-               std::cerr << "thread for module " << name << ":" << newId << std::endl;
+               //std::cerr << "thread for module " << name << ":" << newId << std::endl;
                mod.instance = mod.newModule(name, newId, ncomm);
                if (mod.instance)
                    mod.instance->eventLoop();

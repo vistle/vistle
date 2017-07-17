@@ -637,7 +637,7 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
         memar.setFetcher(fetcher);
         obj.reset(Object::load(memar));
-        std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
+        //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
         //obj->unref();
     }
 
