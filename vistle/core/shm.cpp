@@ -403,7 +403,10 @@ std::string Shm::createObjectId(const std::string &id) {
       return id;
    }
    std::stringstream name;
-   name << m_moduleId << "m"
+   name
+#ifndef MODULE_THREAD
+        << m_moduleId << "m"
+#endif
         << m_objectId++ << "o"
         << m_rank << "r";
 
@@ -420,7 +423,10 @@ std::string Shm::createArrayId(const std::string &id) {
    }
 
    std::stringstream name;
-   name << m_moduleId << "m"
+   name
+#ifndef MODULE_THREAD
+        << m_moduleId << "m"
+#endif
         << m_arrayId++ << "a"
         << m_rank << "r";
 
