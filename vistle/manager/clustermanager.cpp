@@ -711,8 +711,10 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
         m_stateTracker.handle(connect);
         int modFrom = connect.getModuleA();
         int modTo = connect.getModuleB();
-        sendMessage(modFrom, connect);
-        sendMessage(modTo, connect);
+        if (isLocal(modFrom))
+            sendMessage(modFrom, connect);
+        if (isLocal(modTo))
+            sendMessage(modTo, connect);
     } else {
         sendHub(connect);
     }
