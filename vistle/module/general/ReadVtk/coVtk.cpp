@@ -1465,7 +1465,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
             break;
         }
 #if VTK_MAJOR_VERSION >= 7
-        if (ghostArray && ghostArray->GetValue(i)&vtkDataSetAttributes::DUPLICATECELL) {
+        if (ghostArray && const_cast<vtkUnsignedCharArray *>(ghostArray)->GetValue(i)&vtkDataSetAttributes::DUPLICATECELL) {
             typelist[i] |= UnstructuredGrid::GHOST_BIT;
         }
 #endif
@@ -1792,7 +1792,7 @@ DataBase::ptr vtkArray2Vistle(vtkType *vd, Object::const_ptr grid)
             for (Index j = 0; j < dim[1]; ++j) {
                 for (Index i = 0; i < dim[0]; ++i) {
                     const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
-#if VTK_MAJOR_VERSION < 7
+#if VTK_MAJOR_VERSION < 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION<1)
                     ValueType v[3];
                     vd->GetTupleValue(l, v);
                     x[idx] = v[0];

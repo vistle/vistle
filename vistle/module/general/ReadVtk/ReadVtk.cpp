@@ -53,7 +53,7 @@ std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1,
    reader->SetFileName(filename.c_str());
    reader->Update();
    int numPieces = 1;
-#if VTK_MAJOR_VERSION >= 7
+#if (VTK_MAJOR_VERSION == 7 && VTK_MINOR_VERSION >= 1) || VTK_MAJOR_VERSION>7
    if (auto unstr = vtkXMLUnstructuredDataReader::SafeDownCast(reader)) {
        numPieces = unstr->GetNumberOfPieces();
    } else if (auto multi = vtkXMLMultiBlockDataReader::SafeDownCast(reader)) {
