@@ -1,6 +1,14 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
+
+
+#ifdef __linux__
+// for pthread_setname_np
+#define _GNU_SOURCE
+#include <pthread.h>
+#endif
+
 #include <util/sysdep.h>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
@@ -708,6 +716,15 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
        if (mod.newModule) {
            boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
            std::thread t([newId, name, ncomm, &mod]() {
+               std::string mname = "vistle:" + name + ":" + std::to_string(newId);
+#ifdef __linux__
+#if __GLIBC__>2 || (__GLIBC__==2 && __GLIBC_MINOR__>=12)
+               pthread_setname_np(pthread_self(), mname.c_str());
+#endif
+#endif
+#ifdef __APPLE__
+               pthread_setname_np(mname.c_str());
+#endif
                //std::cerr << "thread for module " << name << ":" << newId << std::endl;
                mod.instance = mod.newModule(name, newId, ncomm);
                if (mod.instance)
