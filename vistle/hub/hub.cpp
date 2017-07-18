@@ -598,6 +598,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              }
              if (m_stateTracker.handleConnect(mm)) {
                  handlePriv(mm);
+                 handleQueue();
              } else {
                  //CERR << "delaying connect: " << msg << std::endl;
                  m_queue.emplace_back(msg);
@@ -605,13 +606,40 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              }
          } else {
              if (mm.isNotification()) {
+                 m_stateTracker.handle(mm);
                  sendManager(mm);
                  sendUi(mm);
              } else {
                  sendMaster(mm);
              }
+             return true;
          }
          break;
+      }
+      case message::DISCONNECT: {
+         auto &mm = static_cast<const Disconnect &>(msg);
+         if (m_isMaster) {
+             if (mm.isNotification()) {
+                 CERR << "discarding notification on master: " << msg << std::endl;
+                 return true;
+             }
+             if (m_stateTracker.handleDisconnect(mm)) {
+                 handlePriv(mm);
+                 handleQueue();
+             } else {
+                 m_queue.emplace_back(msg);
+                 return true;
+             }
+         } else {
+             if (mm.isNotification()) {
+                 m_stateTracker.handle(mm);
+                 sendManager(mm);
+                 sendUi(mm);
+             } else {
+                 sendMaster(mm);
+             }
+             return true;
+         }
       }
       default:
          break;
@@ -851,24 +879,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
 
          case message::ADDPORT:
-         case message::DISCONNECT:
          {
-             //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
-             decltype (m_queue) queue;
-             for (auto &m: m_queue) {
-                 if (m.type() == message::CONNECT) {
-                     auto &mm = m.as<Connect>();
-                     if (m_stateTracker.handleConnect(mm)) {
-                         handlePriv(mm);
-                     } else {
-                         queue.push_back(m);
-                     }
-                 } else {
-                     std::cerr << "message other than Connect in queue: " << m << std::endl;
-                     queue.push_back(m);
-                 }
-             }
-             std::swap(m_queue, queue);
+             handleQueue();
              break;
          }
          default: {
@@ -878,6 +890,44 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    }
 
    return true;
+}
+
+bool Hub::handleQueue() {
+
+    using namespace message;
+
+    //CERR << "unqueuing " << m_queue.size() << " messages" << std::endl;;
+
+    bool again = true;
+    while (again) {
+        again = false;
+        decltype (m_queue) queue;
+        for (auto &m: m_queue) {
+            if (m.type() == message::CONNECT) {
+                auto &mm = m.as<Connect>();
+                if (m_stateTracker.handleConnect(mm)) {
+                    again = true;
+                    handlePriv(mm);
+                } else {
+                    queue.push_back(m);
+                }
+            } else if (m.type() == message::DISCONNECT) {
+                auto &mm = m.as<Disconnect>();
+                if (m_stateTracker.handleDisconnect(mm)) {
+                    again = true;
+                    handlePriv(mm);
+                } else {
+                    queue.push_back(m);
+                }
+            } else {
+                std::cerr << "message other than Connect/Disconnect in queue: " << m << std::endl;
+                queue.push_back(m);
+            }
+        }
+        std::swap(m_queue, queue);
+    }
+
+    return true;
 }
 
 bool Hub::init(int argc, char *argv[]) {
@@ -1189,6 +1239,17 @@ bool Hub::handlePriv(const message::Connect &conn) {
     sendUi(c);
     sendManager(c);
     sendSlaves(c);
+
+    return true;
+}
+
+bool Hub::handlePriv(const message::Disconnect &disc) {
+
+    message::Disconnect d(disc);
+    d.setNotify(true);
+    sendUi(d);
+    sendManager(d);
+    sendSlaves(d);
 
     return true;
 }

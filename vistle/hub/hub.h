@@ -116,8 +116,10 @@ private:
    bool handlePriv(const message::BarrierReached &reached);
    bool handlePriv(const message::RequestTunnel &tunnel);
    bool handlePriv(const message::Connect &conn);
+   bool handlePriv(const message::Disconnect &disc);
 
    std::vector<message::Buffer> m_queue;
+   bool handleQueue();
 };
 
 }

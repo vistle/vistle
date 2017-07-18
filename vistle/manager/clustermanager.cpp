@@ -749,8 +749,7 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
 
 bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 
-   int modFrom = disconnect.getModuleA();
-   int modTo = disconnect.getModuleB();
+#if 0
    const char *portFrom = disconnect.getPortAName();
    const char *portTo = disconnect.getPortBName();
    const Port *from = portManager().findPort(modFrom, portFrom);
@@ -764,8 +763,22 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
       CERR << " Did not find destination port: " << disconnect << std::endl;
       return true;
    }
+#endif
 
    message::Disconnect d = disconnect;
+   if (disconnect.isNotification()) {
+        m_stateTracker.handle(disconnect);
+        int modFrom = disconnect.getModuleA();
+        int modTo = disconnect.getModuleB();
+        if (isLocal(modFrom))
+            sendMessage(modFrom, disconnect);
+        if (isLocal(modTo))
+            sendMessage(modTo, disconnect);
+   } else {
+       sendHub(disconnect);
+   }
+
+#if 0
    if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
       d.reverse();
       std::swap(modFrom, modTo);
@@ -788,7 +801,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
          return false;
       }
    }
-
+#endif
    return true;
 }
 

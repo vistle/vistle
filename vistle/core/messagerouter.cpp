@@ -35,7 +35,7 @@ void Router::initRoutingTable() {
    rt[REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
    rt[CONNECT]               = Special;
-   rt[DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0|HandleOnMaster;
+   rt[DISCONNECT]            = Special;
    rt[SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
    rt[PING]                  = DestManager|DestModules|HandleOnDest;
    rt[PONG]                  = DestUi|HandleOnDest;

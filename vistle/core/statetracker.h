@@ -117,6 +117,7 @@ class V_COREEXPORT StateTracker {
 
    bool handle(const message::Message &msg, bool track=true);
    bool handleConnect(const message::Connect &conn);
+   bool handleDisconnect(const message::Disconnect &disc);
 
    std::shared_ptr<PortTracker> portTracker() const;
 
