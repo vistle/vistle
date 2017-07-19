@@ -149,12 +149,14 @@ set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
 add_subdirectory(util)
 add_subdirectory(core)
+add_subdirectory(net)
 add_subdirectory(rhr)
 add_subdirectory(control)
 add_subdirectory(userinterface)
 
 add_subdirectory(bin)
 add_subdirectory(hub)
+add_subdirectory(proxy)
 add_subdirectory(blower)
 
 add_subdirectory(module)

@@ -8,13 +8,15 @@
 #include <core/message.h>
 #include <core/messages.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class TunnelManager;
 class TunnelStream;
 
 //! one tunnel waiting for connections
-class Tunnel {
+class V_NETEXPORT Tunnel {
 
    typedef boost::asio::ip::tcp::socket socket;
    typedef boost::asio::ip::tcp::acceptor acceptor;
@@ -41,7 +43,7 @@ private:
 };
 
 //! a single established connection being tunneled
-class TunnelStream {
+class V_NETEXPORT TunnelStream {
 
    typedef boost::asio::ip::tcp::socket socket;
  public:
@@ -60,7 +62,7 @@ class TunnelStream {
 };
 
 //! manage tunnel creation and destruction
-class TunnelManager {
+class V_NETEXPORT TunnelManager {
 
  public:
    typedef boost::asio::ip::tcp::socket socket;

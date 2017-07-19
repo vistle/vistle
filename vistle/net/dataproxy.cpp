@@ -1,8 +1,8 @@
 #include "dataproxy.h"
-#include "hub.h"
 #include <core/tcpmessage.h>
 #include <core/message.h>
 #include <core/assert.h>
+#include <core/statetracker.h>
 #include <condition_variable>
 
 #define CERR std::cerr << "DataProxy: "
@@ -20,8 +20,9 @@ using vistle::message::async_recv;
 
 using std::shared_ptr;
 
-DataProxy::DataProxy(Hub &hub, unsigned short basePort)
-: m_hub(hub)
+DataProxy::DataProxy(StateTracker &state, unsigned short basePort)
+: m_hubId(message::Id::Invalid)
+, m_stateTracker(state)
 , m_port(basePort)
 , m_acceptor(m_io)
 , m_boost_archive_version(0)
@@ -58,12 +59,27 @@ DataProxy::~DataProxy() {
    cleanUp();
 }
 
+void DataProxy::setHubId(int id) {
+    m_hubId = id;
+}
+
 unsigned short DataProxy::port() const {
     return m_port;
 }
 
 asio::io_service &DataProxy::io() {
     return m_io;
+}
+
+int DataProxy::idToHub(int id) const {
+
+   if (id >= message::Id::ModuleBase)
+      return m_stateTracker.getHub(id);
+
+   if (id == message::Id::LocalManager || id == message::Id::LocalHub)
+       return m_hubId;
+
+   return m_stateTracker.getHub(id);
 }
 
 void DataProxy::cleanUp() {
@@ -143,7 +159,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
                  m_remoteDataSocket[id.senderId()] = sock;
 
                  if (id.boost_archive_version() != m_boost_archive_version) {
-                    std::cerr << "Boost.Archive version on hub " << m_hub.id()  << " is " << m_boost_archive_version << ", but hub " << id.senderId() << " connected with version " << id.boost_archive_version() << std::endl;
+                    std::cerr << "Boost.Archive version on hub " << m_hubId  << " is " << m_boost_archive_version << ", but hub " << id.senderId() << " connected with version " << id.boost_archive_version() << std::endl;
                     if (m_boost_archive_version < id.boost_archive_version()) {
                        std::cerr << "Receiving of remote objects from hub " << id.senderId() << " will fail" << std::endl;
                     } else {
@@ -151,7 +167,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
                     }
                  }
             }
-            Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
+            Identify ident(Identify::REMOTEBULKDATA, m_hubId);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                 if (ec) {
                     CERR << "send error" << std::endl;
@@ -210,8 +226,8 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
         switch(msg->type()) {
         case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
-            int hubId = m_hub.idToHub(send.destId());
-            //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
+            int hubId = idToHub(send.destId());
+            //CERR << "localMsgRecv on " << m_hubId << ": sending to " << hubId << std::endl;
             auto remote = getRemoteDataSock(hubId);
             if (remote) {
                 async_send(*remote, send, payload, [remote](error_code ec){
@@ -227,8 +243,8 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
-            int hubId = m_hub.idToHub(req.destId());
-            //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
+            int hubId = idToHub(req.destId());
+            //CERR << "localMsgRecv on " << m_hubId << ": sending to " << hubId << std::endl;
             auto remote = getRemoteDataSock(hubId);
             if (remote) {
                 async_send(*remote, *msg, nullptr, [remote, msg, hubId](error_code ec){
@@ -274,7 +290,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::REQUEST) {
-                Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
+                Identify ident(Identify::REMOTEBULKDATA, m_hubId);
                 async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                     if (ec) {
                         CERR << "send error" << std::endl;
@@ -283,7 +299,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
                 });
             } else if (ident.identity() == Identify::REMOTEBULKDATA) {
                 if (ident.boost_archive_version() != m_boost_archive_version) {
-                    std::cerr << "Boost.Archive version on hub " << m_hub.id()  << " is " << m_boost_archive_version << ", but hub " << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
+                    std::cerr << "Boost.Archive version on hub " << m_hubId  << " is " << m_boost_archive_version << ", but hub " << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
                     if (m_boost_archive_version < ident.boost_archive_version()) {
                         std::cerr << "Receiving of remote objects from hub " << ident.senderId() << " will fail" << std::endl;
                     } else {
@@ -297,10 +313,10 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
-            //int hubId = m_hub.idToHub(send.senderId());
-            //CERR << "remoteMsgRecv on " << m_hub.id() << ": SendObject from " << hubId << std::endl;
-            int hubId = m_hub.idToHub(send.destId());
-            vassert(hubId == m_hub.id());
+            //int hubId = idToHub(send.senderId());
+            //CERR << "remoteMsgRecv on " << m_hubId << ": SendObject from " << hubId << std::endl;
+            int hubId = idToHub(send.destId());
+            vassert(hubId == m_hubId);
             auto local = getLocalDataSock(send.destRank());
             if (local) {
                 async_send(*local, send, payload, [this, local](error_code ec){
@@ -316,11 +332,11 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
-            int hubId = m_hub.idToHub(req.destId());
+            int hubId = idToHub(req.destId());
             int rank = req.destRank();
-            if (hubId != m_hub.id()) {
+            if (hubId != m_hubId) {
                 CERR << "remoteMsgRecv: hub mismatch" << std::endl;
-                CERR << "remoteMsgRecv: on " << m_hub.id() << ": sending to " << hubId << std::endl;
+                CERR << "remoteMsgRecv: on " << m_hubId << ": sending to " << hubId << std::endl;
             } else if (auto local = getLocalDataSock(rank)) {
                 async_send(*local, *msg, nullptr, [this, msg, rank, sock](error_code ec){
                     if (ec) {
@@ -345,7 +361,7 @@ bool DataProxy::connectRemoteData(int hubId) {
 
    vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
 
-   for (auto &hubData: m_hub.stateTracker().m_hubs) {
+   for (auto &hubData: m_stateTracker.m_hubs) {
       if (hubData.id == hubId) {
          std::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
          boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.dataPort);
@@ -360,7 +376,7 @@ bool DataProxy::connectRemoteData(int hubId) {
          remoteMsgRecv(sock);
 
 #if 0
-         Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
+         Identify ident(Identify::REMOTEBULKDATA, m_hubId);
          if (!message::send(*sock, ident)) {
              CERR << "error when establishing bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
              return false;

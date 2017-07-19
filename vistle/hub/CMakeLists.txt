@@ -10,8 +10,6 @@ set(hub_SOURCES
    hub.cpp
    uimanager.cpp
    uiclient.cpp
-   tunnel.cpp
-   dataproxy.cpp
    )
 
 if(Boost_PYTHON_FOUND OR Boost_PYTHON3_FOUND)
@@ -29,6 +27,7 @@ target_link_libraries(vistle
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core
+        vistle_net
 )
 
 if(UNIX)

@@ -783,6 +783,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             message::DefaultSender::init(m_hubId, 0);
             Router::init(message::Identify::SLAVEHUB, m_hubId);
             CERR << "got hub id " << m_hubId << std::endl;
+            m_dataProxy->setHubId(m_hubId);
             if (m_managerConnected) {
                sendManager(set);
                for (auto &mod: m_localModules) {
@@ -971,7 +972,7 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    startServer();
-   m_dataProxy.reset(new DataProxy(*this, m_port+1));
+   m_dataProxy.reset(new DataProxy(m_stateTracker, m_port+1));
 
    std::string uiCmd = "vistle_gui";
 
@@ -999,6 +1000,7 @@ bool Hub::init(int argc, char *argv[]) {
       master.setDataPort(m_dataProxy->port());
       m_stateTracker.handle(master);
       m_masterPort = m_port;
+      m_dataProxy->setHubId(m_hubId);
    }
 
    // start UI
