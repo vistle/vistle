@@ -59,6 +59,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_payloadSize(0)
 , m_broadcast(false)
 , m_notification(false)
+, m_pad{0,0,0,0,0,0}
 {
 
    vassert(m_size <= MESSAGE_SIZE);

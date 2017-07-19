@@ -106,7 +106,7 @@ typedef std::array<char, 512> param_desc_t;
 typedef std::array<char, 50> param_choice_t;
 const int param_num_choices = 18;
 typedef std::array<char, 300> shmsegname_t;
-typedef std::array<char, 900> text_t;
+typedef std::array<char, 896> text_t;
 typedef std::array<char, 300> address_t;
 
 typedef boost::uuids::uuid uuid_t;
@@ -194,7 +194,11 @@ class V_COREEXPORT Message {
    bool m_broadcast;
    //! message is not a request for action
    bool m_notification;
+   //! pad message to multiple of 8 bytes
+   char m_pad[6];
 };
+// ensure alignment
+static_assert(sizeof(Message) % sizeof(double)==0);
 
 class V_COREEXPORT Buffer: public Message {
 
