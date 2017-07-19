@@ -11,7 +11,6 @@ set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
 SET(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_C_LIBRARIES})
 ADD_DEFINITIONS(-DHAS_MPI)
-ADD_DEFINITIONS(-DRENAME_MAIN=realmain)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -31,3 +30,6 @@ target_link_libraries(vistle_cover ${EXTRA_LIBS} vistle_renderer vistle_util ${C
 
 add_module(COVER coverwrapper.cpp)
 target_link_libraries(COVER ${EXTRA_LIBS} vistle_util ${CMAKE_DL_LIBS} vistle_cover)
+if(APPLE AND NOT VISTLE_MULTI_PROCESS)
+   set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,dynamic_lookup")
+endif()

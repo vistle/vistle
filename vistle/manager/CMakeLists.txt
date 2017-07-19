@@ -10,7 +10,8 @@ if (VISTLE_SHM_PER_RANK)
    add_definitions(-DSHMPERRANK)
 endif()
 
-vistle_add_executable(vistle_manager
+
+set(SOURCES
    vistle_manager.cpp
    clustermanager.h
    clustermanager.cpp
@@ -22,7 +23,10 @@ vistle_add_executable(vistle_manager
    executor.cpp
    portmanager.h
    portmanager.cpp
-   )
+)
+
+vistle_add_executable(vistle_manager ${SOURCES})
+
 target_link_libraries(vistle_manager
         vistle_boost_mpi
         ${Boost_LIBRARIES}
@@ -34,7 +38,6 @@ if(NOT VISTLE_MULTI_PROCESS)
    target_link_libraries(vistle_manager ${CMAKE_DL_LIBS} vistle_module)
    if (NOT VISTLE_MODULES_SHARED)
       use_openmp()
-      #include(../module/all_modules.cmake)
       foreach(m ${ALL_MODULES})
          if (APPLE)
             target_link_libraries(vistle_manager -Wl,-force_load ${m})
@@ -43,6 +46,9 @@ if(NOT VISTLE_MULTI_PROCESS)
          endif()
          #target_link_libraries(vistle_manager $<TARGET_OBJECTS:${m}>)
       endforeach()
+   endif()
+   if (APPLE)
+      set_target_properties(vistle_manager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
    endif()
 endif()
 

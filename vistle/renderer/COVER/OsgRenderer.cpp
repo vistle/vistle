@@ -37,6 +37,10 @@
 #include <util/findself.h>
 #include <util/sysdep.h>
 
+#ifdef __APPLE__
+#include <manager/vistle_manager.h>
+#endif
+
 #if defined(WIN32)
     const char libcover[] = "mpicover.dll";
 #elif defined(__APPLE__)
@@ -619,7 +623,18 @@ finish:
 
 void OsgRenderer::eventLoop() {
 
+#if defined(__APPLE__) && defined(MODULE_THREAD)
+   std::function<void()> f = [this](){
+      int argc=0;
+      char *argv[] = {nullptr};
+      std::cerr << "running COVER on main thread" << std::endl;
+      runMain(argc, argv);
+   };
+   run_on_main_thread(f);
+   std::cerr << "COVER on main thread terminated" << std::endl;
+#else
     int argc=0;
     char *argv[] = {nullptr};
     runMain(argc, argv);
+#endif
 }
