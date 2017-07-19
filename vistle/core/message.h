@@ -198,7 +198,7 @@ class V_COREEXPORT Message {
    char m_pad[6];
 };
 // ensure alignment
-static_assert(sizeof(Message) % sizeof(double)==0);
+static_assert(sizeof(Message) % sizeof(double)==0, "not padded to ensure double alignment");
 
 class V_COREEXPORT Buffer: public Message {
 
