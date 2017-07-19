@@ -2,6 +2,7 @@
 #define SHM_H
 
 #include <memory>
+#include <array>
 #include <mutex>
 #include <atomic>
 

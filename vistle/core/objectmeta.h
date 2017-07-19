@@ -1,6 +1,7 @@
 #ifndef OBJECTMETA_H
 #define OBJECTMETA_H
 
+#include <array>
 #include <vector>
 #include <memory>
 
