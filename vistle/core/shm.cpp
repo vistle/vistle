@@ -397,7 +397,9 @@ const managed_shared_memory & Shm::shm() const {
 
 std::string Shm::createObjectId(const std::string &id) {
 
+#ifndef MODULE_THREAD
    vassert(m_moduleId > 0 || !id.empty());
+#endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;
@@ -416,7 +418,9 @@ std::string Shm::createObjectId(const std::string &id) {
 }
 
 std::string Shm::createArrayId(const std::string &id) {
+#ifndef MODULE_THREAD
    vassert(m_moduleId > 0 || !id.empty());
+#endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;
