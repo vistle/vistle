@@ -1,5 +1,14 @@
 #! /bin/bash
 
+if [ -n "$VISTLE_LAUNCH" ]; then
+   case $VISTLE_LAUNCH in
+      aprun)
+      exec aprun -b -B "$@"
+      exit 0
+      ;;
+   esac
+fi
+
 #echo SPAWN "$@"
 
 LOGFILE="$(basename $1)"-$$.log
