@@ -1004,7 +1004,8 @@ bool Hub::init(int argc, char *argv[]) {
    // start UI
    if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
       if (std::string("PBS_INTERACTIVE") != pbs_env) {
-         CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
+         if (!vm.count("batch"))
+            CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
          uiCmd.clear();
       }
    }
