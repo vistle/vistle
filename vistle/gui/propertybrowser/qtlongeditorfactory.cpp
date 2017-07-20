@@ -630,4 +630,3 @@ QT_END_NAMESPACE
 #endif
 
 #include "moc_qtlongeditorfactory.cpp"
-#include "qtlongeditorfactory.moc"
