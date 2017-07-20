@@ -10,6 +10,11 @@ set(module_HEADERS
    objectcache.h
 )
 
+if (NOT VISTLE_MODULES_SHARED)
+   set(module_HEADERS ${module_HEADERS} moduleregistry.h)
+   set(module_SOURCES ${module_SOURCES} moduleregistry.cpp)
+endif()
+
 use_openmp()
 
 vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})

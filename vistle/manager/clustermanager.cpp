@@ -43,7 +43,11 @@
 #ifdef MODULE_THREAD
 #include <util/filesystem.h>
 #include <module/module.h>
+#ifdef MODULE_STATIC
+#include <module/moduleregistry.h>
+#else
 #include <boost/dll/import.hpp>
+#endif
 #include <boost/function.hpp>
 #endif
 
@@ -714,7 +718,11 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    auto it = avail.find(key);
    if (it != avail.end()) {
        auto &m = it->second;
+#ifdef MODULE_STATIC
+       mod.newModule = ModuleRegistry::the().moduleFactory(name);
+#else
        mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
+#endif
        if (mod.newModule) {
            boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
            std::thread t([newId, name, ncomm, &mod]() {

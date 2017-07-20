@@ -25,6 +25,10 @@
 #include "clustermanager.h"
 #include "datamanager.h"
 
+#if defined(MODULE_THREAD) && defined(MODULE_STATIC)
+#include <module/moduleregistry.h>
+#endif
+
 #define CERR \
    std::cerr << "comm [" << m_rank << "/" << m_size << "] "
 
@@ -155,9 +159,13 @@ bool Communicator::sendHub(const message::Message &message) {
 bool Communicator::scanModules(const std::string &dir) {
 
    bool result = true;
+#if defined(MODULE_THREAD) && defined(MODULE_STATIC)
+   ModuleRegistry::the().availableModules(m_localModules);
+#else
    if (m_localModules.empty()) {
        result = vistle::scanModules(dir, 0, m_localModules);
    }
+#endif
    if (getRank() == 0) {
       for (auto &p: m_localModules) {
          const auto &m = p.second;
