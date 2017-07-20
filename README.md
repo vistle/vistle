@@ -29,9 +29,8 @@ Build Requirements
   support for C++11 (ISO/IEC 14882:2011) is required
 
   Known good compilers:
-  - GCC (4.6, 4.8, 4.9)
-  - Clang (Xcode 5.0–6.1)
-  - Intel (14.0.2 - but use Boost 1.52 and not on Cray, 13.1.3 with GCC 4.6.3)
+  - GCC (4.8, 4.9, 5, 6, 7)
+  - Clang (Xcode 5.0–8.3)
   - Microsoft Visual Studio 2015 (14.0)
   
   Known bad compilers:
@@ -40,7 +39,7 @@ Build Requirements
   - Cray CC 8.2.3 (crashes on IceT, not enough C++11)
 
 - **CMake**:
-  at least 2.8
+  at least 3.0
 
 - **MPI**:
   Microsoft MPI, Open MPI, MPICH and MVAPCH2 has been used successfully.
@@ -69,7 +68,6 @@ Build Requirements
   
     - ReadCovise module
     - COVER module and COVER plug-ins
-    - ray casting render module
 
   In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug=ins
   should go.
@@ -100,6 +98,24 @@ Create a subdirectory for building, change to it, and invoke CMake:
 Then build with your build tool, e.g.:
 
       make -j20
+
+### Cray XC40 at HLRS (hazelhen.hww.de) [Hazel Hen](https://www.hlrs.de/en/systems/cray-xc40-hazel-hen)
+
+Set up your environment:
+
+   export CRAYPE_LINK_TYPE=dynamic
+   module swap PrgEnv-cray PrgEnv-gnu
+   module load tools/cmake/3.8.2
+   module load tools/vtk/7.0.0
+   module load numlib/intel/tbb/2017.4
+   module load tools/boost/1.62.0
+
+You most likely will want to install additional dependencies.
+
+From your build directory, invoke CMake like this:
+
+   cmake -DCMAKE_SYSTEM_NAME=CrayLinuxEnvironment ..
+
 
 Invoking Vistle
 ---------------

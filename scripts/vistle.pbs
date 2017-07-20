@@ -11,10 +11,7 @@ export MODULEPATH=$HOME/hornet/modulefiles:$MODULEPATH
 module swap PrgEnv-cray PrgEnv-gnu
 module load tools/vtk/7.0.0
 module load numlib/intel/tbb/2017.4
-#module load tools/boost/1.62.0
-#module load tools/boost/1.60.0
-module load boost/1.62.0
-
+module load tools/boost/1.62.0
 
 # Launch the parallel job to the allocated compute nodes
 #aprun -b -B vistle -b -p login3 -c visard.hlrs.de
@@ -28,5 +25,4 @@ export VISTLE_LAUNCH=aprun
 export PATH="$VDIR/bin:$PATH"
 export LD_LIBRARY_PATH="$VDIR/lib:$HOME/hornet/lib:$LD_LIBRARY_PATH:$PYTHON_DIR/lib"
 #vistle -b -c visard.hlrs.de > vistle.out 2>&1
-ldd /zhome/academic/HLRS/hlrs/hpcmaumu/vistle/build-xc40/lib/module/libDisCOVERay.so
 vistle -b -c 141.58.8.1
