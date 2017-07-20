@@ -36,4 +36,4 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-MODULE_MAIN(OsgRenderer)
+MODULE_MAIN(COVER)

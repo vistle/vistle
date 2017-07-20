@@ -16,11 +16,11 @@
 
 using namespace vistle;
 
-class Stats: public vistle::Module {
+class ObjectStatistics: public vistle::Module {
 
  public:
-   Stats(const std::string &name, int moduleID, mpi::communicator comm);
-   ~Stats();
+   ObjectStatistics(const std::string &name, int moduleID, mpi::communicator comm);
+   ~ObjectStatistics();
 
    struct stats {
       Index blocks; //!< no. of blocks/partitions
@@ -99,7 +99,7 @@ class Stats: public vistle::Module {
    std::map<std::string, Index> m_types; //!< object type counts
 };
 
-std::ostream &operator<<(std::ostream &str, const Stats::stats &s) {
+std::ostream &operator<<(std::ostream &str, const ObjectStatistics::stats &s) {
 
    str << "blocks: " << s.blocks
       << ", with grid: " << s.grids
@@ -122,10 +122,10 @@ struct minimum {
 };
 
 template<>
-struct minimum<Stats::stats> {
-   Stats::stats operator()(const Stats::stats &lhs, const Stats::stats &rhs) {
+struct minimum<ObjectStatistics::stats> {
+   ObjectStatistics::stats operator()(const ObjectStatistics::stats &lhs, const ObjectStatistics::stats &rhs) {
 
-      return Stats::stats::apply(minimum<Index>(), lhs, rhs);
+      return ObjectStatistics::stats::apply(minimum<Index>(), lhs, rhs);
    }
 };
 
@@ -138,21 +138,21 @@ struct maximum {
 };
 
 template<>
-struct maximum<Stats::stats> {
-   Stats::stats operator()(const Stats::stats &lhs, const Stats::stats &rhs) {
+struct maximum<ObjectStatistics::stats> {
+   ObjectStatistics::stats operator()(const ObjectStatistics::stats &lhs, const ObjectStatistics::stats &rhs) {
 
-      return Stats::stats::apply(maximum<Index>(), lhs, rhs);
+      return ObjectStatistics::stats::apply(maximum<Index>(), lhs, rhs);
    }
 };
 
-Stats::stats operator+(const Stats::stats &lhs, const Stats::stats &rhs) {
+ObjectStatistics::stats operator+(const ObjectStatistics::stats &lhs, const ObjectStatistics::stats &rhs) {
 
-   return Stats::stats::apply(std::plus<Index>(), lhs, rhs);
+   return ObjectStatistics::stats::apply(std::plus<Index>(), lhs, rhs);
 }
 
 using namespace vistle;
 
-Stats::Stats(const std::string &name, int moduleID, mpi::communicator comm)
+ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("object statistics", name, moduleID, comm)
 {
 
@@ -162,11 +162,11 @@ Stats::Stats(const std::string &name, int moduleID, mpi::communicator comm)
    createInputPort("data_in", "input data", Port::MULTI);
 }
 
-Stats::~Stats() {
+ObjectStatistics::~ObjectStatistics() {
 
 }
 
-bool Stats::compute() {
+bool ObjectStatistics::compute() {
 
    //std::cerr << "ObjectStatistics: compute: execcount=" << m_executionCount << std::endl;
 
@@ -204,7 +204,7 @@ bool Stats::compute() {
    return true;
 }
 
-bool Stats::prepare() {
+bool ObjectStatistics::prepare() {
 
    m_timesteps = 0;
    m_types.clear();
@@ -217,7 +217,7 @@ bool Stats::prepare() {
    return true;
 }
 
-bool Stats::reduce(int timestep) {
+bool ObjectStatistics::reduce(int timestep) {
 
    //std::cerr << "reduction for timestep " << timestep << std::endl;
    boost::mpi::reduce(comm(), m_cur, m_min, minimum<stats>(), 0);
@@ -253,5 +253,5 @@ bool Stats::reduce(int timestep) {
    return Module::reduce(timestep);
 }
 
-MODULE_MAIN(Stats)
+MODULE_MAIN(ObjectStatistics)
 

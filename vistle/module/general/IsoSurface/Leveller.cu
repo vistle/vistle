@@ -21,6 +21,8 @@
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/tuple.h>
 #include "tables.h"
+
+
 #include "Leveller.h"
 
 using namespace vistle;

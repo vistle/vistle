@@ -139,6 +139,11 @@ struct IsoDataFunctor {
 };
 #endif
 
+#if defined(CUTGEOMETRY)
+#define IsoController GeoController
+#elif defined(CUTTINGSURFACE)
+#define IsoController CutController
+#endif
 class IsoController {
 
 public:

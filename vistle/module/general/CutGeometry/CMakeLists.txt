@@ -1,5 +1,6 @@
 vistle_find_package(TBB)
 use_openmp()
+add_definitions(-DCUTGEOMETRY)
 add_definitions(-DCUTTINGSURFACE)
 add_definitions(-DTOGGLESIGN)
 

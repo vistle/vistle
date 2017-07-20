@@ -12,6 +12,12 @@
 #include <core/triangles.h>
 #include <util/enum.h>
 
+#ifdef CUTTINGSURFACE
+#define Leveller CutLeveller
+#else
+#define Leveller IsoLeveller
+#endif
+
 #include "IsoDataFunctor.h"
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThrustBackend,

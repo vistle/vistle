@@ -14,6 +14,10 @@
 #include <core/lines.h>
 #include <core/structuredgridbase.h>
 
+#ifdef BOUNDINGBOX
+#define Extrema BoundingBox
+#endif
+
 using namespace vistle;
 
 class Extrema: public vistle::Module {
@@ -160,6 +164,8 @@ Extrema::~Extrema() {
 
 }
 
+#ifdef BOUNDINGBOX
+namespace {
 Lines::ptr makeBox(Vector min, Vector max) {
 
     Lines::ptr box(new Lines(4, 16, 8));
@@ -205,6 +211,8 @@ Lines::ptr makeBox(Vector min, Vector max) {
 
     return box;
 }
+}
+#endif
 
 
 bool Extrema::compute() {
@@ -358,5 +366,8 @@ bool Extrema::reduce(int timestep) {
    return Module::reduce(timestep);
 }
 
+#ifdef BOUNDINGBOX
+MODULE_MAIN(BoundingBox)
+#else
 MODULE_MAIN(Extrema)
-
+#endif

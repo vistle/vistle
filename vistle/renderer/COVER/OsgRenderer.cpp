@@ -37,13 +37,6 @@
 #include <util/findself.h>
 #include <util/sysdep.h>
 
-#ifndef RENAME_MAIN
-#error "RENAME_MAIN not defined"
-#endif
-
-#define XSTR(s) #s
-#define STR(s) XSTR(s)
-
 #if defined(WIN32)
     const char libcover[] = "mpicover.dll";
 #elif defined(__APPLE__)

@@ -16,6 +16,8 @@
 
 #include "export.h"
 
+#define OsgRenderer COVER
+
 namespace opencover {
 class coVRPlugin;
 };

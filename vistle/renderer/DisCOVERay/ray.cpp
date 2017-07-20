@@ -35,9 +35,9 @@ using namespace vistle;
 
 const float Epsilon = 1e-9f;
 
-class RayCaster: public vistle::Renderer {
+class DisCOVERay: public vistle::Renderer {
 
-   static RayCaster *s_instance;
+   static DisCOVERay *s_instance;
 
  public:
    static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc) {
@@ -61,11 +61,11 @@ class RayCaster: public vistle::Renderer {
       unsigned char r, g, b, a;
    };
 
-   RayCaster(const std::string &name, int moduleId, mpi::communicator comm);
-   ~RayCaster();
+   DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm);
+   ~DisCOVERay();
    void prepareQuit() override;
 
-   static RayCaster &the() {
+   static DisCOVERay &the() {
 
       return *s_instance;
    }
@@ -113,13 +113,13 @@ class RayCaster: public vistle::Renderer {
                    int width, int height, unsigned char *rgba, float *depth);
 };
 
-RayCaster *RayCaster::s_instance = nullptr;
+DisCOVERay *DisCOVERay::s_instance = nullptr;
 
 
-RayCaster::RayCaster(const std::string &name, int moduleId, mpi::communicator comm)
+DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm)
 : Renderer("CPU ray casting renderer", name, moduleId, comm)
 #ifdef ICET_CALLBACK
-, m_renderManager(this, RayCaster::drawCallback)
+, m_renderManager(this, DisCOVERay::drawCallback)
 #else
 , m_renderManager(this, nullptr)
 #endif
@@ -161,13 +161,13 @@ RayCaster::RayCaster(const std::string &name, int moduleId, mpi::communicator co
 }
 
 
-RayCaster::~RayCaster() {
+DisCOVERay::~DisCOVERay() {
 
    assert(s_instance == this);
    s_instance = nullptr;
 }
 
-void RayCaster::prepareQuit() {
+void DisCOVERay::prepareQuit() {
 
    removeAllObjects();
 
@@ -177,7 +177,7 @@ void RayCaster::prepareQuit() {
    Renderer::prepareQuit();
 }
 
-void RayCaster::connectionAdded(const Port *from, const Port *to) {
+void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
 
     if (from == m_outPort) {
         if (rank() == 0) {
@@ -188,7 +188,7 @@ void RayCaster::connectionAdded(const Port *from, const Port *to) {
 }
 
 
-bool RayCaster::changeParameter(const Parameter *p) {
+bool DisCOVERay::changeParameter(const Parameter *p) {
 
     m_renderManager.handleParam(p);
 
@@ -212,7 +212,7 @@ bool RayCaster::changeParameter(const Parameter *p) {
 }
 
 struct TileTask {
-   TileTask(const RayCaster &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
+   TileTask(const DisCOVERay &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
    : rc(rc)
    , vd(vd)
    , tile(tile)
@@ -231,7 +231,7 @@ struct TileTask {
       render(tile);
    }
 
-   const RayCaster &rc;
+   const DisCOVERay &rc;
    const ParallelRemoteRenderManager::PerViewState &vd;
    const int tile;
    const int tilesize;
@@ -347,7 +347,7 @@ void TileTask::render(int tile) const {
 }
 
 
-bool RayCaster::render() {
+bool DisCOVERay::render() {
 
     // ensure that previous frame is completed
     bool immed_resched = m_renderManager.finishFrame(m_timestep);
@@ -441,10 +441,10 @@ bool RayCaster::render() {
     return true;
 }
 
-void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const IceTInt *viewport,
+void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const IceTInt *viewport,
                            int width, int height, unsigned char *rgba, float *depth) {
 
-   //StopWatch timer("RayCaster::render()");
+   //StopWatch timer("DisCOVERay::render()");
 
 #if 0
    std::cerr << "IceT draw CB: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
@@ -552,7 +552,7 @@ void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, 
 }
 
 
-void RayCaster::removeObject(std::shared_ptr<RenderObject> vro) {
+void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
 
    auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
@@ -584,7 +584,7 @@ void RayCaster::removeObject(std::shared_ptr<RenderObject> vro) {
 }
 
 
-std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
+std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::string &senderPort,
                                  vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr normals,
@@ -635,7 +635,7 @@ std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string
    return ro;
 }
 
-void  RayCaster::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
+void  DisCOVERay::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
 
     vistle::Matrix4 MV, P;
     for (int i=0; i<4; ++i) {
@@ -650,8 +650,8 @@ void  RayCaster::drawCallback(const IceTDouble *proj, const IceTDouble *mv, cons
     int width = icetImageGetWidth(image);
     int height = icetImageGetHeight(image);
 
-    RayCaster::the().renderRect(P, MV, viewport, width, height, rgba, depth);
+    DisCOVERay::the().renderRect(P, MV, viewport, width, height, rgba, depth);
 }
 
 
-MODULE_MAIN(RayCaster)
+MODULE_MAIN(DisCOVERay)

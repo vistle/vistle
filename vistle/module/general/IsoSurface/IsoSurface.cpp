@@ -13,10 +13,20 @@
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
 #include <core/vec.h>
+
+#ifdef CUTTINGSURFACE
+#define IsoSurface CuttingSurface
+#endif
+
+
 #include "IsoSurface.h"
 #include "Leveller.h"
 
+#ifdef CUTTINGSURFACE
+MODULE_MAIN(CuttingSurface)
+#else
 MODULE_MAIN(IsoSurface)
+#endif
 
 using namespace vistle;
 
