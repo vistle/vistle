@@ -34,6 +34,7 @@
 
 #include "hdf5.h"
 
+#define HDF5Const WriteHDF5Const
 #include "HDF5Objects.h"
 
 

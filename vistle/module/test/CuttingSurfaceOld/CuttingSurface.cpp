@@ -12,9 +12,9 @@
 
 using namespace vistle;
 
-MODULE_MAIN(CuttingSurface)
+MODULE_MAIN(CuttingSurfaceOld)
 
-CuttingSurface::CuttingSurface(const std::string &name, int moduleID, mpi::communicator comm)
+CuttingSurfaceOld::CuttingSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("cut through data", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
@@ -29,7 +29,7 @@ CuttingSurface::CuttingSurface(const std::string &name, int moduleID, mpi::commu
    addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 0.0, 1.0));
 }
 
-CuttingSurface::~CuttingSurface() {
+CuttingSurfaceOld::~CuttingSurfaceOld() {
 
 }
 
@@ -153,7 +153,7 @@ class PlaneCut {
       }
       Index numVert = outputIdx[numElem];
 
-      //std::cerr << "CuttingSurface: " << numVert << " vertices" << std::endl;
+      //std::cerr << "CuttingSurfaceOld: " << numVert << " vertices" << std::endl;
 
       m_triangles->cl().resize(numVert);
       out_cl = m_triangles->cl().data();
@@ -178,7 +178,7 @@ class PlaneCut {
          }
       }
 
-      //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
+      //std::cerr << "CuttingSurfaceOld: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
 
       return true;
    }
@@ -278,7 +278,7 @@ class PlaneCut {
 };
 
 std::pair<Object::ptr, Object::ptr>
-CuttingSurface::generateCuttingSurface(Object::const_ptr grid_object,
+CuttingSurfaceOld::generateCuttingSurface(Object::const_ptr grid_object,
                                        Object::const_ptr data_object,
                                        const Vector &normal,
                                        const Scalar distance) {
@@ -290,7 +290,7 @@ CuttingSurface::generateCuttingSurface(Object::const_ptr grid_object,
    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
 
    if (!grid || !data) {
-      std::cerr << "CuttingSurface: incompatible input" << std::endl;
+      std::cerr << "CuttingSurfaceOld: incompatible input" << std::endl;
       return std::make_pair(Object::ptr(), Object::ptr());
    }
 
@@ -300,7 +300,7 @@ CuttingSurface::generateCuttingSurface(Object::const_ptr grid_object,
    return cutter.result();
 }
 
-bool CuttingSurface::compute() {
+bool CuttingSurfaceOld::compute() {
 
    const ParamVector pnormal = getVectorParameter("vertex");
    Vector normal(pnormal[0], pnormal[1], pnormal[2]);

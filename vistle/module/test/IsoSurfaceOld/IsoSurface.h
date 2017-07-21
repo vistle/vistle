@@ -3,11 +3,11 @@
 
 #include <module/module.h>
 
-class IsoSurface: public vistle::Module {
+class IsoSurfaceOld: public vistle::Module {
 
  public:
-   IsoSurface(const std::string &name, int moduleID, mpi::communicator comm);
-   ~IsoSurface();
+   IsoSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm);
+   ~IsoSurfaceOld();
 
  private:
    vistle::Object::ptr generateIsoSurface(vistle::Object::const_ptr grid,

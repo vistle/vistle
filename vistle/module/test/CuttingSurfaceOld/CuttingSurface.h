@@ -4,11 +4,11 @@
 #include <module/module.h>
 #include <core/vector.h>
 
-class CuttingSurface: public vistle::Module {
+class CuttingSurfaceOld: public vistle::Module {
 
  public:
-   CuttingSurface(const std::string &name, int moduleID, mpi::communicator comm);
-   ~CuttingSurface();
+   CuttingSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm);
+   ~CuttingSurfaceOld();
 
  private:
    std::pair<vistle::Object::ptr, vistle::Object::ptr>

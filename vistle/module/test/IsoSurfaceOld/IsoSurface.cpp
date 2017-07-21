@@ -18,13 +18,13 @@
 
 #include <util/openmp.h>
 
-MODULE_MAIN(IsoSurface)
+MODULE_MAIN(IsoSurfaceOld)
 
 using namespace vistle;
 
 
-IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("IsoSurface", name, moduleID, comm) {
+IsoSurfaceOld::IsoSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm)
+   : Module("compute iso surfaces on structured grids", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
@@ -37,18 +37,18 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
 }
 
-IsoSurface::~IsoSurface() {
+IsoSurfaceOld::~IsoSurfaceOld() {
 
 }
 
-bool IsoSurface::prepare() {
+bool IsoSurfaceOld::prepare() {
 
    min = std::numeric_limits<Scalar>::max();
    max = -std::numeric_limits<Scalar>::max();
    return Module::prepare();
 }
 
-bool IsoSurface::reduce(int timestep) {
+bool IsoSurfaceOld::reduce(int timestep) {
 
    min = boost::mpi::all_reduce(comm(),
          min, boost::mpi::minimum<Scalar>());
@@ -186,7 +186,7 @@ class Leveller {
 
       Index numVert = outputIdx[numElem];
 
-      //std::cerr << "IsoSurface: " << numVert << " vertices" << std::endl;
+      //std::cerr << "IsoSurfaceOld: " << numVert << " vertices" << std::endl;
 
       m_triangles->cl().resize(numVert);
       out_cl = m_triangles->cl().data();
@@ -308,7 +308,7 @@ class Leveller {
 
 
 Object::ptr
-IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
+IsoSurfaceOld::generateIsoSurface(Object::const_ptr grid_object,
                                Object::const_ptr data_object,
                                const Scalar isoValue) {
 
@@ -317,7 +317,7 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
 
    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
    if (!data) {
-      std::cerr << "IsoSurface: incompatible data input: no Scalars" << std::endl;
+      std::cerr << "IsoSurfaceOld: incompatible data input: no Scalars" << std::endl;
       return Object::ptr();
    }
 
@@ -340,12 +340,12 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
        return l.result();
    }
 
-   std::cerr << "IsoSurface: incompatible grid input: no UnstructuredGrid or RectilinearGrid" << std::endl;
+   std::cerr << "IsoSurfaceOld: incompatible grid input: no UnstructuredGrid or RectilinearGrid" << std::endl;
    return Object::ptr();
 }
 
 
-bool IsoSurface::compute() {
+bool IsoSurfaceOld::compute() {
 
    const Scalar isoValue = getFloatParameter("isovalue");
 

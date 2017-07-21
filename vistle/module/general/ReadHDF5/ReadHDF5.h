@@ -23,6 +23,7 @@
 
 #include "hdf5.h"
 
+#define HDF5Const ReadHDF5Const
 #include "../WriteHDF5/HDF5Objects.h"
 
 
