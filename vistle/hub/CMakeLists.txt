@@ -1,5 +1,5 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS program_options system)
-vistle_find_package(Boost 1.40 COMPONENTS program_options system ${BOOST_PYTHON})
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
+vistle_find_package(Boost 1.53 COMPONENTS program_options system ${BOOST_PYTHON})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

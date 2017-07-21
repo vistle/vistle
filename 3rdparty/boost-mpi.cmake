@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system)
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system)
 
 add_definitions(-DBOOST_MPI_SOURCE)
 if(NOT WIN32)

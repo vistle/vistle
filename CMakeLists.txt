@@ -208,7 +208,7 @@ set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 add_definitions(-DOMPI_SKIP_MPICXX)
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
-vistle_find_package(Boost 1.40 REQUIRED system)
+vistle_find_package(Boost 1.53 REQUIRED system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 if (Boost_VERSION VERSION_GREATER 106099)
    set(BOOST_MPI_DIR "boost-mpi")

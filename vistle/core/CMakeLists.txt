@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time)
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system date_time)
 
 set(core_SOURCES
    archives.cpp

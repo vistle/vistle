@@ -1,7 +1,7 @@
 vistle_find_package(TBB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(GLEW)
-vistle_find_package(Boost 1.40 REQUIRED)
+vistle_find_package(Boost 1.53 REQUIRED)
 vistle_find_package(ZFP)
 vistle_find_package(SNAPPY)
 using(SNAPPY optional)

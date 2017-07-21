@@ -1,5 +1,5 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system)
-vistle_find_package(Boost 1.40 COMPONENTS system ${BOOST_PYTHON})
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
+vistle_find_package(Boost 1.53 COMPONENTS system ${BOOST_PYTHON})
 vistle_find_package(Readline)
 
 set(EXTRA_LIBRARIES)

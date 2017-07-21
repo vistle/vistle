@@ -1,4 +1,4 @@
-#vistle_find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
+#vistle_find_package(Boost 1.53 REQUIRED COMPONENTS mpi)
 
 add_module(Tracer Tracer.cpp BlockData.cpp Integrator.cpp Particle.cpp TracerTimes.cpp)
 
