@@ -554,9 +554,9 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
+#ifdef INTERPOL_DEBUG
    vassert(inside(elem, point));
 
-#ifdef INTERPOL_DEBUG
    if (!inside(elem, point)) {
       return Interpolator();
    }
