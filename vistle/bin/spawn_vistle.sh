@@ -12,7 +12,15 @@ fi
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 export MV2_ENABLE_AFFINITY=0
 export MPI_UNBUFFERED_STDIO=1
-export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+case $(uname) in
+   Darwin)
+      libpath=DYLD_LIBRARY_PATH
+      export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+      ;;
+   *)
+      libpath=LD_LIBRARY_PATH
+      ;;
+esac
 
 if [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none "$@"
@@ -63,9 +71,9 @@ fi
 
 if [ "$OPENMPI" = "1" ]; then
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
