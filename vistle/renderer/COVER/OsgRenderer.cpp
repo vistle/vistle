@@ -132,6 +132,7 @@ OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicato
 OsgRenderer::~OsgRenderer() {
 
     prepareQuit();
+    s_instance = nullptr;
 }
 
 OsgRenderer *OsgRenderer::the() {
