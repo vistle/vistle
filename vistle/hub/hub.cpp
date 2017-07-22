@@ -1052,6 +1052,10 @@ bool Hub::init(int argc, char *argv[]) {
 
 bool Hub::startCleaner() {
 
+#if defined(MODULE_THREAD) && defined(NO_SHMEM)
+   return true;
+#endif
+
 #ifdef SHMDEBUG
    CERR << "SHMDEBUG: preserving shm for session " << Shm::instanceName(hostname(), m_port) << std::endl;
    return true;
