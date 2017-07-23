@@ -9,11 +9,11 @@
 
 #include "ShowGrid.h"
 
-MODULE_MAIN(ShowUSG)
+MODULE_MAIN(ShowGrid)
 
 using namespace vistle;
 
-ShowUSG::ShowUSG(const std::string &name, int moduleID, mpi::communicator comm)
+ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("show outlines of grid cells", name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
@@ -36,11 +36,11 @@ ShowUSG::ShowUSG(const std::string &name, int moduleID, mpi::communicator comm)
 
 }
 
-ShowUSG::~ShowUSG() {
+ShowGrid::~ShowGrid() {
 
 }
 
-bool ShowUSG::compute() {
+bool ShowGrid::compute() {
 
    const bool shownor = getIntParameter("normalcells");
    const bool showgho = getIntParameter("ghostcells");

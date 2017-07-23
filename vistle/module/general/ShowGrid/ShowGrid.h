@@ -3,11 +3,11 @@
 
 #include <module/module.h>
 
-class ShowUSG: public vistle::Module {
+class ShowGrid: public vistle::Module {
 
  public:
-   ShowUSG(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ShowUSG();
+   ShowGrid(const std::string &name, int moduleID, mpi::communicator comm);
+   ~ShowGrid();
 
  private:
    virtual bool compute();
