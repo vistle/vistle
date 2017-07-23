@@ -82,9 +82,9 @@ struct HostData {
       , m_haveCoords(true)
       , m_computeNormals(false)
    {
-      addmappeddata(&x[0]);
-      addmappeddata(&y[0]);
-      addmappeddata(&z[0]);
+      addmappeddata(x ? &x[0] : (Scalar *)nullptr);
+      addmappeddata(y ? &y[0] : (Scalar *)nullptr);
+      addmappeddata(z ? &z[0] : (Scalar *)nullptr);
    }
 
    HostData(Scalar isoValue
@@ -115,9 +115,9 @@ struct HostData {
       addmappeddata((Scalar *)nullptr);
       addmappeddata((Scalar *)nullptr);
 
-      addmappeddata(&x[0]);
-      addmappeddata(&y[0]);
-      addmappeddata(&z[0]);
+      addmappeddata(x ? &x[0] : (Scalar *)nullptr);
+      addmappeddata(y ? &y[0] : (Scalar *)nullptr);
+      addmappeddata(z ? &z[0] : (Scalar *)nullptr);
    }
 
    void setHaveCoords(bool val) {
@@ -752,10 +752,10 @@ bool Leveller::process() {
 #endif
 
          HostData HD = m_unstr
-             ? HostData(m_isoValue, isofunc,
-               m_unstr->el(), m_unstr->tl(), m_unstr->cl(), m_unstr->x(), m_unstr->y(), m_unstr->z())
-             : HostData(m_isoValue, isofunc,
-               dims[0], dims[1], dims[2], coords[0], coords[1], coords[2]);
+                 ? HostData(m_isoValue, isofunc,
+                            m_unstr->el(), m_unstr->tl(), m_unstr->cl(), m_unstr->x(), m_unstr->y(), m_unstr->z())
+                 : HostData(m_isoValue, isofunc,
+                            dims[0], dims[1], dims[2], coords[0], coords[1], coords[2]);
          HD.setHaveCoords(m_coord ? true : false);
          if (m_strbase) {
              Index ghost[3][2];
