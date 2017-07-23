@@ -163,6 +163,9 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 
 DisCOVERay::~DisCOVERay() {
 
+   rtcDeleteScene(m_scene);
+   rtcDeleteDevice(m_device);
+
    assert(s_instance == this);
    s_instance = nullptr;
 }
@@ -170,9 +173,6 @@ DisCOVERay::~DisCOVERay() {
 void DisCOVERay::prepareQuit() {
 
    removeAllObjects();
-
-   rtcDeleteScene(m_scene);
-   rtcDeleteDevice(m_device);
 
    Renderer::prepareQuit();
 }

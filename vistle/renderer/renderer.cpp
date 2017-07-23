@@ -141,8 +141,6 @@ bool Renderer::dispatch() {
    int doQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
    if (doQuit) {
       prepareQuit();
-      vistle::message::ModuleExit m;
-      sendMessageQueue->send(m);
    } else {
       double start = 0.;
       if (m_benchmark) {
