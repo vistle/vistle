@@ -10,7 +10,7 @@ if [ -n "$4" ]; then
 fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
-export MV2_ENABLE_AFFINITY=0
+export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
 export MPI_UNBUFFERED_STDIO=1
 case $(uname) in
    Darwin)
