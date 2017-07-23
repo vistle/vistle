@@ -69,10 +69,7 @@ int main(int argc, char ** argv)
 
    try {
       vistle::registerTypes();
-      std::cerr << "thread: running vistle" << std::endl;
       Vistle(argc, argv).run();
-      std::cerr << "thread: vistle returned" << std::endl;
-      MPI_Finalize();
    } catch(vistle::exception &e) {
 
       std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;
@@ -100,6 +97,7 @@ int main(int argc, char ** argv)
 
       std::function<void()> f;
       if (!main_func.empty()) {
+         std::cerr << "executing on main thread..." << std::endl;
          f = main_func.front();
          if (f)
             f();
@@ -110,8 +108,8 @@ int main(int argc, char ** argv)
    }
 
    t.join();
-
-#else
-   return 0;
 #endif
+
+   MPI_Finalize();
+   return 0;
 }
