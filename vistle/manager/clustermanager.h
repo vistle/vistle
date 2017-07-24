@@ -131,11 +131,7 @@ class ClusterManager {
          prepared(false), reduced(true),
          busyCount(0), blocked(false)
          {}
-      ~Module() {
-#ifdef MODULE_THREAD
-          thread.join();
-#endif
-      }
+      ~Module();
 
       void block(const message::Message &msg);
       void unblock(const message::Message &msg);

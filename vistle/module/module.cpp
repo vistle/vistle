@@ -255,12 +255,13 @@ void Module::prepareQuit() {
             removeParameter(param);
         }
 
+        m_cache.clear();
+        m_cache.clearOld();
+
         vistle::message::ModuleExit m;
         m.setDestId(Id::ForBroadcast);
         sendMessage(m);
 
-        m_cache.clear();
-        m_cache.clearOld();
 #ifndef MODULE_THREAD
         Shm::the().detach();
 #endif

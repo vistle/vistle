@@ -64,6 +64,12 @@ namespace vistle {
 
 using message::Id;
 
+ClusterManager::Module::~Module() {
+#ifdef MODULE_THREAD
+          thread.join();
+#endif
+}
+
 void ClusterManager::Module::block(const message::Message &msg) {
    std::cerr << "BLOCK: " << msg << std::endl;
    blocked = true;
@@ -739,8 +745,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
                mod.instance = mod.newModule(name, newId, ncomm);
                if (mod.instance)
                    mod.instance->eventLoop();
+
                mod.instance.reset();
-               mod.newModule.clear();
            });
            std::swap(mod.thread, t);
        }
