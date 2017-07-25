@@ -78,7 +78,7 @@ class CompositorIceT : public opencover::coVRPlugin
       std::vector<float> depth;
    };
    void screenBounds(int *bounds, const CompositeData &cd, const ViewData &vd, const osg::Vec3 &center, float r);
-   void getViewData(ViewData &view, int channel, bool second);
+   void getViewData(ViewData &view, int idx);
    void drawView(int view);
    osg::ref_ptr<osg::GraphicsContext> createGraphicsContext(int view, bool pbuffer, osg::ref_ptr<osg::GraphicsContext> sharedGc);
 

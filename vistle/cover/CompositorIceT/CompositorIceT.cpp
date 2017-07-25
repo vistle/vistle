@@ -293,15 +293,10 @@ bool CompositorIceT::init()
    m_initialized = true;
 
    const int numChannels = coVRConfig::instance()->numChannels();
-   int localViews = numChannels;
-   for (int i=0; i<numChannels; ++i) {
-       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-          ++localViews;
-       }
-   }
 
-   m_drawer = new MultiChannelDrawer(numChannels);
+   m_drawer = new MultiChannelDrawer();
    m_drawer->setMode(MultiChannelDrawer::AsIs);
+   int localViews = m_drawer->numViews();
    cover->getScene()->addChild(m_drawer);
 
    if (coVRMSController::instance()->isMaster()) {
@@ -390,44 +385,27 @@ bool CompositorIceT::init()
    return true;
 }
 
-void CompositorIceT::getViewData(CompositorIceT::ViewData &view, int channel, bool second) {
+void CompositorIceT::getViewData(CompositorIceT::ViewData &view, int idx) {
 
-   const channelStruct &chan = coVRConfig::instance()->channels[channel];
-   if (chan.viewportNum < 0)
-      return;
-   bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
-   if (second)
-      left = true;
-
-   const osg::Matrix &t = cover->getXformMat();
-   const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   view.model = s * t;
-
-   view.view = left ? chan.leftView : chan.rightView;
-   view.proj = left ? chan.leftProj : chan.rightProj;
+   view.model = m_drawer->modelMatrix(idx);
+   view.view = m_drawer->viewMatrix(idx);
+   view.proj = m_drawer->projectionMatrix(idx);
 }
 
 
 void CompositorIceT::preFrame()
 {
+   int view=m_viewBase[coVRMSController::instance()->getID()];
+   for (int i=0; i<m_drawer->numViews(); ++i) {
+      getViewData(m_viewData[view+i], i);
+   }
+
    int numViews = 0;
    for (auto nv: m_numViews)
        numViews += nv;
 
    for (int view=0; view<numViews; ++view)
        checkResize(view);
-
-   const int numChannels = coVRConfig::instance()->numChannels();
-   int view=m_viewBase[coVRMSController::instance()->getID()];
-   for (int i=0; i<numChannels; ++i) {
-
-      getViewData(m_viewData[view], i, false);
-      ++view;
-      if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
-         getViewData(m_viewData[view], i, true);
-         ++view;
-      }
-   }
 
    if (coVRMSController::instance()->isMaster()) {
        for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {

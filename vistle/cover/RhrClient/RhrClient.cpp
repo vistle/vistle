@@ -1101,7 +1101,7 @@ bool RhrClient::init()
    std::cerr << "numChannels: " << numChannels << ", m_channelBase: " << m_channelBase << std::endl;
    std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
-   m_drawer = new MultiChannelDrawer(numChannels, true /* flip top/bottom */);
+   m_drawer = new MultiChannelDrawer(true /* flip top/bottom */);
 
 #ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
@@ -1379,6 +1379,8 @@ RhrClient::preFrame()
        }
    }
 
+   m_drawer->update();
+
    if (!connected)
       return;
 
@@ -1648,25 +1650,7 @@ RhrClient::preFrame()
    } else {
        if (m_drawer->mode() != m_mode)
            m_drawer->setMode(m_mode);
-       const osg::Matrix &transform = cover->getXformMat();
-       const osg::Matrix &scale = cover->getObjectsScale()->getMatrix();
-       int viewIdx = 0;
-       for (int i=0; i<coVRConfig::instance()->numChannels(); ++i) {
-           const channelStruct &chan = coVRConfig::instance()->channels[i];
-           const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
-           const osg::Matrix &view = left ? chan.leftView : chan.rightView;
-           const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
-           const osg::Matrix model = scale * transform;
-           m_drawer->reproject(viewIdx, model, view, proj);
-           ++viewIdx;
-
-           if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-               const osg::Matrix &view = chan.leftView;
-               const osg::Matrix &proj = chan.leftProj;
-               m_drawer->reproject(viewIdx, model, view, proj);
-               ++viewIdx;
-           }
-       }
+       m_drawer->reproject();
    }
 }
 
