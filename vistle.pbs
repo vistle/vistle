@@ -21,7 +21,12 @@ module load boost/1.62.0
 
 VDIR="$HOME/vistle/build-xc40"
 export VISTLE_LAUNCH=aprun
+
+#module load forge
+#export VISTLE_LAUNCH=ddt-aprun
+
 export PATH="$VDIR/bin:$PATH"
 export LD_LIBRARY_PATH="$VDIR/lib:$HOME/hornet/lib:$LD_LIBRARY_PATH:$PYTHON_DIR/lib"
 #vistle -b -c visard.hlrs.de > vistle.out 2>&1
+ldd /zhome/academic/HLRS/hlrs/hpcmaumu/vistle/build-xc40/lib/module/libDisCOVERay.so
 vistle -b -c 141.58.8.1

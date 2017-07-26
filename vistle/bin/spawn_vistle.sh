@@ -6,6 +6,10 @@ if [ -n "$VISTLE_LAUNCH" ]; then
       exec aprun -b -B "$@"
       exit 0
       ;;
+      ddt-aprun)
+      exec ddt --connect aprun -b -B "$@"
+      exit 0
+      ;;
    esac
 fi
 
