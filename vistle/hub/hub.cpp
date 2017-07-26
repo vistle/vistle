@@ -135,7 +135,16 @@ bool Hub::startServer() {
    while (!m_acceptor->is_open()) {
 
       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
-      m_acceptor->open(endpoint.protocol());
+      try {
+         m_acceptor->open(endpoint.protocol());
+      } catch (const boost::system::system_error &err) {
+         if (err.code() == boost::system::errc::address_family_not_supported) {
+            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+            m_acceptor->open(endpoint.protocol());
+         } else {
+            throw(err);
+         }
+      }
       m_acceptor->set_option(acceptor::reuse_address(true));
       try {
          m_acceptor->bind(endpoint);

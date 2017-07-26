@@ -136,7 +136,16 @@ Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::addres
 , m_acceptor(manager.io())
 {
    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), listenPort);
-   m_acceptor.open(endpoint.protocol());
+   try {
+      m_acceptor.open(endpoint.protocol());
+   } catch (const boost::system::system_error &err) {
+      if (err.code() == boost::system::errc::address_family_not_supported) {
+         endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), listenPort);
+         m_acceptor.open(endpoint.protocol());
+      } else {
+         throw(err);
+      }
+   }
    m_acceptor.set_option(acceptor::reuse_address(true));
    try {
       m_acceptor.bind(endpoint);
