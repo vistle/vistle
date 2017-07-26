@@ -66,7 +66,15 @@ using message::Id;
 
 ClusterManager::Module::~Module() {
 #ifdef MODULE_THREAD
-          thread.join();
+   try {
+      if (thread.joinable()) {
+         thread.join();
+      } else {
+         std::cerr << "ClusterManager: ~Module: thread for module not joinable" << std::endl;
+      }
+   } catch (std::exception &e) {
+      std::cerr << "ClusterManager: ~Module: joining thread for module failed: " << e.what() << std::endl;
+   }
 #endif
 }
 
@@ -724,11 +732,15 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    auto it = avail.find(key);
    if (it != avail.end()) {
        auto &m = it->second;
+       try {
 #ifdef MODULE_STATIC
-       mod.newModule = ModuleRegistry::the().moduleFactory(name);
+          mod.newModule = ModuleRegistry::the().moduleFactory(name);
 #else
-       mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
+          mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
 #endif
+       } catch (std::exception e) {
+          CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
+       }
        if (mod.newModule) {
            boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
            std::thread t([newId, name, ncomm, &mod]() {
@@ -748,7 +760,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
                mod.instance.reset();
            });
-           std::swap(mod.thread, t);
+           mod.thread = std::move(t);
        }
    }
 #else
