@@ -10,13 +10,11 @@ set(pluginutil_HEADERS
 )
 
 include_directories(
-        ../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${GLEW_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}
         ${COVISE_INCLUDE_DIRS}
         ${COVER_INCLUDE_DIRS}
 )

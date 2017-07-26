@@ -24,7 +24,6 @@ endif()
 
 include_directories(
    .. # VistlePluginUtil
-   ${PROJECT_SOURCE_DIR}
    ${TBB_INCLUDE_DIR}
    ${Boost_INCLUDE_DIRS}
 )

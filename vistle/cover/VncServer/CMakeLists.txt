@@ -13,7 +13,6 @@ endif()
 using(SNAPPY optional)
 
 include_directories(
-   ${PROJECT_SOURCE_DIR}
    ${LIBVNCSERVER_INCLUDE_DIR}
    ${TBB_INCLUDE_DIR}
 )

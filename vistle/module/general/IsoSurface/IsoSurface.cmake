@@ -38,7 +38,6 @@ else()
 endif()
 
 include_directories(
-        ../../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}

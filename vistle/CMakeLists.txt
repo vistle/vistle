@@ -1,4 +1,4 @@
-project(vistle)
+#project(vistle)
 
 if(POLICY CMP0043)
    # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
@@ -6,7 +6,7 @@ if(POLICY CMP0043)
    cmake_policy(SET CMP0043 NEW)
 endif()
 
-set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 enable_testing()
 
@@ -136,14 +136,14 @@ endif()
 set(ENABLE_INSTALLER TRUE)
 vistle_find_package(TBB)
 #vistle_find_package(Thrust REQUIRED)
-set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../3rdparty/thrust")
+set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
 include_directories(${EIGEN3_INCLUDE_PATH})
 
 #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
-include_directories(../3rdparty/${BOOST_MPI_DIR}/include)
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
 
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)

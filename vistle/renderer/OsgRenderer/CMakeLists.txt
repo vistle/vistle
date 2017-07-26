@@ -55,7 +55,6 @@ set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overl
 endif(WIN32)
 
 include_directories(
-        ../../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}

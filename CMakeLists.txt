@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(vistle_all)
+project(Vistle C CXX)
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
    message("compiling for Cray")
