@@ -316,8 +316,18 @@ void RhrServer::resetClient() {
 bool RhrServer::start(unsigned short port) {
 
     for (;;) {
-        asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
-        m_acceptor.open(endpoint.protocol());
+       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
+        try {
+           m_acceptor.open(endpoint.protocol());
+        } catch (const boost::system::system_error &err) {
+           if (err.code() == boost::system::errc::address_family_not_supported) {
+              CERR << "IPv6 not supported, retrying listening on port " << port << " with IPv4" << std::endl;
+              endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port);
+              m_acceptor.open(endpoint.protocol());
+           } else {
+              throw(err);
+           }
+        }
         m_acceptor.set_option(acceptor::reuse_address(true));
         try {
             m_acceptor.bind(endpoint);
