@@ -195,6 +195,9 @@ class RemoteConnection {
 #ifdef __linux
         pthread_setname_np(pthread_self(), "RhrClient");
 #endif
+#ifdef __APPLE__
+        pthread_setname_np("RhrClient");
+#endif
         {
             lock_guard locker(*m_mutex);
             assert(m_running);
