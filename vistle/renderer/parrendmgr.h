@@ -23,6 +23,9 @@ public:
    ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback);
    ~ParallelRemoteRenderManager();
 
+   Port *outputPort() const;
+   void connectionAdded(const Port *to);
+   void connectionRemoved(const Port *to);
    Object::ptr getConfigObject();
 
    bool handleParam(const Parameter *p);

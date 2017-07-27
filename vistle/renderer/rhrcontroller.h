@@ -13,22 +13,50 @@ class V_RENDEREREXPORT RhrController {
  public:
    RhrController(vistle::Module *module, int displayRank);
    bool handleParam(const vistle::Parameter *p);
+   Port *outputPort() const;
+
    std::shared_ptr<RhrServer> server() const;
    int rootRank() const;
+   void tryConnect();
 
+   void addClient(const Port *client);
+   void removeClient(const Port *client);
+
+   std::string configString() const;
+
+   enum ConnectionDirection {
+       Connect, // client connects to server
+       Listen, // server connects to client
+   };
+
+   ConnectionDirection connectionMethod() const;
+
+   // where this server is listening
    unsigned short listenPort() const;
    std::string listenHost() const;
 
+   // where this server should connect to
+   unsigned short connectPort() const;
+   std::string connectHost() const;
+
  private:
    bool initializeServer();
+   std::string getConfigString() const;
+   Object::ptr getConfigObject() const;
+   void sendConfigObject() const;
 
    vistle::Module *m_module;
+   Port *m_imageOutPort;
    int m_displayRank;
+
+   Port::ConstPortSet m_clients;
 
    IntParameter *m_rhrConnectionMethod;
    StringParameter *m_rhrLocalEndpoint;
    IntParameter *m_rhrBasePort;
    unsigned short m_forwardPort; //< current port mapping
+   StringParameter *m_rhrRemoteEndpoint;
+   IntParameter *m_rhrRemotePort;
 
    IntParameter *m_rgbaEncoding;
    RhrServer::ColorCodec m_rgbaCodec;

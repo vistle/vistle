@@ -74,10 +74,9 @@ class DisCOVERay: public vistle::Renderer {
 
    bool changeParameter(const Parameter *p) override;
    void connectionAdded(const Port *from, const Port *to) override;
+   void connectionRemoved(const Port *from, const Port *to) override;
 
    ParallelRemoteRenderManager m_renderManager;
-
-   Port *m_outPort;
 
    // parameters
    IntParameter *m_renderTileSizeParam;
@@ -141,8 +140,6 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
-   m_outPort = createOutputPort("image_out", "connect to COVER");
-
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
@@ -179,14 +176,18 @@ void DisCOVERay::prepareQuit() {
 
 void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
 
-    if (from == m_outPort) {
-        if (rank() == 0) {
-            std::cerr << "sending rhr config object" << std::endl;
-            Module::addObject(m_outPort, m_renderManager.getConfigObject());
-        }
+    std::cerr << "Ray: new connection from " << *from << " to " << *to << std::endl;
+    if (from == m_renderManager.outputPort()) {
+        m_renderManager.connectionAdded(to);
     }
 }
 
+void DisCOVERay::connectionRemoved(const Port *from, const Port *to) {
+
+    if (from == m_renderManager.outputPort()) {
+        m_renderManager.connectionRemoved(to);
+    }
+}
 
 bool DisCOVERay::changeParameter(const Parameter *p) {
 

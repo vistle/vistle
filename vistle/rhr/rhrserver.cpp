@@ -10,6 +10,7 @@
 #include <iostream>
 #include <core/assert.h>
 #include <cmath>
+#include <boost/lexical_cast.hpp>
 
 #ifdef HAVE_SNAPPY
 #include <snappy.h>
@@ -82,30 +83,46 @@ bool RhrServer::send(const Message &message, const std::vector<char> *payload) {
     return true;
 }
 
-RhrServer *RhrServer::plugin = NULL;
-
 //! called when plugin is loaded
-RhrServer::RhrServer(unsigned short port)
+RhrServer::RhrServer()
 : m_acceptor(m_io)
+, m_listen(true)
 , m_port(0)
+, m_destPort(0)
 {
-   vassert(plugin == NULL);
-   plugin = this;
-
-   //fprintf(stderr, "new RhrServer plugin\n");
-
-   init(port);
+   init();
 }
 
 // this is called if the plugin is removed at runtime
 RhrServer::~RhrServer()
 {
-   vassert(plugin);
-   m_clientSocket.reset();
+    while (m_queuedTiles > 0) {
 
-   //fprintf(stderr,"RhrServer::~RhrServer\n");
+        RhrServer::EncodeResult result;
+        if (m_resultQueue.try_pop(result)) {
+            --m_queuedTiles;
+            result.payload.clear();
+            delete result.message;
+        } else {
+            usleep(10000);
+        }
+    }
+    m_clientSocket.reset();
 
-   plugin = nullptr;
+    //fprintf(stderr,"RhrServer::~RhrServer\n");
+}
+
+int RhrServer::numClients() const {
+
+    if (m_clientSocket)
+        return 1;
+
+    return 0;
+}
+
+bool RhrServer::isConnecting() const {
+
+    return !m_listen;
 }
 
 void RhrServer::setColorCodec(ColorCodec value) {
@@ -162,6 +179,17 @@ asio::ip::address RhrServer::listenAddress() const {
 
     return m_listenAddress;
 }
+
+unsigned short RhrServer::destinationPort() const {
+
+    return m_destPort;
+}
+
+const std::string &RhrServer::destinationHost() const {
+
+    return m_destHost;
+}
+
 
 size_t RhrServer::numViews() const {
 
@@ -263,7 +291,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
-bool RhrServer::init(unsigned short port) {
+void RhrServer::init() {
 
    lightsUpdateCount = 0;
 
@@ -297,8 +325,6 @@ bool RhrServer::init(unsigned short port) {
    m_firstTile = false;
 
    resetClient();
-
-   return start(port);
 }
 
 void RhrServer::resetClient() {
@@ -313,7 +339,9 @@ void RhrServer::resetClient() {
     m_viewData.clear();
 }
 
-bool RhrServer::start(unsigned short port) {
+bool RhrServer::startServer(unsigned short port) {
+
+    m_listen = true;
 
     for (;;) {
        asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
@@ -390,6 +418,52 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
    }
 
    startAccept();
+}
+
+bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry) {
+
+    m_listen = false;
+
+    CERR << "connecting to " << host << ":" << port << "..." << std::endl;
+
+    asio::ip::tcp::resolver resolver(m_io);
+    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+    boost::system::error_code ec;
+    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    if (ec) {
+        CERR << "could not resolve " << host << ": " << ec.message() << std::endl;
+        return false;
+    }
+
+    std::shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_io));
+    int i=0;
+    while (secondsToTry <= 0 || i < secondsToTry*10) {
+        asio::connect(*sock, endpoint_iterator, ec);
+        if (secondsToTry == 0)
+            break;
+        if (ec != boost::system::errc::connection_refused) {
+            break;
+        }
+        if (i%10 == 0 && i>0) {
+            CERR << "still trying to connect after " << i/10 << " seconds" << std::endl;
+        }
+        usleep(100000);
+        ++i;
+    }
+
+    if (ec) {
+        CERR << "could not connect to " << host << ":" << port << ": " << ec.message() << std::endl;
+        return false;
+    }
+
+    m_clientSocket = sock;
+
+    m_destHost = host;
+    m_destPort = port;
+
+    CERR << "connected to " << host << ":" << port << std::endl;
+
+    return true;
 }
 
 

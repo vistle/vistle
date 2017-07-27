@@ -120,6 +120,7 @@ private:
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
    bool connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
+   bool startListen(const std::string &connectionName, unsigned short port);
    void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
    bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
    bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote, bool updateOnly=false);
@@ -144,7 +145,7 @@ private:
    ResultQueue m_resultQueue;
    bool updateTileQueue();
    void handleTileMeta(const tileMsg &msg);
-   void finishFrame(const tileMsg &msg);
+   void finishFrame(std::shared_ptr<RemoteConnection> remote, const tileMsg &msg);
    void swapFrame();
    bool checkSwapFrame();
    bool canEnqueue() const;

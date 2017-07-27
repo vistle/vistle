@@ -1,7 +1,6 @@
 #include "parrendmgr.h"
 #include "renderobject.h"
 #include "renderer.h"
-#include <core/points.h>
 #include <boost/serialization/vector.hpp>
 
 namespace mpi = boost::mpi;
@@ -48,6 +47,7 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
    m_delay = m_module->addFloatParameter("delay", "artificial delay (s)", m_delaySec);
    m_module->setParameterRange(m_delay, 0., 3.);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
+
    m_icetComm = icetCreateMPICommunicator((MPI_Comm)m_module->comm());
 }
 
@@ -60,17 +60,19 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
    icetDestroyMPICommunicator(m_icetComm);
 }
 
-Object::ptr ParallelRemoteRenderManager::getConfigObject() {
+Port *ParallelRemoteRenderManager::outputPort() const {
 
-    Points::ptr points(new Points(Index(0)));
-    auto host = m_rhrControl.listenHost();
-    unsigned short port = m_rhrControl.listenPort();
-    std::stringstream config;
-    config << "connect " << host << " " << port;
-    points->addAttribute("_rhr_config", config.str());
-    points->addAttribute("_plugin", "RhrClient");
-    std::cerr << "ParallelRemoteRenderManager: creating config object: " << config.str() << std::endl;
-    return points;
+    return m_rhrControl.outputPort();
+}
+
+void ParallelRemoteRenderManager::connectionAdded(const Port *to) {
+
+    m_rhrControl.addClient(to);
+}
+
+void ParallelRemoteRenderManager::connectionRemoved(const Port *to) {
+
+    m_rhrControl.removeClient(to);
 }
 
 bool ParallelRemoteRenderManager::checkIceTError(const char *msg) const {
@@ -307,6 +309,11 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           m_updateScene = 1;
           m_updateCount = rhr->updateCount();
       }
+   } else if (m_module->rank() == rootRank()) {
+       if (!m_viewData.empty()) {
+           m_viewData.clear();
+           m_doRender = 1;
+       }
    }
    m_updateBounds = 0;
 
@@ -447,47 +454,48 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
 
    //std::cerr << "finishCurrentView: " << i << std::endl;
    if (m_module->rank() == rootRank()) {
-       auto rhr = m_rhrControl.server();
-       vassert(rhr);
-       if (i < rhr->numViews()) {
-           // otherwise client just disconnected
-           const int bpp = 4;
-           const int w = rhr->width(i);
-           const int h = rhr->height(i);
-           vassert(std::max(0,w) == icetImageGetWidth(img));
-           vassert(std::max(0,h) == icetImageGetHeight(img));
+       if (auto rhr = m_rhrControl.server()) {
+           vassert(rhr);
+           if (i < rhr->numViews()) {
+               // otherwise client just disconnected
+               const int bpp = 4;
+               const int w = rhr->width(i);
+               const int h = rhr->height(i);
+               vassert(std::max(0,w) == icetImageGetWidth(img));
+               vassert(std::max(0,h) == icetImageGetHeight(img));
 
 
-           const IceTUByte *color = nullptr;
-           switch (icetImageGetColorFormat(img)) {
-           case ICET_IMAGE_COLOR_RGBA_UBYTE:
-               color = icetImageGetColorcub(img);
-               break;
-           case ICET_IMAGE_COLOR_RGBA_FLOAT:
-               std::cerr << "expected byte color, got float" << std::endl;
-               break;
-           case ICET_IMAGE_COLOR_NONE:
-               std::cerr << "expected byte color, got no color" << std::endl;
-               break;
-           }
-           const IceTFloat *depth = nullptr;
-           switch (icetImageGetDepthFormat(img)) {
-           case ICET_IMAGE_DEPTH_FLOAT:
-               depth = icetImageGetDepthcf(img);
-               break;
-           case ICET_IMAGE_DEPTH_NONE:
-               std::cerr << "expected byte color, got no color" << std::endl;
-               break;
-           }
-
-           if (color && depth && rhr->rgba(i) && rhr->depth(i)) {
-               for (int y=0; y<h; ++y) {
-                   memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-                   memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+               const IceTUByte *color = nullptr;
+               switch (icetImageGetColorFormat(img)) {
+               case ICET_IMAGE_COLOR_RGBA_UBYTE:
+                   color = icetImageGetColorcub(img);
+                   break;
+               case ICET_IMAGE_COLOR_RGBA_FLOAT:
+                   std::cerr << "expected byte color, got float" << std::endl;
+                   break;
+               case ICET_IMAGE_COLOR_NONE:
+                   std::cerr << "expected byte color, got no color" << std::endl;
+                   break;
+               }
+               const IceTFloat *depth = nullptr;
+               switch (icetImageGetDepthFormat(img)) {
+               case ICET_IMAGE_DEPTH_FLOAT:
+                   depth = icetImageGetDepthcf(img);
+                   break;
+               case ICET_IMAGE_DEPTH_NONE:
+                   std::cerr << "expected byte color, got no color" << std::endl;
+                   break;
                }
 
-               m_viewData[i].rhrParam.timestep = timestep;
-               rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
+               if (color && depth && rhr->rgba(i) && rhr->depth(i)) {
+                   for (int y=0; y<h; ++y) {
+                       memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+                       memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+                   }
+
+                   m_viewData[i].rhrParam.timestep = timestep;
+                   rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
+               }
            }
        }
    }
@@ -507,10 +515,11 @@ bool ParallelRemoteRenderManager::finishFrame(int timestep) {
    }
 
    if (m_module->rank() == rootRank()) {
-      auto rhr = m_rhrControl.server();
-      vassert(rhr);
-      m_viewData[0].rhrParam.timestep = timestep;
-      rhr->invalidate(-1, 0, 0, 0, 0, m_viewData[0].rhrParam, true);
+       if (auto rhr = m_rhrControl.server()) {
+           vassert(rhr);
+           m_viewData[0].rhrParam.timestep = timestep;
+           rhr->invalidate(-1, 0, 0, 0, 0, m_viewData[0].rhrParam, true);
+       }
    }
    m_frameComplete = true;
    return true;

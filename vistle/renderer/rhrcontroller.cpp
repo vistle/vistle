@@ -1,14 +1,16 @@
 #include "rhrcontroller.h"
 #include <core/parameter.h>
 #include <core/statetracker.h>
+#include <core/points.h>
 #include <util/hostname.h>
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub)(Reverse))
 
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
+, m_imageOutPort(nullptr)
 , m_displayRank(displayRank)
 , m_rhrConnectionMethod(nullptr)
 , m_rhrLocalEndpoint(nullptr)
@@ -29,11 +31,16 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_sendTileSizeParam(nullptr)
 , m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
 {
-   m_rhrConnectionMethod = module->addIntParameter("rhr_connection_method", "how local endpoint should be determined", AutomaticHostname, Parameter::Choice);
+   m_imageOutPort = m_module->createOutputPort("image_out", "connect to COVER");
+
+   m_rhrConnectionMethod = module->addIntParameter("rhr_connection_method", "how local/remote endpoint should be determined", AutomaticHostname, Parameter::Choice);
    module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
    m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
    module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1<<16)-1));
    m_rhrLocalEndpoint = module->addStringParameter("rhr_local_address", "address where clients should connect to", "localhost");
+   m_rhrRemotePort = module->addIntParameter("rhr_remote_port", "port where renderer should connect to", 31589);
+   module->setParameterRange(m_rhrRemotePort, (Integer)1, (Integer)((1<<16)-1));
+   m_rhrRemoteEndpoint = module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
 
    m_sendTileSizeParam = module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
@@ -64,12 +71,23 @@ bool RhrController::initializeServer() {
        return true;
    }
 
-   if (m_rhr && m_rhr->port() != m_rhrBasePort->getValue()) {
-       m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
+   // make sure that dtor runs before ctor of new RhrServer
+   if (m_rhr && m_rhrConnectionMethod->getValue()==Reverse) {
+       if (!m_rhr->isConnecting() || m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort())
+           m_rhr.reset();
    }
 
-   if (!m_rhr)
-       m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
+   if (m_rhr && m_rhrConnectionMethod->getValue()!=Reverse) {
+       if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
+           m_rhr.reset();
+   }
+
+   if (!m_rhr) {
+       m_rhr.reset(new RhrServer());
+       if (m_rhrConnectionMethod->getValue() != Reverse) {
+           m_rhr->startServer(m_rhrBasePort->getValue());
+       }
+   }
 
    m_rhr->setDepthPrecision(m_prec);
    m_rhr->enableDepthZfp(m_zfp);
@@ -84,10 +102,11 @@ bool RhrController::initializeServer() {
 
 bool RhrController::handleParam(const vistle::Parameter *p) {
 
-   if (p == m_rhrBasePort) {
+   if (p == m_rhrBasePort || p == m_rhrRemoteEndpoint || p == m_rhrRemotePort) {
 
       return initializeServer();
    } else if (p == m_rhrConnectionMethod) {
+
       if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) || m_forwardPort != m_rhrBasePort->getValue()) {
           if (m_module->rank() == 0) {
             if (m_forwardPort)
@@ -110,8 +129,11 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
           }
           break;
       }
+      case Reverse: {
+          break;
       }
-      return true;
+      }
+      return initializeServer();
    } else if (p == m_depthPrec) {
 
       if (m_depthPrec->getValue() == 0)
@@ -160,6 +182,11 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
    return false;
 }
 
+Port *RhrController::outputPort() const {
+
+    return m_imageOutPort;
+}
+
 std::shared_ptr<RhrServer> RhrController::server() const {
    return m_rhr;
 }
@@ -167,6 +194,108 @@ std::shared_ptr<RhrServer> RhrController::server() const {
 int RhrController::rootRank() const {
 
     return m_displayRank==-1 ? 0 : m_displayRank;
+}
+
+void RhrController::tryConnect() {
+
+    if (!m_rhr)
+        return;
+
+    switch(m_rhrConnectionMethod->getValue()) {
+    case Reverse:
+        if (m_rhr->numClients() < 1) {
+            std::string host = m_rhrRemoteEndpoint->getValue();
+            unsigned short port = m_rhrRemotePort->getValue();
+            m_module->sendInfo("trying to connect to %s:%hu", host.c_str(), port);
+            if (!m_rhr->makeConnection(m_rhrRemoteEndpoint->getValue(), m_rhrRemotePort->getValue(), 10)) {
+                m_module->sendWarning("connection to %s:%hu failed", host.c_str(), port);
+            }
+        }
+        break;
+    default:
+        return;
+    }
+}
+
+std::string RhrController::getConfigString() const {
+
+    std::stringstream config;
+    if (connectionMethod() == RhrController::Connect) {
+        auto host = listenHost();
+        unsigned short port = listenPort();
+        config << "connect " << host << " " << port;
+    } else {
+        auto host = connectHost();
+        unsigned short port = connectPort();
+        config << "listen " << host << " " << port;
+    }
+
+    return config.str();
+}
+
+Object::ptr RhrController::getConfigObject() const {
+
+    auto conf = getConfigString();
+    std::cerr << "ParallelRemoteRenderManager: creating config object: " << conf << std::endl;
+
+    Points::ptr points(new Points(Index(0)));
+    points->addAttribute("_rhr_config", conf);
+    points->addAttribute("_plugin", "RhrClient");
+    return points;
+}
+
+void RhrController::sendConfigObject() const {
+
+    if (m_module->rank() == 0) {
+        std::cerr << "sending rhr config object" << std::endl;
+        static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
+    }
+}
+
+void RhrController::addClient(const Port *client) {
+
+    if (!m_clients.empty()) {
+        std::cerr << "ParallelRemoteRenderManager: not servicing client port " << *client << std::endl;
+    }
+
+    m_clients.insert(client);
+
+    if (!m_rhr) {
+        initializeServer();
+    }
+    sendConfigObject();
+    tryConnect();
+}
+
+void RhrController::removeClient(const Port *client) {
+
+    auto it = m_clients.find(client);
+    if (it == m_clients.end()) {
+        std::cerr << "ParallelRemoteRenderManager: did not find disconnected destination port " << *client << std::endl;
+        return;
+    }
+
+    m_clients.erase(it);
+
+    if (m_clients.empty()) {
+        m_rhr.reset();
+    }
+
+    if (m_module->rank() == 0) {
+        std::cerr << "sending rhr config object" << std::endl;
+        static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
+    }
+}
+
+RhrController::ConnectionDirection RhrController::connectionMethod() const {
+
+    switch(m_rhrConnectionMethod->getValue()) {
+    case Reverse:
+        return Listen;
+    default:
+        break;
+    }
+    return Connect;
 }
 
 unsigned short RhrController::listenPort() const {
@@ -195,6 +324,23 @@ std::string RhrController::listenHost() const {
         break;
     }
     }
+    return "localhost";
+}
+
+unsigned short RhrController::connectPort() const {
+
+    return m_rhrRemotePort->getValue();
+}
+
+std::string RhrController::connectHost() const {
+
+    switch (m_rhrConnectionMethod->getValue()) {
+    case Reverse:
+        return m_rhrRemoteEndpoint->getValue();
+    default:
+        break;
+    }
+
     return "localhost";
 }
 

@@ -1,5 +1,5 @@
 /**\file
- * \brief RhrServer plugin class
+ * \brief RhrServer class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2012, 2013, 2014 HLRS
@@ -49,11 +49,19 @@ public:
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 
-   RhrServer(unsigned short port=31313);
+   RhrServer();
    ~RhrServer();
+
+   int numClients() const;
+
+   bool isConnecting() const;
 
    unsigned short port() const;
    address listenAddress() const;
+
+   unsigned short destinationPort() const;
+   const std::string &destinationHost() const;
+
    asio::io_service &ioService();
 
    int width(size_t viewNum) const;
@@ -65,8 +73,9 @@ public:
 
    void resize(size_t viewNum, int w, int h);
 
-   bool init(unsigned short port);
-   bool start(unsigned short port);
+   void init();
+   bool startServer(unsigned short port);
+   bool makeConnection(const std::string &host, unsigned short port, int secondsToTry=-1);
    void preFrame();
 
    typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
@@ -254,12 +263,14 @@ public:
    void updateVariants(const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility> > &added, const std::vector<std::string> &removed);
 
 private:
-   static RhrServer *plugin; //<! access to plug-in from static member functions
    asio::io_service m_io;
    asio::ip::tcp::acceptor m_acceptor;
+   bool m_listen;
    std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;
    unsigned short m_port;
    asio::ip::address m_listenAddress;
+   unsigned short m_destPort;
+   std::string m_destHost;
    AppMessageHandlerFunc m_appHandler;
 
    bool startAccept();

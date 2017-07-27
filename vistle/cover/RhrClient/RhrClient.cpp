@@ -113,6 +113,7 @@ class RemoteConnection {
     bool m_boundsUpdated = false;
     osg::ref_ptr<osg::Node> boundsNode;
 
+    bool m_listen;
     std::string m_host;
     unsigned short m_port;
     asio::ip::tcp::socket m_sock;
@@ -134,6 +135,7 @@ class RemoteConnection {
     RemoteConnection(const RemoteConnection& other) = delete;
     RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
         : plugin(plugin)
+        , m_listen(false)
         , m_host(host)
         , m_port(port)
         , m_sock(plugin->m_io)
@@ -146,7 +148,22 @@ class RemoteConnection {
             m_running = true;
             m_thread = new std::thread(std::ref(*this));
         }
-        //m_endpoint
+    }
+
+    RemoteConnection(RhrClient *plugin, unsigned short port, bool isMaster)
+        : plugin(plugin)
+        , m_listen(true)
+        , m_port(port)
+        , m_sock(plugin->m_io)
+        , m_isMaster(isMaster)
+    {
+        boundsNode = new osg::Node;
+        m_mutex = new std::recursive_mutex;
+        m_sendMutex = new std::recursive_mutex;
+        if (isMaster) {
+            m_running = true;
+            m_thread = new std::thread(std::ref(*this));
+        }
     }
 
     ~RemoteConnection() {
@@ -188,7 +205,7 @@ class RemoteConnection {
         lock_guard locker(*m_mutex);
         assert(!m_running);
 
-        std::cerr << "disconnected from server" << std::endl;
+        cover->notify(Notify::Info) << "RhrClient: disconnected from server" << std::endl;
     }
 
     void operator()() {
@@ -203,16 +220,76 @@ class RemoteConnection {
             assert(m_running);
         }
 
-        asio::ip::tcp::resolver resolver(plugin->m_io);
-        asio::ip::tcp::resolver::query query(m_host, boost::lexical_cast<std::string>(m_port));
-        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-        boost::system::error_code ec;
-        asio::connect(m_sock, endpoint_iterator, ec);
-        if (ec) {
-            std::cerr << "RhrClient: could not establish connection to " << m_host << ":" << m_port << std::endl;
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+        if (m_listen) {
+            boost::system::error_code ec;
+            asio::ip::tcp::acceptor acceptor(plugin->m_io);
+            asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
+            acceptor.open(endpoint.protocol(), ec);
+            if (ec == boost::system::errc::address_family_not_supported) {
+                endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+                acceptor.open(endpoint.protocol(), ec);
+            }
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: could not open port " << m_port << " for listening: " << ec.message() << std::endl;
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
+            acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+            acceptor.bind(endpoint, ec);
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: could not bind port " << m_port << ": " << ec.message() << std::endl;
+                acceptor.close();
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
+            acceptor.listen();
+            acceptor.non_blocking(true, ec);
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: could not make acceptor non-blocking: " << ec.message() << std::endl;
+                acceptor.close();
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
+            do {
+                acceptor.accept(m_sock, ec);
+                if (ec == boost::system::errc::operation_would_block || ec == boost::system::errc::resource_unavailable_try_again) {
+                    {
+                        lock_guard locker(*m_mutex);
+                        if (m_interrupt) {
+                            break;
+                        }
+                    }
+                    usleep(1000);
+                }
+            } while (ec == boost::system::errc::operation_would_block || ec == boost::system::errc::resource_unavailable_try_again);
+            acceptor.close();
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
+        } else {
+            asio::ip::tcp::resolver resolver(plugin->m_io);
+            asio::ip::tcp::resolver::query query(m_host, boost::lexical_cast<std::string>(m_port));
+            boost::system::error_code ec;
+            asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: could not resolve " << m_host << ": " << ec.message() << std::endl;
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
+            asio::connect(m_sock, endpoint_iterator, ec);
+            if (ec) {
+                cover->notify(Notify::Error) << "RhrClient: could not establish connection to " << m_host << ":" << m_port << ": " << ec.message() << std::endl;
+                lock_guard locker(*m_mutex);
+                m_running = false;
+                return;
+            }
         }
 
         {
@@ -774,7 +851,7 @@ bool RhrClient::updateTileQueue() {
 
       if (m_queued == 0) {
          if (m_waitForDecode) {
-            finishFrame(*msg);
+            finishFrame(m_remote, *msg);
          }
          return false;
       }
@@ -824,7 +901,7 @@ bool RhrClient::updateTileQueue() {
    return false;
 }
 
-void RhrClient::finishFrame(const tileMsg &msg) {
+void RhrClient::finishFrame(std::shared_ptr<RemoteConnection> remote, const tileMsg &msg) {
 
    m_waitForDecode = false;
 
@@ -843,7 +920,7 @@ void RhrClient::finishFrame(const tileMsg &msg) {
    m_numPixelsS = m_numPixels;
 
    //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
-   m_remote->m_remoteTimestep = msg.timestep;
+   remote->m_remoteTimestep = msg.timestep;
    if (m_requestedTimestep>=0) {
        if (msg.timestep == m_requestedTimestep) {
            m_timestepToCommit = msg.timestep;
@@ -1099,8 +1176,8 @@ bool RhrClient::init()
       coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
    }
 
-   std::cerr << "numChannels: " << numChannels << ", m_channelBase: " << m_channelBase << std::endl;
-   std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
+   std::cerr << "numChannels: " << numChannels << ", channelBase: " << m_channelBase << std::endl;
+   std::cerr << "numViews: " << m_numViews << ", channelBase: " << m_channelBase << std::endl;
 
    m_drawer = new MultiChannelDrawer(true /* flip top/bottom */);
 
@@ -1174,7 +1251,7 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
     auto attr = baseObj->getAttribute("_rhr_config");
     if (!attr)
         return;
-    std::cerr << "RhrClient: connection config string=" << attr << std::endl;
+    //std::cerr << "RhrClient: connection config string=" << attr << std::endl;
 
     std::stringstream config(attr);
     unsigned short port;
@@ -1184,11 +1261,17 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
 
     if (method == "connect") {
         if (address.empty()) {
-            std::cerr << "RhrClient: no connection attempt: invalid dest address: " << address << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt: invalid dest address: " << address << std::endl;
         } else if (port == 0) {
-            std::cerr << "RhrClient: no connection attempt: invalid dest port: " << port << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt: invalid dest port: " << port << std::endl;
         } else {
             connectClient(baseObj->getName(), address, port);
+        }
+    } else if (method == "listen") {
+        if (port == 0) {
+            cover->notify(Notify::Error) << "RhrClient: no attempt to start server: invalid port: " << port << std::endl;
+        } else {
+            startListen(baseObj->getName(), port);
         }
     }
 }
@@ -1200,8 +1283,8 @@ void RhrClient::removeObject(const char *objName, bool replaceFlag) {
     auto it = m_remotes.find(name);
     if (it == m_remotes.end())
         return;
-    clientCleanup(m_remote);
-    m_remotes.erase(it);
+    clientCleanup(it->second);
+    m_remote.reset();
 }
 
 //! this is called if the plugin is removed at runtime
@@ -1213,7 +1296,10 @@ RhrClient::~RhrClient()
    if (m_requestedTimestep != -1)
        commitTimestep(m_requestedTimestep);
 
-   clientCleanup(m_remote);
+   while (!m_remotes.empty()) {
+       clientCleanup(m_remotes.begin()->second);
+   }
+   m_remote.reset();
 
 #ifdef VRUI
    delete m_menu;
@@ -1357,6 +1443,7 @@ RhrClient::preFrame()
    bool running = coVRMSController::instance()->syncBool(m_remote && m_remote->isRunning());
    if (m_remote && !running) {
        clientCleanup(m_remote);
+       m_remote.reset();
    }
 
    bool needUpdate = false;
@@ -1385,7 +1472,9 @@ RhrClient::preFrame()
    if (!connected)
       return;
 
-   m_remote->update();
+   for (auto r: m_remotes) {
+       r.second->update();
+   }
 
    const int numChannels = coVRConfig::instance()->numChannels();
    std::vector<matricesMsg> messages(m_numViews);
@@ -1749,8 +1838,10 @@ void RhrClient::message(int type, int len, const void *msg) {
             variantMsg msg;
             msg.visible = visible;
             strncpy(msg.name, VariantName.c_str(), sizeof(msg.name));
-            if (m_remote && m_remote->isConnected())
-                m_remote->send(msg);
+            for (auto r: m_remotes) {
+                if (r.second->isConnected())
+                    r.second->send(msg);
+            }
         }
         break;
     }
@@ -1761,8 +1852,23 @@ bool RhrClient::connectClient(const std::string &connectionName, const std::stri
 
    m_avgDelay = 0.;
 
-   std::cerr << "starting new RemoteConnection to " << address << ":" << port << std::endl;
+   cover->notify(Notify::Info) << "RhrClient: starting new RemoteConnection to " << address << ":" << port << std::endl;
+   m_remotes.clear();
+   m_remote.reset();
    m_remote.reset(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
+   m_remotes[connectionName] = m_remote;
+
+   return true;
+}
+
+bool RhrClient::startListen(const std::string &connectionName, unsigned short port) {
+
+   m_avgDelay = 0.;
+
+   m_remotes.clear();
+   m_remote.reset();
+   cover->notify(Notify::Info) << "RhrClient: listening for new RemoteConnection " << connectionName << " on port: " << port << std::endl;
+   m_remote.reset(new RemoteConnection(this, port, coVRMSController::instance()->isMaster()));
    m_remotes[connectionName] = m_remote;
 
    return true;
@@ -1771,8 +1877,12 @@ bool RhrClient::connectClient(const std::string &connectionName, const std::stri
 //! clean up when connection to server is lost
 void RhrClient::clientCleanup(std::shared_ptr<RemoteConnection> &remote) {
 
-   if (remote) {
-       remote->stopThread();
+   for (auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
+       if (it->second.get() == remote.get()) {
+           remote.reset();
+           m_remotes.erase(it);
+           return;
+       }
    }
    remote.reset();
 }
