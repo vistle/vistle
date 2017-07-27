@@ -33,7 +33,7 @@
 #include <cover/coTabletUI.h>
 #endif
 
-#include <VistlePluginUtil/MultiChannelDrawer.h>
+#include <PluginUtil/MultiChannelDrawer.h>
 
 #include <boost/asio.hpp>
 
