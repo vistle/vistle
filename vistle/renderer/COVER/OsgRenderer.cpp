@@ -584,6 +584,7 @@ int OsgRenderer::runMain(int argc, char *argv[]) {
 #else
     void *handle = dlopen(abslib.c_str(), RTLD_LAZY);
 #endif
+    mpi::communicator c(comm(), mpi::comm_duplicate);
 
     if (!handle) {
 #ifdef WIN32
@@ -606,7 +607,7 @@ int OsgRenderer::runMain(int argc, char *argv[]) {
         goto finish;
     }
 
-    ret = mpi_main((MPI_Comm)comm(), argc, argv);
+    ret = mpi_main((MPI_Comm)c, argc, argv);
 
 finish:
     if (handle)
