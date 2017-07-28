@@ -191,7 +191,7 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
        it = m_connections.find(key);
    Connection *c = nullptr;
    if (it != m_connections.end()) {
-      qDebug() << "already have connection";
+      //qDebug() << "already have connection";
       c = it->second;
    } else {
       //qDebug() << "new connection";
@@ -318,10 +318,10 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
 
-    qDebug() << "mouse release";
+    //qDebug() << "mouse release";
     // if there was a click
     if (m_Line) {
-        qDebug() << "have m_Line";
+        //qDebug() << "have m_Line";
 
         // clean up connection
         removeItem(m_Line);
@@ -340,7 +340,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 if (startPort->portType() == Port::Output) {
                     if (startModule != endModule) {
                         addConnection(startPort, endPort, true);
-                        qDebug() << "add conn: out -> in";
+                        //qDebug() << "add conn: out -> in";
                     }
                 }
                 break;
@@ -348,7 +348,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 if (startPort->portType() == Port::Input) {
                     if (startModule != endModule) {
                         addConnection(endPort, startPort, true);
-                        qDebug() << "add conn: in -> out";
+                        //qDebug() << "add conn: in -> out";
                     }
                 }
                 break;

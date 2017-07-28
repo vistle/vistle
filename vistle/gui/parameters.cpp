@@ -457,7 +457,7 @@ void Parameters::propertyChanged(QtProperty *prop)
       return;
    }
    if (changed) {
-      std::cerr << "sending new value for " << paramName << std::endl;
+      //std::cerr << "sending new value for " << paramName << std::endl;
       m_vistle->sendParameter(p);
    }
 }
