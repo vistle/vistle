@@ -23,6 +23,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    ~VistlePlugin();
    bool init() override;
    bool destroy() override;
+   void notify(NotificationLevel level, const char *text) override;
    void menuEvent(vrui::coMenuItem *item) override;
    void preFrame() override;
    void requestQuit(bool killSession) override;
@@ -114,7 +115,32 @@ bool VistlePlugin::destroy() {
       m_module = nullptr;
    }
 
-    return true;
+   return true;
+}
+
+void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *message) {
+
+    std::vector<char> text(strlen(message)+1);
+    memcpy(&text[0], message, text.size());
+    if (text.size()>1 && text[text.size()-2]=='\n')
+       text[text.size()-2] = '\0';
+    if (text[0] == '\0')
+        return;
+    std::cerr << &text[0] << std::endl;
+    if (m_module) {
+        switch (level) {
+        case coVRPlugin::Info:
+            m_module->sendInfo("%s", &text[0]);
+            break;
+        case coVRPlugin::Warning:
+            m_module->sendWarning("%s", &text[0]);
+            break;
+        case coVRPlugin::Error:
+        case coVRPlugin::Fatal:
+            m_module->sendError("%s", &text[0]);
+            break;
+        }
+    }
 }
 
 void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
