@@ -248,8 +248,9 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
       error_code ec;
       bool ret = asio::write(sock, buffers, ec);
       if (ec) {
-          std::cerr << "message::send: error " << ec.message() << std::endl;
-          std::cerr << backtrace() << std::endl;
+          std::cerr << "message::send: error: " << ec.message() << std::endl;
+          if (ec != boost::system::errc::connection_reset)
+              std::cerr << backtrace() << std::endl;
           ret = false;
       }
       return ret;
