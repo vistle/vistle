@@ -228,6 +228,7 @@ public:
         , m_add(&add)
         , m_hub(Communicator::the().clusterManager().state().getHub(add.senderId()))
         , m_rank(add.rank())
+        , m_numRequests(0)
     {
     }
 
@@ -237,6 +238,7 @@ public:
         , m_referrer(referrer)
         , m_hub(hub)
         , m_rank(rank)
+        , m_numRequests(0)
     {
     }
 

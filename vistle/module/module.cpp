@@ -2189,8 +2189,7 @@ bool Module::reduceWrapper(const message::Execute *exec) {
       double duration = Clock::time() - m_benchmarkStart;
       if (rank() == 0) {
 #ifdef _OPENMP
-         int nthreads = -1;
-         nthreads = omp_get_max_threads();
+         int nthreads = omp_get_max_threads();
          sendInfo("compute() took %fs (OpenMP threads: %d)", duration, nthreads);
          printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
                name().c_str(), id(), duration, nthreads);

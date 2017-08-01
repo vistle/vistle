@@ -98,6 +98,7 @@ bool VectorField::compute() {
          case Middle:
             p0 = p-0.5*v;
             p1 = p+0.5*v;
+            break;
          case Top:
             p0 = p-v;
             p1 = p;

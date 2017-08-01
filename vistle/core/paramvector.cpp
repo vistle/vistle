@@ -50,6 +50,11 @@ struct instantiator {
       std::cout << v.minimum() << v.maximum() << std::endl;
 #endif
 
+      delete p0;
+      delete p1;
+      delete p2;
+      delete p3;
+
       return v[0];
    }
 };

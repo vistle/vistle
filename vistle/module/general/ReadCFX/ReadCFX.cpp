@@ -218,10 +218,12 @@ bool CaseInfo::checkFile(const char *filename) {
     if (fileSize < MIN_FILE_SIZE) {
         std::cout << filename << "too small to be a real result file" << std::endl;
         std::cout << fileSize << "filesize" << std::endl;
+        fclose(fi);
         return false;
     }
 
     size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
+    fclose(fi);
     if (iret != MACIC_LEN) {
         std::cout << "checkFile :: error reading MACIC_LEN " << std::endl;
         return false;
@@ -232,7 +234,6 @@ bool CaseInfo::checkFile(const char *filename) {
         return false;
     }
 
-    fclose(fi);
     return true;
 }
 

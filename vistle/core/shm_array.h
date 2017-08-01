@@ -228,7 +228,7 @@ void shm_array<T, allocator>::load(Archive &ar, const unsigned int version) {
     int type = 0;
     ar & type;
     assert(m_type == type);
-    size_t size;
+    size_t size = 0;
     ar & size;
     resize(size);
     if (m_size > 0)

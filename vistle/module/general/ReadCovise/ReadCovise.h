@@ -17,6 +17,7 @@ struct Element {
       , in_geometry(false)
       , objnum(-1)
       , index(-1)
+      , block(-1)
       , offset(0)
    {
    }
@@ -29,6 +30,7 @@ struct Element {
       , in_geometry(other.in_geometry)
       , objnum(other.objnum)
       , index(other.index)
+      , block(other.block)
       , offset(other.offset)
       , subelems(other.subelems)
       , attribs(other.attribs)
@@ -44,6 +46,7 @@ struct Element {
          in_geometry = rhs.in_geometry;
          objnum = rhs.objnum;
          index = rhs.index;
+         block = rhs.block;
          offset = rhs.offset;
          subelems = rhs.subelems;
          attribs = rhs.attribs;

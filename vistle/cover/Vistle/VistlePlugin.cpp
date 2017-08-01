@@ -31,7 +31,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
 
  private:
    OsgRenderer *m_module;
-   vrui::coButtonMenuItem *executeButton;
+   std::shared_ptr<vrui::coButtonMenuItem> executeButton;
 };
 
 VistlePlugin::VistlePlugin()
@@ -94,9 +94,9 @@ bool VistlePlugin::init() {
            cover->addSubmenuButton((visMenu+"...").c_str(), NULL, visMenu.c_str(), false, NULL, -1, this);
        }
        vrui::coMenu *coviseMenu = covise->getCoMenu();
-       executeButton = new vrui::coButtonMenuItem("Execute");
+       executeButton = std::make_shared<vrui::coButtonMenuItem>("Execute");
        executeButton->setMenuListener(this);
-       coviseMenu->add(executeButton);
+       coviseMenu->add(executeButton.get());
 
        return true;
    }
@@ -145,7 +145,7 @@ void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *messa
 
 void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 
-   if (item == executeButton) {
+   if (item == executeButton.get()) {
       executeAll();
    }
 }

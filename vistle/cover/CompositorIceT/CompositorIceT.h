@@ -62,7 +62,7 @@ class CompositorIceT : public opencover::coVRPlugin
    //! state attributes of a view being composited which are managed locally
    struct CompositeData
    {
-      CompositeData(): cudaColor(NULL), cudaDepth(NULL), buffer(GL_FRONT), width(-1), height(-1), rank(-1), chan(-1), localIdx(-1) {}
+      CompositeData(): cudaColor(NULL), cudaDepth(NULL), buffer(GL_FRONT), width(-1), height(-1), viewport{0,0,0,0}, rank(-1), chan(-1), localIdx(-1) {}
 
       IceTContext icetCtx; //!< compositing context
       IceTImage image;

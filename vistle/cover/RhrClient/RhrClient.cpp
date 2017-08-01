@@ -885,7 +885,7 @@ bool RhrClient::checkSwapFrame() {
 
 void RhrClient::swapFrame() {
 
-   assert(m_frameReady = true);
+   assert(m_frameReady == true);
    m_frameReady = false;
 
    //assert(m_visibleTimestep == m_remoteTimestep);

@@ -100,6 +100,7 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
       }
    }
    m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
+   m_buildGhost = m_buildGhostcellsParam->getValue();
 }
 
 
