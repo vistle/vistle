@@ -581,7 +581,7 @@ void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
 bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound) {
 
    if (bound.sendreply) {
-       std::cout << "SENDING BOUNDS" << std::endl;
+      //std::cout << "SENDING BOUNDS" << std::endl;
       sendBoundsMessage(sock);
    }
 

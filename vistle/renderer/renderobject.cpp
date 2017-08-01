@@ -93,8 +93,9 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       }
    } else if (auto coords = Coords::as(geometry)) {
 
+      const Scalar *x=coords->x(0), *y=coords->x(1), *z=coords->x(2);
       for (Index i=0; i<coords->getNumCoords(); ++i) {
-         Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
+         Vector3 p(x[i], y[i], z[i]);
          Vector3 pp = transformPoint(T, p);
          for (int c=0; c<3; ++c) {
             if (pp[c] < bMin[c])

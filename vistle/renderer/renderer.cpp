@@ -372,25 +372,10 @@ void Renderer::getBounds(Vector &min, Vector &max, int t) {
 
    if (size_t(t+1) < m_objectList.size()) {
       for (auto &ro: m_objectList[t+1]) {
-         Vector3 bounds[2];
-         for (int c=0; c<3; ++c) {
-            bounds[0][c] = ro->bMin[c];
-            bounds[1][c] = ro->bMax[c];
-#if 0
-            Matrix4 T = Matrix4::Identity();
-            if (ro->geometry) {
-                T = ro->geometry->getTransform();
-            }
-#endif
-
-            for (int i=0; i<2; ++i) {
-                //bounds[i] = transformPoint(T, bounds[i]);
-                if (bounds[i][c] < min[c])
-                    min[c] = bounds[i][c];
-                if (bounds[i][c] > max[c])
-                    max[c] = bounds[i][c];
-            }
-         }
+          for (int i=0; i<3; ++i) {
+              min[i] = std::min(min[i], ro->bMin[i]);
+              max[i] = std::max(max[i], ro->bMax[i]);
+          }
       }
    }
 }

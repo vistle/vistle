@@ -394,9 +394,7 @@ class RemoteConnection {
     //! handle RFB bounds message
     bool handleBounds(const RemoteRenderMessage &msg, const boundsMsg &bound) {
 
-        std::cerr << "receiving bounds msg..." << std::endl;
-
-        //std::cerr << "center: " << bound.center[0] << " " << bound.center[1] << " " << bound.center[2] << ", radius: " << bound.radius << std::endl;
+        //std::cerr << "receiving bounds: center: " << bound.center[0] << " " << bound.center[1] << " " << bound.center[2] << ", radius: " << bound.radius << std::endl;
 
         {
             lock_guard locker(*m_mutex);
@@ -405,7 +403,7 @@ class RemoteConnection {
         }
 
         osg::BoundingSphere bs = boundsNode->getBound();
-        std::cerr << "server bounds: " << bs.center() << ", " << bs.radius() << std::endl;
+        //std::cerr << "server bounds: " << bs.center() << ", " << bs.radius() << std::endl;
 
         return true;
     }
