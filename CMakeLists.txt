@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+set (CMAKE_CXX_STANDARD 11)
 project(Vistle C CXX)
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
@@ -190,10 +191,8 @@ set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
    if (NOT ${BUILD_SHARED_LIBS})
       # for linking the libraries into plugins
@@ -202,7 +201,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
    endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 if (NOT CRAY)
