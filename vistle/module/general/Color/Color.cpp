@@ -428,7 +428,7 @@ void Color::computeMap() {
        int insetRes = insetEnd - insetStart + 1;
        assert(insetEnd >= insetStart);
        assert(insetStart >= 0);
-       assert(insetEnd < m_colors->width);
+       assert(unsigned(insetEnd) < m_colors->width);
        ColorMap inset(inset_pins, inset_steps, insetRes);
        for (int i=insetStart; i<=insetEnd; ++i) {
            for (int c=0; c<4; ++c)
