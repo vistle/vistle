@@ -28,7 +28,6 @@ addons:
     apt:
         packages:
             - ninja-build
-            - libboost-all-dev
             - libglew-dev
             - libxi-dev
             - libxmu-dev
@@ -67,6 +66,7 @@ addons:
             - libboost-timer-dev
             - libboost-tools-dev
             - libboost-dev
+            - libvtk-dev
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
@@ -86,4 +86,4 @@ script:
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
-    - ninja -j3
+    - ninja -j5
