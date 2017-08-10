@@ -27,7 +27,7 @@ matrix:
 addons:
     apt:
         packages:
-           - ninja-build
+            - ninja-build
             - libboost-all-dev
             - libglew-dev
             - libxi-dev
@@ -42,6 +42,31 @@ addons:
             - libxerces-c-dev
             - libpng12-dev
             - libopenscenegraph-dev
+            - libtbb-dev
+            - libmpich-dev
+            - mpich
+            - libjpeg-dev
+            - libsnappy-dev
+            - zlib1g-dev
+            - libreadline-dev
+            - libassimp-dev
+            - libboost-atomic-dev
+            - libboost-date-time-dev
+            - libboost-exception-dev
+            - libboost-filesystem-dev
+            - libboost-iostreams-dev
+            - libboost-locale-dev
+            - libboost-log-dev
+            - libboost-math-dev
+            - libboost-program-options-dev
+            - libboost-python-dev
+            - libboost-random-dev
+            - libboost-serialization-dev
+            - libboost-system-dev
+            - libboost-thread-dev
+            - libboost-timer-dev
+            - libboost-tools-dev
+            - libboost-dev
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
@@ -60,4 +85,4 @@ script:
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
-    - ninja
+    - ninja -j3
