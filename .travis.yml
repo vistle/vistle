@@ -68,9 +68,10 @@ addons:
             - libboost-dev
             - libvtk6-dev
             - libtinyxml2-dev
+            - libturbojpeg
 
 before_install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry sudo apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry cd /usr/lib/x86_64-linux-gnu && sudo ln -s libturbojpeg.so.0 libturbojpeg.so; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall xerces-c ;fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall glew ;fi
