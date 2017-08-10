@@ -66,7 +66,8 @@ addons:
             - libboost-timer-dev
             - libboost-tools-dev
             - libboost-dev
-            - libvtk-dev
+            - libvtk6-dev
+            - libtinyxml2-dev
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
