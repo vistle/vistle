@@ -4,9 +4,9 @@
 
 notifications:
   email:
-    - aumueller@reserv.at
+    - aumuell@reserv.at
 
-sudo: true
+sudo: required
 dist: trusty
 
 language: cpp
