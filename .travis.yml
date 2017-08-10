@@ -1,0 +1,63 @@
+#--------------------------------------------------------------------------------------------------
+# Configuration script for use with continuous integration service travis-ci.org
+#
+
+notifications:
+  email:
+    - aumueller@reserv.at
+
+sudo: false
+dist: trusty
+
+language: cpp
+os:
+    - linux
+    - osx
+
+env:
+    matrix:
+        - APP="vistle" BUILD_TYPE="Debug"
+        - APP="vistle" BUILD_TYPE="Release"
+
+matrix:
+    exclude:
+        # FIXME
+        - os: osx
+
+addons:
+    apt:
+        packages:
+            - ninja
+            - libboost-all-dev
+            - libglew-dev
+            - libxi-dev
+            - libxmu-dev
+            - freeglut3-dev
+            - qttools5-dev
+            - qtscript5-dev
+            - libqt5scripttools5
+            - libqt5svg5-dev
+            - libqt5opengl5-dev
+            - libqt5webkit5-dev
+            - libxerces-c-dev
+            - libpng12-dev
+            - libopenscenegraph-dev
+
+before_install:
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall xerces-c ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall glew ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall giflib ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall libpng ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall libtiff ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall freetype ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall boost ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall python3 ;fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall qt5 ;fi
+
+script:
+
+    - mkdir build-${BUILD_TYPE}
+    - cd build-${BUILD_TYPE}
+    - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
+    - ninja
