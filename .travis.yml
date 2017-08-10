@@ -6,7 +6,7 @@ notifications:
   email:
     - aumueller@reserv.at
 
-sudo: false
+sudo: true
 dist: trusty
 
 language: cpp
@@ -70,7 +70,7 @@ addons:
             - libtinyxml2-dev
 
 before_install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry sudo apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall xerces-c ;fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall glew ;fi
