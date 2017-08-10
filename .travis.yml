@@ -79,6 +79,7 @@ before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall boost ;fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall python3 ;fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall qt5 ;fi
+    - if [ "$TRAVIS_OS_NAME" = "trusty" ]; then travis_retry apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so; fi
 
 script:
 
