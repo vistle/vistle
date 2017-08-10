@@ -162,7 +162,7 @@ parameters supplied to the batch system. Something similiar to
 
       qsub -q test -lnodes=1,ppn=1,walltime=00:10:00 scripts/vistle.pbs
 
-should get you started. This will start an instance of  Vistle that connects
+should get you started. This will start an instance of Vistle that connects
 back to your work station.
 
 
