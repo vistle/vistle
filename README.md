@@ -1,7 +1,5 @@
-Visualization Testing Laboratory for Exascale Computing (Vistle)
-================================================================
-
-A modular data-parallel visualization system.
+Vistle - A Modular Data-Parallel Visualization System
+=====================================================
 
 > **vistle**:
 >	very smooth and elegant, nicely put together ([Urban Dictionary](http://www.urbandictionary.com/define.php?term=vistle))
