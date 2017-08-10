@@ -71,7 +71,7 @@ addons:
             - libturbojpeg
 
 before_install:
-    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry cd /usr/lib/x86_64-linux-gnu && sudo ln -s libturbojpeg.so.0 libturbojpeg.so; fi
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then travis_retry sudo ln -s libturbojpeg.so.0 /usr/lib/x86_64-linux-gnu/libturbojpeg.so; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall xerces-c ;fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall glew ;fi
