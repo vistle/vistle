@@ -27,7 +27,7 @@ matrix:
 addons:
     apt:
         packages:
-            - ninja
+           - ninja-build
             - libboost-all-dev
             - libglew-dev
             - libxi-dev
