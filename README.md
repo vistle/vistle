@@ -101,20 +101,20 @@ Then build with your build tool, e.g.:
 
 ### Cray XC40 at HLRS (hazelhen.hww.de) [Hazel Hen](https://www.hlrs.de/en/systems/cray-xc40-hazel-hen)
 
-Set up your environment:
+Set up your environment (also required before using Vistle):
 
-   export CRAYPE_LINK_TYPE=dynamic
-   module swap PrgEnv-cray PrgEnv-gnu
-   module load tools/cmake/3.8.2
-   module load tools/vtk/7.0.0
-   module load numlib/intel/tbb/2017.4
-   module load tools/boost/1.62.0
+      export CRAYPE_LINK_TYPE=dynamic
+      module swap PrgEnv-cray PrgEnv-gnu
+      module load tools/cmake/3.8.2
+      module load tools/vtk/7.0.0
+      module load numlib/intel/tbb/2017.4
+      module load tools/boost/1.62.0
 
 You most likely will want to install additional dependencies.
 
 From your build directory, invoke CMake like this:
 
-   cmake -DCMAKE_SYSTEM_NAME=CrayLinuxEnvironment ..
+      cmake -DCMAKE_SYSTEM_NAME=CrayLinuxEnvironment ..
 
 
 Invoking Vistle
@@ -155,6 +155,15 @@ You can connect a user interface to a running Vistle session later on, e.g.:
 
       vistle_gui localhost 31093
 
+### Cray XC40 (Hazel Hen)
+
+An example PBS script is provided in `scripts/vistle.pbs`. It reuses the
+parameters supplied to the batch system. Something similiar to
+
+      qsub -q test -lnodes=1,ppn=1,walltime=00:10:00 scripts/vistle.pbs
+
+should get you started. This will start an instance of  Vistle that connects
+back to your work station.
 
 
 Source Code Organization

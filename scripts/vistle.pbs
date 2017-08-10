@@ -13,9 +13,6 @@ module load tools/vtk/7.0.0
 module load numlib/intel/tbb/2017.4
 module load tools/boost/1.62.0
 
-# Launch the parallel job to the allocated compute nodes
-#aprun -b -B vistle -b -p login3 -c visard.hlrs.de
-
 VDIR="$HOME/vistle/build-xc40"
 export VISTLE_LAUNCH=aprun
 
