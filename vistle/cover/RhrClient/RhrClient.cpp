@@ -1432,8 +1432,8 @@ void RhrClient::tabletEvent(coTUIElement *item) {
 #endif
 
 //! this is called before every frame, used for polling for RFB messages
-void
-RhrClient::preFrame()
+bool
+RhrClient::update()
 {
    static double lastMatrices = -DBL_MAX;
    static int remoteSkipped = 0;
@@ -1470,7 +1470,7 @@ RhrClient::preFrame()
    m_drawer->update();
 
    if (!connected)
-      return;
+      return needUpdate;
 
    for (auto r: m_remotes) {
        r.second->update();
@@ -1506,6 +1506,8 @@ RhrClient::preFrame()
          coVRMSController::instance()->sendMaster(&messages[s], sizeof(messages[s]));
       }
    }
+
+   bool render = false;
 
    int ntiles = 0;
    {
@@ -1685,6 +1687,7 @@ RhrClient::preFrame()
       ++remoteSkipped;
 
    if (checkSwapFrame()) {
+       render = true;
        coVRMSController::instance()->syncData(&m_timestepToCommit, sizeof(m_timestepToCommit));
        if (m_timestepToCommit >= 0) {
            //std::cerr << "RhrClient::commitTimestep(" << m_remoteTimestep << ") B" << std::endl;
@@ -1742,6 +1745,8 @@ RhrClient::preFrame()
            m_drawer->setMode(m_mode);
        m_drawer->reproject();
    }
+
+   return render;
 }
 
 //! called when scene bounding sphere is required

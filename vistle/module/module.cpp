@@ -1164,7 +1164,7 @@ void Module::connectionRemoved(const Port *from, const Port *to) {
 
 }
 
-bool Module::dispatch() {
+bool Module::dispatch(bool *messageReceived) {
 
    bool again = true;
 
@@ -1173,6 +1173,9 @@ bool Module::dispatch() {
       if (parentProcessDied())
          throw(except::parent_died());
 #endif
+
+      if (messageReceived)
+         *messageReceived = true;
 
       message::Buffer buf;
       if (!messageBacklog.empty()) {

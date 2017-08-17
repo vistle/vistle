@@ -14,7 +14,7 @@ class V_RENDEREREXPORT Renderer: public Module {
             const int moduleID, mpi::communicator comm);
    virtual ~Renderer();
 
-   bool dispatch() override;
+   bool dispatch(bool *messageReceived=nullptr) override;
 
    void getBounds(Vector3 &min, Vector3 &max);
    void getBounds(Vector3 &min, Vector3 &max, int time);

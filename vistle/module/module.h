@@ -65,7 +65,7 @@ class V_MODULEEXPORT Module {
    virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
 
-   virtual bool dispatch();
+   virtual bool dispatch(bool *messageReived=nullptr);
 
    const std::string &name() const;
    const boost::mpi::communicator &comm() const;

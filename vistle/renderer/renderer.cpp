@@ -61,10 +61,11 @@ static bool needsSync(const message::Message &m) {
    }
 }
 
-bool Renderer::dispatch() {
+bool Renderer::dispatch(bool *messageReceived) {
 
    message::Buffer buf;
    message::Message &message = buf;
+   bool received = false;
 
    int quit = 0;
    bool checkAgain = false;
@@ -136,6 +137,8 @@ bool Renderer::dispatch() {
       ++numSync;
       checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame;
 
+      if (maxNumMessages > 0)
+         received = true;
    } while (checkAgain && !quit);
 
    int doQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
@@ -154,6 +157,10 @@ bool Renderer::dispatch() {
              sendInfo("render took %f s", duration);
          }
       }
+   }
+
+   if (messageReceived) {
+      *messageReceived = received;
    }
 
    return !quit;

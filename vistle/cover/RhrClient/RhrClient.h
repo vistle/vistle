@@ -88,7 +88,7 @@ public:
                   const RenderObject *geometry, const RenderObject *normals,
                   const RenderObject *colors, const RenderObject *texture) override;
    void removeObject(const char *objName, bool replaceFlag) override;
-   void preFrame() override;
+   bool update() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
 #ifdef VRUI
    void menuEvent(coMenuItem* item) override;

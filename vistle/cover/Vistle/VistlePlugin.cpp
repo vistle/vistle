@@ -25,7 +25,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    bool destroy() override;
    void notify(NotificationLevel level, const char *text) override;
    void menuEvent(vrui::coMenuItem *item) override;
-   void preFrame() override;
+   bool update() override;
    void requestQuit(bool killSession) override;
    bool executeAll() override;
 
@@ -150,15 +150,16 @@ void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
    }
 }
 
-void VistlePlugin::preFrame() {
+bool VistlePlugin::update() {
 
 #ifndef NDEBUG
    if (m_module) {
        m_module->comm().barrier();
    }
 #endif
+   bool messageReceived = false;
    try {
-       if (m_module && !m_module->dispatch()) {
+       if (m_module && !m_module->dispatch(&messageReceived)) {
            std::cerr << "Vistle requested COVER to quit" << std::endl;
            OpenCOVER::instance()->quitCallback(NULL,NULL);
        }
@@ -170,6 +171,8 @@ void VistlePlugin::preFrame() {
        std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
        throw(e);
    }
+
+   return messageReceived;
 }
 
 void VistlePlugin::requestQuit(bool killSession)
