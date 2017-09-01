@@ -13,10 +13,14 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 
+#include <cover/ui/Owner.h>
+#include <cover/ui/Menu.h>
+#include <cover/ui/Button.h>
+
 using namespace opencover;
 using namespace vistle;
 
-class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
+class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
 
  public:
    VistlePlugin();
@@ -24,18 +28,18 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    bool init() override;
    bool destroy() override;
    void notify(NotificationLevel level, const char *text) override;
-   void menuEvent(vrui::coMenuItem *item) override;
    bool update() override;
    void requestQuit(bool killSession) override;
    bool executeAll() override;
 
  private:
-   OsgRenderer *m_module;
-   std::shared_ptr<vrui::coButtonMenuItem> executeButton;
+   OsgRenderer *m_module = nullptr;
+   ui::Button *executeButton = nullptr;
 };
 
 VistlePlugin::VistlePlugin()
-: m_module(nullptr)
+: ui::Owner("Vistle", cover->ui)
+, m_module(nullptr)
 {
 #if 0
     using opencover::coCommandLine;
@@ -81,22 +85,19 @@ VistlePlugin::~VistlePlugin() {
 
 bool VistlePlugin::init() {
 
+   assert(!cover->visMenu);
+
    m_module = OsgRenderer::the();
    if (m_module) {
        m_module->setPlugin(this);
 
-       std::string visMenu = getName();
-       VRMenu *covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
-       if (!covise)
-       {
-           VRPinboard::instance()->addMenu(visMenu.c_str(), VRPinboard::instance()->mainMenu->getCoMenu());
-           covise = VRPinboard::instance()->namedMenu(visMenu.c_str());
-           cover->addSubmenuButton((visMenu+"...").c_str(), NULL, visMenu.c_str(), false, NULL, -1, this);
-       }
-       vrui::coMenu *coviseMenu = covise->getCoMenu();
-       executeButton = std::make_shared<vrui::coButtonMenuItem>("Execute");
-       executeButton->setMenuListener(this);
-       coviseMenu->add(executeButton.get());
+       cover->visMenu = new ui::Menu("Vistle", this);
+
+       executeButton = new ui::Button(cover->visMenu, "Execute");
+       executeButton->setCallback([this](bool){
+           executeButton->setState(true);
+           executeAll();
+       });
 
        return true;
    }
@@ -143,12 +144,14 @@ void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *messa
     }
 }
 
+#ifdef VRUI
 void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 
    if (item == executeButton.get()) {
       executeAll();
    }
 }
+#endif
 
 bool VistlePlugin::update() {
 
