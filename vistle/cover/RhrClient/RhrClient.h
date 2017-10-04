@@ -15,6 +15,7 @@
 #include <thread>
 
 #include <cover/coVRPluginSupport.h>
+#include <cover/ui/Owner.h>
 
 #include <rhr/rfbext.h>
 
@@ -24,14 +25,6 @@
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 
-//#define VRUI
-
-#ifdef VRUI
-#include <OpenVRUI/coMenuItem.h> // vrui::coMenuListener
-#else
-#include <cover/mui/support/EventListener.h>
-#include <cover/coTabletUI.h>
-#endif
 
 #include <PluginUtil/MultiChannelDrawer.h>
 
@@ -43,18 +36,14 @@ namespace osg {
 class TextureRectangle;
 }
 
-namespace vrui {
-class coSubMenuItem;
-class coRowMenu;
-class coCheckboxMenuItem;
+namespace opencover {
+namespace ui {
+class Action;
+class Button;
+class SelectionList;
+}
 }
 
-namespace mui {
-class Tab;
-class ToggleButton;
-}
-
-using namespace vrui;
 using namespace opencover;
 using namespace vistle;
 
@@ -70,13 +59,7 @@ struct TileMessage {
 };
 
 //! implement remote hybrid rendering client based on VNC protocol
-class RhrClient: public coVRPlugin
-#ifdef VRUI
-, private coMenuListener
-#else
-, private mui::EventListener
-, private opencover::coTUIListener
-#endif
+class RhrClient: public coVRPlugin, public ui::Owner
 {
     friend class RemoteConnection;
 public:
@@ -90,12 +73,6 @@ public:
    void removeObject(const char *objName, bool replaceFlag) override;
    bool update() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
-#ifdef VRUI
-   void menuEvent(coMenuItem* item) override;
-#else
-   void muiEvent(mui::Element *muiItem) override;
-   void tabletEvent(coTUIElement *) override;
-#endif
    void setTimestep(int t) override;
    void requestTimestep(int t) override;
 
@@ -165,20 +142,11 @@ private:
    std::vector<int> m_numChannels;
 
    MultiChannelDrawer::Mode m_mode;
-   void modeToUi(MultiChannelDrawer::Mode mode);
-   void applyMode();
 
-#ifdef VRUI
-   coRowMenu *m_menu;
-   coSubMenuItem *m_menuItem;
-   coCheckboxMenuItem *m_reprojCheck, *m_adaptCheck;
-   coCheckboxMenuItem *m_allTilesCheck;
-#else
-   mui::Tab *m_tab;
-   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck;
-   mui::ToggleButton *m_inhibitModelUpdate;
-#endif
-   bool m_reproject, m_adapt, m_adaptWithNeighbors, m_asMesh, m_withHoles;
+   ui::Menu *m_menu = nullptr;
+   ui::Button *m_matrixUpdate = nullptr;
+   ui::SelectionList *m_reprojMode = nullptr;
+
    bool m_noModelUpdate;
    osg::Matrix m_oldModelMatrix;
 

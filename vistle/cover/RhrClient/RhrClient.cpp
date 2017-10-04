@@ -22,16 +22,10 @@
 #include <cover/coVRAnimationManager.h>
 #include <cover/RenderObject.h>
 
-#include <cover/mui/Tab.h>
-#include <cover/mui/ToggleButton.h>
-#include <cover/mui/LabelElement.h>
+#include <cover/ui/Button.h>
+#include <cover/ui/SelectionList.h>
 
 #include <PluginUtil/PluginMessageTypes.h>
-
-#include <OpenVRUI/coSubMenuItem.h>
-#include <OpenVRUI/coRowMenu.h>
-#include <OpenVRUI/coCheckboxMenuItem.h>
-#include <OpenVRUI/coPotiMenuItem.h>
 
 #include <osgGA/GUIEventAdapter>
 #include <osg/Material>
@@ -580,12 +574,6 @@ class RemoteConnection {
 };
 
 static const std::string config("COVER.Plugin.RhrClient");
-static std::string muiId(const std::string &id = "") {
-   const std::string base = "plugins.vistle.RhrClient";
-   if (id.empty())
-      return base;
-   return base + "." + id;
-}
 
 void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, bool second) {
 
@@ -1092,7 +1080,8 @@ bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<
 
 //! called when plugin is loaded
 RhrClient::RhrClient()
-: m_requestedTimestep(-1)
+: ui::Owner("RhrClient", cover->ui)
+, m_requestedTimestep(-1)
 , m_remoteTimestep(-1)
 , m_visibleTimestep(-1)
 , m_numRemoteTimesteps(-1)
@@ -1181,64 +1170,32 @@ bool RhrClient::init()
 
    m_drawer = new MultiChannelDrawer(true /* flip top/bottom */);
 
-#ifdef VRUI
-   m_menuItem = new coSubMenuItem("Hybrid Rendering...");
-   m_menu = new coRowMenu("Hybrid Rendering");
-   m_menuItem->setMenu(m_menu);
-   m_menuItem->setMenuListener(this);
-   cover->getMenu()->add(m_menuItem);
+   m_menu = new ui::Menu("RHR", this);
+   m_menu->setText("Hybrid rendering");
 
-   m_reprojCheck = new coCheckboxMenuItem("Reproject", m_reproject);
-   m_adaptCheck = new coCheckboxMenuItem("Adapt Point Size", m_adapt);
-   m_allTilesCheck = new coCheckboxMenuItem("Show all tiles", false);
-   m_reprojCheck->setMenuListener(this);
-   m_adaptCheck->setMenuListener(this);
-   m_allTilesCheck->setMenuListener(this);
-   m_menu->add(m_reprojCheck);
-   m_menu->add(m_adaptCheck);
-   //m_menu->add(m_allTilesCheck);
-#else
-   m_tab = mui::Tab::create(muiId());
-   m_tab->setLabel("Hybrid Rendering");
-   m_tab->setEventListener(this);
-   m_tab->setPos(1, 0);
-
-   m_reprojCheck = mui::ToggleButton::create(muiId("reproj"), m_tab);
-   m_reprojCheck->setLabel("Reproject");
-   m_reprojCheck->setEventListener(this);
-   m_reprojCheck->setPos(0,0);
-
-   m_adaptCheck = mui::ToggleButton::create(muiId("adapt"), m_tab);
-   m_adaptCheck->setLabel("Adapt Point Size");
-   m_adaptCheck->setEventListener(this);
-   m_adaptCheck->setPos(1,0);
-
-   m_adaptWithNeighborsCheck = mui::ToggleButton::create(muiId("adapt_with_neighbors"), m_tab);
-   m_adaptWithNeighborsCheck->setLabel("Adapt With Neighbors");
-   m_adaptWithNeighborsCheck->setEventListener(this);
-   m_adaptWithNeighborsCheck->setPos(2,0);
-
-   m_asMeshCheck = mui::ToggleButton::create(muiId("as_mesh"), m_tab);
-   m_asMeshCheck->setLabel("As Mesh");
-   m_asMeshCheck->setEventListener(this);
-   m_asMeshCheck->setPos(3,0);
-
-   m_withHolesCheck = mui::ToggleButton::create(muiId("with_holes"), m_tab);
-   m_withHolesCheck->setLabel("With Holes");
-   m_withHolesCheck->setEventListener(this);
-   m_withHolesCheck->setPos(4,0);
-
-   //coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
-
-   m_inhibitModelUpdate = mui::ToggleButton::create(muiId("no_model_update"), m_tab);
-   m_inhibitModelUpdate->setLabel("No Model Update");
-   m_inhibitModelUpdate->setEventListener(this);
-   m_inhibitModelUpdate->setPos(0,4);
-   m_inhibitModelUpdate->setState(m_noModelUpdate);
-#endif
-
+   m_reprojMode = new ui::SelectionList(m_menu, "ReprojectionMode");
+   m_reprojMode->setText("Reprojection");
+   m_reprojMode->append("Disable");
+   m_reprojMode->append("Points");
+   m_reprojMode->append("Points (adaptive)");
+   m_reprojMode->append("Points (adaptive with neighbors)");
+   m_reprojMode->append("Mesh");
+   m_reprojMode->append("Mesh with holes");
+   m_reprojMode->setCallback([this](int choice){
+         if (choice >= MultiChannelDrawer::AsIs && choice <= MultiChannelDrawer::ReprojectMeshWithHoles) {
+             m_mode = MultiChannelDrawer::Mode(choice);
+         }
+         m_drawer->setMode(m_mode);
+   });
+   m_reprojMode->select(m_mode);
    m_drawer->setMode(m_mode);
-   modeToUi(m_mode);
+
+   m_matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
+   m_matrixUpdate->setText("Update model matrix");
+   m_matrixUpdate->setState(!m_noModelUpdate);
+   m_matrixUpdate->setCallback([this](bool state){
+         m_noModelUpdate = !state;
+   });
 
    return true;
 }
@@ -1301,135 +1258,8 @@ RhrClient::~RhrClient()
    }
    m_remote.reset();
 
-#ifdef VRUI
-   delete m_menu;
-   delete m_menuItem;
-#else
-   delete m_tab;
-#endif
-
    plugin = NULL;
 }
-
-void RhrClient::modeToUi(MultiChannelDrawer::Mode mode) {
-   switch(mode) {
-      case MultiChannelDrawer::AsIs:
-         m_reproject = false;
-         break;
-      case MultiChannelDrawer::Reproject:
-         m_reproject = true;
-         m_adapt = false;
-         m_asMesh = false;
-         break;
-      case MultiChannelDrawer::ReprojectAdaptive:
-         m_reproject = true;
-         m_adapt = true;
-         m_adaptWithNeighbors = false;
-         m_asMesh = false;
-         break;
-      case MultiChannelDrawer::ReprojectAdaptiveWithNeighbors:
-         m_reproject = true;
-         m_adapt = true;
-         m_adaptWithNeighbors = true;
-         m_asMesh = false;
-         break;
-      case MultiChannelDrawer::ReprojectMesh:
-         m_reproject = true;
-         m_adapt = false;
-         m_asMesh = true;
-         m_withHoles = false;
-         break;
-      case MultiChannelDrawer::ReprojectMeshWithHoles:
-         m_reproject = true;
-         m_adapt = false;
-         m_asMesh = true;
-         m_withHoles = true;
-         break;
-   }
-
-   m_reprojCheck->setState(m_reproject);
-   m_adaptCheck->setState(m_adapt);
-   m_adaptWithNeighborsCheck->setState(m_adaptWithNeighbors);
-   m_asMeshCheck->setState(m_asMesh);
-   m_withHolesCheck->setState(m_withHoles);
-}
-
-void RhrClient::applyMode() {
-   MultiChannelDrawer::Mode mode = MultiChannelDrawer::AsIs;
-   if (m_reproject) {
-      if (m_asMesh) {
-         mode = MultiChannelDrawer::ReprojectMesh;
-         if (m_withHoles)
-            mode = MultiChannelDrawer::ReprojectMeshWithHoles;
-      } else {
-         if (m_adapt) {
-            if (m_adaptWithNeighbors)
-               mode = MultiChannelDrawer::ReprojectAdaptiveWithNeighbors;
-            else
-               mode = MultiChannelDrawer::ReprojectAdaptive;
-         } else {
-            mode = MultiChannelDrawer::Reproject;
-         }
-      }
-   }
-   modeToUi(mode);
-   m_mode = mode;
-   m_drawer->setMode(m_mode);
-}
-
-#ifdef VRUI
-void RhrClient::menuEvent(coMenuItem *item) {
-
-   if (item == m_reprojCheck) {
-      m_reproject = m_reprojCheck->getState();
-      applyMode();
-   }
-   if (item == m_adaptCheck) {
-       m_adapt = m_adaptCheck->getState();
-       applyMode();
-   }
-}
-#else
-void RhrClient::muiEvent(mui::Element *item) {
-   if (item == m_reprojCheck) {
-      m_reproject = m_reprojCheck->getState();
-      applyMode();
-   }
-   if (item == m_adaptCheck) {
-       m_adapt = m_adaptCheck->getState();
-       if (m_adapt)
-          m_asMesh = false;
-      applyMode();
-   }
-   if (item == m_adaptWithNeighborsCheck) {
-       m_adaptWithNeighbors = m_adaptWithNeighborsCheck->getState();
-       if (m_adaptWithNeighbors) {
-          m_adapt = true;
-          m_asMesh = false;
-       }
-      applyMode();
-   }
-   if (item == m_asMeshCheck) {
-      m_asMesh = m_asMeshCheck->getState();
-      if (m_asMesh)
-         m_adapt = false;
-      applyMode();
-   }
-   if (item == m_withHolesCheck) {
-      m_withHoles = m_withHolesCheck->getState();
-      if (m_withHoles) {
-         m_asMesh = true;
-         m_adapt = false;
-      }
-      applyMode();
-   }
-   if (item == m_inhibitModelUpdate) {
-       m_noModelUpdate = m_inhibitModelUpdate->getState();
-   }
-}
-void RhrClient::tabletEvent(coTUIElement *item) {
-}
-#endif
 
 //! this is called before every frame, used for polling for RFB messages
 bool
