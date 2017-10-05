@@ -30,9 +30,15 @@
 #define VISTLECONSOLE_H
 
 #include "qconsole/qconsole.h"
+#include <memory>
 
 namespace vistle {
 class PythonModule;
+class PythonInterface;
+}
+
+namespace pybind11 {
+class object;
 }
 
 namespace gui {
@@ -49,6 +55,7 @@ public:
     //! destructor
     ~VistleConsole();
     void init();
+    void finish();
 
     //! private constructor
     VistleConsole(QWidget *parent = NULL);
@@ -76,6 +83,8 @@ private:
 
     //! the instance
     static VistleConsole *s_instance;
+    pybind11::object &locals();
+
 
 private:
     //! function to check if current command compiled and if not hinted for a multiline statement
@@ -85,7 +94,8 @@ private:
     QString command;
 
     //! number of lines associated with current command
-    int lines;
+    int lines = 0;
+    std::unique_ptr<pybind11::object> m_locals;
 };
 
 } // namespace gui

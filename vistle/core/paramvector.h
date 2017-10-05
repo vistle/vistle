@@ -65,12 +65,16 @@ public:
    typedef size_t size_type;
    typedef size_t index_type;
    typedef ssize_t difference_type;
-   size_t size() { return dim; }
+   bool empty() const { return dim > 0; }
+   size_t size() const { return dim; }
    typedef typename std::vector<S>::iterator iterator;
+   typedef typename std::vector<S>::const_iterator const_iterator;
    void erase(iterator s) { throw except::not_implemented(); v.erase(s); }
    void erase(iterator s, iterator e) { throw except::not_implemented(); v.erase(s, e); }
    iterator begin() { return v.begin(); }
+   const_iterator begin() const { return v.begin(); }
    iterator end() { return v.begin()+dim; }
+   const_iterator end() const { return v.begin()+dim; }
    void insert(iterator pos, const S &value) { throw except::not_implemented(); v.insert(pos, value); }
    template<class InputIt>
    void insert(iterator pos, InputIt first, InputIt last) { throw except::not_implemented(); v.insert(pos, first, last); }
@@ -81,6 +85,29 @@ public:
       }
       v[dim] = value;
       ++dim;
+   }
+   Scalar &back() {
+       if (dim <= 0) {
+         throw vistle::exception("out of range");
+       }
+       return v[0];
+   }
+   const Scalar &back() const {
+       if (dim <= 0) {
+         throw vistle::exception("out of range");
+       }
+       return v[0];
+   }
+   void pop_back() {
+       if (dim <= 0) {
+         throw vistle::exception("out of range");
+       }
+       --dim;
+   }
+   void reserve(size_t dim) {
+      if (dim >= MaxDimension) {
+         throw vistle::exception("out of range");
+      }
    }
 };
 

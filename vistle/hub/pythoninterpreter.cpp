@@ -12,9 +12,9 @@ class Executor {
 
  public:
    Executor(PythonInterpreter &inter, const std::string &filename)
-   : m_done(false)
-   , m_interpreter(inter)
+   : m_interpreter(inter)
    , m_filename(filename)
+   , m_done(false)
    {
        m_interpreter.init();
    }
@@ -36,15 +36,15 @@ class Executor {
 
  private:
    mutable std::mutex m_mutex;
-   bool m_done;
    PythonInterpreter &m_interpreter;
    const std::string &m_filename;
+   bool m_done;
 };
 
 PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path)
 : m_pythonPath(path)
 , m_interpreter(new PythonInterface("vistle"))
-, m_module(new PythonModule(path))
+, m_module(new PythonModule)
 , m_executor(new Executor(*this, file))
 , m_thread(std::ref(*m_executor))
 {
@@ -68,6 +68,9 @@ bool PythonInterpreter::executeFile(const std::string &filename) {
 PythonInterpreter::~PythonInterpreter() {
 
    m_thread.join();
+   m_executor.reset();
+   m_module.reset();
+   m_interpreter.reset();
 }
 
 bool PythonInterpreter::check() {

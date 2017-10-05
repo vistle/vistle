@@ -2,9 +2,11 @@
 #define PYTHON_MODULE_H
 
 #include <string>
-#include <boost/python/object.hpp>
-
 #include "export.h"
+
+namespace pybind11 {
+class object;
+}
 
 namespace vistle {
 
@@ -13,12 +15,11 @@ class VistleConnection;
 class V_UIEXPORT PythonModule {
 
 public:
-   PythonModule(const std::string &path);
-   PythonModule(VistleConnection *vc, const std::string &path);
+   PythonModule(VistleConnection *vc = nullptr);
    static PythonModule &the();
 
    VistleConnection &vistleConnection() const;
-   bool import(boost::python::object *m_namespace, const std::string &path);
+   bool import(pybind11::object *m_namespace, const std::string &path);
 
 private:
    VistleConnection *m_vistleConnection;

@@ -24,3 +24,4 @@ if (NOT BUILD_SHARED_LIBS)
 endif()
 add_subdirectory(IceT)
 
+add_subdirectory(pybind11)

@@ -1,8 +1,11 @@
 #define ENUMS_FOR_PYTHON
 
-#include <Python.h>
-#include <boost/python.hpp>
-#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <pybind11/pybind11.h>
+#include <pybind11/embed.h>
+#include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
+#include <pybind11/eval.h>
+
 #include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>
 
@@ -18,6 +21,9 @@
 
 #include <core/statetracker.h>
 #include <core/porttracker.h>
+
+namespace py = pybind11;
+
 
 #ifdef VISTLE_CONTROL
 
@@ -37,13 +43,7 @@
 
 #endif
 
-namespace bp = boost::python;
 namespace asio = boost::asio;
-
-BOOST_PYTHON_MODULE(vector_indexing_suite_ext){
-   bp::class_<std::vector<int> >("PyVec")
-      .def(bp::vector_indexing_suite<std::vector<int> >());
-}
 
 namespace vistle {
 
@@ -75,6 +75,7 @@ static void quit() {
 #endif
    message::Quit m;
    sendMessage(m);
+   exit(0);
 }
 
 static void ping(int dest=message::Id::Broadcast, char c='.') {
@@ -86,7 +87,6 @@ static void ping(int dest=message::Id::Broadcast, char c='.') {
    m.setDestId(dest);
    sendMessage(m);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(ping_overloads, ping, 0, 2)
 
 static void trace(int id=message::Id::Broadcast, message::Type type=message::ANY, bool onoff = true) {
 
@@ -98,7 +98,6 @@ static void trace(int id=message::Id::Broadcast, message::Type type=message::ANY
    message::Trace m(id, type, onoff);
    sendMessage(m);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(trace_overloads, trace, 0, 3)
 
 static bool barrier() {
    message::Barrier m;
@@ -128,13 +127,11 @@ static std::string spawnAsync(int hub, const char *module, int numSpawn=-1, int 
 
    return uuid;
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawnAsync_overloads, spawnAsync, 2, 5)
 
 static std::string spawnAsyncSimple(const char *module, int numSpawn=-1, int baseRank=-1, int rankSkip=-1) {
 
    return spawnAsync(message::Id::MasterHub, module, numSpawn, baseRank, rankSkip);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawnAsyncSimple_overloads, spawnAsyncSimple, 1, 4)
 
 static int waitForSpawn(const std::string &uuid) {
 
@@ -159,7 +156,6 @@ static int spawn(int hub, const char *module, int numSpawn=-1, int baseRank=-1, 
    const std::string uuid = spawnAsync(hub, module, numSpawn, baseRank, rankSkip);
    return waitForSpawn(uuid);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 2, 5)
 
 static int spawnSimple(const char *module) {
 
@@ -463,7 +459,6 @@ static void compute(int id=message::Id::Broadcast) {
       m.setDestId(id);
    sendMessage(m);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(compute_overloads, compute, 0, 1)
 
 static void cancelCompute(int id) {
 #ifdef DEBUG
@@ -500,7 +495,6 @@ static void requestTunnel(unsigned short listenPort, const std::string &destHost
 
    sendMessage(m);
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(requestTunnel_overloads, requestTunnel, 2, 3)
 
 static void removeTunnel(unsigned short listenPort) {
 #ifdef DEBUG
@@ -539,97 +533,123 @@ static void printError(const std::string &message) {
 }
 
 
-#define param(T, f) \
-   def("set" #T "Param", f, "set parameter `arg2` of module with ID `arg1` to `arg3`"); \
-   def("setParam", f, "set parameter `arg2` of module with ID `arg1` to `arg3`");
+#define param1(T, f) \
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a);
 
-BOOST_PYTHON_MODULE(_vistle)
-{
-    using namespace boost::python;
+#define param2(T, f) \
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`)", "id"_a, "name"_a, "value1"_a, "value2"_a); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2)`", "id"_a, "name"_a, "value1"_a, "value2"_a);
+
+#define param3(T, f) \
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a);
+
+#define param4(T, f) \
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a);
+
+PYBIND11_EMBEDDED_MODULE(_vistle, m) {
+
+    using namespace py::literals;
+    m.doc() = "Vistle Python bindings";
 
     // make values of vistle::message::Type enum known to Python as Message.xxx
-    vistle::message::enumForPython_Type("Message");
+    py::class_<message::Message> message(m, "Message");
+    vistle::message::enumForPython_Type(message, "Message");
+    py::class_<message::Id> id(m, "Id");
+    py::enum_<message::Id::Reserved>(id, "Id")
+            .value("Invalid", message::Id::Invalid)
+            .value("Broadcast", message::Id::Broadcast)
+            .value("ForBroadcast", message::Id::ForBroadcast)
+            .value("NextHop", message::Id::NextHop)
+            .value("UI", message::Id::UI)
+            .value("LocalManager", message::Id::LocalManager)
+            .value("LocalHub", message::Id::LocalHub)
+            .value("MasterHub", message::Id::MasterHub)
+            .export_values();
 
-    def("source", source, "execute commands from file `arg1`");
-    def("spawn", spawn, spawn_overloads(args("hub", "modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return its ID"));
-    def("spawn", spawnSimple, "spawn new module `arg1`\n" "return its ID");
-    def("spawnAsync", spawnAsync, spawnAsync_overloads(args("hub", "modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return uuid to wait on its ID"));
-    def("spawnAsync", spawnAsyncSimple, spawnAsyncSimple_overloads(args("modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return uuid to wait on its ID"));
-    def("waitForSpawn", waitForSpawn, "wait for asynchronously spawned module with uuid `arg1` and return its ID");
-    def("kill", kill, "kill module with ID `arg1`");
-    def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
-    def("disconnect", disconnect, "disconnect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
-    def("compute", compute, compute_overloads(args("module id"), "trigger execution of module with ID `arg1`"));
-    def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
-    def("quit", quit, "quit vistle session");
-    def("ping", ping, ping_overloads(args("id", "data"), "send first character of `arg2` to destination `arg1`"));
-    def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
-    def("barrier", barrier, "wait until all modules reply");
-    def("requestTunnel", requestTunnel, requestTunnel_overloads(args("listen port", "dest port", "dest addr"), "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`"));
-    def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
+    m.def("source", &source, "execute commands from `file`", "file"_a);
+    m.def("spawn", spawn, "spawn new module `arg1`\n" "return its ID",
+          "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);
+    m.def("spawn", spawnSimple, "spawn new module `arg1`\n" "return its ID");
+    m.def("spawnAsync", spawnAsync, "spawn new module `arg1`\n" "return uuid to wait on its ID",
+          "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);
+    m.def("spawnAsync", spawnAsyncSimple, "spawn new module `arg1`\n" "return uuid to wait on its ID",
+          "modulename"_a, "numspawn"_a=1, "baserank"_a=-1, "rankskip"_a=-1);
+    m.def("waitForSpawn", waitForSpawn, "wait for asynchronously spawned module with uuid `arg1` and return its ID");
+    m.def("kill", kill, "kill module with ID `arg1`");
+    m.def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
+    m.def("disconnect", disconnect, "disconnect output `arg2` of module with `id1` to input `arg4` of module with `id2`");
+    m.def("compute", compute, "trigger execution of module with `id`", "moduleId"_a=message::Id::Broadcast);
+    m.def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
+    m.def("quit", quit, "quit vistle session");
+    m.def("ping", ping, "send first character of `arg2` to destination `arg1`",
+          "id"_a, "data"_a="p");
+    m.def("trace", trace, "enable/disable message tracing for module `id`",
+          "id"_a=message::Id::Broadcast, "type"_a=message::ANY, "enable"_a=true);
+    m.def("barrier", barrier, "wait until all modules reply");
+    m.def("requestTunnel", requestTunnel, "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`",
+          "listen port"_a, "dest port"_a, "dest addr"_a);
+    m.def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
-    def("printInfo", printInfo, "show info message to user");
-    def("printWarning", printWarning, "show warning message to user");
-    def("printError", printError, "show error message to user");
+    m.def("printInfo", printInfo, "show info message to user");
+    m.def("printWarning", printWarning, "show warning message to user");
+    m.def("printError", printError, "show error message to user");
 
-    param(Int, setIntParam);
-    param(Float, setFloatParam);
-    param(String, setStringParam);
-    param(Vector, setVectorParam1);
-    param(Vector, setVectorParam2);
-    param(Vector, setVectorParam3);
-    param(Vector, setVectorParam4);
-    param(IntVector, setIntVectorParam1);
-    param(IntVector, setIntVectorParam2);
-    param(IntVector, setIntVectorParam3);
-    param(IntVector, setIntVectorParam4);
+    param1(Int, setIntParam);
+    param1(Float, setFloatParam);
+    param1(String, setStringParam);
+    param1(Vector, setVectorParam1);
+    param2(Vector, setVectorParam2);
+    param3(Vector, setVectorParam3);
+    param4(Vector, setVectorParam4);
+    param1(IntVector, setIntVectorParam1);
+    param2(IntVector, setIntVectorParam2);
+    param3(IntVector, setIntVectorParam3);
+    param4(IntVector, setIntVectorParam4);
 
-    def("getAvailable", getAvailable, "get list of names of available modules");
-    def("getRunning", getRunning, "get list of IDs of running modules");
-    def("getBusy", getBusy, "get list of IDs of busy modules");
-    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
-    def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
-    def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
-    def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
-    def("waitForHubs", waitForHubs, "wait for named hubs to connect");
-    def("getMasterHub", getMasterHub, "get ID of master hub");
-    def("getAllHubs", getAllHubs, "get ID of all known hubs");
-    def("getHub", getHub, "get ID of hub for module with ID `arg1`");
-    def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
-    def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
-    def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
-    def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
-    def("isParameterDefault", isParameterDefault, "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
-    def("getIntParam", getParameterValue<Integer>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getFloatParam", getParameterValue<Float>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getIntVectorParam", getParameterValue<IntParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getAvailable", getAvailable, "get list of names of available modules");
+    m.def("getRunning", getRunning, "get list of IDs of running modules");
+    m.def("getBusy", getBusy, "get list of IDs of busy modules");
+    m.def("getModuleName", getModuleName, "get name of module with ID `arg1`");
+    m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
+    m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
+    m.def("waitForHubs", waitForHubs, "wait for named hubs to connect");
+    m.def("getMasterHub", getMasterHub, "get ID of master hub");
+    m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
+    m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
+    m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
+    m.def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
+    m.def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
+    m.def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
+    m.def("isParameterDefault", isParameterDefault, "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
+    m.def("getIntParam", getParameterValue<Integer>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getFloatParam", getParameterValue<Float>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getIntVectorParam", getParameterValue<IntParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
+
+   py::bind_vector<ParameterVector<Float>>(m, "ParameterVector<Float>");
+   py::bind_vector<ParameterVector<Integer>>(m, "ParameterVector<Integer>");
 }
 
-PythonModule::PythonModule(const std::string &path)
-: m_vistleConnection(nullptr)
+PythonModule::PythonModule(VistleConnection *vc)
+   : m_vistleConnection(vc)
 {
    assert(s_instance == nullptr);
    s_instance = this;
+   std::cerr << "creating Vistle python module" << std::endl;
 
+#if 0
 #if PY_VERSION_HEX >= 0x03000000
    PyImport_AppendInittab("_vistle", PyInit__vistle);
 #else
    PyImport_AppendInittab("_vistle", init_vistle);
 #endif
-}
-
-PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
-   : m_vistleConnection(vc)
-{
-   assert(s_instance == nullptr);
-   s_instance = this;
-
-#if PY_VERSION_HEX >= 0x03000000
-   PyImport_AppendInittab("_vistle", PyInit__vistle);
 #else
-   PyImport_AppendInittab("_vistle", init_vistle);
+   //auto mod = py::module::import("_vistle");
 #endif
 }
 
@@ -645,55 +665,40 @@ VistleConnection &PythonModule::vistleConnection() const
    return *m_vistleConnection;
 }
 
-bool PythonModule::import(boost::python::object *ns, const std::string &path) {
+bool PythonModule::import(py::object *ns, const std::string &path) {
 
-   bp::class_<std::vector<int> >("vector<int>")
-      .def(bp::vector_indexing_suite<std::vector<int> >());
-
-   bp::class_<std::vector<std::string> >("vector<string>")
-      .def(bp::vector_indexing_suite<std::vector<std::string> >());
-
-   bp::class_<std::vector<std::pair<int, std::string> > >("vector<pair<int,string>>")
-      .def(bp::vector_indexing_suite<std::vector<std::pair<int, std::string> > >());
-
-   bp::class_<std::pair<int, std::string> >("pair<int,string>")
-      .def_readwrite( "first", &std::pair< int, std::string >::first, "first value" )
-      .def_readwrite( "second", &std::pair< int, std::string >::second, "second value" );
-
-   bp::class_<ParameterVector<Float> >("ParameterVector<Float>")
-      .def(bp::vector_indexing_suite<ParameterVector<Float> >());
-
-   bp::class_<ParameterVector<Integer> >("ParameterVector<Integer>")
-      .def(bp::vector_indexing_suite<ParameterVector<Integer> >());
-
+#if 0
    // load boost::python wrapper - statically linked into binary
    try {
-      (*ns)["_vistle"] = bp::import("_vistle");
-   } catch (bp::error_already_set) {
+      (*ns)["_vistle"] = py::module::import("_vistle");
+   } catch (py::error_already_set) {
       std::cerr << "vistle Python module import failed" << std::endl;
       if (PyErr_Occurred()) {
          std::cerr << PythonInterface::errorString() << std::endl;
       }
-      bp::handle_exception();
+      //py::handle_exception();
       PyErr_Clear();
       return false;
    }
+#endif
 
    // load vistle.py
    try {
-      bp::dict locals;
+      py::dict locals;
       locals["modulename"] = "vistle";
       locals["path"] = path + "/vistle.py";
-      bp::exec("import imp\n"
-           "newmodule = imp.load_module(modulename, open(path), path, ('py', 'U', imp.PY_SOURCE))\n",
-           *ns, locals);
+      std::cerr << "Python: loading " << path + "/vistle.py" << std::endl;
+      py::eval<py::eval_statements>(R"(
+         import imp
+         newmodule = imp.load_module(modulename, open(path), path, ('py', 'U', imp.PY_SOURCE))
+         )", *ns, locals);
       (*ns)["vistle"] = locals["newmodule"];
-   } catch (bp::error_already_set) {
+   } catch (py::error_already_set) {
       std::cerr << "loading of vistle.py failed" << std::endl;
       if (PyErr_Occurred()) {
          std::cerr << PythonInterface::errorString() << std::endl;
       }
-      bp::handle_exception();
+      //py::handle_exception();
       PyErr_Clear();
       return false;
    }

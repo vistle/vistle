@@ -26,3 +26,7 @@
 [submodule "3rdparty/boost-mpi-1.60"]
 	path = 3rdparty/boost-mpi-1.60
 	url = git://github.com/boostorg/mpi.git
+[submodule "3rdparty/pybind11"]
+	path = 3rdparty/pybind11
+	url = git://github.com/pybind/pybind11.git
+	branch = stable

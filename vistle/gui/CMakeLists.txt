@@ -2,9 +2,6 @@ if (CRAY)
    return()
 endif()
 
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS ${BOOST_PYTHON})
-
-
 set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
 if (APPLE)
    set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})

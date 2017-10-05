@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
       PythonInterface python("blower");
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
-      PythonModule pythonmodule(&conn, dir::share(dir::prefix(argc, argv)));
+      PythonModule pythonmodule(&conn);
       python.init();
       pythonmodule.import(&python.nameSpace(), dir::share(dir::prefix(argc, argv)));
       std::thread runnerThread(std::ref(conn));

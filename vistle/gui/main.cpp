@@ -5,7 +5,6 @@
  * thread.
  */
 /**********************************************************************************/
-#include <userinterface/pythoninterface.h>
 #include "uicontroller.h"
 #include <util/exception.h>
 #include <core/uuid.h>
@@ -24,12 +23,10 @@ int main(int argc, char *argv[])
    qRegisterMetaType<boost::uuids::uuid>();
 
    try {
-      vistle::PythonInterface python("Vistle GUI");
       QApplication a(argc, argv);
       QIcon icon(":/vistle.png");
       a.setWindowIcon(icon);
       UiController control(argc, argv, &a);
-      python.init();
       control.init();
       int val = a.exec();
       control.finish();

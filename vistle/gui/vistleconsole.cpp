@@ -27,21 +27,21 @@
 
 // modified by YoungTaek Oh.
 
-#include <Python.h>
-#include <boost/python.hpp>
+#include <pybind11/pybind11.h>
+#include <pybind11/eval.h>
+#include <pybind11/embed.h>
 #include "vistleconsole.h"
 #include <userinterface/pythonmodule.h>
+#include <userinterface/pythoninterface.h>
 #include <core/message.h>
 #include <core/messages.h>
 
 #include <QApplication>
 #include <QDebug>
 
-namespace bp = boost::python;
+namespace py = pybind11;
 
 namespace gui {
-
-static bp::object glb, loc;
 
 static QString resultString;
 
@@ -55,27 +55,32 @@ public:
 
    void write(const std::string &output)
    {
-      //std::cerr << (m_stderr?"ERR: ":"OUT: ") << output << std::flush;
-      QString outputString = QString::fromStdString(output);
-      if (m_stderr)
-         VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());
-      else
-         VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
-      VistleConsole::the()->insertPlainText(outputString);
-      VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
-      VistleConsole::the()->ensureCursorVisible();
-      QApplication::processEvents();
+       if (VistleConsole::the())
+       {
+           QString outputString = QString::fromStdString(output);
+           if (m_stderr)
+               VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());
+           else
+               VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
+           VistleConsole::the()->insertPlainText(outputString);
+           VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
+           VistleConsole::the()->ensureCursorVisible();
+           QApplication::processEvents();
+       }
+       else
+       {
+           std::cerr << (m_stderr?"ERR: ":"OUT: ") << output << std::flush;
+       }
    }
 };
 
-BOOST_PYTHON_MODULE(_redirector)
+PYBIND11_EMBEDDED_MODULE(_redirector, m)
 {
-   using namespace boost::python;
-   class_<Redirector>("redirector")
-         .def(init<>())
-         .def(init<bool>())
-         .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
-};
+    py::class_<Redirector>(m, "redirector")
+            .def(py::init<>())
+            .def(py::init<bool>())
+            .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
+}
 
 static void clear()
 {
@@ -122,17 +127,15 @@ static std::string raw_input(const std::string &prompt)
    return ret;
 }
 
-BOOST_PYTHON_MODULE(_console)
+PYBIND11_EMBEDDED_MODULE(_console, m)
 {
-   using namespace boost::python;
-
-   def("clear", clear, "clear the console");
-   def("reset", pyreset, "reset the interpreter and clear the console");
-   def("save", save, "save commands up to now in given file");
-   def("load", load, "load commands from given file");
-   def("history", history, "shows the history");
-   def("quit", quit, "print information about quitting");
-   def("raw_input", raw_input, "handle raw input");
+   m.def("clear", clear, "clear the console");
+   m.def("reset", pyreset, "reset the interpreter and clear the console");
+   m.def("save", save, "save commands up to now in given file");
+   m.def("load", load, "load commands from given file");
+   m.def("history", history, "shows the history");
+   m.def("quit", quit, "print information about quitting");
+   m.def("raw_input", raw_input, "handle raw input");
 }
 
 void VistleConsole::printHistory()
@@ -203,9 +206,13 @@ VistleConsole::VistleConsole(QWidget *parent)
    assert(!s_instance);
    s_instance = this;
 
-    //set the Python Prompt
-    setNormalPrompt(true);
+   //set the Python Prompt
+   setNormalPrompt(true);
+}
 
+void VistleConsole::init() {
+
+#if 0
 #if PY_VERSION_HEX >= 0x03000000
     PyImport_AppendInittab("_redirector", PyInit__redirector);
     PyImport_AppendInittab("_console", PyInit__console);
@@ -213,12 +220,7 @@ VistleConsole::VistleConsole(QWidget *parent)
     PyImport_AppendInittab("_redirector", init_redirector);
     PyImport_AppendInittab("_console", init_console);
 #endif
-}
-
-void VistleConsole::init() {
-
-    // already done in PythonInterface::the() from UiController
-    //Py_Initialize();
+#endif
 
     /* NOTE: In previous implementaion, local name and global name
              were allocated separately.  And it causes a problem that
@@ -226,11 +228,8 @@ void VistleConsole::init() {
              unifying global and local name with __main__.__dict__, we
              can get more natural python console.
     */
-    bp::object main_module = bp::import("__main__");
-    loc = glb = main_module.attr("__dict__");
-
     try {
-       bp::import("rlcompleter");
+       py::module::import("rlcompleter");
     } catch (...) {
        std::cerr << "error importing rlcompleter" << std::endl;
     }
@@ -276,6 +275,11 @@ void VistleConsole::init() {
     } catch (...) {
        std::cerr << "error running Python initialisation" << std::endl;
     }
+}
+
+void VistleConsole::finish()
+{
+    m_locals.reset();
 }
 
 namespace {
@@ -345,8 +349,7 @@ VistleConsole::py_check_for_unexpected_eof()
 //Desctructor
 VistleConsole::~VistleConsole()
 {
-    // not with Boost.Python
-    //Py_Finalize();
+    s_instance = nullptr;
 }
 
 //Call the Python interpreter to execute the command
@@ -398,9 +401,9 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
             this->lines=0;
 
 #if PY_VERSION_HEX >= 0x03000000
-            dum = PyEval_EvalCode (py_result, glb.ptr(), loc.ptr());
+            dum = PyEval_EvalCode (py_result, py::globals().ptr(), locals().ptr());
 #else
-            dum = PyEval_EvalCode ((PyCodeObject *)py_result, glb.ptr(), loc.ptr());
+            dum = PyEval_EvalCode ((PyCodeObject *)py_result, py::globals().ptr(), locals().ptr());
 #endif
             Py_XDECREF (dum);
             Py_XDECREF (py_result);
@@ -432,9 +435,27 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
         return "";
 }
 
+pybind11::object &VistleConsole::locals()
+{
+    if (!m_locals)
+    {
+        m_locals.reset(new py::object());
+    }
+    if (!m_locals->ptr()) {
+        try {
+            auto main_module = py::module::import("__main__");
+            *m_locals = main_module.attr("__dict__");
+        } catch (...) {
+            std::cerr << "error importing __main__" << std::endl;
+        }
+    }
+
+    return *m_locals.get();
+}
+
 QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
 {
-   Q_UNUSED(prefix);
+   prefix = "";
 
    QStringList completions;
    if (!cmd.isEmpty()) {
@@ -442,16 +463,34 @@ QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
          std::stringstream str;
          str << "completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
          try {
-            boost::python::object ret = boost::python::eval(str.str().c_str(), glb, loc);
-            if (ret == boost::python::object())
-               break;
-            std::string result = boost::python::extract<std::string>(ret);
+            py::object ret = py::eval<py::eval_expr>(str.str(), py::globals(), locals());
+            if (!ret.ptr())
+            {
+                std::cerr << "VistleConsole::suggestCommand: no valid Python object" << std::endl;
+                break;
+            }
+            if (ret.is_none())
+            {
+                break;
+            }
+            std::string result = py::str(ret);
             QString completed = QString::fromStdString(result).trimmed();
             if (!completed.isEmpty())
-               completions.append(completed);
-         } catch(boost::python::error_already_set const &) {
+                completions.append(completed);
+         } catch(py::error_already_set const &ex) {
+            std::cerr << "VistleConsole::suggestCommand: Python error: " << ex.what() << std::endl;
             PyErr_Print();
+            PyErr_Clear();
             break;
+         } catch(py::cast_error const &ex) {
+            std::cerr << "VistleConsole::suggestCommand: Python cast error: " << ex.what() << std::endl;
+            break;
+         } catch (std::exception const &ex) {
+             std::cerr << "VistleConsole::suggestCommand: Unknown error: " << ex.what() << std::endl;
+             break;
+         } catch (...) {
+             std::cerr << "VistleConsole::suggestCommand: Unknown error" << std::endl;
+             break;
          }
       }
    }

@@ -1,5 +1,5 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
-vistle_find_package(Boost 1.53 COMPONENTS program_options system ${BOOST_PYTHON})
+vistle_find_package(Boost 1.53 COMPONENTS program_options system)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -12,7 +12,7 @@ set(hub_SOURCES
    uiclient.cpp
    )
 
-if(Boost_PYTHON_FOUND OR Boost_PYTHON3_FOUND)
+if(PYTHONLIBS_FOUND)
    include_directories(${PYTHON_INCLUDE_DIRS})
    add_definitions(-DHAVE_PYTHON)
    add_definitions(-DVISTLE_CONTROL)

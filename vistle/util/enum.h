@@ -10,7 +10,7 @@
 #include <boost/preprocessor.hpp>
 
 #ifdef ENUMS_FOR_PYTHON
-#include <boost/python/enum.hpp>
+#include <pybind11/pybind11.h>
 #endif
 
 #define X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE(r, data, elem)   \
@@ -39,14 +39,26 @@ static inline const char *toString(name v) {                                 \
    }                                                                         \
 } \
 \
-static inline void enumForPython_##name(const char *pythonName) { \
-   boost::python::enum_<name>(pythonName) \
+static inline std::vector<std::string> valueList(name) { \
+   std::vector<std::string> values; \
+      BOOST_PP_SEQ_FOR_EACH(                                                 \
+            X_DEFINE_ENUM_ADD_VALUE,                                         \
+            name,                                                            \
+            enumerators                                                      \
+      )                                                                      \
+   return values; \
+} \
+\
+template <class Scope> \
+static inline void enumForPython_##name(const Scope &scope, const char *pythonName) { \
+   namespace py = pybind11; \
+   py::enum_<name>(scope, pythonName) \
       BOOST_PP_SEQ_FOR_EACH(                                                 \
             X_DEFINE_ENUM_FOR_PYTHON_VALUE, \
             name, \
             enumerators \
       ) \
-   ; \
+   .export_values(); \
 }
 #else
 #define DEFINE_ENUM_WITH_STRING_CONVERSIONS(name, enumerators)               \

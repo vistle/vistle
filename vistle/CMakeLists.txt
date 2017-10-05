@@ -113,7 +113,7 @@ if (VISTLE_SHM_DEBUG)
 endif()
 option(VISTLE_SHM_PER_RANK "Don't share shared memory segments between MPI ranks on same node" OFF)
 
-option(VISTLE_USE_PYTHON3 "use Python 3" OFF)
+option(VISTLE_USE_PYTHON3 "use Python 3" ON)
 if(VISTLE_USE_PYTHON3)
    set(PythonLibs_FIND_VERSION_MAJOR 3)
    message("Searching for Python 3")
@@ -124,14 +124,7 @@ else()
    set(PythonLibs_FIND_VERSION_MAJOR 2)
    message("Searching for Python 2")
 endif()
-vistle_find_package(PythonLibs)
-if (APPLE AND PYTHONLIBS_FOUND AND NOT ${PYTHONLIBS_VERSION_STRING} VERSION_LESS 3.0)
-   set(BOOST_PYTHON python3)
-elseif (WIN32 AND PYTHONLIBS_FOUND AND NOT ${PYTHONLIBS_VERSION_STRING} VERSION_LESS 3.0)
-   set(BOOST_PYTHON python3)
-else()
-   set(BOOST_PYTHON python)
-endif()
+vistle_find_package(PythonLibs REQUIRED)
 
 set(ENABLE_INSTALLER TRUE)
 vistle_find_package(TBB)
@@ -144,6 +137,9 @@ include_directories(${EIGEN3_INCLUDE_PATH})
 
 #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
 include_directories("${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+
+# header-only python byindings
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)

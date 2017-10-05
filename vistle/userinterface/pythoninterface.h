@@ -6,8 +6,7 @@
 #include <cassert>
 #include <string>
 #include <iostream>
-#include <boost/python/object.hpp>
-#include <boost/python/exec.hpp>
+#include <pybind11/pybind11.h>
 
 #include "export.h"
 
@@ -19,7 +18,7 @@ class V_UIEXPORT PythonInterface {
       PythonInterface(const std::string &name);
       ~PythonInterface();
       static PythonInterface &the();
-      boost::python::object &nameSpace();
+      pybind11::object &nameSpace();
       bool init();
 
       bool exec(const std::string &python);
@@ -28,14 +27,9 @@ class V_UIEXPORT PythonInterface {
       static std::string errorString();
 
    private:
-      boost::python::object m_namespace;
+      std::string m_name;
+      std::unique_ptr<pybind11::object> m_namespace;
       static PythonInterface *s_singleton;
-
-      typedef boost::python::object (*execfunc)(boost::python::str expression,
-            boost::python::object globals,
-            boost::python::object locals);
-
-      bool exec_wrapper(const std::string &param, execfunc func);
 };
 
 } // namespace vistle

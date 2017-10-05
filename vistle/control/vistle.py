@@ -77,7 +77,7 @@ def showConnections(id, port):
    conns = _vistle.getConnections(id, port)
    print("id\tportname")
    for c in conns:
-      print("%s\t%s" % (c.first, c.second))
+      print("%s\t%s" % (c[0], c[1]))
 
 def showAllConnections():
    mods = _vistle.getRunning()
@@ -87,7 +87,7 @@ def showAllConnections():
       for p in ports:
          conns = _vistle.getConnections(m, p)
          for c in conns:
-            print("%s:%s -> %s:%s" % (m, p, c.first, c.second))
+            print("%s:%s -> %s:%s" % (m, p, c[0], c[1]))
 
 def getParameter(id, name):
    t = _vistle.getParameterType(id, name)
@@ -213,7 +213,7 @@ def save(filename = None):
       for p in ports:
          conns = getConnections(m, p)
          for c in conns:
-            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c.first)+",'"+str(c.second)+"')\n")
+            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
 
    #f.write("checkMessageQueue()\n")
 

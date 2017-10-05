@@ -50,12 +50,13 @@ private slots:
 private:
     vistle::VistleConnection *m_vistleConnection;
     vistle::UserInterface *m_ui;
+    vistle::PythonInterface *m_python;
     vistle::PythonModule *m_pythonMod;
     std::thread *m_thread;
     DataFlowNetwork *m_scene;
 
     VistleObserver m_observer;
-    MainWindow m_mainWindow;
+    MainWindow *m_mainWindow;
 
     QString m_currentFile;
     std::string m_pythonDir;
