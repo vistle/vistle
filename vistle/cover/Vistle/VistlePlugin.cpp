@@ -164,7 +164,7 @@ bool VistlePlugin::update() {
    try {
        if (m_module && !m_module->dispatch(&messageReceived)) {
            std::cerr << "Vistle requested COVER to quit" << std::endl;
-           OpenCOVER::instance()->quitCallback(NULL,NULL);
+           OpenCOVER::instance()->requestQuit();
        }
    } catch (boost::interprocess::interprocess_exception &e) {
        std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
