@@ -151,6 +151,16 @@ mpi::communicator Communicator::comm() const {
     return m_comm;
 }
 
+void Communicator::lock()
+{
+    m_mutex.lock();
+}
+
+void Communicator::unlock()
+{
+    m_mutex.unlock();
+}
+
 bool Communicator::connectData() {
 
     return m_dataManager->connect(m_dataEndpoint);
@@ -370,6 +380,8 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 }
 
 bool Communicator::handleMessage(const message::Buffer &message) {
+
+   std::lock_guard<Communicator> guard(*this);
 
    switch(message.type()) {
       case message::SETID: {

@@ -53,6 +53,9 @@ class Communicator {
    const AvailableMap &localModules();
    boost::mpi::communicator comm() const;
 
+   void lock();
+   void unlock();
+
  private:
    bool sendHub(const message::Message &message);
    bool connectData();
@@ -63,6 +66,7 @@ class Communicator {
    ClusterManager *m_clusterManager;
    DataManager *m_dataManager;
 
+   std::recursive_mutex m_mutex;
    bool isMaster() const;
    int m_hubId;
    const int m_rank;
