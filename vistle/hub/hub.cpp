@@ -649,6 +649,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              }
              return true;
          }
+         break;
       }
       default:
          break;
