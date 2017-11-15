@@ -6,6 +6,7 @@
 #include "clustermanager.h"
 #include "communicator.h"
 #include <util/vecstreambuf.h>
+#include <util/sleep.h>
 #include <core/archives.h>
 #include <core/archive_loader.h>
 #include <core/archive_saver.h>
@@ -40,12 +41,18 @@ DataManager::DataManager(mpi::communicator &comm)
 , m_rank(comm.rank())
 , m_size(comm.size())
 , m_dataSocket(m_ioService)
+, m_sendThread([this](){ sendLoop(); })
+, m_recvThread([this](){ recvLoop(); })
 {
     if (m_size > 1)
         m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
+
 }
 
 DataManager::~DataManager() {
+
+    m_quit = true;
+
     if (m_size > 1)
         m_req.cancel();
 }
@@ -70,37 +77,45 @@ bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
 
 bool DataManager::dispatch() {
 
-   bool work = false;
-   m_ioService.poll();
-   if (m_dataSocket.is_open()) {
-      bool gotMsg = false;
-      do {
-         message::Buffer buf;
-         std::vector<char> payload;
-         if (!message::recv(m_dataSocket, buf, gotMsg, false, &payload)) {
-            CERR << "Data communication error" << std::endl;
-         } else if (gotMsg) {
-            work = true;
-            //CERR << "Data received" << std::endl;
-            handle(buf, &payload);
-         } else if (m_size > 1) {
-             if (auto status = m_req.test()) {
-                 if (!status->cancelled()) {
-                     vassert(status->tag() == Communicator::TagData);
-                     m_comm.recv(status->source(), Communicator::TagData, buf.data(), m_msgSize);
-                     if (buf.payloadSize() > 0) {
-                         payload.resize(buf.payloadSize());
-                         m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
-                     }
-                     work = true;
-                     gotMsg = true;
-                     handle(buf, &payload);
-                     m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
-                 }
-             }
-         }
-      } while(gotMsg);
-   }
+    bool work = false;
+    m_ioService.poll();
+    if (m_dataSocket.is_open()) {
+        bool gotMsg = false;
+        do {
+            gotMsg = false;
+            message::Buffer buf;
+            std::vector<char> payload;
+            {
+                std::lock_guard<std::mutex> guard(m_recvMutex);
+                if (!m_recvQueue.empty()) {
+                    gotMsg = true;
+                    auto &msg = m_recvQueue.front();
+                    buf = msg.buf;
+                    payload = std::move(msg.payload);
+                    m_recvQueue.pop_front();
+                }
+            }
+            if (gotMsg) {
+                handle(buf, &payload);
+                work = true;
+            } else if (m_size > 1) {
+                if (auto status = m_req.test()) {
+                    if (!status->cancelled()) {
+                        vassert(status->tag() == Communicator::TagData);
+                        m_comm.recv(status->source(), Communicator::TagData, buf.data(), m_msgSize);
+                        if (buf.payloadSize() > 0) {
+                            payload.resize(buf.payloadSize());
+                            m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
+                        }
+                        work = true;
+                        gotMsg = true;
+                        handle(buf, &payload);
+                        m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
+                    }
+                }
+            }
+        } while(gotMsg);
+    }
 
     return work;
 }
@@ -386,6 +401,39 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
    }
 
    return true;
+}
+
+void DataManager::sendLoop()
+{
+
+}
+
+void DataManager::recvLoop()
+{
+    for (;;)
+    {
+        bool gotMsg = false;
+        if (m_quit)
+            break;
+        if (m_dataSocket.is_open()) {
+            message::Buffer buf;
+            std::vector<char> payload;
+            if (!message::recv(m_dataSocket, buf, gotMsg, false, &payload)) {
+                CERR << "Data communication error" << std::endl;
+            } else if (gotMsg) {
+                std::lock_guard<std::mutex> guard(m_recvMutex);
+                m_recvQueue.emplace_back(buf, payload);
+                //CERR << "Data received" << std::endl;
+            }
+        }
+        vistle::adaptive_wait(gotMsg || m_quit);
+    }
+}
+
+DataManager::Msg::Msg(message::Buffer &buf, std::vector<char> &payload)
+: buf(buf)
+, payload(payload)
+{
 }
 
 } // namespace vistle

@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <set>
+#include <thread>
+#include <deque>
 
 #include <core/message.h>
 #include <core/messages.h>
@@ -37,6 +39,18 @@ private:
     bool handlePriv(const message::RequestObject &req);
     bool handlePriv(const message::SendObject &snd, const std::vector<char> *payload);
 
+    struct Msg {
+       Msg(message::Buffer &buf, std::vector<char> &payload);
+       message::Buffer buf;
+       std::vector<char> payload;
+    };
+    std::mutex m_recvMutex;
+    std::deque<Msg> m_recvQueue;
+    bool m_quit = false;
+
+    void sendLoop();
+    void recvLoop();
+
     boost::mpi::communicator m_comm;
     const int m_rank, m_size;
     boost::mpi::request m_req;
@@ -44,6 +58,8 @@ private:
 
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_dataSocket;
+
+    std::thread m_recvThread, m_sendThread;
 
     struct AddObjectLess {
        bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {
