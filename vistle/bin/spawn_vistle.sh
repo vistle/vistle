@@ -115,13 +115,25 @@ case $(hostname) in
    viscluster70)
       BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster70 viscluster{71..79} viscluster{51..60} |sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster70 viscluster{71..79}|sed -e 's/ /,/g')
       fi
       ;;
-   viscluster*)
+   viscluster50)
       BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster{50..60} viscluster{71..79} viscluster70|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster50 viscluster{51..60}|sed -e 's/ /,/g')
+      fi
+      ;;
+    viscluster80)
+      BIND=1
+      if [ -z "$MPIHOSTS" ]; then
+         MPIHOSTS=$(echo viscluster80 viscluster{50..60} viscluster{70..79}|sed -e 's/ /,/g')
+      fi
+      ;;
+    viscluster*)
+      BIND=1
+      if [ -z "$MPIHOSTS" ]; then
+         MPIHOSTS=$(echo viscluster{50..60} viscluster{70..80}|sed -e 's/ /,/g')
       fi
       ;;
    vishexa|vishexb)
