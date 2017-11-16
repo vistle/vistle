@@ -558,7 +558,7 @@ bool Module::removeParameter(Parameter *param) {
    return true;
 }
 
-bool Module::sendObject(Object::const_ptr obj, int destRank) const {
+bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const {
 
     vecostreambuf<char> memstr;
     vistle::oarchive memar(memstr);
@@ -566,22 +566,26 @@ bool Module::sendObject(Object::const_ptr obj, int destRank) const {
     memar.setSaver(saver);
     obj->save(memar);
     const std::vector<char> &mem = memstr.get_vector();
-    comm().send(destRank, 0, mem);
+    comm.send(destRank, 0, mem);
     auto dir = saver->getDirectory();
-    comm().send(destRank, 0, dir);
+    comm.send(destRank, 0, dir);
     for (auto &ent: dir) {
-        comm().send(destRank, 0, ent.data, ent.size);
+        comm.send(destRank, 0, ent.data, ent.size);
     }
     return true;
 }
 
-Object::const_ptr Module::receiveObject(int sourceRank) const {
+bool Module::sendObject(Object::const_ptr object, int destRank) const {
+    return sendObject(comm(), object, destRank);
+}
+
+Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourceRank) const {
 
     std::vector<char> mem;
-    comm().recv(sourceRank, 0, mem);
+    comm.recv(sourceRank, 0, mem);
     vistle::SubArchiveDirectory dir;
     std::map<std::string, std::vector<char>> objects, arrays;
-    comm().recv(sourceRank, 0, dir);
+    comm.recv(sourceRank, 0, dir);
     for (auto &ent: dir) {
         if (ent.is_array) {
             arrays[ent.name].resize(ent.size);
@@ -590,7 +594,7 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
             objects[ent.name].resize(ent.size);
             ent.data = objects[ent.name].data();
         }
-        comm().recv(sourceRank, 0, ent.data, ent.size);
+        comm.recv(sourceRank, 0, ent.data, ent.size);
     }
     vecistreambuf<char> membuf(mem);
     vistle::iarchive memar(membuf);
@@ -602,7 +606,11 @@ Object::const_ptr Module::receiveObject(int sourceRank) const {
     return p;
 }
 
-bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
+Object::const_ptr Module::receiveObject(int destRank) const {
+    return receiveObject(comm(), destRank);
+}
+
+bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &obj, int root) const {
 
     if (rank() == root) {
         vecostreambuf<char> memstr;
@@ -611,18 +619,18 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
         memar.setSaver(saver);
         obj->save(memar);
         const std::vector<char> &mem = memstr.get_vector();
-        mpi::broadcast(comm(), const_cast<std::vector<char>&>(mem), root);
+        mpi::broadcast(comm, const_cast<std::vector<char>&>(mem), root);
         auto dir = saver->getDirectory();
-        mpi::broadcast(comm(), dir, root);
+        mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
-            mpi::broadcast(comm(), ent.data, ent.size, root);
+            mpi::broadcast(comm, ent.data, ent.size, root);
         }
     } else {
         std::vector<char> mem;
-        mpi::broadcast(comm(), mem, root);
+        mpi::broadcast(comm, mem, root);
         vistle::SubArchiveDirectory dir;
         std::map<std::string, std::vector<char>> objects, arrays;
-        mpi::broadcast(comm(), dir, root);
+        mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
             if (ent.is_array) {
                 arrays[ent.name].resize(ent.size);
@@ -631,7 +639,7 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
                 objects[ent.name].resize(ent.size);
                 ent.data = objects[ent.name].data();
             }
-            mpi::broadcast(comm(), ent.data, ent.size, root);
+            mpi::broadcast(comm, ent.data, ent.size, root);
         }
         vecistreambuf<char> membuf(mem);
         vistle::iarchive memar(membuf);
@@ -643,6 +651,11 @@ bool Module::broadcastObject(Object::const_ptr &obj, int root) const {
     }
 
     return true;
+}
+
+bool Module::broadcastObject(Object::const_ptr &object, int root) const {
+
+    return broadcastObject(comm(), object, root);
 }
 
 bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {

@@ -130,8 +130,11 @@ class V_MODULEEXPORT Module {
    bool removeParameter(const std::string &name);
    bool removeParameter(Parameter *param);
 
+   bool sendObject(const mpi::communicator &comm, vistle::Object::const_ptr object, int destRank) const;
    bool sendObject(vistle::Object::const_ptr object, int destRank) const;
+   vistle::Object::const_ptr receiveObject(const mpi::communicator &comm, int destRank) const;
    vistle::Object::const_ptr receiveObject(int destRank) const;
+   bool broadcastObject(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
    bool broadcastObject(vistle::Object::const_ptr &object, int root) const;
 
    bool addObject(Port *port, vistle::Object::ptr object);
