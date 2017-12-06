@@ -70,12 +70,15 @@ void VistleConnection::cancel() {
    }
 
    if (m_quitOnExit) {
-      sendMessage(message::Quit());
-      m_quitOnExit = false;
+      if (ui().isConnected())
+      {
+         sendMessage(message::Quit());
+         m_quitOnExit = false;
+      }
    }
 
    mutex_lock lock(m_mutex);
-   m_ui.stop();
+   ui().stop();
 }
 
 void VistleConnection::operator()() {

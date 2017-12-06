@@ -43,12 +43,21 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 
 void UserInterface::stop() {
 
-   vistle::message::ModuleExit m;
-   m.setDestId(vistle::message::Id::LocalHub);
-   sendMessage(m);
+   if (isConnected()) {
+      vistle::message::ModuleExit m;
+      m.setDestId(vistle::message::Id::LocalHub);
+      sendMessage(m);
+   }
+
+   cancel();
+}
+
+void UserInterface::cancel() {
 
    m_socket.cancel();
-   m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+   if (isConnected()) {
+      m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+   }
    m_ioService.stop();
 }
 

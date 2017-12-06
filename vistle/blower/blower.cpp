@@ -164,8 +164,11 @@ int main(int argc, char *argv[]) {
          python.exec(line);
       }
 
+      std::cerr << "canceling connection" << std::endl;
       conn.cancel();
+      std::cerr << "joining thread" << std::endl;
       runnerThread.join();
+      std::cerr << "thread joined" << std::endl;
 
    } catch (vistle::except::exception &ex) {
 

@@ -26,6 +26,7 @@ class V_UIEXPORT UserInterface {
    virtual ~UserInterface();
 
    void stop();
+   void cancel();
 
    virtual bool dispatch();
    bool sendMessage(const message::Message &message);
