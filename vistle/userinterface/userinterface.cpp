@@ -5,6 +5,7 @@
 #include <string>
 
 #include <util/hostname.h>
+#include <util/sleep.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/parameter.h>
@@ -115,10 +116,11 @@ StateTracker &UserInterface::state() {
 
 bool UserInterface::dispatch() {
 
-   bool received = isConnected();
-   while (received) {
+   bool work = false;
+   while (isConnected()) {
 
-      received = false;
+      work = true;
+      bool received = false;
 
       message::Buffer buf;
       if (!message::recv(socket(), buf, received, true /* blocking */)) {
@@ -132,6 +134,8 @@ bool UserInterface::dispatch() {
          return false;
 
    }
+
+   vistle::adaptive_wait(work, this);
 
    return true;
 }
