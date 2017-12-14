@@ -1659,7 +1659,7 @@ void RhrClient::requestTimestep(int t) {
     }
 }
 
-void RhrClient::message(int type, int len, const void *msg) {
+void RhrClient::message(int toWhom, int type, int len, const void *msg) {
 
     switch (type) {
     case PluginMessageTypes::VariantHide:

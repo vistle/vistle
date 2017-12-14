@@ -76,7 +76,7 @@ public:
    void setTimestep(int t) override;
    void requestTimestep(int t) override;
 
-   void message(int type, int len, const void *msg) override;
+   void message(int toWhom, int type, int len, const void *msg) override;
 
    int handleRfbMessages();
 
