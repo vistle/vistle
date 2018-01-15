@@ -66,7 +66,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
    osg::MatrixTransform *transform = new osg::MatrixTransform();
 #ifdef COVER_PLUGIN
-   transform->setNodeMask(transform->getNodeMask() & (~opencover::Isect::Intersection));
+   transform->setNodeMask(transform->getNodeMask() & ~opencover::Isect::Intersection);
 #endif
    osg::Matrix osgMat;
    vistle::Matrix4 vistleMat = m_geo->getTransform();

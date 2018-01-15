@@ -67,6 +67,7 @@ OsgRenderer::Variant::Variant(const std::string &basename, osg::ref_ptr<osg::Gro
 
     root = new osg::Group;
     root->setName(name);
+    root->setNodeMask(root->getNodeMask() & ~opencover::Isect::Update);
 
     constant = new osg::Group;
     constant->setName(name + "/static");
