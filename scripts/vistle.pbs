@@ -7,7 +7,11 @@
 # Change to the direcotry that the job was submitted from
 cd $PBS_O_WORKDIR
 
-export MODULEPATH=$HOME/hornet/modulefiles:$MODULEPATH
+# enable core dumps
+export ATP_ENABLED=1
+ulimit -c unlimited
+
+# load modules
 module swap PrgEnv-cray PrgEnv-gnu
 module load tools/vtk/7.0.0
 module load numlib/intel/tbb/2017.4
