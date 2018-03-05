@@ -17,6 +17,7 @@
 #include <osg/MatrixTransform>
 
 #include <VistlePluginUtil/VistleRenderObject.h>
+#include <PluginUtil/StaticSequence.h>
 #include "VistleGeometryGenerator.h"
 #include "VistleInteractor.h"
 
@@ -73,7 +74,7 @@ OsgRenderer::Variant::Variant(const std::string &basename, osg::ref_ptr<osg::Gro
     constant->setName(name + "/static");
     root->addChild(constant);
 
-    animated = new osg::Sequence;
+    animated = new StaticSequence;
     animated->setName(name + "/animated");
     root->addChild(animated);
 
