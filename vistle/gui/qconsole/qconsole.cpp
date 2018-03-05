@@ -34,6 +34,7 @@
 #include <QApplication>
 #include <QScrollBar>
 #include <QDesktopWidget>
+#include <QTextBlock>
 
 #define USE_POPUP_COMPLETER
 #define WRITE_ONLY QIODevice::WriteOnly
@@ -555,39 +556,43 @@ QString QConsole::interpretCommand(const QString &command, int *res)
 bool QConsole::execCommand(const QString &command, bool writeCommand,
 													 bool showPrompt, QString *result)
 {
-		QString modifiedCommand = command;
-		correctPathName(modifiedCommand);
-		//Display the prompt with the command first
-		if (writeCommand)
-		{
-				if (getCurrentCommand() != "")
-				{
-						append("");
-						displayPrompt();
-				}
-				textCursor().insertText(modifiedCommand);
-		}
-		//execute the command and get back its text result and its return value
-		int res = 0;
-		QString strRes = interpretCommand(modifiedCommand, &res);
-		//According to the return value, display the result either in red or in blue
-		if (res == 0)
-				setTextColor(outColor_);
-		else
-				setTextColor(errColor_);
+    QString modifiedCommand = command;
+    correctPathName(modifiedCommand);
+    //Display the prompt with the command first
+    if (writeCommand)
+    {
+        if (getCurrentCommand() != "")
+        {
+            append("");
+            displayPrompt();
+        }
+        textCursor().insertText(modifiedCommand);
+    }
+    //execute the command and get back its text result and its return value
+    int res = 0;
+    QString strRes = interpretCommand(modifiedCommand, &res);
+    //According to the return value, display the result either in red or in blue
+    if (res == 0)
+        setTextColor(outColor_);
+    else
+        setTextColor(errColor_);
 
-		if(result){
-				*result = strRes;
-		}
-		if (!(strRes.isEmpty() || strRes.endsWith("\n")))
-			strRes.append("\n");
-      if (!strRes.isEmpty())
-         append(strRes);
-		moveCursor(QTextCursor::End);
-		//Display the prompt again
-		if (showPrompt)
-			displayPrompt();
-		return !res;
+    if(result){
+        *result = strRes;
+    }
+    bool app = false;
+    if (!(strRes.isEmpty() || strRes.endsWith("\n")))
+        strRes.append("\n");
+    if (textCursor().position() != textCursor().block().position())
+        app = true;
+    if (!strRes.isEmpty() || app)
+        append(strRes);
+    moveCursor(QTextCursor::End);
+    //Display the prompt again
+    if (showPrompt)
+        displayPrompt();
+
+    return !res;
 }
 
 //saves a file script

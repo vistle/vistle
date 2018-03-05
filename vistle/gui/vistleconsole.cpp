@@ -190,6 +190,11 @@ void VistleConsole::appendDebug(const QString &text)
    appendInfo(text, -1);
 }
 
+void VistleConsole::setNormalPrompt(bool display)
+{
+    setPrompt("> ", display);
+}
+
 VistleConsole *VistleConsole::s_instance = NULL;
 
 VistleConsole *VistleConsole::the()
@@ -338,6 +343,7 @@ VistleConsole::py_check_for_unexpected_eof()
        return true;
     }
     PyErr_Print ();
+    PyErr_Clear();
     resultString="Error: ";
     resultString.append(save_error_info.c_str());
     Py_XDECREF(errobj);
@@ -356,83 +362,82 @@ VistleConsole::~VistleConsole()
 //retrieve back results using the python internal stdout/err redirectory (see above)
 QString VistleConsole::interpretCommand(const QString &command, int *res)
 {
-    PyObject* py_result;
-    PyObject* dum;
+    PyObject* py_result = nullptr;
     bool multiline=false;
     *res = 0;
-    if (!command.startsWith('#') && (!command.isEmpty() || (command.isEmpty() && lines!=0)))
+    if (command.startsWith('#') || (command.isEmpty() && lines==0))
+        return "";
+
+    this->command.append(command);
+    py_result=Py_CompileString(this->command.toLocal8Bit().data(),"<stdin>",Py_single_input);
+    if (!py_result)
     {
-        this->command.append(command);
-        py_result=Py_CompileString(this->command.toLocal8Bit().data(),"<stdin>",Py_single_input);
-        if (py_result==0)
-        {
-            multiline=py_check_for_unexpected_eof();
-            if (!multiline) {
-                if (command.endsWith(':'))
-                    multiline = true;
-            }
-
-            if (multiline)
-            {
-                setMultilinePrompt(false);
-                this->command.append("\n");
-                lines++;
-                resultString="";
-                QConsole::interpretCommand(command, res);
-                return "";
-            }
-            else
-            {
-                setNormalPrompt(false);
-                *res=-1;
-                QString result=resultString;
-                resultString="";
-                QConsole::interpretCommand(command, res);
-                this->command="";
-                this->lines=0;
-                return result;
-            }
+        multiline=py_check_for_unexpected_eof();
+        if (!multiline) {
+            if (command.endsWith(':'))
+                multiline = true;
         }
 
-        if ( (lines!=0 && command=="") || (this->command!="" && lines==0))
+        if (multiline)
         {
-            setNormalPrompt(false);
-            this->command="";
-            this->lines=0;
-
-#if PY_VERSION_HEX >= 0x03000000
-            dum = PyEval_EvalCode (py_result, py::globals().ptr(), locals().ptr());
-#else
-            dum = PyEval_EvalCode ((PyCodeObject *)py_result, py::globals().ptr(), locals().ptr());
-#endif
-            Py_XDECREF (dum);
-            Py_XDECREF (py_result);
-            if (PyErr_Occurred ())
-            {
-                *res=-1;
-                PyErr_Print ();
-            }
-            QString result=resultString;
-            resultString="";
-            if (command!="")
-                QConsole::interpretCommand(command, res);
-            return result;
-        }
-        else if (lines!=0 && command!="") //following multiliner line
-        {
+            setMultilinePrompt(false);
             this->command.append("\n");
-            *res=0;
+            lines++;
+            resultString="";
             QConsole::interpretCommand(command, res);
             return "";
         }
         else
         {
-            return "";
+            *res=-1;
+            QString result=resultString;
+            resultString="";
+            QConsole::interpretCommand(command, res);
+            setNormalPrompt(false);
+            this->command="";
+            this->lines=0;
+            return result;
         }
-
     }
-    else
+
+    if ( (lines!=0 && command=="") || (this->command!="" && lines==0))
+    {
+        setNormalPrompt(false);
+        this->command="";
+        this->lines=0;
+
+#if PY_VERSION_HEX >= 0x03000000
+        PyObject *dum = PyEval_EvalCode (py_result, py::globals().ptr(), locals().ptr());
+#else
+        PyObject *dum = nullptr;
+        if (PyCode_Check(py_result))
+        {
+            dum = PyEval_EvalCode ((PyCodeObject *)py_result, py::globals().ptr(), locals().ptr());
+        }
+#endif
+        Py_XDECREF (dum);
+        Py_XDECREF (py_result);
+        if (PyErr_Occurred ())
+        {
+            *res=-1;
+            PyErr_Print();
+            PyErr_Clear();
+        }
+        QString result=resultString;
+        resultString="";
+        if (command!="")
+            QConsole::interpretCommand(command, res);
+        return result;
+    }
+    else if (lines!=0 && command!="") //following multiliner line
+    {
+        this->command.append("\n");
+        *res=0;
+        QConsole::interpretCommand(command, res);
         return "";
+    }
+
+    return "";
 }
 
 pybind11::object &VistleConsole::locals()

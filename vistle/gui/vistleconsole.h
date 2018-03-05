@@ -69,13 +69,13 @@ public slots:
     void appendInfo(const QString &text, int type=-1);
     void appendDebug(const QString &text);
 
-    void setNormalPrompt(bool display) { setPrompt("> ", display); }
+    void setNormalPrompt(bool display);
 protected:
     //! give suggestions to complete a command (not working...)
-    QStringList suggestCommand(const QString &cmd, QString& prefix);
+    QStringList suggestCommand(const QString &cmd, QString& prefix) override;
 
     //! execute a validated command
-    QString interpretCommand(const QString &command, int *res);
+    QString interpretCommand(const QString &command, int *res) override;
 
     void setMultilinePrompt(bool display) { setPrompt("... ", display); }
 
