@@ -1,5 +1,18 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
 
+if (APPLE)
+    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+    if (APPLE)
+        set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
+    endif()
+    set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
+    vistle_find_package(Qt5Core)
+    vistle_find_package(Qt5Widgets)
+    if (Qt5Widgets_FOUND)
+        add_definitions(-DHAVE_QT)
+    endif()
+endif()
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
@@ -49,6 +62,9 @@ if(NOT VISTLE_MULTI_PROCESS)
    endif()
    if (APPLE)
       set_target_properties(vistle_manager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
+      if (Qt5Widgets_FOUND)
+          qt5_use_modules(vistle_manager Core Widgets)
+      endif()
    endif()
 endif()
 

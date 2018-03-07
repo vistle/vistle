@@ -20,6 +20,10 @@
 #include <thread>
 #include <functional>
 #include <deque>
+
+#if defined(HAVE_QT) && defined(MODULE_THREAD)
+#include <QApplication>
+#endif
 #endif
 
 using namespace vistle;
@@ -64,6 +68,12 @@ int main(int argc, char ** argv)
    }
 
 #ifdef __APPLE__
+#if defined(HAVE_QT) && defined(MODULE_THREAD)
+   if (!qApp) {
+       std::cerr << "early creation of QApplication object" << std::endl;
+       new QApplication(argc, argv);
+   }
+#endif
    auto t = std::thread([argc, argv](){
 #endif
 
