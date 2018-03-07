@@ -738,7 +738,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 #else
           mod.newModule = boost::dll::import_alias<Module::NewModuleFunc>(m.path, "newModule", boost::dll::load_mode::default_mode);
 #endif
-       } catch (std::exception e) {
+       } catch (const std::exception &e) {
           CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
        }
        if (mod.newModule) {
@@ -761,6 +761,14 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
                mod.instance.reset();
            });
            mod.thread = std::move(t);
+       }
+       else
+       {
+           auto it = runningMap.find(newId);
+           if (it != runningMap.end()) {
+               runningMap.erase(it);
+           }
+           return true;
        }
    }
 #else
