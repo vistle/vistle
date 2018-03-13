@@ -1,0 +1,29 @@
+From a04e0864a35f82d43751b62fa8d1475014ce9977 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Martin=20Aumu=CC=88ller?= <aumuell@reserv.at>
+Date: Tue, 13 Mar 2018 11:11:32 +0100
+Subject: [PATCH] debian multiarch fixes
+
+---
+ common/cmake/embree-config.cmake | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/common/cmake/embree-config.cmake b/common/cmake/embree-config.cmake
+index 255354fb2..5e5a61906 100644
+--- a/common/cmake/embree-config.cmake
++++ b/common/cmake/embree-config.cmake
+@@ -14,7 +14,11 @@
+ ## limitations under the License.                                           ##
+ ## ======================================================================== ##
+ 
+-SET(EMBREE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/@EMBREE_RELATIV_ROOT_DIR@)
++IF(CMAKE_LIBRARY_ARCHITECTURE)
++ SET(EMBREE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../@EMBREE_RELATIV_ROOT_DIR@)
++ELSE()
++ SET(EMBREE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/@EMBREE_RELATIV_ROOT_DIR@)
++ENDIF()
+ GET_FILENAME_COMPONENT(EMBREE_ROOT_DIR "${EMBREE_ROOT_DIR}" ABSOLUTE)
+ 
+ SET(EMBREE_INCLUDE_DIRS ${EMBREE_ROOT_DIR}/@CMAKE_INSTALL_INCLUDEDIR@)
+-- 
+2.16.2
+

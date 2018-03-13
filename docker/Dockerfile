@@ -17,9 +17,9 @@ RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/s
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
 
 # install ispc - prerequisite for embree
-RUN apt-get install --no-install-recommends -y wget ca-certificates        && cd /tmp        && wget -q http://sourceforge.net/projects/ispcmirror/files/v1.9.1/ispc-v1.9.1-linux.tar.gz/download        && tar -C /usr/bin -x -f /tmp/download --strip-components=1 ispc-v1.9.1-linux/ispc        && rm download        && apt-get remove -y wget ca-certificates        && apt-get clean -y
-ADD embree-debian-multiarch-v2.16.x.diff /build/embree-debian-multiarch.diff
-RUN git clone git://github.com/embree/embree.git && cd embree && git checkout v2.16.4       && git apply ../embree-debian-multiarch.diff       && rm ../embree-debian-multiarch.diff       && mkdir build && cd build       && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_TUTORIALS=OFF -DEMBREE_TUTORIALS=OFF ..       && make -j8 install       && cd /build       && rm -rf embree
+RUN apt-get install --no-install-recommends -y wget ca-certificates        && cd /tmp        && wget -q http://sourceforge.net/projects/ispcmirror/files/v1.9.2/ispc-v1.9.2-linux.tar.gz/download        && tar -C /usr/bin -x -f /tmp/download --strip-components=1 ispc-v1.9.2-linux/ispc        && rm download        && apt-get remove -y wget ca-certificates        && apt-get clean -y
+ADD embree-debian-multiarch-v2.17.x.diff /build/embree-debian-multiarch.diff
+RUN git clone git://github.com/embree/embree.git && cd embree && git checkout v2.17.3       && git apply ../embree-debian-multiarch.diff       && rm ../embree-debian-multiarch.diff       && mkdir build && cd build       && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_TUTORIALS=OFF -DEMBREE_TUTORIALS=OFF ..       && make -j8 install       && cd /build       && rm -rf embree
 # build COVISE file I/O library
 RUN git clone git://github.com/hlrs-vis/covise.git        && export ARCHSUFFIX=xenialopt        && export COVISEDIR=/build/covise        && cd /build/covise        && mkdir -p build.covise        && cd build.covise        && cmake .. -DCOVISE_CPU_ARCH=corei7 -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCOVISE_WARNING_IS_ERROR=FALSE        && make -j8 install        && cd /build        && rm -rf covise
 

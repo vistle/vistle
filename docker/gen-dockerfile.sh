@@ -12,9 +12,9 @@ esac
 export IMAGE=ubuntu:16.04
 #export IMAGE=debian:jessie
 export PAR=-j8
-export ISPCVER=1.9.1
-export EMBREETAG=v2.16.4
-export EMBREEDIFF=v2.16.x
+export ISPCVER=1.9.2
+export EMBREETAG=v2.17.3
+export EMBREEDIFF=v2.17.x
 export BUILDTYPE=Release
 export PREFIX=/usr
 export BUILDDIR=/build
@@ -87,7 +87,7 @@ EOF_ispc
 
 # build embree CPU ray tracer
 case $EMBREETAG in
-   v2.9.0|v2.13.0|v2.15.0|v2.16.*)
+   v2.9.0|v2.13.0|v2.15.0|v2.16.*|v2.17.*)
 cat <<EOF_embree_patch
 ADD embree-debian-multiarch-${EMBREEDIFF}.diff ${BUILDDIR}/embree-debian-multiarch.diff
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
