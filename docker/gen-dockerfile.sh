@@ -11,9 +11,9 @@ esac
 
 export IMAGE=ubuntu:16.04
 #export IMAGE=debian:jessie
-export PAR=-j8
+export PAR=-j16
 export ISPCVER=1.9.2
-export EMBREETAG=v2.17.3
+export EMBREETAG=v2.17.4
 export EMBREEDIFF=v2.17.x
 export BUILDTYPE=Release
 export PREFIX=/usr
