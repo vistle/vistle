@@ -5,11 +5,12 @@
 #include <renderer/renderobject.h>
 #include <mutex>
 #include <osg/StateSet>
+#include <osg/KdTree>
 #include <osg/ref_ptr>
 
 namespace osg {
    class MatrixTransform;
-};
+}
 
 class VistleGeometryGenerator {
    public:
@@ -29,6 +30,8 @@ class VistleGeometryGenerator {
       vistle::Object::const_ptr m_tex;
 
       static std::mutex s_coverMutex;
+
+      osg::ref_ptr<osg::KdTreeBuilder> s_kdtree;
 };
 
 #endif
