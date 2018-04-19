@@ -15,7 +15,7 @@
 
 #include <cover/ui/Owner.h>
 #include <cover/ui/Menu.h>
-#include <cover/ui/Button.h>
+#include <cover/ui/Action.h>
 
 using namespace opencover;
 using namespace vistle;
@@ -34,7 +34,7 @@ class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
 
  private:
    OsgRenderer *m_module = nullptr;
-   ui::Button *executeButton = nullptr;
+   ui::Action *executeButton = nullptr;
 };
 
 VistlePlugin::VistlePlugin()
@@ -93,11 +93,12 @@ bool VistlePlugin::init() {
 
        cover->visMenu = new ui::Menu("Vistle", this);
 
-       executeButton = new ui::Button(cover->visMenu, "Execute");
-       executeButton->setCallback([this](bool){
-           executeButton->setState(true);
+       executeButton = new ui::Action(cover->visMenu, "Execute");
+       executeButton->setCallback([this](){
            executeAll();
        });
+       executeButton->setIcon("view-refresh");
+       executeButton->setPriority(ui::Element::Toolbar);
 
        return true;
    }
@@ -143,15 +144,6 @@ void VistlePlugin::notify(coVRPlugin::NotificationLevel level, const char *messa
         }
     }
 }
-
-#ifdef VRUI
-void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
-
-   if (item == executeButton.get()) {
-      executeAll();
-   }
-}
-#endif
 
 bool VistlePlugin::update() {
 
