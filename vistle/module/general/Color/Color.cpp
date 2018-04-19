@@ -378,7 +378,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
 
 #pragma omp parallel for
       for (ssize_t index = 0; index < numElem; index ++) {
-         tc[index] = 0.;
+         tc[index] = index%2 ? 0. : 1.;
       }
    }
 
