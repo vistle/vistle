@@ -107,7 +107,7 @@ DataBase::Mapping DataBase::mapping() const {
 DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
     if (!g)
         g = grid();
-    if (mapping() == Unspecified) {
+    if (g && mapping() == Unspecified) {
         if (auto e = g->getInterface<ElementInterface>()) {
             if (getSize() == e->getNumVertices())
                 return Vertex;
