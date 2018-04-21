@@ -68,7 +68,7 @@ Triangles::Data * Triangles::Data::create(const Index numCorners,
 
 Index Triangles::getNumElements() const {
 
-   return getNumCorners()/3;
+   return getNumCorners()>0 ? getNumCorners()/3 : getNumCoords()/3;
 }
 
 Index Triangles::getNumCorners() const {
