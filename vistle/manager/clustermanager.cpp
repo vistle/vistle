@@ -740,6 +740,24 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 #endif
        } catch (const std::exception &e) {
           CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
+          std::vector<const char *> vars;
+          const char *libpath = nullptr;
+#if defined(_WIN32)
+          vars.push_back("PATH");
+#elif defined(__APPLE__)
+          vars.push_back("DYLD_LIBRARY_PATH");
+          vars.push_back("DYLD_FRAMEWORK_PATH");
+#else
+          vars.push_back("LD_LIBRARY_PATH");
+#endif
+          for (auto v: vars) {
+              const char *val = getenv(v);
+              if (val) {
+                  CERR << "  " << v << ": " << val << std::endl;
+              } else {
+                  CERR << "  " << v << ": not set" << std::endl;
+              }
+          }
        }
        if (mod.newModule) {
            boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
