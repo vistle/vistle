@@ -45,7 +45,7 @@ const DefaultSender &DefaultSender::instance() {
    return s_instance;
 }
 
-static boost::uuids::random_generator s_uuidGenerator = boost::uuids::random_generator();
+static boost::uuids::random_generator s_uuidGenerator;
 
 Message::Message(const Type t, const unsigned int s)
 : m_type(t)
