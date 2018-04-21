@@ -42,6 +42,8 @@ class V_RENDEREREXPORT Renderer: public Module {
    int m_fastestObjectReceivePolicy;
    void removeAllObjects();
 
+   bool m_maySleep = true;
+
  private:
    bool compute() override; // provide dummy implementation of Module::compute
 

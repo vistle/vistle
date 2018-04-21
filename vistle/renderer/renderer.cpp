@@ -86,7 +86,8 @@ bool Renderer::dispatch(bool *messageReceived) {
             sync = 1;
       }
       int allsync = boost::mpi::all_reduce(comm(), sync, boost::mpi::maximum<int>());
-      vistle::adaptive_wait(haveMessage || allsync);
+      if (m_maySleep)
+          vistle::adaptive_wait(haveMessage || allsync);
 
       do {
          if (haveMessage) {
