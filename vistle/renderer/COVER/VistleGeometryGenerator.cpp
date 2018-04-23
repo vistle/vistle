@@ -325,9 +325,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
    osg::MatrixTransform *transform = new osg::MatrixTransform();
    transform->setName(nodename+".transform");
-#ifdef COVER_PLUGIN
-   transform->setNodeMask(transform->getNodeMask() & ~opencover::Isect::Intersection);
-#endif
    osg::Matrix osgMat;
    vistle::Matrix4 vistleMat = m_geo->getTransform();
    for (int i=0; i<4; ++i) {
@@ -913,9 +910,9 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                        std::cerr << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Texture1D" << std::endl;
                        debug << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Texture1D" << std::endl;
                    }
-               }
-               if (tc && !tc->empty()) {
-                   geom->setTexCoordArray(0, tc);
+                   if (!tc->empty()) {
+                       geom->setTexCoordArray(0, tc);
+                   }
                }
                if (tc || (tex && triangles)) {
                    state->setTextureAttributeAndModes(0, osgTex,

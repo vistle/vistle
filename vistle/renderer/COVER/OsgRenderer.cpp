@@ -68,7 +68,6 @@ OsgRenderer::Variant::Variant(const std::string &basename, osg::ref_ptr<osg::Gro
 
     root = new osg::Group;
     root->setName(name);
-    root->setNodeMask(root->getNodeMask() & ~opencover::Isect::Update);
 
     constant = new osg::Group;
     constant->setName(name + "/static");
@@ -126,6 +125,7 @@ OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicato
 
    vistleRoot = new osg::Group;
    vistleRoot->setName("VistlePlugin");
+   vistleRoot->setNodeMask(vistleRoot->getNodeMask() & ~(opencover::Isect::Update|opencover::Isect::Intersection));
 
    m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
    setObjectReceivePolicy(m_fastestObjectReceivePolicy);
