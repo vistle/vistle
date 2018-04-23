@@ -71,11 +71,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    if (auto tri = Triangles::as(geometry)) {
 
       Index numElem = tri->getNumElements();
-      if (numElem == 0) {
-         numElem = tri->getNumCoords() / 3;
-      }
       data->geomId = rtcNewTriangleMesh(data->scene, RTC_GEOMETRY_STATIC, numElem, tri->getNumCoords());
-      std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
+      std::cerr << "Tri: #: " << tri->getNumElements() << ", #corners: " << tri->getNumCorners() << ", #coord: " << tri->getNumCoords() << std::endl;
 
       Vertex* vertices = (Vertex*) rtcMapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
       for (Index i=0; i<tri->getNumCoords(); ++i) {
@@ -88,7 +85,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       data->indexBuffer = new Triangle[numElem];
       rtcSetBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER, data->indexBuffer, 0, sizeof(Triangle));
       Triangle* triangles = (Triangle*) rtcMapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
-      if (tri->getNumElements() == 0) {
+      if (tri->getNumCorners() == 0) {
          for (Index i=0; i<numElem; ++i) {
             triangles[i].v0 = i*3;
             triangles[i].v1 = i*3+1;
