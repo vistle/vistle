@@ -125,7 +125,7 @@ class VistleInteractor: public opencover::coInteractor {
    const vistle::Module *m_owner;
    std::string m_moduleName;
    int m_moduleId;
-   ModuleRenderObject *m_object;
+   std::shared_ptr<ModuleRenderObject> m_object;
 
    typedef std::map<std::string, std::shared_ptr<vistle::Parameter>> ParameterMap;
    ParameterMap m_parameterMap;

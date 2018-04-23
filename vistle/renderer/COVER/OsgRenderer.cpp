@@ -178,6 +178,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
          m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
          it = m_interactorMap.find(senderId);
          std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
+         it->second->incRefCount();
       }
       VistleInteractor *inter = it->second;
       inter->addParam(name, msg);
@@ -193,7 +194,7 @@ bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, 
         inter->removeParam(name, msg);
         if (!inter->hasParams()) {
             std::cerr << "removing interactor for " << senderId << " (" << getModuleName(senderId) << ")" << std::endl;
-            delete inter;
+            inter->decRefCount();
             m_interactorMap.erase(it);
         }
     }

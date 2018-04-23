@@ -16,7 +16,6 @@ VistleInteractor::VistleInteractor(const Module *owner, const std::string &modul
 
 VistleInteractor::~VistleInteractor()
 {
-   delete m_object;
    m_parameterMap.clear();
 }
 
@@ -496,7 +495,7 @@ const char *VistleInteractor::getObjName()
 // the covise data object which has feedback attributes
 opencover::RenderObject *VistleInteractor::getObject()
 {
-   return m_object;
+   return m_object.get();
 }
 
 // get the name of the module which created the data object
