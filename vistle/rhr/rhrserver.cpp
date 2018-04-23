@@ -397,9 +397,14 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
    }
 
    if (m_clientSocket) {
+#if 0
        CERR << "incoming connection, rejecting as already servicing a client" << std::endl;
        startAccept();
        return;
+#else
+       CERR << "incoming connection, disconnecting from current client" << std::endl;
+       resetClient();
+#endif
    }
 
    CERR << "incoming connection, accepting new client" << std::endl;
