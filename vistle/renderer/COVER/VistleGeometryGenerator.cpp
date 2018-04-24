@@ -365,17 +365,43 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 #ifdef COVER_PLUGIN
    opencover::coSphere *sphere = nullptr;
 #endif
+
+   bool transparent = false;
+   osg::Material *mat = nullptr;
+   if (m_ro && m_ro->hasSolidColor) {
+       const auto &c = m_ro->solidColor;
+       mat = new osg::Material;
+       mat->setName(nodename+".material");
+       mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+       mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+       mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(0.2, 0.2, 0.2, c[3]));
+       mat->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
+       if (c[3] > 0.f && c[3] < 1.f)
+           transparent = true;
+   }
+
    if (defaultState) {
       state = new osg::StateSet(*defaultState);
       state->setName(nodename+".state");
    } else {
 #ifdef COVER_PLUGIN
-      state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
+      if (transparent) {
+          state = opencover::VRSceneGraph::instance()->loadTransparentGeostate();
+      } else {
+          state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
+      }
 #else
       state = new osg::StateSet;
       state->setName(nodename+".state");
+      if (transparent) {
+          state->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+          state->setMode(GL_BLEND, osg::StateAttribute::ON);
+      }
 #endif
    }
+
+   if (state && mat)
+       state->setAttribute(mat);
 
    bool indexGeom = IndexGeo;
    vistle::Normals::const_ptr normals = vistle::Normals::as(m_normal);
@@ -395,17 +421,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            indexGeom = false;
            debug << " NoIndex: tex";
        }
-   }
-
-   if (m_ro && m_ro->hasSolidColor) {
-       const auto &c = m_ro->solidColor;
-       osg::Material *mat = new osg::Material;
-       mat->setName(nodename+".material");
-       mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
-       mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
-       mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(0.2, 0.2, 0.2, 1.));
-       mat->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
-       state->setAttribute(mat);
    }
 
    switch (m_geo->getType()) {
