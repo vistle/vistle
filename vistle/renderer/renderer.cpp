@@ -1,5 +1,6 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include <core/statetracker.h>
 #include <core/object.h>
 #include <core/placeholder.h>
 #include <core/coords.h>
@@ -91,6 +92,8 @@ bool Renderer::dispatch(bool *messageReceived) {
 
       do {
          if (haveMessage) {
+
+            m_stateTracker->handle(message);
 
             switch (message.type()) {
                case vistle::message::ADDOBJECT: {
