@@ -34,8 +34,7 @@ class PluginRenderObject: public vistle::RenderObject {
       {
       }
 
-   ~PluginRenderObject() {
-   }
+   ~PluginRenderObject() override;
 
    std::shared_ptr<VistleRenderObject> coverRenderObject;
 };
@@ -44,7 +43,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
  public:
    OsgRenderer(const std::string &name, int moduleId, mpi::communicator comm);
-   ~OsgRenderer();
+   ~OsgRenderer() override;
    static OsgRenderer *the();
 
    void eventLoop() override;
@@ -104,6 +103,8 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
        osg::ref_ptr<osg::Group> root(const std::string &variant = std::string()) const;
        osg::ref_ptr<osg::Group> constant(const std::string &variant = std::string()) const;
        osg::ref_ptr<osg::Sequence> animated(const std::string &variant = std::string()) const;
+       bool removeVariant(const std::string &variant = std::string());
+       bool empty() const;
 
        int id;
        std::string name;
@@ -115,6 +116,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
    CreatorMap creatorMap;
 
    Creator &getCreator(int id);
+   bool removeCreator(int id);
    osg::ref_ptr<osg::Group> getParent(VistleRenderObject *ro);
 
    opencover::coVRPlugin *m_plugin = nullptr;

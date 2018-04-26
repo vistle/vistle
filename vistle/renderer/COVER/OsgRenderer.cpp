@@ -87,6 +87,18 @@ OsgRenderer::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg:
 {
 }
 
+bool OsgRenderer::Creator::empty() const {
+    if (!variants.empty())
+        return false;
+
+    if (baseVariant.animated->getNumChildren() > 0)
+        return false;
+    if (baseVariant.constant->getNumChildren() > 0)
+        return false;
+
+    return true;
+}
+
 const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &variantName) const {
 
     if (variantName.empty() || variantName == "NULL")
@@ -100,6 +112,31 @@ const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &
     return it->second;
 }
 
+bool OsgRenderer::Creator::removeVariant(const std::string &variantName) {
+
+    osg::Group *root = nullptr;
+
+    if (variantName.empty() || variantName == "NULL") {
+        root = baseVariant.root;
+    } else {
+        auto it = variants.find(variantName);
+        if (it != variants.end()) {
+            root = it->second.root;
+            variants.erase(it);
+        }
+    }
+
+    if (!root)
+        return false;
+
+    coVRPluginList::instance()->removeNode(root, true, root);
+    while (root->getNumParents()>0) {
+        root->getParent(0)->removeChild(root);
+    }
+
+    return true;
+}
+
 osg::ref_ptr<osg::Group> OsgRenderer::Creator::root(const std::string &variant) const { return getVariant(variant).root; }
 osg::ref_ptr<osg::Group> OsgRenderer::Creator::constant(const std::string &variant) const { return getVariant(variant).constant; }
 osg::ref_ptr<osg::Sequence> OsgRenderer::Creator::animated(const std::string &variant) const { return getVariant(variant).animated; }
@@ -109,9 +146,22 @@ OsgRenderer::Creator &OsgRenderer::getCreator(int id) {
     if (it == creatorMap.end()) {
         std::stringstream name;
         name << getModuleName(id) << "_" << id;
+        if (id < message::Id::ModuleBase)
+            std::cerr << "OsgRenderer::getCreator: invalid id " << id << std::endl;
         it = creatorMap.insert(std::make_pair(id, Creator(id, name.str(), vistleRoot))).first;
     }
     return it->second;
+}
+
+bool OsgRenderer::removeCreator(int id) {
+    auto it = creatorMap.find(id);
+    if (it == creatorMap.end())
+        return false;
+
+    it->second.removeVariant();
+    creatorMap.erase(it);
+
+    return true;
 }
 
 
@@ -244,7 +294,10 @@ osg::ref_ptr<osg::Group> OsgRenderer::getParent(VistleRenderObject *ro) {
         while (size_t(t) >= creator.animated(variant)->getNumChildren()) {
             auto g = new osg::Group;
             std::stringstream name;
-            name << "t" << t;
+            name << creator.name;
+            if (!variant.empty())
+                name << "/" << variant;
+            name << "/t" << t;
             g->setName(name.str());
             creator.animated(variant)->addChild(g);
         }
@@ -292,7 +345,7 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
                if (gr->getNumChildren() == 0) {
                   std::cerr << "empty timestep " << pro->timestep << " of variant '" << variant << "' for creator " << cr.name << ":" << cr.id << std::endl;
                   bool removed = false;
-                  for (size_t i=cr.animated(variant)->getNumChildren(); i>1; --i) {
+                  for (size_t i=cr.animated(variant)->getNumChildren(); i>0; --i) {
                      size_t idx = i-1;
                      osg::Group *g = cr.animated(variant)->getChild(idx)->asGroup();
                      if (!g)
@@ -319,6 +372,13 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       while (node->getNumParents() > 0) {
          osg::Group *parent = node->getParent(0);
          parent->removeChild(node);
+      }
+
+      if (cr.constant(variant)->getNumChildren()==0 && cr.animated(variant)->getNumChildren()==0) {
+          if (!variant.empty() && variant != "NULL")
+              cr.removeVariant(variant);
+          if (cr.empty())
+              removeCreator(cr.id);
       }
    }
    pro->coverRenderObject.reset();
@@ -644,4 +704,7 @@ void OsgRenderer::eventLoop() {
     char *argv[] = {nullptr};
     runMain(argc, argv);
 #endif
+}
+
+PluginRenderObject::~PluginRenderObject() {
 }
