@@ -82,7 +82,7 @@ class V_MODULEEXPORT Module {
    bool destroyPort(Port *port);
 
    //! set group for all subsequently added parameters, reset with empty group
-   void setCurrentParameterGroup(const std::string &group);
+   void setCurrentParameterGroup(const std::string &group = std::string());
    const std::string &currentParameterGroup() const;
 
    Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter);

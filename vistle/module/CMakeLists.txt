@@ -1,6 +1,7 @@
 set(module_SOURCES
    module.cpp
    objectcache.cpp
+   reader.cpp
 )
 
 set(module_HEADERS
@@ -8,6 +9,7 @@ set(module_HEADERS
    module.h
    module_impl.h
    objectcache.h
+   reader.h
 )
 
 if (NOT VISTLE_MODULES_SHARED)
