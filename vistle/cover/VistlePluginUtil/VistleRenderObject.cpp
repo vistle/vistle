@@ -3,6 +3,7 @@
 #include <cover/coVRPluginList.h>
 
 #include <core/placeholder.h>
+#include <core/message.h>
 
 using namespace opencover;
 
@@ -69,16 +70,23 @@ bool VistleRenderObject::isPlaceHolder() const {
 
 int VistleRenderObject::getCreator() const {
 
+   int creator = vistle::message::Id::Invalid;
    auto ro = renderObject();
    if (!ro)
-      return 0;
+      return creator;
 
-   if (ro->geometry)
-      return ro->geometry->getCreator();
-   else if (ro->container)
-      return ro->container->getCreator();
+   if (ro->container) {
+       creator = ro->container->getCreator();
+       if (creator == vistle::message::Id::Invalid)
+           std::cerr << "VistleRenderObject::getCreator: invalid id on container" << std::endl;
+   }
+   if (creator == vistle::message::Id::Invalid && ro->geometry) {
+       creator = ro->geometry->getCreator();
+       if (creator == vistle::message::Id::Invalid)
+           std::cerr << "VistleRenderObject::getCreator: invalid id on geometry" << std::endl;
+   }
 
-   return 0;
+   return creator;
 }
 
 void VistleRenderObject::setNode(osg::Node *node) {

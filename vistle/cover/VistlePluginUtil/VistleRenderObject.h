@@ -52,7 +52,7 @@ class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
    public:
    VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
    VistleRenderObject(vistle::Object::const_ptr obj);
-   ~VistleRenderObject();
+   ~VistleRenderObject() override;
 
    void setNode(osg::Node *node);
    osg::Node *node() const;
