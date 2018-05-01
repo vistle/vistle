@@ -359,11 +359,10 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time)
 bool checkPolyMeshDirContent(CaseInfo &info)
 {
 	// start out with 
-	std::stringstream s;
-    if (info.numblocks>0)
-		s << "/processor0" << "/";
     std::string basedir = info.casedir;
-	basedir += s.str(); 
+    if (info.numblocks>0)
+        basedir += "/processor0";
+    basedir += "/";
 	std::string fullMeshDir = info.constantdir;
 
 	for (std::map<double, std::string>::iterator it = info.timedirs.begin(); it != info.timedirs.end(); ++it)
