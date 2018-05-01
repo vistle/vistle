@@ -45,9 +45,11 @@ namespace mpi = boost::mpi;
 using namespace vistle;
 
 ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm)
-: Module("ReadFoam", name, moduleId, comm)
+: Reader("Read OpenFOAM data", name, moduleId, comm)
 , m_boundOut(nullptr)
 {
+   Reader::setHandlePartitions(false);
+
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
       "/data/OpenFOAM", Parameter::Directory);
@@ -57,8 +59,6 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
          std::numeric_limits<double>::max());
    setParameterMinimum<Float>(m_stoptime, 0.);
-   m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
-   setParameterMinimum<Integer>(m_timeskip, 0);
    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
    //Mesh ports
@@ -101,6 +101,9 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
    }
    m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
    m_buildGhost = m_buildGhostcellsParam->getValue();
+
+   observeParameter(m_casedir);
+   //observeParameter(m_patchSelection);
 }
 
 
@@ -134,52 +137,111 @@ int ReadFOAM::rankForBlock(int processor) const {
    return processor % size();
 }
 
-bool ReadFOAM::changeParameter(const Parameter *p)
+bool ReadFOAM::examine(const Parameter *)
 {
-   auto sp = dynamic_cast<const StringParameter *>(p);
-   if (sp == m_casedir) {
-      std::string casedir = sp->getValue();
+    std::string casedir = m_casedir->getValue();
 
-      m_case = getCaseInfo(casedir);
-      if (!m_case.valid) {
-         std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
-         return false;
-      }
+    m_case = getCaseInfo(casedir);
+    if (!m_case.valid) {
+        std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+        return false;
+    }
 
-      std::cerr << "# processors: " << m_case.numblocks << std::endl;
-      std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
-      std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
-      std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+    std::cerr << "# processors: " << m_case.numblocks << std::endl;
+    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
 
-      //print out a list of boundary patches to Vistle Console
-      if (rank() == 0) {
-         std::stringstream meshdir;
-         meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
-         Boundaries bounds = loadBoundary(meshdir.str());
-         if (bounds.valid) {
+    setTimesteps(m_case.timedirs.size());
+
+    //print out a list of boundary patches to Vistle Console
+    if (rank() == 0) {
+        std::stringstream meshdir;
+        meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
+        Boundaries bounds = loadBoundary(meshdir.str());
+        if (bounds.valid) {
             sendInfo("boundary patches:");
             for (Index i=0;i<bounds.boundaries.size();++i) {
-               std::stringstream info;
-               info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
-               sendInfo("%s", info.str().c_str());
+                std::stringstream info;
+                info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
+                sendInfo("%s", info.str().c_str());
             }
-         } else {
+        } else {
             sendInfo("No global boundary file was found at:");
             sendInfo(meshdir.str());
-         }
-      }
+        }
+    }
 
-      //fill choice parameters
-      std::vector<std::string> choices = getFieldList();
-      for (auto out: m_fieldOut) {
-         setParameterChoices(out, choices);
-      }
-      for (auto out: m_boundaryOut) {
-         setParameterChoices(out, choices);
-      }
+    //fill choice parameters
+    std::vector<std::string> choices = getFieldList();
+    for (auto out: m_fieldOut) {
+        setParameterChoices(out, choices);
+    }
+    for (auto out: m_boundaryOut) {
+        setParameterChoices(out, choices);
+    }
+
+    return true;
+}
+
+bool ReadFOAM::read(const Meta &meta, int time, int part)
+{
+    const std::string casedir = m_casedir->getValue();
+
+    assert(part == -1);
+    (void)part;
+
+    if (time == -1) {
+        return readConstant(casedir);
+    }
+
+    return readTime(casedir, meta.timeStep());
+}
+
+bool ReadFOAM::prepareRead()
+{
+   const std::string casedir = m_casedir->getValue();
+   m_boundaryPatches.add(m_patchSelection->getValue());
+   m_case = getCaseInfo(casedir);
+   if (!m_case.valid) {
+      std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+      return false;
    }
 
-   return Module::changeParameter(p);
+   if (!checkPolyMeshDirContent(m_case)) {
+      std::cerr << "failed to gather topology directories for " << casedir << std::endl;
+      return false;
+   }
+
+   m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
+
+   std::cerr << "# processors: " << m_case.numblocks << std::endl;
+   std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+   std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+   std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+
+   return true;
+}
+
+bool ReadFOAM::finishRead()
+{
+   vassert(m_requests.empty());
+   vassert(m_GhostCellsOut.empty());
+   vassert(m_GhostDataOut.empty());
+   vassert(m_GhostCellsIn.empty());
+   vassert(m_GhostDataIn.empty());
+
+   m_currentbound.clear();
+   m_currentgrid.clear();
+   m_basedir.clear();
+   m_currentvolumedata.clear();
+   m_owners.clear();
+   m_boundaries.clear();
+   m_procBoundaryVertices.clear();
+   m_procGhostCellCandidates.clear();
+   m_verticesMappings.clear();
+
+   return true;
 }
 
 bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
@@ -565,7 +627,12 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
    if (readGrid) {
       loadCoords(meshdir, grid);
-      grid->checkConvexity();
+      if (checkConvexity()) {
+          auto nonConvex = grid->checkConvexity();
+          if (nonConvex > 0) {
+              std::cerr << nonConvex << " of " << grid->getNumElements() << " are non-convex" << std::endl;
+          }
+      }
 
       if (readBoundary) {
           //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
@@ -710,9 +777,9 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
 void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
 
    if (obj) {
-      Index skipfactor = m_timeskip->getValue()+1;
+      Index skipfactor = timeIncrement();
       obj->setTimestep(timestep);
-      obj->setNumTimesteps(m_case.timedirs.size()/skipfactor);
+      obj->setNumTimesteps((m_case.timedirs.size()+skipfactor-1)/skipfactor);
       obj->setBlock(processor);
       obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
@@ -792,7 +859,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       loadFields(dir, m_case.constantFields, processor, timestep);
    } else {
       Index i = 0;
-      Index skipfactor = m_timeskip->getValue()+1;
+      Index skipfactor = timeIncrement();
       std::string completeMeshDir;
       for (auto &ts: m_case.timedirs) {
          if (i == timestep*skipfactor) {
@@ -1333,58 +1400,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    m_GhostDataIn.clear();
    m_currentvolumedata.clear();
-   return true;
-}
-
-bool ReadFOAM::compute()     //Compute is called when Module is executed
-{
-   const std::string casedir = m_casedir->getValue();
-   m_boundaryPatches.add(m_patchSelection->getValue());
-   m_case = getCaseInfo(casedir);
-   if (!m_case.valid) {
-      std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
-      return true;
-   }
-
-   if (!checkPolyMeshDirContent(m_case)) {
-      std::cerr << "failed to gather topology directories for " << casedir << std::endl;
-      return true;
-   }
-
-   m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
-
-   std::cerr << "# processors: " << m_case.numblocks << std::endl;
-   std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
-   std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
-   std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
-
-   if (!readConstant(casedir)) {
-      std::cerr << "reading of constant data failed" << std::endl;
-      return true;
-   }
-   int skipfactor = m_timeskip->getValue()+1;
-   for (Index timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
-       if (cancelRequested())
-           break;
-       if (!readTime(casedir, timestep)) {
-           std::cerr << "reading of data for timestep " << timestep << " failed" << std::endl;
-       }
-   }
-   vassert(m_requests.empty());
-   vassert(m_GhostCellsOut.empty());
-   vassert(m_GhostDataOut.empty());
-   vassert(m_GhostCellsIn.empty());
-   vassert(m_GhostDataIn.empty());
-   m_currentbound.clear();
-   m_currentgrid.clear();
-   m_basedir.clear();
-   m_currentvolumedata.clear();
-   m_owners.clear();
-   m_boundaries.clear();
-   m_procBoundaryVertices.clear();
-   m_procGhostCellCandidates.clear();
-   m_verticesMappings.clear();
-
    return true;
 }
 

@@ -19,7 +19,7 @@
 #include <vector>
 #include <map>
 
-#include <module/module.h>
+#include <module/reader.h>
 #include <core/unstr.h>
 #include <core/polygons.h>
 
@@ -91,7 +91,7 @@ public:
 };
 
 
-class ReadFOAM: public vistle::Module
+class ReadFOAM: public vistle::Reader
 {
    static const int NumPorts = 3;
    static const int NumBoundaryPorts = 3;
@@ -103,15 +103,13 @@ class ReadFOAM: public vistle::Module
          COORDS
       };
 
-      virtual bool compute();
       ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm);
-      virtual ~ReadFOAM();
+      ~ReadFOAM() override;
 
    private:
       //Parameter
       vistle::StringParameter *m_casedir, *m_patchSelection;
       vistle::FloatParameter *m_starttime, *m_stoptime;
-      vistle::IntParameter *m_timeskip;
       vistle::IntParameter *m_readGrid, *m_readBoundary, *m_boundaryPatchesAsVariants;
       vistle::IntParameter *m_buildGhostcellsParam;
       bool m_buildGhost;
@@ -125,9 +123,14 @@ class ReadFOAM: public vistle::Module
 
       std::vector<std::string> getFieldList() const;
 
+      // Reader interface
+      bool examine(const vistle::Parameter *p) override;
+      bool read(const vistle::Meta &meta, int time, int part) override;
+      bool prepareRead() override;
+      bool finishRead() override;
+
       //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
       int rankForBlock(int processor) const;
-      bool changeParameter(const vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool buildGhostCells(int processor, GhostMode mode);
       bool buildGhostCellData(int processor);
