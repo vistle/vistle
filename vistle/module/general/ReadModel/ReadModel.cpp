@@ -21,40 +21,87 @@ MODULE_MAIN(ReadModel)
 using namespace vistle;
 
 ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("read polygonal models with Assimp", name, moduleID, comm)
+   : Reader("read polygonal models with Assimp", name, moduleID, comm)
 {
-
    createOutputPort("grid_out");
-   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "");
+   auto filename = addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "");
+   observeParameter(filename);
+
    addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
 
-   addIntParameter("first_block", "number of first block", 0);
-   addIntParameter("last_block", "number of last block", 0);
-
-   addIntParameter("first_step", "number of first timestep", 0);
-   addIntParameter("last_step", "number of last timestep", 0);
-   addIntParameter("step", "increment", 1);
+   auto firstBlock = addIntParameter("first_block", "number of first block", 0);
+   observeParameter(firstBlock);
+   auto lastBlock = addIntParameter("last_block", "number of last block", 0);
+   observeParameter(lastBlock);
 
    addIntParameter("ignore_errors", "ignore files that are not found", 0, Parameter::Boolean);
+
+   observeParameter(m_first);
+   observeParameter(m_last);
 }
 
 ReadModel::~ReadModel() {
 
 }
 
-int ReadModel::rankForBlock(int block) const {
+bool ReadModel::examine(const Parameter *param)
+{
+    int numtime = 0;
+    if (m_first && m_first->getValue() > numtime)
+        numtime = m_first->getValue();
+    if (m_last && m_last->getValue() > numtime)
+        numtime = m_last->getValue();
+    setTimesteps(numtime);
 
-    const int numBlocks = m_lastBlock-m_firstBlock+1;
-    if (numBlocks == 0)
-        return 0;
+    m_firstBlock = getIntParameter("first_block");
+    m_lastBlock = getIntParameter("last_block");
+    setPartitions(m_lastBlock-m_firstBlock+1);
 
-    if (block == -1)
-        return -1;
-
-    return block % size();
+    return true;
 }
 
+bool ReadModel::read(const Meta &meta, int timestep, int block)
+{
+   std::string filename = getStringParameter("filename");
+
+   std::string f;
+   try {
+       using namespace boost::io;
+       boost::format fmter(filename);
+       fmter.exceptions(all_error_bits ^ (too_many_args_bit | too_few_args_bit));
+       fmter % block;
+       fmter % timestep;
+       f = fmter.str();
+   } catch (boost::io::bad_format_string except) {
+       sendError("bad format string in filename");
+       return false;
+   }
+
+   auto obj = load(f);
+   if (!obj) {
+       if (!getIntParameter("ignore_errors")) {
+           sendError("failed to load %s", f.c_str());
+           return false;
+       }
+   } else {
+       obj->setTimestep(meta.timeStep());
+       obj->setNumTimesteps(meta.numTimesteps());
+       obj->setBlock(meta.block());
+       obj->setNumBlocks(meta.numBlocks());
+       addObject("grid_out", obj);
+   }
+
+   return true;
+}
+
+bool ReadModel::prepareRead()
+{
+   m_firstBlock = getIntParameter("first_block");
+   m_lastBlock = getIntParameter("last_block");
+
+   return true;
+}
 
 Object::ptr ReadModel::load(const std::string &name) {
 
@@ -166,67 +213,4 @@ Object::ptr ReadModel::load(const std::string &name) {
     }
 
     return ret;
-}
-
-bool ReadModel::compute() {
-
-   m_firstBlock = getIntParameter("first_block");
-   m_lastBlock = getIntParameter("last_block");
-   m_firstStep = getIntParameter("first_step");
-   m_lastStep = getIntParameter("last_step");
-   m_step = getIntParameter("step");
-   if ((m_lastStep-m_firstStep)*m_step < 0)
-       m_step *= -1;
-   bool reverse = false;
-   int step = m_step, first = m_firstStep, last = m_lastStep;
-   if (step < 0) {
-       reverse = true;
-       step *= -1;
-       first *= -1;
-       last *= -1;
-   }
-
-   std::string filename = getStringParameter("filename");
-
-   int timeCounter = 0;
-   for (int t=first; t<=last; t += step) {
-       int timestep = reverse ? -t : t;
-       bool loaded = false;
-       for (int b=m_firstBlock; b<=m_lastBlock; ++b) {
-           if (rankForBlock(b) == rank()) {
-               std::string f;
-               try {
-                   using namespace boost::io;
-                   boost::format fmter(filename);
-                   fmter.exceptions(all_error_bits ^ (too_many_args_bit | too_few_args_bit));
-                   fmter % b;
-                   fmter % timestep;
-                   f = fmter.str();
-               } catch (boost::io::bad_format_string except) {
-                   sendError("bad format string in filename");
-                   return true;
-               }
-               auto obj = load(f);
-               if (!obj) {
-                   if (!getIntParameter("ignore_errors")) {
-                       sendError("failed to load %s", f.c_str());
-                       return true;
-                   }
-               } else {
-                   obj->setBlock(b);
-                   obj->setTimestep(timeCounter);
-                   loaded = true;
-                   addObject("grid_out", obj);
-               }
-               if (cancelRequested()) {
-                   break;
-               }
-           }
-       }
-       if (loaded)
-           ++timeCounter;
-       if (cancelRequested())
-           break;
-   }
-   return true;
 }

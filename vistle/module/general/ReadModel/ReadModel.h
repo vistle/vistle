@@ -6,23 +6,24 @@
 #include <utility> // std::pair
 
 #include <util/sysdep.h>
-#include <module/module.h>
+#include <module/reader.h>
 
-class ReadModel: public vistle::Module {
+class ReadModel: public vistle::Reader {
 
  public:
    ReadModel(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ReadModel();
+   ~ReadModel() override;
+
+   // reader interface
+   bool examine(const vistle::Parameter *param) override;
+   bool read(const vistle::Meta &meta, int timestep=-1, int block=-1) override;
+   bool prepareRead() override;
 
  private:
 
    vistle::Object::ptr load(const std::string & filename);
 
-   virtual bool compute();
-   int rankForBlock(int block) const;
-
    vistle::Integer m_firstBlock, m_lastBlock;
-   vistle::Integer m_firstStep, m_lastStep, m_step;
 };
 
 #endif
