@@ -307,12 +307,12 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time)
     bf::path dir(timedir);
     if (!bf::exists(dir))
     {
-        std::cerr << "timestep directory " << timedir << " does not exist" << std::endl;
+        std::cerr << (time?"timestep":"constant") << " directory " << timedir << " does not exist" << std::endl;
         return false;
     }
     if (!::is_directory(timedir))
     {
-        std::cerr << "timestep directory " << timedir << " is not a directory" << std::endl;
+        std::cerr << (time?"timestep":"constant") << " directory " << timedir << " is not a directory" << std::endl;
         return false;
     }
 
