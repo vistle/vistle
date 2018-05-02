@@ -779,13 +779,17 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
                mod.instance.reset();
            });
            mod.thread = std::move(t);
-       }
-       else
-       {
+       } else {
            auto it = runningMap.find(newId);
            if (it != runningMap.end()) {
                runningMap.erase(it);
            }
+
+           // synthesize ModuleExit for module that has failed to start
+           message::ModuleExit m;
+           m.setSenderId(newId);
+           if (getRank() == 0)
+               sendHub(m);
            return true;
        }
    }
