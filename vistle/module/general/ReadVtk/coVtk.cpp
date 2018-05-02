@@ -1402,11 +1402,14 @@ std::string coVtk::outPortTypeList(vtkInformation *info)
 namespace vtk {
 
 namespace {
-Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
+Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex) {
     Index ncoord = vugrid->GetNumberOfPoints();
     Index nelem = vugrid->GetNumberOfCells();
+    Index nconn = 0;
     vtkCellArray *vcellarray = vugrid->GetCells();
-    Index nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
+    if (vcellarray) {
+        nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
+    }
 
     UnstructuredGrid::ptr cugrid(new UnstructuredGrid(nelem, nconn, ncoord));
 
@@ -1471,39 +1474,46 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
 #endif
     }
 
-    vcellarray->InitTraversal();
-    Index k = 0;
-    for (Index i = 0; i < nelem; ++i) {
-        elems[i] = k;
+    if (vcellarray) {
+        vcellarray->InitTraversal();
+        Index k = 0;
+        for (Index i = 0; i < nelem; ++i) {
+            elems[i] = k;
 
-        vtkIdType npts = 0;
-        vtkIdType *pts = nullptr;
-        vcellarray->GetNextCell(npts, pts);
-        if (typelist[i] == UnstructuredGrid::POLYHEDRON) {
-            Index j = 0;
-            Index nface = pts[j];
-            ++j;
-            for (Index f=0; f<nface; ++f) {
-                Index nvert = pts[j];
+            vtkIdType npts = 0;
+            vtkIdType *pts = nullptr;
+            vcellarray->GetNextCell(npts, pts);
+            if (typelist[i] == UnstructuredGrid::POLYHEDRON) {
+                Index j = 0;
+                Index nface = pts[j];
                 ++j;
-                connlist[k] = nvert;
-                ++k;
-                for (Index v=0; v<nvert; ++v) {
+                for (Index f=0; f<nface; ++f) {
+                    Index nvert = pts[j];
+                    ++j;
+                    connlist[k] = nvert;
+                    ++k;
+                    for (Index v=0; v<nvert; ++v) {
+                        connlist[k] = pts[j];
+                        ++k;
+                        ++j;
+                    }
+                }
+            } else {
+                for (int j = 0; j < npts; ++j) {
                     connlist[k] = pts[j];
                     ++k;
-                    ++j;
                 }
             }
-        } else {
-            for (int j = 0; j < npts; ++j) {
-                connlist[k] = pts[j];
-                ++k;
-            }
+        }
+        elems[nelem] = k;
+    }
+
+    if (checkConvex) {
+        auto nonConvex = cugrid->checkConvexity();
+        if (nonConvex > 0) {
+            std::cerr << "coVtk::vtkUGrid2Vistle: " << nonConvex << " of " << cugrid->getNumElements() << " cells are non-convex" << std::endl;
         }
     }
-    elems[nelem] = k;
-
-    cugrid->checkConvexity();
 
     return cugrid;
 }
@@ -1968,10 +1978,10 @@ DataBase::ptr vtkData2Vistle(vtkDataArray *varr, Object::const_ptr grid) {
 
 } // anonymous namespace
 
-vistle::Object::ptr toGrid(vtkDataSet *vtk) {
+vistle::Object::ptr toGrid(vtkDataObject *vtk, bool checkConvex) {
 
     if (vtkUnstructuredGrid *vugrid = dynamic_cast<vtkUnstructuredGrid *>(vtk))
-        return vtkUGrid2Vistle(vugrid);
+        return vtkUGrid2Vistle(vugrid, checkConvex);
 
     if (vtkPolyData *vpolydata = dynamic_cast<vtkPolyData *>(vtk))
         return vtkPoly2Vistle(vpolydata);

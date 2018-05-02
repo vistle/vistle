@@ -25,7 +25,7 @@ class vtkImageData;
 namespace vistle {
 namespace vtk {
 
-Object::ptr toGrid(vtkDataSet *ds);
+Object::ptr toGrid(vtkDataObject *ds, bool checkConvex = false);
 DataBase::ptr getField(vtkDataSetAttributes *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
 DataBase::ptr getField(vtkFieldData *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
 
