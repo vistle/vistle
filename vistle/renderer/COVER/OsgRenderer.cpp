@@ -107,8 +107,8 @@ const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &
     auto it = variants.find(variantName);
     if (it == variants.end()) {
         it = variants.emplace(std::make_pair(variantName, Variant(name, baseVariant.constant, variantName))).first;
-        coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, OsgRenderer::the()->m_plugin);
     }
+    coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, OsgRenderer::the()->m_plugin);
     return it->second;
 }
 
