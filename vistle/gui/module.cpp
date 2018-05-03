@@ -88,6 +88,9 @@ void Module::cancelExecModule()
 void Module::deleteModule()
 {
    setStatus(KILLED);
+
+   cancelExecModule();
+
    vistle::message::Kill m(m_id);
    m.setDestId(m_id);
    vistle::VistleConnection::the().sendMessage(m);

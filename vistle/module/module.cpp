@@ -1948,6 +1948,7 @@ bool Module::reduceWrapper(const message::Execute *exec) {
        }
        case message::ReducePolicy::Locally:
        case message::ReducePolicy::OverAll: {
+           ret = true;
            if (!cancelRequested(sync)) {
                ret = reduce(-1);
            }
@@ -1998,6 +1999,10 @@ bool Module::reduce(int timestep) {
 
 bool Module::cancelExecute() {
 
+    std::cerr << "canceling execution" << std::endl;
+    if (rank() == 0)
+        sendInfo("canceling execution");
+
     return true;
 }
 
@@ -2018,49 +2023,38 @@ void Module::clearStatus() {
     setStatus(std::string(), message::UpdateStatus::Bulk);
 }
 
-bool Module::cancelRequested(bool sync) {
+bool Module::cancelRequested(bool collective) {
 
-    if (sync) {
-        m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
-        if (m_cancelRequested && !m_cancelExecuteCalled) {
-            if (rank() == 0)
-                sendInfo("canceling execution");
+    if (!collective && m_cancelRequested) {
+        if (!m_cancelExecuteCalled) {
             cancelExecute();
             m_cancelExecuteCalled = true;
         }
+        return true;
     }
 
-    if (m_cancelRequested)
-        return true;
-
-    bool justCanceled = false;
     message::Buffer buf;
-    if (receiveMessageQueue->tryReceive(buf)) {
+    while (receiveMessageQueue->tryReceive(buf)) {
         messageBacklog.push_back(buf);
         if (buf.type() == message::CANCELEXECUTE) {
             const auto &cancel = buf.as<message::CancelExecute>();
             if (cancel.getModule() == id()) {
                 std::cerr << "canceling execution requested" << std::endl;
-                justCanceled = true;
+                m_cancelRequested = true;
             }
         }
     }
 
-    if (sync) {
-        justCanceled = boost::mpi::all_reduce(comm(), justCanceled, std::logical_or<bool>());
-
-        if (justCanceled) {
-            m_cancelRequested = true;
-            std::cerr << "canceling execution" << std::endl;
-            if (rank() == 0)
-                sendInfo("canceling execution");
-            cancelExecute();
-            m_cancelExecuteCalled = true;
-            return true;
-        }
+    if (collective) {
+        m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
     }
 
-    return justCanceled;
+    if (m_cancelRequested && !m_cancelExecuteCalled) {
+        cancelExecute();
+        m_cancelExecuteCalled = true;
+    }
+
+    return m_cancelRequested;
 }
 
 } // namespace vistle

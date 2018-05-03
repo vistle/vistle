@@ -609,6 +609,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case message::CANCELEXECUTE: {
 
          const message::CancelExecute &cancel = message.as<CancelExecute>();
+         result = handlePriv(cancel);
          break;
       }
 
@@ -1122,14 +1123,16 @@ bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
     auto &mod = i->second;
     if (cancel.isBroadcast()) {
         mod.send(cancel);
-    } else if (Communicator::the().getRank() == 0) {
-        CERR << "non-broadcast CancelExecute: " << cancel << std::endl;
-        message::Buffer buf(cancel);
-        buf.setBroadcast(true);
-        Communicator::the().broadcastAndHandleMessage(buf);
+        return true;
+    }
+    if (m_rank > 0) {
+        return Communicator::the().forwardToMaster(cancel);
     }
 
-    return true;
+    CERR << "non-broadcast CancelExecute: " << cancel << std::endl;
+    message::Buffer buf(cancel);
+    buf.setBroadcast(true);
+    return Communicator::the().broadcastAndHandleMessage(buf);
 }
 
 bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
