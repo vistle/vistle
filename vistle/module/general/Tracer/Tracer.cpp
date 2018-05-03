@@ -392,6 +392,7 @@ bool Tracer::reduce(int timestep) {
 
       bool first = true;
       std::vector<Index> sendlist;
+      // build list of particles to send to their owner
       for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
           next = it;
           ++next;
@@ -429,6 +430,7 @@ bool Tracer::reduce(int timestep) {
               std::vector<Index> recvlist;
               auto &curlist = rank()==mpirank ? sendlist : recvlist;
               mpi::broadcast(comm(), curlist, mpirank);
+              assert(curlist.size() == num_recv);
               for(Index i=0; i<num_recv; i++){
                   Index p_index = curlist[i];
                   auto p = allParticles[p_index];
@@ -448,27 +450,30 @@ bool Tracer::reduce(int timestep) {
               }
           }
       }
-      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
+
+      std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
       numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
       numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
       // iterate over all other ranks
       for(int i=1; i<mpisize; ++i) {
+          // send particles to owning rank
           int dst = (rank()+i)%size();
-          int src = (rank()-i+size())%size();
           for (auto id: sendlist) {
               auto p = allParticles[id];
               if (p->rank() == dst) {
-                  //std::cerr << "sending " << p->id() << " to " << dst << std::endl;
+                  std::cerr << "sending " << p->id() << " to " << dst << std::endl;
                   p->sendData(comm());
               }
           }
+          // receive locally owned particles
+          int src = (rank()-i+size())%size();
           for (const auto &part: datarecvlist) {
               auto id = part.first;
               auto rank = part.second;
               auto p = allParticles[id];
               assert(p->rank() == this->rank());
               if (rank == src) {
-                  //std::cerr << "receiving " << p->id() << " from " << src << std::endl;
+                  std::cerr << "receiving " << p->id() << " from " << src << std::endl;
                   p->receiveData(comm(), src);
               }
           }
