@@ -48,6 +48,7 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
 : Reader("Read OpenFOAM data", name, moduleId, comm)
 , m_boundOut(nullptr)
 {
+   // all ranks have to be scheduled simultaneously
    Reader::setHandlePartitions(false);
 
    // file browser parameter
@@ -147,10 +148,12 @@ bool ReadFOAM::examine(const Parameter *)
         return false;
     }
 
-    std::cerr << "# processors: " << m_case.numblocks << std::endl;
-    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
-    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
-    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+    if (rank() == 0) {
+        std::cerr << "# processors: " << m_case.numblocks << std::endl;
+        std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+        std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+        std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+    }
 
     setTimesteps(m_case.timedirs.size());
 
@@ -202,7 +205,8 @@ bool ReadFOAM::prepareRead()
 {
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
-   m_case = getCaseInfo(casedir);
+   if (!m_case.valid)
+       m_case = getCaseInfo(casedir);
    if (!m_case.valid) {
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
       return false;
@@ -215,10 +219,12 @@ bool ReadFOAM::prepareRead()
 
    m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
 
-   std::cerr << "# processors: " << m_case.numblocks << std::endl;
-   std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
-   std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
-   std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+   if (rank() == 0) {
+       std::cerr << "# processors: " << m_case.numblocks << std::endl;
+       std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+       std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+       std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+   }
 
    return true;
 }

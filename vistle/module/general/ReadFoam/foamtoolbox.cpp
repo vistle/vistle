@@ -382,9 +382,8 @@ bool checkPolyMeshDirContent(CaseInfo &info)
 
 
 
-bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, bool exact)
+bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, bool exact, bool verbose)
 {
-
     std::cerr << "reading casedir: " << casedir << std::endl;
 
     bf::path dir(casedir);
@@ -418,13 +417,14 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
 
     if (compare && num_processors > 0)
     {
-        std::cerr << "found processor subdirectory in processor directory" << std::endl;
+        if (verbose)
+            std::cerr << "found processor subdirectory in processor directory" << std::endl;
         return false;
     }
 
     if (num_processors > 0)
     {
-        bool result = checkCaseDirectory(info, casedir + "/processor0", false, exact);
+        bool result = checkCaseDirectory(info, casedir + "/processor0", false, exact, verbose);
         if (!result)
         {
             std::cerr << "failed to read case directory for processor 0" << std::endl;
@@ -437,7 +437,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
             {
                 std::stringstream s;
                 s << casedir << "/processor" << i;
-                bool result = checkCaseDirectory(info, s.str(), true, exact);
+                bool result = checkCaseDirectory(info, s.str(), true, exact, verbose);
                 if (!result)
                     return false;
             }
@@ -553,34 +553,40 @@ bool checkFields(std::map<std::string, int> &fields, int nRequired, bool exact)
     return !ignored;
 }
 
-CaseInfo getCaseInfo(const std::string &casedir, bool exact)
+CaseInfo getCaseInfo(const std::string &casedir, bool exact, bool verbose)
 {
 
     CaseInfo info;
     info.casedir = casedir;
-    info.valid = checkCaseDirectory(info, casedir, false, exact);
+    info.valid = checkCaseDirectory(info, casedir, false, exact, verbose);
 
-    std::cerr << " "
-              << "casedir: " << casedir << " " << std::endl
-              << "Number of processors: " << info.numblocks << std::endl
-              << "Number of time directories found: " << info.timedirs.size() << std::endl
-              << "Number of fields: " << info.constantFields.size() + info.varyingFields.size() << std::endl;
+    if (verbose) {
+        std::cerr << " "
+                  << "casedir: " << casedir << " " << std::endl
+                  << "Number of processors: " << info.numblocks << std::endl
+                  << "Number of time directories found: " << info.timedirs.size() << std::endl
+                  << "Number of fields: " << info.constantFields.size() + info.varyingFields.size() << std::endl;
+    }
 
     int np = info.numblocks > 0 ? info.numblocks : 1;
-    std::cerr << "  constant:";
+    if (verbose)
+        std::cerr << "  constant:";
     checkFields(info.constantFields, np, exact);
 
-    std::cerr << "  varying: ";
+    if (verbose)
+        std::cerr << "  varying: ";
     checkFields(info.varyingFields, np * info.timedirs.size(), exact);
 
     if (info.hasParticles)
     {
-        std::cerr << "  lagrangian from " << info.lagrangiandir << ": ";
+        if (verbose)
+            std::cerr << "  lagrangian from " << info.lagrangiandir << ": ";
         checkFields(info.particleFields, np * info.timedirs.size(), exact);
     }
     else
     {
-        std::cerr << "  no lagrangian data" << std::endl;
+        if (verbose)
+            std::cerr << "  no lagrangian data" << std::endl;
     }
 
     return info;

@@ -167,7 +167,7 @@ public:
     std::vector<Boundary> procboundaries;
 };
 
-CaseInfo getCaseInfo(const std::string &casedir, bool exact = false);
+CaseInfo getCaseInfo(const std::string &casedir, bool exact = false, bool verbose = false);
 bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time);
 bool checkPolyMeshDirContent(CaseInfo &info);
 std::shared_ptr<std::istream> getStreamForFile(const std::string &filename);
