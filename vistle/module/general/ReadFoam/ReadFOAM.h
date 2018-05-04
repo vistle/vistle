@@ -113,6 +113,8 @@ class ReadFOAM: public vistle::Reader
       vistle::IntParameter *m_readGrid, *m_readBoundary, *m_boundaryPatchesAsVariants;
       vistle::IntParameter *m_buildGhostcellsParam;
       bool m_buildGhost;
+      vistle::IntParameter *m_onlyPolyhedraParam = nullptr;
+      bool m_onlyPolyhedra = false;
       std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
       //Ports
       vistle::Port *m_boundOut;

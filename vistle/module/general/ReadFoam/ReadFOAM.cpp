@@ -103,6 +103,8 @@ ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm
    m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
    m_buildGhost = m_buildGhostcellsParam->getValue();
 
+   m_onlyPolyhedraParam = addIntParameter("only_polyhedra", "create only polyhedral cells", m_onlyPolyhedra, Parameter::Boolean);
+
    observeParameter(m_casedir);
    //observeParameter(m_patchSelection);
 }
@@ -218,6 +220,7 @@ bool ReadFOAM::prepareRead()
    }
 
    m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
+   m_onlyPolyhedra = m_onlyPolyhedraParam->getValue();
 
    if (rank() == 0) {
        std::cerr << "# processors: " << m_case.numblocks << std::endl;
@@ -449,7 +452,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
          for (index_t i=0; i<dim.cells; i++) {
             const std::vector<Index> &cellfaces=cellfacemap[i];
 
-            bool onlySimpleFaces = true; // only faces with 3 or 4 corners
+            bool onlySimpleFaces = !m_onlyPolyhedra; // only faces with 3 or 4 corners
             std::vector<Index> threeVert, fourVert;
             for (index_t j=0; j<cellfaces.size(); ++j) {
                if (faces[cellfaces[j]].size() == 4) {
@@ -612,21 +615,25 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                case UnstructuredGrid::POLYHEDRON: {
                   for (index_t j=0;j<cellfaces.size();j++) {
                      index_t ia=cellfaces[j];
-                     std::vector<index_t> a=faces[ia];
-
-                     if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
-                        std::reverse(a.begin(), a.end());
-                     }
-
+                     const auto &a = faces[ia];
                      connectivities.push_back(a.size());
-                     for (index_t k=0; k<a.size(); ++k) {
-                        connectivities.push_back(a[k]);
+
+                     if(isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
+                         std::copy(a.begin(), a.end(), inserter);
+                     } else {
+                         std::copy(a.rbegin(), a.rend(), inserter);
                      }
                   }
                }
                break;
+
+            default: {
+                std::cerr << "cell #" << i << " has invalid type 0x" << std::hex << types[i] << std::dec << std::endl;
+                break;
+            }
             }
          }
+         assert(num_conn == connectivities.size());
          el[dim.cells] = connectivities.size();
       }
    }
@@ -1001,12 +1008,12 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
    auto &boundaries = *m_boundaries[processor];
 
    UnstructuredGrid::ptr grid = m_currentgrid[processor];
-   auto &el = grid->el();
-   auto &cl = grid->cl();
-   auto &tl = grid->tl();
-   auto &x = grid->x();
-   auto &y = grid->y();
-   auto &z = grid->z();
+   const auto el = &grid->el()[0];
+   const auto cl = &grid->cl()[0];
+   const auto tl = &grid->tl()[0];
+   const auto x = &grid->x()[0];
+   const auto y = &grid->y()[0];
+   const auto z = &grid->z()[0];
 
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
@@ -1026,18 +1033,6 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       if (mode == ALL || mode == BASE) { //create ghost cell topology and send vertice-coordinates
          //build ghost cell element list and connectivity list for current boundary patch
          elOut.push_back(0);
-         Index conncount=0;
-         for (const Index cell: procGhostCellCandidates) {
-            Index elementStart = el[cell];
-            Index elementEnd = el[cell + 1];
-            for (Index j=elementStart; j<elementEnd; ++j) {
-               SIndex point = cl[j];
-               clOut.push_back(point);
-               ++conncount;
-            }
-            elOut.push_back(conncount);
-            tlOut.push_back(tl[cell]);
-         }
          //Create Vertices Mapping
          std::map<Index, SIndex> verticesMapping;
          //shared vertices (coords do not have to be sent) -> mapped to negative values
@@ -1047,16 +1042,34 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
                --c;                                   //and returns a pair which consosts of a pointer to the already existing key/value pair (first) and a boolean that states if anything was inserted into the map (second)
             }
          }
-         //vertices with coordinates that have to be sent -> mapped to positive values
-         for (const SIndex v: clOut) {
-            if (verticesMapping.emplace(v,coordCount).second) {
-               ++coordCount;
+         auto mapIndex = [&verticesMapping, &coordCount](SIndex point) -> SIndex {
+             //vertices with coordinates that have to be sent -> mapped to positive values
+             if (verticesMapping.emplace(point,coordCount).second) {
+                 ++coordCount;
+             }
+             return verticesMapping[point];
+         };
+         for (const Index cell: procGhostCellCandidates) {
+            Index elementStart = el[cell];
+            Index elementEnd = el[cell + 1];
+            if ((tl[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+                Index i = elementStart;
+                while (i < elementEnd) {
+                    Index nvert = cl[i];
+                    clOut.push_back(nvert);
+                    ++i;
+                    for (Index j=0; j<nvert; ++j) {
+                        clOut.push_back(mapIndex(cl[j]));
+                    }
+                    i += nvert;
+                }
+            } else {
+                for (Index j=elementStart; j<elementEnd; ++j) {
+                    clOut.push_back(mapIndex(cl[j]));
+                }
             }
-         }
-
-         //Change connectivity list entries to the mapped values
-         for (SIndex &v: clOut) {
-            v = verticesMapping[v];
+            elOut.push_back(clOut.size());
+            tlOut.push_back(tl[cell]);
          }
 
          //save the vertices mapping for later use
@@ -1220,14 +1233,28 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
           for (Index cell = 0; cell < tlIn.size();++cell) {//append new topology to old grid
              Index elementStart = elIn[cell];
              Index elementEnd = elIn[cell + 1];
-             for (Index i = elementStart; i < elementEnd; ++i) {
-                SIndex point = clIn[i];
-                if (point < 0) {//if point<0 then vertice is already known and can be looked up in sharedVerticesMapping
-                   point=sharedVerticesMapping[-point-1];
-                } else {//else the vertice is unknown and its coordinates will be appended (in order of first appearance) to the old coord-lists so we point to an index beyond the current size
-                   point+=pointsSize;
-                }
-                cl.push_back(point);
+             auto mapIndex = [sharedVerticesMapping, pointsSize](SIndex point) -> SIndex {
+                 if (point < 0) {//if point<0 then vertice is already known and can be looked up in sharedVerticesMapping
+                     return sharedVerticesMapping[-point-1];
+                 } else {//else the vertice is unknown and its coordinates will be appended (in order of first appearance) to the old coord-lists so we point to an index beyond the current size
+                     return point + pointsSize;
+                 }
+             };
+             if ((tlIn[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+                 Index i = elementStart;
+                 while (i < elementEnd) {
+                     Index nvert = clIn[i];
+                     cl.push_back(nvert);
+                     ++i;
+                     for (Index j=0; j<nvert; ++j) {
+                         cl.push_back(mapIndex(clIn[i+j]));
+                     }
+                     i += nvert;
+                 }
+             } else {
+                 for (Index i = elementStart; i < elementEnd; ++i) {
+                     cl.push_back(mapIndex(clIn[i]));
+                 }
              }
              el.push_back(cl.size());
              tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);

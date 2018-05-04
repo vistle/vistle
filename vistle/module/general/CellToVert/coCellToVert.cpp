@@ -114,8 +114,10 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                Index j=begin;
                while(j<end) {
                    Index nvert = conn_list[j];
+                   assert(nvert < end-begin);
                    ++j;
                    for (Index k=j; k<j+nvert; ++k) {
+                       assert(conn_list[k] < num_point);
                        verts.push_back(conn_list[k]);
                    }
                    j += nvert;
