@@ -12,6 +12,7 @@
 #include <core/spheres.h>
 #include <core/tubes.h>
 #include <core/texture1d.h>
+#include <core/unstr.h>
 
 #include "ToTriangles.h"
 
@@ -497,6 +498,45 @@ bool ToTriangles::compute() {
       if (data) {
          ndata = replicateData(data, NumSect, n, el, numCoordStart, numCoordEnd);
       }
+   } else if (auto unstr = UnstructuredGrid::as(obj)) {
+      Index nelem = unstr->getNumElements();
+      auto el = &unstr->el()[0];
+      auto cl = &unstr->cl()[0];
+      auto tl = &unstr->tl()[0];
+
+      Index ntri = 0;
+      for (Index e=0; e<nelem; ++e) {
+          if ((tl[e]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+              ++ntri;
+          } else if ((tl[e]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+              ntri += 2;
+          }
+      }
+
+      tri.reset(new Triangles(3*ntri, 0));
+      for (int i=0; i<3; ++i)
+         tri->d()->x[i] = unstr->d()->x[i];
+
+      Index i = 0;
+      auto tcl = &tri->cl()[0];
+      for (Index e=0; e<nelem; ++e) {
+          const Index begin=el[e], end=el[e+1];
+          if ((tl[e]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::TRIANGLE) {
+              assert(end - begin == 3);
+              for (Index v=begin; v<end; ++v) {
+                  tcl[i++] = cl[v];
+              }
+          } else if ((tl[e]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::QUAD) {
+              assert(end - begin == 4);
+              for (Index v=begin; v<begin+3; ++v) {
+                  tcl[i++] = cl[v];
+              }
+              tcl[i++] = cl[begin];
+              tcl[i++] = cl[begin+2];
+              tcl[i++] = cl[begin+3];
+          }
+      }
+      vassert(i == 3*ntri);
    }
 
    if (tri) {
