@@ -63,6 +63,7 @@ Module::~Module()
 {
     delete m_moduleMenu;
     delete m_execAct;
+    delete m_attachDebugger;
     delete m_cancelExecAct;
     delete m_deleteThisAct;
     delete m_deleteSelAct;
@@ -92,6 +93,13 @@ void Module::deleteModule()
    vistle::VistleConnection::the().sendMessage(m);
 }
 
+void Module::attachDebugger()
+{
+   vistle::message::Debug m(m_id);
+   m.setDestId(m_hub);
+   vistle::VistleConnection::the().sendMessage(m);
+}
+
 void Module::createGeometry()
 {
    setHub(m_hub);
@@ -118,6 +126,10 @@ void Module::createActions()
     m_execAct->setStatusTip("Execute the module");
     connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModule()));
 
+    m_attachDebugger = new QAction("Attach Debugger", this);
+    m_attachDebugger->setStatusTip("Debug running module");
+    connect(m_attachDebugger, SIGNAL(triggered(bool)), this, SLOT(attachDebugger()));
+
     m_cancelExecAct = new QAction("Cancel Execution", this);
     m_cancelExecAct->setStatusTip("Interrupt execution of module");
     connect(m_cancelExecAct, SIGNAL(triggered()), this, SLOT(cancelExecModule()));
@@ -132,6 +144,7 @@ void Module::createMenus()
    m_moduleMenu->addAction(m_execAct);
    m_moduleMenu->addAction(m_cancelExecAct);
    m_moduleMenu->addSeparator();
+   m_moduleMenu->addAction(m_attachDebugger);
    m_moduleMenu->addAction(m_deleteThisAct);
    m_moduleMenu->addAction(m_deleteSelAct);
 }

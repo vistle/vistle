@@ -206,6 +206,20 @@ class V_COREEXPORT Kill: public MessageBase<Kill, KILL> {
 };
 static_assert(sizeof(Kill) <= Message::MESSAGE_SIZE, "message too large");
 
+//! request a module to quit
+class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
+
+ public:
+   Debug(const int module);
+
+   int getModule() const;
+
+ private:
+   //! ID of module to stop
+   const int module;
+};
+static_assert(sizeof(Debug) <= Message::MESSAGE_SIZE, "message too large");
+
 //! request all modules to quit for terminating the session
 class V_COREEXPORT Quit: public MessageBase<Quit, QUIT> {
 

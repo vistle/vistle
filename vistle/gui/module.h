@@ -89,6 +89,7 @@ public slots:
     void execModule();
     void cancelExecModule();
     void deleteModule();
+    void attachDebugger();
 
 private:
     void createGeometry();
@@ -98,6 +99,7 @@ private:
 
     QMenu *m_moduleMenu;
     QAction *m_deleteThisAct, *m_deleteSelAct;
+    QAction *m_attachDebugger;
     QAction *m_execAct;
     QAction *m_cancelExecAct;
 

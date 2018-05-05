@@ -31,6 +31,7 @@ int main() {
          M(SPAWN, Spawn)
          M(SPAWNPREPARED, SpawnPrepared)
          M(KILL, Kill)
+         M(DEBUG, Debug)
          M(QUIT, Quit)
          M(STARTED, Started)
          M(MODULEEXIT, ModuleExit)

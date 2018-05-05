@@ -27,6 +27,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (SPAWN)
       (SPAWNPREPARED)
       (KILL)
+      (DEBUG)
       (QUIT)
       (STARTED)
       (MODULEEXIT)

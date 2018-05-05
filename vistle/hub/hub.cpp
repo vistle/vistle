@@ -41,6 +41,15 @@ using message::Router;
 using message::Id;
 namespace dir = vistle::directory;
 
+namespace Process {
+enum Id {
+    Manager = 0,
+    Cleaner = -1,
+    GUI = -2,
+    Debugger = -3,
+};
+};
+
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
 
 Hub *hub_instance = nullptr;
@@ -269,7 +278,7 @@ bool Hub::dispatch() {
          const int id = it->second;
          CERR << "process with id " << id << " (PID " << pid << ") exited" << std::endl;
          m_processMap.erase(it);
-         if (id == 0) {
+         if (id == Process::Manager) {
             // manager died
             m_dataProxy.reset();
             if (!m_quitting) {
@@ -785,6 +794,38 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
+         case message::DEBUG: {
+            auto &debug = msg.as<message::Debug>();
+#ifdef MODULE_THREAD
+            int id = 0;
+#else
+            int id = debug.getModule();
+#endif
+            bool launched = false;
+            for (auto p: m_processMap) {
+                if (p.second == id) {
+                    std::vector<std::string> args;
+                    args.push_back("ddt");
+                    std::stringstream str;
+                    str << "-attach-mpi=" << p.first;
+                    args.push_back(str.str());
+                    auto pid = spawn_process(args[0], args);
+                    std::cerr << "Launched ddt as PID " << pid << ", attaching to " << p.first << std::endl;
+                    m_processMap[pid] = Process::Debugger;
+                    launched = true;
+                    break;
+                }
+            }
+            if (!launched) {
+                std::cerr << "Did not find PID to debug module id " << debug.getModule()
+#ifdef MODULE_THREAD
+                          << " -> " << id
+#endif
+                          << std::endl;
+            }
+            break;
+         }
+
          case message::SETID: {
 
             vassert(!m_isMaster);
@@ -1057,7 +1098,7 @@ bool Hub::init(int argc, char *argv[]) {
       CERR << "failed to spawn Vistle manager " << std::endl;
       exit(1);
    }
-   m_processMap[pid] = 0;
+   m_processMap[pid] = Process::Manager;
 
    return true;
 }
@@ -1089,7 +1130,7 @@ bool Hub::startCleaner() {
       CERR << "failed to spawn clean_vistle" << std::endl;
       return false;
    }
-   m_processMap[pid] = -1;
+   m_processMap[pid] = Process::Cleaner;
    return true;
 }
 
@@ -1134,7 +1175,7 @@ bool Hub::startUi(const std::string &uipath) {
       return false;
    }
 
-   m_processMap[pid] = -1;
+   m_processMap[pid] = Process::GUI;
 
    return true;
 }

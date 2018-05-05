@@ -277,6 +277,16 @@ int Kill::getModule() const {
    return module;
 }
 
+Debug::Debug(const int m)
+: module(m) {
+    assert(m >= Id::ModuleBase);
+}
+
+int Debug::getModule() const {
+
+   return module;
+}
+
 Quit::Quit()
 {
 }
@@ -1506,6 +1516,16 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case SPAWN: {
          auto &mm = static_cast<const Spawn &>(m);
          s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
+         break;
+      }
+      case KILL: {
+         auto &mm = static_cast<const Kill &>(m);
+         s << ", id: " << mm.getModule();
+         break;
+      }
+      case DEBUG: {
+         auto &mm = static_cast<const Debug &>(m);
+         s << ", id: " << mm.getModule();
          break;
       }
       case ADDHUB: {

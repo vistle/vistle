@@ -346,6 +346,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(kill);
          break;
       }
+      case DEBUG: {
+         break;
+      }
       case QUIT: {
          const Quit &quit = static_cast<const Quit &>(msg);
          handled = handlePriv(quit);
