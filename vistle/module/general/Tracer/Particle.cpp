@@ -269,15 +269,21 @@ bool Particle::trace() {
         Step();
         traced = true;
     }
+    UpdateBlock(nullptr);
     return traced;
 }
 
-void Particle::finishSegment() {
+void Particle::finishSegment(boost::mpi::communicator mpi_comm) {
 
     if (m_currentSegment) {
-        m_segments[m_currentSegment->m_num] = m_currentSegment;
+        if (rank() == mpi_comm.rank()) {
+            m_segments[m_currentSegment->m_num] = m_currentSegment;
+        } else {
+            m_sendingSegment = m_currentSegment;
+        }
         m_currentSegment.reset();
     }
+    UpdateBlock(nullptr);
 }
 
 void Particle::fetchSegments(Particle &other) {
@@ -463,13 +469,18 @@ void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
     m_progress = false;
 }
 
-void Particle::sendData(boost::mpi::communicator mpi_comm) {
+void Particle::startSendData(boost::mpi::communicator mpi_comm) {
 
-    m_currentSegment->m_rank = mpi_comm.rank();
     assert(rank() != mpi_comm.rank());
-    mpi_comm.send(rank(), 0, id());
-    mpi_comm.send(rank(), 0, *m_currentSegment);
-    m_currentSegment.reset();
+    m_sendingSegment->m_rank = mpi_comm.rank();
+    m_requests.emplace_back(mpi_comm.isend(rank(), 0, id()));
+    m_requests.emplace_back(mpi_comm.isend(rank(), 0, *m_sendingSegment));
+}
+
+void Particle::finishSendData() {
+    mpi::wait_all(m_requests.begin(), m_requests.end());
+    m_requests.clear();
+    m_sendingSegment.reset();
 }
 
 void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {

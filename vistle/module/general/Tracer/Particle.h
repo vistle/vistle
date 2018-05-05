@@ -45,7 +45,8 @@ public:
     void EmitData();
     bool Step();
     void broadcast(boost::mpi::communicator mpi_comm, int root);
-    void sendData(boost::mpi::communicator mpi_comm);
+    void startSendData(boost::mpi::communicator mpi_comm);
+    void finishSendData();
     void receiveData(boost::mpi::communicator mpi_comm, int rank);
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
@@ -54,7 +55,7 @@ public:
     bool isTracing(bool wait);
     bool madeProgress() const;
     bool trace();
-    void finishSegment();
+    void finishSegment(boost::mpi::communicator mpi_comm);
     void fetchSegments(Particle &other); //! move segments from other particle to this one
     void addToOutput();
     vistle::Scalar time() const;
@@ -123,7 +124,7 @@ private:
         }
     };
 
-    std::shared_ptr<Segment> m_currentSegment;
+    std::shared_ptr<Segment> m_currentSegment, m_sendingSegment;
     std::map<int, std::shared_ptr<Segment>> m_segments;
 
     BlockData *m_block; //!< current block for current particle position
@@ -148,5 +149,7 @@ private:
         ar & m_stopReason;
         ar & m_segment;
     }
+
+    std::vector<boost::mpi::request> m_requests;
 };
 #endif

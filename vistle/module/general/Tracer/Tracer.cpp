@@ -438,33 +438,34 @@ bool Tracer::reduce(int timestep) {
                   p->broadcast(comm(), mpirank);
                   checkSet.insert(p_index);
                   if (p->rank() == rank()) {
-                      if (rank() == mpirank) {
-                          p->finishSegment();
-                      } else {
+                      if (rank() != mpirank) {
                           datarecvlist.emplace_back(p->id(), mpirank);
                       }
                   }
-                  if (rank() != mpirank && p->startTracing(comm()) >= 0) {
+                  p->finishSegment(comm());
+                  if (p->startTracing(comm()) >= 0) {
                       activeParticles.insert(p);
                   }
               }
           }
       }
 
-      std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
       numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
       numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
+      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << ", #check=" << checkSet.size() << std::endl;
       // iterate over all other ranks
       for(int i=1; i<mpisize; ++i) {
-          // send particles to owning rank
+          // start sending particles to owning rank
           int dst = (rank()+i)%size();
           for (auto id: sendlist) {
               auto p = allParticles[id];
               if (p->rank() == dst) {
-                  std::cerr << "sending " << p->id() << " to " << dst << std::endl;
-                  p->sendData(comm());
+                  //std::cerr << "initiate sending " << p->id() << " to " << dst << std::endl;
+                  p->startSendData(comm());
               }
           }
+      }
+      for(int i=1; i<mpisize; ++i) {
           // receive locally owned particles
           int src = (rank()-i+size())%size();
           for (const auto &part: datarecvlist) {
@@ -473,8 +474,19 @@ bool Tracer::reduce(int timestep) {
               auto p = allParticles[id];
               assert(p->rank() == this->rank());
               if (rank == src) {
-                  std::cerr << "receiving " << p->id() << " from " << src << std::endl;
+                  //std::cerr << "receiving " << p->id() << " from " << src << std::endl;
                   p->receiveData(comm(), src);
+              }
+          }
+      }
+      for(int i=1; i<mpisize; ++i) {
+          // finish sending particles to owning rank
+          int dst = (rank()+i)%size();
+          for (auto id: sendlist) {
+              auto p = allParticles[id];
+              if (p->rank() == dst) {
+                  //std::cerr << "finish sending " << p->id() << " to " << dst << std::endl;
+                  p->finishSendData();
               }
           }
       }
@@ -482,7 +494,7 @@ bool Tracer::reduce(int timestep) {
 
    if (mpisize == 1) {
        for (auto p: allParticles) {
-           p->finishSegment();
+           p->finishSegment(comm());
        }
    }
 
