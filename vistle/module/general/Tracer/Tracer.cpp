@@ -444,7 +444,7 @@ bool Tracer::reduce(int timestep) {
                           datarecvlist.emplace_back(p->id(), mpirank);
                       }
                   }
-                  if (p->startTracing(comm()) >= 0) {
+                  if (rank() != mpirank && p->startTracing(comm()) >= 0) {
                       activeParticles.insert(p);
                   }
               }
