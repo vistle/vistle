@@ -665,12 +665,12 @@ Index Leveller::calculateSurface(Data &data) {
     thrust::counting_iterator<Index> first(0), last = first + nelem;;
     data.m_ValidCellVector.resize(nelem);
 
+    typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator> Iteratortuple;
+    typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
+    ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
     if (m_strbase) {
         end = thrust::copy_if(pol(), first, last, thrust::counting_iterator<Index>(0), data.m_ValidCellVector.begin(), checkcell<Data>(data));
     } else if (m_unstr) {
-        typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator, typename Data::TypeIterator> Iteratortuple;
-        typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-        ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1], &data.m_tl[0]));
         end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_ValidCellVector.begin(), checkcell<Data>(data));
     }
 
@@ -794,7 +794,7 @@ bool Leveller::process() {
             }
          }
 
-         Index totalNumVertices = calculateSurface<HostData, thrust::detail::host_t>(HD);
+         calculateSurface<HostData, thrust::detail::host_t>(HD);
 
          {
              size_t idx=0;
