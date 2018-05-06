@@ -2,7 +2,7 @@
 #define CLUSTERMANAGER_H
 
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <queue>
 
 #include <util/directory.h>
@@ -78,7 +78,7 @@ class ClusterManager {
          return a.height > b.height;
       }
    };
-   std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> m_modulePriority;
+   std::vector<StateTracker::Module> m_modulePriority;
    int m_modulePriorityChange = -1;
 
    bool m_quitFlag;
@@ -141,7 +141,7 @@ class ClusterManager {
       bool processDelayed();
       bool haveDelayed() const;
    };
-   typedef std::map<int, Module> RunningMap;
+   typedef std::unordered_map<int, Module> RunningMap;
    RunningMap runningMap;
    int numRunning() const;
    bool isReadyForExecute(int modId) const;

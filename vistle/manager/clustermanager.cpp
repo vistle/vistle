@@ -267,26 +267,24 @@ bool ClusterManager::dispatch(bool &received) {
    bool done = false;
 
    if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
+       std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> pq;
 
        // handle messages from modules closer to sink first
        // - should allow for objects to travel through the pipeline more quickly
-       while (!m_modulePriority.empty()) {
-           m_modulePriority.pop();
-       }
        m_modulePriorityChange = m_stateTracker.graphChangeCount();
        for (auto m: m_stateTracker.runningMap) {
            const auto &mod = m.second;
-           m_modulePriority.emplace(mod);
+           pq.emplace(mod);
+       }
+
+       while (!pq.empty()) {
+           m_modulePriority.emplace_back(pq.top());
+           pq.pop();
        }
    }
 
-   auto modules = m_modulePriority;
-
    // handle messages from modules
-   while (!modules.empty()) {
-
-      auto mod = modules.top();
-      modules.pop();
+   for (const auto &mod: m_modulePriority) {
       const int modId = mod.id;
 
       // keep messages from modules that have already reached a barrier on hold
