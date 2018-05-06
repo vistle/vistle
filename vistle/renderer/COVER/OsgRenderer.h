@@ -94,7 +94,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
        osg::ref_ptr<osg::Sequence> animated;
        VariantRenderObject ro;
 
-       Variant(const std::string &basename, osg::ref_ptr<osg::Group> parent, const std::string &variant=std::string());
+       Variant(const std::string &basename, const std::string &variant=std::string());
    };
 
    struct Creator {

@@ -56,7 +56,7 @@ using namespace vistle;
 
 OsgRenderer *OsgRenderer::s_instance = nullptr;
 
-OsgRenderer::Variant::Variant(const std::string &basename, osg::ref_ptr<osg::Group> parent, const std::string &variant)
+OsgRenderer::Variant::Variant(const std::string &basename, const std::string &variant)
     : variant(variant)
     , ro(variant)
 {
@@ -76,15 +76,14 @@ OsgRenderer::Variant::Variant(const std::string &basename, osg::ref_ptr<osg::Gro
     animated = new StaticSequence;
     animated->setName(name + "/animated");
     root->addChild(animated);
-
-    parent->addChild(root);
 }
 
 OsgRenderer::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg::Group> parent)
     : id(id)
     , name(name)
-    , baseVariant(name, parent)
+    , baseVariant(name)
 {
+    parent->addChild(baseVariant.root);
 }
 
 bool OsgRenderer::Creator::empty() const {
@@ -106,15 +105,16 @@ const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &
 
     auto it = variants.find(variantName);
     if (it == variants.end()) {
-        it = variants.emplace(std::make_pair(variantName, Variant(name, baseVariant.constant, variantName))).first;
+        it = variants.emplace(std::make_pair(variantName, Variant(name, variantName))).first;
     }
+    baseVariant.constant->addChild(it->second.root);
     coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, OsgRenderer::the()->m_plugin);
     return it->second;
 }
 
 bool OsgRenderer::Creator::removeVariant(const std::string &variantName) {
 
-    osg::Group *root = nullptr;
+    osg::ref_ptr<osg::Group> root;
 
     if (variantName.empty() || variantName == "NULL") {
         root = baseVariant.root;
