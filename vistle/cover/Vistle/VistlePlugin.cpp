@@ -167,7 +167,9 @@ bool VistlePlugin::update() {
        throw(e);
    }
 
-   return messageReceived;
+   bool updateRequested = m_module->updateRequired();
+   m_module->clearUpdate();
+   return messageReceived || updateRequested;
 }
 
 void VistlePlugin::requestQuit(bool killSession)

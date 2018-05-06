@@ -50,6 +50,9 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
    void setPlugin(opencover::coVRPlugin *plugin);
 
+   bool updateRequired() const;
+   void clearUpdate();
+
    bool render() override;
    std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
@@ -124,6 +127,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
    std::string setupEnvAndGetLibDir(const std::string &bindir);
    int runMain(int argc, char *argv[]);
+   bool m_requireUpdate = true;
 };
 
 #endif

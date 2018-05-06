@@ -202,6 +202,14 @@ void OsgRenderer::setPlugin(coVRPlugin *plugin) {
    initDone();
 }
 
+bool OsgRenderer::updateRequired() const {
+    return m_requireUpdate;
+}
+
+void OsgRenderer::clearUpdate() {
+    m_requireUpdate = false;
+}
+
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    std::string plugin = moduleName;
@@ -312,6 +320,8 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
    auto ro = pro->coverRenderObject;
    std::string variant = pro->variant;
 
+   m_requireUpdate = true;
+
    if (!ro) {
       std::cerr << "removeObject: no COVER render object" << std::endl;
       return;
@@ -393,6 +403,8 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (!container)
       return nullptr;
 
+   m_requireUpdate = true;
+
    std::string plugin = container->getAttribute("_plugin");
    if (!plugin.empty())
       cover->addPlugin(plugin.c_str());
@@ -459,6 +471,9 @@ bool OsgRenderer::render() {
    }
 
    int numAdd = boost::mpi::all_reduce(comm(), numReady, boost::mpi::minimum<int>());
+
+   if (numAdd > 0)
+       m_requireUpdate = true;
 
    //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
    for (int i=0; i<numAdd; ++i) {
