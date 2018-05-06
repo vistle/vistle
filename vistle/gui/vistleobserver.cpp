@@ -28,7 +28,10 @@ namespace gui {
  */
 VistleObserver::VistleObserver(QObject *parent) : QObject(parent)
 {
-
+    m_moduleNames[vistle::message::Id::MasterHub] = "Vistle";
+    for (int i=1; i<5; ++i) {
+        m_moduleNames[vistle::message::Id::MasterHub-i] = "Vistle"+QString::number(i);
+    }
 }
 
 void VistleObserver::moduleAvailable(int hub, const std::string &name, const std::string &path) {
@@ -122,7 +125,15 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
    QString t = QString::fromStdString(text);
    while(t.endsWith('\n'))
       t.chop(1);
-   QString msg = QString("%1_%2(%3): %4").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank), t);
+   QString sender;
+   if (senderId >= vistle::message::Id::ModuleBase) {
+       sender = QString("%1_%2(%3)").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank));
+   } else {
+       sender = m_moduleNames[senderId];
+       if (sender.isEmpty())
+           sender = QString("ID %1").arg(QString::number(senderId));
+   }
+   QString msg = QString("%1: %2").arg(sender, t);
    emit info_s(msg, textType);
 }
 

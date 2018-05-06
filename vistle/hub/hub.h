@@ -27,19 +27,19 @@ class Hub {
    bool init(int argc, char *argv[]);
    bool processScript();
    bool dispatch();
-   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg);
+   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg) const;
    unsigned short port() const;
-   vistle::process_handle launchProcess(const std::vector<std::string>& argv);
+   vistle::process_handle launchProcess(const std::vector<std::string>& argv) const;
    const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
          std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>());
-   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub);
-   bool sendMaster(const message::Message &msg);
-   bool sendSlaves(const message::Message &msg, bool returnToSender=false);
-   bool sendSlave(const message::Message &msg, int id);
-   bool sendHub(const message::Message &msg, int id);
-   bool sendUi(const message::Message &msg);
+   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub) const;
+   bool sendMaster(const message::Message &msg) const;
+   bool sendSlaves(const message::Message &msg, bool returnToSender=false) const;
+   bool sendSlave(const message::Message &msg, int id) const;
+   bool sendHub(const message::Message &msg, int id) const;
+   bool sendUi(const message::Message &msg) const;
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -64,6 +64,9 @@ private:
    void slaveReady(Slave &slave);
    bool startCleaner();
    bool startManager();
+
+   void sendInfo(const std::string &s) const;
+   void sendError(const std::string &s) const;
 
    unsigned short m_port, m_masterPort;
    std::string m_masterHost;

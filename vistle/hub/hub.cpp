@@ -106,32 +106,32 @@ unsigned short Hub::port() const {
    return m_port;
 }
 
-vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) {
+vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) const {
 
 	assert(!argv.empty());
 #ifdef _WIN32
 	auto pid = spawn_process("spawn_vistle.bat", argv);
-	std::cerr << "launched " << argv[0] << " with PID " << pid << std::endl;
+    CERR << "launched " << argv[0] << " with PID " << pid << std::endl;
 #else
     std::vector<std::string> args;
     args.push_back(argv[0]);
     std::copy(argv.begin(), argv.end(), std::back_inserter(args));
     auto pid = spawn_process("spawn_vistle.sh", args);
-    //std::cerr << "launched " << argv[0] << " with PID " << pid << std::endl;
+    //CERR << "launched " << argv[0] << " with PID " << pid << std::endl;
 #endif
 	return pid;
 }
 
-bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
+bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) const {
 
    bool result = true;
    try {
       result = message::send(*sock, msg);
    } catch(const boost::system::system_error &err) {
-      std::cerr << "exception: err.code()=" << err.code() << std::endl;
+      CERR << "exception: err.code()=" << err.code() << std::endl;
       result = false;
       if (err.code() == boost::system::errc::broken_pipe) {
-         std::cerr << "broken pipe" << std::endl;
+         CERR << "broken pipe" << std::endl;
       } else {
          throw(err);
       }
@@ -353,7 +353,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     }
 }
 
-bool Hub::sendMaster(const message::Message &msg) {
+bool Hub::sendMaster(const message::Message &msg) const {
 
    vassert(!m_isMaster);
    if (m_isMaster) {
@@ -371,7 +371,7 @@ bool Hub::sendMaster(const message::Message &msg) {
    return numSent == 1;
 }
 
-bool Hub::sendManager(const message::Message &msg, int hub) {
+bool Hub::sendManager(const message::Message &msg, int hub) const {
 
    if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
       vassert(m_managerConnected);
@@ -395,7 +395,7 @@ bool Hub::sendManager(const message::Message &msg, int hub) {
    return true;
 }
 
-bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
+bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) const {
 
    vassert(m_isMaster);
    if (!m_isMaster)
@@ -418,7 +418,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
    return true;
 }
 
-bool Hub::sendHub(const message::Message &msg, int hub) {
+bool Hub::sendHub(const message::Message &msg, int hub) const {
 
    if (hub == m_hubId)
       return true;
@@ -438,7 +438,7 @@ bool Hub::sendHub(const message::Message &msg, int hub) {
    return false;
 }
 
-bool Hub::sendSlave(const message::Message &msg, int dest) {
+bool Hub::sendSlave(const message::Message &msg, int dest) const {
 
    vassert(m_isMaster);
    if (!m_isMaster)
@@ -451,7 +451,7 @@ bool Hub::sendSlave(const message::Message &msg, int dest) {
    return sendMessage(it->second.sock, msg);
 }
 
-bool Hub::sendUi(const message::Message &msg) {
+bool Hub::sendUi(const message::Message &msg) const {
 
    m_uiManager.sendMessage(msg);
    return true;
@@ -770,8 +770,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             AvailableModule::Key key(spawn.hubId(), name);
             auto it = m_availableModules.find(key);
             if (it == m_availableModules.end()) {
-               if (spawn.hubId() == m_hubId)
-                  CERR << "refusing to spawn " << name << ": not in list of available modules" << std::endl;
+               if (spawn.hubId() == m_hubId) {
+                   std::stringstream str;
+                   str << "refusing to spawn " << name << ": not in list of available modules";
+                   sendError(str.str());
+               }
                return true;
             }
             std::string path = it->second.path;
@@ -785,10 +788,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
 			auto pid = launchProcess(argv);
 			if (pid) {
-				//std::cerr << "started " << executable << " with PID " << pid << std::endl;
+                //CERR << "started " << executable << " with PID " << pid << std::endl;
 				m_processMap[pid] = spawn.spawnId();
 			} else {
-				std::cerr << "program " << argv[0] << " failed to start" << std::endl;
+                std::stringstream str;
+                str << "program " << argv[0] << " failed to start";
+                sendError(str.str());
 			}
 #endif
             break;
@@ -810,18 +815,21 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                     str << "-attach-mpi=" << p.first;
                     args.push_back(str.str());
                     auto pid = spawn_process(args[0], args);
-                    std::cerr << "Launched ddt as PID " << pid << ", attaching to " << p.first << std::endl;
+                    std::stringstream info;
+                    info << "Launched ddt as PID " << pid << ", attaching to " << p.first;
+                    sendInfo(info.str());
                     m_processMap[pid] = Process::Debugger;
                     launched = true;
                     break;
                 }
             }
             if (!launched) {
-                std::cerr << "Did not find PID to debug module id " << debug.getModule()
+                std::stringstream str;
+                str << "Did not find PID to debug module id " << debug.getModule();
 #ifdef MODULE_THREAD
-                          << " -> " << id
+                str << " -> " << id;
 #endif
-                          << std::endl;
+                sendError(str.str());
             }
             break;
          }
@@ -1132,6 +1140,18 @@ bool Hub::startCleaner() {
    }
    m_processMap[pid] = Process::Cleaner;
    return true;
+}
+
+void Hub::sendInfo(const std::string &s) const {
+    CERR << s << std::endl;
+    message::SendText t(message::SendText::Info, s);
+    sendUi(t);
+}
+
+void Hub::sendError(const std::string &s) const {
+    CERR << "Error: " << s << std::endl;
+    message::SendText t(message::SendText::Error, s);
+    sendUi(t);
 }
 
 bool Hub::connectToMaster(const std::string &host, unsigned short port) {

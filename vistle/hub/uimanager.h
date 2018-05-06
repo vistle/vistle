@@ -22,7 +22,7 @@ class UiManager {
 
    void requestQuit();
    bool handleMessage(const message::Message &msg, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void sendMessage(const message::Message &msg);
+   void sendMessage(const message::Message &msg) const;
    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void lockUi(bool lock);
    bool isLocked() const;
@@ -31,7 +31,7 @@ class UiManager {
    bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg) const;
 
    void disconnect();
-   bool removeClient(std::shared_ptr<UiClient> c);
+   bool removeClient(std::shared_ptr<UiClient> c) const;
 
    Hub &m_hub;
    StateTracker &m_stateTracker;
@@ -40,7 +40,7 @@ class UiManager {
    bool m_requestQuit;
 
    int m_uiCount;
-   std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, std::shared_ptr<UiClient>> m_clients;
+   mutable std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, std::shared_ptr<UiClient>> m_clients;
    std::vector<message::Buffer> m_queue;
 };
 
