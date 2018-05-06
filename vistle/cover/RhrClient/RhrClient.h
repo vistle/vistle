@@ -111,7 +111,7 @@ private:
    bool m_haveConnection;
    std::shared_ptr<RemoteConnection> m_remote;
 
-   int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_timestepToCommit;
+   int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_oldNumRemoteTimesteps, m_timestepToCommit;
 
    bool handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload);
    // work queue management for decoding tiles

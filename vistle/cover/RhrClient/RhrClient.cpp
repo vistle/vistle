@@ -1085,6 +1085,7 @@ RhrClient::RhrClient()
 , m_remoteTimestep(-1)
 , m_visibleTimestep(-1)
 , m_numRemoteTimesteps(-1)
+, m_oldNumRemoteTimesteps(0)
 , m_timestepToCommit(-1)
 {
    assert(plugin == NULL);
@@ -1377,11 +1378,14 @@ RhrClient::update()
 
        {
            std::lock_guard<std::mutex> locker(m_pluginMutex);
-           coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
-           if (m_numRemoteTimesteps > 0)
-               coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
-           else
-               coVRAnimationManager::instance()->removeTimestepProvider(this);
+           if (m_oldNumRemoteTimesteps != m_numRemoteTimesteps) {
+               m_oldNumRemoteTimesteps = m_numRemoteTimesteps;
+               coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+               if (m_numRemoteTimesteps > 0)
+                   coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
+               else
+                   coVRAnimationManager::instance()->removeTimestepProvider(this);
+           }
        }
 
        {
