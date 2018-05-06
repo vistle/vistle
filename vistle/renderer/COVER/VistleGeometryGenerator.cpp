@@ -40,34 +40,82 @@ using namespace vistle;
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
 template<class Geo>
-struct BinAdapter {
-    BinAdapter(typename Geo::const_ptr geo)
+struct PrimitiveAdapter {
+    PrimitiveAdapter(typename Geo::const_ptr geo)
     : m_geo(geo)
     , m_numPrim(geo->getNumElements())
+    , m_x(&geo->x()[0])
+    , m_y(&geo->y()[0])
+    , m_z(&geo->z()[0])
+    , m_cl(m_geo->getNumCorners()>0 ? &m_geo->cl()[0] : nullptr)
     {
     }
+
+    Index getNumCoords() const {
+        return m_geo->getNumCoords();
+    }
+    Index getNumVertices() const {
+        return m_geo->getNumCorners();
+    }
+    Index getNumTriangles() const;
 
     Index getNumPrimitives() const {
         return m_numPrim;
     }
 
-    Vector getCoord(Index prim) const;
+    Index getPrimitiveBegin(Index prim) const;
+
+    Vector getCoord(Index prim) const {
+        Index c = this->getPrimitiveBegin(prim);
+        if (m_cl)
+            c = m_cl[c];
+
+        return Vector(m_x[c], m_y[c], m_z[c]);
+    }
 
     typename Geo::const_ptr m_geo;
     Index m_numPrim = 0;
+    const Scalar *m_x = nullptr, *m_y = nullptr, *m_z = nullptr;
+    const Index *m_el = nullptr;
+    const Index *m_cl = nullptr;
 };
 
 template<>
-Vector BinAdapter<Triangles>::getCoord(Index prim) const {
+Index PrimitiveAdapter<Triangles>::getPrimitiveBegin(Index prim) const {
 
-    Index c = 3*prim;
-    if (m_geo->getNumCorners() > 0)
-        c = m_geo->cl()[c];
+    return 3*prim;
+}
 
-    return Vector(m_geo->x()[c], m_geo->y()[c], m_geo->z()[c]);
+template<>
+Index PrimitiveAdapter<Triangles>::getNumTriangles() const {
+    return m_numPrim;
+}
+
+template<>
+PrimitiveAdapter<Indexed>::PrimitiveAdapter(Indexed::const_ptr geo)
+: m_geo(geo)
+, m_numPrim(geo->getNumElements())
+, m_x(&geo->x()[0])
+, m_y(&geo->y()[0])
+, m_z(&geo->z()[0])
+, m_el(&geo->el()[0])
+, m_cl(m_geo->getNumCorners()>0 ? &m_geo->cl()[0] : nullptr)
+{
+}
+
+template<>
+Index PrimitiveAdapter<Indexed>::getNumTriangles() const {
+    return getNumVertices()-2*getNumPrimitives();
+}
+
+template<>
+Index PrimitiveAdapter<Indexed>::getPrimitiveBegin(Index prim) const {
+
+    return m_el[prim];
 }
 
 struct PrimitiveBin {
+    Index ntri = InvalidIndex; // number of triangles
     std::vector<Index> prim; // primitive indices
     std::vector<Index> vertexMap; // map from old to new vertex indices
     std::vector<Index> ncl;  // new connectivity list
@@ -79,7 +127,7 @@ struct PrimitiveBin {
 };
 
 template<class Geo>
-std::vector<PrimitiveBin> binPrimitivesRec(int level, const BinAdapter<Geo> &adp, const Vector &bmin, const Vector &bmax, const PrimitiveBin &bin)
+std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo> &adp, const Vector &bmin, const Vector &bmax, const PrimitiveBin &bin)
 {
     if (bin.prim.size() < NumPrimitives || level > 8)
     {
@@ -132,17 +180,10 @@ std::vector<PrimitiveBin> binPrimitivesRec(int level, const BinAdapter<Geo> &adp
 
 template<class Geo>
 std::vector<PrimitiveBin> binPrimitives(typename Geo::const_ptr geo) {
-    BinAdapter<Geo> adp(geo);
+    PrimitiveAdapter<Geo> adp(geo);
     auto bounds = geo->getBounds();
 
     PrimitiveBin bin;
-#if 0
-    if (adp.getNumPrimitives() < NumPrimitives)
-    {
-        std::vector<PrimitiveBin> result{bin};
-        return result;
-    }
-#endif
     bin.prim.reserve(adp.getNumPrimitives());
     for (Index i=0; i<adp.getNumPrimitives(); ++i)
         bin.prim.emplace_back(i);
@@ -183,12 +224,12 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
    }
 }
 
-template<class Array, class Mapped, bool normalize>
+template<class Geometry, class Array, class Mapped, bool normalize>
 struct DataAdapter;
 
-template<class Mapped, bool normalize>
-struct DataAdapter<osg::Vec3Array, Mapped, normalize> {
-    DataAdapter(vistle::Triangles::const_ptr tri, typename Mapped::const_ptr mapped)
+template<class Geometry, class Mapped, bool normalize>
+struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
+    DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
         : x(&mapped->x()[0])
         , y(&mapped->y()[0])
         , z(&mapped->z()[0])
@@ -204,9 +245,9 @@ struct DataAdapter<osg::Vec3Array, Mapped, normalize> {
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
-template<class Mapped, bool normalize>
-struct DataAdapter<osg::FloatArray, Mapped, normalize> {
-    DataAdapter(vistle::Triangles::const_ptr tri, typename Mapped::const_ptr mapped)
+template<class Geometry, class Mapped, bool normalize>
+struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
+    DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
         : x(&mapped->x()[0])
         , mapping(mapped->guessMapping(tri))
     {}
@@ -217,9 +258,9 @@ struct DataAdapter<osg::FloatArray, Mapped, normalize> {
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
-template<bool normalize>
-struct DataAdapter<osg::Vec3Array, osg::Vec3Array, normalize> {
-    DataAdapter(vistle::Triangles::const_ptr tri, osg::Vec3Array *mapped)
+template<class Geometry, bool normalize>
+struct DataAdapter<Geometry, osg::Vec3Array, osg::Vec3Array, normalize> {
+    DataAdapter(typename Geometry::const_ptr tri, osg::Vec3Array *mapped)
     : mapped(mapped)
     {}
     osg::Vec3 getValue(Index idx) {
@@ -230,82 +271,86 @@ struct DataAdapter<osg::Vec3Array, osg::Vec3Array, normalize> {
     }
     vistle::DataBase::Mapping mapping = vistle::DataBase::Vertex;
     osg::Vec3Array *mapped = nullptr;
-
 };
 
-template<class MappedPtr, class Array, bool normalize>
-Array *applyTriangle(vistle::Triangles::const_ptr tri, MappedPtr mapped, bool indexGeom, PrimitiveBin &bin) {
+template<class Geometry, class MappedPtr, class Array, bool normalize>
+Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, bool indexGeom, PrimitiveBin &bin) {
     if (!mapped)
         return nullptr;
 
     auto arr = new Array;
     arr->setBinding(osg::Array::BIND_PER_VERTEX);
-    DataAdapter<Array, typename std::remove_reference<decltype(*mapped)>::type, normalize> adap(tri, mapped);
-    if (adap.mapping == vistle::DataBase::Unspecified)
+    DataAdapter<Geometry, Array, typename std::remove_reference<decltype(*mapped)>::type, normalize> adap(tri, mapped);
+    if (adap.mapping != vistle::DataBase::Vertex && adap.mapping != vistle::DataBase::Element) {
+        std::cerr << "applyTriangle: mapping=" << adap.mapping << " not handled" << std::endl;
         return nullptr;
+    }
 
-    if (bin.prim.empty()) {
-        Index nv = tri->getNumCoords();
-        if (adap.mapping == vistle::DataBase::Vertex)
-        {
-            if (indexGeom || tri->getNumCorners()==0) {
-                arr->reserve(nv);
-                for (Index v = 0; v < nv; ++v) {
-                    arr->push_back(adap.getValue(v));
-                }
-            } else {
-                nv = tri->getNumCorners();
-                arr->reserve(nv);
-                const auto cl = &tri->cl()[0];
-                for (Index i = 0; i < nv; ++i) {
-                    Index v = cl[i];
-                    arr->push_back(adap.getValue(v));
-                }
-            }
-        } else if (adap.mapping == vistle::DataBase::Element) {
-            arr->reserve(nv);
-            for (Index face = 0; face < nv/3; ++face) {
-                auto val = adap.getValue(face);
-                arr->push_back(val);
-                arr->push_back(val);
-                arr->push_back(val);
-            }
+    PrimitiveAdapter<Geometry> geo(tri);
+
+    const Index *cl = nullptr;
+    if (tri->getNumCorners() > 0)
+        cl = &tri->cl()[0];
+    bool buildConn = bin.ntri == InvalidIndex;
+    if (buildConn) {
+        bin.ntri = 0;
+        bin.vertexMap.resize(tri->getNumCoords(), InvalidIndex);
+    }
+    Index vcount = 0;
+    for (Index prim: bin.prim) {
+        Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim+1);
+        if (end - begin < 3) {
+            std::cerr << "applyTriangle: primitive has only " << end-begin << " vertices" << std::endl;
+            continue;
         }
-    } else {
-        const auto cl = &tri->cl()[0];
-        bool buildConn = bin.ncl.empty();
-        Index vcount = 0;
-        for (Index prim: bin.prim) {
-            if (adap.mapping == vistle::DataBase::Vertex) {
-                Index begin = prim*3, end=begin+3;
-                if (indexGeom) {
-                    for (Index i = begin; i < end; ++i) {
-                        Index v = cl[i];
+        if (adap.mapping == vistle::DataBase::Vertex) {
+            if (indexGeom) {
+                for (Index i = begin; i < end-2; ++i) {
+                    if (buildConn)
+                        ++bin.ntri;
+                    for (Index k=0; k<3; ++k) {
+                        Index v = k==0 ? cl[begin] : cl[i+k];
                         Index vm = bin.vertexMap[v];
                         if (vm == InvalidIndex) {
+                            assert(buildConn);
                             vm = vcount;
                             bin.vertexMap[v] = vm;
                         }
-                        if (buildConn)
-                            bin.ncl.push_back(vm);
                         if (vm == vcount) {
                             ++vcount;
 
                             arr->push_back(adap.getValue(v));
                         }
-                    }
-                } else if (tri->getNumCorners() == 0) {
-                    for (Index v = begin; v < end; ++v) {
-                        arr->push_back(adap.getValue(v));
-                    }
-                } else {
-                    for (Index i = begin; i < end; ++i) {
-                        Index v = cl[i];
-                        arr->push_back(adap.getValue(v));
+                        if (buildConn) {
+                            bin.ncl.push_back(vm);
+                        }
                     }
                 }
-            } else if (adap.mapping == vistle::DataBase::Element) {
-                auto val = adap.getValue(prim);
+            } else if (cl) {
+                Index vb = cl[begin];
+                for (Index i = begin; i < end-2; ++i) {
+                    if (buildConn)
+                        ++bin.ntri;
+                    Index v1 = cl[i+1];
+                    Index v2 = cl[i+2];
+                    arr->push_back(adap.getValue(vb));
+                    arr->push_back(adap.getValue(v1));
+                    arr->push_back(adap.getValue(v2));
+                }
+            } else {
+                for (Index v = begin; v < end-2; ++v) {
+                    if (buildConn)
+                        ++bin.ntri;
+                    arr->push_back(adap.getValue(begin));
+                    arr->push_back(adap.getValue(v+1));
+                    arr->push_back(adap.getValue(v+2));
+                }
+            }
+        } else if (adap.mapping == vistle::DataBase::Element) {
+            auto val = adap.getValue(prim);
+            for (Index i=0; i<end-begin-2; ++i) {
+                if (buildConn)
+                    ++bin.ntri;
                 arr->push_back(val);
                 arr->push_back(val);
                 arr->push_back(val);
@@ -315,6 +360,116 @@ Array *applyTriangle(vistle::Triangles::const_ptr tri, MappedPtr mapped, bool in
 
     return arr;
 }
+
+
+template<class Geometry>
+osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, bool indexGeom) {
+
+    PrimitiveAdapter<Geometry> geo(geometry);
+
+    const Index numCorners = geometry->getNumCorners();
+    const Index numCoords = geometry->getNumCoords();
+    const Index numPrim = geometry->getNumElements();
+
+    const Index *cl = &geometry->cl()[0];
+    const vistle::Scalar *x = &geometry->x()[0];
+    const vistle::Scalar *y = &geometry->y()[0];
+    const vistle::Scalar *z = &geometry->z()[0];
+
+    osg::Vec3Array *normals = new osg::Vec3Array;
+    if (numCorners > 0) {
+        normals->resize(indexGeom ? numCoords : numCorners);
+        for (Index prim=0; prim<numPrim; ++prim) {
+            const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim+1);
+            Index v0 = cl[begin+0], v1 = cl[begin+1], v2 = cl[begin+2];
+            osg::Vec3 u(x[v0], y[v0], z[v0]);
+            osg::Vec3 v(x[v1], y[v1], z[v1]);
+            osg::Vec3 w(x[v2], y[v2], z[v2]);
+            osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+            normal.normalize();
+
+            if (indexGeom) {
+                for (Index c = begin; c < end; ++c) {
+                    const Index v = cl[c];
+                    (*normals)[v] += normal;
+                }
+            } else {
+                for (Index c = begin; c < end; ++c) {
+                    const Index v = cl[c];
+                    (*normals)[v] = normal;
+                }
+            }
+        }
+        if (indexGeom) {
+            for (Index v=0; v<numCoords; ++v)
+                (*normals)[v].normalize();
+        }
+    } else {
+        for (Index prim=0; prim<numPrim; ++prim) {
+            const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim+1);
+            const Index c = begin;
+            osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
+            osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
+            osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
+            osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+            normal.normalize();
+
+            for (Index c = begin; c < end; ++c)
+                normals->push_back(normal);
+        }
+    }
+
+    return normals;
+}
+
+osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, bool indexGeom) {
+
+    Index numTri = bin.prim.size();
+    Index numCorners = bin.ncl.size();
+    if (indexGeom) {
+        const Index *cl = bin.ncl.data();
+        auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+        corners->reserve(numTri*3);
+        for (Index corner = 0; corner < numCorners; corner ++)
+            corners->push_back(cl[corner]);
+        assert(corners->size() == numTri*3);
+        return corners;
+    } else {
+        return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri*3);
+    }
+
+    return nullptr;
+}
+
+osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool indexGeom) {
+
+    Index numElements = bin.prim.size();
+    Index numCorners = bin.ncl.size();
+    Index numTri = numCorners-2*numElements;
+    if (indexGeom) {
+        const Index *cl = bin.ncl.data();
+        auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+        corners->reserve(numTri*3);
+        Index begin = 0;
+        Index idx = 0;
+        for (auto elem: bin.prim) {
+            const Index num = el[elem+1]-el[elem];
+            const Index end = begin+num;
+            for (Index i=begin; i<end-2; ++i) {
+                for (int k=0; k<3; ++k)
+                    corners->push_back(cl[idx++]);
+            }
+            begin = end;
+        }
+        return corners;
+    } else {
+        return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri*3);
+    }
+
+    return nullptr;
+}
+
+
 
 osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
@@ -502,54 +657,11 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          if (numCorners == 0)
              indexGeom = false;
 
-         debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]";
-
-         const Index *cl = &triangles->cl()[0];
-         const vistle::Scalar *x = &triangles->x()[0];
-         const vistle::Scalar *y = &triangles->y()[0];
-         const vistle::Scalar *z = &triangles->z()[0];
+         debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices << ", indexed=" << (indexGeom?"t":"f") << " ]";
 
          osg::Vec3Array *gnormals = nullptr;
-         auto normals = vistle::Normals::as(m_normal);
          if (!normals)
-         {
-             gnormals = new osg::Vec3Array;
-             if (numCorners > 0) {
-                 gnormals->resize(indexGeom ? numVertices : numCorners);
-                 for (Index c = 0; c < numCorners; c += 3) {
-                     Index v0 = cl[c+0], v1 = cl[c+1], v2 = cl[c+2];
-                     osg::Vec3 u(x[v0], y[v0], z[v0]);
-                     osg::Vec3 v(x[v1], y[v1], z[v1]);
-                     osg::Vec3 w(x[v2], y[v2], z[v2]);
-                     osg::Vec3 normal = (w - u) ^ (v - u) * -1;
-                     normal.normalize();
-                     if (indexGeom) {
-                         (*gnormals)[v0] += normal;
-                         (*gnormals)[v1] += normal;
-                         (*gnormals)[v2] += normal;
-                     } else {
-                         (*gnormals)[c+0] = normal;
-                         (*gnormals)[c+1] = normal;
-                         (*gnormals)[c+2] = normal;
-                     }
-                 }
-                 if (indexGeom) {
-                     for (Index v=0; v<numVertices; ++v)
-                         (*gnormals)[v].normalize();
-                 }
-             } else {
-                 for (Index c = 0; c < numVertices; c += 3) {
-                     osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
-                     osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
-                     osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
-                     osg::Vec3 normal = (w - u) ^ (v - u) * -1;
-                     normal.normalize();
-                     gnormals->push_back(normal);
-                     gnormals->push_back(normal);
-                     gnormals->push_back(normal);
-                 }
-             }
-         }
+             gnormals = computeNormals<vistle::Triangles>(triangles, indexGeom);
 
          auto bins = binPrimitives<vistle::Triangles>(triangles);
          debug << " #bins: " << bins.size();
@@ -558,46 +670,67 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
              auto geom = new osg::Geometry();
              draw.push_back(geom);
 
-             bin.vertexMap.resize(triangles->getNumCorners(), InvalidIndex);
-             osg::ref_ptr<osg::Vec3Array> vertices = applyTriangle<Triangles::const_ptr, osg::Vec3Array, false>(triangles, triangles, indexGeom, bin);
+             osg::ref_ptr<osg::Vec3Array> vertices = applyTriangle<Triangles, Triangles::const_ptr, osg::Vec3Array, false>(triangles, triangles, indexGeom, bin);
              geom->setVertexArray(vertices);
 
-             if (bin.prim.empty()) {
-                 if (indexGeom) {
-                     osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-                     for (Index corner = 0; corner < numCorners; corner ++)
-                         corners->push_back(cl[corner]);
-                     geom->addPrimitiveSet(corners.get());
-                 } else if (numCorners > 0){
-                     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, numCorners));
-                 } else {
-                     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, numVertices));
-                 }
-             } else {
-                 Index numCorners = bin.ncl.size();
-                 if (indexGeom) {
-                     cl = bin.ncl.data();
-                     osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-                     for (Index corner = 0; corner < numCorners; corner ++)
-                         corners->push_back(cl[corner]);
-                     geom->addPrimitiveSet(corners.get());
-                 } else if (numCorners > 0){
-                     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, numCorners));
-                 } else {
-                     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.prim.size()*3));
-                 }
-             }
+             auto ps = buildTriangles(bin, indexGeom);
+             geom->addPrimitiveSet(ps);
 
-             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Normals::const_ptr, osg::Vec3Array, true>(triangles, normals, indexGeom, bin);
+             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Triangles, Normals::const_ptr, osg::Vec3Array, true>(triangles, normals, indexGeom, bin);
              if (!norm)
-                 norm = applyTriangle<osg::Vec3Array*, osg::Vec3Array, false>(triangles, gnormals, indexGeom, bin);
+                 norm = applyTriangle<Triangles, osg::Vec3Array*, osg::Vec3Array, false>(triangles, gnormals, indexGeom, bin);
              geom->setNormalArray(norm.get());
 
-             auto tc = applyTriangle<vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex, indexGeom, bin);
-             if (tc) {
-                 tc->setBinding(osg::Array::BIND_PER_VERTEX);
+             auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex, indexGeom, bin);
+             if (tc)
                  geom->setTexCoordArray(0, tc);
-             }
+
+             bin.clear();
+         }
+
+         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+         break;
+      }
+
+      case vistle::Object::POLYGONS: {
+
+         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
+
+         const Index numElements = polygons->getNumElements();
+         const Index numCorners = polygons->getNumCorners();
+         const Index numVertices = polygons->getNumVertices();
+         if (numCorners == 0)
+             indexGeom = false;
+
+         debug << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << ", indexed=" << (indexGeom?"t":"f") << " ]";
+
+         const Index *el = &polygons->el()[0];
+
+         osg::Vec3Array *gnormals = nullptr;
+         if (!normals)
+             gnormals = computeNormals<vistle::Indexed>(polygons, indexGeom);
+
+         auto bins = binPrimitives<vistle::Indexed>(polygons);
+         debug << " #bins: " << bins.size();
+
+         for (auto bin: bins) {
+             auto geom = new osg::Geometry();
+             draw.push_back(geom);
+
+             osg::ref_ptr<osg::Vec3Array> vertices = applyTriangle<Indexed, Polygons::const_ptr, osg::Vec3Array, false>(polygons, polygons, indexGeom, bin);
+             geom->setVertexArray(vertices);
+
+             auto ps = buildTriangles(bin, el, indexGeom);
+             geom->addPrimitiveSet(ps);
+
+             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Indexed, Normals::const_ptr, osg::Vec3Array, true>(polygons, normals, indexGeom, bin);
+             if (!norm)
+                 norm = applyTriangle<Indexed, osg::Vec3Array*, osg::Vec3Array, false>(polygons, gnormals, indexGeom, bin);
+             geom->setNormalArray(norm.get());
+
+             auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex, indexGeom, bin);
+             if (tc)
+                 geom->setTexCoordArray(0, tc);
 
              bin.clear();
          }
@@ -658,100 +791,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          break;
       }
 
-      case vistle::Object::POLYGONS: {
-         indexGeom = false;
-
-         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
-
-         vistle::Normals::const_ptr vec;
-         if (m_normal)
-            vec = vistle::Normals::as(m_normal);
-
-         const Index numElements = polygons->getNumElements();
-         const Index numCorners = polygons->getNumCorners();
-         const Index numVertices = polygons->getNumVertices();
-         const Index numNormals = vec ? vec->getSize() : 0;
-
-         debug << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]";
-
-         const Index *el = &polygons->el()[0];
-         const Index *cl = &polygons->cl()[0];
-         const vistle::Scalar *x = &polygons->x()[0];
-         const vistle::Scalar *y = &polygons->y()[0];
-         const vistle::Scalar *z = &polygons->z()[0];
-         const vistle::Scalar *nx = NULL;
-         const vistle::Scalar *ny = NULL;
-         const vistle::Scalar *nz = NULL;
-         if (numNormals) {
-            nx = &vec->x()[0];
-            ny = &vec->y()[0];
-            nz = &vec->z()[0];
-         }
-
-         auto geom = new osg::Geometry();
-         draw.push_back(geom);
-         osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
-
-         osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-         osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
-
-         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-
-         std::map<Index, Index> vertexMap;
-         std::vector<std::vector<osg::Vec3> > vertexNormals;
-         vertexNormals.resize(numVertices);
-
-         for (Index index = 0; index < numElements; index ++) {
-
-            const Index num = el[index + 1] - el[index];
-            primitives->push_back(num);
-
-            osg::Vec3 vert[3];
-            for (Index n = 0; n < num; n ++) {
-               Index v = cl[el[index] + n];
-
-               vertexMap[vertices->size()] = v;
-               osg::Vec3 vi(x[v], y[v], z[v]);
-               vertices->push_back(vi);
-
-
-               if (numNormals) {
-                  osg::Vec3 no(nx[v], ny[v], nz[v]);
-                  no.normalize();
-                  norm->push_back(no);
-               } else if (n < 3)
-                  vert[n] = vi;
-            }
-
-            if (!numNormals) {
-               osg::Vec3 no =
-                  (vert[2] - vert[0]) ^ (vert[1] - vert[0]) * -1;
-               no.normalize();
-               for (Index n = 0; n < num; n ++)
-                  vertexNormals[cl[el[index] + n]].push_back(no);
-            }
-         }
-
-         // convert per face normals to per vertex normals
-         for (Index vertex = 0; vertex < vertices->size(); vertex ++) {
-            osg::Vec3 n;
-            std::vector<osg::Vec3>::iterator i;
-            for (i = vertexNormals[vertexMap[vertex]].begin();
-                  i != vertexNormals[vertexMap[vertex]].end(); i++)
-               n += *i;
-            n.normalize();
-            norm->push_back(n);
-         }
-
-         geom->setVertexArray(vertices.get());
-         geom->addPrimitiveSet(primitives.get());
-
-         norm->setBinding(osg::Array::BIND_PER_VERTEX);
-         geom->setNormalArray(norm.get());
-
-         break;
-      }
-
       default:
          assert(isSupported(m_geo->getType()) == false);
          break;
@@ -800,10 +839,14 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    }
 #endif
 
+   int count = 0;
    for (auto d: draw) {
        if (!d.get())
            continue;
-       d->setName(nodename+".draw");
+       std::string name = nodename+".draw";
+       if (draw.size()>1)
+           name += std::to_string(count);
+       d->setName(name);
        //d->setStateSet(state.get());
 
 #ifdef COVER_PLUGIN
@@ -817,11 +860,13 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
        geode->setStateSet(state.get());
        geode->addDrawable(d);
+       ++count;
    }
 
    vistle::Coords::const_ptr coords = vistle::Coords::as(m_geo);
    vistle::Indexed::const_ptr indexed = vistle::Indexed::as(m_geo);
    vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
+   vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
    vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
 #ifdef COVER_PLUGIN
    if (spheres && sphere) {
@@ -874,7 +919,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                        osg::Image::NO_DELETE);
                osgTex->setImage(image);
                osg::ref_ptr<osg::FloatArray> tc;
-               if (!triangles) {
+               if (!triangles && !polygons) {
                    tc = new osg::FloatArray;
                    if (mapping == vistle::DataBase::Vertex) {
                        const Index *cl = nullptr;
@@ -941,7 +986,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
        }
    }
 
-   //std::cerr << debug.str() << std::endl;
+   std::cerr << debug.str() << std::endl;
 
    return transform;
 }
