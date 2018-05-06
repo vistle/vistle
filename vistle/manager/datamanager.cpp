@@ -41,7 +41,6 @@ DataManager::DataManager(mpi::communicator &comm)
 , m_rank(comm.rank())
 , m_size(comm.size())
 , m_dataSocket(m_ioService)
-, m_sendThread([this](){ sendLoop(); })
 , m_recvThread([this](){ recvLoop(); })
 {
     if (m_size > 1)
@@ -55,6 +54,8 @@ DataManager::~DataManager() {
 
     if (m_size > 1)
         m_req.cancel();
+
+    m_recvThread.join();
 }
 
 bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
@@ -401,11 +402,6 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
    }
 
    return true;
-}
-
-void DataManager::sendLoop()
-{
-
 }
 
 void DataManager::recvLoop()

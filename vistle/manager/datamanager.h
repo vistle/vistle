@@ -48,7 +48,6 @@ private:
     std::deque<Msg> m_recvQueue;
     bool m_quit = false;
 
-    void sendLoop();
     void recvLoop();
 
     boost::mpi::communicator m_comm;
@@ -59,7 +58,7 @@ private:
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_dataSocket;
 
-    std::thread m_recvThread, m_sendThread;
+    std::thread m_recvThread;
 
     struct AddObjectLess {
        bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {

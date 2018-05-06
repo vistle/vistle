@@ -409,6 +409,9 @@ bool Communicator::handleMessage(const message::Buffer &message) {
 
 Communicator::~Communicator() {
 
+   delete m_dataManager;
+   m_dataManager = nullptr;
+
    CERR << "shut down: deleting clusterManager" << std::endl;
    delete m_clusterManager;
    m_clusterManager = NULL;
