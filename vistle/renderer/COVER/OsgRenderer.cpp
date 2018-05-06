@@ -337,13 +337,13 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       if (pro->timestep == -1) {
          cr.constant(variant)->removeChild(node);
       } else {
-         std::cerr << "variant '" << variant << "' for creator " << cr.name << ":" << cr.id << " has " << cr.animated(variant)->getNumChildren() << " vs. " << pro->timestep << " being removed" << std::endl;
+         //std::cerr << "variant '" << variant << "' for creator " << cr.name << ":" << cr.id << " has " << cr.animated(variant)->getNumChildren() << " vs. " << pro->timestep << " being removed" << std::endl;
          if (ssize_t(cr.animated(variant)->getNumChildren()) > pro->timestep) {
             osg::Group *gr = cr.animated(variant)->getChild(pro->timestep)->asGroup();
             if (gr) {
                gr->removeChild(node);
                if (gr->getNumChildren() == 0) {
-                  std::cerr << "empty timestep " << pro->timestep << " of variant '" << variant << "' for creator " << cr.name << ":" << cr.id << std::endl;
+                  //std::cerr << "empty timestep " << pro->timestep << " of variant '" << variant << "' for creator " << cr.name << ":" << cr.id << std::endl;
                   bool removed = false;
                   for (size_t i=cr.animated(variant)->getNumChildren(); i>0; --i) {
                      size_t idx = i-1;
@@ -356,7 +356,7 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
                      removed = true;
                   }
                   if (removed) {
-                      std::cerr << "empty timestep: removed some timesteps" << std::endl;
+                     //std::cerr << "empty timestep: removed some timesteps" << std::endl;
                      if (cr.animated(variant)->getNumChildren() > 0) {
                         coVRAnimationManager::instance()->addSequence(cr.animated(variant));
                      } else {
@@ -364,7 +364,7 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
                      }
                   }
                } else {
-                   std::cerr << "still " << gr->getNumChildren() << " other children left in timestep " << pro->timestep << " of variant '" << variant << "' for creator " << cr.name << ":" << cr.id << std::endl;
+                   //std::cerr << "still " << gr->getNumChildren() << " other children left in timestep " << pro->timestep << " of variant '" << variant << "' for creator " << cr.name << ":" << cr.id << std::endl;
                }
             }
          }
