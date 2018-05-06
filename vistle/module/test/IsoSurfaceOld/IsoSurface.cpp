@@ -16,8 +16,6 @@
 #define ONLY_HEXAHEDRON
 #include "../../general/IsoSurface/tables.h"
 
-#include <util/openmp.h>
-
 MODULE_MAIN(IsoSurfaceOld)
 
 using namespace vistle;
