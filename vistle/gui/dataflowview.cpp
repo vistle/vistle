@@ -26,6 +26,12 @@ DataFlowView::DataFlowView(QWidget *parent)
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
 }
 
+DataFlowView::~DataFlowView()
+{
+    if (scene())
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
+}
+
 DataFlowView *DataFlowView::the() {
     if (!s_instance)
         s_instance = new DataFlowView();
@@ -131,15 +137,19 @@ void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
 QList<Module *> DataFlowView::selectedModules()
 {
    QList<Module *> list;
-   for (auto item: scene()->selectedItems()) {
-       if (auto module = dynamic_cast<Module *>(item))
-           list.append(module);
+   if (scene()) {
+       for (auto item: scene()->selectedItems()) {
+           if (auto module = dynamic_cast<Module *>(item))
+               list.append(module);
+       }
    }
    return list;
 }
 
 void DataFlowView::setScene(QGraphicsScene *s)
 {
+    if (scene())
+        disconnect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));
     QGraphicsView::setScene(s);
     if (scene())
         connect(scene(), SIGNAL(selectionChanged()), this, SLOT(enableActions()));

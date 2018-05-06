@@ -123,6 +123,8 @@ UiController::~UiController()
 
 void UiController::finish() {
 
+   m_mainWindow->dataFlowView()->setScene(nullptr);
+
    delete m_scene;
    m_scene = nullptr;
 

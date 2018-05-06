@@ -16,6 +16,7 @@ class DataFlowView : public QGraphicsView
 
 public:
    explicit DataFlowView(QWidget *parent = 0);
+   ~DataFlowView();
    static DataFlowView *the();
 
    DataFlowNetwork *scene() const;
