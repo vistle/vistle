@@ -1587,7 +1587,7 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
         if (m_remote && m_remote->requestBounds()) {
 
             double start = cover->currentTime();
-            while(m_remote->isRunning()) {
+            while(m_remote->isRunning() && m_remote->isConnected()) {
                 double elapsed = cover->currentTime() - start;
                 if (elapsed > 2.) {
                     start = cover->currentTime();
