@@ -75,6 +75,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     createOutputPort("step");
     createOutputPort("time");
     createOutputPort("distance");
+    createOutputPort("stop_reason");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";
@@ -524,6 +525,7 @@ bool Tracer::reduce(int timestep) {
        global.stepField.emplace_back(new Vec<Index>(Index(0)));
        global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
        global.distField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.stopReasonField.emplace_back(new Vec<Index>(Index(0)));
    }
 
    for (auto &p: allParticles) {
@@ -574,6 +576,10 @@ bool Tracer::reduce(int timestep) {
        global.scalField[i]->setGrid(geo);
        global.scalField[i]->setMeta(meta);
        addObject("data_out1", global.scalField[i]);
+
+       global.stopReasonField[i]->setGrid(geo);
+       global.stopReasonField[i]->setMeta(meta);
+       addObject("stop_reason", global.stopReasonField[i]);
 
        ++t;
    }

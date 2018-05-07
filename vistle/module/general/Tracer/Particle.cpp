@@ -369,6 +369,7 @@ void Particle::addToOutput() {
                    m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
                    m_global.timeField[timestep]->x().push_back(nextTime);
                    m_global.idField[timestep]->x().push_back(m_startId);
+                   m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
 
                    nextTime += m_global.dt_step;
                    ++timestep;
@@ -403,6 +404,7 @@ void Particle::addToOutput() {
        auto &scal = m_global.scalField[t]->x();
        auto &step = m_global.stepField[t]->x(), &id = m_global.idField[t]->x();
        auto &time = m_global.timeField[t]->x(), &dist = m_global.distField[t]->x();
+       auto &stopReason = m_global.stopReasonField[t]->x();
 
        vec_x.reserve(nsz);
        vec_y.reserve(nsz);
@@ -412,8 +414,9 @@ void Particle::addToOutput() {
        step.reserve(nsz);
        time.reserve(nsz);
        dist.reserve(nsz);
+       stopReason.reserve(nsz);
 
-       auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist](const Segment &seg, Index i){
+       auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist, &stopReason](const Segment &seg, Index i){
            const auto &vec = seg.m_xhist[i];
            x.push_back(vec[0]);
            y.push_back(vec[1]);
@@ -429,6 +432,7 @@ void Particle::addToOutput() {
            time.push_back(seg.m_times[i]);
            dist.push_back(seg.m_dists[i]);
            id.push_back(m_startId);
+           stopReason.push_back(m_stopReason);
        };
 
        for (auto &ent: m_segments) {

@@ -47,7 +47,7 @@ private:
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (othes modes)
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> vecField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> scalField;
-    std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField;
+    std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField, stopReasonField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField;
     std::mutex mutex;
 };
