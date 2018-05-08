@@ -456,7 +456,6 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
    if(elem == InvalidIndex)
        return false;
 
-   return insideConvex(elem, point);
 #if 0
     if (isConvex(elem))
         return insideConvex(elem, point);
@@ -582,10 +581,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
       if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
          indices = cellVertices(elem);
          const Index n = indices.size();
-         weights.resize(n);
          Scalar w = Scalar(1)/n;
-         for (Index i=0; i<n; ++i)
-            weights[i] = w;
+         weights.resize(n, w);
       } else {
          const Scalar w = Scalar(1)/nvert;
          for (Index i=0; i<nvert; ++i) {
@@ -857,14 +854,28 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
       } else if(mode == Nearest) {
          Scalar mindist = std::numeric_limits<Scalar>::max();
 
-         for (Index i=0; i<nvert; ++i) {
-            const Index k = cl[i];
-            const Vector3 vert(x[0][k], x[1][k], x[2][k]);
-            const Scalar dist = (point-vert).squaredNorm();
-            if (dist < mindist) {
-               mindist = dist;
-               indices[0] = k;
-            }
+         if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
+             indices = cellVertices(elem);
+             const Index n = indices.size();
+             for (Index i=0; i<n; ++i) {
+                 const Index k = indices[i];
+                 const Vector3 vert(x[0][k], x[1][k], x[2][k]);
+                 const Scalar dist = (point-vert).squaredNorm();
+                 if (dist < mindist) {
+                     mindist = dist;
+                     indices[0] = k;
+                 }
+             }
+         } else {
+             for (Index i=0; i<nvert; ++i) {
+                 const Index k = cl[i];
+                 const Vector3 vert(x[0][k], x[1][k], x[2][k]);
+                 const Scalar dist = (point-vert).squaredNorm();
+                 if (dist < mindist) {
+                     mindist = dist;
+                     indices[0] = k;
+                 }
+             }
          }
       }
    }
