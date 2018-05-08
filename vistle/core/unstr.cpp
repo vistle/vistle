@@ -333,6 +333,28 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
 #endif
 }
 
+Vector UnstructuredGrid::cellCenter(Index elem) const {
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+    auto verts = cellVertices(elem);
+    Vector center(0, 0, 0);
+    for (auto v: verts) {
+        Vector p(x[v], y[v], z[v]);
+        center += p;
+    }
+    center *= 1./verts.size();
+#ifndef NDEBUG
+    const auto bounds = cellBounds(elem);
+    auto &min = bounds.first, &max = bounds.second;
+    for (int i=0; i<3; ++i) {
+        assert(center[i] >= min[i]);
+        assert(center[i] <= max[i]);
+    }
+#endif
+    return center;
+}
+
 std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
 
     return getNeighborFinder().getNeighborElements(elem);
@@ -552,6 +574,8 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 }
 
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
+
+   assert(inside(elem, cellCenter(elem)));
 
 #ifdef INTERPOL_DEBUG
    vassert(inside(elem, point));

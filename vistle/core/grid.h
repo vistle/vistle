@@ -24,6 +24,7 @@ class V_COREEXPORT GridInterface: virtual public ElementInterface {
    virtual Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const = 0;
    virtual bool inside(Index elem, const Vector &point) const = 0;
    virtual std::pair<Vector, Vector> cellBounds(Index elem) const = 0;
+   virtual Vector cellCenter(Index elem) const = 0; //< a point inside the convex hull of the cell
    virtual Scalar cellDiameter(Index elem) const = 0; //< approximate diameter of cell
    virtual Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const = 0;
    virtual std::vector<Index> getNeighborElements(Index elem) const = 0; //! return at least those elements sharing faces with elem, but might also contain those just sharing vertices
