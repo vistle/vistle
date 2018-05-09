@@ -61,7 +61,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool insideConvex(Index elem, const Vector &point) const;
    bool inside(Index elem, const Vector &point) const override;
-   bool checkConvexity();
+   Index checkConvexity(); //< return number of non-convex cells
    Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
 
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;

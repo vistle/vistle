@@ -160,7 +160,7 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const {
    return tl()[elem] & GHOST_BIT;
 }
 
-bool UnstructuredGrid::checkConvexity() {
+Index UnstructuredGrid::checkConvexity() {
 
     const Index nelem = getNumElements();
     auto tl = this->tl().data();
@@ -170,6 +170,7 @@ bool UnstructuredGrid::checkConvexity() {
     const auto y = this->y().data();
     const auto z = this->z().data();
 
+    Index nonConvexCount = 0;
     bool convex = true;
     for (Index elem=0; elem<nelem; ++elem) {
         switch (tl[elem]&TYPE_MASK) {
@@ -180,7 +181,7 @@ bool UnstructuredGrid::checkConvexity() {
             tl[elem] |= CONVEX_BIT;
             break;
         case QUAD:
-            convex = false;
+            ++nonConvexCount;
             break;
         case TETRAHEDRON:
             tl[elem] |= CONVEX_BIT;
@@ -201,7 +202,7 @@ bool UnstructuredGrid::checkConvexity() {
             if (conv) {
                 tl[elem] |= CONVEX_BIT;
             } else {
-                convex = false;
+                ++nonConvexCount;
             }
             break;
         }
@@ -218,18 +219,18 @@ bool UnstructuredGrid::checkConvexity() {
             if (conv) {
                 tl[elem] |= CONVEX_BIT;
             } else {
-                convex = false;
+                ++nonConvexCount;
             }
             break;
         }
         default:
             std::cerr << "invalid element type " << (tl[elem]&TYPE_MASK) << std::endl;
-            convex = false;
+            ++nonConvexCount;
             break;
         }
     }
 
-    return convex;
+    return nonConvexCount;
 }
 
 std::pair<Vector, Vector> UnstructuredGrid::cellBounds(Index elem) const {
