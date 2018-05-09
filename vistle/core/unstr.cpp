@@ -162,7 +162,7 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
 Index UnstructuredGrid::checkConvexity() {
 
-    const Scalar Tolerance = 1e-5;
+    const Scalar Tolerance = 1e-3;
     const Index nelem = getNumElements();
     auto tl = this->tl().data();
     const auto cl = this->cl().data();
@@ -200,7 +200,7 @@ Index UnstructuredGrid::checkConvexity() {
                 auto center = nc.second;
                 for (Index idx=0; idx<nvert; ++idx) {
                     bool check = true;
-                    for (int i=0; i<FaceSizes[type][f]; ++i) {
+                    for (Index i=0; i<FaceSizes[type][f]; ++i) {
                         if (idx == FaceVertices[type][f][i]) {
                             check = false;
                             break;
@@ -406,8 +406,9 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
 
 bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
-   const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
+   //const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
    //const Scalar Tolerance = 1e-5;
+   const Scalar Tolerance = 0;
 
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
@@ -524,7 +525,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
     if (isConvex(elem))
         return insideConvex(elem, point);
 
-    std::array<Vector,3> raydirs{Vector(1,1,1).normalized(), Vector(1,-2,3).normalized(), Vector(1,1,-3).normalized()};
+    std::array<Vector,3> raydirs{Vector(1,1,1).normalized(), Vector(1,-1,0).normalized(), Vector(-1,1,-3).normalized()};
     const auto type = tl()[elem] & TYPE_MASK;
     switch (type) {
     case TETRAHEDRON:
@@ -575,7 +576,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 }
             }
             insideCount += nisect%2;
-            if (nisect > 1) {
+            if (nisect > 2) {
                 std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): " << nisect << " intersections" << std::endl;
             }
         }
@@ -624,7 +625,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
             insideCount += nisect%2;
         }
-        return insideCount > raydirs.size()/2;
+        return insideCount >= raydirs.size()/2;
         break;
     }
     default:
