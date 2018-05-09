@@ -157,21 +157,18 @@ std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const 
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     const auto &face = faces[f];
+    Vector normal(0,0,0);
+    Vector center(0,0,0);
     int N = sizes[f];
-    Index v0 = cl[face[0]];
-    Index v1 = cl[face[1]];
-    Index v2 = cl[face[2]];
-    Vector c0(x[v0], y[v0], z[v0]);
-    Vector c1(x[v1], y[v1], z[v1]);
-    Vector c2(x[v2], y[v2], z[v2]);
-    Vector center = c0+c1+c2;
-    Vector normal = (c1-c0).cross(c2-c1);
-    if (N > 3) {
-        assert(N == 4);
-        Index v3 = cl[face[3]];
-        Vector c3(x[v3], y[v3], z[v3]);
-        normal += (c3-c2).cross(c0-c3);
-        center += c3;
+    assert(N==3 || N==4);
+    Index v = cl[face[N-1]];
+    Vector c0(x[v], y[v], z[v]);
+    for (int i=0; i<N; ++i) {
+        Index v = cl[face[i]];
+        Vector c1(x[v], y[v], z[v]);
+        center += c1;
+        normal += c0.cross(c1);
+        c0 = c1;
     }
     return std::make_pair(normal.normalized(), center/N);
 }
@@ -183,29 +180,14 @@ std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, co
     if (nVert < 3)
         return std::make_pair(normal, center);
 
-    const Index last = nVert-1;
-    for (Index i=0; i<nVert-2; ++i) {
-        Index v0, v1, v2;
-        const Index i2 = i/2;
-        if (i%2) {
-            v0 = verts[last-i2];
-            v1 = verts[i2+1];
-            v2 = verts[last-i2-1];
-        } else {
-            v0 = verts[i2];
-            v1 = verts[i2+1];
-            v2 = verts[last-i2];
-        }
-        Vector c0(x[v0], y[v0], z[v0]);
-        Vector c1(x[v1], y[v1], z[v1]);
-        Vector c2(x[v2], y[v2], z[v2]);
-        normal += (c1-c0).cross(c2-c1);
-    }
-
+    Index v = verts[nVert-1];
+    Vector c0(x[v], y[v], z[v]);
     for (Index i=0; i<nVert; ++i) {
         Index v = verts[i];
-        Vector c(x[v], y[v], z[v]);
-        center += c;
+        Vector c1(x[v], y[v], z[v]);
+        center += c1;
+        normal += c0.cross(c1);
+        c0 = c1;
     }
 
     return std::make_pair(normal.normalized(), center/nVert);
