@@ -162,6 +162,7 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
 Index UnstructuredGrid::checkConvexity() {
 
+    const Scalar Tolerance = 1e-5;
     const Index nelem = getNumElements();
     auto tl = this->tl().data();
     const auto cl = this->cl().data();
@@ -171,9 +172,9 @@ Index UnstructuredGrid::checkConvexity() {
     const auto z = this->z().data();
 
     Index nonConvexCount = 0;
-    bool convex = true;
     for (Index elem=0; elem<nelem; ++elem) {
-        switch (tl[elem]&TYPE_MASK) {
+        auto type = tl[elem] & TYPE_MASK;
+        switch (type) {
         case NONE:
         case BAR:
         case TRIANGLE:
@@ -191,13 +192,32 @@ Index UnstructuredGrid::checkConvexity() {
         case HEXAHEDRON: {
             bool conv = true;
             const Index begin = el[elem], end = el[elem+1];
-            for (Index idx = begin; idx<end; ++idx) {
-                const Index v = cl[idx];
-                const Vector p(x[v], y[v], z[v]);
-                if (!insideConvex(elem, p)) {
-                    conv = false;
-                    break;
+            const Index nvert = end-begin;
+            const auto numFaces = NumFaces[type];
+            for (int f=0; f<numFaces; ++f) {
+                auto nc = faceNormalAndCenter(type, f, cl+begin, x, y, z);
+                auto normal = nc.first;
+                auto center = nc.second;
+                for (Index idx=0; idx<nvert; ++idx) {
+                    bool check = true;
+                    for (int i=0; i<FaceSizes[type][f]; ++i) {
+                        if (idx == FaceVertices[type][f][i]) {
+                            check = false;
+                            break;
+                        }
+                    }
+
+                    if (check) {
+                        Index v = cl[begin+idx];
+                        const Vector p(x[v], y[v], z[v]);
+                        if (normal.dot(p-center) > Tolerance) {
+                            conv = false;
+                            break;
+                        }
+                    }
                 }
+                if (!conv)
+                    break;
             }
             if (conv) {
                 tl[elem] |= CONVEX_BIT;
@@ -209,13 +229,35 @@ Index UnstructuredGrid::checkConvexity() {
         case POLYHEDRON: {
             bool conv = true;
             std::vector<Index> vert = cellVertices(elem);
-            for (Index v: vert) {
-                const Vector p(x[v], y[v], z[v]);
-                if (!insideConvex(elem, p)) {
-                    conv = false;
-                    break;
+            const Index begin=el[elem], end=el[elem+1];
+            const Index nvert = end-begin;
+            for (Index i=0; i<nvert; i+=cl[begin+i]+1) {
+                const Index N = cl[begin+i];
+                const Index *fl = cl+begin+i+1;
+                auto nc = faceNormalAndCenter(N, fl, x, y, z);
+                auto normal = nc.first;
+                auto center = nc.second;
+                for (auto v: vert) {
+                    bool check = true;
+                    for (unsigned idx=0; idx<N; ++idx) {
+                        if (v == fl[idx]) {
+                            check = false;
+                            break;
+                        }
+                    }
+
+                    if (check) {
+                        const Vector p(x[v], y[v], z[v]);
+                        if (normal.dot(p-center) > Tolerance) {
+                            conv = false;
+                            break;
+                        }
+                    }
                 }
+                if (!conv)
+                    break;
             }
+
             if (conv) {
                 tl[elem] |= CONVEX_BIT;
             } else {
@@ -364,8 +406,8 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
 
 bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
-   //const Scalar Tolerance = 1e-3*cellDiameter(elem); // too slow: halves particle tracing speed
-   const Scalar Tolerance = 1e-5;
+   const Scalar Tolerance = 1e-2*cellDiameter(elem); // too slow: halves particle tracing speed
+   //const Scalar Tolerance = 1e-5;
 
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
@@ -479,12 +521,10 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
    if(elem == InvalidIndex)
        return false;
 
-#if 0
     if (isConvex(elem))
         return insideConvex(elem, point);
-#endif
 
-    const Vector raydir = Vector(1,1,1).normalized();
+    std::array<Vector,3> raydirs{Vector(1,1,1).normalized(), Vector(1,-2,3).normalized(), Vector(1,1,-3).normalized()};
     const auto type = tl()[elem] & TYPE_MASK;
     switch (type) {
     case TETRAHEDRON:
@@ -499,34 +539,50 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         const Scalar *x = &this->x()[0];
         const Scalar *y = &this->y()[0];
         const Scalar *z = &this->z()[0];
-        int nisect = 0;
-        const auto numFaces = NumFaces[type];
-        Vector corners[4];
-        for (int f=0; f<numFaces; ++f) {
-            auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-            auto normal = nc.first;
-            auto center = nc.second;
+        unsigned insideCount = 0;
+        for (auto raydir: raydirs) {
+            int nisect = 0;
+            const auto numFaces = NumFaces[type];
+            Vector corners[4];
+            for (int f=0; f<numFaces; ++f) {
+                auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
+                auto normal = nc.first;
+                auto center = nc.second;
 
-            const Scalar cosa = normal.dot(raydir);
-            if (std::abs(cosa) <= 1e-7) {
-                continue;
+                const Scalar cosa = normal.dot(raydir);
+                if (std::abs(cosa) <= 1e-7) {
+                    continue;
+                }
+                const Scalar t = normal.dot(center-point)/cosa;
+                if (t < 0 || !std::isfinite(t)) {
+                    continue;
+                }
+                const int nCorners = FaceSizes[type][f];
+                for (int i=0; i<nCorners; ++i) {
+                    const Index v = cl[FaceVertices[type][f][i]];
+                    corners[i] = Vector(x[v], y[v], z[v]);
+                }
+                const Vector isect = point + t*raydir;
+#if !defined(NDEBUG) || defined(INTERPOL_DEBUG)
+                //assert(std::abs(normal.dot(isect - center)) < 1e-3);
+                auto d = std::abs(normal.dot(isect - center));
+                if (d >= 1e-3) {
+                    std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): bad intersection, deviation=" << d << std::endl;
+                }
+#endif
+                if (insidePolygon(isect, corners, nCorners, normal)) {
+                    ++nisect;
+                }
             }
-            const Scalar t = normal.dot(center-point)/cosa;
-            if (t < 0 || !std::isfinite(t)) {
-                continue;
-            }
-            const int nCorners = FaceSizes[type][f];
-            for (int i=0; i<nCorners; ++i) {
-                const Index v = cl[FaceVertices[type][f][i]];
-                corners[i] = Vector(x[v], y[v], z[v]);
-            }
-            const Vector isect = point + t*raydir;
-            //assert(std::abs(normal.dot(isect - center)) < 1e-3);
-            if (insidePolygon(isect, corners, nCorners, normal)) {
-                ++nisect;
+            insideCount += nisect%2;
+            if (nisect > 1) {
+                std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): " << nisect << " intersections" << std::endl;
             }
         }
-        return (nisect%2) == 1;
+        if (insideCount > 0 && insideCount != raydirs.size()) {
+            std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): disagreement: " << insideCount << " of " << raydirs.size() << std::endl;
+        }
+        return insideCount >= raydirs.size()/2;
         break;
         }
     case POLYHEDRON: {
@@ -536,35 +592,39 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         const Scalar *y = &this->y()[0];
         const Scalar *z = &this->z()[0];
 
-        int nisect = 0;
-        for (Index i=begin; i<end; i+=cl[i]+1) {
-            const Index nCorners = cl[i];
+        int insideCount = 0;
+        for (auto raydir: raydirs) {
+            int nisect = 0;
+            for (Index i=begin; i<end; i+=cl[i]+1) {
+                const Index nCorners = cl[i];
 
-            auto nc = faceNormalAndCenter(nCorners, &cl[i+1], x, y, z);
-            auto normal = nc.first;
-            auto center = nc.second;
+                auto nc = faceNormalAndCenter(nCorners, &cl[i+1], x, y, z);
+                auto normal = nc.first;
+                auto center = nc.second;
 
-            const Scalar cosa = normal.dot(raydir);
-            if (std::abs(cosa) <= 1e-7) {
-                continue;
+                const Scalar cosa = normal.dot(raydir);
+                if (std::abs(cosa) <= 1e-7) {
+                    continue;
+                }
+                const Scalar t = normal.dot(center-point)/cosa;
+                if (t < 0 || !std::isfinite(t)) {
+                    continue;
+                }
+                std::vector<Vector> corners(nCorners);
+                for (Index k=0; k<nCorners; ++k) {
+                    const Index v = cl[i+1+k];
+                    corners[k] = Vector(x[v], y[v], z[v]);
+                }
+                const Vector isect = point + t*raydir;
+                //assert(std::abs(normal.dot(isect - center)) < 1e-3);
+                if (insidePolygon(isect, corners.data(), nCorners, normal)) {
+                    ++nisect;
+                }
             }
-            const Scalar t = normal.dot(center-point)/cosa;
-            if (t < 0 || !std::isfinite(t)) {
-                continue;
-            }
-            std::vector<Vector> corners(nCorners);
-            for (Index k=0; k<nCorners; ++k) {
-                const Index v = cl[i+k+1];
-                corners[k] = Vector(x[v], y[v], z[v]);
-            }
-            const Vector isect = point + t*raydir;
-            //assert(std::abs(normal.dot(isect - center)) < 1e-3);
-            if (insidePolygon(isect, corners.data(), nCorners, normal)) {
-                ++nisect;
-            }
+
+            insideCount += nisect%2;
         }
-
-        return (nisect%2) == 1;
+        return insideCount > raydirs.size()/2;
         break;
     }
     default:
@@ -575,8 +635,6 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 }
 
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
-
-   assert(inside(elem, cellCenter(elem)));
 
 #ifdef INTERPOL_DEBUG
    vassert(inside(elem, point));
@@ -763,8 +821,10 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                scale = normal.dot(dir) / normal.dot(faceCenter-center);
 #ifdef INTERPOL_DEBUG
                std::cerr << "face: normal=" << normal.transpose() << ", center=" << faceCenter.transpose() << ", endvert=" << i << ", numvert=" << nFaceVert << ", scale=" << scale << std::endl;
-#endif
                assert(scale <= 1.01); // otherwise, point is outside of the polyhedron
+#endif
+               if (scale > 1.)
+                   scale = 1;
                if (scale >= 0) {
                    scale = std::min(Scalar(1), scale);
                    if (scale > 0.001) {

@@ -111,7 +111,7 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
 bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
 
    // project into 2D and transform point into origin
-   Index max = 0;
+   Index max = 2;
    normal.cwiseAbs().maxCoeff(&max);
    int c1=0, c2=1;
    if (max == 0) {
@@ -146,7 +146,7 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
       }
       Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
       Scalar x=c0[1]*mInv+c0[0];
-      if (x > 0)
+      if (x >= 0)
           ++nisect;
    }
 
