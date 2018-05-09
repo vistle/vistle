@@ -618,7 +618,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                      const auto &a = faces[ia];
                      connectivities.push_back(a.size());
 
-                     if(isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
+                     if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                          std::copy(a.begin(), a.end(), inserter);
                      } else {
                          std::copy(a.rbegin(), a.rend(), inserter);
