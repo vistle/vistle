@@ -261,10 +261,6 @@ void Module::prepareQuit() {
         vistle::message::ModuleExit m;
         m.setDestId(Id::ForBroadcast);
         sendMessage(m);
-
-#ifndef MODULE_THREAD
-        Shm::the().detach();
-#endif
     }
 
     m_readyForQuit = true;
@@ -1927,6 +1923,10 @@ std::string Module::getModuleName(int id) const {
 }
 
 Module::~Module() {
+
+#ifndef MODULE_THREAD
+    Shm::the().detach();
+#endif
 
    if (m_origStreambuf)
       std::cerr.rdbuf(m_origStreambuf);
