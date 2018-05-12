@@ -566,9 +566,9 @@ ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
 , m_meta(add.meta())
 , m_objectType(add.objectType())
 {
-
    m_broadcast = true;
 
+   setReferrer(add.uuid());
    setSenderId(add.senderId());
 
    std::string port(add.getSenderPort());
