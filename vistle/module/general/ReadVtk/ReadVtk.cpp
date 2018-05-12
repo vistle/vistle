@@ -303,6 +303,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm)
       m_cellPort[i] = createOutputPort(sport.str(), "cell data");
    }
 
+   setParallelizationMode(ParallelizeTimeAndBlocks);
    observeParameter(m_filename);
    observeParameter(m_readPieces);
 }
@@ -401,23 +402,23 @@ bool ReadVtk::finishRead() {
     return true;
 }
 
-bool ReadVtk::read(const Meta &meta, int timestep, int block)
+bool ReadVtk::read(Reader::Token &token, int timestep, int block)
 {
     const bool readPieces = m_readPieces->getValue();
     const bool ghostCells = m_ghostCells->getValue();
 
     Meta m;
     m.setBlock(block);
-    m.setNumBlocks(meta.numBlocks());
+    m.setNumBlocks(token.meta().numBlocks());
     m.setTimeStep(timestep);
-    m.setNumTimesteps(meta.numTimesteps());
+    m.setNumTimesteps(token.meta().numTimesteps());
 
     if (m_d->timesteps.empty()) {
         const std::string filename = m_filename->getValue();
         if (readPieces) {
-            return load(filename, m, block, ghostCells);
+            return load(token, filename, m, block, ghostCells);
         } else {
-            return load(filename);
+            return load(token, filename);
         }
     } else {
         bool constant = true;
@@ -430,7 +431,7 @@ bool ReadVtk::read(const Meta &meta, int timestep, int block)
             t = m_d->times[timestep];
         }
 
-        std::cerr << "Reading t=" << timestep << " (#=" << meta.numTimesteps() << ") , block=" << block << " (#=" << meta.numBlocks() << ")" << std::endl;
+        std::cerr << "Reading t=" << timestep << " (#=" << token.meta().numTimesteps() << ") , block=" << block << " (#=" << token.meta().numBlocks() << ")" << std::endl;
 
         auto it = m_d->timesteps.find(t);
         if (it != m_d->timesteps.end()) {
@@ -441,7 +442,7 @@ bool ReadVtk::read(const Meta &meta, int timestep, int block)
                     m.setRealTime(f.realtime);
 
                 if (b <= block && block < b+f.pieces) {
-                    if (!load(f.filename, m, readPieces ? block-b : -1, ghostCells, f.part))
+                    if (!load(token, f.filename, m, readPieces ? block-b : -1, ghostCells, f.part))
                         return false;
                 }
 
@@ -474,7 +475,7 @@ bool ReadVtk::changeParameter(const vistle::Parameter *p) {
 }
 #endif
 
-bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) {
+bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) {
 
    auto ds_pieces = getDataSet(filename, piece, ghost);
    auto dobj = ds_pieces.dataset;
@@ -490,7 +491,7 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
        if (!part.empty())
            grid->addAttribute("_part", part);
    }
-   addObject("grid_out", grid);
+   token.addObject("grid_out", grid);
 
    vtkFieldData *fieldData = dobj->GetFieldData();
    vtkDataSetAttributes *pointData = nullptr;
@@ -508,7 +509,7 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
                if (!part.empty())
                    field->addAttribute("_part", part);
            }
-           addObject(m_cellPort[i], field);
+           token.addObject(m_cellPort[i], field);
        }
 
        if (pointData && m_pointDataChoice[i]->getValue() != Invalid) {
@@ -522,7 +523,7 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
                if (!part.empty())
                    field->addAttribute("_part", part);
            }
-           addObject(m_pointPort[i], field);
+           token.addObject(m_pointPort[i], field);
        }
 
    }

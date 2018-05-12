@@ -93,15 +93,44 @@ bool Reader::prepare()
     }
     meta.setNumTimesteps(numtime);
 
+    int concurrency = 1;
+    if (m_concurrency) {
+        concurrency = m_concurrency->getValue();
+        if (concurrency <= 0)
+            concurrency = std::thread::hardware_concurrency();
+    }
+
+    if (m_parallel == Serial) {
+        assert(concurrency == 1);
+        concurrency = 1;
+    }
+    assert(concurrency >= 1);
+
+    sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
+
+    std::shared_ptr<Token> prev;
     // read constant parts
     meta.setTimeStep(-1);
     for (int p=-1; p<numpart; ++p) {
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
             meta.setBlock(p);
-            if (!read(meta, -1, p)) {
-                sendInfo("error reading constant data on partition %d", p);
-                result = false;
-                break;
+            m_tokens.emplace_back(std::make_shared<Token>(this, prev));
+            prev = m_tokens.back();
+            auto &token = *prev;
+            token.m_meta = meta;
+            token.m_future = std::async(std::launch::async, [this, &token, p](){
+                if (!read(token, -1, p)) {
+                    sendInfo("error reading constant data on partition %d", p);
+                    return false;
+                }
+                return true;
+            });
+            while (m_tokens.size() >= concurrency) {
+                auto &token = *m_tokens.front();
+                result = token.result();
+                m_tokens.pop_front();
+                if (m_tokens.empty())
+                    prev.reset();
             }
         }
         if (cancelRequested()) {
@@ -118,10 +147,23 @@ bool Reader::prepare()
             for (int p=-1; p<numpart; ++p) {
                 if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
                     meta.setBlock(p);
-                    if (!read(meta, t, p)) {
-                        sendInfo("error reading time data %d on partition %d", t, p);
-                        result = false;
-                        break;
+                    m_tokens.emplace_back(std::make_shared<Token>(this, prev));
+                    prev = m_tokens.back();
+                    auto &token = *prev;
+                    token.m_meta = meta;
+                    token.m_future = std::async(std::launch::async, [this, &token, t, p](){
+                        if (!read(token, t, p)) {
+                            sendInfo("error reading time data %d on partition %d", t, p);
+                            return false;
+                        }
+                        return true;
+                    });
+                    while (m_tokens.size() >= concurrency) {
+                        auto &token = *m_tokens.front();
+                        result = token.result();
+                        m_tokens.pop_front();
+                        if (m_tokens.empty())
+                            prev.reset();
                     }
                 }
                 if (cancelRequested()) {
@@ -133,6 +175,12 @@ bool Reader::prepare()
             if (!result)
                 break;
         }
+    }
+
+    while (!m_tokens.empty()) {
+        auto &token = m_tokens.front();
+        result &= token->result();
+        m_tokens.pop_front();
     }
 
     if (!finishRead()) {
@@ -169,6 +217,23 @@ int Reader::timeIncrement() const
     return m_increment->getValue();
 }
 
+void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
+
+    m_parallel = mode;
+
+    if (mode == Serial) {
+        if (m_concurrency)
+            removeParameter(m_concurrency);
+    } else {
+        if (!m_concurrency) {
+            setCurrentParameterGroup("Reader");
+            m_concurrency = addIntParameter("concurrency", "number of read operations to keep in flight per MPI rank", 1);
+            setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()*5));
+            setCurrentParameterGroup();
+        }
+    }
+}
+
 void Reader::setHandlePartitions(bool enable)
 {
     m_handlePartitions = enable;
@@ -178,9 +243,14 @@ void Reader::setAllowTimestepDistribution(bool allow)
 {
     m_allowTimestepDistribution = allow;
     if (m_allowTimestepDistribution) {
-        m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", 0, Parameter::Boolean);
+        if (!m_distributeTime) {
+            setCurrentParameterGroup("Reader");
+            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", 0, Parameter::Boolean);
+            setCurrentParameterGroup();
+        }
     } else {
-        removeParameter(m_distributeTime);
+        if (m_distributeTime)
+            removeParameter(m_distributeTime);
         m_distributeTime = nullptr;
     }
 }
@@ -231,4 +301,156 @@ bool Reader::changeParameter(const Parameter *param)
 
     return ret;
 }
+
+const Meta &Reader::Token::meta() {
+
+    return m_meta;
+}
+
+bool Reader::Token::wait(const std::string &port)
+{
+    if (m_previous) {
+        if (port.empty())
+            return m_previous->waitDone();
+        else
+            return m_previous->waitPortReady(port);
+    }
+
+    return true;
+}
+
+bool Reader::Token::addObject(Port *port, Object::ptr obj) {
+    std::string name = port->getName();
+    return addObject(name, obj);
+}
+
+bool Reader::Token::addObject(const std::string &port, Object::ptr obj) {
+    applyMeta(obj);
+#ifdef DEBUG
+    if (obj)
+        std::cerr << "waiting to add object to port " << port << ", t=" << obj->getTimestep() << std::endl;
+    else
+        std::cerr << "waiting to add object to port " << port << ": (null)" << std::endl;
+#endif
+    wait(port);
+#ifdef DEBUG
+    if (obj)
+        std::cerr << "adding object to port " << port << ", t=" << obj->getTimestep() << std::endl;
+    else
+        std::cerr << "adding object to port " << port << ": (null)" << std::endl;
+#endif
+    bool ret = false;
+    {
+        std::lock_guard<std::mutex> locker(m_reader->m_mutex);
+        ret = m_reader->addObject(port, obj);
+    }
+    setPortReady(port, ret);
+    return ret;
+}
+
+bool Reader::Token::result()
+{
+    return waitDone();
+}
+
+bool Reader::Token::waitDone()
+{
+#ifdef DEBUG
+    std::cerr << "finishing..." << std::endl;
+#endif
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_finished)
+            return m_result;
+
+        if (!m_future.valid())
+            return false;
+    }
+
+    m_future.wait();
+
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_finished)
+        return m_result;
+    if (!m_future.valid())
+        return false;
+
+    m_result = m_future.get();
+    for (auto p: m_ports) {
+        auto ps = p.second;
+        if (!ps->valid) {
+            ps->valid = true;
+            ps->promise.set_value(m_result);
+        }
+    }
+    m_ports.clear();
+
+    m_finished = true;
+    return m_result;
+}
+
+bool Reader::Token::waitPortReady(const std::string &port)
+{
+    std::shared_ptr<PortState> p;
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_finished)
+            return m_result;
+
+        if (!m_future.valid())
+            return false;
+
+        auto it = m_ports.find(port);
+        if (it == m_ports.end())
+            it = m_ports.emplace(port, std::make_shared<PortState>()).first;
+        p = it->second;
+        if (p->valid) {
+            if (!p->future.valid())
+                return p->ready;
+        }
+    }
+
+    assert(p->future.valid());
+    p->future.wait();
+    std::lock_guard<std::mutex> locker(m_mutex);
+    p->valid = true;
+    p->ready = p->future.get();
+    return p->ready;
+}
+
+void Reader::Token::setPortReady(const std::string &port, bool ready) {
+
+#ifdef DEBUG
+    std::cerr << "setting port ready: " << port << "=" << ready << std::endl;
+#endif
+    std::lock_guard<std::mutex> locker(m_mutex);
+    assert(!m_finished);
+    assert(m_future.valid());
+
+    auto &p = m_ports[port];
+    if (!p) {
+        p.reset(new PortState);
+    }
+    assert(!p->valid);
+    p->valid = true;
+    p->promise.set_value(ready);
+}
+
+void Reader::Token::applyMeta(Object::ptr obj) const {
+
+    if (!obj)
+        return;
+
+    obj->setTimestep(m_meta.timeStep());
+    obj->setNumTimesteps(m_meta.numTimesteps());
+    obj->setBlock(m_meta.block());
+    obj->setNumBlocks(m_meta.numBlocks());
+}
+
+Reader::Token::Token(Reader *reader, std::shared_ptr<Token> previous)
+: m_reader(reader)
+, m_previous(previous)
+{
+}
+
 }

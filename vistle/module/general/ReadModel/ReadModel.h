@@ -16,7 +16,7 @@ class ReadModel: public vistle::Reader {
 
    // reader interface
    bool examine(const vistle::Parameter *param) override;
-   bool read(const vistle::Meta &meta, int timestep=-1, int block=-1) override;
+   bool read(vistle::Reader::Token &token, int timestep=-1, int block=-1) override;
    bool prepareRead() override;
 
  private:

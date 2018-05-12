@@ -127,7 +127,7 @@ class ReadFOAM: public vistle::Reader
 
       // Reader interface
       bool examine(const vistle::Parameter *p) override;
-      bool read(const vistle::Meta &meta, int time, int part) override;
+      bool read(vistle::Reader::Token &token, int time, int part) override;
       bool prepareRead() override;
       bool finishRead() override;
 

@@ -61,7 +61,7 @@ bool ReadModel::examine(const Parameter *param)
     return true;
 }
 
-bool ReadModel::read(const Meta &meta, int timestep, int block)
+bool ReadModel::read(Reader::Token &token, int timestep, int block)
 {
    std::string filename = getStringParameter("filename");
 
@@ -73,8 +73,8 @@ bool ReadModel::read(const Meta &meta, int timestep, int block)
        fmter % block;
        fmter % timestep;
        f = fmter.str();
-   } catch (boost::io::bad_format_string except) {
-       sendError("bad format string in filename");
+   } catch (boost::io::bad_format_string &except) {
+       sendError("bad format string in filename %s", filename.c_str());
        return false;
    }
 
@@ -85,11 +85,7 @@ bool ReadModel::read(const Meta &meta, int timestep, int block)
            return false;
        }
    } else {
-       obj->setTimestep(meta.timeStep());
-       obj->setNumTimesteps(meta.numTimesteps());
-       obj->setBlock(meta.block());
-       obj->setNumBlocks(meta.numBlocks());
-       addObject("grid_out", obj);
+       token.addObject("grid_out", obj);
    }
 
    return true;

@@ -189,7 +189,7 @@ bool ReadFOAM::examine(const Parameter *)
     return true;
 }
 
-bool ReadFOAM::read(const Meta &meta, int time, int part)
+bool ReadFOAM::read(Reader::Token &token, int time, int part)
 {
     const std::string casedir = m_casedir->getValue();
 
@@ -200,7 +200,7 @@ bool ReadFOAM::read(const Meta &meta, int time, int part)
         return readConstant(casedir);
     }
 
-    return readTime(casedir, meta.timeStep());
+    return readTime(casedir, token.meta().timeStep());
 }
 
 bool ReadFOAM::prepareRead()
