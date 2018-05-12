@@ -371,10 +371,9 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
       return result;
    } else {
-      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
 
       // message will be handled when received again from rank 0
-      return true;
+      return forwardToMaster(message);
    }
 }
 
