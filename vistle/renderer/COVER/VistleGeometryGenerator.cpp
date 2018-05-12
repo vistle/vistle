@@ -860,8 +860,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
                debug << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
            } else if (!tex->coords()) {
-               std::cerr << "VistleGeometryGenerator: invalid Texture1D: no coords" << std::endl;
-               debug << "VistleGeometryGenerator: invalid Texture1D: no coords" << std::endl;
+               std::cerr << "VistleGeometryGenerator: invalid Texture1D " << tex->getName() << ": no coords" << std::endl;
+               debug << "VistleGeometryGenerator: invalid Texture1D " << tex->getName() << ": no coords" << std::endl;
            } else {
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setName(nodename+".tex");

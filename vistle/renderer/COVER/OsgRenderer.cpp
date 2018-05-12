@@ -507,7 +507,7 @@ bool OsgRenderer::render() {
          osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
          parent->addChild(transform);
       } else if (!ro->coverRenderObject) {
-         std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
+         std::cerr << rank() << ": discarding delayed object " << m_delayedObjects.front().name << " - already deleted" << std::endl;
       } else if (!transform) {
          //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
       }
