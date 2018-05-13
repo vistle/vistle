@@ -52,6 +52,7 @@ struct HostData {
    std::vector<const Index*> m_inVertPtrI, m_inCellPtrI;
    std::vector<Scalar*> m_outVertPtr, m_outCellPtr;
    std::vector<Index *> m_outVertPtrI, m_outCellPtrI;
+   bool m_isUnstructured;
    bool m_haveCoords;
    bool m_computeNormals;
 
@@ -79,6 +80,7 @@ struct HostData {
       , m_tl(tl)
       , m_nvert{0,0,0}
       , m_nghost{{0,0}, {0,0}, {0,0}}
+      , m_isUnstructured(el)
       , m_haveCoords(true)
       , m_computeNormals(false)
    {
@@ -107,6 +109,7 @@ struct HostData {
       , m_tl(nullptr)
       , m_nvert{nx,ny,nz}
       , m_nghost{{0,0}, {0,0}, {0,0}}
+      , m_isUnstructured(false)
       , m_haveCoords(false)
       , m_computeNormals(false)
    {
@@ -181,6 +184,8 @@ struct DeviceData {
    thrust::device_vector<Index> m_numVertices;
    thrust::device_vector<Index> m_LocationList;
    thrust::device_vector<Index> m_ValidCellVector;
+   Index m_nvert[3];
+   Index m_nghost[3][2];
    thrust::device_vector<Scalar> m_x;
    thrust::device_vector<Scalar> m_y;
    thrust::device_vector<Scalar> m_z;
@@ -190,8 +195,15 @@ struct DeviceData {
    std::vector<thrust::device_ptr<Index> > m_inVertPtrI, m_inCellPtrI;
    std::vector<thrust::device_ptr<Scalar> > m_outVertPtr, m_outCellPtr;
    std::vector<thrust::device_ptr<Index> > m_outVertPtrI, m_outCellPtrI;
-   typedef const Index *IndexIterator;
-   //typedef thrust::device_vector<Index>::iterator IndexIterator;
+   bool m_isUnstructured;
+   bool m_haveCoords;
+   bool m_computeNormals;
+   //typedef const Index *IndexIterator;
+   typedef thrust::device_vector<Index>::iterator IndexIterator;
+
+   //typedef const u_char *TypeIterator;
+   typedef thrust::device_vector<u_char>::iterator TypeIterator;
+   typedef thrust::device_vector<Index>::iterator VectorIndexIterator;
 
    DeviceData(Scalar isoValue
               , IsoDataFunctor isoFunc
@@ -209,9 +221,14 @@ struct DeviceData {
    , m_el(el, el+nelem)
    , m_cl(cl, cl+nconn)
    , m_tl(tl, tl+nelem)
+   , m_nvert{0,0,0}
+   , m_nghost{{0,0}, {0,0}, {0,0}}
    , m_x(x, x+ncoord)
    , m_y(y, y+ncoord)
    , m_z(z, z+ncoord)
+   , m_isUnstructured(el)
+   , m_haveCoords(true)
+   , m_computeNormals(false)
    {
       m_inVertPtr.push_back(m_x.data());
       m_inVertPtr.push_back(m_y.data());
@@ -264,7 +281,7 @@ struct process_Cell {
           }
       }
 
-      if (m_data.m_el) {
+      if (m_data.m_isUnstructured) {
       const Index Cellbegin = m_data.m_el[CellNr];
       const Index Cellend = m_data.m_el[CellNr+1];
       const auto &cl = &m_data.m_cl[Cellbegin];
@@ -576,7 +593,7 @@ struct classify_cell {
 
        int tableIndex = 0;
        int numVerts = 0;
-       if (m_data.m_el) {
+       if (m_data.m_isUnstructured) {
            const auto &cl = m_data.m_cl;
 
            Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
@@ -898,7 +915,7 @@ bool Leveller::process() {
                m_unstr->getNumElements(), m_unstr->el(), m_unstr->tl(), m_unstr->getNumCorners(), m_unstr->cl(), m_unstr->getSize(), m_unstr->x(), m_unstr->y(), m_unstr->z());
 
 #if 0
-         Index totalNumVertices = calculateSurface<DeviceData, thrust::device>(DD);
+         Index totalNumVertices = calculateSurface<DeviceData, thrust::detail::device_t>(DD);
 #else
          Index totalNumVertices = 0;
 #endif
