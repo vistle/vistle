@@ -38,9 +38,7 @@
 #include <util/findself.h>
 #include <util/sysdep.h>
 
-#ifdef __APPLE__
 #include <manager/vistle_manager.h>
-#endif
 
 #if defined(WIN32)
     const char libcover[] = "mpicover.dll";
@@ -705,7 +703,7 @@ finish:
 
 void OsgRenderer::eventLoop() {
 
-#if defined(__APPLE__) && defined(MODULE_THREAD)
+#if defined(COVER_ON_MAINTHREAD) && defined(MODULE_THREAD)
    std::function<void()> f = [this](){
       int argc=0;
       char *argv[] = {nullptr};

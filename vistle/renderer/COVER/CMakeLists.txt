@@ -32,6 +32,11 @@ target_link_libraries(vistle_cover ${EXTRA_LIBS} vistle_renderer vistle_util
 
 add_module(COVER coverwrapper.cpp)
 target_link_libraries(COVER ${EXTRA_LIBS} vistle_util ${CMAKE_DL_LIBS} vistle_cover)
-if(APPLE AND NOT VISTLE_MULTI_PROCESS)
+if(NOT VISTLE_MULTI_PROCESS)
+if(APPLE)
    set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-undefined,dynamic_lookup")
+elseif(WINDOWS)
+else()
+   set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,undefs")
+endif()
 endif()

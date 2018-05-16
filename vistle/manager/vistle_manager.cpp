@@ -16,10 +16,12 @@
 #include "executor.h"
 #include "vistle_manager.h"
 
-#ifdef __APPLE__
+
+#ifdef COVER_ON_MAINTHREAD
 #include <thread>
 #include <functional>
 #include <deque>
+#include <condition_variable>
 
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
 #include <QApplication>
@@ -40,7 +42,7 @@ class Vistle: public Executor {
    }
 };
 
-#ifdef __APPLE__
+#ifdef COVER_ON_MAINTHREAD
 static std::mutex main_thread_mutex;
 static std::condition_variable main_thread_cv;
 static std::deque<std::function<void()>> main_func;
@@ -67,7 +69,7 @@ int main(int argc, char ** argv)
       exit(1);
    }
 
-#ifdef __APPLE__
+#ifdef COVER_ON_MAINTHREAD
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
    if (!qApp) {
        std::cerr << "early creation of QApplication object" << std::endl;
@@ -90,7 +92,7 @@ int main(int argc, char ** argv)
       exit(1);
    }
 
-#ifdef __APPLE__
+#ifdef COVER_ON_MAINTHREAD
    std::unique_lock<std::mutex> lock(main_thread_mutex);
    main_done = true;
    main_thread_cv.notify_all();
