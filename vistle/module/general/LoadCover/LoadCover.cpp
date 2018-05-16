@@ -41,7 +41,7 @@ bool LoadCover::prepare() {
            fmter.exceptions(all_error_bits ^ (too_many_args_bit | too_few_args_bit));
            fmter % rank();
            f = fmter.str();
-       } catch (boost::io::bad_format_string except) {
+       } catch (boost::io::bad_format_string &ex) {
            sendError("bad format string in filename");
            return true;
        }

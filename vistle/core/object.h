@@ -566,7 +566,7 @@ private:
           t = shm<Data>::construct(name)(id, name, Meta()); \
           publish(t); \
           Shm::the().unlockObjects(); \
-      } catch (boost::interprocess::interprocess_exception ex) { \
+      } catch (boost::interprocess::interprocess_exception &ex) { \
           t = static_cast<Data *>(Shm::the().getObjectDataFromName(name)); \
           Shm::the().unlockObjects(); \
           if (!t) throw(ex); \

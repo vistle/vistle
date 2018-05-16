@@ -693,7 +693,7 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
          newmodule = imp.load_module(modulename, open(path), path, ('py', 'U', imp.PY_SOURCE))
          )", *ns, locals);
       (*ns)["vistle"] = locals["newmodule"];
-   } catch (py::error_already_set) {
+   } catch (py::error_already_set &) {
       std::cerr << "loading of vistle.py failed" << std::endl;
       if (PyErr_Occurred()) {
          std::cerr << PythonInterface::errorString() << std::endl;
