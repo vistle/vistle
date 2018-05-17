@@ -5,12 +5,6 @@
 #include <vector>
 #include <memory>
 
-#ifndef NO_SHMEM
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/containers/string.hpp>
-#endif
-
 #include <boost/serialization/access.hpp>
 
 #include "export.h"
