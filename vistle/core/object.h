@@ -242,13 +242,14 @@ struct ObjectData {
     typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
 #endif
     AttributeMap attributes;
+    typedef std::map<std::string, std::vector<std::string>> StdAttributeMap; // for serialization
     void addAttribute(const std::string &key, const std::string &value = "");
     void setAttributeList(const std::string &key, const std::vector<std::string> &values);
     void copyAttributes(const ObjectData *src, bool replace);
     bool hasAttribute(const std::string &key) const;
     std::string getAttribute(const std::string &key) const;
-    std::vector<std::string> getAttributes(const std::string &key) const;
-    std::vector<std::string> getAttributeList() const;
+    V_COREEXPORT std::vector<std::string> getAttributes(const std::string &key) const;
+    V_COREEXPORT std::vector<std::string> getAttributeList() const;
 
 #ifdef NO_SHMEM
     mutable std::recursive_mutex attachment_mutex;
@@ -292,6 +293,10 @@ struct ObjectData {
     friend class boost::serialization::access;
     template<class Archive>
     void serialize(Archive &ar, const unsigned int version);
+    template<class Archive>
+    void save(Archive &ar, const unsigned int version) const;
+    template<class Archive>
+    void load(Archive &ar, const unsigned int version);
 
     // not implemented
     ObjectData(const ObjectData &) = delete;

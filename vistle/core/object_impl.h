@@ -50,7 +50,7 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    assert(checktype1 == type);
 #endif
    ar & V_NAME("meta", meta);
-   ar & V_NAME("attributes", attributes);
+   boost::serialization::split_member(ar, *this, version);
 #ifdef DEBUG_SERIALIZATION
    int checktype2 = type;
    ar & V_NAME("checktype2", checktype2);
@@ -59,6 +59,28 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    }
    assert(checktype2 == type);
 #endif
+}
+
+template<class Archive>
+void Object::Data::save(Archive &ar, const unsigned int version) const {
+   StdAttributeMap attrMap;
+   auto attrs = getAttributeList();
+   for (auto a: attrs) {
+       attrMap[a] = getAttributes(a);
+   }
+   ar & V_NAME("attributes", attrMap);
+}
+
+template<class Archive>
+void Object::Data::load(Archive &ar, const unsigned int version) {
+   attributes.clear();
+   StdAttributeMap attrMap;
+   ar & V_NAME("attributes", attrMap);
+   for (auto &kv: attrMap) {
+       auto &a = kv.first;
+       auto &vallist = kv.second;
+       setAttributeList(a, vallist);
+   }
 }
 
 template<class Archive>
