@@ -357,7 +357,8 @@ class RemoteConnection {
         std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
         for (const auto &var: plugin->m_coverVariants) {
             variantMsg msg;
-            strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+            strncpy(msg.name, var.first.c_str(), sizeof(msg.name)-1);
+            msg.name[sizeof(msg.name)-1] = '\0';
             msg.visible = var.second;
             send(msg);
         }
@@ -1676,7 +1677,8 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
         if (coVRMSController::instance()->isMaster()) {
             variantMsg msg;
             msg.visible = visible;
-            strncpy(msg.name, VariantName.c_str(), sizeof(msg.name));
+            strncpy(msg.name, VariantName.c_str(), sizeof(msg.name)-1);
+            msg.name[sizeof(msg.name)-1] = '\0';
             for (auto r: m_remotes) {
                 if (r.second->isConnected())
                     r.second->send(msg);
