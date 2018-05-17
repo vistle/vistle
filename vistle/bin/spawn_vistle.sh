@@ -82,20 +82,25 @@ if [ "$MPISIZE" = "" ]; then
    MPISIZE=$(echo ${MPIHOSTS} | sed -e 's/,/ /g' | wc -w)
 fi
 
+if [ "$MPISIZE" != "1" ]; then
+   PREPENDRANK=-prepend-rank
+   TAGOUTPUT=-tag-output
+fi
+
 if [ "$OPENMPI" = "1" ]; then
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} -tag-output -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} -tag-output -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
       echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
