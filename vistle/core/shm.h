@@ -102,19 +102,9 @@ struct shm {
        std::string name;
        Constructor(const std::string &name): name(name) {}
 
-#if 1
        template<typename... Args>
        T *operator()(Args&&... args);
-#else
-       template<typename... Args>
-       T *operator()(Args&&... args) {
-           Shm::the().lockObjects();
-           T *t = new T(std::forward<Args>(args)...);
-           m_objectDictionary[name] = t;
-           Shm::the().unlockObjects();
-       }
-#endif
-    };
+   };
    static Constructor construct(const std::string &name) {
        return Constructor(name);
    }
@@ -240,13 +230,14 @@ bool shm<T>::destroy(const std::string &name) {
     auto it = dict.find(name);
     bool ret = true;
     if (it == dict.end()) {
+        Shm::the().unlockObjects();
         ret = false;
     } else {
         T *t = static_cast<T *>(it->second);
         dict.erase(it);
+        Shm::the().unlockObjects();
         delete t;
     }
-    Shm::the().unlockObjects();
 #else
     const bool ret = Shm::the().shm().destroy<T>(name.c_str());
 #endif
@@ -258,9 +249,9 @@ bool shm<T>::destroy(const std::string &name) {
 template<typename T>
 template<typename... Args>
 T *shm<T>::Constructor::operator()(Args&&... args) {
+    T *t = new T(std::forward<Args>(args)...);
     Shm::the().lockObjects();
     auto &dict = Shm::the().m_objectDictionary;
-    T *t = new T(std::forward<Args>(args)...);
     dict[name] = t;
     Shm::the().unlockObjects();
     return t;
