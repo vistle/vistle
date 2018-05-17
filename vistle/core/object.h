@@ -561,19 +561,10 @@ private:
    : ObjType::Base::Data(id, name, meta) { initData(); } \
    ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
       Data *t = nullptr; \
-      try { \
-          Shm::the().lockObjects(); \
-          t = shm<Data>::construct(name)(id, name, Meta()); \
-          publish(t); \
-          Shm::the().unlockObjects(); \
-      } catch (boost::interprocess::interprocess_exception &ex) { \
-          t = static_cast<Data *>(Shm::the().getObjectDataFromName(name)); \
-          Shm::the().unlockObjects(); \
-          if (!t) throw(ex); \
-      } catch (...) { \
-          Shm::the().unlockObjects(); \
-          throw; \
-      } \
+      Shm::the().lockObjects(); \
+      t = shm<Data>::construct(name)(id, name, Meta()); \
+      Shm::the().unlockObjects(); \
+      publish(t); \
       return t; \
    }
 

@@ -401,13 +401,6 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::str
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Data::Data(Object::Type id, const std::string &name, const Meta &meta)
-: Base::Data(id, name, meta)
-{
-   initData();
-}
-
-template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells,
                      const Meta &meta)
 : Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
@@ -435,12 +428,23 @@ typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, N
    return ct;
 }
 
+#if 0
+V_OBJECT_CREATE_NAMED(Celltree<Scalar, Index, NumDimensions>)
+#else
+template<typename Scalar, typename Index, int NumDimensions>
+Celltree<Scalar, Index, NumDimensions>::Data::Data(Object::Type id, const std::string &name, const Meta &meta)
+: Base::Data(id, name, meta)
+{
+   initData();
+}
+
 template<typename Scalar, typename Index, int NumDimensions>
 typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, NumDimensions>::Data::createNamed(Object::Type id, const std::string &name) {
    Data *t = shm<Data>::construct(name)(id, name, Meta());
    publish(t);
    return t;
 }
+#endif
 
 } // namespace vistle
 #endif

@@ -360,18 +360,17 @@ void ObjectData::ref() const {
 }
 
 void ObjectData::unref() const {
-   Shm::the().lockObjects();
    ref_mutex.lock();
    --refcount;
    assert(refcount >= 0);
    if (refcount == 0) {
+      Shm::the().lockObjects();
       ref_mutex.unlock();
       ObjectTypeRegistry::getDestroyer(type)(name);
       Shm::the().unlockObjects();
       return;
    }
    ref_mutex.unlock();
-   Shm::the().unlockObjects();
 }
 
 shm_handle_t Object::getHandle() const {

@@ -101,13 +101,6 @@ void Vec<T,Dim>::Data::initData() {
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Data::Data(Object::Type id, const std::string &name, const Meta &m)
-: Vec<T,Dim>::Base::Data(id, name, m)
-{
-   initData();
-}
-
-template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
@@ -155,12 +148,25 @@ typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(Index size, const Meta &meta
    return t;
 }
 
+#if 0
+V_OBJECT_CREATE_NAMED(Vec<T,Dim>)
+#else
+template <class T, int Dim>
+Vec<T,Dim>::Data::Data(Object::Type id, const std::string &name, const Meta &m)
+: Vec<T,Dim>::Base::Data(id, name, m)
+{
+   initData();
+}
+
 template <class T, int Dim>
 typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::createNamed(Object::Type id, const std::string &name, const Meta &meta) {
+   Shm::the().lockObjects();
    Data *t = shm<Data>::construct(name)(id, name, meta);
+   Shm::the().unlockObjects();
    publish(t);
    return t;
 }
+#endif
 
 template <class T, int Dim>
 template <class Archive>
