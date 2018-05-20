@@ -33,6 +33,15 @@ Vec<T,Dim>::Vec(const Index size,
 }
 
 template <class T, int Dim>
+void Vec<T,Dim>::resetArrays() {
+    for (int c=0; c<Dim; ++c) {
+        d()->x[c] = ShmVector<T>();
+        d()->x[c].construct();
+    }
+    refresh();
+}
+
+template <class T, int Dim>
 void Vec<T,Dim>::setSize(const Index size) {
    for (int c=0; c<Dim; ++c) {
       if (d()->x[c].valid()) {

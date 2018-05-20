@@ -101,10 +101,9 @@ bool FlattenTriangles::compute() {
    tri->setMeta(in->meta());
    tri->copyAttributes(in);
    if (data) {
-       DataBase::ptr dout = data->cloneType();
+       DataBase::ptr dout = data->clone();
+       dout->resetArrays();
        flatten(in, data, dout);
-       dout->setMeta(data->meta());
-       dout->copyAttributes(data);
        dout->setGrid(tri);
        addObject("grid_out", dout);
    } else {

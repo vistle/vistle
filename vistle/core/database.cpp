@@ -74,6 +74,11 @@ DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
    return NULL;
 }
 
+void DataBase::resetArrays()
+{
+   assert("should never be called" == NULL);
+}
+
 Index DataBase::getSize() const {
 
    assert("should never be called" == NULL);

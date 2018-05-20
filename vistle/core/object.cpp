@@ -272,6 +272,11 @@ bool Object::operator==(const Object &other) const
     return d() == other.d();
 }
 
+bool Object::operator!=(const Object &other) const
+{
+    return !(*this == other);
+}
+
 Object::ptr Object::clone() const {
 
    return cloneInternal();

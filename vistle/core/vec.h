@@ -31,6 +31,7 @@ class Vec: public DataBase {
       return d()->x[0]->size();
    }
 
+   void resetArrays() override;
    void setSize(const Index size) override;
 
    array &x(int c=0) { return *d()->x[c]; }

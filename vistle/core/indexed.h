@@ -24,7 +24,9 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
          const Meta &meta=Meta());
 
    Index getNumElements() const override;
+   void resetElements();
    Index getNumCorners() const;
+   void resetCorners();
    Index getNumVertices() const override;
 
    typename shm<Index>::array &el() { return *d()->el; }

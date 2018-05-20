@@ -113,6 +113,7 @@ public:
    virtual ~Object();
 
    bool operator==(const Object &other) const;
+   bool operator!=(const Object &other) const;
 
    bool isComplete() const; //! check whether all references have been resolved
 

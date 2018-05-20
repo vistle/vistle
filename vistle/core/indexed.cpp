@@ -397,12 +397,23 @@ Indexed::Data *Indexed::Data::create(const std::string &objId, Type id,
 
 Index Indexed::getNumElements() const {
 
-   return d()->el->size()-1;
+    return d()->el->size()-1;
+}
+
+void Indexed::resetElements() {
+    d()->el = ShmVector<Index>();
+    d()->el.construct(1);
+    (*d()->el)[0] = 0;
 }
 
 Index Indexed::getNumCorners() const {
 
-   return d()->cl->size();
+    return d()->cl->size();
+}
+
+void Indexed::resetCorners() {
+    d()->cl = ShmVector<Index>();
+    d()->cl.construct();
 }
 
 Index Indexed::getNumVertices() const {

@@ -18,6 +18,7 @@ public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mapping, (Unspecified)(Vertex)(Element));
 
    typedef Object Base;
+   virtual void resetArrays(); //< remove reference to data arrays and create empty ones
    virtual Index getSize() const;
    virtual void setSize(const Index size);
    Object::const_ptr grid() const;
