@@ -42,6 +42,8 @@ public:
    // GridInterface
    Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
+   Normals::const_ptr normals() const override;
+   void setNormals(Normals::const_ptr normals);
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool inside(Index elem, const Vector &point) const override;
@@ -58,6 +60,7 @@ private:
    // data object
    V_DATA_BEGIN(RectilinearGrid);
 
+   shm_obj_ref<Normals> normals;
    ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
    ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
 

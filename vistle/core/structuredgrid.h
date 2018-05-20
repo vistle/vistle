@@ -40,6 +40,8 @@ public:
    // GridInterface
    Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
+   Normals::const_ptr normals() const override;
+   void setNormals(Normals::const_ptr normals);
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool inside(Index elem, const Vector &point) const override;
@@ -62,6 +64,7 @@ private:
    // data object
    V_DATA_BEGIN(StructuredGrid);
 
+   shm_obj_ref<Normals> normals;
    ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
    ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
 

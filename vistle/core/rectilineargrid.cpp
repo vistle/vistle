@@ -100,6 +100,16 @@ std::pair<Vector, Vector> RectilinearGrid::getBounds() const {
             Vector(m_coords[0][m_numDivisions[0]-1], m_coords[1][m_numDivisions[1]-1], m_coords[2][m_numDivisions[2]-1]));
 }
 
+Normals::const_ptr RectilinearGrid::normals() const
+{
+    return Normals::as(d()->normals.getObject());
+}
+
+void RectilinearGrid::setNormals(Normals::const_ptr normals)
+{
+    d()->normals = normals;
+}
+
 // CELL BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> RectilinearGrid::cellBounds(Index elem) const {

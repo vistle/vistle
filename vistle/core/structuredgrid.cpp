@@ -192,6 +192,16 @@ std::pair<Vector, Vector> StructuredGrid::getBounds() const {
    return Base::getMinMax();
 }
 
+Normals::const_ptr StructuredGrid::normals() const
+{
+    return Normals::as(d()->normals.getObject());
+}
+
+void StructuredGrid::setNormals(Normals::const_ptr normals)
+{
+    d()->normals = normals;
+}
+
 // CELL BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {

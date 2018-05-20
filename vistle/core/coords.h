@@ -24,7 +24,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
    std::pair<Vector, Vector> getBounds() const override;
    Index getNumCoords() const;
    Index getNumVertices() const override;
-   Normals::const_ptr normals() const;
+   Normals::const_ptr normals() const override;
    void setNormals(Normals::const_ptr normals);
 
    V_DATA_BEGIN(Coords);

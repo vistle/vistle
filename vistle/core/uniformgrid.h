@@ -43,6 +43,8 @@ public:
 
    // GeometryInterface
    std::pair<Vector, Vector> getBounds() const override;
+   Normals::const_ptr normals() const override;
+   void setNormals(Normals::const_ptr normals);
 
    // GridInterface
    Index getNumVertices() const override;
@@ -64,6 +66,7 @@ private:
    // data object
    V_DATA_BEGIN(UniformGrid);
 
+   shm_obj_ref<Normals> normals;
    // each of the following variables represents a coordinate (by index, in order x, y, z)
    ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
    ShmVector<Scalar> min; //< coordinates of minimum grid point

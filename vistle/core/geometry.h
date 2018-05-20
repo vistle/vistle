@@ -3,6 +3,7 @@
 
 #include "object.h"
 #include "vector.h"
+#include "normals.h"
 #include "database.h"
 #include "export.h"
 
@@ -13,6 +14,7 @@ class V_COREEXPORT GeometryInterface: virtual public ObjectInterfaceBase {
    virtual std::pair<Vector, Vector> getBounds() const = 0;
    //virtual Index getNumElements() const = 0;
    virtual Index getNumVertices() const = 0;
+   virtual Normals::const_ptr normals() const = 0;
 };
 
 class V_COREEXPORT ElementInterface: virtual public GeometryInterface {

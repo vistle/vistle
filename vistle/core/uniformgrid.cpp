@@ -98,6 +98,16 @@ std::pair<Vector, Vector> UniformGrid::getBounds() const {
     return std::make_pair(Vector(m_min[0], m_min[1], m_min[2]), Vector(m_max[0], m_max[1], m_max[2]));
 }
 
+Normals::const_ptr UniformGrid::normals() const
+{
+    return Normals::as(d()->normals.getObject());
+}
+
+void UniformGrid::setNormals(Normals::const_ptr normals)
+{
+    d()->normals = normals;
+}
+
 // CELL BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const {
