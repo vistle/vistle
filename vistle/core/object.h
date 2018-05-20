@@ -112,6 +112,8 @@ public:
 
    virtual ~Object();
 
+   bool operator==(const Object &other) const;
+
    bool isComplete() const; //! check whether all references have been resolved
 
    static const char *typeName() { return "Object"; }

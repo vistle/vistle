@@ -259,7 +259,17 @@ Object::Object()
 Object::~Object() {
 
 
-   m_data->unref();
+    m_data->unref();
+}
+
+bool Object::operator==(const Object &other) const
+{
+    if (d() == other.d()) {
+        assert(getName() == other.getName());
+    } else {
+        assert(getName() != other.getName());
+    }
+    return d() == other.d();
 }
 
 Object::ptr Object::clone() const {
