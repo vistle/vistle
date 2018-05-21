@@ -23,6 +23,7 @@ set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 add_subdirectory(propertybrowser)
 
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
 
 include_directories(
   ${Boost_INCLUDE_DIRS}
@@ -89,15 +90,15 @@ endif(APPLE)
 
 
 qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+qt5_add_resources(GUI_QRC_SOURCES gui.qrc)
 add_definitions(${QT_DEFINITIONS})
 vistle_add_executable(${gui_name}
   MACOSX_BUNDLE
   ${gui_SOURCES} 
-  ${GUI_UI_SRCS})
+  ${GUI_UI_SRCS}
+  ${GUI_QRC_SOURCES})
 
 qt5_use_modules(${gui_name} Widgets)
-
-qt5_add_resources(${gui_name} gui.qrc)
 
 target_link_libraries(${gui_name}
   ${QT_LIBRARIES}

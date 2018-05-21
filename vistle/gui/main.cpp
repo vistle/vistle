@@ -16,6 +16,10 @@ Q_DECLARE_METATYPE(boost::uuids::uuid);
 
 using namespace gui;
 
+void debugMessageHandler(QtMsgType type, const QMessageLogContext &, const QString &message) {
+    std::cerr << message.toStdString() << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
    qRegisterMetaType<Module::Status>("Module::Status");
@@ -24,7 +28,8 @@ int main(int argc, char *argv[])
 
    try {
       QApplication a(argc, argv);
-      QIcon icon(":/vistle.png");
+      qInstallMessageHandler(debugMessageHandler);
+      QIcon icon(":/icons/vistle.png");
       a.setWindowIcon(icon);
       UiController control(argc, argv, &a);
       control.init();
