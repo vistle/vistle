@@ -28,10 +28,11 @@
 #include <cover/coVRShader.h>
 #include <cover/coVRPluginSupport.h>
 #include <PluginUtil/coSphere.h>
+#include <PluginUtil/Tipsify.h>
 #endif
 
 namespace  {
-const int NumPrimitives = 10000;
+const int NumPrimitives = 100000;
 const bool IndexGeo = true;
 }
 
@@ -432,6 +433,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, bool indexGeom) {
         corners->reserve(numTri*3);
         for (Index corner = 0; corner < numCorners; corner ++)
             corners->push_back(cl[corner]);
+#ifdef COVER_PLUGIN
+        opencover::tipsify(&(*corners)[0], corners->size());
+#endif
         assert(corners->size() == numTri*3);
         return corners;
     } else {
@@ -461,6 +465,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
             }
             begin = end;
         }
+#ifdef COVER_PLUGIN
+        opencover::tipsify(&(*corners)[0], corners->size());
+#endif
         return corners;
     } else {
         return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri*3);
