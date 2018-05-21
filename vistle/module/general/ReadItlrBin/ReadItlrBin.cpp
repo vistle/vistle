@@ -450,7 +450,7 @@ bool ReadItlrBin::compute() {
     if (last < 0)
         last = numFiles-1;
     int step = numFiles >= 1 ? 0 : -1;
-    int numSteps = (1+last-first)/inc;
+    int numSteps = (last-first)/inc+1;
     if (!haveListFile) {
         first = 0;
         last = 0;
