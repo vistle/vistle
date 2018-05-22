@@ -25,6 +25,7 @@
 
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
 #include <QApplication>
+#include <QIcon>
 #endif
 #endif
 
@@ -73,7 +74,9 @@ int main(int argc, char ** argv)
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
    if (!qApp) {
        std::cerr << "early creation of QApplication object" << std::endl;
-       new QApplication(argc, argv);
+       auto app = new QApplication(argc, argv);
+       QIcon icon(":/icons/vistle.png");
+       app->setWindowIcon(icon);
    }
 #endif
    auto t = std::thread([argc, argv](){

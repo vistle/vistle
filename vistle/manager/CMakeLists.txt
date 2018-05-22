@@ -9,6 +9,7 @@ if (NOT VISTLE_MULTI_PROCESS)
     vistle_find_package(Qt5Core)
     vistle_find_package(Qt5Widgets)
     if (Qt5Widgets_FOUND)
+        set(USE_QT TRUE)
         add_definitions(-DHAVE_QT)
     endif()
 endif()
@@ -38,6 +39,11 @@ set(SOURCES
    portmanager.cpp
 )
 
+if (USE_QT)
+   qt5_add_resources(QRC_SOURCES icons.qrc)
+   set(SOURCES ${SOURCES} ${QRC_SOURCES})
+endif()
+
 vistle_add_executable(vistle_manager ${SOURCES})
 
 target_link_libraries(vistle_manager
@@ -63,7 +69,7 @@ if(NOT VISTLE_MULTI_PROCESS)
    if (APPLE)
       set_target_properties(vistle_manager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
    endif()
-   if (Qt5Widgets_FOUND)
+   if (USE_QT)
       qt5_use_modules(vistle_manager Core Widgets)
    endif()
 endif()
