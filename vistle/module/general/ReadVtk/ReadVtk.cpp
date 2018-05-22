@@ -285,6 +285,7 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
 
    auto grid = vistle::vtk::toGrid(ds);
    if (grid) {
+       grid->updateInternals();
        grid->setMeta(meta);
        if (!part.empty())
            grid->addAttribute("_part", part);

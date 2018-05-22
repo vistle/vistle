@@ -85,28 +85,70 @@ bool Vec<T,Dim>::checkImpl() const {
 }
 
 template <class T, int Dim>
+void Vec<T,Dim>::updateInternals() {
+    d()->updateBounds();
+}
+
+template <class T, int Dim>
 std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::getMinMax() const {
 
-   Scalar smax = std::numeric_limits<Scalar>::max();
-   Vector min, max;
-   Index sz = getSize();
-   for (int c=0; c<Dim; ++c) {
-      min[c] = smax;
-      max[c] = -smax;
-      const Scalar *d = &x(c)[0];
-      for (Index i=0; i<sz; ++i) {
-         if (d[i] < min[c])
-            min[c] = d[i];
-         if (d[i] > max[c])
-            max[c] = d[i];
+    if (d()->boundsValid()) {
+        return std::make_pair(d()->min, d()->max);
+    }
 
-      }
-   }
-   return std::make_pair(min, max);
+    T smax = std::numeric_limits<T>::max();
+    T smin = std::numeric_limits<T>::lowest();
+    Vector min, max;
+    Index sz = getSize();
+    for (int c=0; c<Dim; ++c) {
+        min[c] = smax;
+        max[c] = smin;
+        const T *d = &x(c)[0];
+        for (Index i=0; i<sz; ++i) {
+            if (d[i] < min[c])
+                min[c] = d[i];
+            if (d[i] > max[c])
+                max[c] = d[i];
+
+        }
+    }
+    return std::make_pair(min, max);
 }
 
 template <class T, int Dim>
 void Vec<T,Dim>::Data::initData() {
+    invalidateBounds();
+}
+
+template <class T, int Dim>
+bool Vec<T,Dim>::Data::boundsValid() const {
+    for (int c=0; c<Dim; ++c)
+        if (min[c] > max[c])
+            return false;
+    return true;
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::Data::invalidateBounds() {
+    for (int c=0; c<Dim; ++c) {
+        min[c] = std::numeric_limits<T>::max();
+        max[c] = std::numeric_limits<T>::lowest();
+    }
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::Data::updateBounds() {
+    invalidateBounds();
+    for (int c=0; c<Dim; ++c) {
+        Index sz = x[c]->size();
+        const T *d = x[c]->data();
+        for (Index i=0; i<sz; ++i) {
+            if (d[i] < min[c])
+                min[c] = d[i];
+            if (d[i] > max[c])
+                max[c] = d[i];
+        }
+    }
 }
 
 template <class T, int Dim>

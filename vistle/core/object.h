@@ -128,6 +128,7 @@ public:
 
    virtual void refresh() const; //!< refresh cached pointers from shm
    virtual bool check() const;
+   virtual void updateInternals();
 
    virtual bool isEmpty() const;
 

@@ -44,6 +44,7 @@ class Vec: public DataBase {
    const T *z() const { return m_x[2]; }
    const T *w() const { return m_x[3]; }
 
+   void updateInternals() override;
    std::pair<Vector, Vector> getMinMax() const;
 
  private:
@@ -53,6 +54,8 @@ class Vec: public DataBase {
  public:
    struct Data: public Base::Data {
 
+      Vector min;
+      Vector max;
       ShmVector<T> x[Dim];
       // when used as Vec
       Data(const Index size = 0, const std::string &name = "",
@@ -71,6 +74,9 @@ class Vec: public DataBase {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version);
       void initData();
+      void updateBounds();
+      void invalidateBounds();
+      bool boundsValid() const;
    };
 };
 

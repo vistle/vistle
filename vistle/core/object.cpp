@@ -323,6 +323,10 @@ bool Object::check() const {
    return true;
 }
 
+void Object::updateInternals()
+{
+}
+
 void Object::ref() const {
    d()->ref();
 }

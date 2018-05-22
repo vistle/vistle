@@ -873,6 +873,8 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object) 
 
 bool Module::addObject(Port *port, vistle::Object::ptr object) {
 
+   if (object)
+       object->updateInternals();
    updateMeta(object);
    vistle::Object::const_ptr cobj = object;
    return passThroughObject(port, cobj);
