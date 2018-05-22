@@ -720,6 +720,7 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       parseAttributes(elem);
    } else {
       if (object) {
+         object->updateInternals();
          applyAttributes(object, *elem);
          elem->obj = object;
          std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;

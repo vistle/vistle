@@ -151,6 +151,7 @@ Object::ptr ReadModel::load(const std::string &name) {
                             n[c][i] = norm[c];
                         }
                     }
+                    normals->updateInternals();
 
                     coords->setNormals(normals);
                 }

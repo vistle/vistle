@@ -768,6 +768,11 @@ bool Leveller::process() {
    Vec<Scalar>::const_ptr dataobj = Vec<Scalar>::as(m_data);
    if (!dataobj)
       return false;
+   auto bounds = dataobj->getMinMax();
+   if (bounds.first[0] <= bounds.second[0]) {
+       if (m_isoValue < bounds.first[0] || m_isoValue > bounds.second[0])
+           return true;
+   }
 #else
 #endif
 
@@ -874,7 +879,10 @@ bool Leveller::process() {
              m_triangles->d()->x[0] = HD.m_outVertData[idx++];
              m_triangles->d()->x[1] = HD.m_outVertData[idx++];
              m_triangles->d()->x[2] = HD.m_outVertData[idx++];
-             m_triangles->setNormals(norm);
+             if (norm) {
+                 norm->updateInternals();
+                 m_triangles->setNormals(norm);
+             }
 
              size_t idxI=0;
              for (size_t i=0; i<m_vertexdata.size(); ++i) {

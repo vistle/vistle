@@ -198,6 +198,7 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
 #ifndef CUTTINGSURFACE
       result->copyAttributes(dataS);
 #endif
+      result->updateInternals();
       result->copyAttributes(grid, false);
       result->setTransform(grid->getTransform());
       if (result->getTimestep() < 0) {
@@ -209,6 +210,7 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
           result->setNumBlocks(grid->getNumBlocks());
       }
       if (mapdata && mapresult) {
+         mapresult->updateInternals();
          mapresult->copyAttributes(mapdata);
          mapresult->setGrid(result);
          addObject(m_dataOut, mapresult);

@@ -358,6 +358,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
     }
 
     if (geoOut) {
+        geoOut->updateInternals();
         geoOut->setBlock(block);
         addObject("grid_out", geoOut);
         scalar->setGrid(geoOut);
