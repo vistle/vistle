@@ -157,7 +157,7 @@ bool skipFloatArray(FILE *fp, const size_t num) {
 }
 
 ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("Read ITLR binary data", name, moduleID, comm)
+    : Module("Read ITLR FS3D binary data", name, moduleID, comm)
     , m_nparts(size())
     , m_dims{0,0,0} {
 
