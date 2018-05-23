@@ -46,14 +46,14 @@ set(HEADERS
 set(FORMS
 )
 
-qt5_wrap_ui(UI_SRCS ${FORMS})
+qt_wrap_ui(UI_SRCS ${FORMS})
 add_definitions(${QT_DEFINITIONS})
 add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
 add_library(vistle_propertybrowser STATIC
   ${SOURCES} 
   ${UI_SRCS})
 
-qt5_use_modules(vistle_propertybrowser Widgets)
+qt_use_modules(vistle_propertybrowser Widgets)
 
 target_link_libraries(vistle_propertybrowser
   ${QT_LIBRARIES}

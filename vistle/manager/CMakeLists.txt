@@ -40,7 +40,7 @@ set(SOURCES
 )
 
 if (USE_QT)
-   qt5_add_resources(QRC_SOURCES icons.qrc)
+   qt_add_resources(QRC_SOURCES icons.qrc)
    set(SOURCES ${SOURCES} ${QRC_SOURCES})
 endif()
 
@@ -70,7 +70,7 @@ if(NOT VISTLE_MULTI_PROCESS)
       set_target_properties(vistle_manager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
    endif()
    if (USE_QT)
-      qt5_use_modules(vistle_manager Core Widgets)
+      qt_use_modules(vistle_manager Core Widgets)
    endif()
 endif()
 
