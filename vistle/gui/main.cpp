@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
 
    try {
       QApplication a(argc, argv);
+      a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
       qInstallMessageHandler(debugMessageHandler);
       QIcon icon(":/icons/vistle.png");
       a.setWindowIcon(icon);

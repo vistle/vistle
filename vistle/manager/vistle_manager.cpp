@@ -75,6 +75,7 @@ int main(int argc, char ** argv)
    if (!qApp) {
        std::cerr << "early creation of QApplication object" << std::endl;
        auto app = new QApplication(argc, argv);
+       app->setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
        QIcon icon(":/icons/vistle.png");
        app->setWindowIcon(icon);
    }
