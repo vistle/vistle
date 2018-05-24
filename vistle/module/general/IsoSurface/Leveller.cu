@@ -537,17 +537,36 @@ struct checkcell {
       u_char cellType = iCell.get<2>();
       if (cellType & UnstructuredGrid::GHOST_BIT)
           return 0;
-      for (Index i=Cell; i<nextCell; i++) {
-         float val = m_data.m_isoFunc(m_data.m_cl[i]);
-         if (val>m_data.m_isovalue) {
-            havelower=1;
-            if (havehigher)
-               return 1;
-         } else {
-            havehigher=1;
-            if (havelower)
-               return 1;
-         }
+      if ((cellType & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+          for (Index i=Cell; i<nextCell; i++) {
+              Index nv = m_data.m_cl[i];
+              for (Index k=0; k<nv; k++) {
+                  ++i;
+                  float val = m_data.m_isoFunc(m_data.m_cl[i]);
+                  if (val>m_data.m_isovalue) {
+                      havelower=1;
+                      if (havehigher)
+                          return 1;
+                  } else {
+                      havehigher=1;
+                      if (havelower)
+                          return 1;
+                  }
+              }
+          }
+      } else {
+          for (Index i=Cell; i<nextCell; i++) {
+              float val = m_data.m_isoFunc(m_data.m_cl[i]);
+              if (val>m_data.m_isovalue) {
+                  havelower=1;
+                  if (havehigher)
+                      return 1;
+              } else {
+                  havehigher=1;
+                  if (havelower)
+                      return 1;
+              }
+          }
       }
       return 0;
    }
@@ -580,6 +599,30 @@ struct checkcell {
       }
       return 0;
    }
+
+#if 0
+   // for polygons and lines
+   __host__ __device__ int operator()(const thrust::tuple<Index,Index> iCell) const {
+
+      int havelower = 0;
+      int havehigher = 0;
+      Index Cell = iCell.get<0>();
+      Index nextCell = iCell.get<1>();
+      for (Index i=Cell; i<nextCell; i++) {
+         float val = m_data.m_isoFunc(m_data.m_cl[i]);
+         if (val>m_data.m_isovalue) {
+            havelower=1;
+            if (havehigher)
+               return 1;
+         } else {
+            havehigher=1;
+            if (havelower)
+               return 1;
+         }
+      }
+      return 0;
+   }
+#endif
 };
 
 template<class Data>
