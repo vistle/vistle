@@ -385,6 +385,7 @@ bool Hub::sendManager(const message::Message &msg, int hub) const {
          if (sock.second == message::Identify::MANAGER) {
             ++numSent;
             sendMessage(sock.first, msg);
+            break;
          }
       }
       vassert(numSent == 1);
@@ -519,6 +520,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
+   if (m_hubId == Id::MasterHub) {
+       if (msg.destId() == Id::ForBroadcast)
+           msg.setDestId(Id::Broadcast);
+   }
+
    bool masterAdded = false;
    switch (msg.type()) {
       case message::IDENTIFY: {
@@ -610,10 +616,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          //CERR << "handling connect: " << msg << std::endl;
          auto &mm = static_cast<const Connect &>(msg);
          if (m_isMaster) {
+#if 0
              if (mm.isNotification()) {
                  CERR << "discarding notification on master: " << msg << std::endl;
                  return true;
              }
+#endif
              if (m_stateTracker.handleConnect(mm)) {
                  handlePriv(mm);
                  handleQueue();
@@ -637,10 +645,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       case message::DISCONNECT: {
          auto &mm = static_cast<const Disconnect &>(msg);
          if (m_isMaster) {
+#if 0
              if (mm.isNotification()) {
                  CERR << "discarding notification on master: " << msg << std::endl;
                  return true;
              }
+#endif
              if (m_stateTracker.handleDisconnect(mm)) {
                  handlePriv(mm);
                  handleQueue();
