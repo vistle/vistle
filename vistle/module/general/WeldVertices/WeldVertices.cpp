@@ -112,7 +112,7 @@ bool WeldVertices::compute() {
                 }
                 grid = g;
                 normals = gi->normals();
-                if (normals) {
+                if (normals && normals->mapping() != DataBase::Element) {
                     floats.push_back(normals->x());
                     floats.push_back(normals->y());
                     floats.push_back(normals->z());
@@ -229,6 +229,25 @@ bool WeldVertices::compute() {
 
     if (ogrid) {
         ogrid->copyAttributes(grid);
+    }
+
+    if (normals) {
+        auto oc = Coords::as(ogrid);
+        if (normals->mapping() == DataBase::Element) {
+            oc->setNormals(normals);
+        } else {
+            auto nout = normals->clone();
+            nout->resetArrays();
+            nout->setSize(remap.size());
+            const Scalar *x=normals->x(), *y=normals->y(), *z=normals->z();
+            Scalar *ox=nout->x().data(), *oy=nout->y().data(), *oz=nout->z().data();
+            for (Index i=0; i<remap.size(); ++i) {
+                ox[i] = x[remap[i]];
+                oy[i] = y[remap[i]];
+                oz[i] = z[remap[i]];
+            }
+            oc->setNormals(nout);
+        }
     }
 
     for (int i=0; i<NumPorts; ++i) {
