@@ -1606,11 +1606,10 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
                 }
                 usleep(1000);
                 if (m_remote->boundsUpdated()) {
+                    bs.expandBy(m_remote->boundsNode->getBound());
+                    //std::cerr << "bounding sphere: center=" << bs.center() << ", r=" << bs.radius() << std::endl;
                     break;
                 }
-            }
-            if (m_remote->boundsUpdated()) {
-                bs.expandBy(m_remote->boundsNode->getBound());
             }
         }
     }

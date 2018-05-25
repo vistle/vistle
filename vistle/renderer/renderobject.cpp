@@ -108,6 +108,12 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       }
    }
 
+   bValid = true;
+   for (int c=0; c<3; ++c) {
+       if (bMin[c] > bMax[c])
+           bValid = false;
+   }
+
    if (geometry)
       timestep = geometry->getTimestep();
    if (timestep < 0 && normals) {

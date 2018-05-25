@@ -37,6 +37,7 @@ class V_RENDEREREXPORT RenderObject {
    vistle::Texture1D::const_ptr texture;
 
    int timestep;
+   bool bValid = false;
    vistle::Vector bMin, bMax;
 
    bool hasSolidColor;

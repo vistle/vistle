@@ -255,6 +255,8 @@ const vistle::Matrix4 &RhrServer::modelMat(size_t i) const {
 
 void RhrServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius) {
 
+   //std::cerr << "RhrServer: new bounding sphere: center=" << center << ", r=" << radius << std::endl;
+
    m_boundCenter = center;
    m_boundRadius = radius;
 }

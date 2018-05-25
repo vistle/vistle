@@ -383,12 +383,16 @@ void Renderer::getBounds(Vector &min, Vector &max, int t) {
 
    if (size_t(t+1) < m_objectList.size()) {
       for (auto &ro: m_objectList[t+1]) {
+          if (!ro->bValid)
+              continue;
           for (int i=0; i<3; ++i) {
               min[i] = std::min(min[i], ro->bMin[i]);
               max[i] = std::max(max[i], ro->bMax[i]);
           }
       }
    }
+
+   //std::cerr << "t=" << t << ", bounds min=" << min << ", max=" << max << std::endl;
 }
 
 void Renderer::getBounds(Vector &min, Vector &max) {
