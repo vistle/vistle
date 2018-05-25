@@ -157,7 +157,7 @@ bool skipFloatArray(FILE *fp, const size_t num) {
 }
 
 ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("Read ITLR FS3D binary data", name, moduleID, comm)
+    : Reader("Read ITLR binary data", name, moduleID, comm)
     , m_nparts(size())
     , m_dims{0,0,0} {
 
@@ -171,18 +171,23 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
     setParameterRange(m_numPartitions, (Integer)-1, std::numeric_limits<Integer>::max());
-    m_distributeTimesteps = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", 0, Parameter::Boolean);
 
+#if 0
     m_firstStep = addIntParameter("first_step", "first timestep to read", 0);
     setParameterRange(m_firstStep, (Integer)0, std::numeric_limits<Integer>::max());
     m_lastStep = addIntParameter("last_step", "last timestep to read", -1);
     setParameterRange(m_lastStep, (Integer)-1, std::numeric_limits<Integer>::max());
     m_stepSkip = addIntParameter("skip_step", "number of steps to skip", 99);
     setParameterRange(m_stepSkip, (Integer)0, std::numeric_limits<Integer>::max());
+#endif
 
     for (int i=0; i<NumPorts; ++i) {
         m_dataOut[i] = createOutputPort("data"+std::to_string(i), "data output");
     }
+
+   setParallelizationMode(ParallelizeTimeAndBlocks);
+   setAllowTimestepDistribution(true);
+   observeParameter(m_numPartitions);
 }
 
 ReadItlrBin::~ReadItlrBin() {
@@ -190,7 +195,101 @@ ReadItlrBin::~ReadItlrBin() {
 
 }
 
-bool ReadItlrBin::changeParameter(const Parameter *p) {
+bool ReadItlrBin::examine(const Parameter *param)
+{
+    if (param == m_numPartitions)
+        setPartitions(m_numPartitions->getValue());
+
+    return true;
+}
+
+bool ReadItlrBin::prepareRead()
+{
+    int numFiles = -1;
+    m_haveListFile = false;
+    for (int port=0; port<NumPorts; ++port) {
+        m_scalarFile[port] = m_filename[port]->getValue();
+        if (m_scalarFile[port].empty())
+            continue;
+
+        m_fileList[port].push_back(m_scalarFile[port]);
+        bool haveList = false;
+        if (boost::algorithm::ends_with(m_scalarFile[port], ".lst")) {
+            m_fileList[port] = readListFile(m_scalarFile[port]);
+            haveList = true;
+        }
+        filesystem::path listFilePath(m_scalarFile[port]);
+        m_directory[port] = listFilePath.parent_path();
+
+        if (numFiles < 0) {
+            m_haveListFile = haveList;
+        } else {
+            if (haveList != m_haveListFile) {
+                sendError("Selection of a .bin or a .list file has to match on all ports");
+                return false;
+            }
+        }
+
+        if (numFiles < 0) {
+            numFiles = m_fileList[port].size();
+        } else {
+            numFiles = std::min<int>(numFiles, m_fileList[port].size());
+        }
+    }
+
+    std::string gridFile = m_gridFilename->getValue();
+    if (m_numPartitions->getValue() < 0)
+        m_nparts = size();
+    else
+        m_nparts = m_numPartitions->getValue();
+
+    m_grids = readGridBlocks(gridFile, m_nparts);
+    assert(m_grids.size() == m_nparts);
+
+    return true;
+}
+
+bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
+{
+    if (timestep < 0) {
+        if (m_haveListFile)
+            return true;
+
+        timestep = 0;
+    }
+
+    if (block<0)
+        block = 0;
+
+    for (int port=0; port<NumPorts; ++port) {
+        if (m_scalarFile[port].empty())
+            continue;
+        auto file = m_fileList[port][timestep];
+        filesystem::path filename;
+        if (m_haveListFile) {
+            filename = m_directory[port];
+            filename.append(file);
+        } else {
+            filename = m_fileList[port][timestep];
+        }
+
+        auto scal = readFieldBlock(filename.string(), block);
+        if (scal) {
+            scal->setGrid(m_grids[block]);
+            token.addObject(m_dataOut[port], scal);
+        } else {
+            token.addObject(m_dataOut[port], m_grids[block]);
+        }
+    }
+
+    return true;
+}
+
+bool ReadItlrBin::finishRead()
+{
+    for (int port=0; port<NumPorts; ++port)
+        m_fileList[port].clear();
+    m_grids.clear();
 
     return true;
 }
@@ -398,6 +497,7 @@ std::vector<std::string> ReadItlrBin::readListFile(const std::string &filename) 
     return files;
 }
 
+#if 0
 bool ReadItlrBin::compute() {
 
     std::string gridFile = m_gridFilename->getValue();
@@ -503,3 +603,4 @@ int ReadItlrBin::rankForBlockAndTimestep(int block, int timestep) {
 
     return block % size();
 }
+#endif
