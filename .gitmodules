@@ -5,9 +5,6 @@
 	path = 3rdparty/qt-solutions
 	url = git://github.com/qtproject/qt-solutions.git
 	branch = master
-[submodule "3rdparty/eigen3"]
-	path = 3rdparty/eigen3
-	url = git://github.com/RLovelett/eigen.git
 [submodule "3rdparty/thrust"]
 	path = 3rdparty/thrust
 	url = git://github.com/thrust/thrust.git
@@ -30,3 +27,6 @@
 	path = 3rdparty/pybind11
 	url = git://github.com/pybind/pybind11.git
 	branch = stable
+[submodule "3rdparty/eigen3"]
+	path = 3rdparty/eigen3
+	url = git://github.com/eigenteam/eigen-git-mirror.git
