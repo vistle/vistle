@@ -246,11 +246,17 @@ bool Extrema::compute() {
    if (auto str = StructuredGridBase::as(obj)) {
        auto mm = str->getBounds();
        auto t = obj->getTransform();
-       Vector3 corner[2];
-       corner[0] = transformPoint(t, mm.first);
-       corner[1] = transformPoint(t, mm.second);
-       for (int c=0; c<3; ++c) {
-           for (int i=0; i<2; ++i) {
+       Vector3 corner[8];
+       corner[0] = mm.first;
+       corner[1] = mm.second;
+       for (int i=2; i<8; ++i) {
+           corner[i] = Vector3(corner[i%2][0], corner[(i/2)%2][1], corner[(i/4)%2][2]);
+       }
+       for (int i=0; i<8; ++i) {
+           corner[i] = transformPoint(t, corner[i]);
+       }
+       for (int i=0; i<8; ++i) {
+           for (int c=0; c<3; ++c) {
                if (corner[i][c] < min[c]) {
                    min[c] = corner[i][c];
                    minIndex[c] = InvalidIndex;
@@ -270,6 +276,34 @@ bool Extrema::compute() {
        minBlock.dim = 3;
        maxBlock.dim = 3;
        handled = true;
+#ifdef BOUNDINGBOX
+   } if (auto coord = Coords::as(obj)) {
+       auto t = obj->getTransform();
+       const Index num = coord->getNumCoords();
+       const Scalar *x = &coord->x()[0], *y = &coord->y()[0], *z = &coord->z()[0];
+       for (Index i=0; i<num; ++i) {
+           auto p = transformPoint(t, Vector(x[i], y[i], z[i]));
+           for (int c=0; c<3; ++c) {
+               if (p[c] < min[c]) {
+                   min[c] = p[c];
+                   minIndex[c] = InvalidIndex;
+                   minBlock[c] = obj->getBlock();
+               }
+               if (p[c] > max[c]) {
+                   max[c] = p[c];
+                   maxIndex[c] = InvalidIndex;
+                   maxBlock[c] = obj->getBlock();
+               }
+           }
+       }
+       min.dim = 3;
+       max.dim = 3;
+       minIndex.dim = 3;
+       maxIndex.dim = 3;
+       minBlock.dim = 3;
+       maxBlock.dim = 3;
+       handled = true;
+#endif
    } else {
        boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
        boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
