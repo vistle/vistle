@@ -6,7 +6,7 @@
 #include <utility> // std::pair
 
 #include <util/sysdep.h>
-#include <module/module.h>
+#include <module/reader.h>
 
 typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {
@@ -25,6 +25,7 @@ struct Element {
    Element(const Element &other)
       : parent(other.parent)
       , referenced(other.referenced)
+      , type(other.type)
       , obj(other.obj)
       , is_timeset(other.is_timeset)
       , in_geometry(other.in_geometry)
@@ -41,6 +42,7 @@ struct Element {
       if (&rhs != this) {
          parent = rhs.parent;
          referenced = rhs.referenced;
+         type = rhs.type;
          obj = rhs.obj;
          is_timeset = rhs.is_timeset;
          in_geometry = rhs.in_geometry;
@@ -56,6 +58,7 @@ struct Element {
 
    Element *parent;
    Element *referenced;
+   std::string type;
    vistle::Object::ptr obj;
    bool is_timeset;
    bool in_geometry;
@@ -67,44 +70,60 @@ struct Element {
 
 };
 
-class ReadCovise: public vistle::Module {
+class ReadCovise: public vistle::Reader {
+
+   static const int NumPorts = 4;
 
  public:
    ReadCovise(const std::string &name, int moduleID, mpi::communicator comm);
-   ~ReadCovise();
+   ~ReadCovise() override;
+
+   virtual bool examine(const vistle::Parameter *param) override;
+   virtual bool prepareRead() override;
+   virtual bool read(Token &token, int timestep=-1, int block=-1) override;
+   virtual bool finishRead() override;
 
  private:
-   bool readSkeleton(const int fd, Element *elem);
+   bool readSkeleton(const int port, Element *elem);
    AttributeList readAttributes(const int fd);
-   void applyAttributes(vistle::Object::ptr obj, const Element &elem, int index=-1);
+   void applyAttributes(Token &token, vistle::Object::ptr obj, const Element &elem, int index=-1);
 
-   bool readSETELE(const int fd, Element *parent);
-   vistle::Object::ptr readGEOTEX(const int fd, bool skeleton, Element *elem, int timestep);
-   vistle::Object::ptr readUNIGRD(const int fd, bool skeleton);
-   vistle::Object::ptr readRCTGRD(const int fd, bool skeleton);
-   vistle::Object::ptr readSTRGRD(const int fd, bool skeleton);
-   vistle::Object::ptr readUNSGRD(const int fd, bool skeleton);
-   vistle::Object::ptr readUSTSDT(const int fd, bool skeleton);
-   vistle::Object::ptr readSTRSDT(const int fd, bool skeleton);
-   vistle::Object::ptr readPOLYGN(const int fd, bool skeleton);
-   vistle::Object::ptr readLINES(const int fd, bool skeleton);
-   vistle::Object::ptr readPOINTS(const int fd, bool skeleton);
-   vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
-   vistle::Object::ptr readSTRVDT(const int fd, bool skeleton);
-   vistle::Object::ptr readOBJREF(const int fd, bool skeleton, Element *elem);
+   bool readSETELE(Token &token, const int port, int fd, Element *parent);
+   vistle::Object::ptr readGEOTEX(Token &token, const int port, int fd, bool skeleton, Element *elem, int timestep);
+   vistle::Object::ptr readUNIGRD(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readRCTGRD(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readSTRGRD(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readUNSGRD(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readUSTSDT(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readSTRSDT(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readPOLYGN(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readLINES(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readPOINTS(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readUSTVDT(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readSTRVDT(Token &token, const int port, int fd, bool skeleton);
+   vistle::Object::ptr readOBJREF(Token &token, const int port, int fd, bool skeleton, Element *elem);
 
-   bool readRecursive(const int fd, Element *elem, int timestep);
+   bool readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep);
    void deleteRecursive(Element &elem);
-   vistle::Object::ptr readObject(const int fd, Element *elem, int timestep);
-   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem, int timestep);
+   vistle::Object::ptr readObject(Token &token, const int port, int fd, Element *elem, int timestep);
+   vistle::Object::ptr readObjectIntern(Token &token, const int port, int fd, bool skeleton, Element *elem, int timestep);
 
-   bool load(const std::string & filename);
+   //bool load(const std::string & filename);
 
+#if 0
    virtual bool compute();
+#endif
 
-   size_t m_numObj;
-   std::vector<Element *> m_objects;
-   int m_firstTimestep, m_skipTimesteps;
+   vistle::StringParameter *m_gridFile = nullptr;
+   vistle::StringParameter *m_fieldFile[NumPorts];
+   vistle::Port *m_out[NumPorts];
+
+   int m_fd[NumPorts];
+   std::string m_filename[NumPorts];
+   Element m_rootElement[NumPorts];
+   size_t m_numObj[NumPorts];
+   int m_numTime[NumPorts];
+   std::vector<Element *> m_objects[NumPorts];
 };
 
 #endif

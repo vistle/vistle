@@ -33,17 +33,151 @@ MODULE_MAIN(ReadCovise)
 using namespace vistle;
 
 ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("read COVISE data", name, moduleID, comm)
+   : Reader("read COVISE data", name, moduleID, comm)
 {
+   m_gridFile = addStringParameter("filename", "name of COVISE file", "");
+   m_fieldFile[0] = m_gridFile;
+   m_out[0] = createOutputPort("grid_out");
 
-   createOutputPort("grid_out");
-   addStringParameter("filename", "name of COVISE file", "");
-   addIntParameter("first_timestep", "first timestep to read", 0);
-   addIntParameter("skip_timesteps", "number of timesteps to skip", 0);
+   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "");
+   m_out[1] = nullptr;
+   for (int i=2; i<NumPorts; ++i) {
+       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), "");
+       m_out[i] = createOutputPort("field"+std::to_string(i-2)+"_out");
+   }
+
+   for (int i=0; i<NumPorts; ++i) {
+       m_fd[i] = 0;
+       m_numObj[i] = 0;
+       m_numTime[i] = -1;
+   }
+
+   setParallelizationMode(ParallelizeTimesteps);
 }
 
 ReadCovise::~ReadCovise() {
 
+}
+
+bool ReadCovise::examine(const Parameter *param)
+{
+    for (int i=1; i<NumPorts; ++i) {
+        if (param == m_fieldFile[i]) {
+            std::string file = m_fieldFile[i]->getValue();
+            int fd = covOpenInFile(file.c_str());
+            if (fd == 0) {
+                sendInfo("failed to open %s or not a COVISE file", file.c_str());
+                return false;
+            }
+            covCloseInFile(fd);
+        }
+    }
+
+    return true;
+}
+
+bool ReadCovise::prepareRead()
+{
+    for (int port=0; port<NumPorts; ++port) {
+
+        m_numTime[port] = -1;
+        m_numObj[port] = 0;
+        m_objects[port].clear();
+
+        assert(m_fd[port] == 0);
+
+        const std::string name = m_fieldFile[port]->getValue();
+        m_filename[port] = name;
+        if (name.empty())
+            continue;
+
+        m_fd[port] = covOpenInFile(name.c_str());
+        if (!m_fd[port]) {
+            sendWarning("failed to open %s or not a COVISE file", name.c_str());
+            m_filename[port].clear();
+        }
+    }
+
+    for (int port=0; port<NumPorts; ++port) {
+        if (m_fd[port] == 0)
+            continue;
+
+        try {
+            readSkeleton(port, &m_rootElement[port]);
+        } catch(vistle::exception &e) {
+            finishRead();
+            throw(e);
+            return false;
+        }
+
+        if (port > 0) {
+            if (m_numObj[port] != m_numObj[0]) {
+                sendError("number of objects in %s and %s do not match",
+                          m_gridFile->getValue().c_str(),
+                          m_fieldFile[port]->getValue().c_str());
+                finishRead();
+                return false;
+            }
+            if (m_numTime[port] != m_numTime[0]) {
+                sendError("number of timesteps in %s and %s do not match",
+                          m_gridFile->getValue().c_str(),
+                          m_fieldFile[port]->getValue().c_str());
+                finishRead();
+                return false;
+            }
+        }
+    }
+
+    for (int port=0; port<NumPorts; ++port) {
+        if (m_fd[port] != 0) {
+            covCloseInFile(m_fd[port]);
+            m_fd[port] = 0;
+        }
+    }
+
+    sendInfo("reading %d timesteps", (int)m_numTime[0]);
+
+    setTimesteps(m_numTime[0]);
+
+    return true;
+}
+
+bool ReadCovise::read(Reader::Token &token, int timestep, int block)
+{
+    Element *elem[NumPorts];
+    int fd[NumPorts];
+    for (int port=0; port<NumPorts; ++port) {
+        elem[port] = &m_rootElement[port];
+        if (m_filename->empty()) {
+            fd[port] = 0;
+        } else {
+            fd[port] = covOpenInFile(m_filename[port].c_str());
+#if 0
+            if (fd[port] == 0)
+                return false;
+#endif
+        }
+    }
+    bool ret = readRecursive(token, fd, elem, -1, timestep);
+    for (int port=0; port<NumPorts; ++port) {
+        if (fd[port])
+            covCloseInFile(fd[port]);
+    }
+    return ret;
+}
+
+bool ReadCovise::finishRead()
+{
+    for (int port=0; port<NumPorts; ++port) {
+        if (m_fd[port]) {
+            covCloseInFile(m_fd[port]);
+            m_fd[port] = 0;
+        }
+        deleteRecursive(m_rootElement[port]);
+        m_numObj[port] = 0;
+        m_objects[port].clear();
+    }
+    return true;
 }
 
 static off_t mytell(const int fd) {
@@ -70,10 +204,10 @@ int findBlockNum(const Element &elem) {
    return block;
 }
 
-void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index) {
+void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &elem, int index) {
 
    if (elem.parent) {
-      applyAttributes(obj, *elem.parent, elem.index);
+      applyAttributes(token, obj, *elem.parent, elem.index);
    }
 
    bool isTimestep = false;
@@ -90,8 +224,6 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
          if (obj->getTimestep() != -1) {
             std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
          }
-         int outputTimestep = (index) / (m_skipTimesteps+1);
-         obj->setTimestep(outputTimestep);
 #if 0
          if (elem.parent)
             obj->setNumTimesteps(elem.parent->subelems.size());
@@ -103,6 +235,7 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
             obj->setNumBlocks(elem.parent->subelems.size());
 #endif
       }
+      token.applyMeta(obj);
 
       if (!isTimestep) {
          std::string set = obj->getAttribute("_part_of");
@@ -120,6 +253,7 @@ void parseAttributes(Element *elem) {
    for (size_t i=0; i<elem->attribs.size(); ++i) {
       const std::pair<std::string, std::string> &att = elem->attribs[i];
       if (att.first == "TIMESTEP") {
+          std::cerr << "timesteps " << att.second << " on type " << elem->type << std::endl;
           elem->is_timeset = true;
           break;
       }
@@ -151,7 +285,7 @@ AttributeList ReadCovise::readAttributes(const int fd) {
    return attributes;
 }
 
-bool ReadCovise::readSETELE(const int fd, Element *parent) {
+bool ReadCovise::readSETELE(Token &token, const int port, int fd, Element *parent) {
 
    int num=-1;
    covReadSetBegin(fd, &num);
@@ -162,14 +296,14 @@ bool ReadCovise::readSETELE(const int fd, Element *parent) {
       Element *elem = new Element();
       elem->parent = parent;
       elem->index = index;
-      readSkeleton(fd, elem);
+      readSkeleton(port, elem);
       parent->subelems.push_back(elem);
    }
 
    return true;
 }
 
-Object::ptr ReadCovise::readUNIGRD(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUNIGRD(Token &token, const int port, int fd, const bool skeleton) {
 
    int dim[3];
    float min[3], max[3];
@@ -190,7 +324,7 @@ Object::ptr ReadCovise::readUNIGRD(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readRCTGRD(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readRCTGRD(Token &token, const int port, int fd, const bool skeleton) {
 
    int dim[3];
 
@@ -217,7 +351,7 @@ Object::ptr ReadCovise::readRCTGRD(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRGRD(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRGRD(Token &token, const int port, int fd, const bool skeleton) {
 
    int dim[3];
    covReadSizeSTRGRD(fd, &dim[0], &dim[1], &dim[2]);
@@ -241,7 +375,7 @@ Object::ptr ReadCovise::readSTRGRD(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1;
    int numCorners=-1;
@@ -322,7 +456,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTSDT(fd, &numElements);
@@ -346,7 +480,7 @@ Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTVDT(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTVDT(fd, &numElements);
@@ -375,7 +509,7 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRSDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1;
    int sx=-1, sy=-1, sz=-1;
@@ -403,7 +537,7 @@ Object::ptr ReadCovise::readSTRSDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readSTRVDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1;
    int sx=-1, sy=-1, sz=-1;
@@ -436,7 +570,7 @@ Object::ptr ReadCovise::readSTRVDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readPOINTS(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readPOINTS(Token &token, const int port, int fd, const bool skeleton) {
 
    int numCoords=-1;
    covReadSizePOINTS(fd, &numCoords);
@@ -468,7 +602,7 @@ Object::ptr ReadCovise::readPOINTS(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
@@ -511,7 +645,7 @@ Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
@@ -554,9 +688,10 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem, int timestep) {
+Object::ptr ReadCovise::readGEOTEX(Token &token, const int port, int fd, const bool skeleton, Element *elem, int timestep) {
 
    vassert(elem);
+   vassert(port == 0);
    // XXX: handle sets in GEOTEX
 
    const size_t ncomp = 4;
@@ -570,7 +705,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
          e->in_geometry = true;
          e->offset = mytell(fd);
          if (contains[i])
-            readSkeleton(fd, e);
+            readSkeleton(port, e);
          elem->subelems.push_back(e);
       }
    } else {
@@ -580,21 +715,21 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
       Coords::ptr grid;
 
       if (contains[0]) {
-         grid = Coords::as(readObject(fd, elem->subelems[0], timestep));
+         grid = Coords::as(readObject(token, port, fd, elem->subelems[0], timestep));
       }
 
       if (contains[2]) {
-         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(fd, elem->subelems[2], timestep)));
+         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(token, port, fd, elem->subelems[2], timestep)));
          if (grid)
              grid->setNormals(normals);
       }
 
       if (contains[3]) {
-         data = DataBase::as(readObject(fd, elem->subelems[3], timestep));
+         data = DataBase::as(readObject(token, port, fd, elem->subelems[3], timestep));
       }
 
       if (!data && contains[1]) {
-         data = DataBase::as(readObject(fd, elem->subelems[1], timestep));
+         data = DataBase::as(readObject(token, port, fd, elem->subelems[1], timestep));
       }
 
       if (data) {
@@ -608,27 +743,33 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton, Element *elem) {
+vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd, bool skeleton, Element *elem) {
 
-   int objNum = -1;
-   if (covReadOBJREF(fd, &objNum) == -1) {
-      std::cerr << "ReadCovise: failed to read OBJREF" << std::endl;
-      return Object::ptr();
-   }
+    if (skeleton) {
 
-   if (objNum < 0 || size_t(objNum) >= m_objects.size()) {
-      std::cerr << "ReadCovise: invalid OBJREF" << std::endl;
-      return Object::ptr();
-   }
+        int objNum = -1;
+        if (covReadOBJREF(fd, &objNum) == -1) {
+            std::cerr << "ReadCovise: failed to read OBJREF" << std::endl;
+            return Object::ptr();
+        }
 
-   elem->referenced = m_objects[objNum];
-   if (!elem->referenced->obj) {
-      //std::cerr << "ReadCovise: OBJREF to SETELE - not supported" << std::endl;
-   }
-   return elem->referenced->obj;
+        if (objNum < 0 || size_t(objNum) >= m_objects[port].size()) {
+            std::cerr << "ReadCovise: invalid OBJREF" << std::endl;
+            return Object::ptr();
+        }
+
+        elem->referenced = m_objects[port][objNum];
+    } else {
+        token.wait();
+    }
+
+    if (!elem->referenced->obj) {
+        //std::cerr << "ReadCovise: OBJREF to SETELE - not supported" << std::endl;
+    }
+    return elem->referenced->obj;
 }
 
-Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem, int timestep) {
+Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, const bool skeleton, Element *elem, int timestep) {
 
    Object::ptr object;
 
@@ -637,18 +778,14 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
          return object;
 
       int block = findBlockNum(*elem);
-      if (block % size() != rank())
+      if (rankForTimestepAndPartition(timestep, block) != rank())
          return object;
 
-      if ((timestep-m_firstTimestep) % (m_skipTimesteps+1) != 0)
-          return object;
-      int outputTimestep = (timestep-m_firstTimestep) / (m_skipTimesteps+1);
-
       if (elem->obj) {
-          if (elem->obj->getTimestep() == outputTimestep)
+          if (elem->obj->getTimestep() == token.meta().timeStep())
               return elem->obj;
           object = elem->obj->clone();
-          object->setTimestep(outputTimestep);
+          token.applyMeta(object);
           return object;
       }
    }
@@ -668,19 +805,21 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    std::string type(buf);
    //std::cerr << "ReadCovise::readObject " << type << " @ " << mytell(fd) << std::endl;
 
+   if (skeleton)
+       elem->type = type;
    if (type == "OBJREF") {
-       object = readOBJREF(fd, skeleton, elem);
+       object = readOBJREF(token, port, fd, skeleton, elem);
        elem->objnum = -1;
        return object;
    } else if (skeleton) {
-       m_objects.push_back(elem);
+       m_objects[port].push_back(elem);
    }
 
    bool handled = false;
 #define HANDLE(t) \
    if (!handled && type == "" #t) { \
       handled = true; \
-      object = read##t(fd, skeleton); \
+      object = read##t(token, port, fd, skeleton); \
    }
    HANDLE(UNIGRD);
    HANDLE(RCTGRD);
@@ -697,15 +836,15 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
 
    if (handled) {
        if (skeleton) {
-           elem->objnum = m_numObj;
-           ++m_numObj;
+           elem->objnum = m_numObj[port];
+           ++m_numObj[port];
        }
    } else {
       if (type == "GEOTEX") {
-         object = readGEOTEX(fd, skeleton, elem, timestep);
-      } else  if (type == "SETELE") {
+         object = readGEOTEX(token, port, fd, skeleton, elem, timestep);
+      } else if (type == "SETELE") {
             if (skeleton) {
-               readSETELE(fd, elem);
+               readSETELE(token, port, fd, elem);
             }
       } else {
           std::stringstream str;
@@ -718,10 +857,17 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    if (skeleton) {
       elem->attribs = readAttributes(fd);
       parseAttributes(elem);
+      if (elem->is_timeset && m_numTime[port]<int(elem->subelems.size())) {
+          m_numTime[port] = elem->subelems.size();
+          std::cerr << "ReadCovise: skeleton: " << type  << ", #time=" << elem->subelems.size() << std::endl;
+      } else {
+          std::cerr << "ReadCovise: skeleton: " << type  << ", #sub=" << elem->subelems.size() << std::endl;
+      }
    } else {
       if (object) {
          object->updateInternals();
-         applyAttributes(object, *elem);
+         applyAttributes(token, object, *elem);
+         token.applyMeta(object);
          elem->obj = object;
          std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;
       }
@@ -730,36 +876,96 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    return object;
 }
 
-Object::ptr ReadCovise::readObject(const int fd, Element *elem, int timestep) {
+Object::ptr ReadCovise::readObject(Token &token, const int port, int fd, Element *elem, int timestep) {
 
-   return readObjectIntern(fd, false, elem, timestep);
+   return readObjectIntern(token, port, fd, false, elem, timestep);
 }
 
-bool ReadCovise::readSkeleton(const int fd, Element *elem) {
+bool ReadCovise::readSkeleton(const int port, Element *elem) {
 
-   readObjectIntern(fd, true, elem, -1);
+   Token invalid(this, std::shared_ptr<Token>());
+   readObjectIntern(invalid, port, m_fd[port], true, elem, -1);
    return true;
 }
 
-bool ReadCovise::readRecursive(const int fd, Element *elem, int timestep) {
+bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep) {
 
    if (cancelRequested()) {
       return true;
    }
 
-   if (Object::ptr obj = readObject(fd, elem, timestep)) {
+   if (timestep != -1 && timestep != targetTimestep) {
+       return true;
+   }
+
+   Object::ptr obj[NumPorts];
+   Object::ptr grid;
+   std::future<Object::ptr> fut[NumPorts];
+   if (timestep == targetTimestep) {
+
       // obj is regular
       // do not recurse as subelems are abused for Geometry components
-      addObject("grid_out", obj);
-   } else {
-      const bool inTimeset = elem->is_timeset;
-      if (elem->referenced) {
-          elem = elem->referenced;
+
+       obj[0] = grid = readObject(token, 0, fd[0], elem[0], timestep);
+      for (int port=0; port<NumPorts; ++port) {
+          if (fd[port]) {
+              fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
+                  return readObject(token, port, fd[port], elem[port], timestep);
+              });
+          }
       }
+      for (int port=0; port<NumPorts; ++port) {
+          if (fd[port]) {
+              obj[port] = fut[port].get();
+          }
+          if (port == 0) {
+              grid = obj[port];
+          } else if (port == 1) {
+              if (auto normals = Normals::as(obj[port])) {
+                  if (auto coords = Coords::as(grid)) {
+                      coords->setNormals(normals);
+                  } else if (auto str = StructuredGridBase::as(grid)) {
+                      //str->setNormals(normals);
+                  }
+              }
+          } else {
+              if (auto data = DataBase::as(obj[port])) {
+                  data->setGrid(grid);
+              }
+          }
+      }
+      token.wait();
+      for (int port=0; port<NumPorts; ++port) {
+          if (m_out[port] && obj[port])
+              addObject(m_out[port], obj[port]);
+      }
+   }
+
+   if (!grid) {
+      const bool inTimeset = elem[0]->is_timeset;
       //std::cerr << "processing SET w/ " << elem->subelems.size() << " elements, timeset=" << inTimeset << std::endl;
       // obj corresponds to a Set, recurse
-      for (size_t i=0; i<elem->subelems.size(); ++i) {
-         readRecursive(fd, elem->subelems[i], inTimeset ? i : timestep);
+      for (size_t i=0; i<elem[0]->subelems.size(); ++i) {
+         Element *subelems[NumPorts];
+         for (int port=0; port<NumPorts; ++port) {
+             if (!fd[port])
+                 continue;
+
+             if (elem[port]->subelems.size() != elem[0]->subelems.size()) {
+                 sendError("mismatch in object structure (size)");
+                 return false;
+             }
+             if (inTimeset != elem[port]->is_timeset) {
+                 sendError("mismatch in object structure (time)");
+                 return false;
+             }
+             if (elem[port]->subelems[i]->referenced) {
+                 subelems[port] = elem[port]->subelems[i]->referenced;
+             } else {
+                 subelems[port] = elem[port]->subelems[i];
+             }
+         }
+         readRecursive(token, fd, subelems, inTimeset ? i : timestep, targetTimestep);
       }
    }
    return true;
@@ -771,41 +977,5 @@ void ReadCovise::deleteRecursive(Element &elem) {
       deleteRecursive(*elem.subelems[i]);
       delete elem.subelems[i];
    }
-}
-
-bool ReadCovise::load(const std::string & name) {
-
-   int fd = covOpenInFile(name.c_str());
-   if (!fd) {
-      std::cerr << "ReadCovise: failed to open " << name << std::endl;
-      return false;
-   }
-
-   Element elem;
-   try {
-      readSkeleton(fd, &elem);
-
-      readRecursive(fd, &elem, -1);
-   } catch(vistle::exception &e) {
-      covCloseInFile(fd);
-      deleteRecursive(elem);
-
-      throw(e);
-   }
-   covCloseInFile(fd);
-   deleteRecursive(elem);
-
-   return true;
-}
-
-bool ReadCovise::compute() {
-
-   m_firstTimestep = getIntParameter("first_timestep");
-   m_skipTimesteps = getIntParameter("skip_timesteps");
-   m_numObj = 0;
-   m_objects.clear();
-   if (!load(getStringParameter("filename"))) {
-      std::cerr << "cannot open " << getStringParameter("filename") << std::endl;
-   }
-   return true;
+   elem = Element();
 }
