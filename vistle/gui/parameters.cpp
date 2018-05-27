@@ -6,6 +6,7 @@
 /**********************************************************************************/
 
 #include <QTextEdit>
+#include <QDebug>
 
 #include <userinterface/vistleconnection.h>
 
@@ -18,20 +19,19 @@
 #include <QtDoublePropertyManager>
 #include <QtStringPropertyManager>
 #include <QtEnumPropertyManager>
-#include <QtLineEditFactory>
-#include <QtSpinBoxFactory>
-#include <QtDoubleSpinBoxFactory>
-#include <QtDebug>
 
 #include "propertybrowser/qtlongpropertymanager.h"
-#include "propertybrowser/qtlongeditorfactory.h"
-#include "propertybrowser/qtvectorpropertymanager.h"
 #include "propertybrowser/qtlongvectorpropertymanager.h"
 #include "propertybrowser/vistledoublepropertymanager.h"
+#include "propertybrowser/qtvectorpropertymanager.h"
+
+#include "propertybrowser/qtlongeditorfactory.h"
+#include "propertybrowser/vistledoubleeditorfactory.h"
+#include "propertybrowser/vistlelineeditfactory.h"
 
 namespace gui {
 
-const int NumDec = 10;
+const int NumDec = 15;
 
 static QString displayName(QString parameterName) {
 
@@ -78,11 +78,11 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    setFactoryForManager(m_intManager, spinBoxFactory);
    setFactoryForManager(m_intVectorManager->subLongPropertyManager(), spinBoxFactory);
 
-   QtDoubleSpinBoxFactory *doubleSpinBoxFactory = new QtDoubleSpinBoxFactory(this);
+   VistleDoubleSpinBoxFactory *doubleSpinBoxFactory = new VistleDoubleSpinBoxFactory(this);
    setFactoryForManager(m_floatManager, doubleSpinBoxFactory);
    setFactoryForManager(m_vectorManager->subDoublePropertyManager(), doubleSpinBoxFactory);
 
-   QtLineEditFactory *lineEditFactory = new QtLineEditFactory(this);
+   VistleLineEditFactory *lineEditFactory = new VistleLineEditFactory(this);
    setFactoryForManager(m_stringManager, lineEditFactory);
 
    QtEnumEditorFactory *comboBoxFactory = new QtEnumEditorFactory(this);
@@ -272,11 +272,8 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       }
    } else if (auto fp = std::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
       m_floatManager->setValue(prop, fp->getValue());
-      // prevent insane width of parameter widget
       typedef vistle::FloatParameter::ValueType F;
-      if (fp->minimum() != -std::numeric_limits<F>::max() && fp->maximum() != std::numeric_limits<F>::max()) {
-          m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
-      }
+      m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
       m_floatManager->setDecimals(prop, NumDec);
 
       QString tip = QString("%1 (%2 – %3)").arg(
@@ -457,7 +454,7 @@ void Parameters::propertyChanged(QtProperty *prop)
       return;
    }
    if (changed) {
-      //std::cerr << "sending new value for " << paramName << std::endl;
+      std::cerr << "sending new value for " << paramName << std::endl;
       m_vistle->sendParameter(p);
    }
 }

@@ -20,6 +20,8 @@ set(SOURCES
    qlongspinbox.cpp
    qtlongpropertymanager.cpp
    qtlongeditorfactory.cpp
+   vistledoubleeditorfactory.cpp
+   vistlelineeditfactory.cpp
    qtvectorpropertymanager.cpp
    qtlongvectorpropertymanager.cpp
    vistledoublepropertymanager.cpp
@@ -38,6 +40,8 @@ set(HEADERS
    qlongspinbox.h
    qtlongpropertymanager.h
    qtlongeditorfactory.h
+   vistledoubleeditorfactory.h
+   vistlelineeditfactory.h
    qtvectorpropertymanager.h
    qtlongvectorpropertymanager.h
    vistledoublepropertymanager.h

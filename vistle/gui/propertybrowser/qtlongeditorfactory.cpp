@@ -45,22 +45,10 @@
 #include "qlongspinbox.h"
 
 #include <QScrollBar>
-#include <QComboBox>
-#include <QAbstractItemView>
 #include <QLineEdit>
-#include <QDateTimeEdit>
-#include <QHBoxLayout>
-#include <QMenu>
-#include <QKeyEvent>
-#include <QApplication>
-#include <QLabel>
-#include <QToolButton>
-#include <QColorDialog>
-#include <QFontDialog>
-#include <QSpacerItem>
-#include <QStyleOption>
-#include <QPainter>
 #include <QMap>
+
+#include "propertyeditorfactory_p.h"
 
 #if defined(Q_CC_MSVC)
 #    pragma warning(disable: 4786) /* MS VS 6: truncating debug info after 255 characters */
@@ -70,75 +58,6 @@
 QT_BEGIN_NAMESPACE
 #endif
 
-// Set a hard coded left margin to account for the indentation
-// of the tree view icon when switching to an editor
-
-static inline void setupTreeViewEditorMargin(QLayout *lt)
-{
-    enum { DecorationMargin = 4 };
-    if (QApplication::layoutDirection() == Qt::LeftToRight)
-        lt->setContentsMargins(DecorationMargin, 0, 0, 0);
-    else
-        lt->setContentsMargins(0, 0, DecorationMargin, 0);
-}
-
-// ---------- EditorFactoryPrivate :
-// Base class for editor factory private classes. Manages mapping of properties to editors and vice versa.
-
-template <class Editor>
-class EditorFactoryPrivate
-{
-public:
-
-    typedef QList<Editor *> EditorList;
-    typedef QMap<QtProperty *, EditorList> PropertyToEditorListMap;
-    typedef QMap<Editor *, QtProperty *> EditorToPropertyMap;
-
-    Editor *createEditor(QtProperty *property, QWidget *parent);
-    void initializeEditor(QtProperty *property, Editor *e);
-    void slotEditorDestroyed(QObject *object);
-
-    PropertyToEditorListMap  m_createdEditors;
-    EditorToPropertyMap m_editorToProperty;
-};
-
-template <class Editor>
-Editor *EditorFactoryPrivate<Editor>::createEditor(QtProperty *property, QWidget *parent)
-{
-    Editor *editor = new Editor(parent);
-    initializeEditor(property, editor);
-    return editor;
-}
-
-template <class Editor>
-void EditorFactoryPrivate<Editor>::initializeEditor(QtProperty *property, Editor *editor)
-{
-    typename PropertyToEditorListMap::iterator it = m_createdEditors.find(property);
-    if (it == m_createdEditors.end())
-        it = m_createdEditors.insert(property, EditorList());
-    it.value().append(editor);
-    m_editorToProperty.insert(editor, property);
-}
-
-template <class Editor>
-void EditorFactoryPrivate<Editor>::slotEditorDestroyed(QObject *object)
-{
-    const typename EditorToPropertyMap::iterator ecend = m_editorToProperty.end();
-    for (typename EditorToPropertyMap::iterator itEditor = m_editorToProperty.begin(); itEditor !=  ecend; ++itEditor) {
-        if (itEditor.key() == object) {
-            Editor *editor = itEditor.key();
-            QtProperty *property = itEditor.value();
-            const typename PropertyToEditorListMap::iterator pit = m_createdEditors.find(property);
-            if (pit != m_createdEditors.end()) {
-                pit.value().removeAll(editor);
-                if (pit.value().empty())
-                    m_createdEditors.erase(pit);
-            }
-            m_editorToProperty.erase(itEditor);
-            return;
-        }
-    }
-}
 
 // ------------ QtLongSpinBoxFactory
 

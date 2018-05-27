@@ -9,8 +9,9 @@ QLongSpinBox::QLongSpinBox( QWidget* parent /*= 0*/ )
 , m_min()
 , m_max()
 {
-   connect(lineEdit(), SIGNAL(textChanged(QString)),
-           this, SLOT(setText(QString)));
+    connect(lineEdit(), &QLineEdit::editingFinished, [this](){
+        setText(lineEdit()->text());
+    });
 }
 
 long QLongSpinBox::value() const
@@ -78,7 +79,7 @@ QValidator::State QLongSpinBox::validate(QString &input, int &pos) const
 {
    long val = input.toLong();
    if (val < m_min || val > m_max) {
-      return QValidator::Invalid;
+      return QValidator::Intermediate;
    }
    return QValidator::Acceptable;
 }
