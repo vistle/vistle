@@ -155,13 +155,27 @@ void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
 
 bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std::vector<char> *payload) {
 
+   received = false;
+
+   if (!sock.is_open()) {
+       return false;
+   }
+
+   boost::system::error_code ec;
+   char emptybuf[0];
+   auto empty = boost::asio::buffer(&emptybuf, 0);
+   asio::read(sock, empty, ec);
+   if (ec) {
+       std::cerr << "message::recv: error " << ec.message() << std::endl;
+       return false;
+   }
+
    SizeType sz = 0;
 
    boost::asio::socket_base::bytes_readable command(true);
    sock.io_control(command);
    std::size_t bytes_readable = command.get();
    if (bytes_readable < sizeof(sz) && !block) {
-      received = false;
       return true;
    }
 
