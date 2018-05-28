@@ -24,10 +24,12 @@
 #include "propertybrowser/qtlongvectorpropertymanager.h"
 #include "propertybrowser/vistledoublepropertymanager.h"
 #include "propertybrowser/qtvectorpropertymanager.h"
+#include "propertybrowser/vistlebrowserpropertymanager.h"
 
 #include "propertybrowser/qtlongeditorfactory.h"
 #include "propertybrowser/vistledoubleeditorfactory.h"
 #include "propertybrowser/vistlelineeditfactory.h"
+#include "propertybrowser/vistlebrowserfactory.h"
 
 namespace gui {
 
@@ -55,6 +57,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 , m_intManager(nullptr)
 , m_floatManager(nullptr)
 , m_stringManager(nullptr)
+, m_browserManager(nullptr)
 , m_stringChoiceManager(nullptr)
 , m_intChoiceManager(nullptr)
 , m_vectorManager(nullptr)
@@ -67,6 +70,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_intChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_floatManager = addPropertyManager<VistleDoublePropertyManager>(this);
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
+   m_browserManager = addPropertyManager<VistleBrowserPropertyManager>(this);
    m_stringChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_vectorManager = addPropertyManager<QtVectorPropertyManager>(this);
    m_intVectorManager = addPropertyManager<QtLongVectorPropertyManager>(this);
@@ -84,6 +88,9 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 
    VistleLineEditFactory *lineEditFactory = new VistleLineEditFactory(this);
    setFactoryForManager(m_stringManager, lineEditFactory);
+
+   VistleBrowserFactory *browserFactory = new VistleBrowserFactory(this);
+   setFactoryForManager(m_browserManager, browserFactory);
 
    QtEnumEditorFactory *comboBoxFactory = new QtEnumEditorFactory(this);
    setFactoryForManager(m_stringChoiceManager, comboBoxFactory);
@@ -164,6 +171,16 @@ void Parameters::newParameter(int moduleId, QString parameterName)
    } else if (auto sp = std::dynamic_pointer_cast<vistle::StringParameter>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          prop = m_stringChoiceManager->addProperty(displayName(parameterName));
+      } else if (sp->presentation() == vistle::Parameter::Filename
+            || sp->presentation() == vistle::Parameter::Directory
+            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+         prop = m_browserManager->addProperty(displayName(parameterName));
+         if (sp->presentation() == vistle::Parameter::Filename)
+             m_browserManager->setFileMode(prop, QFileDialog::AnyFile);
+         else if (sp->presentation() == vistle::Parameter::Directory)
+             m_browserManager->setFileMode(prop, QFileDialog::Directory);
+         else if (sp->presentation() == vistle::Parameter::ExistingPathname)
+             m_browserManager->setFileMode(prop, QFileDialog::ExistingFile);
       } else {
          prop = m_stringManager->addProperty(displayName(parameterName));
       }
@@ -289,6 +306,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
          if (choice < 0)
             choice = 0;
          m_stringChoiceManager->setValue(prop, choice);
+      } else if (sp->presentation() == vistle::Parameter::Filename
+            || sp->presentation() == vistle::Parameter::Directory
+            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+         m_browserManager->setValue(prop, QString::fromStdString(sp->getValue()));
       } else {
          m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
       }
@@ -432,6 +453,10 @@ void Parameters::propertyChanged(QtProperty *prop)
          QStringList choices = m_stringChoiceManager->enumNames(prop);
          value = choices[choice].toStdString();
          //std::cerr << "choice value: " << value << std::endl;
+      } else if (sp->presentation() == vistle::Parameter::Filename
+            || sp->presentation() == vistle::Parameter::Directory
+            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+         value = m_browserManager->value(prop).toStdString();
       } else {
          value = m_stringManager->value(prop).toStdString();
       }

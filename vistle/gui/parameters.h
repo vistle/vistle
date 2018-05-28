@@ -16,6 +16,7 @@ class QtStringPropertyManager;
 class QtEnumPropertyManager;
 class QtVectorPropertyManager;
 class QtLongVectorPropertyManager;
+class VistleBrowserPropertyManager;
 
 namespace vistle {
 class VistleConnection;
@@ -56,6 +57,7 @@ private:
    QtLongPropertyManager *m_intManager;
    QtDoublePropertyManager *m_floatManager;
    QtStringPropertyManager *m_stringManager;
+   VistleBrowserPropertyManager *m_browserManager;
    QtEnumPropertyManager *m_stringChoiceManager;
    QtEnumPropertyManager *m_intChoiceManager;
    QtVectorPropertyManager *m_vectorManager;

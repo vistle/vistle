@@ -22,9 +22,13 @@ set(SOURCES
    qtlongeditorfactory.cpp
    vistledoubleeditorfactory.cpp
    vistlelineeditfactory.cpp
+   vistlebrowserfactory.cpp
    qtvectorpropertymanager.cpp
    qtlongvectorpropertymanager.cpp
    vistledoublepropertymanager.cpp
+   vistlebrowserpropertymanager.cpp
+
+   vistlebrowseredit.cpp
 )
 
 set(HEADERS
@@ -42,9 +46,13 @@ set(HEADERS
    qtlongeditorfactory.h
    vistledoubleeditorfactory.h
    vistlelineeditfactory.h
+   vistlebrowserfactory.h
    qtvectorpropertymanager.h
    qtlongvectorpropertymanager.h
    vistledoublepropertymanager.h
+   vistlebrowserpropertymanager.h
+
+   vistlebrowseredit.h
 )
 
 set(FORMS
