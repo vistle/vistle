@@ -236,6 +236,15 @@ macro(vistle_find_package package)
 
     find_package(${ARGV})
 
+    if(APPLE)
+        if(pack MATCHES "^FLEX$")
+            if(FLEX_EXECUTABLE AND NOT FLEX_INCLUDE_DIR)
+                set(CMAKE_PREFIX_PATH /Library/Developer/CommandLineTools/usr ${CMAKE_PREFIX_PATH})
+                find_package(${ARGV})
+            endif()
+        endif()
+    endif()
+
     set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
     set(CMAKE_MODULE_PATH ${SAVED_CMAKE_MODULE_PATH})
 endmacro(vistle_find_package PACKAGE)
