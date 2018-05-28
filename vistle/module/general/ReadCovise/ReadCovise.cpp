@@ -24,27 +24,57 @@
 #include <io.h>
 #endif
 
+#include <util/filesystem.h>
+
 #include <file/covReadFiles.h>
+
+#ifdef READ_DIRECTORY
+#define ReadCovise ReadCoviseDirectory
+#endif
 
 #include "ReadCovise.h"
 
 MODULE_MAIN(ReadCovise)
+
+namespace {
+const std::string extension(".covise");
+const std::string NONE("(none)");
+}
 
 using namespace vistle;
 
 ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm)
    : Reader("read COVISE data", name, moduleID, comm)
 {
+#ifdef READ_DIRECTORY
+   m_directory = addStringParameter("directory", "directory to scan for .covise files", "");
+   m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
+#else
    m_gridFile = addStringParameter("filename", "name of COVISE file", "");
    m_fieldFile[0] = m_gridFile;
+#endif
    m_out[0] = createOutputPort("grid_out");
 
+#ifdef READ_DIRECTORY
+   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
+#else
    m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "");
+#endif
    m_out[1] = nullptr;
    for (int i=2; i<NumPorts; ++i) {
+#ifdef READ_DIRECTORY
+       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), NONE, Parameter::Choice);
+#else
        m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), "");
+#endif
        m_out[i] = createOutputPort("field"+std::to_string(i-2)+"_out");
    }
+
+#ifdef READ_DIRECTORY
+   for (int i=0; i<NumPorts; ++i) {
+       setParameterChoices(m_fieldFile[i], std::vector<std::string>({NONE}));
+   }
+#endif
 
    for (int i=0; i<NumPorts; ++i) {
        m_fd[i] = 0;
@@ -53,6 +83,13 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
    }
 
    setParallelizationMode(ParallelizeTimesteps);
+
+#ifdef READ_DIRECTORY
+   observeParameter(m_directory);
+#endif
+   for (int port=0; port<NumPorts; ++port) {
+       observeParameter(m_fieldFile[port]);
+   }
 }
 
 ReadCovise::~ReadCovise() {
@@ -61,6 +98,45 @@ ReadCovise::~ReadCovise() {
 
 bool ReadCovise::examine(const Parameter *param)
 {
+#ifdef READ_DIRECTORY
+    if (param == m_directory) {
+        std::vector<std::string> choices;
+        choices.push_back("(none)");
+        auto dir = filesystem::path(m_directory->getValue());
+        try {
+            if (!filesystem::is_directory(dir)) {
+                return false;
+            }
+        } catch (const filesystem::filesystem_error &e) {
+            return false;
+        }
+
+        for (filesystem::directory_iterator it(dir);
+             it != filesystem::directory_iterator(); ++it) {
+
+            filesystem::path ent(*it);
+            if (ent.extension().string() != extension)
+                continue;
+
+            std::string stem = ent.stem().string();
+            if (stem.empty())
+                continue;
+
+            std::string file = ent.string();
+            int fd = covOpenInFile(file.c_str());
+            if (fd == 0) {
+                continue;
+            }
+            covCloseInFile(fd);
+
+            choices.push_back(stem);
+        }
+
+        for (int port=0; port<NumPorts; ++port) {
+            setParameterChoices(m_fieldFile[port], choices);
+        }
+    }
+#else
     for (int i=1; i<NumPorts; ++i) {
         if (param == m_fieldFile[i]) {
             std::string file = m_fieldFile[i]->getValue();
@@ -72,21 +148,34 @@ bool ReadCovise::examine(const Parameter *param)
             covCloseInFile(fd);
         }
     }
+#endif
 
     return true;
 }
 
 bool ReadCovise::prepareRead()
 {
+#ifdef READ_DIRECTORY
+    auto dir = filesystem::path(m_directory->getValue());
+#endif
     for (int port=0; port<NumPorts; ++port) {
 
         m_numTime[port] = -1;
-        m_numObj[port] = 0;
+
         m_objects[port].clear();
 
         assert(m_fd[port] == 0);
 
+#ifdef READ_DIRECTORY
+        std::string name;
+        if (m_fieldFile[port]->getValue() != NONE) {
+            filesystem::path path(dir);
+            path += path.preferred_separator + m_fieldFile[port]->getValue() + extension;
+            name = path.string();
+        }
+#else
         const std::string name = m_fieldFile[port]->getValue();
+#endif
         m_filename[port] = name;
         if (name.empty())
             continue;
@@ -113,15 +202,15 @@ bool ReadCovise::prepareRead()
         if (port > 0) {
             if (m_numObj[port] != m_numObj[0]) {
                 sendError("number of objects in %s and %s do not match",
-                          m_gridFile->getValue().c_str(),
-                          m_fieldFile[port]->getValue().c_str());
+                          m_filename[0].c_str(),
+                          m_filename[port].c_str());
                 finishRead();
                 return false;
             }
             if (m_numTime[port] != m_numTime[0]) {
                 sendError("number of timesteps in %s and %s do not match",
-                          m_gridFile->getValue().c_str(),
-                          m_fieldFile[port]->getValue().c_str());
+                          m_filename[0].c_str(),
+                          m_filename[port].c_str());
                 finishRead();
                 return false;
             }

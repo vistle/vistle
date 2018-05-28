@@ -114,7 +114,11 @@ class ReadCovise: public vistle::Reader {
    virtual bool compute();
 #endif
 
+#ifdef READ_DIRECTORY
+   vistle::StringParameter *m_directory = nullptr;
+#else
    vistle::StringParameter *m_gridFile = nullptr;
+#endif
    vistle::StringParameter *m_fieldFile[NumPorts];
    vistle::Port *m_out[NumPorts];
 
