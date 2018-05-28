@@ -1591,17 +1591,23 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 
         if (m_remote && m_remote->requestBounds()) {
 
+            int count = 0;
             double start = cover->currentTime();
             while(m_remote->isRunning() && m_remote->isConnected()) {
                 double elapsed = cover->currentTime() - start;
                 if (elapsed > 2.) {
                     start = cover->currentTime();
-#if 1
+#if 0
                     std::cerr << "RhrClient: still waiting for bounding sphere from server" << std::endl;
 #else
                     std::cerr << "RhrClient: re-requesting bounding sphere from server" << std::endl;
 
-                    m_remote->requestBounds();
+                    if (count < 10) {
+                        m_remote->requestBounds();
+                        ++count;
+                    } else {
+                        break;
+                    }
 #endif
                 }
                 usleep(1000);
