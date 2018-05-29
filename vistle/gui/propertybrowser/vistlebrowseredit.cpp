@@ -99,9 +99,11 @@ void VistleBrowserEdit::applyFileMode() {
         return;
 
     m_browser->setFileMode(m_fileMode);
+#if 0
     if (m_fileMode == QFileDialog::Directory) {
         m_browser->setOption(QFileDialog::ShowDirsOnly);
     } else {
         m_browser->setOption(QFileDialog::ShowDirsOnly, false);
     }
+#endif
 }

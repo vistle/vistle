@@ -105,9 +105,11 @@ bool ReadCovise::examine(const Parameter *param)
         auto dir = filesystem::path(m_directory->getValue());
         try {
             if (!filesystem::is_directory(dir)) {
+                sendInfo("not a directory: %s", dir.string().c_str());
                 return false;
             }
         } catch (const filesystem::filesystem_error &e) {
+            sendInfo("error while opening %s", dir.string().c_str());
             return false;
         }
 
@@ -115,12 +117,14 @@ bool ReadCovise::examine(const Parameter *param)
              it != filesystem::directory_iterator(); ++it) {
 
             filesystem::path ent(*it);
-            if (ent.extension().string() != extension)
+            if (ent.extension().string() != extension) {
                 continue;
+            }
 
             std::string stem = ent.stem().string();
-            if (stem.empty())
+            if (stem.empty()) {
                 continue;
+            }
 
             std::string file = ent.string();
             int fd = covOpenInFile(file.c_str());
