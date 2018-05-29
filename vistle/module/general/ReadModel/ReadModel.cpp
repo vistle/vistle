@@ -24,7 +24,7 @@ ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator co
    : Reader("read polygonal models with Assimp", name, moduleID, comm)
 {
    createOutputPort("grid_out");
-   auto filename = addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "");
+   auto filename = addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "", Parameter::Filename);
    observeParameter(filename);
 
    addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);

@@ -53,7 +53,7 @@ ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm
    : Module("read Vistle data stored in HDF5 format", name, moduleID, comm) {
 
    // add module parameters
-   m_fileName = addStringParameter("File Name", "Name of File that will read from", "");
+   m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingPathname);
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);

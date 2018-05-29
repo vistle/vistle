@@ -161,12 +161,12 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
     , m_nparts(size())
     , m_dims{0,0,0} {
 
-    m_gridFilename = addStringParameter("grid_filename", ".bin file for grid", "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin");
+    m_gridFilename = addStringParameter("grid_filename", ".bin file for grid", "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingPathname);
     for (int i=0; i<NumPorts; ++i) {
         if (i == 0)
-            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "/data/itlr/itlmer-Case11114_VISUS/funs.lst");
+            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "/data/itlr/itlmer-Case11114_VISUS/funs.lst", Parameter::ExistingPathname);
         else
-            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "");
+            m_filename[i] = addStringParameter("filename"+std::to_string(i), ".lst or .bin file for data", "", Parameter::ExistingPathname);
     }
 
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);

@@ -35,7 +35,7 @@ WriteVistle::WriteVistle(const std::string &shmname, const std::string &name, in
    choices.push_back("ASCII");
    choices.push_back("XML");
    setParameterChoices(fp, choices);
-   addStringParameter("filename", "filename of Vistle archive", "vistle.archive");
+   addStringParameter("filename", "filename of Vistle archive", "vistle.archive", Parameter::Filename);
 }
 
 WriteVistle::~WriteVistle() {

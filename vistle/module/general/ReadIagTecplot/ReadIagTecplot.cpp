@@ -39,7 +39,7 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
 {
 
    createOutputPort("grid_out");
-   m_filename = addStringParameter("filename", "name of Tecplot file", "");
+   m_filename = addStringParameter("filename", "name of Tecplot file", "", Parameter::ExistingPathname);
    for (int i=0; i<NumPorts; ++i) {
       std::stringstream spara;
       spara << "cell_field_" << i;

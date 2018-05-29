@@ -92,7 +92,7 @@ WriteHDF5::WriteHDF5(const std::string &name, int moduleID, mpi::communicator co
    createInputPort("data0_in");
 
    // add module parameters
-   m_fileName = addStringParameter("file_name", "Name of File that will be written to", "");
+   m_fileName = addStringParameter("file_name", "Name of File that will be written to", "", Parameter::Filename);
 
    m_writeMode = addIntParameter("write_mode", "Select writing protocol", Performant, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_writeMode, WriteMode);

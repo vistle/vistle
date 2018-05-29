@@ -47,10 +47,10 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
    : Reader("read COVISE data", name, moduleID, comm)
 {
 #ifdef READ_DIRECTORY
-   m_directory = addStringParameter("directory", "directory to scan for .covise files", "");
+   m_directory = addStringParameter("directory", "directory to scan for .covise files", "", Parameter::Directory);
    m_fieldFile[0] = addStringParameter("grid", "filename for grid", NONE, Parameter::Choice);
 #else
-   m_gridFile = addStringParameter("filename", "name of COVISE file", "");
+   m_gridFile = addStringParameter("filename", "name of COVISE file", "", Parameter::ExistingPathname);
    m_fieldFile[0] = m_gridFile;
 #endif
    m_out[0] = createOutputPort("grid_out");
@@ -58,14 +58,14 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
 #ifdef READ_DIRECTORY
    m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", NONE, Parameter::Choice);
 #else
-   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "");
+   m_fieldFile[1] = addStringParameter("normals", "name of COVISE file for normals", "", Parameter::ExistingPathname);
 #endif
    m_out[1] = nullptr;
    for (int i=2; i<NumPorts; ++i) {
 #ifdef READ_DIRECTORY
        m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), NONE, Parameter::Choice);
 #else
-       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), "");
+       m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), "", Parameter::ExistingPathname);
 #endif
        m_out[i] = createOutputPort("field"+std::to_string(i-2)+"_out");
    }
