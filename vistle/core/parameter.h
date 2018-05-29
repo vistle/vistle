@@ -33,8 +33,9 @@ class V_COREEXPORT Parameter {
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Presentation,
       (Generic) // default, keep first
       (Filename) // String
+      (ExistingFilename) // String
       (Directory) // String
-      (ExistingPathname) // String
+      (ExistingDirectory) // String
       (NewPathname) // String
       (Boolean) // Integer
       (Choice) // Integer (fixed choice) and String (dynamic choice)
@@ -45,7 +46,7 @@ class V_COREEXPORT Parameter {
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(RangeType,
       // keep in that order
-      (Minimum)
+      (Minimum) // also used for filebrowser filters
       (Value)
       (Maximum)
    )

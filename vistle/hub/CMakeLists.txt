@@ -10,6 +10,7 @@ set(hub_SOURCES
    hub.cpp
    uimanager.cpp
    uiclient.cpp
+   fileinfocrawler.cpp
    )
 
 if(PYTHONLIBS_FOUND)

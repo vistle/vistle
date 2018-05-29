@@ -16,7 +16,7 @@ UiManager::UiManager(Hub &hub, StateTracker &stateTracker)
 , m_stateTracker(stateTracker)
 , m_locked(false)
 , m_requestQuit(false)
-, m_uiCount(0)
+, m_uiCount(vistle::message::Id::ModuleBase)
 {
 }
 
@@ -25,19 +25,26 @@ UiManager::~UiManager() {
    disconnect();
 }
 
-bool UiManager::handleMessage(const message::Message &msg, std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
+bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const std::vector<char> &payload) {
 
    using namespace vistle::message;
+
+   std::shared_ptr<UiClient> sender;
+    auto it = m_clients.find(sock);
+    if (it == m_clients.end()) {
+        std::cerr << "UiManager: message from unknown UI" << std::endl;
+    } else {
+        sender = it->second;
+    }
 
    switch(msg.type()) {
    case MODULEEXIT:
    case QUIT: {
-       auto it = m_clients.find(sock);
-       if (it == m_clients.end()) {
+       if (!sender) {
            std::cerr << "UiManager: unknown UI quit" << std::endl;
        } else {
-           it->second->cancel();
-           removeClient(it->second);
+           sender->cancel();
+           removeClient(sender);
        }
        if (msg.type() == MODULEEXIT)
            return true;
@@ -53,17 +60,19 @@ bool UiManager::handleMessage(const message::Message &msg, std::shared_ptr<boost
       return true;
    }
 
-   return m_hub.handleMessage(msg, sock);
+   return m_hub.handleMessage(msg, sock, &payload);
 }
 
-void UiManager::sendMessage(const message::Message &msg) const {
+void UiManager::sendMessage(const message::Message &msg, int id, const std::vector<char> *payload) const {
 
    std::vector<std::shared_ptr<UiClient>> toRemove;
 
    for(auto ent: m_clients) {
-      if (!sendMessage(ent.second, msg)) {
-         toRemove.push_back(ent.second);
-      }
+       if (id==message::Id::Broadcast || ent.second->id()==id) {
+           if (!sendMessage(ent.second, msg, payload)) {
+               toRemove.push_back(ent.second);
+           }
+       }
    }
 
    for (auto ent: toRemove) {
@@ -71,10 +80,10 @@ void UiManager::sendMessage(const message::Message &msg) const {
    }
 }
 
-bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg) const {
+bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const std::vector<char> *payload) const {
 
    auto &ioService = c->socket()->get_io_service();
-   bool ret = message::send(*c->socket(), msg);
+   bool ret = message::send(*c->socket(), msg, payload);
    ioService.poll();
    return ret;
 }
@@ -98,12 +107,12 @@ void UiManager::disconnect() {
 
 void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 
-   ++m_uiCount;
    std::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
 
    m_clients.insert(std::make_pair(sock, c));
 
-   std::cerr << "UiManager: new UI connected, now have " << m_clients.size() << " connections" << std::endl;
+   std::cerr << "UiManager: new UI " << m_uiCount << " connected, now have " << m_clients.size() << " connections" << std::endl;
+   ++m_uiCount;
 
    if (m_requestQuit) {
 
@@ -122,6 +131,8 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 }
 
 bool UiManager::removeClient(std::shared_ptr<UiClient> c) const {
+
+   std::cerr << "UiManager: removing client " << c->id() << std::endl;
 
    for (auto &ent: m_clients) {
       if (ent.second == c) {

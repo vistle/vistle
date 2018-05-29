@@ -496,7 +496,10 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(m);
          break;
       }
-      
+
+      case FILEQUERY:
+      case FILEQUERYRESULT:
+         break;
 
       default:
          CERR << "message type not handled: " << msg << std::endl;

@@ -5,8 +5,10 @@
 #include "propertyeditorfactory_p.h"
 
 #include <QLineEdit>
+#include <QDebug>
 
 #include "vistlebrowseredit.h"
+#include <userinterface/userinterface.h>
 
 #if QT_VERSION >= 0x040400
 QT_BEGIN_NAMESPACE
@@ -19,14 +21,23 @@ class VistleBrowserFactoryPrivate : public EditorFactoryPrivate<VistleBrowserEdi
     VistleBrowserFactory *q_ptr;
     Q_DECLARE_PUBLIC(VistleBrowserFactory)
 public:
+    VistleBrowserFactoryPrivate();
+    vistle::UserInterface *m_ui = nullptr;
 
     void slotPropertyChanged(QtProperty *property, const QString &value);
+    void slotModuleIdChanged(QtProperty *, int);
+    void slotFiltersChanged(QtProperty *property, const QString &filters);
     void slotRegExpChanged(QtProperty *property, const QRegExp &regExp);
     void slotSetValue(const QString &value);
     void slotEchoModeChanged(QtProperty *, int);
     void slotReadOnlyChanged(QtProperty *, bool);
     void slotFileModeChanged(QtProperty *, int);
 };
+
+VistleBrowserFactoryPrivate::VistleBrowserFactoryPrivate()
+{
+
+}
 
 void VistleBrowserFactoryPrivate::slotPropertyChanged(QtProperty *property,
                 const QString &value)
@@ -42,6 +53,25 @@ void VistleBrowserFactoryPrivate::slotPropertyChanged(QtProperty *property,
             editor->setText(value);
             editor->blockSignals(false);
         }
+    }
+}
+
+void VistleBrowserFactoryPrivate::slotFiltersChanged(QtProperty *property,
+            const QString &filters)
+{
+    if (!m_createdEditors.contains(property))
+        return;
+
+    VistleBrowserPropertyManager *manager = q_ptr->propertyManager(property);
+    if (!manager)
+        return;
+
+    QListIterator<VistleBrowserEdit *> itEditor(m_createdEditors[property]);
+    while (itEditor.hasNext()) {
+        VistleBrowserEdit *editor = itEditor.next();
+        editor->blockSignals(true);
+        editor->setFilters(filters);
+        editor->blockSignals(false);
     }
 }
 
@@ -67,6 +97,28 @@ void VistleBrowserFactoryPrivate::slotRegExpChanged(QtProperty *property,
         editor->setValidator(newValidator);
         if (oldValidator)
             delete oldValidator;
+        editor->blockSignals(false);
+    }
+}
+
+void VistleBrowserFactoryPrivate::slotModuleIdChanged(QtProperty *property, int id)
+{
+    qDebug() << "SLOT moduleId changed" << id;
+    if (!m_createdEditors.contains(property))
+        return;
+    qDebug() << "SLOT moduleId changed" << id << "CONTAINS";
+
+    VistleBrowserPropertyManager *manager = q_ptr->propertyManager(property);
+    if (!manager)
+        return;
+    qDebug() << "SLOT moduleId changed" << id << "HAVE MANAGER";
+
+    QListIterator<VistleBrowserEdit *> itEditor(m_createdEditors[property]);
+    while (itEditor.hasNext()) {
+        qDebug() << "SLOT moduleId changed" << id << "HAVE EDITOR";
+        VistleBrowserEdit *editor = itEditor.next();
+        editor->blockSignals(true);
+        editor->setModuleId(id);
         editor->blockSignals(false);
     }
 }
@@ -171,6 +223,11 @@ VistleBrowserFactory::~VistleBrowserFactory()
     delete d_ptr;
 }
 
+void VistleBrowserFactory::setUi(vistle::UserInterface *ui)
+{
+    d_ptr->m_ui = ui;
+}
+
 /*!
     \internal
 
@@ -180,6 +237,10 @@ void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *
 {
     connect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
             this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    connect(manager, SIGNAL(moduleIdChanged(QtProperty*, int)),
+            this, SLOT(slotModuleIdChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)),
+            this, SLOT(slotFiltersChanged(QtProperty *, const QString &)));
     connect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
             this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
     connect(manager, SIGNAL(echoModeChanged(QtProperty*, int)),
@@ -198,8 +259,10 @@ void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *
 QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manager,
         QtProperty *property, QWidget *parent)
 {
-
     VistleBrowserEdit *editor = d_ptr->createEditor(property, parent);
+    editor->setUi(d_ptr->m_ui);
+    editor->setModuleId(manager->moduleId(property));
+    editor->setFilters(manager->filters(property));
     editor->setEchoMode((EchoMode)manager->echoMode(property));
     editor->setReadOnly(manager->isReadOnly(property));
     editor->setFileMode((FileMode)manager->fileMode(property));
@@ -232,6 +295,10 @@ void VistleBrowserFactory::disconnectPropertyManager(VistleBrowserPropertyManage
 {
     disconnect(manager, SIGNAL(valueChanged(QtProperty *, const QString &)),
                 this, SLOT(slotPropertyChanged(QtProperty *, const QString &)));
+    disconnect(manager, SIGNAL(moduleIdChanged(QtProperty*,int)),
+                this, SLOT(slotModuleIdChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(filtersChanged(QtProperty *, const QString &)),
+                this, SLOT(slotFiltersChanged(QtProperty *, const QString &)));
     disconnect(manager, SIGNAL(regExpChanged(QtProperty *, const QRegExp &)),
                 this, SLOT(slotRegExpChanged(QtProperty *, const QRegExp &)));
     disconnect(manager, SIGNAL(echoModeChanged(QtProperty*,int)),

@@ -27,19 +27,19 @@ class Hub {
    bool init(int argc, char *argv[]);
    bool processScript();
    bool dispatch();
-   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg) const;
+   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload=nullptr) const;
    unsigned short port() const;
    vistle::process_handle launchProcess(const std::vector<std::string>& argv) const;
    const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
-         std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>());
-   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub) const;
-   bool sendMaster(const message::Message &msg) const;
-   bool sendSlaves(const message::Message &msg, bool returnToSender=false) const;
-   bool sendSlave(const message::Message &msg, int id) const;
-   bool sendHub(const message::Message &msg, int id) const;
-   bool sendUi(const message::Message &msg) const;
+         std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>(), const std::vector<char> *payload=nullptr);
+   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const std::vector<char> *payload=nullptr) const;
+   bool sendMaster(const message::Message &msg, const std::vector<char> *payload=nullptr) const;
+   bool sendSlaves(const message::Message &msg, bool returnToSender=false, const std::vector<char> *payload=nullptr) const;
+   bool sendSlave(const message::Message &msg, int id, const std::vector<char> *payload=nullptr) const;
+   bool sendHub(const message::Message &msg, int id, const std::vector<char> *payload=nullptr) const;
+   bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const std::vector<char> *payload=nullptr) const;
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -121,6 +121,8 @@ private:
    bool handlePriv(const message::RequestTunnel &tunnel);
    bool handlePriv(const message::Connect &conn);
    bool handlePriv(const message::Disconnect &disc);
+   bool handlePriv(const message::FileQuery &query, const std::vector<char> *payload);
+   bool handlePriv(const message::FileQueryResult &result, const std::vector<char> *payload);
 
    std::vector<message::Buffer> m_queue;
    bool handleQueue();

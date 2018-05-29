@@ -21,6 +21,7 @@ set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 
 
 add_subdirectory(propertybrowser)
+add_subdirectory(remotefilebrowser)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -107,4 +108,5 @@ target_link_libraries(${gui_name}
   vistle_core
   vistle_userinterface
   vistle_propertybrowser
+  vistle_remotefiledialog
 )

@@ -106,6 +106,8 @@ class V_MODULEEXPORT Module {
    bool getParameter(const std::string &name, T &value) const;
    void setParameterChoices(const std::string &name, const std::vector<std::string> &choices);
    void setParameterChoices(Parameter *param, const std::vector<std::string> &choices);
+   void setParameterFilters(const std::string &name, const std::string &filters);
+   void setParameterFilters(StringParameter *param, const std::string &filters);
 
    StringParameter *addStringParameter(const std::string & name, const std::string &description, const std::string & value, Parameter::Presentation p=Parameter::Generic);
    bool setStringParameter(const std::string & name, const std::string & value, const message::SetParameter *inResponseTo=NULL);

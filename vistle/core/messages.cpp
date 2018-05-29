@@ -1002,6 +1002,8 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
       if (rt == Parameter::Maximum) pivec->setMaximum(IntParamVector(dim, &v_ivector[0]));
    } else if (auto pstring = std::dynamic_pointer_cast<StringParameter>(param)) {
       if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
+      if (rt == Parameter::Minimum) pstring->setMinimum(v_string.data());
+      if (rt == Parameter::Maximum) pstring->setMaximum(v_string.data());
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
       vassert("invalid parameter type" == 0);
@@ -1437,6 +1439,55 @@ bool SendObject::isArray() const {
    return m_array;
 }
 
+FileQuery::FileQuery(int moduleId, const std::string &path, Command command, size_t payloadsize)
+: m_command(command)
+, m_moduleId(moduleId)
+{
+    m_payloadSize = payloadsize;
+    COPY_STRING(m_path, path);
+}
+
+const char *FileQuery::path() const
+{
+    return m_path.data();
+}
+
+FileQuery::Command FileQuery::command() const
+{
+    return Command(m_command);
+}
+
+int FileQuery::moduleId() const
+{
+    return m_moduleId;
+}
+
+FileQueryResult::FileQueryResult(const FileQuery &request, Status status, size_t payloadsize)
+: m_command(request.command())
+, m_status(status)
+{
+    setDestId(request.senderId());
+    setDestUiId(request.uiId());
+    m_payloadSize = payloadsize;
+    setReferrer(request.uuid());
+    strcpy(m_path.data(), request.m_path.data());
+}
+
+const char *FileQueryResult::path() const
+{
+    return m_path.data();
+}
+
+FileQuery::Command FileQueryResult::command() const
+{
+    return FileQuery::Command(m_command);
+}
+
+FileQueryResult::Status FileQueryResult::status() const
+{
+    return Status(m_status);
+}
+
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    using namespace vistle::message;
@@ -1444,9 +1495,13 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
    s  << "uuid: " << boost::lexical_cast<std::string>(m.uuid())
       << ", type: " << m.type()
       << ", size: " << m.size()
-      << ", sender: " << m.senderId()
-      << ", dest: " << m.destId()
-      << ", rank: " << m.rank()
+      << ", sender: " << m.senderId();
+   if (Id::isHub(m.senderId())) {
+       s << ", UI: " << m.uiId();
+   } else {
+       s << ", rank: " << m.rank();
+   }
+   s  << ", dest: " << m.destId()
       << ", bcast: " << m.isBroadcast();
 
    if (!m.referrer().is_nil())
@@ -1556,6 +1611,16 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case SENDOBJECT: {
          auto &mm = static_cast<const SendObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer() << ", payload size: " << mm.payloadSize();
+         break;
+      }
+      case FILEQUERY: {
+         auto &mm = static_cast<const FileQuery &>(m);
+         s << ", command: " << mm.command() << ", path: " << mm.path();
+         break;
+      }
+      case FILEQUERYRESULT: {
+         auto &mm = static_cast<const FileQueryResult &>(m);
+         s << "status: " << mm.status() << ", path: " << mm.path();
          break;
       }
       default:

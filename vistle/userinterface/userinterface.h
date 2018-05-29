@@ -19,6 +19,18 @@
 
 namespace vistle {
 
+class UserInterface;
+
+class V_UIEXPORT FileBrowser {
+    friend class UserInterface;
+public:
+    bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr);
+    virtual bool handleMessage(const message::Message &message, const std::vector<char> &payload) = 0;
+
+private:
+    UserInterface *m_ui = nullptr;
+};
+
 class V_UIEXPORT UserInterface {
 
  public:
@@ -29,7 +41,7 @@ class V_UIEXPORT UserInterface {
    void cancel();
 
    virtual bool dispatch();
-   bool sendMessage(const message::Message &message);
+   bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr);
 
    int id() const;
    const std::string &host() const;
@@ -49,6 +61,8 @@ class V_UIEXPORT UserInterface {
    bool getMessage(const message::uuid_t &uuid, message::Message &msg);
 
    void registerObserver(StateObserver *observer);
+   void registerFileBrowser(FileBrowser *browser);
+   void removeFileBrowser(FileBrowser *browser);
 
  protected:
 
@@ -60,7 +74,7 @@ class V_UIEXPORT UserInterface {
 
    StateTracker m_stateTracker;
 
-   bool handleMessage(const message::Message *message);
+   bool handleMessage(const message::Message *message, const std::vector<char> &payload);
 
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::socket m_socket;
@@ -79,6 +93,8 @@ class V_UIEXPORT UserInterface {
    std::mutex m_messageMutex; //< protect access to m_messageMap
    bool m_locked;
    std::vector<message::Buffer> m_sendQueue;
+
+   std::vector<FileBrowser *> m_fileBrowser;
 };
 
 } // namespace vistle

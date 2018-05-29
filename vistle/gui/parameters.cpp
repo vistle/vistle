@@ -89,8 +89,8 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    VistleLineEditFactory *lineEditFactory = new VistleLineEditFactory(this);
    setFactoryForManager(m_stringManager, lineEditFactory);
 
-   VistleBrowserFactory *browserFactory = new VistleBrowserFactory(this);
-   setFactoryForManager(m_browserManager, browserFactory);
+   m_browserFactory = new VistleBrowserFactory(this);
+   setFactoryForManager(m_browserManager, m_browserFactory);
 
    QtEnumEditorFactory *comboBoxFactory = new QtEnumEditorFactory(this);
    setFactoryForManager(m_stringChoiceManager, comboBoxFactory);
@@ -114,6 +114,7 @@ void Parameters::setVistleObserver(VistleObserver *observer)
 void Parameters::setVistleConnection(vistle::VistleConnection *conn)
 {
    m_vistle = conn;
+   m_browserFactory->setUi(&conn->ui());
 }
 
 void Parameters::setModule(int id)
@@ -173,14 +174,18 @@ void Parameters::newParameter(int moduleId, QString parameterName)
          prop = m_stringChoiceManager->addProperty(displayName(parameterName));
       } else if (sp->presentation() == vistle::Parameter::Filename
             || sp->presentation() == vistle::Parameter::Directory
-            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+            || sp->presentation() == vistle::Parameter::ExistingDirectory
+            || sp->presentation() == vistle::Parameter::ExistingFilename) {
          prop = m_browserManager->addProperty(displayName(parameterName));
+         m_browserManager->setModuleId(prop, moduleId);
          if (sp->presentation() == vistle::Parameter::Filename)
-             m_browserManager->setFileMode(prop, QFileDialog::AnyFile);
+             m_browserManager->setFileMode(prop, VistleBrowserEdit::File);
          else if (sp->presentation() == vistle::Parameter::Directory)
-             m_browserManager->setFileMode(prop, QFileDialog::Directory);
-         else if (sp->presentation() == vistle::Parameter::ExistingPathname)
-             m_browserManager->setFileMode(prop, QFileDialog::ExistingFile);
+             m_browserManager->setFileMode(prop, VistleBrowserEdit::Directory);
+         else if (sp->presentation() == vistle::Parameter::ExistingDirectory)
+             m_browserManager->setFileMode(prop, VistleBrowserEdit::ExistingDirectory);
+         else if (sp->presentation() == vistle::Parameter::ExistingFilename)
+             m_browserManager->setFileMode(prop, VistleBrowserEdit::ExistingFile);
       } else {
          prop = m_stringManager->addProperty(displayName(parameterName));
       }
@@ -308,8 +313,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
          m_stringChoiceManager->setValue(prop, choice);
       } else if (sp->presentation() == vistle::Parameter::Filename
             || sp->presentation() == vistle::Parameter::Directory
-            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+            || sp->presentation() == vistle::Parameter::ExistingDirectory
+            || sp->presentation() == vistle::Parameter::ExistingFilename) {
          m_browserManager->setValue(prop, QString::fromStdString(sp->getValue()));
+         m_browserManager->setFilters(prop, QString::fromStdString(sp->minimum()));
       } else {
          m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
       }
@@ -455,7 +462,8 @@ void Parameters::propertyChanged(QtProperty *prop)
          //std::cerr << "choice value: " << value << std::endl;
       } else if (sp->presentation() == vistle::Parameter::Filename
             || sp->presentation() == vistle::Parameter::Directory
-            || sp->presentation() == vistle::Parameter::ExistingPathname) {
+            || sp->presentation() == vistle::Parameter::ExistingFilename
+            || sp->presentation() == vistle::Parameter::ExistingDirectory) {
          value = m_browserManager->value(prop).toStdString();
       } else {
          value = m_stringManager->value(prop).toStdString();

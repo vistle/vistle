@@ -1,6 +1,10 @@
 #include "vistlebrowserpropertymanager.h"
 #include "qtpropertymanager_helpers.cpp"
 
+#include <core/message.h>
+
+#include <QDebug>
+
 // VistleBrowserPropertyManager
 
 class VistleBrowserPropertyManagerPrivate
@@ -11,15 +15,17 @@ public:
 
     struct Data
     {
-        Data() : regExp(QString(QLatin1Char('*')),  Qt::CaseSensitive, QRegExp::Wildcard),
-            echoMode(QLineEdit::Normal), readOnly(false), fileMode(QFileDialog::AnyFile)
+        Data() : moduleId(vistle::message::Id::Invalid), filters(QString(QLatin1Char('*'))), regExp(QString(QLatin1Char('*')),  Qt::CaseSensitive, QRegExp::Wildcard),
+            echoMode(QLineEdit::Normal), fileMode(QFileDialog::AnyFile), readOnly(false)
         {
         }
         QString val;
+        int moduleId;
+        QString filters;
         QRegExp regExp;
         int echoMode;
-        bool readOnly;
         int fileMode;
+        bool readOnly;
     };
 
     typedef QMap<const QtProperty *, Data> PropertyValueMap;
@@ -96,6 +102,16 @@ VistleBrowserPropertyManager::~VistleBrowserPropertyManager()
 QString VistleBrowserPropertyManager::value(const QtProperty *property) const
 {
     return getValue<QString>(d_ptr->m_values, property);
+}
+
+int VistleBrowserPropertyManager::moduleId(const QtProperty *property) const
+{
+    return getData<int>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::moduleId, property, int(vistle::message::Id::Invalid));
+}
+
+QString VistleBrowserPropertyManager::filters(const QtProperty *property) const
+{
+    return getData<QString>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::filters, property, QString(QLatin1Char('*')));
 }
 
 /*!
@@ -193,6 +209,42 @@ void VistleBrowserPropertyManager::setValue(QtProperty *property, const QString 
 
     emit propertyChanged(property);
     emit valueChanged(property, data.val);
+}
+
+void VistleBrowserPropertyManager::setModuleId(QtProperty *property, const int id)
+{
+    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::iterator it = d_ptr->m_values.find(property);
+    if (it == d_ptr->m_values.end())
+        return;
+
+    VistleBrowserPropertyManagerPrivate::Data data = it.value() ;
+
+    if (data.moduleId == id)
+        return;
+
+    data.moduleId = id;
+
+    it.value() = data;
+
+    emit moduleIdChanged(property, data.moduleId);
+}
+
+void VistleBrowserPropertyManager::setFilters(QtProperty *property, const QString &filters)
+{
+    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::iterator it = d_ptr->m_values.find(property);
+    if (it == d_ptr->m_values.end())
+        return;
+
+    VistleBrowserPropertyManagerPrivate::Data data = it.value() ;
+
+    if (data.filters == filters)
+        return;
+
+    data.filters = filters;
+
+    it.value() = data;
+
+    emit filtersChanged(property, data.filters);
 }
 
 /*!

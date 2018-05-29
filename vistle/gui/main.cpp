@@ -10,6 +10,9 @@
 #include <core/uuid.h>
 #include <QApplication>
 #include <QIcon>
+#include <QDebug>
+
+#include <iostream>
 
 
 Q_DECLARE_METATYPE(boost::uuids::uuid);
@@ -29,7 +32,9 @@ int main(int argc, char *argv[])
    try {
       QApplication a(argc, argv);
       a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
+      std::cerr << "installing debug msg handler" << std::endl;
       qInstallMessageHandler(debugMessageHandler);
+      qInfo() << "TEST";
       QIcon icon(":/icons/vistle.png");
       a.setWindowIcon(icon);
       UiController control(argc, argv, &a);

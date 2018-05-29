@@ -697,6 +697,22 @@ void Module::setParameterChoices(Parameter *param, const std::vector<std::string
     sendMessage(sc);
 }
 
+void Module::setParameterFilters(const std::string &name, const std::string &filters)
+{
+   auto p = findParameter(name);
+   auto sp = dynamic_cast<StringParameter *>(p.get());
+   assert(sp);
+   if (sp)
+       setParameterFilters(sp, filters);
+}
+
+void Module::setParameterFilters(StringParameter *param, const std::string &filters)
+{
+    // abuse Minumum for filters
+    param->setMinimum(filters);
+    updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
+}
+
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 

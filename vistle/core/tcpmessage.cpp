@@ -32,16 +32,6 @@ bool check(const Message &msg, const std::vector<char> *payload) {
         return false;
     }
 
-    if (msg.rank() < -1) {
-        std::cerr << "check message: invalid source rank " << msg.rank() << std::endl;
-        return false;
-    }
-
-    if (msg.destRank() < -1) {
-        std::cerr << "check message: invalid destination rank " << msg.destRank() << std::endl;
-        return false;
-    }
-
     if (msg.payloadSize() > 0 && !payload) {
         std::cerr << "check message: no payload but positive payload size" << std::endl;
         return false;
@@ -209,8 +199,10 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
                received = false;
            } else if (msg.payloadSize() > 0) {
                std::vector<char> pl;
-               if (!payload)
+               if (!payload) {
+                   std::cerr << "message::recv: ignoring payload: " << msg << std::endl;
                    payload = &pl;
+               }
                payload->resize(msg.payloadSize());
                auto buf = asio::buffer(payload->data(), payload->size());
                asio::read(sock, buf, ec);

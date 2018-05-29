@@ -16,6 +16,7 @@ set(core_SOURCES
    messagequeue.cpp
    messagerouter.cpp
    tcpmessage.cpp
+   filequery.cpp
    port.cpp
    parameter.cpp
    paramvector.cpp
@@ -122,6 +123,7 @@ set(core_HEADERS
    structuredgridbase_impl.h
    statetracker.h
    tcpmessage.h
+   filequery.h
    texture1d.h
    texture1d_impl.h
    triangles.h

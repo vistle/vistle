@@ -125,7 +125,15 @@ int Message::destRank() const {
 }
 
 void Message::setDestRank(int r) {
-   m_destRank = r;
+    m_destRank = r;
+}
+
+int Message::destUiId() const {
+    return -m_destRank;
+}
+
+void Message::setDestUiId(int id) {
+    m_destRank = -id;
 }
 
 int Message::rank() const {
@@ -135,7 +143,12 @@ int Message::rank() const {
 
 void Message::setRank(int rank) {
    
-   m_rank = rank;
+    m_rank = rank;
+}
+
+int Message::uiId() const
+{
+    return -m_rank;
 }
 
 Type Message::type() const {

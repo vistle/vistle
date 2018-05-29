@@ -16,7 +16,8 @@ LoadCover::LoadCover(const std::string &name, int moduleID, mpi::communicator co
 {
 
    createOutputPort("grid_out");
-   addStringParameter("filename", "name of file (%1%: rank)", "", Parameter::ExistingPathname);
+   addStringParameter("filename", "name of file (%1%: rank)", "", Parameter::ExistingFilename);
+   setParameterFilters("filename", "VRML Files (*.wrl *.WRL *.wrl.gz *.wrz *.vrml)/X3D Files (*.x3d)/All Files (*)");
    addIntParameter("rank", "rank of node where to load (-1: all nodes)", 0);
 }
 

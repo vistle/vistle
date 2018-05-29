@@ -848,6 +848,47 @@ class V_COREEXPORT SendObject: public MessageBase<SendObject, SENDOBJECT> {
 };
 static_assert(sizeof(RequestObject) <= Message::MESSAGE_SIZE, "message too large");
 
+class V_COREEXPORT FileQuery: public MessageBase<FileQuery, FILEQUERY> {
+    friend class FileQueryResult;
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Command,
+        (SystemInfo)
+        (LookUpFiles)
+        (ReadDirectory)
+        (MakeDirectory)
+    );
+    FileQuery(int moduleId, const std::string &path, Command cmd, size_t payloadsize=0);
+    Command command() const;
+    int moduleId() const;
+    const char *path() const;
+
+private:
+    int m_command;
+    int m_moduleId;
+    text_t m_path;
+};
+static_assert(sizeof(FileQuery) <= Message::MESSAGE_SIZE, "message too large");
+
+class V_COREEXPORT FileQueryResult: public MessageBase<FileQuery, FILEQUERYRESULT> {
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Status,
+        (Ok)
+        (Error)
+        (DoesNotExist)
+        (NoPermission)
+    );
+    FileQueryResult(const FileQuery &request, Status status, size_t payloadsize);
+    const char *path() const;
+    FileQuery::Command command() const;
+    Status status() const;
+
+private:
+    int m_command;
+    int m_status;
+    text_t m_path;
+};
+static_assert(sizeof(FileQueryResult) <= Message::MESSAGE_SIZE, "message too large");
+
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 
 } // namespace message

@@ -17,6 +17,7 @@ class QtEnumPropertyManager;
 class QtVectorPropertyManager;
 class QtLongVectorPropertyManager;
 class VistleBrowserPropertyManager;
+class VistleBrowserFactory;
 
 namespace vistle {
 class VistleConnection;
@@ -62,6 +63,8 @@ private:
    QtEnumPropertyManager *m_intChoiceManager;
    QtVectorPropertyManager *m_vectorManager;
    QtLongVectorPropertyManager *m_intVectorManager;
+
+   VistleBrowserFactory *m_browserFactory;
 
    std::map<QString, QtProperty *> m_paramToProp;
    std::map<QtProperty *, QString> m_propToParam;

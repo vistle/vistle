@@ -62,6 +62,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (REQUESTOBJECT)
       (SENDOBJECT)
       (REMOTERENDERING)
+      (FILEQUERY)
+      (FILEQUERYRESULT)
       (NumMessageTypes) // keep last
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)
@@ -143,6 +145,8 @@ class V_COREEXPORT Message {
    int rank() const;
    //! set sender rank
    void setRank(int rank);
+   //! UI id, if sent from a UI
+   int uiId() const;
    //! messge size
    size_t size() const;
    //! broadacast to all ranks?
@@ -163,6 +167,10 @@ class V_COREEXPORT Message {
    int destRank() const;
    //! set rank of destination
    void setDestRank(int r);
+   //! id of destination UI
+   int destUiId() const;
+   //! set id of destination UI
+   void setDestUiId(int id);
    //! number of additional data bytes following message
    size_t payloadSize() const;
 

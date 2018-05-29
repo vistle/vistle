@@ -123,14 +123,15 @@ bool UserInterface::dispatch() {
       bool received = false;
 
       message::Buffer buf;
-      if (!message::recv(socket(), buf, received, true /* blocking */)) {
+      std::vector<char> payload;
+      if (!message::recv(socket(), buf, received, true /* blocking */, &payload)) {
          return false;
       }
       
       if (!received)
          break;
 
-      if (!handleMessage(&buf))
+      if (!handleMessage(&buf, payload))
          return false;
 
    }
@@ -141,18 +142,19 @@ bool UserInterface::dispatch() {
 }
 
 
-bool UserInterface::sendMessage(const message::Message &message) {
+bool UserInterface::sendMessage(const message::Message &message, const std::vector<char> *payload) {
 
    if (m_locked) {
+      assert(!payload);
       m_sendQueue.emplace_back(message);
       return true;
    }
 
-   return message::send(socket(), message);
+   return message::send(socket(), message, payload);
 }
 
 
-bool UserInterface::handleMessage(const vistle::message::Message *message) {
+bool UserInterface::handleMessage(const vistle::message::Message *message, const std::vector<char> &payload) {
 
    bool ret = m_stateTracker.handle(*message);
 
@@ -182,7 +184,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
          assert(m_id > 0);
-         //message::DefaultSender::init(-m_id, 0);
+         message::DefaultSender::init(id->senderId(), -m_id);
          //std::cerr << "received new UI id: " << m_id << std::endl;
          break;
       }
@@ -204,6 +206,12 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          (void)quit;
          return false;
          break;
+      }
+
+      case message::FILEQUERYRESULT: {
+          for (auto b: m_fileBrowser)
+              b->handleMessage(*message, payload);
+          break;
       }
 
       default:
@@ -230,6 +238,7 @@ bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &ms
    m_messageMutex.lock();
    MessageMap::iterator it = m_messageMap.find(uuid);
    if (it == m_messageMap.end()) {
+      m_messageMutex.unlock();
       return false;
    }
 
@@ -256,13 +265,38 @@ bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &ms
 
 void UserInterface::registerObserver(StateObserver *observer) {
 
-   m_stateTracker.registerObserver(observer);
+    m_stateTracker.registerObserver(observer);
+}
+
+void UserInterface::registerFileBrowser(FileBrowser *browser)
+{
+    assert(browser->m_ui == nullptr);
+
+    browser->m_ui = this;
+    m_fileBrowser.push_back(browser);
+}
+
+void UserInterface::removeFileBrowser(FileBrowser *browser)
+{
+    assert(browser->m_ui == this);
+
+    auto it = std::find(m_fileBrowser.begin(), m_fileBrowser.end(), browser);
+    if (it != m_fileBrowser.end()) {
+        m_fileBrowser.erase(it);
+        browser->m_ui = nullptr;
+    }
 }
 
 UserInterface::~UserInterface() {
 
    std::cerr << "  userinterface [" << host() << "] [" << id()
              << "] quit" << std::endl;
+}
+
+bool FileBrowser::sendMessage(const message::Message &message, const std::vector<char> *payload)
+{
+    assert(m_ui);
+    return m_ui->sendMessage(message, payload);
 }
 
 } // namespace vistle

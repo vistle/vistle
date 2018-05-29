@@ -5,22 +5,40 @@
 #include <QLineEdit>
 #include <QFileDialog>
 
+#include "../remotefilebrowser/remotefiledialog.h"
+#include <core/message.h>
+
 class QFileDialog;
 class QHBoxLayout;
 class QLineEdit;
 class QToolButton;
+class RemoteFileDialog;
+class AbstractFileInfoGatherer;
+class AbstractFileSystemModel;
+
+namespace vistle {
+class UserInterface;
+}
 
 class VistleBrowserEdit: public QWidget {
     Q_OBJECT
 public:
-    typedef QFileDialog::FileMode FileMode;
+    enum FileMode {
+        File,
+        ExistingFile,
+        Directory,
+        ExistingDirectory
+    };
 
     VistleBrowserEdit(QWidget *parent = nullptr);
     ~VistleBrowserEdit() override;
+    void setUi(vistle::UserInterface *ui);
     QLineEdit *edit() const;
 
     QString text() const;
+    void setModuleId(int id);
     void setText(const QString &text);
+    void setFilters(const QString &filters);
     void setReadOnly(bool ro);
     const QValidator *validator() const;
     void setValidator(QValidator *v);
@@ -32,12 +50,18 @@ signals:
     void editingFinished();
 
 private:
+    vistle::UserInterface *m_ui = nullptr;
+    int m_moduleId = vistle::message::Id::Invalid;
     QHBoxLayout *m_layout = nullptr;
     QToolButton *m_button = nullptr;
     QLineEdit *m_edit = nullptr;
-    FileMode m_fileMode = QFileDialog::AnyFile;
-    QFileDialog *m_browser = nullptr;
+    FileMode m_fileMode = File;
+    QStringList m_nameFilters;
+    RemoteFileDialog *m_browser = nullptr;
+    AbstractFileInfoGatherer *m_fig = nullptr;
+    AbstractFileSystemModel *m_model = nullptr;
 
     void applyFileMode();
+    void applyNameFilters();
 };
 #endif

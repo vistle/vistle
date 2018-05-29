@@ -8,6 +8,11 @@
 #include <QDebug>
 #include <QIcon>
 
+#include "../remotefilebrowser/abstractfileinfogatherer.h"
+#include "../remotefilebrowser/vistlefileinfogatherer.h"
+#include "../remotefilebrowser/remotefileinfogatherer.h"
+#include "../remotefilebrowser/remotefilesystemmodel.h"
+
 VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
 : QWidget(parent)
 {
@@ -20,11 +25,19 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
     m_layout->addWidget(m_button);
     m_layout->addWidget(m_edit);
 
+    m_nameFilters << "All Files (*)";
+
     connect(m_button, &QToolButton::pressed, [this](){
         if (!m_browser) {
-            m_browser = new QFileDialog;
-            m_browser->setOption(QFileDialog::DontUseNativeDialog);
+            if (m_ui) {
+                m_fig = new VistleFileInfoGatherer(m_ui, m_moduleId);
+            } else {
+                m_fig = new RemoteFileInfoGatherer();
+            }
+            m_model = new RemoteFileSystemModel(m_fig);
+            m_browser = new RemoteFileDialog(m_model);
             applyFileMode();
+            applyNameFilters();
 
             connect(m_browser, &QDialog::accepted, [this](){
                 const auto &files = m_browser->selectedFiles();
@@ -51,6 +64,13 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
 VistleBrowserEdit::~VistleBrowserEdit()
 {
     delete m_browser;
+    delete m_model;
+    delete m_fig;
+}
+
+void VistleBrowserEdit::setUi(vistle::UserInterface *ui)
+{
+    m_ui = ui;
 }
 
 QLineEdit *VistleBrowserEdit::edit() const
@@ -63,9 +83,25 @@ QString VistleBrowserEdit::text() const
     return m_edit->text();
 }
 
+void VistleBrowserEdit::setModuleId(int id)
+{
+    m_moduleId = id;
+}
+
 void VistleBrowserEdit::setText(const QString &text)
 {
     m_edit->setText(text);
+}
+
+void VistleBrowserEdit::setFilters(const QString &filters)
+{
+    if (filters.isEmpty()) {
+        m_nameFilters.clear();
+        m_nameFilters << "All Files (*)";
+    } else {
+        m_nameFilters = filters.split("/");
+    }
+    applyNameFilters();
 }
 
 void VistleBrowserEdit::setReadOnly(bool ro)
@@ -98,12 +134,37 @@ void VistleBrowserEdit::applyFileMode() {
     if (!m_browser)
         return;
 
-    m_browser->setFileMode(m_fileMode);
+    switch (m_fileMode) {
+    case File:
+        m_browser->setFileMode(RemoteFileDialog::AnyFile);
+        m_browser->setReadOnly(false);
+        break;
+    case ExistingFile:
+        m_browser->setFileMode(RemoteFileDialog::ExistingFile);
+        m_browser->setReadOnly(true);
+        break;
+    case Directory:
+        m_browser->setFileMode(RemoteFileDialog::Directory);
+        m_browser->setReadOnly(false);
+        break;
+    case ExistingDirectory:
+        m_browser->setFileMode(RemoteFileDialog::Directory);
+        m_browser->setReadOnly(true);
+        break;
+    }
 #if 0
-    if (m_fileMode == QFileDialog::Directory) {
+    if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
         m_browser->setOption(QFileDialog::ShowDirsOnly);
     } else {
         m_browser->setOption(QFileDialog::ShowDirsOnly, false);
     }
 #endif
+}
+
+void VistleBrowserEdit::applyNameFilters()
+{
+    if (!m_browser)
+        return;
+
+    m_browser->setNameFilters(m_nameFilters);
 }

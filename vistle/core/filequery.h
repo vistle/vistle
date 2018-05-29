@@ -1,0 +1,69 @@
+#ifndef VISTLE_FILEQUERY_H
+#define VISTLE_FILEQUERY_H
+
+#include <boost/serialization/access.hpp>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "export.h"
+
+namespace vistle {
+
+struct V_COREEXPORT SystemInfo {
+    bool iswindows;
+    std::string homepath;
+    std::string currentdir;
+
+   template<class Archive>
+   void serialize(Archive & ar, const unsigned int version)
+   {
+       ar & iswindows;
+       ar & homepath;
+       ar & currentdir;
+   }
+};
+
+struct V_COREEXPORT FileInfo {
+   enum FileType {
+      File,
+      Directory,
+      System,
+   };
+
+   std::string name;
+   bool exists = false;
+   int32_t permissions = 0;
+   FileType type = System;
+   bool symlink = false;
+   bool hidden = false;
+   bool casesensitive = true;
+   int64_t size = -1;
+   double lastmod = 0.;
+
+   template<class Archive>
+   void serialize(Archive & ar, const unsigned int version)
+   {
+       ar & name;
+       ar & exists;
+       ar & permissions;
+       ar & type;
+       ar & symlink;
+       ar & hidden;
+       ar & casesensitive;
+       ar & size;
+       ar & lastmod;
+   }
+};
+
+std::vector<char> V_COREEXPORT createPayload(const std::vector<FileInfo> &info);
+std::vector<FileInfo> V_COREEXPORT unpackFileInfos(const std::vector<char> &payload);
+
+std::vector<char> V_COREEXPORT createPayload(const SystemInfo &info);
+SystemInfo V_COREEXPORT unpackSystemInfo(const std::vector<char> &payload);
+
+std::vector<char> V_COREEXPORT packFileList(const std::vector<std::string> &files);
+std::vector<std::string> V_COREEXPORT unpackFileList(const std::vector<char> &payload);
+
+}
+#endif

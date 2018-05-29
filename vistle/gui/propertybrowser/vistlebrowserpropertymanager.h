@@ -17,6 +17,8 @@ public:
     ~VistleBrowserPropertyManager();
 
     QString value(const QtProperty *property) const;
+    int moduleId(const QtProperty *property) const;
+    QString filters(const QtProperty *property) const;
     QRegExp regExp(const QtProperty *property) const;
     EchoMode echoMode(const QtProperty *property) const;
     bool isReadOnly(const QtProperty *property) const;
@@ -25,6 +27,8 @@ public:
 
 public Q_SLOTS:
     void setValue(QtProperty *property, const QString &val);
+    void setModuleId(QtProperty *property, int moduleId);
+    void setFilters(QtProperty *property, const QString &filters);
     void setRegExp(QtProperty *property, const QRegExp &regExp);
     void setEchoMode(QtProperty *property, EchoMode echoMode);
     void setReadOnly(QtProperty *property, bool readOnly);
@@ -32,6 +36,8 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void valueChanged(QtProperty *property, const QString &val);
+    void moduleIdChanged(QtProperty *property, const int moduleId);
+    void filtersChanged(QtProperty *property, const QString &filters);
     void regExpChanged(QtProperty *property, const QRegExp &regExp);
     void echoModeChanged(QtProperty *property, const int);
     void readOnlyChanged(QtProperty *property, bool);

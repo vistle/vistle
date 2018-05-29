@@ -6,12 +6,17 @@
 
 class VistleBrowserFactoryPrivate;
 
+namespace vistle {
+class UserInterface;
+};
+
 class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserFactory : public QtAbstractEditorFactory<VistleBrowserPropertyManager>
 {
     Q_OBJECT
 public:
     VistleBrowserFactory(QObject *parent = 0);
     ~VistleBrowserFactory();
+    void setUi(vistle::UserInterface *ui);
 protected:
     void connectPropertyManager(VistleBrowserPropertyManager *manager);
     QWidget *createEditor(VistleBrowserPropertyManager *manager, QtProperty *property,
@@ -22,6 +27,8 @@ private:
     Q_DECLARE_PRIVATE(VistleBrowserFactory)
     Q_DISABLE_COPY(VistleBrowserFactory)
     Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, const QString &))
+    Q_PRIVATE_SLOT(d_func(), void slotModuleIdChanged(QtProperty *, int))
+    Q_PRIVATE_SLOT(d_func(), void slotFiltersChanged(QtProperty *, const QString &))
     Q_PRIVATE_SLOT(d_func(), void slotRegExpChanged(QtProperty *, const QRegExp &))
     Q_PRIVATE_SLOT(d_func(), void slotEchoModeChanged(QtProperty *, int))
     Q_PRIVATE_SLOT(d_func(), void slotReadOnlyChanged(QtProperty *, bool))
