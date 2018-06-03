@@ -3,6 +3,7 @@
 
 #include <streambuf>
 #include <vector>
+#include <cstring>
 
 namespace vistle {
 
