@@ -82,7 +82,7 @@ private:
 
 
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(UniformGrid)
+//ARCHIVE_ASSUME_ABSTRACT(UniformGrid)
 
 } // namespace vistle
 

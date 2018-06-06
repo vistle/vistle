@@ -12,6 +12,13 @@
 #include <ostream>
 #include <istream>
 
+#include "archives_config.h"
+#include "archives.h"
+#include "object.h"
+
+#include "shmvector.h"
+
+#ifdef USE_BOOST_ARCHIVE
 #define BOOST_ARCHIVE_SOURCE
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -23,48 +30,49 @@
 #include <boost/archive/impl/basic_binary_iprimitive.ipp>
 #include <boost/archive/impl/basic_binary_oarchive.ipp>
 #include <boost/archive/impl/basic_binary_iarchive.ipp>
+#endif
 
 //#include <boost/mpl/for_each.hpp>
 
-#include "archives.h"
-
+#ifdef USE_BOOST_ARCHIVE
 namespace ba = boost::archive;
 
 namespace boost {
 namespace archive {
 
-template class V_COREEXPORT detail::archive_serializer_map<vistle::oarchive>;
-template class V_COREEXPORT detail::common_oarchive<vistle::oarchive>;
+template class V_COREEXPORT detail::archive_serializer_map<vistle::boost_oarchive>;
+template class detail::common_oarchive<vistle::boost_oarchive>;
 template class basic_binary_oprimitive<
-    vistle::oarchive,
+    vistle::boost_oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
 
-template class basic_binary_oarchive<vistle::oarchive> ;
+template class basic_binary_oarchive<vistle::boost_oarchive> ;
 template class binary_oarchive_impl<
-    vistle::oarchive,
+    vistle::boost_oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
 
 
 // explicitly instantiate for this type of stream
-template class V_COREEXPORT detail::archive_serializer_map<vistle::iarchive>;
+template class V_COREEXPORT detail::archive_serializer_map<vistle::boost_iarchive>;
 template class basic_binary_iprimitive<
-    vistle::iarchive,
+    vistle::boost_iarchive,
     std::istream::char_type,
     std::istream::traits_type
 >;
-template class basic_binary_iarchive<vistle::iarchive> ;
+template class basic_binary_iarchive<vistle::boost_iarchive> ;
 template class binary_iarchive_impl<
-    vistle::iarchive,
+    vistle::boost_iarchive,
     std::istream::char_type,
     std::istream::traits_type
 >;
 
 } // namespace archive
 } // namespace boost
+#endif
 
 
 namespace vistle {
@@ -72,58 +80,99 @@ namespace vistle {
 Saver::~Saver() {
 }
 
-oarchive::oarchive(std::ostream &os, unsigned int flags)
-: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
+#ifdef USE_BOOST_ARCHIVE
+boost_oarchive::boost_oarchive(std::streambuf &bsb, unsigned int flags)
+: boost::archive::binary_oarchive_impl<boost_oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
 {}
 
-oarchive::oarchive(std::streambuf &bsb, unsigned int flags)
-: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
+boost_oarchive::~boost_oarchive()
 {}
 
-oarchive::~oarchive()
-{}
-
-void oarchive::setSaver(std::shared_ptr<Saver> saver) {
+void boost_oarchive::setSaver(std::shared_ptr<Saver> saver) {
 
     m_saver = saver;
 }
+#endif
 
 
 Fetcher::~Fetcher() {
 }
 
+#ifdef USE_YAS
+yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags)
+: yas_oarchive::Base(mo)
+{
+}
 
-iarchive::iarchive(std::istream &is, unsigned int flags)
-: Base(is, flags)
-, m_currentObject(nullptr)
-{}
+void yas_oarchive::setSaver(std::shared_ptr<Saver> saver) {
+    m_saver = saver;
+}
 
-iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
+yas_iarchive::yas_iarchive(yas_iarchive::Stream &mi, unsigned int flags)
+: yas_iarchive::Base(mi)
+{
+}
+
+void yas_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
+    m_fetcher = fetcher;
+}
+
+void yas_iarchive::setCurrentObject(ObjectData *data) {
+    m_currentObject = data;
+}
+
+ObjectData *yas_iarchive::currentObject() const {
+    return m_currentObject;
+}
+
+void yas_iarchive::setObjectCompletionHandler(const std::function<void ()> &completer) {
+    m_completer = completer;
+}
+
+const std::function<void ()> &yas_iarchive::objectCompletionHandler() const {
+    return m_completer;
+}
+#endif
+
+
+#ifdef USE_BOOST_ARCHIVE
+boost_iarchive::boost_iarchive(std::streambuf &bsb, unsigned int flags)
 : Base(bsb, flags)
 , m_currentObject(nullptr)
 {}
 
-iarchive::~iarchive()
+boost_iarchive::~boost_iarchive()
 {}
 
-void iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
+void boost_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
-void iarchive::setCurrentObject(ObjectData *data) {
+void boost_iarchive::setCurrentObject(ObjectData *data) {
     m_currentObject = data;
 }
 
-ObjectData *iarchive::currentObject() const {
+ObjectData *boost_iarchive::currentObject() const {
     return m_currentObject;
 }
 
-void iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
+obj_const_ptr boost_iarchive::getObject(const std::string &name, const std::function<void ()> &completeCallback) const {
+    auto obj = Shm::the().getObjectFromName(name);
+    if (!obj) {
+        assert(m_fetcher);
+        m_fetcher->requestObject(name, completeCallback);
+        obj = Shm::the().getObjectFromName(name);
+    }
+    return obj;
+}
+
+void boost_iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
     m_completer = completer;
 }
 
-const std::function<void()> &iarchive::objectCompletionHandler() const {
+const std::function<void()> &boost_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
+#endif
 
 } // namespace vistle

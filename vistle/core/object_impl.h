@@ -1,10 +1,11 @@
 #ifndef OBJECT_IMPL_H
 #define OBJECT_IMPL_H
 
-#include "archives.h"
 #include "serialize.h"
-#include <boost/archive/basic_archive.hpp>
+#include "archives_config.h"
 
+#ifdef USE_BOOST_ARCHIVE
+#include <boost/archive/basic_archive.hpp>
 
 namespace boost {
 namespace serialization {
@@ -29,53 +30,34 @@ V_COREEXPORT void access::construct(vistle::Object::Data::AttributeMapValueType 
 
 } // namespace serialization
 } // namespace boost
+#endif
 
 
 namespace vistle {
 
 template<class Archive>
-void Object::serialize(Archive &ar, const unsigned int version)
+void Object::serialize(Archive &ar)
 {
-    d()->serialize<Archive>(ar, version);
+    d()->serialize<Archive>(ar);
 }
 
 template<class Archive>
-void Object::Data::serialize(Archive &ar, const unsigned int version) {
-#ifdef DEBUG_SERIALIZATION
-   int checktype1 = type;
-   ar & V_NAME("checktype1", checktype1);
-   if (type != checktype1) {
-      std::cerr << "typecheck 1: should be " << type << ", read " << checktype1 << std::endl;
-   }
-   assert(checktype1 == type);
-#endif
-   ar & V_NAME("meta", meta);
-   boost::serialization::split_member(ar, *this, version);
-#ifdef DEBUG_SERIALIZATION
-   int checktype2 = type;
-   ar & V_NAME("checktype2", checktype2);
-   if (type != checktype2) {
-      std::cerr << "typecheck 2: should be " << type << ", read " << checktype2 << std::endl;
-   }
-   assert(checktype2 == type);
-#endif
-}
-
-template<class Archive>
-void Object::Data::save(Archive &ar, const unsigned int version) const {
+void Object::Data::save(Archive &ar) const {
+   ar & V_NAME(ar, "meta", meta);
    StdAttributeMap attrMap;
    auto attrs = getAttributeList();
    for (auto a: attrs) {
        attrMap[a] = getAttributes(a);
    }
-   ar & V_NAME("attributes", attrMap);
+   ar & V_NAME(ar, "attributes", attrMap);
 }
 
 template<class Archive>
-void Object::Data::load(Archive &ar, const unsigned int version) {
+void Object::Data::load(Archive &ar) {
+   ar & V_NAME(ar, "meta", meta);
    attributes.clear();
    StdAttributeMap attrMap;
-   ar & V_NAME("attributes", attrMap);
+   ar & V_NAME(ar, "attributes", attrMap);
    for (auto &kv: attrMap) {
        auto &a = kv.first;
        auto &vallist = kv.second;
@@ -84,43 +66,48 @@ void Object::Data::load(Archive &ar, const unsigned int version) {
 }
 
 template<class Archive>
-void Object::save(Archive &ar) const {
+void Object::saveObject(Archive &ar) const {
 
-   ObjectTypeRegistry::registerArchiveType(ar);
-   const Object *p = this;
-   ar & V_NAME("object", p);
+   ar & V_NAME(ar, "object_name", this->getName());
+   ar & V_NAME(ar, "object_type", (int)this->getType());
+   this->saveToArchive(ar);
 }
 
 template<class Archive>
-Object *Object::load(Archive &ar) {
+Object *Object::loadObject(Archive &ar) {
 
-   ObjectTypeRegistry::registerArchiveType(ar);
-   Object *p = NULL;
+   Object *obj = nullptr;
    try {
-      ar & V_NAME("object", p);
+      std::string name;
+      ar & V_NAME(ar, "object_name", name);
+      std::cerr << "LOADING " << name << std::endl;
+      int type;
+      ar & V_NAME(ar, "object_type", type);
+      auto funcs = ObjectTypeRegistry::getType(type);
+      obj = funcs.createEmpty(name);
+      obj->loadFromArchive(ar);
+#ifdef USE_BOOST_ARCHIVE
    } catch (const boost::archive::archive_exception &ex) {
       std::cerr << "Boost.Archive exception: " << ex.what() << std::endl;
       if (ex.code == boost::archive::archive_exception::unsupported_version) {
          std::cerr << "***" << std::endl;
-         std::cerr << "*** received archive from Boost.Archive version " << ar.get_library_version() << ", supported is up to " << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
+         std::cerr << "*** received Boost archive in unsupported formad, supported is up to " << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
          std::cerr << "***" << std::endl;
       }
-      return p;
+      return obj;
+#endif
+   } catch (...) {
+       throw;
    }
-   p->ref();
-   assert(ar.currentObject() == p->d());
-   if (p->d()->unresolvedReferences == 0) {
-       p->refresh();
+   obj->ref();
+   assert(ar.currentObject() == obj->d());
+   if (obj->d()->unresolvedReferences == 0) {
+       obj->refresh();
        if (ar.objectCompletionHandler())
            ar.objectCompletionHandler()();
    }
-   return p;
+   return obj;
 }
-
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(iarchive &ar);
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(oarchive &ar);
 
 } // namespace vistle
 

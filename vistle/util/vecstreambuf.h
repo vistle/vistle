@@ -30,6 +30,10 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
       return num;
    }
 
+   std::size_t write(const void *ptr, std::size_t size) {
+       return xsputn(static_cast<const CharT *>(ptr), size);
+   }
+
    const std::vector<CharT> &get_vector() const {
       return m_vector;
    }
@@ -42,10 +46,29 @@ template<typename CharT, typename TraitsT = std::char_traits<CharT> >
 class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:
-   vecistreambuf(const std::vector<CharT> &vec) {
+   vecistreambuf(const std::vector<CharT> &vec)
+   : vec(vec)
+   {
       auto &v = const_cast<std::vector<CharT> &>(vec);
       this->setg(v.data(), v.data(), v.data()+v.size());
    }
+
+   std::size_t read(void *ptr, std::size_t size) {
+       if (cur+size > vec.size())
+           size = vec.size()-cur;
+       memcpy(ptr, vec.data()+cur, size);
+       cur += size;
+       return size;
+   }
+
+   bool empty() const { return cur==0; }
+   CharT peekch() const { return vec[cur]; }
+   CharT getch() { return vec[cur++]; }
+   void ungetch(char) { if (cur>0) --cur; }
+
+private:
+   const std::vector<CharT> &vec;
+   size_t cur = 0;
 };
 
 } // namespace vistle

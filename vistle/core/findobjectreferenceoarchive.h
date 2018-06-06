@@ -8,8 +8,11 @@
 #ifndef FIND_OBJECT_REFERENCE_OARCHIVE_H
 #define FIND_OBJECT_REFERENCE_OARCHIVE_H
 
+#include "archives_config.h"
+
+#ifdef USE_INTROSPECTION_ARCHIVE
+
 #include <cstddef>
-#include <core/shm.h>
 
 #include <boost/config.hpp>
 #include <boost/type_traits/is_enum.hpp>
@@ -110,6 +113,12 @@ public:
 
     // public member variables
     static const std::string nullObjectReferenceName;
+
+    template<class T>
+    void saveArray(const vistle::ShmVector<T> &) {}
+
+    template<class T>
+    void saveObject(const vistle::shm_obj_ref<T> &) {}
 };
 
 
@@ -276,4 +285,5 @@ FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator&(const T & t
 } // namespace vistle
 
 
+#endif /* USE_INTROSPECTION_ARCHIVE */
 #endif /* FIND_OBJECT_REFERENCE_OARCHIVE_H */

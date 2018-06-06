@@ -13,17 +13,19 @@
 #include <util/valgrind.h>
 #include "messagequeue.h"
 #include "scalars.h"
-#include "archives.h"
 #include "assert.h"
-#include "shmvector.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
 #endif
 
+#include "archives.h"
 #include "shm.h"
+#include "shm_reference.h"
+#include "object.h"
 
 using namespace boost::interprocess;
+namespace interprocess = boost::interprocess;
 
 namespace vistle {
 
@@ -60,48 +62,6 @@ shm<ShmDebugInfo>::vector *Shm::s_shmdebug = nullptr;
 boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = nullptr;
 #endif
 #endif
-
-shm_name_t::shm_name_t(const std::string &s) {
-
-   size_t len = s.length();
-   assert(len < name.size());
-   if (len >= name.size())
-      len = name.size()-1;
-   strncpy(name.data(), &s[0], len);
-   name[len] = '\0';
-}
-
-shm_name_t::operator const char *() const {
-   return name.data();
-}
-
-shm_name_t::operator char *() {
-   return name.data();
-}
-
-shm_name_t::operator std::string () const {
-   return name.data();
-}
-
-bool shm_name_t::operator==(const std::string &rhs) const {
-   return rhs == name.data();
-}
-
-bool shm_name_t::operator==(const shm_name_t &rhs) const {
-   return !strncmp(name.data(), rhs.name.data(), name.size());
-}
-
-bool shm_name_t::empty() const {
-    return name.data()[0] == '\0' || !strcmp(name.data(), "INVALID");
-}
-
-void shm_name_t::clear() {
-   name.data()[0] = '\0';
-}
-
-std::string operator+(const std::string &s, const shm_name_t &n) {
-   return s + n.name.data();
-}
 
 std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
@@ -531,6 +491,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    return Object::const_ptr();
 }
 
+#if 0
 namespace {
 
 using namespace boost;
@@ -552,7 +513,7 @@ struct archive_instantiator {
       typedef T Archive;
       Stream stream;
       Archive ar(stream);
-      ar & V_NAME("shm_ptr", p);
+      ar & V_NAME(ar, "shm_ptr", p);
    }
 };
 
@@ -569,5 +530,6 @@ void instantiate_shmvector() {
 
    mpl::for_each<VectorTypes>(instantiator());
 }
+#endif
 
 } // namespace vistle

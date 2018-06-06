@@ -556,11 +556,11 @@ bool Module::removeParameter(Parameter *param) {
 
 bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const {
 
+    auto saver = std::make_shared<DeepArchiveSaver>();
     vecostreambuf<char> memstr;
     vistle::oarchive memar(memstr);
-    auto saver = std::make_shared<DeepArchiveSaver>();
     memar.setSaver(saver);
-    obj->save(memar);
+    obj->saveObject(memar);
     const std::vector<char> &mem = memstr.get_vector();
     comm.send(destRank, 0, mem);
     auto dir = saver->getDirectory();
@@ -596,7 +596,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     vistle::iarchive memar(membuf);
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
     memar.setFetcher(fetcher);
-    Object::ptr p(Object::load(memar));
+    Object::ptr p(Object::loadObject(memar));
     //p->unref();
     std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
     return p;
@@ -613,7 +613,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
         memar.setSaver(saver);
-        obj->save(memar);
+        obj->saveObject(memar);
         const std::vector<char> &mem = memstr.get_vector();
         mpi::broadcast(comm, const_cast<std::vector<char>&>(mem), root);
         auto dir = saver->getDirectory();
@@ -641,7 +641,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
         memar.setFetcher(fetcher);
-        obj.reset(Object::load(memar));
+        obj.reset(Object::loadObject(memar));
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
         //obj->unref();
     }

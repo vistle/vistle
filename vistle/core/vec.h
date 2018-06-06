@@ -2,7 +2,6 @@
 #define VEC_H
 #include "index.h"
 #include "dimensions.h"
-#include "shm.h"
 #include "object.h"
 #include "vector.h"
 #include "database.h"
@@ -70,9 +69,9 @@ class Vec: public DataBase {
 
       private:
       friend class Vec;
-      friend class boost::serialization::access;
+      ARCHIVE_ACCESS
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
+      void serialize(Archive &ar);
       void initData();
       void updateBounds();
       void invalidateBounds();

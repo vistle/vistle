@@ -1,9 +1,10 @@
 #ifndef SHMVECTOR_H
 #define SHMVECTOR_H
 
-#include "shm_reference.h"
 //#include "shm_array.h"
 #include "shm.h"
+#include "shm_array.h"
+#include "shm_reference.h"
 /* this is already defined in shm.h
 namespace vistle {
 

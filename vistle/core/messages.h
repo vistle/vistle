@@ -10,6 +10,7 @@
 
 #include <util/enum.h>
 #include "uuid.h"
+#include "shmname.h"
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"

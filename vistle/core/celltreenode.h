@@ -43,10 +43,9 @@ struct CelltreeNode<8, NumDimensions> {
    Index left() const { return child; }
    Index right() const { return child+1; }
 
- private:
-   friend class boost::serialization::access;
+   ARCHIVE_ACCESS
    template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {}
+      void serialize(Archive &ar) {}
 };
 
 template<int NumDimensions>
@@ -81,10 +80,9 @@ struct CelltreeNode<4, NumDimensions> {
    Index left() const { return child; }
    Index right() const { return child+1; }
 
- private:
-   friend class boost::serialization::access;
+   ARCHIVE_ACCESS
    template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {}
+      void serialize(Archive &ar) {}
 };
 
 } // namespace vistle

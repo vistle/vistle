@@ -4,12 +4,12 @@
 namespace vistle {
 
 template<class Archive>
-void Texture1D::Data::serialize(Archive &ar, const unsigned int version) {
+void Texture1D::Data::serialize(Archive &ar) {
 
-   ar & V_NAME("base_vec", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("pixels", pixels);
-   ar & V_NAME("min", min);
-   ar & V_NAME("max", max);
+   ar & V_NAME(ar, "base_vec", serialize_base<Base::Data>(ar, *this));
+   ar & V_NAME(ar, "pixels", pixels);
+   ar & V_NAME(ar, "min", min);
+   ar & V_NAME(ar, "max", max);
 }
 
 } // namespace vistle

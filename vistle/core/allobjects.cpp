@@ -2,6 +2,7 @@
 #ifndef TEMPLATES_IN_HEADERS
 
 #define VISTLE_IMPL
+#include "archives.h"
 #include "vec.cpp"
 #include "coords.cpp"
 #include "coordswradius.cpp"
@@ -26,6 +27,8 @@
 
 #else
 
+#include "object.h"
+#include "archives.h"
 #include "vec.h"
 #include "coords.h"
 #include "coordswradius.h"
@@ -58,6 +61,7 @@ namespace {
       public:
          RegisterObjectTypeRelations() {
 
+#ifdef USE_BOOST_ARCHIVE
             boost::serialization::void_cast_register<DataBase, DataBase::Base>
                (static_cast<DataBase *>(NULL), static_cast<DataBase::Base *>(NULL));
 
@@ -69,7 +73,7 @@ namespace {
 
             boost::serialization::void_cast_register<Indexed, Indexed::Base>
                (static_cast<Indexed *>(NULL), static_cast<Indexed::Base *>(NULL));
-
+#endif
          }
    };
    static RegisterObjectTypeRelations registerObjectTypeRelations;

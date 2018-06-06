@@ -77,7 +77,7 @@ private:
 
 
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGrid)
+ARCHIVE_ASSUME_ABSTRACT(StructuredGrid)
 
 } // namespace vistle
 

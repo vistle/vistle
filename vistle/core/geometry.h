@@ -1,11 +1,10 @@
 #ifndef VISTLE_GEOMETRY_H
 #define VISTLE_GEOMETRY_H
 
+#include "export.h"
 #include "object.h"
 #include "vector.h"
 #include "normals.h"
-#include "database.h"
-#include "export.h"
 
 namespace vistle {
 

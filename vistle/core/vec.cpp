@@ -4,7 +4,6 @@
 #include "indexed.h"
 #include "triangles.h"
 //#include "celltree_impl.h"
-#include "archives.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -35,10 +34,11 @@ struct registrator {
       typedef Vec<S,Dim> V;
       //typedef typename mpl::find<Scalars, S>::type iter;
       ObjectTypeRegistry::registerType<V>(V::type());
+#ifdef USE_BOOST_ARCHIVE
       boost::serialization::void_cast_register<V, typename V::Base>(
             static_cast<V *>(NULL), static_cast<typename V::Base *>(NULL)
             );
-
+#endif
    }
 };
 

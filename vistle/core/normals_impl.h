@@ -4,8 +4,8 @@
 namespace vistle {
 
 template<class Archive>
-void Normals::Data::serialize(Archive &ar, const unsigned int version) {
-   ar & V_NAME("base_vec", boost::serialization::base_object<Base::Data>(*this));
+void Normals::Data::serialize(Archive &ar) {
+   ar & V_NAME(ar, "base_vec", serialize_base<Base::Data>(ar, *this));
 }
 
 } // namespace vistle

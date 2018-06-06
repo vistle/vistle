@@ -298,7 +298,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
          CERR << "cannot find object with name " << req.objectId() << std::endl;
          return true;
       }
-      obj->save(memar);
+      obj->saveObject(memar);
       snd.reset(new message::SendObject(req, obj, mem.size()));
    }
    snd->setDestId(req.senderId());
@@ -398,7 +398,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
        std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        //CERR << "loading object " << objName << " from memar" << std::endl;
-       objIt->second.obj = Object::load(memar);
+       objIt->second.obj = Object::loadObject(memar);
    }
 
    return true;

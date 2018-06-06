@@ -4,8 +4,8 @@
 namespace vistle {
 
 template<class Archive>
-void Spheres::Data::serialize(Archive &ar, const unsigned int version) {
-   ar & V_NAME("base_coords_with_radius", boost::serialization::base_object<Base::Data>(*this));
+void Spheres::Data::serialize(Archive &ar) {
+   ar & V_NAME(ar, "base_coords_with_radius", serialize_base<Base::Data>(ar, *this));
 }
 
 } // namespace vistle

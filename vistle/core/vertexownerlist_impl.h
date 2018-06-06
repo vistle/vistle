@@ -4,10 +4,10 @@
 namespace vistle {
 
 template<class Archive>
-void VertexOwnerList::Data::serialize(Archive &ar, const unsigned int version) {
-   ar & V_NAME("base_object", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("vertex_list", vertexList);
-   ar & V_NAME("cell_list", cellList);
+void VertexOwnerList::Data::serialize(Archive &ar) {
+   ar & V_NAME(ar, "base_object", serialize_base<Base::Data>(ar, *this));
+   ar & V_NAME(ar, "vertex_list", vertexList);
+   ar & V_NAME(ar, "cell_list", cellList);
 }
 
 }//namespace vistle

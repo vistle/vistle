@@ -6,12 +6,13 @@
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/push_back.hpp>
 #include <iostream>
+#include <cassert>
 
 #include "scalars.h"
 #include "celltreenode.h"
-//#include "shm_array.h"
+#include "shm_array.h"
 
-//#include "archives.h"
+#include "archives_config.h"
 
 namespace vistle {
 
@@ -40,24 +41,18 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
 }
 
 template<class Archive>
-void shm_name_t::serialize(Archive &ar, const unsigned int version) {
-
-   boost::serialization::split_member(ar, *this, version);
-}
-
-template<class Archive>
-void shm_name_t::save(Archive &ar, const unsigned int version) const {
+void shm_name_t::save(Archive &ar) const {
 
    std::string n(name.data());
    //std::cerr << "SHM_NAME_T save: '" << n << "'" << std::endl;
-   ar & boost::serialization::make_nvp("shm_name_t", n);
+   ar & V_NAME(ar, "shm_name_t", n);
 }
 
 template<class Archive>
-void shm_name_t::load(Archive &ar, const unsigned int version) {
+void shm_name_t::load(Archive &ar) {
 
    std::string n;
-   ar & boost::serialization::make_nvp("shm_name_t", n);
+   ar & V_NAME(ar, "shm_name_t", n);
    auto end = n.find('\0');
    if (end != std::string::npos) {
       n = n.substr(0, end);

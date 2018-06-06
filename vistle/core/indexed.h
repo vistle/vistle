@@ -90,7 +90,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    V_DATA_END(Indexed);
 };
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(Indexed)
+ARCHIVE_ASSUME_ABSTRACT(Indexed)
 
 } // namespace vistle
 

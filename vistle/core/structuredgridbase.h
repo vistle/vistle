@@ -104,7 +104,7 @@ public:
    virtual std::vector<Index> getNeighborElements(Index elem) const override;
 };
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGridBase)
+ARCHIVE_ASSUME_ABSTRACT(StructuredGridBase)
 
 } // namespace vistle
 #endif /* STRUCTURED_GRID_BASE_H */

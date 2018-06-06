@@ -130,6 +130,10 @@ include_directories("${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
 # header-only python byindings
 include_directories("${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 
+# replacement for Boost.Serialization
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
+
+
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)
 vistle_find_package(OpenGL)

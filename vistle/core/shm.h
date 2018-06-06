@@ -17,13 +17,14 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #endif
 
-#include <boost/serialization/access.hpp>
+#include "archives_config.h"
 
 #include <util/exception.h>
 
 #include "export.h"
 #include "index.h"
-#include "shm_array.h"
+//#include "shm_array.h"
+#include "shmname.h"
 
 //#define SHMDEBUG
 //#define SHMPUBLISH
@@ -36,30 +37,6 @@ typedef void *shm_handle_t;
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 #endif
 
-struct V_COREEXPORT shm_name_t {
-   std::array<char, 32> name;
-   //shm_name_t(const std::string &s = "INVALID");
-   shm_name_t(const std::string &s = std::string());
-
-   operator const char *() const;
-   operator char *();
-   operator std::string () const;
-   bool operator==(const std::string &rhs) const;
-   bool operator==(const shm_name_t &rhs) const;
-   bool empty() const;
-   void clear();
-
- private:
-   friend class boost::serialization::access;
-   template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-   template<class Archive>
-      void save(Archive &ar, const unsigned int version) const;
-   template<class Archive>
-      void load(Archive &ar, const unsigned int version);
-};
-std::string operator+(const std::string &s, const shm_name_t &n);
-
 namespace message {
    class MessageQueue;
 }
@@ -71,6 +48,8 @@ class V_COREEXPORT shm_exception: public exception {
 
 class Object;
 struct ObjectData;
+template<class T, class allocator>
+class shm_array;
 
 #ifdef SHMDEBUG
 struct ShmDebugInfo {

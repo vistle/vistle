@@ -3,7 +3,7 @@
 
 #include "archives.h"
 #include "assert.h"
-#include "shm_reference.h"
+#include "shmvector.h"
 
 #include <boost/mpl/for_each.hpp>
 

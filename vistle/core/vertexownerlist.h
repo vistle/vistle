@@ -4,8 +4,8 @@
 #include "export.h"
 #include "scalar.h"
 #include "index.h"
-#include "shm.h"
 #include "object.h"
+#include "archives.h"
 #include "vector.h"
 #include "shmvector.h"
 

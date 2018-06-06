@@ -1,18 +1,21 @@
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 
+#include "archives_config.h"
+
 #include <boost/config.hpp>
 #include <boost/version.hpp>
 
+#ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/collections_save_imp.hpp>
 #include <boost/serialization/collections_load_imp.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/string.hpp>
-
-
 #include <boost/serialization/level.hpp>
+#include <boost/serialization/array.hpp>
+#endif
 
 #ifndef NO_SHMEM
 #include <boost/interprocess/containers/map.hpp>
@@ -20,12 +23,19 @@
 #include <boost/interprocess/containers/vector.hpp>
 #endif
 
+#ifdef USE_YAS
+#include <yas/serialize.hpp>
+#include <yas/boost_types.hpp>
+#include <yas/std_types.hpp>
+#include <yas/object.hpp>
+#endif
 
 namespace boost { 
 namespace serialization {
 
 
 #ifndef NO_SHMEM
+#ifdef USE_BOOST_ARCHIVE
 /* serialize boost::container::map */
 
 template<class Archive, class Type, class Key, class Compare, class Allocator >
@@ -72,9 +82,11 @@ inline void serialize(
     boost::serialization::split_free(ar, t, file_version);
 }
 #endif
+#endif
 
 
 #ifndef NO_SHMEM
+#ifdef USE_BOOST_ARCHIVE
 /* serialize boost::container::vector */
 
 template<class Archive, class U, class Allocator>
@@ -121,8 +133,10 @@ inline void serialize(
     boost::serialization::split_free(ar, t, file_version);
 }
 #endif
+#endif
 
 #ifndef NO_SHMEM
+#ifdef USE_BOOST_ARCHIVE
 /* serialize boost::container::string */
 
 template<class Archive, class CharT, class Allocator >
@@ -168,6 +182,7 @@ inline void serialize(
 ){
     boost::serialization::split_free(ar, t, file_version);
 }
+#endif
 #endif
 
 } // namespace serialization

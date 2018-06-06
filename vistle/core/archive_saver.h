@@ -2,8 +2,7 @@
 #define VISTLE_ARCHIVE_SAVER_H
 
 #include "archives.h"
-#include "assert.h"
-#include "shm_reference.h"
+#include "shmvector.h"
 
 #include <boost/mpl/for_each.hpp>
 
@@ -60,7 +59,7 @@ struct V_COREEXPORT ArraySaver {
 class V_COREEXPORT DeepArchiveSaver: public Saver, public std::enable_shared_from_this<DeepArchiveSaver> {
 public:
     void saveArray(const std::string &name, int type, const void *array) override;
-    void saveObject(const std::string &name, Object::const_ptr obj) override;
+    void saveObject(const std::string &name, obj_const_ptr obj) override;
     SubArchiveDirectory getDirectory();
 
 private:

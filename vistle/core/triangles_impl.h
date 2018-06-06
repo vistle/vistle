@@ -4,9 +4,9 @@
 namespace vistle {
 
 template<class Archive>
-void Triangles::Data::serialize(Archive &ar, const unsigned int version) {
-   ar & V_NAME("base_coords", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("connection_list", cl);
+void Triangles::Data::serialize(Archive &ar) {
+   ar & V_NAME(ar, "base_coords", serialize_base<Base::Data>(ar, *this));
+   ar & V_NAME(ar, "connection_list", cl);
 }
 
 } // namespace vistle

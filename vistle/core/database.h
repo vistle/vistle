@@ -3,8 +3,8 @@
 
 #include "index.h"
 #include "dimensions.h"
-#include "shm.h"
 #include "object.h"
+#include "archives.h"
 #include "vector.h"
 #include "shm_obj_ref.h"
 
@@ -40,7 +40,7 @@ private:
    V_DATA_END(DataBase);
 };
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(DataBase)
+//ARCHIVE_ASSUME_ABSTRACT(DataBase)
 
 } // namespace vistle
 

@@ -2,7 +2,6 @@
 #include "assert.h"
 #include "database.h"
 #include "geometry.h"
-#include "archives.h"
 #include "coords.h"
 
 #include <boost/mpl/vector.hpp>
@@ -126,9 +125,21 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
     return mapping();
 }
 
-//V_OBJECT_TYPE(DataBase, Object::DATABASE);
+V_OBJECT_TYPE(DataBase, Object::DATABASE);
 //V_OBJECT_CTOR(DataBase);
 DataBase::DataBase(DataBase::Data *data): DataBase::Base(data) { refreshImpl(); }
 DataBase::DataBase(): DataBase::Base() { refreshImpl(); }
+#if 0
+//V_OBJECT_CREATE_NAMED(DataBase)
+#else
+DataBase::Data *DataBase::Data::createNamed(Object::Type id, const std::string &name) {
+    Data *t = nullptr;
+    Shm::the().lockObjects();
+    t = shm<Data>::construct(name)(id, name, Meta());
+    Shm::the().unlockObjects();
+    publish(t);
+    return t;
+}
+#endif
 
 } // namespace vistle

@@ -1,27 +1,22 @@
-//#include "shm.h"
 #ifndef SHM_REFERENCE_IMPL_H
 #define SHM_REFERENCE_IMPL_H
+
+#include "archives_config.h"
 
 namespace vistle {
 
 template<class T>
 template<class Archive>
-void shm_ref<T>::serialize(Archive &ar, const unsigned int version) {
-   boost::serialization::split_member(ar, *this, version);
-}
+void shm_ref<T>::save(Archive &ar) const {
 
-template<class T>
-template<class Archive>
-void shm_ref<T>::save(Archive &ar, const unsigned int version) const {
-
-    ar & boost::serialization::make_nvp("shm_name", m_name);
+    ar & V_NAME(ar, "shm_name", m_name);
     ar.template saveArray<typename T::value_type>(*this);
 }
 
 template<class T>
 template<class Archive>
-void shm_ref<T>::load(Archive &ar, const unsigned int version) {
-   ar & boost::serialization::make_nvp("shm_name", m_name);
+void shm_ref<T>::load(Archive &ar) {
+   ar & V_NAME(ar, "shm_name", m_name);
    std::string name = m_name;
 
    unref();

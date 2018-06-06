@@ -41,7 +41,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
    V_DATA_END(Coords);
 };
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(Coords)
+//ARCHIVE_ASSUME_ABSTRACT(Coords)
 
 } // namespace vistle
 

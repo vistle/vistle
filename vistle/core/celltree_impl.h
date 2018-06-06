@@ -333,7 +333,7 @@ bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFu
 
 template <class Scalar, class Index, int NumDimensions>
 template <class Archive>
-void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar, const unsigned int version) {
+void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar) {
 
    m_bounds->resize(NumDimensions*2);
 

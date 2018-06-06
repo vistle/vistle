@@ -1,3 +1,17 @@
+#ifndef TEMPLATES_IN_HEADERS
+#define VISTLE_IMPL
+#endif
+#include "object.h"
+#ifndef TEMPLATES_IN_HEADERS
+#undef VISTLE_IMPL
+#endif
+
+#include "object_impl.h"
+
+#include "shm.h"
+#include "assert.h"
+
+#include "archives.h"
 #include <iostream>
 #include <iomanip>
 
@@ -12,24 +26,11 @@
 
 #include <util/exception.h>
 
-#ifndef TEMPLATES_IN_HEADERS
-#define VISTLE_IMPL
-#endif
-#include "object.h"
-#ifndef TEMPLATES_IN_HEADERS
-#undef VISTLE_IMPL
-#endif
-
-#include "object_impl.h"
-
-#include "shm.h"
-#include "archives.h"
-#include "assert.h"
-
 using namespace boost::interprocess;
 
 namespace mpl = boost::mpl;
 
+#ifdef USE_BOOST_ARCHIVE
 namespace boost {
 namespace serialization {
 
@@ -77,6 +78,7 @@ void access::construct(vistle::Object::Data::AttributeMapValueType *t)
 
 } // namespace serialization
 } // namespace boost
+#endif
 
 
 namespace vistle {
@@ -205,7 +207,7 @@ bool Object::Data::isComplete() const {
    return refcount>0 && unresolvedReferences==0;
 }
 
-void Object::Data::referenceResolved(const std::function<void()> &completeCallback) {
+void ObjectData::referenceResolved(const std::function<void()> &completeCallback) {
     //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);
     --unresolvedReferences;
@@ -282,10 +284,10 @@ Object::ptr Object::clone() const {
    return cloneInternal();
 }
 
-Object::ptr Object::createEmpty() {
+Object *Object::createEmpty(const std::string &name) {
 
    vassert("cannot create generic Object" == nullptr);
-   return Object::ptr();
+   return nullptr;
 }
 
 Object::ptr Object::cloneType() const {
@@ -343,6 +345,7 @@ bool Object::isEmpty() const {
    return true;
 }
 
+#if 0
 namespace { 
 
 template<class T>
@@ -351,8 +354,9 @@ struct wrap {};
 struct instantiate_load {
    template<class Archive>
    void operator()(wrap<Archive>) {
-      Archive ar(std::cin);
-      Object::load(ar);
+      typename Archive::stream_type str(nullptr, 0);
+      Archive ar(str);
+      Object::loadObject(ar);
    }
 };
 
@@ -361,8 +365,9 @@ struct instantiate_save {
    Object::const_ptr obj;
    template<class Archive>
    void operator()(wrap<Archive>) {
-      Archive ar(std::cout);
-      obj->save(ar);
+      typename Archive::stream_type str;
+      Archive ar(str);
+      obj->saveObject(ar);
    }
 };
 
@@ -372,6 +377,7 @@ void instantiate_all_io(Object::const_ptr obj) {
       mpl::for_each<InputArchives, wrap<mpl::_1> >(instantiate_load());
       mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save(obj));
 }
+#endif
 
 void ObjectData::ref() const {
    ref_mutex_lock_type lock(ref_mutex);
@@ -732,7 +738,7 @@ bool Object::Data::removeAttachment(const std::string &key) {
    return true;
 }
 
-void Object::Data::unresolvedReference() {
+void ObjectData::unresolvedReference() {
     ++unresolvedReferences;
 }
 
@@ -745,19 +751,6 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
    }
    return (*it).second;
 }
-
-#define REG_WITH_ARCHIVE(type, func_name) \
-   template<> \
-   void ObjectTypeRegistry::registerArchiveType(type &ar) { \
-      TypeMap::key_type key; \
-      TypeMap::mapped_type funcs; \
-      BOOST_FOREACH(boost::tie(key, funcs), typeMap()) { \
-         funcs.func_name(ar); \
-      } \
-   }
-REG_WITH_ARCHIVE(oarchive, registerOArchive)
-REG_WITH_ARCHIVE(iarchive, registerIArchive)
-
 
 ObjectTypeRegistry::CreateFunc ObjectTypeRegistry::getCreator(int id) {
    return getType(id).create;

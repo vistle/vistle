@@ -2,35 +2,32 @@
 #define OBJECTMETA_IMPL_H
 
 #include <cassert>
-#include "archives.h"
 #include "serialize.h"
-
-#include <boost/serialization/array.hpp>
 
 namespace vistle {
 
 template<class Archive>
-void Meta::serialize(Archive &ar, const unsigned int version) {
+void Meta::serialize(Archive &ar) {
 #ifdef DEBUG_SERIALIZATION
    const unsigned int check = 0xdeadbeef;
    unsigned int check1 = check;
-   ar & V_NAME("check1", check1);
+   ar & V_NAME(ar, "check1", check1);
    assert(check1 == check);
 #endif
-   ar & V_NAME("block", m_block);
-   ar & V_NAME("numblocks", m_numBlocks);
-   ar & V_NAME("timestep", m_timestep);
-   ar & V_NAME("numtimesteps", m_numTimesteps);
-   ar & V_NAME("animationstep", m_animationstep);
-   ar & V_NAME("numanimationsteps", m_numAnimationsteps);
-   ar & V_NAME("iteration", m_iteration);
-   ar & V_NAME("creator", m_creator);
-   ar & V_NAME("executioncount", m_executionCount);
-   ar & V_NAME("realtime", m_realtime);
-   ar & V_NAME("transform", boost::serialization::make_array(m_transform.data(), m_transform.size()));
+   ar & V_NAME(ar, "block", m_block);
+   ar & V_NAME(ar, "numblocks", m_numBlocks);
+   ar & V_NAME(ar, "timestep", m_timestep);
+   ar & V_NAME(ar, "numtimesteps", m_numTimesteps);
+   ar & V_NAME(ar, "animationstep", m_animationstep);
+   ar & V_NAME(ar, "numanimationsteps", m_numAnimationsteps);
+   ar & V_NAME(ar, "iteration", m_iteration);
+   ar & V_NAME(ar, "creator", m_creator);
+   ar & V_NAME(ar, "executioncount", m_executionCount);
+   ar & V_NAME(ar, "realtime", m_realtime);
+   ar & V_NAME(ar, "transform", wrap_array<Archive>(m_transform.data(), m_transform.size()));
 #ifdef DEBUG_SERIALIZATION
    unsigned int check2 = check;
-   ar & V_NAME("check2", check2);
+   ar & V_NAME(ar, "check2", check2);
    assert(check2 == check);
 #endif
 

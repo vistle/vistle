@@ -7,6 +7,8 @@
 
 #include "findobjectreferenceoarchive.h"
 
+#ifdef USE_INTROSPECTION_ARCHIVE
+
 namespace vistle {
 
 //-------------------------------------------------------------------------
@@ -39,3 +41,5 @@ FindObjectReferenceOArchive::ReferenceData * FindObjectReferenceOArchive::getVec
 }
 
 } // namespace vistle
+
+#endif

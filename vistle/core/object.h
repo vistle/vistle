@@ -4,32 +4,32 @@
 #include <vector>
 #include <util/sysdep.h>
 #include <memory>
+#include <iostream>
+#include <string>
 
 #ifdef NO_SHMEM
 #include <map>
-#include <string>
 #else
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/managed_shared_memory.hpp>
 #endif
 #include <boost/interprocess/exceptions.hpp>
-
-#include <boost/serialization/access.hpp>
-#include <boost/serialization/assume_abstract.hpp>
-#include <boost/type_traits/is_virtual_base_of.hpp>
 
 #include <boost/mpl/size.hpp>
 
 #include <util/enum.h>
 
+#include "export.h"
+#include "shmname.h"
 #include "shm_array.h"
-#include "shm.h"
 #include "objectmeta.h"
 #include "scalars.h"
 #include "dimensions.h"
-#include "export.h"
 #include "vector.h"
+
+#include "archives_config.h"
 
 
 namespace vistle {
@@ -41,15 +41,12 @@ namespace interprocess = boost::interprocess;
 typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 #endif
 
-class oarchive;
-class iarchive;
-class FindObjectReferenceOArchive;
-
 class Shm;
 
 struct ObjectData;
-
 class Object;
+
+
 class V_COREEXPORT ObjectInterfaceBase {
 public:
     //std::shared_ptr<const Object> object() const { static_cast<const Object *>(this)->shared_from_this(); }
@@ -69,6 +66,8 @@ class V_COREEXPORT Object: public std::enable_shared_from_this<Object>, virtual 
 public:
    typedef std::shared_ptr<Object> ptr;
    typedef std::shared_ptr<const Object> const_ptr;
+   typedef ObjectData Data;
+
    template<class Interface>
    const Interface *getInterface() const {
        return dynamic_cast<const Interface *>(this);
@@ -81,6 +80,9 @@ public:
    };
 
    enum Type {
+      COORD             = -9,
+      COORDWRADIUS      = -8,
+      DATABASE          = -7,
 
       UNKNOWN           = -1,
 
@@ -124,7 +126,7 @@ public:
    Object::ptr cloneType() const;
    virtual Object::ptr cloneTypeInternal() const = 0;
 
-   static Object::ptr createEmpty();
+   static Object *createEmpty(const std::string &name = std::string());
 
    virtual void refresh() const; //!< refresh cached pointers from shm
    virtual bool check() const;
@@ -185,15 +187,18 @@ public:
    int refcount() const;
 
    template<class Archive>
-   static Object *load(Archive &ar);
+   static Object *loadObject(Archive &ar);
 
    template<class Archive>
-   void save(Archive &ar) const;
+   void saveObject(Archive &ar) const;
 
+   ARCHIVE_REGISTRATION(=0)
+
+#ifdef USE_INTROSPECTION_ARCHIVE
    virtual void save(FindObjectReferenceOArchive &ar) const = 0;
+#endif
 
  public:
-   typedef ObjectData Data;
 
  protected:
    Data *m_data;
@@ -208,16 +213,16 @@ public:
    static Object::ptr create(Data *);
  private:
    std::string m_name; // just a debugging aid
-   friend class boost::serialization::access;
    template<class Archive>
-   void serialize(Archive &ar, const unsigned int version);
+   void serialize(Archive &ar);
+   ARCHIVE_ACCESS
 
    // not implemented
    Object(const Object &) = delete;
    Object &operator=(const Object &) = delete;
 };
 
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(Object)
+ARCHIVE_ASSUME_ABSTRACT(Object)
 
 struct ObjectData {
     Object::Type type;
@@ -248,7 +253,7 @@ struct ObjectData {
     AttributeMap attributes;
     typedef std::map<std::string, std::vector<std::string>> StdAttributeMap; // for serialization
     void addAttribute(const std::string &key, const std::string &value = "");
-    void setAttributeList(const std::string &key, const std::vector<std::string> &values);
+    V_COREEXPORT void setAttributeList(const std::string &key, const std::vector<std::string> &values);
     void copyAttributes(const ObjectData *src, bool replace);
     bool hasAttribute(const std::string &key) const;
     std::string getAttribute(const std::string &key) const;
@@ -291,16 +296,14 @@ struct ObjectData {
     V_COREEXPORT void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     bool isComplete() const; //! check whether all references have been resolved
-    void unresolvedReference();
-    void referenceResolved(const std::function<void()> &completeCallback);
+    V_COREEXPORT void unresolvedReference();
+    V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback);
 
-    friend class boost::serialization::access;
+    ARCHIVE_ACCESS_SPLIT
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version);
+    void save(Archive &ar) const;
     template<class Archive>
-    void save(Archive &ar, const unsigned int version) const;
-    template<class Archive>
-    void load(Archive &ar, const unsigned int version);
+    void load(Archive &ar);
 
     // not implemented
     ObjectData(const ObjectData &) = delete;
@@ -310,20 +313,14 @@ struct ObjectData {
 
 class V_COREEXPORT ObjectTypeRegistry {
 public:
-   typedef Object::ptr (*CreateEmptyFunc)();
+   typedef Object *(*CreateEmptyFunc)(const std::string &name);
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
-   typedef void (*RegisterIArchiveFunc)(iarchive &ar);
-   typedef void (*RegisterOArchiveFunc)(oarchive &ar);
 
    struct FunctionTable {
        CreateEmptyFunc createEmpty;
        CreateFunc create;
        DestroyFunc destroy;
-       RegisterIArchiveFunc registerIArchive;
-       //RegisterDeepIArchiveFunc registerDeepIArchive;
-       RegisterOArchiveFunc registerOArchive;
-       //RegisterDeepOArchiveFunc registerDeepOArchive;
    };
 
    template<class O>
@@ -335,16 +332,9 @@ public:
          O::createEmpty,
          O::createFromData,
          O::destroy,
-         O::registerIArchive,
-         //O::registerDeepIArchive,
-         O::registerOArchive,
-         //O::registerDeepOArchive,
       };
       typeMap()[id] = t;
    }
-
-   template<class Archive>
-   static void registerArchiveType(Archive &ar);
 
    static const struct FunctionTable &getType(int id);
 
@@ -398,8 +388,11 @@ private:
    Object::ptr cloneTypeInternal() const override { \
       return Object::ptr(new ObjType(Object::Initialized)); \
    } \
-   static Object::ptr createEmpty() { \
-      return Object::ptr(new ObjType(Object::Initialized)); \
+   static Object *createEmpty(const std::string &name) { \
+      if (name.empty()) \
+          return new ObjType(Object::Initialized); \
+      auto d = Data::createNamed(ObjType::type(), name); \
+      return new ObjType(d); \
    } \
    template<class OtherType> \
    static ptr clone(typename OtherType::ptr other) { \
@@ -416,9 +409,6 @@ private:
       return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
-   static void registerIArchive(iarchive &ar); \
-   static void registerOArchive(oarchive &ar); \
-   void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \
@@ -427,46 +417,33 @@ private:
    struct Data; \
    const Data *d() const { return static_cast<Data *>(Object::m_data); } \
    Data *d() { return static_cast<Data *>(Object::m_data); } \
+   /* ARCHIVE_REGISTRATION(override) */ \
+   ARCHIVE_REGISTRATION_INLINE \
    protected: \
    bool checkImpl() const; \
    ObjType(Data *data); \
    ObjType(); \
    private: \
-   friend class boost::serialization::access; \
+   ARCHIVE_ACCESS_SPLIT \
    template<class Archive> \
-      void serialize(Archive &ar, const unsigned int version) { \
-         boost::serialization::split_member(ar, *this, version); \
-      } \
-   template<class Archive> \
-      void load(Archive &ar, const unsigned int version) { \
+      void load(Archive &ar) { \
          std::string name; \
-         ar & V_NAME("name", name); \
+         ar & V_NAME(ar, "name", name); \
          int type = Object::UNKNOWN; \
-         ar & V_NAME("type", type); \
-         Shm::the().lockObjects(); \
-         if (auto data = Shm::the().getObjectDataFromName(name)) { \
-            Object::m_data = data; \
-            Object::m_data->ref(); \
-            Shm::the().unlockObjects(); \
-            if (!ar.currentObject()) \
-                ar.setCurrentObject(Object::m_data); \
-         } else { \
-            Shm::the().unlockObjects(); \
-            std::cerr << "Object::load: creating " << name << std::endl; \
-            Object::m_data = Data::createNamed(ObjType::type(), name); \
-            if (!ar.currentObject()) \
-                ar.setCurrentObject(Object::m_data); \
-            d()->template serialize<Archive>(ar, version); \
-         } \
+         ar & V_NAME(ar, "type", type); \
+         std::cerr << "Object::load: LOADING " << name << ", type=" << type << std::endl; \
+         if (!ar.currentObject()) \
+            ar.setCurrentObject(Object::m_data); \
+         d()->template serialize<Archive>(ar); \
          assert(type == Object::getType()); \
       } \
    template<class Archive> \
-      void save(Archive &ar, const unsigned int version) const { \
+      void save(Archive &ar) const { \
          int type = Object::getType(); \
          std::string name = d()->name; \
-         ar & V_NAME("name", name); \
-         ar & V_NAME("type", type); \
-         const_cast<Data *>(d())->template serialize<Archive>(ar, version); \
+         ar & V_NAME(ar, "name", name); \
+         ar & V_NAME(ar, "type", type); \
+         const_cast<Data *>(d())->template serialize<Archive>(ar); \
       } \
    friend std::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
    friend shm_handle_t Shm::getHandleFromObject(std::shared_ptr<const Object>) const; \
@@ -483,9 +460,9 @@ private:
 #define V_DATA_END(ObjType) \
       private: \
       friend class ObjType; \
-      friend class boost::serialization::access; \
+      ARCHIVE_ACCESS \
       template<class Archive> \
-      void serialize(Archive &ar, const unsigned int version); \
+      void serialize(Archive &ar); \
       void initData(); \
    }
 
@@ -494,25 +471,10 @@ private:
     struct is_virtual_base_of<ObjType::Base,ObjType>: public mpl::true_ {}; \
     }
 
-#define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
-   prefix1, prefix2 \
-   void Type1, Type2::registerIArchive(iarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerOArchive(oarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   }
+#define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2)
 
 #define V_SERIALIZERS2(ObjType, prefix) \
-   prefix \
-   void ObjType::registerIArchive(iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerOArchive(oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   }
+    /* ARCHIVE_REGISTRATION_IMPL(ObjType, prefix) */
 
 #define V_SERIALIZERS(ObjType) V_SERIALIZERS2(ObjType,)
 
@@ -520,8 +482,6 @@ private:
 #define REGISTER_TYPE(ObjType, id) \
 { \
    ObjectTypeRegistry::registerType<ObjType >(id); \
-   boost::serialization::void_cast_register<ObjType, ObjType::Base>( \
-         static_cast<ObjType *>(NULL), static_cast<ObjType::Base *>(NULL) \
   ); \
 }
 
@@ -535,9 +495,6 @@ private:
          public: \
                  RegisterObjectType_##suffix() { \
                     ObjectTypeRegistry::registerType<ObjType >(id); \
-                    boost::serialization::void_cast_register<ObjType, ObjType::Base>( \
-                          static_cast<ObjType *>(NULL), static_cast<ObjType::Base *>(NULL) \
-                          ); \
                  } \
       }; \
       V_INIT_STATIC RegisterObjectType_##suffix registerObjectType_##suffix; \
@@ -559,11 +516,11 @@ private:
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \
-   V_SERIALIZERS(ObjType) \
    V_OBJECT_TYPE3(ObjType, ObjType, id) \
    Object::Type ObjType::type() { \
       return id; \
-   }
+   } \
+   V_SERIALIZERS(ObjType)
 
 #define V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \
@@ -587,8 +544,8 @@ void V_COREEXPORT registerTypes();
 V_ENUM_OUTPUT_OP(Type, Object)
 
 } // namespace vistle
+#endif
 
 #ifdef VISTLE_IMPL
 #include "object_impl.h"
-#endif
 #endif

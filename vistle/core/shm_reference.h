@@ -1,7 +1,10 @@
 #ifndef SHM_REFRENCE_H
 #define SHM_REFRENCE_H
 
+#include "archives_config.h"
 #include <string>
+#include <cassert>
+#include "shmname.h"
 
 namespace vistle {
 
@@ -120,16 +123,17 @@ class shm_ref {
        }
    }
 
-   friend class boost::serialization::access;
+   ARCHIVE_ACCESS_SPLIT
+
    template<class Archive>
-   void serialize(Archive &ar, const unsigned int version);
+   void save(Archive &ar) const;
    template<class Archive>
-   void save(Archive &ar, const unsigned int version) const;
-   template<class Archive>
-   void load(Archive &ar, const unsigned int version);
+   void load(Archive &ar);
 };
 
 } // namespace vistle
 #endif
 
+#ifdef VISTLE_IMPL
 #include "shm_reference_impl.h"
+#endif

@@ -1,8 +1,9 @@
 #ifndef PLACEHOLDER_H
 #define PLACEHOLDER_H
 
-#include "shm.h"
+#include "shmname.h"
 #include "object.h"
+#include "archives.h"
 #include "shm_obj_ref.h"
 #include "export.h"
 

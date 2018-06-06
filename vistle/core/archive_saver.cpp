@@ -1,4 +1,7 @@
 #include "archive_saver.h"
+#include "archives.h"
+#include "shmvector.h"
+#include "object.h"
 
 namespace vistle {
 
@@ -22,7 +25,7 @@ void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::cons
     vecostreambuf<char> vb;
     oarchive ar(vb);
     ar.setSaver(shared_from_this());
-    obj->save(ar);
+    obj->saveObject(ar);
     m_objects.emplace(name, vb.get_vector());
 }
 

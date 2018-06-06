@@ -5,27 +5,11 @@
 #include <vector>
 #include <memory>
 
-#include <boost/serialization/access.hpp>
+#include "archives_config.h"
 
 #include "export.h"
 #include "vector.h"
 #include "shm.h"
-
-//#define DEBUG_SERIALIZATION
-#ifdef DEBUG_SERIALIZATION
-template<class T>
-inline const
-boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t) {
-   std::cerr << "<" << name << ">" << std::endl;
-   return boost::serialization::make_nvp<T>(name, t);
-}
-
-#define V_NAME(name, obj) \
-   vistle_make_nvp(name, (obj)); std::cerr << "</" << name << ">" << std::endl;
-#else
-#define V_NAME(name, obj) \
-   boost::serialization::make_nvp(name, (obj))
-#endif
 
 namespace vistle {
 
@@ -60,9 +44,9 @@ class V_COREEXPORT Meta {
       double m_realtime;
       std::array<double, 16> m_transform;
 
-      friend class boost::serialization::access;
+      ARCHIVE_ACCESS
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
+      void serialize(Archive &ar);
 };
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &out, const Meta &meta);

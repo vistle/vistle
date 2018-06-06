@@ -1,4 +1,8 @@
 #include "archive_loader.h"
+#include "archives.h"
+#include "object.h"
+
+#include <iostream>
 
 namespace vistle {
 
@@ -34,7 +38,7 @@ void DeepArchiveFetcher::requestObject(const std::string & name, const std::func
     vecistreambuf<char> vb(it->second);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
-    Object::ptr obj(Object::load(ar));
+    Object::ptr obj(Object::loadObject(ar));
     if (obj->isComplete()) {
         //std::cerr << "DeepArchiveFetcher: success object " << name << std::endl;
         completeCallback();

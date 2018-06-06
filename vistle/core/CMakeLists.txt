@@ -5,6 +5,7 @@ set(core_SOURCES
    archive_loader.cpp
    archive_saver.cpp
    shm.cpp
+   shmname.cpp
    shm_reference.cpp
    shm_obj_ref.cpp
    objectmeta.cpp
@@ -21,7 +22,6 @@ set(core_SOURCES
    vector.cpp
    porttracker.cpp
    statetracker.cpp
-   allobjects.cpp
    findobjectreferenceoarchive.cpp
    cellalgorithm.cpp
    geometry.cpp
@@ -53,14 +53,12 @@ if(${TEMPLATES_IN_HEADERS})
       structuredgrid.cpp
       grid.cpp
    )
-else()
-   set(core_SOURCES ${core_SOURCES}
-   )
 endif()
 
 set(core_HEADERS
    assert.h
    archives.h
+   archives_config.h
    archive_loader.h
    archive_saver.h
    celltree.h
@@ -110,6 +108,7 @@ set(core_HEADERS
    scalars.h
    serialize.h
    shm.h
+   shmname.h
    shmvector.h
    shm_array.h
    shm_impl.h

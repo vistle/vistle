@@ -7,15 +7,10 @@
 
 #include <boost/type_traits.hpp>
 #include <boost/version.hpp>
-#include <boost/serialization/access.hpp>
-#if BOOST_VERSION >= 106400
-#include <boost/serialization/array_wrapper.hpp>
-#else
-#include <boost/serialization/array.hpp>
-#endif
 
 #include <util/exception.h>
 #include "export.h"
+#include "archives_config.h"
 
 namespace vistle {
 
@@ -186,13 +181,11 @@ class shm_array {
    pointer m_data;
    allocator m_allocator;
 
-   friend class boost::serialization::access;
+   ARCHIVE_ACCESS_SPLIT
    template<class Archive>
-   void serialize(Archive &ar, const unsigned int version);
+   void save(Archive &ar) const;
    template<class Archive>
-   void save(Archive &ar, const unsigned int version) const;
-   template<class Archive>
-   void load(Archive &ar, const unsigned int version);
+   void load(Archive &ar);
 
    // not implemented
    shm_array(const shm_array &other) = delete;
@@ -202,6 +195,8 @@ class shm_array {
 } // namespace vistle
 #endif
 
+#ifdef VISTLE_IMPL
+
 #ifndef SHM_ARRAY_IMPL_H
 #define SHM_ARRAY_IMPL_H
 
@@ -209,31 +204,27 @@ namespace vistle {
 
 template<typename T, class allocator>
 template<class Archive>
-void shm_array<T, allocator>::serialize(Archive &ar, const unsigned int version) {
-    boost::serialization::split_member(ar, *this, version);
-}
-
-template<typename T, class allocator>
-template<class Archive>
-void shm_array<T, allocator>::save(Archive &ar, const unsigned int version) const {
-    ar & m_type;
-    ar & m_size;
+void shm_array<T, allocator>::save(Archive &ar) const {
+    ar & V_NAME(ar, "type", int(m_type));
+    ar & V_NAME(ar, "size", size_t(m_size));
     if (m_size > 0)
-       ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&m_data[0], m_size));
+       ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
 }
 
 template<typename T, class allocator>
 template<class Archive>
-void shm_array<T, allocator>::load(Archive &ar, const unsigned int version) {
+void shm_array<T, allocator>::load(Archive &ar) {
     int type = 0;
-    ar & type;
+    ar & V_NAME(ar, "type", type);
     assert(m_type == type);
     size_t size = 0;
-    ar & size;
+    ar & V_NAME(ar, "size", size);
     resize(size);
     if (m_size > 0)
-       ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&m_data[0], m_size));
+       ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
 }
 
 } // namespace vistle
+#endif
+
 #endif

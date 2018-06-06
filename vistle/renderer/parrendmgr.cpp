@@ -2,6 +2,8 @@
 #include "renderobject.h"
 #include "renderer.h"
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/map.hpp>
 
 namespace mpi = boost::mpi;
 
