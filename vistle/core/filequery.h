@@ -1,11 +1,11 @@
 #ifndef VISTLE_FILEQUERY_H
 #define VISTLE_FILEQUERY_H
 
-#include <boost/serialization/access.hpp>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+#include "archives_config.h"
 #include "export.h"
 
 namespace vistle {
@@ -15,8 +15,9 @@ struct V_COREEXPORT SystemInfo {
     std::string homepath;
     std::string currentdir;
 
+   ARCHIVE_ACCESS
    template<class Archive>
-   void serialize(Archive & ar, const unsigned int version)
+   void serialize(Archive & ar)
    {
        ar & iswindows;
        ar & homepath;
@@ -41,8 +42,9 @@ struct V_COREEXPORT FileInfo {
    int64_t size = -1;
    double lastmod = 0.;
 
+   ARCHIVE_ACCESS
    template<class Archive>
-   void serialize(Archive & ar, const unsigned int version)
+   void serialize(Archive & ar)
    {
        ar & name;
        ar & exists;

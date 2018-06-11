@@ -1,13 +1,13 @@
 #include "filequery.h"
 #include <util/vecstreambuf.h>
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
+#include "archives_config.h"
+#include "archives.h"
 
 namespace vistle {
 
 std::vector<char> createPayload(const std::vector<FileInfo> &info) {
     vecostreambuf<char> buf;
-    boost::archive::binary_oarchive ar(buf);
+    oarchive ar(buf);
     ar & info.size();
     for (auto &i: info)
         ar & i;
@@ -17,7 +17,7 @@ std::vector<char> createPayload(const std::vector<FileInfo> &info) {
 std::vector<FileInfo> unpackFileInfos(const std::vector<char> &payload) {
     std::vector<FileInfo> info;
     vecistreambuf<char> buf(payload);
-    boost::archive::binary_iarchive ar(buf);
+    iarchive ar(buf);
     size_t size=0;
     ar & size;
     info.resize(size);
@@ -29,7 +29,7 @@ std::vector<FileInfo> unpackFileInfos(const std::vector<char> &payload) {
 std::vector<char> createPayload(const SystemInfo &info)
 {
     vecostreambuf<char> buf;
-    boost::archive::binary_oarchive ar(buf);
+    oarchive ar(buf);
     ar & info;
     return buf.get_vector();
 }
@@ -38,7 +38,7 @@ SystemInfo unpackSystemInfo(const std::vector<char> &payload)
 {
     SystemInfo info;
     vecistreambuf<char> buf(payload);
-    boost::archive::binary_iarchive ar(buf);
+    iarchive ar(buf);
     ar & info;
     return info;
 }
@@ -46,7 +46,7 @@ SystemInfo unpackSystemInfo(const std::vector<char> &payload)
 std::vector<char> packFileList(const std::vector<std::string> &files)
 {
     vecostreambuf<char> buf;
-    boost::archive::binary_oarchive ar(buf);
+    oarchive ar(buf);
     ar & files.size();
     for (auto &f: files)
         ar & f;
@@ -57,7 +57,7 @@ std::vector<std::string> unpackFileList(const std::vector<char> &payload)
 {
     std::vector<std::string> files;
     vecistreambuf<char> buf(payload);
-    boost::archive::binary_iarchive ar(buf);
+    iarchive ar(buf);
     size_t size=0;
     ar & size;
     files.resize(size);
