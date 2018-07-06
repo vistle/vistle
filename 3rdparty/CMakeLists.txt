@@ -29,4 +29,7 @@ if (NOT BUILD_SHARED_LIBS)
 endif()
 add_subdirectory(IceT)
 
+set(PYTHON_MODULE_EXTENSION "/some/path" CACHE PATH "Make PythonFindLibsNew believe")
+set(PythonLibsNew_FIND_REUQIRED FALSE)
+set(PythonLibsNew_FOUND TRUE)
 add_subdirectory(pybind11)
