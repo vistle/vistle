@@ -86,7 +86,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
       std::shared_ptr<PluginRenderObject> ro;
       std::string name;
       VistleGeometryGenerator generator;
-      std::future<osg::MatrixTransform *> node_future;
+      std::shared_future<osg::MatrixTransform *> node_future;
    };
    std::deque<DelayedObject> m_delayedObjects;
 

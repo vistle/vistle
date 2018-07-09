@@ -11,22 +11,22 @@ namespace vistle {
 
 template <class T, int Dim>
 Vec<T,Dim>::Vec()
-      : Base()
+      : Vec::Base()
 {
    refreshImpl();
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Vec(Data *data)
-      : Base(data)
+Vec<T, Dim>::Vec(Data *data)
+	: Vec::Base(data)
 {
-   refreshImpl();
+	refreshImpl();
 }
 
 template <class T, int Dim>
 Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
-      : Base(Data::create(size, meta))
+      : Vec::Base(Data::create(size, meta))
 {
    refreshImpl();
 }

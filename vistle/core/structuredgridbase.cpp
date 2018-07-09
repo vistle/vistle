@@ -8,7 +8,9 @@
 
 namespace vistle {
 
+#ifndef _WIN32
 constexpr std::array<Index,8> StructuredGridBase::HexahedronIndices[3];
+#endif
 
 
 // IS GHOST CELL CHECK

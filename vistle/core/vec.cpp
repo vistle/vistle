@@ -1,8 +1,8 @@
 #include "vec.h"
 #include "scalars.h"
 #include "assert.h"
-#include "indexed.h"
-#include "triangles.h"
+//#include "indexed.h"
+//#include "triangles.h"
 //#include "celltree_impl.h"
 
 #include <boost/mpl/vector.hpp>
@@ -17,6 +17,7 @@ V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
 
 namespace mpl = boost::mpl;
 
+#ifndef WIN32
 namespace {
 
 template<int Dim>
@@ -58,5 +59,6 @@ void inst_vecs() {
    mpl::for_each<Scalars>(instantiator<1>());
    mpl::for_each<Scalars>(instantiator<3>());
 }
+#endif
 
 } // namespace vistle

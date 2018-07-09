@@ -56,7 +56,7 @@ struct HostData {
    bool m_haveCoords;
    bool m_computeNormals;
 
-   typedef const u_char *TypeIterator;
+   typedef const unsigned char *TypeIterator;
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
 
@@ -201,8 +201,8 @@ struct DeviceData {
    //typedef const Index *IndexIterator;
    typedef thrust::device_vector<Index>::iterator IndexIterator;
 
-   //typedef const u_char *TypeIterator;
-   typedef thrust::device_vector<u_char>::iterator TypeIterator;
+   //typedef const unsigned char *TypeIterator;
+   typedef thrust::device_vector<unsigned char>::iterator TypeIterator;
    typedef thrust::device_vector<Index>::iterator VectorIndexIterator;
 
    DeviceData(Scalar isoValue
@@ -528,13 +528,13 @@ struct checkcell {
    checkcell(Data &data) : m_data(data) {}
 
    // for unstructured grids
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index,u_char> iCell) const {
+   __host__ __device__ int operator()(const thrust::tuple<Index,Index,unsigned char> iCell) const {
 
       int havelower = 0;
       int havehigher = 0;
       Index Cell = iCell.get<0>();
       Index nextCell = iCell.get<1>();
-      u_char cellType = iCell.get<2>();
+      unsigned char cellType = iCell.get<2>();
       if (cellType & UnstructuredGrid::GHOST_BIT)
           return 0;
       if ((cellType & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {

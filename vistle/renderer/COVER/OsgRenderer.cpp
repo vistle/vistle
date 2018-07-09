@@ -675,7 +675,7 @@ int OsgRenderer::runMain(int argc, char *argv[]) {
     }
 
 #ifdef WIN32
-    mpi_main = (main_t)GetProcAddress((HINSTANCE)handle, mainname);;
+    mpi_main = (mpi_main_t)GetProcAddress((HINSTANCE)handle, mainname);;
 #else
     mpi_main = (mpi_main_t)dlsym(handle, mainname);
 #endif

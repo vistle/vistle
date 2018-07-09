@@ -350,18 +350,17 @@ Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells,
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Celltree()
-: Base()
+: Celltree::Base()
 {
     refreshImpl();
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Celltree(Data *data)
-: Base(data)
+: Celltree::Base(data)
 {
     refreshImpl();
 }
-
 
 template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::isEmpty() const {

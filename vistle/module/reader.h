@@ -12,7 +12,7 @@ class V_MODULEEXPORT Reader: public Module {
 
 public:
 
-   class Token {
+   class V_MODULEEXPORT Token {
        friend class vistle::Reader;
 
    public:

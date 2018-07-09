@@ -177,7 +177,9 @@ bool ReadCovise::prepareRead()
         std::string name;
         if (m_fieldFile[port]->getValue() != NONE) {
             filesystem::path path(dir);
-            path += path.preferred_separator + m_fieldFile[port]->getValue() + extension;
+			path += path.preferred_separator;
+			path += m_fieldFile[port]->getValue();
+			path += extension;
             name = path.string();
         }
 #else

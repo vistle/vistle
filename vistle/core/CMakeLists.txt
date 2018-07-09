@@ -154,6 +154,11 @@ if(UNIX AND NOT APPLE)
 		-lpthread
 	)
 endif()
+if (WIN32)
+	target_link_libraries(vistle_core
+	       	bcrypt.lib
+	)
+endif()
 
 target_link_libraries(vistle_core
         vistle_util

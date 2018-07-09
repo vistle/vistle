@@ -152,7 +152,7 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
    }
 
    boost::system::error_code ec;
-   char emptybuf[0];
+   char emptybuf[1];
    auto empty = boost::asio::buffer(&emptybuf, 0);
    asio::read(sock, empty, ec);
    if (ec) {

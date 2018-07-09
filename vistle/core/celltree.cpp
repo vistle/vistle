@@ -10,6 +10,7 @@ namespace mpl = boost::mpl;
 
 namespace vistle {
 
+#ifndef WIN32
 		typedef Celltree<Scalar, Index, 1> Celltree1; // should have already been typedefed in celltree.h but 
 		typedef Celltree<Scalar, Index, 2> Celltree2; // that does not work with VS2015
 		typedef Celltree<Scalar, Index, 3> Celltree3; // it does work like this however
@@ -40,5 +41,6 @@ void inst_celltrees() {
    mpl::for_each<Scalars>(instantiator<2>());
    mpl::for_each<Scalars>(instantiator<3>());
 }
+#endif
 
 } // namespace vistle

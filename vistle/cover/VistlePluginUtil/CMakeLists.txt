@@ -1,5 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system filesystem)
-
 set(pluginutil_SOURCES
    VistleRenderObject.cpp
 )
