@@ -24,7 +24,7 @@ void Meta::serialize(Archive &ar) {
    ar & V_NAME(ar, "creator", m_creator);
    ar & V_NAME(ar, "executioncount", m_executionCount);
    ar & V_NAME(ar, "realtime", m_realtime);
-   ar & V_NAME(ar, "transform", wrap_array<Archive>(m_transform.data(), m_transform.size()));
+   ar & V_NAME(ar, "transform", wrap_array<Archive>(m_transform.data(), true, m_transform.size()));
 #ifdef DEBUG_SERIALIZATION
    unsigned int check2 = check;
    ar & V_NAME(ar, "check2", check2);

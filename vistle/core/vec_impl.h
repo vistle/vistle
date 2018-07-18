@@ -5,6 +5,7 @@
 #include "structuredgridbase.h"
 
 #include <limits>
+#include <type_traits>
 
 #include <boost/mpl/size.hpp>
 
@@ -62,6 +63,11 @@ void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
         for (int c=0; c<Dim; ++c)
             d()->x[c]->clearDimensionHint();
     }
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::setExact(bool exact) {
+    d()->setExact(exact);
 }
 
 template <class T, int Dim>
@@ -163,11 +169,20 @@ void Vec<T,Dim>::Data::updateBounds() {
 }
 
 template <class T, int Dim>
+void Vec<T,Dim>::Data::setExact(bool exact) {
+
+    for (int c=0; c<Dim; ++c)
+        if (x[c])
+            x[c]->setExact(exact);
+}
+
+template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
    initData();
+
    for (int c=0; c<Dim; ++c)
       x[c].construct(size);
 }

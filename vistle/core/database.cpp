@@ -109,6 +109,9 @@ void DataBase::setMapping(DataBase::Mapping mapping) {
     d()->mapping = mapping;
 }
 
+void DataBase::setExact(bool enable) {
+}
+
 DataBase::Mapping DataBase::mapping() const {
     return d()->mapping;
 }

@@ -285,6 +285,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    vecostreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
    vistle::oarchive memar(buf);
+   memar.setCompression(true);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
       if (!saver.save()) {

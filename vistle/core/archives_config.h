@@ -11,8 +11,16 @@
 #endif
 #endif
 
-#include <cstdlib>
+#ifdef HAVE_ZFP
+#include <zfp.h>
+#endif
+
 #include <cassert>
+#include <cstdlib>
+#include <iostream>
+#include <vector>
+
+#include "export.h"
 
 namespace vistle {
 
@@ -34,7 +42,7 @@ struct archive_helper {
     template<class T>
     class ArrayWrapper;
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny=1, S nz=1);
+    static ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny=1, S nz=1);
 
     template<class Archive>
     class StreamType;
@@ -51,8 +59,8 @@ typename archive_helper<typename archive_tag<Archive>::type>::template NameValue
 }
 
 template<class Archive, class T, class S>
-typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrapper<T> wrap_array(T *t, S nx, S ny=1, S nz=1) {
-    return archive_helper<typename archive_tag<Archive>::type>::wrap_array(t, nx, ny, nz);
+typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny=1, S nz=1) {
+    return archive_helper<typename archive_tag<Archive>::type>::wrap_array(t, exact, nx, ny, nz);
 }
 
 }
@@ -96,7 +104,7 @@ struct archive_helper<boost_tag> {
     template<class T>
     using ArrayWrapper = const boost::serialization::array_wrapper<T>;
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny, S nz) {
+    static ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny, S nz) {
         return boost::serialization::make_array(t, nx*ny*nz);
     }
 };
@@ -134,6 +142,23 @@ struct ArchiveStreamType<yas_oarchive> {
     typedef yas::mem_ostream type;
 };
 
+#ifdef HAVE_ZFP
+template<typename T>
+struct zfp_type_map {
+    static const zfp_type value = zfp_type_none;
+};
+
+template<> struct zfp_type_map<int32_t> { static const zfp_type value = zfp_type_int32; };
+template<> struct zfp_type_map<int64_t> { static const zfp_type value = zfp_type_int64; };
+template<> struct zfp_type_map<float> { static const zfp_type value = zfp_type_float; };
+template<> struct zfp_type_map<double> { static const zfp_type value = zfp_type_double; };
+
+template<zfp_type type>
+bool compressZfp(std::vector<char> &compressed, const void *src, const size_t dim[3]);
+template<zfp_type type>
+bool decompressZfp(void *dest, const std::vector<char> &compressed, const size_t dim[3]);
+#endif
+
 template<>
 struct archive_helper<yas_tag> {
     template <class Base>
@@ -155,6 +180,9 @@ struct archive_helper<yas_tag> {
     struct ArrayWrapper {
         typedef T value_type;
         T *m_begin, *m_end;
+        size_t m_dim[3] = {0, 1, 1};
+        bool m_exact = true;
+
         ArrayWrapper(T *begin, T *end)
         : m_begin(begin)
         , m_end(end)
@@ -168,7 +196,15 @@ struct archive_helper<yas_tag> {
         T &operator[](size_t idx) { return *(m_begin+idx); }
         const T &operator[](size_t idx) const { return *(m_begin+idx); }
         void push_back(const T &) { assert("not supported" == 0); }
-        void resize(std::size_t sz) { if (size() != sz) { assert("not supported" == 0); } }
+        void resize(std::size_t sz) { if (size() != sz) { std::cerr << "requesting resize from " << size() << " to " << sz << std::endl; assert("not supported" == 0); } }
+        void setDimensions(size_t sx, size_t sy, size_t sz) {
+            m_dim[0] = sx;
+            m_dim[1] = sy;
+            m_dim[2] = sz;
+        }
+        void setExact(bool exact) {
+            m_exact = exact;
+        }
 
         template<class Archive>
         void serialize(Archive &ar) const {
@@ -180,21 +216,141 @@ struct archive_helper<yas_tag> {
         }
         template<class Archive>
         void load(Archive &ar) {
-            yas::detail::concepts::array::load<ar.yas_flags>(ar, *this);
+            bool compress = false;
+            ar & compress;
+            if (compress) {
+                ar & m_dim[0] & m_dim[1] & m_dim[2];
+                std::vector<char> compressed;
+                ar & compressed;
+#ifdef HAVE_ZFP
+                size_t dim[3];
+                for (int c=0; c<3; ++c)
+                    dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
+                decompressZfp<zfp_type_map<T>::value>(static_cast<void *>(m_begin), compressed, dim);
+#endif
+            } else {
+                yas::detail::concepts::array::load<ar.yas_flags>(ar, *this);
+            }
         }
         template<class Archive>
         void save(Archive &ar) const {
-            yas::detail::concepts::array::save<ar.yas_flags>(ar, *this);
+            bool compress = ar.compressed() && !m_exact;
+            std::cerr << "ar.compressed()=" << compress << std::endl;
+            if (compress) {
+#ifdef HAVE_ZFP
+                std::cerr << "trying to compresss " << std::endl;
+                std::vector<char> compressed;
+                size_t dim[3];
+                for (int c=0; c<3; ++c)
+                    dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
+                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim)) {
+                    ar & compress;
+                    ar & m_dim[0] & m_dim[1] & m_dim[2];
+                    ar & compressed;
+                } else {
+                    std::cerr << "compression failed" << std::endl;
+                    compress = false;
+                }
+#else
+                compress = false;
+#endif
+            }
+            if (!compress) {
+                ar & compress;
+                yas::detail::concepts::array::save<ar.yas_flags>(ar, *this);
+            }
         }
     };
+
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny, S nz) {
-        return ArrayWrapper<T>(t, t+nx*ny*nz);
+    static ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny, S nz) {
+        ArrayWrapper<T> wrap(t, t+nx*ny*nz);
+        wrap.setExact(exact);
+        wrap.setDimensions(nx, ny, nz);
+        return wrap;
     }
 
     template<class Archive>
     using StreamType = typename ArchiveStreamType<Archive>::type;
 };
+
+#ifdef HAVE_ZFP
+template<>
+bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const size_t dim[3]);
+
+template<zfp_type type>
+bool decompressZfp(void *dest, const std::vector<char> &compressed, const size_t dim[3]) {
+#ifdef HAVE_ZFP
+    bool ok = true;
+    bitstream *stream = stream_open(const_cast<char *>(compressed.data()), compressed.size());
+    zfp_stream *zfp = zfp_stream_open(stream);
+    zfp_stream_rewind(zfp);
+    zfp_field *field = zfp_field_3d(dest, type, dim[0], dim[1], dim[2]);
+    if (!zfp_read_header(zfp, field, ZFP_HEADER_FULL)) {
+        std::cerr << "decompressZfp: reading zfp compression parameters failed" << std::endl;
+    }
+    if (field->type != type) {
+        std::cerr << "decompressZfp: zfp type not compatible" << std::endl;
+    }
+    if (field->nx != dim[0] || field->ny != dim[1] || field->nz != dim[2]) {
+        std::cerr << "decompressZfp: zfp size mismatch: " << field->nx << "x" << field->ny << "x" << field->nz << " != " << dim[0] << "x" << dim[1] << "x" << dim[2] << std::endl;
+    }
+    zfp_field_set_pointer(field, dest);
+    if (!zfp_decompress(zfp, field)) {
+        std::cerr << "decompressZfp: zfp decompression failed" << std::endl;
+        ok = false;
+    }
+    zfp_stream_close(zfp);
+    zfp_field_free(field);
+    stream_close(stream);
+    return ok;
+#else
+    std::cerr << "cannot decompress array: no support for ZFP floating point compression" << std::endl;
+    return false;
+#endif
+}
+#endif
+
+#ifdef HAVE_ZFP
+template<>
+bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const size_t dim[3]);
+
+template<zfp_type type>
+bool compressZfp(std::vector<char> &compressed, const void *src, const size_t dim[3]) {
+#ifdef HAVE_ZFP
+    bool ok = true;
+    zfp_field *field = zfp_field_3d(const_cast<void *>(src), type, dim[0], dim[1], dim[2]);
+
+    zfp_stream *zfp = zfp_stream_open(nullptr);
+    //zfp_stream_set_rate(zfp, 8, type, 2, 0);
+    zfp_stream_set_precision(zfp, 20);
+    //zfp_stream_set_accuracy(zfp, -4, type);
+    size_t bufsize = zfp_stream_maximum_size(zfp, field);
+    compressed.resize(bufsize);
+    bitstream *stream = stream_open(compressed.data(), bufsize);
+    zfp_stream_set_bit_stream(zfp, stream);
+
+    zfp_stream_rewind(zfp);
+    zfp_write_header(zfp, field, ZFP_HEADER_FULL);
+    size_t zfpsize = zfp_compress(zfp, field);
+    if (zfpsize == 0) {
+        std::cerr << "compressZfp: zfp compression failed" << std::endl;
+        ok = false;
+    } else {
+        compressed.resize(zfpsize);
+        std::cerr << "compressZfp: compressed " << dim[0] << "x" << dim[1] << "x" << dim[2] << " elements to " << zfpsize << " bytes" << std::endl;
+    }
+    zfp_field_free(field);
+    zfp_stream_close(zfp);
+    stream_close(stream);
+
+    return ok;
+#else
+    assert("no support for ZFP floating point compression" == 0);
+    return false;
+#endif
+}
+#endif
 }
 #endif
 

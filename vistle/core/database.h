@@ -27,6 +27,7 @@ public:
    Mapping guessMapping(Object::const_ptr grid=Object::const_ptr()) const; //< if Unspecified, try to derive a mapping based on array and grid size
    Mapping mapping() const;
    void setMapping(Mapping m);
+   virtual void setExact(bool enable); //< whether data arrays may not be compressed lossy
 
    void copyAttributes(Object::const_ptr src, bool replace = true) override;
 

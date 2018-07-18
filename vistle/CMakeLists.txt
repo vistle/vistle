@@ -133,6 +133,15 @@ include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 # replacement for Boost.Serialization
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
 
+# lossy floating point compression
+#vistle_find_package(ZFP)
+set(ZFP_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/3rdparty/zfp/include")
+set(ZFP_LIBRARIES "zfp")
+if (OPENMP_FOUND)
+   set(ZFP_LIBRARIES ${ZFP_LIBRARIES} ${OpenMP_CXX_LIBRARIES})
+endif()
+set(ZFP_FOUND TRUE)
+add_definitions(-DHAVE_ZFP)
 
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)

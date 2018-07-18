@@ -193,8 +193,12 @@ class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecost
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
     std::ostream * m_os = nullptr;
     std::streambuf *m_sbuf = nullptr;
+    bool m_compress = true;
 
 public:
+    void setCompression(bool enable);
+    bool compressed() const;
+
     typedef yas::mem_ostream stream_type;
     yas_oarchive(Stream &mo, unsigned int flags=0);
 

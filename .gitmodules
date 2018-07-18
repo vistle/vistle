@@ -33,3 +33,6 @@
 [submodule "3rdparty/yas"]
 	path = 3rdparty/yas
 	url = git://github.com/niXman/yas.git
+[submodule "3rdparty/zfp"]
+	path = 3rdparty/zfp
+	url = git://github.com/LLNL/zfp.git

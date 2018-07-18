@@ -33,6 +33,7 @@ class Vec: public DataBase {
    void resetArrays() override;
    void setSize(const Index size) override;
    void applyDimensionHint(Object::const_ptr grid) override;
+   void setExact(bool exact) override;
 
    array &x(int c=0) { return *d()->x[c]; }
    array &y() { return *d()->x[1]; }
@@ -68,7 +69,10 @@ class Vec: public DataBase {
       static Data *create(Index size=0, const Meta &meta=Meta());
       static Data *createNamed(Object::Type id, const std::string &name, const Meta &meta=Meta());
 
-      private:
+   protected:
+      void setExact(bool exact);
+
+   private:
       friend class Vec;
       ARCHIVE_ACCESS
       template<class Archive>

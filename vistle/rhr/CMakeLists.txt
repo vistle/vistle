@@ -4,7 +4,7 @@ vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
-vistle_find_package(ZFP)
+#vistle_find_package(ZFP)
 
 
 #use_openmp()

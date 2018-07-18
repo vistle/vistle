@@ -99,6 +99,14 @@ Fetcher::~Fetcher() {
 }
 
 #ifdef USE_YAS
+void yas_oarchive::setCompression(bool enable) {
+    m_compress = enable;
+}
+
+bool yas_oarchive::compressed() const {
+    return m_compress;
+}
+
 yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags)
 : yas_oarchive::Base(mo)
 {
@@ -175,4 +183,15 @@ const std::function<void()> &boost_iarchive::objectCompletionHandler() const {
 }
 #endif
 
+#ifdef HAVE_ZFP
+template<>
+bool decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const size_t dim[3]) {
+    return false;
+}
+
+template<>
+bool compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const size_t dim[3]) {
+   return false;
+}
+#endif
 } // namespace vistle

@@ -927,10 +927,10 @@ struct EncodeTask: public tbb::task {
                     zfp_stream_set_rate(zfp, 8, type, 2, 0);
                     break;
                 case RhrServer::ZfpPrecision:
-                    zfp_stream_set_precision(zfp, 16, type);
+                    zfp_stream_set_precision(zfp, 16);
                     break;
                 case RhrServer::ZfpAccuracy:
-                    zfp_stream_set_accuracy(zfp, -4, type);
+                    zfp_stream_set_accuracy(zfp, 1./16.);
                     break;
                 }
                 size_t bufsize = zfp_stream_maximum_size(zfp, field);

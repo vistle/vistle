@@ -4,9 +4,7 @@
 #include <cassert>
 #include <atomic>
 #include <cstring>
-
-#include <boost/type_traits.hpp>
-#include <boost/version.hpp>
+#include <type_traits>
 
 #include <util/exception.h>
 #include "export.h"
@@ -126,7 +124,7 @@ class shm_array {
    size_t size() const { return m_size; }
    void resize(const size_t size) {
       reserve(size);
-      if (!boost::has_trivial_copy<T>::value) {
+      if (!std::is_trivially_copyable<T>::value) {
          for (size_t i=m_size; i<size; ++i)
             new(&m_data[i])T();
       }
@@ -153,6 +151,9 @@ class shm_array {
        m_dim[1] = sy;
        m_dim[2] = sz;
    }
+   void setExact(bool exact) {
+       m_exact = exact;
+   }
 
    size_t capacity() const { return m_capacity; }
    void reserve(const size_t new_capacity) {
@@ -163,7 +164,7 @@ class shm_array {
       pointer new_data = capacity>0 ? m_allocator.allocate(capacity) : nullptr;
       const size_t n = capacity<m_size ? capacity : m_size;
       if (m_data && new_data) {
-         if (boost::has_trivial_copy<T>::value) {
+         if (std::is_trivially_copyable<T>::value) {
             ::memcpy(&*new_data, &*m_data, sizeof(T)*n);
          } else {
             for (size_t i=0; i<n; ++i) {
@@ -172,7 +173,7 @@ class shm_array {
          }
       }
       if (m_data) {
-         if (!boost::has_trivial_copy<T>::value) {
+         if (!std::is_trivially_copyable<T>::value) {
             for (size_t i=n; i<m_size; ++i) {
                m_data[i].~T();
             }
@@ -194,6 +195,7 @@ class shm_array {
    size_t m_size = 0;
    size_t m_dim[3] = {0, 1, 1};
    size_t m_capacity = 0;
+   bool m_exact = std::is_integral<T>::value;
    pointer m_data;
    allocator m_allocator;
 
@@ -223,11 +225,13 @@ template<class Archive>
 void shm_array<T, allocator>::save(Archive &ar) const {
     ar & V_NAME(ar, "type", int(m_type));
     ar & V_NAME(ar, "size", size_t(m_size));
+    ar & V_NAME(ar, "exact", m_exact);
+    std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
         if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_dim[0], m_dim[1], m_dim[2]));
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
         else
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
 }
 
@@ -240,11 +244,12 @@ void shm_array<T, allocator>::load(Archive &ar) {
     size_t size = 0;
     ar & V_NAME(ar, "size", size);
     resize(size);
+    ar & V_NAME(ar, "exact", m_exact);
     if (m_size > 0) {
         if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_dim[0], m_dim[1], m_dim[2]));
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
         else
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
 }
 

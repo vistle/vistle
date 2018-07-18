@@ -11,6 +11,19 @@ endif()
 
 include(boost-mpi.cmake)
 
+if (CRAY)
+   set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+else()
+   #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
+   set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+endif()
+
+if (NOT BUILD_SHARED_LIBS)
+   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
+
+add_subdirectory(zfp)
+
 set(ICET_BUILD_TESTING OFF CACHE INTERNAL "")
 set(ICET_USE_OPENGL OFF CACHE INTERNAL "")
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for building all libraries.")
@@ -18,15 +31,6 @@ SET(ICET_LIBRARY_DIR ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for 
 SET(ICET_EXECUTABLE_DIR ${PROJECT_BINARY_DIR}/bin CACHE PATH "Output directory for building all executable.")
 set(ICET_BINARY_DIR ${PROJECT_BINARY_DIR} CACHE PATH "Value overriden by Vistle")
 set(ICET_INSTALL_LIB_DIR ${INSTALL_LIB_DIR} CACHE INTERNAL "")
-if (CRAY)
-   set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
-else()
-   #set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
-   set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
-endif()
-if (NOT BUILD_SHARED_LIBS)
-   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-endif()
 add_subdirectory(IceT)
 
 set(PYTHON_MODULE_EXTENSION "/some/path" CACHE PATH "Make PythonFindLibsNew believe")

@@ -1,5 +1,10 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system date_time)
 
+if(ZFP_FOUND)
+   add_definitions(-DHAVE_ZFP)
+   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
+endif()
+
 set(core_SOURCES
    archives.cpp
    archive_loader.cpp
@@ -171,3 +176,7 @@ include_directories(SYSTEM
 include_directories(
         ..
 )
+
+if (ZFP_FOUND)
+    target_link_libraries(vistle_core ${ZFP_LIBRARIES})
+endif()
