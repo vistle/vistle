@@ -11,6 +11,7 @@
 #include "structuredgridbase.h"
 #include "coords.h"
 #include "celltree.h"
+#include "normals.h"
 #include "export.h"
 
 namespace vistle {

@@ -10,6 +10,7 @@
 #include "shm.h"
 #include "shmvector.h"
 #include "structuredgridbase.h"
+#include "normals.h"
 #include "export.h"
 
 namespace vistle {

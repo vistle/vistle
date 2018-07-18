@@ -32,6 +32,7 @@ class Vec: public DataBase {
 
    void resetArrays() override;
    void setSize(const Index size) override;
+   void applyDimensionHint(Object::const_ptr grid) override;
 
    array &x(int c=0) { return *d()->x[c]; }
    array &y() { return *d()->x[1]; }

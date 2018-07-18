@@ -34,7 +34,7 @@ struct archive_helper {
     template<class T>
     class ArrayWrapper;
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S n);
+    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny=1, S nz=1);
 
     template<class Archive>
     class StreamType;
@@ -51,8 +51,8 @@ typename archive_helper<typename archive_tag<Archive>::type>::template NameValue
 }
 
 template<class Archive, class T, class S>
-typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrapper<T> wrap_array(T *t, S n) {
-    return archive_helper<typename archive_tag<Archive>::type>::wrap_array(t, n);
+typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrapper<T> wrap_array(T *t, S nx, S ny=1, S nz=1) {
+    return archive_helper<typename archive_tag<Archive>::type>::wrap_array(t, nx, ny, nz);
 }
 
 }
@@ -96,8 +96,8 @@ struct archive_helper<boost_tag> {
     template<class T>
     using ArrayWrapper = const boost::serialization::array_wrapper<T>;
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S n) {
-        return boost::serialization::make_array(t, n);
+    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny, S nz) {
+        return boost::serialization::make_array(t, nx*ny*nz);
     }
 };
 }
@@ -188,8 +188,8 @@ struct archive_helper<yas_tag> {
         }
     };
     template<class T, class S>
-    static ArrayWrapper<T> wrap_array(T *t, S n) {
-        return ArrayWrapper<T>(t, t+n);
+    static ArrayWrapper<T> wrap_array(T *t, S nx, S ny, S nz) {
+        return ArrayWrapper<T>(t, t+nx*ny*nz);
     }
 
     template<class Archive>

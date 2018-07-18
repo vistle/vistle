@@ -437,6 +437,10 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
     (*numDivisions)[0] = numVert_x;
     (*numDivisions)[1] = numVert_y;
     (*numDivisions)[2] = numVert_z;
+
+    x[0]->setDimensionHint(numVert_x, numVert_y, numVert_z);
+    x[1]->setDimensionHint(numVert_x, numVert_y, numVert_z);
+    x[2]->setDimensionHint(numVert_x, numVert_y, numVert_z);
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME

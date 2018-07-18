@@ -2,6 +2,7 @@
 #define VEC_IMPL_H
 
 #include "scalars.h"
+#include "structuredgridbase.h"
 
 #include <limits>
 
@@ -50,6 +51,17 @@ void Vec<T,Dim>::setSize(const Index size) {
       }
    }
    refresh();
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
+    if (auto str = StructuredGridBase::as(grid)) {
+        for (int c=0; c<Dim; ++c)
+            d()->x[c]->setDimensionHint(str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2));
+    } else {
+        for (int c=0; c<Dim; ++c)
+            d()->x[c]->clearDimensionHint();
+    }
 }
 
 template <class T, int Dim>

@@ -82,6 +82,8 @@ class shm_array {
            return false;
        if (m_size > m_capacity)
            return false;
+       if (m_dim[0]!=0 && m_size != m_dim[0]*m_dim[1]*m_dim[2])
+           return false;
        return true;
    }
 
@@ -130,6 +132,7 @@ class shm_array {
       }
       m_size = size;
       assert(m_size <= m_capacity);
+      clearDimensionHint();
    }
    void resize(const size_t size, const T &value) {
       reserve(size);
@@ -137,6 +140,18 @@ class shm_array {
          new(&m_data[i])T(value);
       m_size = size;
       assert(m_size <= m_capacity);
+      clearDimensionHint();
+   }
+
+   void clearDimensionHint() {
+       m_dim[0] = 0;
+       m_dim[1] = m_dim[2] = 1;
+   }
+   void setDimensionHint(const size_t sx, const size_t sy=1, const size_t sz=1){
+       assert(m_size == sx*sy*sz);
+       m_dim[0] = sx;
+       m_dim[1] = sy;
+       m_dim[2] = sz;
    }
 
    size_t capacity() const { return m_capacity; }
@@ -176,8 +191,9 @@ class shm_array {
  private:
    const int m_type;
    mutable std::atomic<int> m_refcount;
-   size_t m_size;
-   size_t m_capacity;
+   size_t m_size = 0;
+   size_t m_dim[3] = {0, 1, 1};
+   size_t m_capacity = 0;
    pointer m_data;
    allocator m_allocator;
 
@@ -207,8 +223,12 @@ template<class Archive>
 void shm_array<T, allocator>::save(Archive &ar) const {
     ar & V_NAME(ar, "type", int(m_type));
     ar & V_NAME(ar, "size", size_t(m_size));
-    if (m_size > 0)
-       ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+    if (m_size > 0) {
+        if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_dim[0], m_dim[1], m_dim[2]));
+        else
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+    }
 }
 
 template<typename T, class allocator>
@@ -220,8 +240,12 @@ void shm_array<T, allocator>::load(Archive &ar) {
     size_t size = 0;
     ar & V_NAME(ar, "size", size);
     resize(size);
-    if (m_size > 0)
-       ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+    if (m_size > 0) {
+        if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_dim[0], m_dim[1], m_dim[2]));
+        else
+            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_size));
+    }
 }
 
 } // namespace vistle

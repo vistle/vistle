@@ -87,7 +87,11 @@ Index DataBase::getSize() const {
 
 void DataBase::setSize(Index size ) {
 
-   assert("should never be called" == NULL);
+    assert("should never be called" == NULL);
+}
+
+void DataBase::applyDimensionHint(Object::const_ptr grid)
+{
 }
 
 Object::const_ptr DataBase::grid() const {
@@ -98,6 +102,7 @@ Object::const_ptr DataBase::grid() const {
 void DataBase::setGrid(Object::const_ptr grid) {
 
     d()->grid = grid;
+    applyDimensionHint(grid);
 }
 
 void DataBase::setMapping(DataBase::Mapping mapping) {
