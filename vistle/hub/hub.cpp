@@ -477,6 +477,7 @@ int Hub::id() const {
 void Hub::hubReady() {
    vassert(m_managerConnected);
    if (m_isMaster) {
+      m_ready = true;
       processScript();
    } else {
       message::AddHub hub(m_hubId, m_name);
@@ -495,11 +496,13 @@ void Hub::hubReady() {
                }
             } catch (std::bad_cast &except) {
                CERR << "AddHub: failed to convert local address to v6" << std::endl;
+               return;
             }
          }
       }
 
       sendMaster(hub);
+      m_ready = true;
    }
 }
 
@@ -670,6 +673,31 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          break;
       }
+      case message::MODULEAVAILABLE: {
+         auto &mm = static_cast<ModuleAvailable &>(msg);
+         AvailableModule mod;
+         mod.name = mm.name();
+         mod.path = mm.path();
+         mod.hub = mm.hub();
+         if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
+             mod.hub = m_hubId;
+         }
+         if (mod.hub == Id::Invalid && senderType == Identify::MANAGER) {
+             m_localModules.emplace_back(mod);
+         } else if (mod.hub == Id::Invalid) {
+             CERR << "invalid module message from " << senderType << ": " << mm << std::endl;
+         } else {
+             AvailableModule::Key key(mod.hub, mod.name);
+             m_availableModules.emplace(key, mod);
+             message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
+             if (!m_isMaster)
+                 sendMaster(avail);
+             sendUi(avail);
+         }
+         return true;
+         break;
+      }
+
       default:
          break;
    }
@@ -775,11 +803,16 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 #ifndef MODULE_THREAD
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             vassert(spawn.hubId() == m_hubId);
+            vassert(m_ready);
 
             std::string name = spawn.getName();
             AvailableModule::Key key(spawn.hubId(), name);
+            const AvailableModule *mod = nullptr;
             auto it = m_availableModules.find(key);
-            if (it == m_availableModules.end()) {
+            if (it != m_availableModules.end()) {
+                mod = &it->second;
+            }
+            if (!mod) {
                if (spawn.hubId() == m_hubId) {
                    std::stringstream str;
                    str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
@@ -790,9 +823,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                }
                return true;
             }
-            std::string path = it->second.path;
-
-            std::string executable = path;
+            const std::string &path = mod->path;
+            const std::string &executable = path;
             std::vector<std::string> argv;
             argv.push_back(executable);
             argv.push_back(Shm::instanceName(hostname(), m_port));
@@ -868,6 +900,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
                    m_stateTracker.handle(avail);
                    sendMaster(avail);
+                   sendUi(avail);
                }
                m_localModules.clear();
             }
@@ -877,24 +910,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   sendMessage(sock, m);
                }
                hubReady();
-            }
-            break;
-         }
-
-         case message::MODULEAVAILABLE: {
-            auto &mm = static_cast<ModuleAvailable &>(msg);
-            AvailableModule mod;
-            mod.hub = mm.hub();
-            mod.name = mm.name();
-            mod.path = mm.path();
-            if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
-                mod.hub = m_hubId;
-            }
-            if (mod.hub == Id::Invalid && senderType == Identify::MANAGER) {
-                m_localModules.emplace_back(mod);
-            } else {
-                AvailableModule::Key key(mod.hub, mod.name);
-                m_availableModules.emplace(key, mod);
             }
             break;
          }

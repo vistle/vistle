@@ -103,6 +103,7 @@ private:
    int m_slaveCount;
    int m_hubId;
    std::string m_name;
+   bool m_ready = false;
 
    int m_moduleCount;
    int m_traceMessages;
