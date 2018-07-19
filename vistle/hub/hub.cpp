@@ -782,8 +782,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (it == m_availableModules.end()) {
                if (spawn.hubId() == m_hubId) {
                    std::stringstream str;
-                   str << "refusing to spawn " << name << ": not in list of available modules";
+                   str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
                    sendError(str.str());
+                   message::ModuleExit ex;
+                   ex.setSenderId(spawn.spawnId());
+                   sendManager(ex);
                }
                return true;
             }
@@ -804,7 +807,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                 std::stringstream str;
                 str << "program " << argv[0] << " failed to start";
                 sendError(str.str());
-			}
+                message::ModuleExit ex;
+                ex.setSenderId(spawn.spawnId());
+                sendManager(ex);
+            }
 #endif
             break;
          }
