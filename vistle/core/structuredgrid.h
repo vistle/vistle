@@ -30,7 +30,7 @@ public:
    StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta = Meta());
 
    // get functions for metadata
-   Index getNumDivisions(int c) override { return (*d()->numDivisions)[c]; }
+   Index getNumDivisions(int c) override { return d()->numDivisions[c]; }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
@@ -66,8 +66,8 @@ private:
    V_DATA_BEGIN(StructuredGrid);
 
    shm_obj_ref<Normals> normals;
-   ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
-   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
+   Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
+   Index ghostLayers[3][2]; //< number of ghost cell layers in each of x, y, z directions
 
    Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta = Meta());
    ~Data();

@@ -29,10 +29,10 @@ void StructuredGrid::refreshImpl() const {
 
     for (int c=0; c<3; ++c) {
         if (d && d->x[c].valid()) {
-            m_numDivisions[c] = (*d->numDivisions)[c];
+            m_numDivisions[c] = d->numDivisions[c];
 
-            m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
-            m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
+            m_ghostLayers[c][0] = d->ghostLayers[c][0];
+            m_ghostLayers[c][1] = d->ghostLayers[c][1];
         } else {
             m_numDivisions[c] = 0;
 
@@ -49,8 +49,7 @@ bool StructuredGrid::checkImpl() const {
    V_CHECK(getSize() == getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2));
 
    for (int c=0; c<3; c++) {
-       V_CHECK(d()->ghostLayers[c]->check());
-        V_CHECK(d()->ghostLayers[c]->size() == 2);
+       V_CHECK(d()->ghostLayers[c][0]+d()->ghostLayers[c][1] < getNumDivisions(c));
    }
 
    return true;
@@ -68,7 +67,7 @@ bool StructuredGrid::isEmpty() const {
 Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    return (*d()->ghostLayers[dim])[layerPosition];
+    return d()->ghostLayers[dim][layerPosition];
 }
 
 // GET FUNCTION - GHOST CELL LAYER CONST
@@ -84,7 +83,7 @@ Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) co
 void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    (*d()->ghostLayers[dim])[layerPosition] = value;
+    d()->ghostLayers[dim][layerPosition] = value;
     m_ghostLayers[dim][layerPosition] = value;
 
     return;
@@ -418,12 +417,9 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 
 void StructuredGrid::Data::initData() {
 
-    numDivisions.construct(3);
-
     for (int i=0; i<3; ++i) {
-        (*numDivisions)[i] = 0;
-        ghostLayers[i].construct(2);
-        (*ghostLayers[i])[0] = (*ghostLayers[i])[1] = 0;
+        numDivisions[i] = 0;
+        ghostLayers[i][0] = ghostLayers[i][1] = 0;
     }
 }
 
@@ -434,9 +430,9 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
 {
     initData();
 
-    (*numDivisions)[0] = numVert_x;
-    (*numDivisions)[1] = numVert_y;
-    (*numDivisions)[2] = numVert_z;
+    numDivisions[0] = numVert_x;
+    numDivisions[1] = numVert_y;
+    numDivisions[2] = numVert_z;
 
     x[0]->setDimensionHint(numVert_x, numVert_y, numVert_z);
     x[1]->setDimensionHint(numVert_x, numVert_y, numVert_z);
@@ -450,9 +446,11 @@ StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n)
 
     initData();
 
+    normals = o.normals;
     for (int c=0; c<3; ++c) {
-        (*numDivisions)[c] = (*o.numDivisions)[c];
-        ghostLayers[c] = o.ghostLayers[c];
+        numDivisions[c] = o.numDivisions[c];
+        ghostLayers[c][0] = o.ghostLayers[c][0];
+        ghostLayers[c][1] = o.ghostLayers[c][1];
     }
 }
 

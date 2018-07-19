@@ -28,7 +28,7 @@ public:
    UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta=Meta());
 
    // get/set functions
-   Index getNumDivisions(int c) override { return (*d()->numDivisions)[c]; }
+   Index getNumDivisions(int c) override { return d()->numDivisions[c]; }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
@@ -37,10 +37,10 @@ public:
    void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
    // get/set functions for shared memory members
-   shm<Scalar>::array & min() { return *d()->min; }
-   shm<Scalar>::array & max() { return *d()->max; }
-   const Scalar * min() const { return m_min; }
-   const Scalar * max() const { return m_max; }
+   Scalar *min() { return d()->min; }
+   Scalar *max() { return d()->max; }
+   const Scalar *min() const { return m_min; }
+   const Scalar *max() const { return m_max; }
 
    // GeometryInterface
    std::pair<Vector, Vector> getBounds() const override;
@@ -69,10 +69,10 @@ private:
 
    shm_obj_ref<Normals> normals;
    // each of the following variables represents a coordinate (by index, in order x, y, z)
-   ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
-   ShmVector<Scalar> min; //< coordinates of minimum grid point
-   ShmVector<Scalar> max; //< coordinates of maximum grid point
-   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
+   Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
+   Scalar min[3]; //< coordinates of minimum grid point
+   Scalar max[3]; //< coordinates of maximum grid point
+   Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 
    Data(const std::string & name, Index xdim, Index ydim, Index zdim, const Meta &meta=Meta());
    ~Data();

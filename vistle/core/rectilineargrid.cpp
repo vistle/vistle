@@ -28,8 +28,8 @@ void RectilinearGrid::refreshImpl() const {
             m_numDivisions[c] = d->coords[c]->size();
             m_coords[c] = d->coords[c]->data();
 
-            m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
-            m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
+            m_ghostLayers[c][0] = d->ghostLayers[c][0];
+            m_ghostLayers[c][1] = d->ghostLayers[c][1];
         } else {
             m_numDivisions[c] = 0;
             m_coords[c] = nullptr;
@@ -46,8 +46,7 @@ bool RectilinearGrid::checkImpl() const {
 
     for (int c=0; c<3; ++c) {
         V_CHECK(d()->coords[c]->check());
-        V_CHECK(d()->ghostLayers[c]->check());
-        V_CHECK(d()->ghostLayers[c]->size() == 2);
+        V_CHECK(d()->ghostLayers[c][0]+d()->ghostLayers[c][1] < getNumDivisions(c));
     }
 
 
@@ -66,7 +65,7 @@ bool RectilinearGrid::isEmpty() const {
 Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    return (*d()->ghostLayers[dim])[layerPosition];
+    return d()->ghostLayers[dim][layerPosition];
 }
 
 // GET FUNCTION - GHOST CELL LAYER CONST
@@ -82,7 +81,7 @@ Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) c
 void RectilinearGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    (*d()->ghostLayers[dim])[layerPosition] = value;
+    d()->ghostLayers[dim][layerPosition] = value;
     m_ghostLayers[dim][layerPosition] = value;
 
     return;
@@ -288,8 +287,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
 void RectilinearGrid::Data::initData() {
 
     for (int c=0; c<3; ++c) {
-        ghostLayers[c].construct(2);
-        (*ghostLayers[c])[0] = (*ghostLayers[c])[1] = 0;
+        ghostLayers[c][0] = ghostLayers[c][1] = 0;
     }
 }
 
@@ -307,11 +305,14 @@ RectilinearGrid::Data::Data(const Index numDivX, const Index numDivY, const Inde
 //-------------------------------------------------------------------------
 RectilinearGrid::Data::Data(const RectilinearGrid::Data &o, const std::string &n)
     : RectilinearGrid::Base::Data(o, n) {
+
     initData();
+
+    normals = o.normals;
     for (int c=0; c<3; ++c) {
         coords[c] = o.coords[c];
         for (int i=0; i<2; ++i)
-            (*ghostLayers[c])[i] = (*o.ghostLayers[c])[i];
+            ghostLayers[c][i] = o.ghostLayers[c][i];
     }
 }
 

@@ -23,13 +23,13 @@ void UniformGrid::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
 
     for (int c=0; c<3; ++c) {
-        m_numDivisions[c] = d ? (*d->numDivisions)[c] : 1;
-        m_min[c] = d ? (*d->min)[c] : 0.f;
-        m_max[c] = d ? (*d->max)[c] : 0.f;
+        m_numDivisions[c] = d ? d->numDivisions[c] : 1;
+        m_min[c] = d ? d->min[c] : 0.f;
+        m_max[c] = d ? d->max[c] : 0.f;
         m_dist[c] = (m_max[c]-m_min[c])/(m_numDivisions[c]-1);
 
-        m_ghostLayers[c][0] = d ? (*d->ghostLayers[c])[0] : 0;
-        m_ghostLayers[c][1] = d ? (*d->ghostLayers[c])[1] : 0;
+        m_ghostLayers[c][0] = d ? d->ghostLayers[c][0] : 0;
+        m_ghostLayers[c][1] = d ? d->ghostLayers[c][1] : 0;
     }
 }
 
@@ -37,17 +37,9 @@ void UniformGrid::refreshImpl() const {
 //-------------------------------------------------------------------------
 bool UniformGrid::checkImpl() const {
 
-   V_CHECK(d()->numDivisions->check());
-   V_CHECK(d()->min->check());
-   V_CHECK(d()->max->check());
-
-   V_CHECK(d()->numDivisions->size() == 3);
-   V_CHECK(d()->min->size() == 3);
-   V_CHECK(d()->max->size() == 3);
-
    for (int c=0; c<3; c++) {
-       V_CHECK(d()->ghostLayers[c]->check());
-        V_CHECK(d()->ghostLayers[c]->size() == 2);
+       V_CHECK(d()->ghostLayers[c][0]+d()->ghostLayers[c][1] < getNumDivisions(c));
+       V_CHECK(d()->min[c] <= d()->max[c]);
    }
 
    return true;
@@ -65,7 +57,7 @@ bool UniformGrid::isEmpty() const {
 Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    return (*d()->ghostLayers[dim])[layerPosition];
+    return d()->ghostLayers[dim][layerPosition];
 }
 
 // GET FUNCTION - GHOST CELL LAYER CONST
@@ -81,7 +73,7 @@ Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const
 void UniformGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
     unsigned layerPosition = (pos == Bottom) ? 0 : 1;
 
-    (*d()->ghostLayers[dim])[layerPosition] = value;
+    d()->ghostLayers[dim][layerPosition] = value;
     m_ghostLayers[dim][layerPosition] = value;
 
     return;
@@ -288,14 +280,11 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
 
 void UniformGrid::Data::initData() {
 
-    numDivisions.construct(3);
-    min.construct(3);
-    max.construct(3);
-
     for (int i=0; i<3; ++i) {
-        (*numDivisions)[i] = 0;
-        ghostLayers[i].construct(2);
-        (*ghostLayers[i])[0] = (*ghostLayers[i])[1] = 0;
+        numDivisions[i] = 0;
+        ghostLayers[i][0] = ghostLayers[i][1] = 0;
+        min[i] = 1;
+        max[i] = -1;
     }
 }
 
@@ -306,9 +295,9 @@ UniformGrid::Data::Data(const std::string & name, Index xdim, Index ydim, Index 
 
     initData();
 
-    (*numDivisions)[0] = xdim;
-    (*numDivisions)[1] = ydim;
-    (*numDivisions)[2] = zdim;
+    numDivisions[0] = xdim;
+    numDivisions[1] = ydim;
+    numDivisions[2] = zdim;
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -318,10 +307,11 @@ UniformGrid::Data::Data(const UniformGrid::Data &o, const std::string &n)
 
     initData();
 
+    normals = o.normals;
     for (int i=0; i<3; ++i) {
-        (*min)[i] = (*o.min)[i];
-        (*max)[i] = (*o.max)[i];
-        (*numDivisions)[i] = (*o.numDivisions)[i];
+        min[i] = o.min[i];
+        max[i] = o.max[i];
+        numDivisions[i] = o.numDivisions[i];
     }
 }
 

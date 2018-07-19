@@ -63,7 +63,7 @@ private:
 
    shm_obj_ref<Normals> normals;
    ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
-   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
+   Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 
    Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string & name, const Meta &meta=Meta());
    ~Data();
