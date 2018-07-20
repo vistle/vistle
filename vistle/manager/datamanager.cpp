@@ -386,7 +386,11 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
                for (const auto &handler: objIt->second.completionHandlers) {
                    handler();
                }
-               objIt->second.obj->unref();
+               if (objIt->second.obj) {
+                   objIt->second.obj->unref();
+               } else {
+                   CERR << "failed to load: " << objName << std::endl;
+               }
                outstandingObjects.erase(objIt);
                //CERR << "erasing from outstanding objects: " << obj->getName() << std::endl;
            } else {
