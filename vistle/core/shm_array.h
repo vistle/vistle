@@ -8,6 +8,7 @@
 
 #include <util/exception.h>
 #include "export.h"
+#include "index.h"
 #include "archives_config.h"
 
 namespace vistle {
@@ -17,6 +18,7 @@ class shm_array {
 
  public: 
    typedef T value_type;
+   typedef uint64_t size_type;
    typedef const value_type &const_reference;
 
    static int typeId();
@@ -190,7 +192,7 @@ class shm_array {
    int refcount() const { return m_refcount; }
 
  private:
-   const int m_type;
+   const uint32_t m_type;
    mutable std::atomic<int> m_refcount;
    size_t m_size = 0;
    size_t m_dim[3] = {0, 1, 1};
@@ -223,8 +225,8 @@ namespace vistle {
 template<typename T, class allocator>
 template<class Archive>
 void shm_array<T, allocator>::save(Archive &ar) const {
-    ar & V_NAME(ar, "type", int(m_type));
-    ar & V_NAME(ar, "size", size_t(m_size));
+    ar & V_NAME(ar, "type", m_type);
+    ar & V_NAME(ar, "size", size_type(m_size));
     ar & V_NAME(ar, "exact", m_exact);
     std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
@@ -238,10 +240,10 @@ void shm_array<T, allocator>::save(Archive &ar) const {
 template<typename T, class allocator>
 template<class Archive>
 void shm_array<T, allocator>::load(Archive &ar) {
-    int type = 0;
+    uint32_t type = 0;
     ar & V_NAME(ar, "type", type);
     assert(m_type == type);
-    size_t size = 0;
+    size_type size = 0;
     ar & V_NAME(ar, "size", size);
     resize(size);
     ar & V_NAME(ar, "exact", m_exact);

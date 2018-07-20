@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "export.h"
+#include "index.h"
 
 namespace vistle {
 
@@ -118,6 +119,8 @@ struct archive_helper<boost_tag> {
 #include <yas/types/concepts/array.hpp>
 
 namespace vistle {
+const std::size_t yas_flags = yas::binary | yas::ehost;
+
 class yas_oarchive;
 class yas_iarchive;
 struct yas_tag {};
@@ -154,9 +157,9 @@ template<> struct zfp_type_map<float> { static const zfp_type value = zfp_type_f
 template<> struct zfp_type_map<double> { static const zfp_type value = zfp_type_double; };
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const size_t dim[3]);
+bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3]);
 template<zfp_type type>
-bool decompressZfp(void *dest, const std::vector<char> &compressed, const size_t dim[3]);
+bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index dim[3]);
 #endif
 
 template<>
@@ -180,7 +183,7 @@ struct archive_helper<yas_tag> {
     struct ArrayWrapper {
         typedef T value_type;
         T *m_begin, *m_end;
-        size_t m_dim[3] = {0, 1, 1};
+        Index m_dim[3] = {0, 1, 1};
         bool m_exact = true;
 
         ArrayWrapper(T *begin, T *end)
@@ -192,7 +195,7 @@ struct archive_helper<yas_tag> {
         T *end() { return m_end; }
         const T *end() const { return m_end; }
         bool empty() const { return m_end == m_begin; }
-        size_t size() const { return m_end - m_begin; }
+        Index size() const { return m_end - m_begin; }
         T &operator[](size_t idx) { return *(m_begin+idx); }
         const T &operator[](size_t idx) const { return *(m_begin+idx); }
         void push_back(const T &) { assert("not supported" == 0); }
@@ -223,13 +226,13 @@ struct archive_helper<yas_tag> {
                 std::vector<char> compressed;
                 ar & compressed;
 #ifdef HAVE_ZFP
-                size_t dim[3];
+                Index dim[3];
                 for (int c=0; c<3; ++c)
                     dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
                 decompressZfp<zfp_type_map<T>::value>(static_cast<void *>(m_begin), compressed, dim);
 #endif
             } else {
-                yas::detail::concepts::array::load<ar.yas_flags>(ar, *this);
+                yas::detail::concepts::array::load<yas_flags>(ar, *this);
             }
         }
         template<class Archive>
@@ -240,7 +243,7 @@ struct archive_helper<yas_tag> {
 #ifdef HAVE_ZFP
                 std::cerr << "trying to compresss " << std::endl;
                 std::vector<char> compressed;
-                size_t dim[3];
+                Index dim[3];
                 for (int c=0; c<3; ++c)
                     dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
                 if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim)) {
@@ -257,7 +260,7 @@ struct archive_helper<yas_tag> {
             }
             if (!compress) {
                 ar & compress;
-                yas::detail::concepts::array::save<ar.yas_flags>(ar, *this);
+                yas::detail::concepts::array::save<yas_flags>(ar, *this);
             }
         }
     };
@@ -276,10 +279,10 @@ struct archive_helper<yas_tag> {
 
 #ifdef HAVE_ZFP
 template<>
-bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const size_t dim[3]);
+bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const Index dim[3]);
 
 template<zfp_type type>
-bool decompressZfp(void *dest, const std::vector<char> &compressed, const size_t dim[3]) {
+bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index dim[3]) {
 #ifdef HAVE_ZFP
     bool ok = true;
     bitstream *stream = stream_open(const_cast<char *>(compressed.data()), compressed.size());
@@ -313,10 +316,10 @@ bool decompressZfp(void *dest, const std::vector<char> &compressed, const size_t
 
 #ifdef HAVE_ZFP
 template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const size_t dim[3]);
+bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3]);
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const size_t dim[3]) {
+bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3]) {
 #ifdef HAVE_ZFP
     bool ok = true;
     zfp_field *field = zfp_field_3d(const_cast<void *>(src), type, dim[0], dim[1], dim[2]);

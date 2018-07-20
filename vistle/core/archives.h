@@ -46,7 +46,6 @@
 
 namespace vistle {
 
-
 template<class T>
 class shm_obj_ref;
 }
@@ -145,7 +144,7 @@ public:
 #endif
 
 #ifdef USE_YAS
-template<class Archive, typename OS, std::size_t F = yas::binary|yas::ehost>
+template<class Archive, typename OS, std::size_t F = yas_flags>
 struct yas_binary_oarchive
     :yas::detail::binary_ostream<OS, F>
     ,yas::detail::oarchive_header<F>
@@ -155,7 +154,6 @@ struct yas_binary_oarchive
 
     using stream_type = OS;
     using this_type = Archive;
-    constexpr static std::size_t yas_flags = F;
 
     yas_binary_oarchive(OS &os)
         :yas::detail::binary_ostream<OS, F>(os)
@@ -265,14 +263,13 @@ private:
 #endif
 
 #ifdef USE_YAS
-template<class Archive, typename IS, std::size_t F = yas::binary|yas::ehost>
+template<class Archive, typename IS, std::size_t F = yas_flags>
 struct yas_binary_iarchive
     :yas::detail::binary_istream<IS, F>
     ,yas::detail::iarchive_header<F>
 {
     YAS_NONCOPYABLE(yas_binary_iarchive)
     YAS_MOVABLE(yas_binary_iarchive)
-    constexpr static std::size_t yas_flags = F;
 
     using stream_type = IS;
     using this_type = Archive;

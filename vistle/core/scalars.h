@@ -9,8 +9,8 @@
 namespace vistle {
 
 // list of data types usable in Vistle's shm arrays
-typedef boost::mpl::vector<unsigned char, int, unsigned int, size_t, ssize_t, float, double> Scalars;
-const std::array<const char*, boost::mpl::size<Scalars>::value> ScalarTypeNames = {{"unsigned char", "int", "unsigned int", "size_t", "ssize_t", "float", "double"}};
+typedef boost::mpl::vector<unsigned char, int32_t, uint32_t, int64_t, uint64_t, float, double> Scalars;
+const std::array<const char*, boost::mpl::size<Scalars>::value> ScalarTypeNames = {{"unsigned char", "int32_t", "uint32_t", "int64_t", "uint64_t", "float", "double"}};
 
 }
 

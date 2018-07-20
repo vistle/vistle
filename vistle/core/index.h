@@ -2,11 +2,12 @@
 #define INDEX_H
 
 #include <cstdlib>
+#include <cinttypes>
 
 namespace vistle {
 
-typedef unsigned int Index;
-typedef int SIndex;
+typedef uint32_t Index;
+typedef int32_t SIndex;
 
 const Index InvalidIndex = ~(Index)(0);
 

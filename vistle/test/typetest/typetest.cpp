@@ -34,8 +34,8 @@ int main(int argc, char *argv[]) {
    Vec<Scalar, 3>::ptr vs3(new Vec<Scalar, 3>(10));
    Vec<unsigned char, 1>::ptr vc1(new Vec<unsigned char, 1>(10));
    Vec<unsigned char, 3>::ptr vc3(new Vec<unsigned char, 3>(10));
-   Vec<size_t, 1>::ptr vst1(new Vec<size_t, 1>(10));
-   Vec<size_t, 3>::ptr vst3(new Vec<size_t, 3>(10));
+   Vec<uint64_t, 1>::ptr vst1(new Vec<uint64_t, 1>(10));
+   Vec<uint64_t, 3>::ptr vst3(new Vec<uint64_t, 3>(10));
    Points::ptr p(new Points(10));
 
 #define P(v) std::cerr << #v << ": " << v->type() << " " << (int)(v->type()) << std::endl
