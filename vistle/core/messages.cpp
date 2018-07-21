@@ -455,7 +455,7 @@ AddObject::AddObject(const AddObjectCompleted &complete)
 : handle(0)
 , m_handleValid(false)
 {
-    setUuid(complete.uuid());
+    setUuid(complete.referrer());
     setDestId(complete.originalDestination());
 }
 
@@ -549,7 +549,7 @@ AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
 : m_name(msg.objectName())
 , m_orgDestId(msg.destId())
 {
-   setUuid(msg.uuid());
+   setReferrer(msg.uuid());
 }
 
 const char *AddObjectCompleted::objectName() const {
