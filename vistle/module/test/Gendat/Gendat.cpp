@@ -41,6 +41,14 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(DataMode,
                                     (Cosine_Z)
                                     (Random))
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode,
+                                    (Constant)
+                                    (Add_Scale)
+                                    (Divide_Scale)
+                                    (Add_X)
+                                    (Add_Y)
+                                    (Add_Z))
+
 Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("generate test data", name, moduleID, comm) {
 
@@ -80,13 +88,30 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
 
    m_min = addVectorParameter("min", "minimum coordinates", ParamVector(-1., -1, -1.));
    m_max = addVectorParameter("max", "maximum coordinates", ParamVector(1., 1., 1.));
+
+   m_steps = addIntParameter("timesteps", "number of timesteps", 0);
+   setParameterRange(m_steps, Integer(0), Integer(999999));
+
+   m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
+   V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
+
 }
 
 Gendat::~Gendat() {
 
 }
 
-inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale) {
+inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
+
+    switch(anim) {
+    case Constant: break;
+    case Add_Scale: scale += Scalar(time); break;
+    case Divide_Scale: scale /= Scalar(time+1); break;
+    case Add_X: x += Scalar(time); break;
+    case Add_Y: y += Scalar(time); break;
+    case Add_Z: z += Scalar(time); break;
+    }
+
     switch(mode) {
     case One: return scale;
     case Dist_Origin: return sqrt(x*x+y*y+z*z)*scale;
@@ -105,15 +130,15 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
     return 0.;
 }
 
-void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale) {
+void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
 #pragma omp parallel for
     for (ssize_t idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
-        d[idx] = computeData(x, y, z, mode, scale);
+        d[idx] = computeData(x, y, z, mode, scale, anim, time);
     }
 }
 
-void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale) {
+void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
     Vector dist=max-min;
     for (int c=0; c<3; ++c) {
         dist[c] /= dim[c]-1;
@@ -127,7 +152,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
                 Scalar y = min[1]+j*dist[1];
                 Scalar z = min[2]+k*dist[2];
 
-                d[idx] = computeData(x, y, z, mode, scale);
+                d[idx] = computeData(x, y, z, mode, scale, anim, time);
             }
         }
     }
@@ -140,7 +165,7 @@ void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[
     }
 }
 
-void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
+void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) {
 
     Index dim[3];
     Vector dist, bdist;
@@ -338,28 +363,35 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
 
     Vec<Scalar,1>::ptr scalar(new Vec<Scalar,1>(numVert));
     scalar->setBlock(block);
+    if (time >= 0)
+        scalar->setTimestep(time);
     Vec<Scalar,3>::ptr vector(new Vec<Scalar,3>(numVert));
     vector->setBlock(block);
+    if (time >= 0)
+        vector->setTimestep(time);
 
+    const int dtime = time<0 ? 0 : time;
     if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
         const Scalar *yy = coord->y().data();
         const Scalar *zz = coord->z().data();
 
-        setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue());
-        setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue());
-        setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue());
-        setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue());
+        setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
     } else {
-        setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue());
-        setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue());
-        setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue());
-        setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue());
+        setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
     }
 
     if (geoOut) {
         geoOut->updateInternals();
         geoOut->setBlock(block);
+        if (time >= 0)
+            geoOut->setTimestep(time);
         addObject("grid_out", geoOut);
         scalar->setGrid(geoOut);
         vector->setGrid(geoOut);
@@ -375,15 +407,18 @@ bool Gendat::compute() {
     for (int i=0; i<3; ++i) {
         blocks[i] = m_blocks[i]->getValue();
     }
+    Index steps = m_steps->getValue();
 
-    int b = 0;
-    for (Index bx=0; bx<blocks[0]; ++bx) {
-        for (Index by=0; by<blocks[1]; ++by) {
-            for (Index bz=0; bz<blocks[2]; ++bz) {
-                if (b % size() == rank()) {
-                    block(bx, by, bz, b);
+    for (Index t=0; t<steps; ++t) {
+        int b = 0;
+        for (Index bx=0; bx<blocks[0]; ++bx) {
+            for (Index by=0; by<blocks[1]; ++by) {
+                for (Index bz=0; bz<blocks[2]; ++bz) {
+                    if (b % size() == rank()) {
+                        block(bx, by, bz, b, steps==0 ? -1 : t);
+                    }
+                    ++b;
                 }
-                ++b;
             }
         }
     }
