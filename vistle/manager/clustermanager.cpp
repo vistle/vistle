@@ -85,8 +85,6 @@ void ClusterManager::Module::block(const message::Message &msg) {
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) {
-   if (blocked)
-       std::cerr << "UNBLOCK: " << msg << std::endl;
    vassert(blocked);
    vassert(!blockers.empty());
 
@@ -97,7 +95,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
 
    if (blocked) {
       if (pred(blockers.front())) {
-         //std::cerr << "UNBLOCK: found as frontmost blocker" << std::endl;
+         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
          blockers.pop_front();
          vassert(blockedMessages.front().uuid() == msg.uuid()
                 && blockedMessages.front().type() == msg.type());
@@ -118,7 +116,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
             }
          }
       } else {
-         //std::cerr << "UNBLOCK: frontmost blocker: " << blockers.front() << std::endl;
+         std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
          auto it = std::find_if(blockers.begin(), blockers.end(), pred);
          vassert(it != blockers.end());
          if (it != blockers.end()) {
