@@ -473,7 +473,6 @@ ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
 
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {
 
-   // we have to use char here, otherwise boost-internal consistency checks fail
    lockObjects();
    auto mem = getObjectDataFromName(name);
    if (mem) {

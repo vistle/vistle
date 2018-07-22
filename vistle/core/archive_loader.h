@@ -32,12 +32,12 @@ struct V_COREEXPORT ArrayLoader {
         if (shm_array<T, typename shm<T>::allocator>::typeId() == m_type) {
             if (m_ok) {
                 m_ok = false;
-                std::cerr << "ArrayLoader: type matches for data array " << m_name << std::endl;
+                std::cerr << "ArrayLoader: multiple type matches for data array " << m_name << std::endl;
                 return;
             }
             auto arr = Shm::the().getArrayFromName<T>(m_name);
             if (arr) {
-                std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
+                std::cerr << "ArrayLoader: already have data array with name " << m_name << std::endl;
                 m_unreffer.reset(new Unreffer<T>(arr));
                 return;
             }

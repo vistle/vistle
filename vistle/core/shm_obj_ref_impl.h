@@ -171,9 +171,6 @@ void shm_obj_ref<T>::load(Archive &ar) {
         return;
 
     auto obj = ar.currentObject();
-    if (obj) {
-        obj->unresolvedReference();
-    }
     auto handler = ar.objectCompletionHandler();
     auto ref0 = ar.getObject(name, [this, name, obj, handler]() -> void {
         //std::cerr << "object completion handler: " << name << std::endl;
@@ -191,6 +188,9 @@ void shm_obj_ref<T>::load(Archive &ar) {
     } else {
         assert(!ref0);
         //std::cerr << "waiting for completion of object " << name << std::endl;
+        if (obj) {
+            obj->unresolvedReference();
+        }
     }
 }
 

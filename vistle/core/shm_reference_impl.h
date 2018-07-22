@@ -23,6 +23,7 @@ void shm_ref<T>::load(Archive &ar) {
    m_p = nullptr;
    auto obj = ar.currentObject();
    if (obj && !valid()) {
+       //std::cerr << "obj " << obj->name << ": unresolved: " << name << std::endl;
        obj->unresolvedReference();
    }
    auto handler = ar.objectCompletionHandler();
@@ -32,7 +33,10 @@ void shm_ref<T>::load(Archive &ar) {
       assert(ref);
       *this = ref;
       if (obj) {
+         //std::cerr << "obj " << obj->name << ": RESOLVED: " << name << std::endl;
          obj->referenceResolved(handler);
+      } else {
+         //std::cerr << "shm_array RESOLVED: " << name << std::endl;
       }
    });
    if (ref) {
