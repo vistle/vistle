@@ -148,6 +148,7 @@ class IsoController {
 
 public:
     IsoController(vistle::Module *module);
+    void init();
     bool changeParameter(const vistle::Parameter* param);
 #ifdef CUTTINGSURFACE
     IsoDataFunctor newFunc(const vistle::Matrix4 &objTransform, const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
@@ -158,10 +159,10 @@ public:
 
 private:
 #ifdef CUTTINGSURFACE
-    vistle::Module *m_module;
-    vistle::IntParameter *m_option;
+    vistle::Module *m_module = nullptr;
+    vistle::IntParameter *m_option = nullptr;
 #ifdef TOGGLESIGN
-    vistle::IntParameter *m_flip;
+    vistle::IntParameter *m_flip = nullptr;
 #endif
 #endif
 };

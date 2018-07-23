@@ -158,7 +158,8 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank) {
 
 Module::Module(const std::string &desc,
       const std::string &moduleName, const int moduleId, mpi::communicator comm)
-: m_name(moduleName)
+: ParameterManager(moduleName, moduleId)
+, m_name(moduleName)
 , m_rank(-1)
 , m_size(-1)
 , m_id(moduleId)
@@ -174,7 +175,6 @@ Module::Module(const std::string &desc,
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
-, m_inParameterChanged(false)
 , m_traceMessages(message::INVALID)
 , m_benchmark(false)
 , m_avgComputeTime(1.)
@@ -247,13 +247,7 @@ void Module::prepareQuit() {
 #endif
 
     if (!m_readyForQuit) {
-        std::vector<vistle::Parameter *> toRemove;
-        for (auto &param: parameters) {
-            toRemove.push_back(param.second.get());
-        }
-        for (auto &param: toRemove) {
-            removeParameter(param);
-        }
+        ParameterManager::quit();
 
         m_cache.clear();
         m_cache.clearOld();
@@ -283,9 +277,7 @@ void Module::initDone() {
    start.setDestId(Id::ForBroadcast);
    sendMessage(start);
 
-   for (auto &pair: parameters) {
-      parameterChangedWrapper(pair.second.get());
-   }
+   ParameterManager::init();
 }
 
 const std::string &Module::name() const {
@@ -467,16 +459,6 @@ bool Module::destroyPort(Port *port) {
    return true;
 }
 
-void Module::setCurrentParameterGroup(const std::string &group) {
-
-   m_currentParameterGroup = group;
-}
-
-const std::string &Module::currentParameterGroup() const {
-
-   return m_currentParameterGroup;
-}
-
 Port *Module::findInputPort(const std::string &name) const {
 
    std::map<std::string, Port *>::const_iterator i = inputPorts.find(name);
@@ -497,7 +479,6 @@ Port *Module::findOutputPort(const std::string &name) const {
    return i->second;
 }
 
-
 Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param) {
 
    vassert(!havePort(name));
@@ -506,52 +487,19 @@ Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<
       return nullptr;
    }
 
-   parameters[name] = param;
-
-   message::AddParameter add(*param, m_name);
-   add.setDestId(Id::ForBroadcast);
-   sendMessage(add);
-   message::SetParameter set(m_id, name, param);
-   set.setDestId(Id::ForBroadcast);
-   set.setInit();
-   set.setReferrer(add.uuid());
-   sendMessage(set);
-
-   return param.get();
+   return ParameterManager::addParameterGeneric(name, param);
 }
 
-bool Module::removeParameter(const std::string &name) {
+bool Module::removeParameter(Parameter *param) {
 
+   std::string name = param->getName();
    vassert(havePort(name));
    if (!havePort(name)) {
       CERR << "removeParameter: no port with name " << name << std::endl;
       return false;
    }
 
-   auto it = parameters.find(name);
-   if (it == parameters.end()) {
-      CERR << "removeParameter: no parameter with name " << name << std::endl;
-      return false;
-   }
-
-   return removeParameter(it->second.get());
-}
-
-bool Module::removeParameter(Parameter *param) {
-
-   auto it = parameters.find(param->getName());
-   if (it == parameters.end()) {
-      CERR << "removeParameter: no parameter with name " << param->getName() << std::endl;
-      return false;
-   }
-
-   message::RemoveParameter remove(*param, m_name);
-   remove.setDestId(Id::ForBroadcast);
-   sendMessage(remove);
-
-   parameters.erase(it);
-
-   return true;
+   return ParameterManager::removeParameter(param);
 }
 
 bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const {
@@ -654,136 +602,6 @@ bool Module::broadcastObject(Object::const_ptr &object, int root) const {
     return broadcastObject(comm(), object, root);
 }
 
-bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {
-
-   auto i = parameters.find(name);
-
-   if (i == parameters.end()) {
-      CERR << "setParameter: " << name << " not found" << std::endl;
-      return false;
-   }
-
-   if (i->second->type() != param->type()) {
-      CERR << "setParameter: type mismatch for " << name << " " << i->second->type() << " != " << param->type() << std::endl;
-      return false;
-   }
-
-   if (i->second.get() != param) {
-      CERR << "setParameter: pointer mismatch for " << name << std::endl;
-      return false;
-   }
-
-   message::SetParameter set(m_id, name, i->second, rt);
-   if (inResponseTo) {
-      set.setReferrer(inResponseTo->uuid());
-   }
-   set.setDestId(Id::ForBroadcast);
-   sendMessage(set);
-
-   return true;
-}
-
-void Module::setParameterChoices(const std::string &name, const std::vector<std::string> &choices)
-{
-   auto p = findParameter(name);
-   if (p)
-      setParameterChoices(p.get(), choices);
-}
-
-void Module::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
-{
-    message::SetParameterChoices sc(param->getName(), choices);
-    sc.setDestId(Id::ForBroadcast);
-    sendMessage(sc);
-}
-
-void Module::setParameterFilters(const std::string &name, const std::string &filters)
-{
-   auto p = findParameter(name);
-   auto sp = dynamic_cast<StringParameter *>(p.get());
-   assert(sp);
-   if (sp)
-       setParameterFilters(sp, filters);
-}
-
-void Module::setParameterFilters(StringParameter *param, const std::string &filters)
-{
-    // abuse Minumum for filters
-    param->setMinimum(filters);
-    updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
-}
-
-template<class T>
-Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
-
-   std::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
-   p->setDescription(description);
-   p->setGroup(currentParameterGroup());
-   p->setPresentation(pres);
-
-   return addParameterGeneric(name, p);
-}
-
-std::shared_ptr<Parameter> Module::findParameter(const std::string &name) const {
-
-   auto i = parameters.find(name);
-
-   if (i == parameters.end())
-      return std::shared_ptr<Parameter>();
-
-   return i->second;
-}
-
-StringParameter *Module::addStringParameter(const std::string & name, const std::string &description,
-                              const std::string & value, Parameter::Presentation p) {
-
-   return dynamic_cast<StringParameter *>(addParameter(name, description, value, p));
-}
-
-bool Module::setStringParameter(const std::string & name,
-                              const std::string & value, const message::SetParameter *inResponseTo) {
-
-   return setParameter(name, value, inResponseTo);
-}
-
-std::string Module::getStringParameter(const std::string & name) const {
-
-   std::string value = "";
-   getParameter(name, value);
-   return value;
-}
-
-FloatParameter *Module::addFloatParameter(const std::string &name, const std::string &description,
-                               const Float value) {
-
-   return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
-}
-
-bool Module::setFloatParameter(const std::string & name,
-                               const Float value, const message::SetParameter *inResponseTo) {
-
-   return setParameter(name, value, inResponseTo);
-}
-
-Float Module::getFloatParameter(const std::string & name) const {
-
-   Float value = 0.;
-   getParameter(name, value);
-   return value;
-}
-
-IntParameter *Module::addIntParameter(const std::string & name, const std::string &description,
-                             const Integer value, Parameter::Presentation p) {
-
-   return dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
-}
-
-bool Module::setIntParameter(const std::string & name,
-                             Integer value, const message::SetParameter *inResponseTo) {
-
-   return setParameter(name, value, inResponseTo);
-}
-
 void Module::updateCacheMode() {
 
    Integer value = getIntParameter("_cache_mode");
@@ -819,51 +637,6 @@ void Module::updateOutputMode() {
       sbuf->set_gui_output(false);
    }
 #endif
-}
-
-Integer Module::getIntParameter(const std::string & name) const {
-
-   Integer value = 0;
-   getParameter(name, value);
-   return value;
-}
-
-VectorParameter *Module::addVectorParameter(const std::string & name, const std::string &description,
-                                const ParamVector & value) {
-
-   return dynamic_cast<VectorParameter *>(addParameter(name, description, value));
-}
-
-bool Module::setVectorParameter(const std::string & name,
-                                const ParamVector & value, const message::SetParameter *inResponseTo) {
-
-   return setParameter(name, value, inResponseTo);
-}
-
-ParamVector Module::getVectorParameter(const std::string & name) const {
-
-   ParamVector value;
-   getParameter(name, value);
-   return value;
-}
-
-IntVectorParameter *Module::addIntVectorParameter(const std::string & name, const std::string &description,
-                                const IntParamVector & value) {
-
-   return dynamic_cast<IntVectorParameter *>(addParameter(name, description, value));
-}
-
-bool Module::setIntVectorParameter(const std::string & name,
-                                const IntParamVector & value, const message::SetParameter *inResponseTo) {
-
-   return setParameter(name, value, inResponseTo);
-}
-
-IntParamVector Module::getIntVectorParameter(const std::string & name) const {
-
-   IntParamVector value;
-   getParameter(name, value);
-   return value;
 }
 
 void Module::updateMeta(vistle::Object::ptr obj) const {
@@ -1081,12 +854,7 @@ bool Module::isConnected(const Port *port) const {
    return !port->connections().empty();
 }
 
-bool Module::parameterChangedWrapper(const Parameter *p) {
-
-   if (m_inParameterChanged) {
-      return true;
-   }
-   m_inParameterChanged = true;
+bool Module::changeParameter(const Parameter *p) {
 
    std::string name = p->getName();
    if (name[0] == '_') {
@@ -1108,16 +876,7 @@ bool Module::parameterChangedWrapper(const Parameter *p) {
           m_prioritizeVisible = getIntParameter("_prioritize_visible");
       }
 
-      m_inParameterChanged = false;
-      return true;
    }
-
-   bool ret = changeParameter(p);
-   m_inParameterChanged = false;
-   return ret;
-}
-
-bool Module::changeParameter(const Parameter *p) {
 
    return true;
 }
@@ -1264,6 +1023,10 @@ bool Module::dispatch(bool *messageReceived) {
    return again;
 }
 
+
+void Module::sendParameterMessage(const message::Message &message) const {
+    sendMessage(message);
+}
 
 void Module::sendMessage(const message::Message &message) const {
 
@@ -1540,32 +1303,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (param->destId() == id()) {
 
-            // sent by controller
-            switch (param->getParameterType()) {
-               case Parameter::Integer:
-                  setIntParameter(param->getName(), param->getInteger(), param);
-                  break;
-               case Parameter::Float:
-                  setFloatParameter(param->getName(), param->getFloat(), param);
-                  break;
-               case Parameter::Vector:
-                  setVectorParameter(param->getName(), param->getVector(), param);
-                  break;
-               case Parameter::IntVector:
-                  setIntVectorParameter(param->getName(), param->getIntVector(), param);
-                  break;
-               case Parameter::String:
-                  setStringParameter(param->getName(), param->getString(), param);
-                  break;
-               default:
-                  std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
-                  vassert("unknown parameter type" == 0);
-                  break;
-            }
-
-            // notification of controller about current value happens in set...Parameter
+             ParameterManager::handleMessage(*param);
          } else {
 
+            // notification of controller about current value happens in set...Parameter
             parameterChanged(param->getModule(), param->getName(), *param);
          }
          break;

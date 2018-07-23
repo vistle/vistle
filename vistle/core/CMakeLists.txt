@@ -24,6 +24,7 @@ set(core_SOURCES
    filequery.cpp
    port.cpp
    parameter.cpp
+   parametermanager.cpp
    paramvector.cpp
    vector.cpp
    porttracker.cpp
@@ -94,6 +95,8 @@ set(core_HEADERS
    objectmeta.h
    objectmeta_impl.h
    parameter.h
+   parametermanager.h
+   parametermanager_impl.h
    paramvector.h
    paramvector_impl.h
    placeholder.h

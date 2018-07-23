@@ -73,13 +73,14 @@ struct Id {
    enum Reserved {
       ModuleBase = 1, //< >= ModuleBase: modules
       Invalid = 0,
-      Broadcast = -1, //< master is broadcasting
-      ForBroadcast = -2, //< to master for broadcasting
-      NextHop = -3,
-      UI = -4,
-      LocalManager = -5,
-      LocalHub = -6,
-      MasterHub = -7, //< < MasterHub: slave hubs
+      Vistle = -1, //< session parameters
+      Broadcast = -2, //< master is broadcasting
+      ForBroadcast = -3, //< to master for broadcasting
+      NextHop = -4,
+      UI = -5,
+      LocalManager = -6,
+      LocalHub = -7,
+      MasterHub = -8, //< < MasterHub: slave hubs
    };
 
    static bool isHub(int id) { return id <= Id::LocalHub; }

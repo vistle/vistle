@@ -45,6 +45,8 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 , name, moduleID, comm)
 , isocontrol(this) {
 
+   isocontrol.init();
+
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");

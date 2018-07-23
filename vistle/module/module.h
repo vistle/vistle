@@ -23,6 +23,7 @@
 #include <core/port.h>
 #include <core/grid.h>
 #include <core/message.h>
+#include <core/parametermanager.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -53,7 +54,7 @@ class RemoveParameter;
 class MessageQueue;
 }
 
-class V_MODULEEXPORT Module {
+class V_MODULEEXPORT Module: public ParameterManager {
    friend class Renderer;
 
  public:
@@ -66,6 +67,9 @@ class V_MODULEEXPORT Module {
    void initDone(); // to be called from eventLoop after module ctor has run
 
    virtual bool dispatch(bool *messageReived=nullptr);
+
+   Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
+   bool removeParameter(Parameter *param) override;
 
    const std::string &name() const;
    const boost::mpi::communicator &comm() const;
@@ -80,57 +84,6 @@ class V_MODULEEXPORT Module {
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
    bool destroyPort(const std::string &portName);
    bool destroyPort(Port *port);
-
-   //! set group for all subsequently added parameters, reset with empty group
-   void setCurrentParameterGroup(const std::string &group = std::string());
-   const std::string &currentParameterGroup() const;
-
-   Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter);
-   bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
-
-   template<class T>
-   Parameter *addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation presentation=Parameter::Generic);
-   template<class T>
-   bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo=nullptr);
-   template<class T>
-   bool setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo=nullptr);
-   template<class T>
-   bool setParameterMinimum(ParameterBase<T> *param, const T &minimum);
-   template<class T>
-   bool setParameterMaximum(ParameterBase<T> *param, const T &maximum);
-   template<class T>
-   bool setParameterRange(const std::string &name, const T &minimum, const T &maximum);
-   template<class T>
-   bool setParameterRange(ParameterBase<T> *param, const T &minimum, const T &maximum);
-   template<class T>
-   bool getParameter(const std::string &name, T &value) const;
-   void setParameterChoices(const std::string &name, const std::vector<std::string> &choices);
-   void setParameterChoices(Parameter *param, const std::vector<std::string> &choices);
-   void setParameterFilters(const std::string &name, const std::string &filters);
-   void setParameterFilters(StringParameter *param, const std::string &filters);
-
-   StringParameter *addStringParameter(const std::string & name, const std::string &description, const std::string & value, Parameter::Presentation p=Parameter::Generic);
-   bool setStringParameter(const std::string & name, const std::string & value, const message::SetParameter *inResponseTo=NULL);
-   std::string getStringParameter(const std::string & name) const;
-
-   FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const Float value);
-   bool setFloatParameter(const std::string & name, const Float value, const message::SetParameter *inResponseTo=NULL);
-   Float getFloatParameter(const std::string & name) const;
-
-   IntParameter *addIntParameter(const std::string & name, const std::string &description, const Integer value, Parameter::Presentation p=Parameter::Generic);
-   bool setIntParameter(const std::string & name, const Integer value, const message::SetParameter *inResponseTo=NULL);
-   Integer getIntParameter(const std::string & name) const;
-
-   VectorParameter *addVectorParameter(const std::string & name, const std::string &description, const ParamVector & value);
-   bool setVectorParameter(const std::string & name, const ParamVector & value, const message::SetParameter *inResponseTo=NULL);
-   ParamVector getVectorParameter(const std::string & name) const;
-
-   IntVectorParameter *addIntVectorParameter(const std::string & name, const std::string &description, const IntParamVector & value);
-   bool setIntVectorParameter(const std::string & name, const IntParamVector & value, const message::SetParameter *inResponseTo=NULL);
-   IntParamVector getIntVectorParameter(const std::string & name) const;
-
-   bool removeParameter(const std::string &name);
-   bool removeParameter(Parameter *param);
 
    bool sendObject(const mpi::communicator &comm, vistle::Object::const_ptr object, int destRank) const;
    bool sendObject(vistle::Object::const_ptr object, int destRank) const;
@@ -169,6 +122,7 @@ class V_MODULEEXPORT Module {
    //! remove port forwarding requested by requestPortMapping
    void removePortMapping(unsigned short forwardPort);
 
+   void sendParameterMessage(const message::Message &message) const override;
    void sendMessage(const message::Message &message) const;
 
    //! type should be a message::SendText::TextType
@@ -258,7 +212,7 @@ protected:
 
    std::string getModuleName(int id) const;
 
-   virtual bool changeParameter(const Parameter *p);
+   bool changeParameter(const Parameter *p) override;
 
    int openmpThreads() const;
    void setOpenmpThreads(int, bool updateParam=true);
@@ -281,14 +235,14 @@ protected:
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
-   std::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
 
-   bool parameterChangedWrapper(const Parameter *p); //< wrapper to prevent recursive calls to parameterChanged
-
+   //! notify that a module has added a parameter
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
+   //! notify that a module modified a parameter value
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
+   //! notify that a module removed a parameter
    virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
    virtual bool compute() = 0; //< do processing - called on each rank individually
@@ -296,8 +250,6 @@ protected:
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;
 
-   std::string m_currentParameterGroup;
-   std::map<std::string, std::shared_ptr<Parameter>> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
    bool m_prioritizeVisible;
@@ -307,7 +259,6 @@ protected:
    void updateOutputMode();
    std::streambuf *m_origStreambuf, *m_streambuf;
 
-   bool m_inParameterChanged;
    int m_traceMessages;
    bool m_benchmark;
    double m_benchmarkStart;

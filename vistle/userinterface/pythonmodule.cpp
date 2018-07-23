@@ -214,6 +214,10 @@ static int getMasterHub() {
    return MODULEMANAGER.getMasterHub();
 }
 
+static int getVistleSession() {
+    return vistle::message::Id::Vistle;
+}
+
 static std::vector<int> getAllHubs() {
 
    LOCKED();
@@ -618,6 +622,7 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
     m.def("waitForHubs", waitForHubs, "wait for named hubs to connect");
     m.def("getMasterHub", getMasterHub, "get ID of master hub");
+    m.def("getVistleSession", getVistleSession, "get ID for Vistle session");
     m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
     m.def("getHub", getHub, "get ID of hub for module with ID `arg1`");
     m.def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");

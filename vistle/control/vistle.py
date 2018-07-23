@@ -155,6 +155,8 @@ def showAllParameters():
 def modvar(id):
    if (id >= 0):
       return "m" + _vistle.getModuleName(id) + str(id)
+   if (id == _vistle.getVistleSession()):
+       return "VistleSession"
    return "v"+str(-id)
 
 def hubvar(id, numSlaves):
@@ -216,6 +218,7 @@ def save(filename = None):
 
    master = getMasterHub()
    f.write("MasterHub=getMasterHub()\n")
+   f.write("VistleSession=getVistleSession()\n")
 
    slavehubs = set()
    for m in mods:
@@ -226,6 +229,7 @@ def save(filename = None):
 
    f.write("uuids = {}\n");
 
+   saveParameters(f, getVistleSession())
    saveWorkflow(f, mods, numSlaves, False)
 
    if numSlaves > 1:

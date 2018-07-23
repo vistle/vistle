@@ -17,6 +17,7 @@ CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicato
    : Module("CutGeometry", name, moduleID, comm)
    , isocontrol(this)
 {
+   isocontrol.init();
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

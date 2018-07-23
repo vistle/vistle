@@ -1276,6 +1276,8 @@ bool Hub::handlePriv(const message::Execute &exec) {
       // execute all sources in dataflow graph
       for (auto &mod: m_stateTracker.runningMap) {
          int id = mod.first;
+         if (!Id::isModule(id))
+             continue;
          int hub = mod.second.hub;
          auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
          bool isSource = true;

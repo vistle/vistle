@@ -10,6 +10,8 @@
 #include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include <core/parametermanager.h>
+#include <core/parameter.h>
 
 #include "portmanager.h"
 
@@ -28,17 +30,21 @@ namespace message {
 
 class Parameter;
 
-class ClusterManager {
+class ClusterManager: public ParameterManager
+{
    friend class Communicator;
    friend class DataManager;
 
  public:
    ClusterManager(int rank, const std::vector<std::string> &hosts);
-   ~ClusterManager();
+   virtual ~ClusterManager();
+
+   void init(); // to be called when message sending is possible
 
    bool dispatch(bool &received);
    const StateTracker &state() const;
 
+   void sendParameterMessage(const message::Message &message) const override;
    bool sendMessage(int receiver, const message::Message &message, int destRank=-1) const;
    bool sendAll(const message::Message &message) const;
    bool sendAllLocal(const message::Message &message) const;
@@ -154,6 +160,11 @@ class ClusterManager {
    int m_reachedBarriers;
    typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;
+
+   IntParameter *m_compressionMode = nullptr;
+   FloatParameter *m_zfpRate = nullptr;
+   IntParameter *m_zfpPrecision = nullptr;
+   FloatParameter *m_zfpAccuracy = nullptr;
 };
 
 } // namespace vistle

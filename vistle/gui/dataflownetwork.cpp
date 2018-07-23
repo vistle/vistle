@@ -75,6 +75,9 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 
 void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
 {
+   if (!vistle::message::Id::isModule(moduleId))
+       return;
+
    //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
    Module *mod = findModule(spawnUuid);
    if (mod) {

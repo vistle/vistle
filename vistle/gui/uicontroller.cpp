@@ -51,11 +51,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_mainWindow->parameters()->setVistleObserver(&m_observer);
    m_mainWindow->setQuitOnExit(quitOnExit);
    m_ui = new vistle::UserInterface(host, port, &m_observer);
-   if (!m_ui->isConnected()) {
-      std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
-   } else {
-       m_mainWindow->enableConnectButton(false);
-   }
    m_python = new vistle::PythonInterface("Vistle GUI");
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
@@ -63,7 +58,13 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_pythonMod = new vistle::PythonModule(m_vistleConnection);
    m_pythonDir = dir::share(dir::prefix(argc, argv));
    m_thread = new std::thread(std::ref(*m_vistleConnection));
+
    m_mainWindow->parameters()->setVistleConnection(m_vistleConnection);
+   if (!m_ui->isConnected()) {
+      std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
+   } else {
+       m_mainWindow->enableConnectButton(false);
+   }
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
    m_scene = new DataFlowNetwork(m_vistleConnection, m_mainWindow->dataFlowView());
@@ -266,7 +267,9 @@ void UiController::moduleSelectionChanged()
       m_mainWindow->parameterDock()->show();
       m_mainWindow->parameterDock()->raise();
    } else {
-      m_mainWindow->parameters()->setModule(0);
+      m_mainWindow->parameters()->setModule(vistle::message::Id::Vistle);
+      title = QString("Session Parameters");
+      m_mainWindow->parameters()->adjustSize();
       m_mainWindow->modulesDock()->show();
       m_mainWindow->modulesDock()->raise();
    }

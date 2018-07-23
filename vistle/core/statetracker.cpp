@@ -47,6 +47,10 @@ StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker>
       m_portTracker.reset(new PortTracker());
       m_portTracker->setTracker(this);
    }
+
+   Module session(Id::Vistle, Id::MasterHub); // for session parameters
+   session.name = "Vistle Session";
+   runningMap.emplace(Id::Vistle, session);
 }
 
 StateTracker::mutex &StateTracker::getMutex() {
@@ -87,9 +91,10 @@ std::vector<int> StateTracker::getRunningList() const {
 
    std::vector<int> result;
    for (RunningMap::const_iterator it = runningMap.begin();
-         it != runningMap.end();
+         it != runningMap.end(); 
          ++it) {
-      result.push_back(it->first);
+      if (Id::isModule(it->first))
+          result.push_back(it->first);
    }
    return result;
 }
@@ -188,26 +193,28 @@ std::vector<message::Buffer> StateTracker::getState() const {
       const int id = it.first;
       const Module &m = it.second;
 
-      Spawn spawn(m.hub, m.name);
-      spawn.setSpawnId(id);
-      appendMessage(state, spawn);
+      if (Id::isModule(id)) {
+          Spawn spawn(m.hub, m.name);
+          spawn.setSpawnId(id);
+          appendMessage(state, spawn);
 
-      if (m.initialized) {
-         Started s(m.name);
-         s.setSenderId(id);
-         s.setReferrer(spawn.uuid());
-         appendMessage(state, s);
-      }
+          if (m.initialized) {
+              Started s(m.name);
+              s.setSenderId(id);
+              s.setReferrer(spawn.uuid());
+              appendMessage(state, s);
+          }
 
-      if (m.busy) {
-         Busy b;
-         b.setSenderId(id);
-         appendMessage(state, b);
-      }
+          if (m.busy) {
+              Busy b;
+              b.setSenderId(id);
+              appendMessage(state, b);
+          }
 
-      if (m.killed) {
-         Kill k(id);
-         appendMessage(state, k);
+          if (m.killed) {
+              Kill k(id);
+              appendMessage(state, k);
+          }
       }
 
       const ParameterMap &pmap = m.parameters;
@@ -577,6 +584,11 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    m_hubs.back().dataPort = slave.dataPort();
    if (slave.hasAddress())
       m_hubs.back().address = slave.address();
+
+   Module hub(slave.id(), slave.id());
+   hub.name = slave.name();
+   runningMap.emplace(slave.id(), hub);
+
    m_slaveCondition.notify_all();
    return true;
 }
@@ -864,7 +876,7 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
    ParameterOrder &po = mod.paramOrder;
    ParameterMap::iterator it = pm.find(removeParam.getName());
    if (it == pm.end()) {
-      CERR << "parameter to be removed not found: " << removeParam.moduleName() << ":" << removeParam.getName() << std::endl;
+      CERR << "parameter to be removed not found: " << removeParam.moduleName() << ":" << removeParam.senderId() << ": " << removeParam.getName() << std::endl;
       return false;
    } else {
       pm.erase(it);
@@ -901,7 +913,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
    bool handled = false;
 
    const int senderId = setParam.senderId();
-   if (message::Id::isModule(senderId) && setParam.getModule()==senderId) {
+   if (setParam.getModule()==senderId && runningMap.find(senderId) != runningMap.end()) {
       auto param = getParameter(setParam.getModule(), setParam.getName());
       if (param) {
          setParam.apply(param);
@@ -922,9 +934,9 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
 bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
    const int senderId = choices.senderId();
-   if (!message::Id::isModule(senderId)) {
+   if (runningMap.find(senderId) == runningMap.end())
        return false;
-   }
+
    auto p = getParameter(choices.senderId(), choices.getName());
    if (!p)
       return false;

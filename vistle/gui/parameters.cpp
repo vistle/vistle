@@ -12,6 +12,7 @@
 
 #include "parameters.h"
 #include "vistleobserver.h"
+#include <core/message.h>
 
 #include <QtGroupPropertyManager>
 #include <QtBoolPropertyManager>
@@ -95,8 +96,6 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    QtEnumEditorFactory *comboBoxFactory = new QtEnumEditorFactory(this);
    setFactoryForManager(m_stringChoiceManager, comboBoxFactory);
    setFactoryForManager(m_intChoiceManager, comboBoxFactory);
-
-   setModule(0);
 }
 
 void Parameters::setVistleObserver(VistleObserver *observer)
@@ -129,15 +128,15 @@ void Parameters::setModule(int id)
 
    m_moduleId = id;
 
-   if (id > 0) {
+   if (vistle::message::Id::isModule(id)) {
       m_internalGroup = m_groupManager->addProperty("System Parameters");
       addProperty(m_internalGroup);
-
-      //std::cerr << "Parameters: showing for " << id << std::endl;
-      auto params = m_vistle->getParameters(id);
-      for (auto &p: params)
-         newParameter(id, QString::fromStdString(p));
    }
+
+   //std::cerr << "Parameters: showing for " << id << std::endl;
+   auto params = m_vistle->getParameters(id);
+   for (auto &p: params)
+       newParameter(id, QString::fromStdString(p));
 
    m_ignorePropertyChanges = false;
 }

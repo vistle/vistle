@@ -35,6 +35,7 @@
 #include <core/parameter.h>
 #include <core/assert.h>
 #include <util/directory.h>
+#include <util/enum.h>
 
 #include "clustermanager.h"
 #include "datamanager.h"
@@ -63,6 +64,12 @@ namespace bi = boost::interprocess;
 namespace vistle {
 
 using message::Id;
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
+                                    (None)
+                                    (ZfpFixedRate)
+                                    (ZfpAccuracy)
+                                    (ZfpPrecision))
 
 ClusterManager::Module::~Module() {
 #ifdef MODULE_THREAD
@@ -179,7 +186,8 @@ bool ClusterManager::Module::haveDelayed() const {
 }
 
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
-: m_portManager(new PortManager(this))
+: ParameterManager("Vistle", message::Id::Vistle)
+, m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
 , m_traceMessages(message::INVALID)
 , m_quitFlag(false)
@@ -195,8 +203,33 @@ ClusterManager::~ClusterManager() {
     m_portManager->setTracker(nullptr);
 }
 
+void ClusterManager::init() {
+
+    //ParameterManager::setId(Communicator::the().hubId());
+    //ParameterManager::setId(message::Id::Vistle);
+    //ParameterManager::setName("Hub");
+
+    m_compressionMode = addIntParameter("field_compression", "compression mode for data fields", None, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_compressionMode, CompressionMode);
+
+    m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
+    setParameterRange(m_zfpRate, Float(1), Float(64));
+
+    m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 20);
+    setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
+
+    m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 8.);
+    setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
+}
+
 const StateTracker &ClusterManager::state() const {
-   return m_stateTracker;
+    return m_stateTracker;
+}
+
+void ClusterManager::sendParameterMessage(const message::Message &message) const {
+    message::Buffer buf(message);
+    buf.setSenderId(ParameterManager::id());
+    sendHub(buf);
 }
 
 int ClusterManager::getRank() const {
@@ -1510,20 +1543,24 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    CERR << "SetParameter: " << setParam << std::endl;
 #endif
 
-   vassert (setParam.getModule() >= Id::ModuleBase);
+   vassert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
     RunningMap::iterator i = runningMap.find(setParam.getModule());
-    if (i == runningMap.end()) {
+    Module *mod = nullptr;
+    if (i != runningMap.end()) {
+        mod = &i->second;
+#if 0
         if (isLocal(setParam.getModule()))
             CERR << "did not find module for SetParameter: " << setParam.getModule() << std::endl;
         return true;
+#endif
     }
-    auto &mod = i->second;
 
    bool handled = true;
    int sender = setParam.senderId();
    int dest = setParam.destId();
    std::shared_ptr<Parameter> applied;
    if (message::Id::isModule(dest)) {
+      assert(mod);
       // message to owning module
       if (setParam.isBroadcast()) {
           auto param = getParameter(dest, setParam.getName());
@@ -1531,7 +1568,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
               applied.reset(param->clone());
               setParam.apply(applied);
           }
-          mod.send(setParam);
+          mod->send(setParam);
       } else {
         CERR << "non-broadcast SetParameter: " << setParam << std::endl;
         message::Buffer buf(setParam);
@@ -1539,6 +1576,8 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
         Communicator::the().broadcastAndHandleMessage(buf);
         return true;
       }
+   } else if (dest == Id::Vistle || Id::isHub(dest)) {
+       return true;
    } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module
       auto param = getParameter(sender, setParam.getName());
@@ -1552,6 +1591,9 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
          sendAllOthers(sender, setParam, true);
       }
    }
+
+   if (!mod)
+       return true;
 
    // update linked parameters
    if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
@@ -1737,6 +1779,8 @@ bool ClusterManager::quit() {
       MPI_Barrier(MPI_COMM_WORLD);
 
    m_quitFlag = true;
+
+   ParameterManager::quit();
 
    return numRunning()==0;
 }

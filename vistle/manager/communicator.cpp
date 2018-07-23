@@ -385,6 +385,7 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);
+         m_clusterManager->init();
          scanModules(m_moduleDir);
          return connectData();
          break;
