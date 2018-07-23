@@ -330,7 +330,7 @@ bool Color::changeParameter(const Parameter *p) {
         }
     }
 
-    return true;
+    return Module::changeParameter(p);
 }
 
 vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,

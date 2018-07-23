@@ -607,5 +607,5 @@ bool Tracer::changeParameter(const Parameter *param) {
         else
             setReducePolicy(message::ReducePolicy::OverAll);
     }
-    return true;
+    return Module::changeParameter(param);
 }

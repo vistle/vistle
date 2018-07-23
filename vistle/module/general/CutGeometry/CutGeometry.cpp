@@ -667,10 +667,8 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const {
 }
 
 bool CutGeometry::changeParameter(const Parameter* param) {
-   if (isocontrol.changeParameter(param))
-       return true;
-
-   return true;
+   bool ok = isocontrol.changeParameter(param);
+   return Module::changeParameter(param) && ok;
 }
 
 bool CutGeometry::compute() {

@@ -40,7 +40,7 @@ bool FilterNode::changeParameter(const Parameter *p) {
             break;
         }
     }
-    return true;
+    return Module::changeParameter(p);
 }
 
 bool FilterNode::compute() {

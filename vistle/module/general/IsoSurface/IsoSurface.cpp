@@ -74,8 +74,7 @@ IsoSurface::~IsoSurface() {
 
 bool IsoSurface::changeParameter(const Parameter* param) {
 
-    if (isocontrol.changeParameter(param))
-        return true;
+    bool ok = isocontrol.changeParameter(param);
 
 #ifndef CUTTINGSURFACE
     if (param == m_isopoint) {
@@ -91,7 +90,8 @@ bool IsoSurface::changeParameter(const Parameter* param) {
             setReducePolicy(message::ReducePolicy::Locally);
     }
 #endif
-   return true;
+
+   return Module::changeParameter(param) && ok;
 }
 
 bool IsoSurface::prepare() {
