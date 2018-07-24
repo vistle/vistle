@@ -10,7 +10,6 @@ include_directories(
         ${ASSIMP_INCLUDE_DIRS}
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}
 )
 
 link_directories(

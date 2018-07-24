@@ -1,4 +1,4 @@
-include_directories(
+include_directories(SYSTEM
         ${MPI_C_INCLUDE_PATH}
 )
 

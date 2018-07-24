@@ -7,12 +7,14 @@ set(pluginutil_HEADERS
    VistleRenderObject.h
 )
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${GLEW_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIRS}
+)
+include_directories(
         ${COVISE_INCLUDE_DIRS}
         ${COVER_INCLUDE_DIRS}
 )

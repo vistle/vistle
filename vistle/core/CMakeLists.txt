@@ -165,7 +165,9 @@ target_link_libraries(vistle_core
         ${Boost_LIBRARIES}
 )
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
+)
+include_directories(
         ..
 )

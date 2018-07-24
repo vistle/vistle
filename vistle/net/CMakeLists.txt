@@ -18,8 +18,10 @@ target_link_libraries(vistle_net
         vistle_core
 )
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
+)
+include_directories(
         ..
 )
 

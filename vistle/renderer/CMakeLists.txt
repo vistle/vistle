@@ -21,7 +21,7 @@ if(TBB_FOUND)
       parrendmgr.h
       rhrcontroller.h
    )
-   include_directories(
+   include_directories(SYSTEM
       ${TBB_INCLUDE_DIR}
       ${ICET_INCLUDE_DIRS}
    )
@@ -30,7 +30,7 @@ endif()
 if(LIBVNCSERVER_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES} vnccontroller.cpp)
    set(renderer_HEADERS ${renderer_HEADERS} vnccontroller.h)
-   include_directories(${LIBVNCSERVER_INCLUDE_DIR})
+   include_directories(SYSTEM ${LIBVNCSERVER_INCLUDE_DIR})
 endif()
 
 use_openmp()
@@ -67,9 +67,11 @@ if(LIBVNCSERVER_FOUND)
    target_link_libraries(vistle_renderer ${LIBVNCSERVER_SERVER_LIBRARY})
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
+)
+include_directories(
         ..
 )
 

@@ -27,7 +27,7 @@ if(JPEGTURBO_FOUND)
 endif()
 
 
-include_directories(
+include_directories(SYSTEM
    ${LIBVNCSERVER_INCLUDE_DIR}
    ${TBB_INCLUDE_DIR}
    ${JPEGTURBO_INCLUDE_DIR}

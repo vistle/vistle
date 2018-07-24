@@ -28,14 +28,14 @@ else()
 endif()
 
 if(SNAPPY_FOUND)
-   include_directories(${SNAPPY_INCLUDE_DIR})
+   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
 endif()
 
 
 if(JPEGTURBO_FOUND)
    if(TURBOJPEG_HAVE_TJMCUWIDTH)
       add_definitions(-DHAVE_TURBOJPEG)
-      include_directories(${JPEGTURBO_INCLUDE_DIR})
+      include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
    else()
       message("OsgRenderer: turbojpeg w/o tjMcuWidth")
    endif()
@@ -54,7 +54,7 @@ else(WIN32)
 set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif(WIN32)
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
@@ -62,12 +62,13 @@ include_directories(
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}
+)
+include_directories(
         ../COVER
 )
 if(NOT APPLE AND X11_FOUND)
    add_definitions(-DUSE_X11)
-   include_directories(${X11_INCLUDES})
+   include_directories(SYSTEM ${X11_INCLUDES})
    target_link_libraries(OsgRenderer ${X11_LIBRARIES})
 endif()
 

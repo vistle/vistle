@@ -10,7 +10,7 @@ set(SOURCES
 set(CUDA_OBJ "")
 #vistle_find_package(CUDA)
 if(NOT APPLE AND CUDA_FOUND AND FALSE)
-   include_directories(
+   include_directories(SYSTEM
         ${CUDA_INCLUDE_DIRS}
    )
    add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA)
@@ -37,10 +37,9 @@ else()
    add_definitions(-DUSE_CPP)
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}
         ${THRUST_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
 )

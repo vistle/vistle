@@ -1,9 +1,8 @@
 use_openmp()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}
         ${THRUST_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
 )

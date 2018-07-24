@@ -38,7 +38,7 @@ endif()
 set(boost_mpi_HEADERS
 )
 
-include_directories(
+include_directories(SYSTEM
         "${BOOST_MPI_DIR}/include"
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}

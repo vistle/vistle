@@ -1,8 +1,10 @@
 set(CMAKE_AUTOMOC ON)
 
-include_directories(
+include_directories(SYSTEM
    ${Boost_INCLUDE_DIRS}
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src
+)
+include_directories(
    ../..
    ${CMAKE_CURRENT_BINARY_DIR}
 )

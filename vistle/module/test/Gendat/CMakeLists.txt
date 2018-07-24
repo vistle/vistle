@@ -1,10 +1,9 @@
 use_openmp()
 enable_testing()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}
 )
 
 add_module(Gendat Gendat.cpp)

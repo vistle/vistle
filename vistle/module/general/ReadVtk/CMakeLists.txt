@@ -5,7 +5,7 @@ vistle_find_package(VTK
 vistle_find_package(TinyXML2)
 if (TINYXML2_FOUND)
    add_definitions(-DHAVE_TINYXML2)
-   include_directories(${TINYXML2_INCLUDE_DIRS})
+   include_directories(SYSTEM ${TINYXML2_INCLUDE_DIRS})
 endif()
 
 if (NOT VTK_FOUND)
@@ -26,11 +26,10 @@ add_module(ReadVtk
    coVtk.h
 )
 
-include_directories(
+include_directories(SYSTEM
    ${VTK_INCLUDE_DIRS}
    ${Boost_INCLUDE_DIRS}
    ${MPI_C_INCLUDE_PATH}
-   ${PROJECT_SOURCE_DIR}
 )
 
 target_link_libraries(ReadVtk

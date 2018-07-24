@@ -5,7 +5,7 @@ if (NOT COVER_FOUND)
    return()
 endif()
 
-include_directories(${MPI_C_INCLUDE_PATH})
+include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
@@ -13,10 +13,12 @@ SET(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_C_LIBRARIES})
 ADD_DEFINITIONS(-DHAS_MPI)
 ADD_DEFINITIONS(-DCOVER_PLUGIN)
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
+)
+include_directories(
         ${COVER_INCLUDE_DIRS}
         ../../cover
         ..

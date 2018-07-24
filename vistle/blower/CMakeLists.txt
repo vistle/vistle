@@ -2,9 +2,11 @@ if(NOT PYTHONLIBS_FOUND)
    return()
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${PYTHON_INCLUDE_PATH}
+)
+include_directories(
         ..
 )
 

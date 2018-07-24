@@ -2,9 +2,11 @@ if(NOT VISTLE_USE_SHARED_MEMORY)
    return()
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
+)
+include_directories(
         ../..
 )
 

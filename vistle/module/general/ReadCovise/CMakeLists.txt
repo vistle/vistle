@@ -6,10 +6,11 @@ endif()
 
 add_module(ReadCovise ReadCovise.cpp)
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}
+)
+include_directories(
         ${COVISE_FILE_INCLUDE_DIRS}
 )
 

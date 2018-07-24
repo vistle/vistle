@@ -1,8 +1,10 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
 vistle_find_package(Boost 1.53 COMPONENTS program_options system)
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
+)
+include_directories(
         ..
 )
 
@@ -14,7 +16,7 @@ set(hub_SOURCES
    )
 
 if(PYTHONLIBS_FOUND)
-   include_directories(${PYTHON_INCLUDE_DIRS})
+   include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
    add_definitions(-DHAVE_PYTHON)
    add_definitions(-DVISTLE_CONTROL)
    add_definitions(-Dvistle_userinterface_EXPORTS)

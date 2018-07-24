@@ -5,7 +5,7 @@ vistle_find_package(Readline)
 set(EXTRA_LIBRARIES)
 if(READLINE_FOUND)
    add_definitions(-DHAVE_READLINE)
-   include_directories(${READLINE_INCLUDE_DIR})
+   include_directories(SYSTEM ${READLINE_INCLUDE_DIR})
    set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
 endif()
 
@@ -21,7 +21,7 @@ set(userinterface_HEADERS
 )
 
 if (PYTHONLIBS_FOUND)
-   include_directories(${PYTHON_INCLUDE_DIRS})
+   include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
    set(userinterface_SOURCES
       ${userinterface_SOURCES}
       pythoninterface.cpp
@@ -36,8 +36,10 @@ if (PYTHONLIBS_FOUND)
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
+)
+include_directories(
         ..
 )
 

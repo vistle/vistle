@@ -28,14 +28,14 @@ endif()
 if(JPEGTURBO_FOUND)
    if(TURBOJPEG_HAVE_TJMCUWIDTH)
       add_definitions(-DHAVE_TURBOJPEG)
-      include_directories(${JPEGTURBO_INCLUDE_DIR})
+      include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
    else()
       message("DisCOVERay: turbojpeg w/o tjMcuWidth")
    endif()
 endif()
 
 if(SNAPPY_FOUND)
-   include_directories(${SNAPPY_INCLUDE_DIR})
+   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
 endif()
 
 
@@ -173,11 +173,10 @@ endif()
 add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc render.isph  renderobjectdata.isph  spheres_isect.isph  spheres.isph  tubes.isph)
 
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
 )

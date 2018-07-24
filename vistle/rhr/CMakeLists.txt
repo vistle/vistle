@@ -14,18 +14,18 @@ if(JPEGTURBO_FOUND)
       message("vistle_rhr: turbojpeg w/o tjMcuWidth")
    else()
       add_definitions(-DHAVE_TURBOJPEG)
-      include_directories(${JPEGTURBO_INCLUDE_DIR})
+      include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
    endif()
 endif()
 
 if(SNAPPY_FOUND)
    add_definitions(-DHAVE_SNAPPY)
-   include_directories(${SNAPPY_INCLUDE_DIR})
+   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
 endif()
 
 if(ZFP_FOUND)
    add_definitions(-DHAVE_ZFP)
-   include_directories(${ZFP_INCLUDE_DIRS})
+   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
 endif()
 
 set(RHR_SOURCES
@@ -42,7 +42,7 @@ set(RHR_HEADERS
 if(TBB_FOUND)
    set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
-   include_directories(
+   include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
    )
 endif()
@@ -50,13 +50,15 @@ endif()
 if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
-   include_directories(
+   include_directories(SYSTEM
         ${LIBVNCSERVER_INCLUDE_DIR}
    )
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
+)
+include_directories(
         ..
 )
 
@@ -68,7 +70,7 @@ if(CUDA_FOUND AND GLEW_FOUND AND OPENGL_FOUND AND VISTLE_USE_CUDA)
   set(USE_CUDA TRUE)
 
   add_definitions(-DHAVE_CUDA)
-  include_directories(${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
+  include_directories(SYSTEM ${CUDA_INCLUDE_DIRS} ${GLEW_INCLUDES} ${OPENGL_INCLUDES})
   cuda_compile(RHR_CUDA_OBJ ${RHR_CUDA_SOURCES} ${VISTLE_LIB_TYPE})
 else()
   add_custom_target(RHR_CUDA SOURCES ${RHR_CUDA_SOURCES})

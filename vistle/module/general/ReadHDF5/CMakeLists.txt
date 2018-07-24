@@ -7,11 +7,10 @@ endif()
 
 add_definitions(-DH5_HAVE_PARALLEL)
 
-include_directories(
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
 	${HDF5_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}
 )
 
 link_directories(

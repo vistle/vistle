@@ -255,7 +255,7 @@ endif()
 if (NOT CRAY)
    vistle_find_package(MPI REQUIRED)
 
-   include_directories(${MPI_C_INCLUDE_DIR})
+   include_directories(SYSTEM ${MPI_C_INCLUDE_DIR})
    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
    add_definitions(-DOMPI_SKIP_MPICXX)
    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")

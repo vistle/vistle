@@ -12,7 +12,7 @@ endif()
 
 using(SNAPPY optional)
 
-include_directories(
+include_directories(SYSTEM
    ${LIBVNCSERVER_INCLUDE_DIR}
    ${TBB_INCLUDE_DIR}
 )
@@ -27,7 +27,7 @@ set(SOURCES
 
 if(CUDA_FOUND AND VISTLE_USE_CUDA)
    add_definitions(-DHAVE_CUDA)
-   include_directories(${CUDA_INCLUDE_DIRS})
+   include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
 endif()
 
 #use_openmp()

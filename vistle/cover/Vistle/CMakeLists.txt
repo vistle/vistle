@@ -9,8 +9,12 @@ endif(WIN32)
 
 include_directories(
         .. # VistlePluginUtil
+)
+include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
+)
+include_directories(
         ${COVISE_INCLUDE_DIRS}
         ${COVER_INCLUDE_DIRS}
 )

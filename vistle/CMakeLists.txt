@@ -122,16 +122,16 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
-include_directories(${EIGEN3_INCLUDE_PATH})
+include_directories(SYSTEM ${EIGEN3_INCLUDE_PATH})
 
 #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
 
 # header-only python byindings
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
+include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 
 # replacement for Boost.Serialization
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
+include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
 
 
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil

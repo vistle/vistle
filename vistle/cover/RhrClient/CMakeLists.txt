@@ -13,17 +13,19 @@ endif()
 
 if(JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
    add_definitions(-DHAVE_TURBOJPEG)
-   include_directories(${JPEGTURBO_INCLUDE_DIR})
+   include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
 endif()
 
 if(ZFP_FOUND)
    add_definitions(-DHAVE_ZFP)
-   include_directories(${ZFP_INCLUDE_DIRS})
+   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
 endif()
 
 
 include_directories(
    .. # VistlePluginUtil
+)
+include_directories(SYSTEM
    ${TBB_INCLUDE_DIR}
    ${Boost_INCLUDE_DIRS}
 )
