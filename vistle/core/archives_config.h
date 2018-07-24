@@ -20,10 +20,18 @@
 #include <iostream>
 #include <vector>
 
+#include <util/enum.h>
+
 #include "export.h"
 #include "index.h"
 
 namespace vistle {
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
+                                    (Uncompressed)
+                                    (ZfpFixedRate)
+                                    (ZfpAccuracy)
+                                    (ZfpPrecision))
 
 template<class Archive>
 struct archive_tag;
@@ -146,6 +154,13 @@ struct ArchiveStreamType<yas_oarchive> {
 };
 
 #ifdef HAVE_ZFP
+struct ZfpParameters {
+    CompressionMode mode = Uncompressed;
+    double rate = 8.;
+    int precision = 20;
+    double accuracy = 1e-20;
+};
+
 template<typename T>
 struct zfp_type_map {
     static const zfp_type value = zfp_type_none;
@@ -157,7 +172,7 @@ template<> struct zfp_type_map<float> { static const zfp_type value = zfp_type_f
 template<> struct zfp_type_map<double> { static const zfp_type value = zfp_type_double; };
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3]);
+bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
 template<zfp_type type>
 bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index dim[3]);
 #endif
@@ -237,16 +252,21 @@ struct archive_helper<yas_tag> {
         }
         template<class Archive>
         void save(Archive &ar) const {
-            bool compress = ar.compressed() && !m_exact;
+            bool compress = ar.compressionMode()!=Uncompressed && !m_exact;
             std::cerr << "ar.compressed()=" << compress << std::endl;
             if (compress) {
 #ifdef HAVE_ZFP
+                ZfpParameters param;
+                param.mode = ar.compressionMode();
+                param.rate = ar.zfpRate();
+                param.precision = ar.zfpPrecision();
+                param.accuracy = ar.zfpAccuracy();
                 std::cerr << "trying to compresss " << std::endl;
                 std::vector<char> compressed;
                 Index dim[3];
                 for (int c=0; c<3; ++c)
                     dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
-                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim)) {
+                if (compressZfp<zfp_type_map<T>::value>(compressed, static_cast<const void *>(m_begin), dim, param)) {
                     ar & compress;
                     ar & m_dim[0] & m_dim[1] & m_dim[2];
                     ar & compressed;
@@ -316,25 +336,53 @@ bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index 
 
 #ifdef HAVE_ZFP
 template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3]);
+bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3]) {
+bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
 #ifdef HAVE_ZFP
     bool ok = true;
-    zfp_field *field = zfp_field_3d(const_cast<void *>(src), type, dim[0], dim[1], dim[2]);
+    int ndims=1;
+    size_t sz = dim[0];
+    if (dim[1] != 0) {
+        ndims=2;
+        sz *= dim[1];
+    }
+    if (dim[2] != 0) {
+        ndims=3;
+        sz *= dim[2];
+    }
+
+    if (sz < 1000) {
+        std::cerr << "compressZfp: not compressing - fewer than 1000 elements" << std::endl;
+        return false;
+    }
 
     zfp_stream *zfp = zfp_stream_open(nullptr);
-    //zfp_stream_set_rate(zfp, 8, type, 2, 0);
-    zfp_stream_set_precision(zfp, 20);
-    //zfp_stream_set_accuracy(zfp, -4, type);
+    switch (param.mode) {
+    case Uncompressed:
+        assert("invalid mode for ZFP compression" == 0);
+        break;
+    case ZfpAccuracy:
+        zfp_stream_set_accuracy(zfp, param.accuracy);
+        break;
+    case ZfpPrecision:
+        zfp_stream_set_precision(zfp, param.precision);
+        break;
+    case ZfpFixedRate:
+        zfp_stream_set_rate(zfp, param.rate, type, ndims, 0);
+        break;
+    }
+
+    zfp_field *field = zfp_field_3d(const_cast<void *>(src), type, dim[0], dim[1], dim[2]);
     size_t bufsize = zfp_stream_maximum_size(zfp, field);
     compressed.resize(bufsize);
     bitstream *stream = stream_open(compressed.data(), bufsize);
     zfp_stream_set_bit_stream(zfp, stream);
 
     zfp_stream_rewind(zfp);
-    zfp_write_header(zfp, field, ZFP_HEADER_FULL);
+    size_t header = zfp_write_header(zfp, field, ZFP_HEADER_FULL);
+    std::cerr << "compressZfp: wrote " << header << " header bytes" << std::endl;
     size_t zfpsize = zfp_compress(zfp, field);
     if (zfpsize == 0) {
         std::cerr << "compressZfp: zfp compression failed" << std::endl;

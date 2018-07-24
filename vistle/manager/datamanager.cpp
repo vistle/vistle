@@ -285,7 +285,10 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    vecostreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
    vistle::oarchive memar(buf);
-   memar.setCompression(true);
+   memar.setCompressionMode(Communicator::the().clusterManager().compressionMode());
+   memar.setZfpRate(Communicator::the().clusterManager().zfpRate());
+   memar.setZfpPrecision(Communicator::the().clusterManager().zfpPrecision());
+   memar.setZfpAccuracy(Communicator::the().clusterManager().zfpAccuracy());
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
       if (!saver.save()) {

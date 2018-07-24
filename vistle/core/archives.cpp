@@ -99,12 +99,36 @@ Fetcher::~Fetcher() {
 }
 
 #ifdef USE_YAS
-void yas_oarchive::setCompression(bool enable) {
-    m_compress = enable;
+void yas_oarchive::setCompressionMode(CompressionMode mode) {
+    m_compress = mode;
 }
 
-bool yas_oarchive::compressed() const {
+CompressionMode yas_oarchive::compressionMode() const {
     return m_compress;
+}
+
+void yas_oarchive::setZfpRate(double rate) {
+    m_zfpRate = rate;
+}
+
+double yas_oarchive::zfpRate() const {
+    return m_zfpRate;
+}
+
+void yas_oarchive::setZfpAccuracy(double accuracy) {
+    m_zfpAccuracy = accuracy;
+}
+
+double yas_oarchive::zfpAccuracy() const {
+    return m_zfpAccuracy;
+}
+
+void yas_oarchive::setZfpPrecision(int precision) {
+    m_zfpPrecision = precision;
+}
+
+int yas_oarchive::zfpPrecision() const {
+    return m_zfpPrecision;
 }
 
 yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags)
@@ -190,7 +214,7 @@ bool decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compresse
 }
 
 template<>
-bool compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3]) {
+bool compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
    return false;
 }
 #endif

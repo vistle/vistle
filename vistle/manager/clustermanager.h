@@ -6,6 +6,7 @@
 #include <queue>
 
 #include <util/directory.h>
+#include <util/enum.h>
 
 #include <core/statetracker.h>
 #include <core/message.h>
@@ -20,6 +21,9 @@
 #include <boost/function.hpp>
 #include <thread>
 #endif
+
+#include <mutex>
+#include <core/archives_config.h>
 
 namespace vistle {
 
@@ -68,6 +72,11 @@ class ClusterManager: public ParameterManager
 
    bool handle(const message::Buffer &msg);
    //bool handleData(const message::Message &msg);
+
+   CompressionMode compressionMode() const;
+   double zfpRate() const;
+   int zfpPrecision() const;
+   double zfpAccuracy() const;
 
  private:
    void queueMessage(const message::Message &msg);
@@ -161,6 +170,7 @@ class ClusterManager: public ParameterManager
    typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;
 
+   mutable std::mutex m_parameterMutex;
    IntParameter *m_compressionMode = nullptr;
    FloatParameter *m_zfpRate = nullptr;
    IntParameter *m_zfpPrecision = nullptr;

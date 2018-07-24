@@ -65,12 +65,6 @@ namespace vistle {
 
 using message::Id;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
-                                    (None)
-                                    (ZfpFixedRate)
-                                    (ZfpAccuracy)
-                                    (ZfpPrecision))
-
 ClusterManager::Module::~Module() {
 #ifdef MODULE_THREAD
    try {
@@ -209,16 +203,16 @@ void ClusterManager::init() {
     //ParameterManager::setId(message::Id::Vistle);
     //ParameterManager::setName("Hub");
 
-    m_compressionMode = addIntParameter("field_compression", "compression mode for data fields", None, Parameter::Choice);
+    m_compressionMode = addIntParameter("field_compression", "compression mode for data fields", Uncompressed, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_compressionMode, CompressionMode);
 
     m_zfpRate = addFloatParameter("zfp_rate", "ZFP fixed compression rate", 8.);
     setParameterRange(m_zfpRate, Float(1), Float(64));
 
-    m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 20);
+    m_zfpPrecision = addIntParameter("zfp_precision", "ZFP fixed precision", 16);
     setParameterRange(m_zfpPrecision, Integer(1), Integer(64));
 
-    m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 8.);
+    m_zfpAccuracy = addFloatParameter("zfp_accuracy", "ZFP compression error tolerance", 1e-10);
     setParameterRange(m_zfpAccuracy, Float(0.), Float(1e10));
 }
 
@@ -230,6 +224,26 @@ void ClusterManager::sendParameterMessage(const message::Message &message) const
     message::Buffer buf(message);
     buf.setSenderId(ParameterManager::id());
     sendHub(buf);
+}
+
+CompressionMode ClusterManager::compressionMode() const {
+    std::lock_guard<std::mutex> locker(m_parameterMutex);
+    return (CompressionMode)m_compressionMode->getValue();
+}
+
+double ClusterManager::zfpRate() const {
+    std::lock_guard<std::mutex> locker(m_parameterMutex);
+    return m_zfpRate->getValue();
+}
+
+int ClusterManager::zfpPrecision() const {
+    std::lock_guard<std::mutex> locker(m_parameterMutex);
+    return m_zfpPrecision->getValue();
+
+}
+double ClusterManager::zfpAccuracy() const {
+    std::lock_guard<std::mutex> locker(m_parameterMutex);
+    return m_zfpAccuracy->getValue();
 }
 
 int ClusterManager::getRank() const {
@@ -1576,8 +1590,9 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
         Communicator::the().broadcastAndHandleMessage(buf);
         return true;
       }
-   } else if (dest == Id::Vistle || Id::isHub(dest)) {
-       return true;
+   } else if (dest == Id::Vistle || dest==Communicator::the().hubId()) {
+       std::lock_guard<std::mutex> locker(m_parameterMutex);
+       return ParameterManager::handleMessage(setParam);
    } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module
       auto param = getParameter(sender, setParam.getName());

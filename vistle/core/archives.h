@@ -191,11 +191,21 @@ class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecost
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
     std::ostream * m_os = nullptr;
     std::streambuf *m_sbuf = nullptr;
-    bool m_compress = true;
+    CompressionMode m_compress = Uncompressed;
+    double m_zfpRate = 8.;
+    int m_zfpPrecision = 8.;
+    double m_zfpAccuracy = 1e-20;
 
 public:
-    void setCompression(bool enable);
-    bool compressed() const;
+    void setCompressionMode(vistle::CompressionMode mode);
+    CompressionMode compressionMode() const;
+
+    void setZfpRate(double rate);
+    double zfpRate() const;
+    void setZfpAccuracy(double rate);
+    double zfpAccuracy() const;
+    void setZfpPrecision(int precision);
+    int zfpPrecision() const;
 
     typedef yas::mem_ostream stream_type;
     yas_oarchive(Stream &mo, unsigned int flags=0);
