@@ -153,7 +153,9 @@ def showAllParameters():
           print("%s\t%s\t%s\t%s\t%s" % (m, name, p, getParameterType(m, p), getSavableParam(m, p)))
 
 def modvar(id):
-   return "m" + _vistle.getModuleName(id) + str(id)
+   if (id >= 0):
+      return "m" + _vistle.getModuleName(id) + str(id)
+   return "v"+str(-id)
 
 def hubvar(id, numSlaves):
    hub = _vistle.getHub(id)
@@ -162,6 +164,44 @@ def hubvar(id, numSlaves):
    if (numSlaves == 1):
       return "SlaveHub"
    return "Slave"+str(hub);
+
+def saveParameters(f, mod):
+      params = getParameters(mod)
+      for p in params:
+         if not isParameterDefault(mod, p):
+            f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+")\n")
+      f.write("\n")
+
+def saveWorkflow(f, mods, numSlaves, remote):
+   f.write("\n")
+
+   for m in mods:
+      hub = _vistle.getHub(m)
+      if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
+            continue
+      #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
+
+   for m in mods:
+      hub = _vistle.getHub(m)
+      if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
+            continue
+      f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
+      saveParameters(f, m)
+
+   for m in mods:
+      hub = _vistle.getHub(m)
+      if (not remote and hub!=getMasterHub()):
+            continue
+      ports = getOutputPorts(m)
+      for p in ports:
+         conns = getConnections(m, p)
+         for c in conns:
+            hub2 = _vistle.getHub(c[0])
+            if (remote and hub==getMasterHub() and hub2==getMasterHub()) or (not remote and (hub!=getMasterHub() or hub2!=getMasterHub())):
+               continue
+            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
+
 
 def save(filename = None):
    global _loaded_file
@@ -183,6 +223,11 @@ def save(filename = None):
       if h != master:
          slavehubs.add(h)
    numSlaves = len(slavehubs)
+
+   f.write("uuids = {}\n");
+
+   saveWorkflow(f, mods, numSlaves, False)
+
    if numSlaves > 1:
       print("slave hubs: %s" % slavehubs)
       f.write("waitForSlaves()\n")
@@ -195,25 +240,7 @@ def save(filename = None):
       f.write("print('slave hub %s connected\\n' % SlaveHub)\n")
       f.write("printInfo('slave hub %s connected\\n' % SlaveHub)\n")
 
-   f.write("uuids = {}\n");
-   for m in mods:
-      #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
-
-   for m in mods:
-      f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
-      params = getParameters(m)
-      for p in params:
-         if not isParameterDefault(m, p):
-            f.write("set"+getParameterType(m,p)+"Param("+modvar(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
-      f.write("\n")
-
-   for m in mods:
-      ports = getOutputPorts(m)
-      for p in ports:
-         conns = getConnections(m, p)
-         for c in conns:
-            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
+   saveWorkflow(f, mods, numSlaves, True)
 
    #f.write("checkMessageQueue()\n")
 
