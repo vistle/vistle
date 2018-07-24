@@ -175,7 +175,7 @@ def save(filename = None):
    mods = _vistle.getRunning()
 
    master = getMasterHub()
-   f.write("MasterHub="+str(master)+"\n")
+   f.write("MasterHub=getMasterHub()\n")
 
    slavehubs = set()
    for m in mods:
