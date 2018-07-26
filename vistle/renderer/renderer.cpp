@@ -376,7 +376,8 @@ bool Renderer::changeParameter(const Parameter *p) {
             break;
         }
     }
-    return true;
+
+    return Module::changeParameter(p);
 }
 
 void Renderer::getBounds(Vector &min, Vector &max, int t) {
