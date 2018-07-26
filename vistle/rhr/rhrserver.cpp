@@ -12,10 +12,6 @@
 #include <cmath>
 #include <boost/lexical_cast.hpp>
 
-#ifdef HAVE_SNAPPY
-#include <snappy.h>
-#endif
-
 #ifdef HAVE_ZFP
 #include <zfp.h>
 #endif
@@ -63,9 +59,7 @@ static TjContext tjContexts;
 
 namespace vistle {
 
-template<class Message>
-bool RhrServer::send(const Message &message, const std::vector<char> *payload) {
-
+bool RhrServer::send(const RemoteRenderMessage &msg, const std::vector<char> *payload) {
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
@@ -74,8 +68,7 @@ bool RhrServer::send(const Message &message, const std::vector<char> *payload) {
     if (!m_clientSocket)
         return false;
 
-    RemoteRenderMessage r(message, payload ? payload->size() : 0);
-    if (!message::send(*m_clientSocket, r, payload)) {
+    if (!message::send(*m_clientSocket, msg, payload)) {
         CERR << "client error, disconnecting" << std::endl;
         resetClient();
         return false;
@@ -130,17 +123,11 @@ void RhrServer::setColorCodec(ColorCodec value) {
     switch(value) {
         case Raw:
             m_imageParam.rgbaJpeg = false;
-            m_imageParam.rgbaSnappy = false;
             break;
         case Jpeg_YUV411:
         case Jpeg_YUV444:
             m_imageParam.rgbaJpeg = true;
-            m_imageParam.rgbaSnappy = false;
             m_imageParam.rgbaChromaSubsamp = value==Jpeg_YUV411;
-            break;
-        case Snappy:
-            m_imageParam.rgbaJpeg = false;
-            m_imageParam.rgbaSnappy = true;
             break;
     }
 }
@@ -155,9 +142,14 @@ void RhrServer::enableQuantization(bool value) {
    m_imageParam.depthQuant = value;
 }
 
-void RhrServer::enableDepthSnappy(bool value) {
+void RhrServer::setColorCompression(message::CompressionMode mode) {
 
-    m_imageParam.depthSnappy = value;
+    m_imageParam.rgbaCompress = mode;
+}
+
+void RhrServer::setDepthCompression(message::CompressionMode mode) {
+
+    m_imageParam.depthCompress = mode;
 }
 
 void RhrServer::setDepthPrecision(int bits) {
@@ -313,11 +305,11 @@ void RhrServer::init() {
    m_errormetric = false;
    m_compressionrate = false;
 
+   m_imageParam.rgbaCompress = message::CompressionNone;
    m_imageParam.depthPrecision = 32;
    m_imageParam.depthZfp = true;
    m_imageParam.depthQuant = true;
-   m_imageParam.depthSnappy = true;
-   m_imageParam.rgbaSnappy = true;
+   m_imageParam.depthCompress = message::CompressionLz4;
    m_imageParam.depthFloat = true;
    m_imageParam.depthZfpMode = ZfpFixedRate;
 
@@ -869,11 +861,6 @@ struct EncodeTask: public tbb::task {
             message->format = param.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
         }
-#ifdef HAVE_SNAPPY
-        if (param.depthSnappy) {
-            message->compression |= rfbTileSnappy;
-        }
-#endif
     }
 
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
@@ -899,10 +886,6 @@ struct EncodeTask: public tbb::task {
 
         if (param.rgbaJpeg) {
             message->compression |= rfbTileJpeg;
-#ifdef HAVE_SNAPPY
-        } else if (param.rgbaSnappy) {
-            message->compression |= rfbTileSnappy;
-#endif
         }
     }
 
@@ -910,7 +893,9 @@ struct EncodeTask: public tbb::task {
 
         auto &msg = *message;
         RhrServer::EncodeResult result(message);
+        message::CompressionMode compress = message::CompressionNone;
         if (depth) {
+            compress = param.depthCompress;
             const char *zbuf = reinterpret_cast<const char *>(depth);
             if (msg.compression & rfbTileDepthZfp) {
 #ifdef HAVE_ZFP
@@ -977,6 +962,7 @@ struct EncodeTask: public tbb::task {
                 result.payload = std::move(tilebuf);
             }
         } else if (rgba) {
+            compress = param.rgbaCompress;
             if (msg.compression & rfbTileJpeg) {
                 int ret = -1;
 #ifdef HAVE_TURBOJPEG
@@ -1015,32 +1001,11 @@ struct EncodeTask: public tbb::task {
                 result.payload = std::move(tilebuf);
             }
         }
-#ifdef HAVE_SNAPPY
-        if((msg.compression & rfbTileSnappy) && !(msg.compression & rfbTileJpeg)) {
-            size_t maxsize = snappy::MaxCompressedLength(msg.size);
-            std::vector<char> sbuf(maxsize);
-            size_t compressed = 0;
-            { 
-#ifdef TIMING
-               double start = vistle::Clock::time();
-#endif
-               snappy::RawCompress(result.payload.data(), msg.size, sbuf.data(), &compressed);
-#ifdef TIMING
-               vistle::StopWatch timer(rgba ? "snappy RGBA" : "snappy depth");
-               double dur = vistle::Clock::time() - start;
-               std::cerr << "SNAPPY " << (rgba ? "RGB" : "depth") << ": " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
-#endif
-            }
-            sbuf.resize(compressed);
-            msg.size = compressed;
-
-            //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
-            result.payload = std::move(sbuf);
-        } else {
-            msg.compression &= ~rfbTileSnappy;
-        }
-#endif
         assert(result.payload.size() == msg.size);
+
+        result.rhrMessage = new RemoteRenderMessage(msg, result.payload.size());
+        result.payload = message::compressPayload(compress, *result.rhrMessage, result.payload);
+
         resultQueue.push(result);
         return nullptr; // or a pointer to a new task to be executed immediately
     }
@@ -1102,25 +1067,27 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
     do {
         RhrServer::EncodeResult result;
         tileReady = false;
-        tileMsg *msg = nullptr;
+        RemoteRenderMessage *msg = nullptr;
         if (m_queuedTiles == 0 && finish) {
-           msg = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
+           auto tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
+           msg = new RemoteRenderMessage(*tm);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;
-            msg = result.message;
+            msg = result.rhrMessage;
         }
+        tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
         if (msg) {
            if (m_firstTile) {
-              msg->flags |= rfbTileFirst;
+              tm.flags |= rfbTileFirst;
               //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
            }
            m_firstTile = false;
            if (m_queuedTiles == 0 && finish) {
-              msg->flags |= rfbTileLast;
+              tm.flags |= rfbTileLast;
               //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
            }
-           msg->frameNumber = framecount;
+           tm.frameNumber = framecount;
            if (sendTiles)
                send(*msg, &result.payload);
         }

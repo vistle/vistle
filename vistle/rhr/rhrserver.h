@@ -44,7 +44,6 @@ public:
                                      (Raw)
                                      (Jpeg_YUV411)
                                      (Jpeg_YUV444)
-                                     (Snappy)
                                      )
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
@@ -86,10 +85,11 @@ public:
    void invalidate(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 
    void setColorCodec(ColorCodec value);
+   void setColorCompression(message::CompressionMode mode);
    void enableDepthZfp(bool value);
    void enableQuantization(bool value);
-   void enableDepthSnappy(bool value);
    void setDepthPrecision(int bits);
+   void setDepthCompression(message::CompressionMode mode);
    void setTileSize(int w, int h);
    void setZfpMode(ZfpMode mode);
 
@@ -190,11 +190,11 @@ public:
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
        bool depthZfp; //!< whether depth should be compressed with floating point compressor zfp
        bool depthQuant; //!< whether depth should be sent quantized
-       bool depthSnappy; //!< whether depth should be entropy-encoded with SNAPPY
-       bool rgbaJpeg;
-       bool rgbaSnappy;
-       bool rgbaChromaSubsamp;
        ZfpMode depthZfpMode;
+       message::CompressionMode depthCompress;
+       bool rgbaJpeg;
+       bool rgbaChromaSubsamp;
+       message::CompressionMode rgbaCompress;
 
        ImageParameters()
        : timestep(0)
@@ -202,11 +202,11 @@ public:
        , depthPrecision(24)
        , depthZfp(false)
        , depthQuant(false)
-       , depthSnappy(false)
-       , rgbaJpeg(false)
-       , rgbaSnappy(false)
-       , rgbaChromaSubsamp(false)
        , depthZfpMode(ZfpAccuracy)
+       , depthCompress(message::CompressionNone)
+       , rgbaJpeg(false)
+       , rgbaChromaSubsamp(false)
+       , rgbaCompress(message::CompressionNone)
        {
        }
    };
@@ -306,7 +306,8 @@ private:
            : message(msg)
            {}
 
-       tileMsg *message;
+       tileMsg *message = nullptr;
+       RemoteRenderMessage *rhrMessage = nullptr;
        std::vector<char> payload;
    };
 
@@ -321,8 +322,7 @@ private:
    VariantVisibilityMap m_clientVariants;
    InitialVariantVisibilityMap m_localVariants;
 
-   template<class Message>
-   bool send(const Message &message, const std::vector<char> *payload=nullptr);
+   bool send(const RemoteRenderMessage &msg, const std::vector<char> *payload=nullptr);
    void resetClient();
 };
 

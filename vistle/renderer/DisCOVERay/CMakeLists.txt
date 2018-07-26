@@ -5,7 +5,6 @@ find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLU
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
-vistle_find_package(SNAPPY)
 
 if (NOT TBB_FOUND)
    message("DisCOVERay: TBB not found")
@@ -33,11 +32,6 @@ if(JPEGTURBO_FOUND)
       message("DisCOVERay: turbojpeg w/o tjMcuWidth")
    endif()
 endif()
-
-if(SNAPPY_FOUND)
-   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
-endif()
-
 
 # BEGIN: ispc
 ##############################################################
@@ -194,10 +188,6 @@ target_link_libraries(DisCOVERay
         ${EMBREE_LIBRARY}
         ${TBB_LIBRARIES}
 )
-
-if (SNAPPY_FOUND)
-   target_link_libraries(DisCOVERay ${SNAPPY_LIBRARIES})
-endif()
 
 if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
    target_link_libraries(DisCOVERay ${JPEG_LIBRARIES})

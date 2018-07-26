@@ -51,10 +51,14 @@ struct DecodeTask;
 class RemoteConnection;
 
 struct TileMessage {
-    TileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload)
-        : msg(msg), payload(payload) {}
+    TileMessage(std::shared_ptr<message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload)
+        : msg(msg), tile(static_cast<const tileMsg &>(msg->rhr())), payload(payload) {
 
-    std::shared_ptr<tileMsg> msg;
+        assert(msg->rhr().type == rfbTile);
+    }
+
+    std::shared_ptr<message::RemoteRenderMessage> msg;
+    const tileMsg &tile;
     std::shared_ptr<std::vector<char>> payload;
 };
 
@@ -113,16 +117,16 @@ private:
 
    int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_oldNumRemoteTimesteps, m_timestepToCommit;
 
-   bool handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload);
+   bool handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload);
    // work queue management for decoding tiles
    bool m_waitForDecode;
    int m_queued;
    std::deque<DecodeTask *> m_deferred;
-   typedef tbb::concurrent_queue<std::shared_ptr<tileMsg> > ResultQueue;
+   typedef tbb::concurrent_queue<std::shared_ptr<const message::RemoteRenderMessage>> ResultQueue;
    ResultQueue m_resultQueue;
    bool updateTileQueue();
    void handleTileMeta(const tileMsg &msg);
-   void finishFrame(std::shared_ptr<RemoteConnection> remote, const tileMsg &msg);
+   void finishFrame(std::shared_ptr<RemoteConnection> remote, const message::RemoteRenderMessage &msg);
    void swapFrame();
    bool checkSwapFrame();
    bool canEnqueue() const;

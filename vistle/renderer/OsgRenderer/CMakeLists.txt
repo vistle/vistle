@@ -1,7 +1,6 @@
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
-vistle_find_package(SNAPPY)
 vistle_find_package(X11)
 vistle_find_package(GLEW)
 
@@ -25,10 +24,6 @@ if(TBB_FOUND)
       #endif()
 else()
    use_openmp()
-endif()
-
-if(SNAPPY_FOUND)
-   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
 endif()
 
 
@@ -90,8 +85,4 @@ target_link_libraries(OsgRenderer
 
 if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
    target_link_libraries(OsgRenderer ${JPEG_LIBRARIES})
-endif()
-
-if (SNAPPY_FOUND)
-   target_link_libraries(OsgRenderer ${SNAPPY_LIBRARIES})
 endif()

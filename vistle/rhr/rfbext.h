@@ -29,8 +29,8 @@
  * VncClient requires a matching VncServer plug-in.
  * It is also compatible with Vistle's ray caster render module.
  *
- * Depth images can be optionally compressed with SNAPPY [http://code.google.com/p/snappy/]
- * or, on the GPU before being read back, with a lossy algorithm similiar to Direct3D texture compression (cf. DepthQuantize).
+ * Depth images can be optionally compressed with a lossy algorithm similiar to Direct3D texture compression
+ * (cf. DepthQuantize), also on the GPU before read-back.
  *
  * This work was funded by the EU within the project CRESTA [http://cresta-project.eu].
  */
@@ -324,6 +324,7 @@ class V_RHREXPORT RemoteRenderMessage: public MessageBase<RemoteRenderMessage, R
 public:
     RemoteRenderMessage(const RhrSubMessage &rhr, size_t payloadSize=0);
     const RhrSubMessage &rhr() const;
+    RhrSubMessage &rhr();
 private:
     std::array<char, RhrMessageSize> m_rhr;
 };

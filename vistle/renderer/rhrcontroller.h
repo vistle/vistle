@@ -60,16 +60,19 @@ class V_RENDEREREXPORT RhrController {
 
    IntParameter *m_rgbaEncoding;
    RhrServer::ColorCodec m_rgbaCodec;
+   IntParameter *m_rgbaCompressMode;
+   message::CompressionMode m_rgbaCompress;
+
    IntParameter *m_depthPrec;
    Integer m_prec;
    IntParameter *m_depthQuant;
    bool m_quant;
-   IntParameter *m_depthSnappy;
-   bool m_snappy;
    IntParameter *m_depthZfp;
    bool m_zfp;
    IntParameter *m_depthZfpMode;
    RhrServer::ZfpMode m_zfpMode;
+   IntParameter *m_depthCompressMode;
+   message::CompressionMode m_depthCompress;
 
    IntVectorParameter *m_sendTileSizeParam;
    IntParamVector m_sendTileSize;

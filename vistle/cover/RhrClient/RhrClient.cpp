@@ -63,10 +63,6 @@
 
 //#define CONNDEBUG
 
-#ifdef HAVE_SNAPPY
-#include <snappy.h>
-#endif
-
 #ifdef HAVE_ZFP
 #include <zfp.h>
 #endif
@@ -494,8 +490,8 @@ class RemoteConnection {
             return true;
         }
 
-        auto t = std::make_shared<tileMsg>(tile);
-        m_receivedTiles.push_back(TileMessage(t, payload));
+        auto m = std::make_shared<RemoteRenderMessage>(msg);
+        m_receivedTiles.push_back(TileMessage(m, payload));
 
 #if 0
         std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
@@ -713,7 +709,7 @@ bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote, bool
 //! Task structure for submitting to Intel Threading Building Blocks work //queue
 struct DecodeTask: public tbb::task {
 
-   DecodeTask(tbb::concurrent_queue<std::shared_ptr<tileMsg> > &resultQueue, std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload)
+   DecodeTask(tbb::concurrent_queue<std::shared_ptr<const RemoteRenderMessage> > &resultQueue, std::shared_ptr<const RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload)
    : resultQueue(resultQueue)
    , msg(msg)
    , payload(payload)
@@ -721,8 +717,8 @@ struct DecodeTask: public tbb::task {
    , depth(NULL)
    {}
 
-   tbb::concurrent_queue<std::shared_ptr<tileMsg> > &resultQueue;
-   std::shared_ptr<tileMsg> msg;
+   tbb::concurrent_queue<std::shared_ptr<const RemoteRenderMessage> > &resultQueue;
+   std::shared_ptr<const RemoteRenderMessage> msg;
    std::shared_ptr<std::vector<char>> payload;
    char *rgba, *depth;
 
@@ -734,14 +730,16 @@ struct DecodeTask: public tbb::task {
          return NULL;
       }
 
-      size_t sz = msg->unzippedsize;
+      const auto &tile = static_cast<const tileMsg &>(msg->rhr());
+
+      size_t sz = tile.unzippedsize;
       int bpp = 0;
-      if (msg->format == rfbColorRGBA) {
+      if (tile.format == rfbColorRGBA) {
          assert(rgba);
          bpp = 4;
       } else {
          assert(depth);
-         switch (msg->format) {
+         switch (tile.format) {
          case rfbDepthFloat: bpp=4; break;
          case rfbDepth8Bit: bpp=1; break;
          case rfbDepth16Bit: bpp=2; break;
@@ -755,39 +753,32 @@ struct DecodeTask: public tbb::task {
          return NULL;
       }
 
-      std::shared_ptr<std::vector<char>> decompbuf = payload;
-      if (msg->compression & rfbTileSnappy) {
-#ifdef HAVE_SNAPPY
-         decompbuf.reset(new std::vector<char>(sz));
-         snappy::RawUncompress(payload->data(), msg->size, decompbuf->data());
-#else
-         resultQueue.push(msg);
-         return NULL;
-#endif
-      }
+      *payload = message::decompressPayload(*msg, *payload);
 
-      if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthZfp)) {
+      std::shared_ptr<std::vector<char>> decompbuf = payload;
+
+      if (tile.format!=rfbColorRGBA && (tile.compression & rfbTileDepthZfp)) {
 
 #ifndef HAVE_ZFP
           std::cerr << "RhrClient: not compiled with zfp support, cannot decompress" << std::endl;
 #else
-          if (msg->format==rfbDepthFloat) {
+          if (tile.format==rfbDepthFloat) {
               zfp_type type = zfp_type_float;
               bitstream *stream = stream_open(decompbuf->data(), decompbuf->size());
               zfp_stream *zfp = zfp_stream_open(stream);
               zfp_stream_rewind(zfp);
-              zfp_field *field = zfp_field_2d(depth, type, msg->width, msg->height);
+              zfp_field *field = zfp_field_2d(depth, type, tile.width, tile.height);
               if (!zfp_read_header(zfp, field, ZFP_HEADER_FULL)) {
                   std::cerr << "RhrClient: reading zfp compression parameters failed" << std::endl;
               }
               if (field->type != type) {
                   std::cerr << "RhrClient: zfp type not float" << std::endl;
               }
-              if (field->nx != msg->width || field->ny != msg->height) {
-                  std::cerr << "RhrClient: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << msg->width << "x" << msg->height << std::endl;
+              if (field->nx != tile.width || field->ny != tile.height) {
+                  std::cerr << "RhrClient: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << tile.width << "x" << tile.height << std::endl;
               }
-              zfp_field_set_pointer(field, depth+(msg->y*msg->totalwidth+msg->x)*bpp);
-              zfp_field_set_stride_2d(field, 1, msg->totalwidth);
+              zfp_field_set_pointer(field, depth+(tile.y*tile.totalwidth+tile.x)*bpp);
+              zfp_field_set_stride_2d(field, 1, tile.totalwidth);
               if (!zfp_decompress(zfp, field)) {
                   std::cerr << "RhrClient: zfp decompression failed" << std::endl;
               }
@@ -798,18 +789,18 @@ struct DecodeTask: public tbb::task {
               std::cerr << "RhrClient: zfp not in float format, cannot decompress" << std::endl;
           }
 #endif
-      } else  if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthQuantize)) {
+      } else  if (tile.format!=rfbColorRGBA && (tile.compression & rfbTileDepthQuantize)) {
 
-         depthdequant(depth, decompbuf->data(), bpp==4 ? DepthFloat : DepthInteger, bpp, msg->x, msg->y, msg->width, msg->height, msg->totalwidth);
-      } else if (msg->compression == rfbTileJpeg) {
+         depthdequant(depth, decompbuf->data(), bpp==4 ? DepthFloat : DepthInteger, bpp, tile.x, tile.y, tile.width, tile.height, tile.totalwidth);
+      } else if (tile.compression == rfbTileJpeg) {
 
 #ifdef HAVE_TURBOJPEG
          TjContext::reference tj = tjContexts.local();
-         char *dest = msg->format==rfbColorRGBA ? rgba : depth;
+         char *dest = tile.format==rfbColorRGBA ? rgba : depth;
          int w=-1, h=-1;
-         tjDecompressHeader(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), msg->size, &w, &h);
-         dest += (msg->y*msg->totalwidth+msg->x)*bpp;
-         int ret = tjDecompress(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), msg->size, reinterpret_cast<unsigned char *>(dest), msg->width, msg->totalwidth*bpp, msg->height, bpp, TJPF_BGR);
+         tjDecompressHeader(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), tile.size, &w, &h);
+         dest += (tile.y*tile.totalwidth+tile.x)*bpp;
+         int ret = tjDecompress(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), tile.size, reinterpret_cast<unsigned char *>(dest), tile.width, tile.totalwidth*bpp, tile.height, bpp, TJPF_BGR);
          if (ret == -1)
             std::cerr << "RhrClient: JPEG error: " << tjGetErrorStr() << std::endl;
 #else
@@ -817,9 +808,9 @@ struct DecodeTask: public tbb::task {
 #endif
       } else {
 
-         char *dest = msg->format==rfbColorRGBA ? rgba : depth;
-         for (int yy=0; yy<msg->height; ++yy) {
-            memcpy(dest+((msg->y+yy)*msg->totalwidth+msg->x)*bpp, decompbuf->data()+msg->width*yy*bpp, msg->width*bpp);
+         char *dest = tile.format==rfbColorRGBA ? rgba : depth;
+         for (int yy=0; yy<tile.height; ++yy) {
+            memcpy(dest+((tile.y+yy)*tile.totalwidth+tile.x)*bpp, decompbuf->data()+tile.width*yy*bpp, tile.width*bpp);
          }
       }
 
@@ -832,7 +823,7 @@ struct DecodeTask: public tbb::task {
 bool RhrClient::updateTileQueue() {
 
    //std::cerr << "tiles: " << m_queued << " queued, " << m_deferred.size() << " deferred" << std::endl;
-   std::shared_ptr<tileMsg> msg;
+   std::shared_ptr<const RemoteRenderMessage> msg;
    while (m_resultQueue.try_pop(msg)) {
 
       --m_queued;
@@ -852,9 +843,11 @@ bool RhrClient::updateTileQueue() {
 
    assert(m_waitForDecode == false);
 
+#if 0
    if (!m_deferred.empty() && !(m_deferred.front()->msg->flags&rfbTileFirst)) {
       std::cerr << "first deferred tile should have rfbTileFirst set" << std::endl;
    }
+#endif
 
    assert(m_deferredFrames == 0 || !m_deferred.empty());
    assert(m_deferred.empty() || m_deferredFrames>0);
@@ -864,11 +857,13 @@ bool RhrClient::updateTileQueue() {
       DecodeTask *dt = m_deferred.front();
       m_deferred.pop_front();
 
-      handleTileMeta(*dt->msg);
-      if (dt->msg->flags & rfbTileFirst) {
+      const auto &tile = static_cast<const tileMsg &>(dt->msg->rhr());
+
+      handleTileMeta(tile);
+      if (tile.flags & rfbTileFirst) {
          --m_deferredFrames;
       }
-      bool last = dt->msg->flags & rfbTileLast;
+      bool last = tile.flags & rfbTileLast;
       if (m_deferredFrames > 0) {
          //if (dt->msg->flags & rfbTileFirst) std::cerr << "skipping remote frame" << std::endl;
          tbb::task::destroy(*dt);
@@ -890,12 +885,14 @@ bool RhrClient::updateTileQueue() {
    return false;
 }
 
-void RhrClient::finishFrame(std::shared_ptr<RemoteConnection> remote, const tileMsg &msg) {
+void RhrClient::finishFrame(std::shared_ptr<RemoteConnection> remote, const RemoteRenderMessage &msg) {
+
+   const auto &tile = static_cast<const tileMsg &>(msg.rhr());
 
    m_waitForDecode = false;
 
    ++m_remoteFrames;
-   double delay = cover->frameTime() - msg.requestTime;
+   double delay = cover->frameTime() - tile.requestTime;
    m_accumDelay += delay;
    if (m_minDelay > delay)
       m_minDelay = delay;
@@ -908,15 +905,15 @@ void RhrClient::finishFrame(std::shared_ptr<RemoteConnection> remote, const tile
    m_depthBppS = m_depthBpp;
    m_numPixelsS = m_numPixels;
 
-   //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
-   remote->m_remoteTimestep = msg.timestep;
+   //std::cerr << "finishFrame: t=" << tile.timestep << ", req=" << m_requestedTimestep << std::endl;
+   remote->m_remoteTimestep = tile.timestep;
    if (m_requestedTimestep>=0) {
-       if (msg.timestep == m_requestedTimestep) {
-           m_timestepToCommit = msg.timestep;
-       } else if (msg.timestep == m_visibleTimestep) {
-           //std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep  << " - still showing" << std::endl;
+       if (tile.timestep == m_requestedTimestep) {
+           m_timestepToCommit = tile.timestep;
+       } else if (tile.timestep == m_visibleTimestep) {
+           //std::cerr << "finishFrame: t=" << tile.timestep << ", but req=" << m_requestedTimestep  << " - still showing" << std::endl;
        } else {
-           std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep << std::endl;
+           std::cerr << "finishFrame: t=" << tile.timestep << ", but req=" << m_requestedTimestep << std::endl;
        }
    }
    m_frameReady = true;
@@ -1017,8 +1014,9 @@ void RhrClient::enqueueTask(DecodeTask *task) {
 
    assert(canEnqueue());
 
-   const int view = task->msg->viewNum - m_channelBase;
-   const bool last = task->msg->flags & rfbTileLast;
+   const auto &tile = static_cast<const tileMsg &>(task->msg->rhr());
+   const int view = tile.viewNum - m_channelBase;
+   const bool last = tile.flags & rfbTileLast;
 
    if (view < 0 || view >= m_numViews) {
       task->rgba = NULL;
@@ -1036,38 +1034,40 @@ void RhrClient::enqueueTask(DecodeTask *task) {
    tbb::task::enqueue(*task);
 }
 
-bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload) {
+bool RhrClient::handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload) {
+
+    const auto &tile = static_cast<const tileMsg &>(msg->rhr());
 
 #ifdef CONNDEBUG
-   bool first = msg->flags & rfbTileFirst;
-   bool last = msg->flags & rfbTileLast;
+   bool first = tile.flags & rfbTileFirst;
+   bool last = tile.flags & rfbTileLast;
 
 #if 0
-   std::cerr << "q=" << m_queued << ", wait=" << m_waitForDecode << ", tile: x="<<msg->x << ", y="<<msg->y << ", w="<<msg->width<<", h="<<msg->height << ", total w=" << msg->totalwidth
-      << ", first: " << bool(msg->flags&rfbTileFirst) << ", last: " << last
+   std::cerr << "q=" << m_queued << ", wait=" << m_waitForDecode << ", tile: x="<<tile.x << ", y="<<tile.y << ", w="<<tile.width<<", h="<<tile.height << ", total w=" << tile.totalwidth
+      << ", first: " << bool(tile.flags&rfbTileFirst) << ", last: " << last
       << std::endl;
 #endif
    std::cerr << "q=" << m_queued << ", wait=" << m_waitForDecode << ", tile: first: " << first << ", last: " << last
-      << ", req: " << msg->requestNumber
+      << ", req: " << tile.requestNumber
       << std::endl;
 #endif
 
-   if (msg->flags) {
-   } else if (msg->viewNum < m_channelBase || msg->viewNum >= m_channelBase+m_numViews) {
+   if (tile.flags) {
+   } else if (tile.viewNum < m_channelBase || tile.viewNum >= m_channelBase+m_numViews) {
        return true;
    }
 
    DecodeTask *dt = new(tbb::task::allocate_root()) DecodeTask(m_resultQueue, msg, payload);
    if (canEnqueue()) {
-      handleTileMeta(*msg);
+      handleTileMeta(tile);
       enqueueTask(dt);
    } else {
       if (m_deferredFrames == 0) {
 
          assert(m_deferred.empty());
-         assert(msg->flags & rfbTileFirst);
+         assert(tile.flags & rfbTileFirst);
       }
-      if (msg->flags & rfbTileFirst)
+      if (tile.flags & rfbTileFirst)
          ++m_deferredFrames;
       m_deferred.push_back(dt);
    }
@@ -1393,7 +1393,7 @@ RhrClient::update()
            std::lock_guard<RemoteConnection> remote_locker(*m_remote);
            std::lock_guard<std::mutex> locker(m_pluginMutex);
            for (auto tile: m_remote->m_receivedTiles) {
-               if (tile.msg->flags & rfbTileLast)
+               if (tile.tile.flags & rfbTileLast)
                    m_lastTileAt = m_receivedTiles.size();
                m_receivedTiles.push_back(tile);
            }
@@ -1431,7 +1431,7 @@ RhrClient::update()
                handleTileMessage(tile.msg, tile.payload);
                md[i] = tile.msg.get();
                ms[i] = sizeof(*tile.msg);
-               ps[i] = tile.msg->size;
+               ps[i] = tile.msg->payloadSize();
                if (ps[i] > 0)
                    pd[i] = tile.payload->data();
            }
@@ -1446,8 +1446,8 @@ RhrClient::update()
                        TileMessage &tile = m_receivedTiles[i];
                        forSlave[s][i] = false;
                        //std::cerr << "ntiles=" << ntiles << ", have=" << m_receivedTiles.size() << ", i=" << i << std::endl;
-                       if (tile.msg->flags & rfbTileFirst || tile.msg->flags & rfbTileLast) {
-                       } else if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
+                       if (tile.tile.flags & rfbTileFirst || tile.tile.flags & rfbTileLast) {
+                       } else if (tile.tile.viewNum < channelBase || tile.tile.viewNum >= channelBase+numChannels) {
                            continue;
                        }
                        forSlave[s][i] = true;
@@ -1461,7 +1461,7 @@ RhrClient::update()
            //std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
            coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
            for (int i=0; i<ntiles; ++i) {
-               assert(ms[i] == sizeof(tileMsg));
+               assert(ms[i] == sizeof(RemoteRenderMessage));
                coVRMSController::instance()->syncData(md[i], ms[i]);
                if (ps[i] > 0) {
                    coVRMSController::instance()->syncData(pd[i], ps[i]);
@@ -1493,12 +1493,12 @@ RhrClient::update()
        if (broadcastTiles) {
           coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
           for (int i=0; i<ntiles; ++i) {
-             std::shared_ptr<tileMsg> msg(new tileMsg);
+             auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
              coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
              std::shared_ptr<std::vector<char>> payload;
-             if (msg->size > 0) {
-                payload.reset(new std::vector<char>(msg->size));
-                coVRMSController::instance()->syncData(payload->data(), msg->size);
+             if (msg->payloadSize() > 0) {
+                payload.reset(new std::vector<char>(msg->payloadSize()));
+                coVRMSController::instance()->syncData(payload->data(), msg->payloadSize());
              }
              handleTileMessage(msg, payload);
           }
@@ -1506,12 +1506,12 @@ RhrClient::update()
           coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
           //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
           for (int i=0; i<ntiles; ++i) {
-             std::shared_ptr<tileMsg> msg(new tileMsg);
+             auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
              coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
              std::shared_ptr<std::vector<char>> payload;
-             if (msg->size > 0) {
-                payload.reset(new std::vector<char>(msg->size));
-                coVRMSController::instance()->readMaster(payload->data(), msg->size);
+             if (msg->payloadSize() > 0) {
+                payload.reset(new std::vector<char>(msg->payloadSize()));
+                coVRMSController::instance()->readMaster(payload->data(), msg->payloadSize());
              }
              handleTileMessage(msg, payload);
           }

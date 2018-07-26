@@ -32,3 +32,8 @@ const vistle::RhrSubMessage &vistle::message::RemoteRenderMessage::rhr() const {
 
     return *reinterpret_cast<const rfbMsg *>(m_rhr.data());
 }
+
+vistle::RhrSubMessage &vistle::message::RemoteRenderMessage::rhr() {
+
+    return *reinterpret_cast<rfbMsg *>(m_rhr.data());
+}

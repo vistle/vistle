@@ -3,7 +3,6 @@ vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
-vistle_find_package(SNAPPY)
 #vistle_find_package(ZFP)
 
 
@@ -16,11 +15,6 @@ if(JPEGTURBO_FOUND)
       add_definitions(-DHAVE_TURBOJPEG)
       include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
    endif()
-endif()
-
-if(SNAPPY_FOUND)
-   add_definitions(-DHAVE_SNAPPY)
-   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIR})
 endif()
 
 if(ZFP_FOUND)
@@ -102,10 +96,6 @@ if(TBB_FOUND)
    target_link_libraries(vistle_rhr ${TBB_LIBRARIES})
 endif()
 
-
-if(SNAPPY_FOUND)
-   target_link_libraries(vistle_rhr ${SNAPPY_LIBRARIES})
-endif()
 
 if (ZFP_FOUND)
    target_link_libraries(vistle_rhr ${ZFP_LIBRARIES})
