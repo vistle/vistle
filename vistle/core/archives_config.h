@@ -27,7 +27,7 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode,
                                     (Uncompressed)
                                     (ZfpFixedRate)
                                     (ZfpAccuracy)
@@ -155,7 +155,7 @@ struct ArchiveStreamType<yas_oarchive> {
 
 #ifdef HAVE_ZFP
 struct ZfpParameters {
-    CompressionMode mode = Uncompressed;
+    FieldCompressionMode mode = Uncompressed;
     double rate = 8.;
     int precision = 20;
     double accuracy = 1e-20;

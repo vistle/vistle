@@ -212,7 +212,7 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    return true;
 }
 
-bool DataManager::handle(const message::Message &msg, const std::vector<char> *payload)
+bool DataManager::handle(const message::Message &msg, std::vector<char> *payload)
 {
     CERR << "handle: " << msg << std::endl;
     using namespace message;
@@ -283,9 +283,9 @@ public:
 bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
    vecostreambuf<char> buf;
-   const std::vector<char> &mem = buf.get_vector();
+   std::vector<char> &mem = buf.get_vector();
    vistle::oarchive memar(buf);
-   memar.setCompressionMode(Communicator::the().clusterManager().compressionMode());
+   memar.setCompressionMode(Communicator::the().clusterManager().fieldCompressionMode());
    memar.setZfpRate(Communicator::the().clusterManager().zfpRate());
    memar.setZfpPrecision(Communicator::the().clusterManager().zfpPrecision());
    memar.setZfpAccuracy(Communicator::the().clusterManager().zfpAccuracy());
@@ -305,17 +305,22 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
       obj->saveObject(memar);
       snd.reset(new message::SendObject(req, obj, mem.size()));
    }
+
+   std::vector<char> compressed = message::compressPayload(Communicator::the().clusterManager().archiveCompressionMode(), *snd, mem, Communicator::the().clusterManager().archiveCompressionSpeed());
+
    snd->setDestId(req.senderId());
    snd->setDestRank(req.rank());
-   send(*snd, &mem);
-   CERR << "sent " << mem.size() << " bytes for " << req << " with " << *snd << std::endl;
+   send(*snd, &compressed);
+   CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
 
    return true;
 }
 
-bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<char> *payload) {
+bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *payload) {
 
-   vecistreambuf<char> membuf(*payload);
+   std::vector<char> uncompressed = decompressPayload(snd, *payload);
+
+   vecistreambuf<char> membuf(uncompressed);
    if (snd.isArray()) {
        vistle::iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);

@@ -38,6 +38,10 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
       return m_vector;
    }
 
+   std::vector<CharT> &get_vector() {
+      return m_vector;
+   }
+
  private:
    std::vector<CharT> m_vector;
 };

@@ -1,8 +1,26 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system date_time)
+vistle_find_package(Zstd)
+vistle_find_package(LZ4)
+vistle_find_package(SNAPPY)
 
 if(ZFP_FOUND)
    add_definitions(-DHAVE_ZFP)
    include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
+endif()
+
+if (ZSTD_FOUND)
+   add_definitions(-DHAVE_ZSTD)
+   include_directories(SYSTEM ${ZSTD_INCLUDE_DIRS})
+endif()
+
+if (LZ4_FOUND)
+   add_definitions(-DHAVE_LZ4)
+   include_directories(SYSTEM ${LZ4_INCLUDE_DIRS})
+endif()
+
+if (SNAPPY_FOUND)
+   add_definitions(-DHAVE_SNAPPY)
+   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIRS})
 endif()
 
 set(core_SOURCES
@@ -182,4 +200,16 @@ include_directories(
 
 if (ZFP_FOUND)
     target_link_libraries(vistle_core ${ZFP_LIBRARIES})
+endif()
+
+if (ZSTD_FOUND)
+    target_link_libraries(vistle_core ${ZSTD_LIBRARIES})
+endif()
+
+if (LZ4_FOUND)
+    target_link_libraries(vistle_core ${LZ4_LIBRARIES})
+endif()
+
+if (SNAPPY_FOUND)
+    target_link_libraries(vistle_core ${SNAPPY_LIBRARIES})
 endif()

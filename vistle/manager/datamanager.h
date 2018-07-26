@@ -24,7 +24,7 @@ class DataManager {
 public:
     DataManager(boost::mpi::communicator &comm);
     ~DataManager();
-    bool handle(const message::Message &msg, const std::vector<char> *payload);
+    bool handle(const message::Message &msg, std::vector<char> *payload);
     bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
     bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
     bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
@@ -37,7 +37,7 @@ public:
 
 private:
     bool handlePriv(const message::RequestObject &req);
-    bool handlePriv(const message::SendObject &snd, const std::vector<char> *payload);
+    bool handlePriv(const message::SendObject &snd, std::vector<char> *payload);
 
     struct Msg {
        Msg(message::Buffer &buf, std::vector<char> &payload);

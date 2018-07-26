@@ -16,6 +16,12 @@ namespace vistle {
 
 namespace message {
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(CompressionMode,
+                                    (CompressionNone)
+                                    (CompressionLz4)
+                                    (CompressionZstd)
+                                    (CompressionSnappy))
+
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (INVALID) // keep 1st
       (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
@@ -110,7 +116,7 @@ typedef std::array<char, 512> param_desc_t;
 typedef std::array<char, 50> param_choice_t;
 const int param_num_choices = 18;
 typedef std::array<char, 300> shmsegname_t;
-typedef std::array<char, 896> text_t;
+typedef std::array<char, 800> text_t;
 typedef std::array<char, 300> address_t;
 
 typedef boost::uuids::uuid uuid_t;
@@ -174,6 +180,16 @@ class V_COREEXPORT Message {
    void setDestUiId(int id);
    //! number of additional data bytes following message
    size_t payloadSize() const;
+   //! set payload size
+   void setPayloadSize(size_t size);
+   //! compression method for payload
+   CompressionMode payloadCompression() const;
+   //! set compression method for payload
+   void setPayloadCompression(CompressionMode mode);
+   //! number of uncompressed payload bytes
+   size_t payloadRawSize() const;
+   //! set number of uncompressed payload bytes
+   void setPayloadRawSize(size_t size);
 
    template<class SomeMessage>
    SomeMessage &as() { SomeMessage *m = static_cast<SomeMessage *>(this); assert(m->type()==SomeMessage::s_type); return *m; }
@@ -200,12 +216,16 @@ class V_COREEXPORT Message {
   protected:
    //! payload size
    uint64_t m_payloadSize;
+   //! raw (uncompressed) payload size
+   uint64_t m_payloadRawSize;
+   //! payload compression method
+   int m_payloadCompression;
    //! broadcast to all ranks?
    bool m_broadcast;
    //! message is not a request for action
    bool m_notification;
    //! pad message to multiple of 8 bytes
-   char m_pad[6];
+   char m_pad[2];
 };
 // ensure alignment
 static_assert(sizeof(Message) % sizeof(double)==0, "not padded to ensure double alignment");
@@ -250,6 +270,9 @@ protected:
     MessageBase(): Message(MessageType, sizeof(MessageClass)) {
     }
 };
+
+V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode mode, Message &msg, std::vector<char> &raw, int speed=-1 /* algorithm default */);
+V_COREEXPORT std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

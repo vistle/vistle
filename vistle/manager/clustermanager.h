@@ -73,10 +73,13 @@ class ClusterManager: public ParameterManager
    bool handle(const message::Buffer &msg);
    //bool handleData(const message::Message &msg);
 
-   CompressionMode compressionMode() const;
+   FieldCompressionMode fieldCompressionMode() const;
    double zfpRate() const;
    int zfpPrecision() const;
    double zfpAccuracy() const;
+
+   message::CompressionMode archiveCompressionMode() const;
+   int archiveCompressionSpeed() const;
 
  private:
    void queueMessage(const message::Message &msg);
@@ -175,6 +178,9 @@ class ClusterManager: public ParameterManager
    FloatParameter *m_zfpRate = nullptr;
    IntParameter *m_zfpPrecision = nullptr;
    FloatParameter *m_zfpAccuracy = nullptr;
+
+   IntParameter *m_archiveCompression = nullptr;
+   IntParameter *m_archiveCompressionSpeed = nullptr;
 };
 
 } // namespace vistle

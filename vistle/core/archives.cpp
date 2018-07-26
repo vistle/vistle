@@ -99,11 +99,11 @@ Fetcher::~Fetcher() {
 }
 
 #ifdef USE_YAS
-void yas_oarchive::setCompressionMode(CompressionMode mode) {
+void yas_oarchive::setCompressionMode(FieldCompressionMode mode) {
     m_compress = mode;
 }
 
-CompressionMode yas_oarchive::compressionMode() const {
+FieldCompressionMode yas_oarchive::compressionMode() const {
     return m_compress;
 }
 
