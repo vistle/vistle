@@ -125,7 +125,7 @@ private:
    typedef tbb::concurrent_queue<std::shared_ptr<const message::RemoteRenderMessage>> ResultQueue;
    ResultQueue m_resultQueue;
    bool updateTileQueue();
-   void handleTileMeta(const tileMsg &msg);
+   void handleTileMeta(const message::RemoteRenderMessage &remote, const tileMsg &msg);
    void finishFrame(std::shared_ptr<RemoteConnection> remote, const message::RemoteRenderMessage &msg);
    void swapFrame();
    bool checkSwapFrame();

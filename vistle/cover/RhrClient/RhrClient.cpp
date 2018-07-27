@@ -859,7 +859,7 @@ bool RhrClient::updateTileQueue() {
 
       const auto &tile = static_cast<const tileMsg &>(dt->msg->rhr());
 
-      handleTileMeta(tile);
+      handleTileMeta(*dt->msg, tile);
       if (tile.flags & rfbTileFirst) {
          --m_deferredFrames;
       }
@@ -957,7 +957,7 @@ void RhrClient::swapFrame() {
    m_drawer->swapFrame();
 }
 
-void RhrClient::handleTileMeta(const tileMsg &msg) {
+void RhrClient::handleTileMeta(const RemoteRenderMessage &remote, const tileMsg &msg) {
 
 #ifdef CONNDEBUG
    bool first = msg.flags&rfbTileFirst;
@@ -972,9 +972,11 @@ void RhrClient::handleTileMeta(const tileMsg &msg) {
       m_rgbBytes = 0;
    }
    if (msg.format != rfbColorRGBA) {
-      m_depthBytes += msg.size;
+      //m_depthBytes += msg.size;
+      m_depthBytes += remote.payloadSize();
    } else {
-      m_rgbBytes += msg.size;
+      //m_rgbBytes += msg.size;
+      m_rgbBytes += remote.payloadSize();
       m_numPixels += msg.width*msg.height;
    }
 
@@ -1059,7 +1061,7 @@ bool RhrClient::handleTileMessage(std::shared_ptr<const message::RemoteRenderMes
 
    DecodeTask *dt = new(tbb::task::allocate_root()) DecodeTask(m_resultQueue, msg, payload);
    if (canEnqueue()) {
-      handleTileMeta(tile);
+      handleTileMeta(*msg, tile);
       enqueueTask(dt);
    } else {
       if (m_deferredFrames == 0) {
