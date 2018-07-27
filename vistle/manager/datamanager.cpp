@@ -207,14 +207,14 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
       return true;
    }
    it->takeObject();
-   CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
+   //CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
    m_inTransitObjects.erase(it);
    return true;
 }
 
 bool DataManager::handle(const message::Message &msg, std::vector<char> *payload)
 {
-    CERR << "handle: " << msg << std::endl;
+    //CERR << "handle: " << msg << std::endl;
     using namespace message;
 
     switch (msg.type()) {
@@ -311,7 +311,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    snd->setDestId(req.senderId());
    snd->setDestRank(req.rank());
    send(*snd, &compressed);
-   CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
+   //CERR << "sent " << snd->payloadSize() << "(" << snd->payloadRawSize() << ") bytes for " << req << " with " << *snd << std::endl;
 
    return true;
 }
@@ -359,7 +359,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
                return;
            }
            vassert(obj);
-           CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
+           //CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
            vassert(obj->check());
 
            auto reqIt = outstandingRequests.find(objName);
@@ -378,7 +378,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
                }
 
                if (ids.empty()) {
-                   CERR << "sending completion notification for " << objName << std::endl;
+                   //CERR << "sending completion notification for " << objName << std::endl;
                    message::AddObjectCompleted complete(add);
                    Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
                    //message::AddObject nadd(add.getSenderPort(), obj);
