@@ -178,9 +178,9 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
       return true;
    } else if (p == m_rgbaCompressMode) {
 
-       m_rgbaCompress = (message::CompressionMode)m_depthCompressMode->getValue();
+       m_rgbaCompress = (message::CompressionMode)m_rgbaCompressMode->getValue();
        if (m_rhr)
-           m_rhr->setColorCompression(m_depthCompress);
+           m_rhr->setColorCompression(m_rgbaCompress);
    } else if (p == m_sendTileSizeParam) {
 
       m_sendTileSize = m_sendTileSizeParam->getValue();
