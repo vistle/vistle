@@ -194,6 +194,8 @@ obj_const_ptr boost_iarchive::getObject(const std::string &name, const std::func
         assert(m_fetcher);
         m_fetcher->requestObject(name, completeCallback);
         obj = Shm::the().getObjectFromName(name);
+        if (obj)
+            completeCallback();
     }
     return obj;
 }

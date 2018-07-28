@@ -172,7 +172,17 @@ void shm_obj_ref<T>::load(Archive &ar) {
 
     auto obj = ar.currentObject();
     auto handler = ar.objectCompletionHandler();
-    auto ref0 = ar.getObject(name, [this, name, obj, handler]() -> void {
+    auto ref0 = Shm::the().getObjectFromName(name);
+    auto ref1 = T::as(ref0);
+    assert(ref0 || !ref1);
+    if (ref1) {
+        *this = ref1;
+    } else {
+        if (obj) {
+            obj->unresolvedReference();
+        }
+    }
+    ref0 = ar.getObject(name, [this, name, obj, handler]() -> void {
         //std::cerr << "object completion handler: " << name << std::endl;
         auto ref2 = T::as(Shm::the().getObjectFromName(name));
         assert(ref2);
@@ -181,16 +191,11 @@ void shm_obj_ref<T>::load(Archive &ar) {
             obj->referenceResolved(handler);
         }
     });
-    auto ref1 = T::as(ref0);
+    ref1 = T::as(ref0);
+    assert(ref0 || !ref1);
     if (ref1) {
         // object already present: don't mess with count of outstanding references
         *this = ref1;
-    } else {
-        assert(!ref0);
-        //std::cerr << "waiting for completion of object " << name << std::endl;
-        if (obj) {
-            obj->unresolvedReference();
-        }
     }
 }
 
