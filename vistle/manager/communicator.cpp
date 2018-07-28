@@ -92,6 +92,15 @@ bool Communicator::isMaster() const {
    return m_hubId == Id::MasterHub;
 }
 
+void Communicator::setStatus(const std::string &text, int prio) {
+    message::UpdateStatus t(text, (message::UpdateStatus::Importance)prio);
+    sendMessage(message::Id::ForBroadcast, t);
+}
+
+void Communicator::clearStatus() {
+    setStatus(std::string(), message::UpdateStatus::Bulk);
+}
+
 int Communicator::getRank() const {
 
    return m_rank;

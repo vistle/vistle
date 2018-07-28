@@ -636,6 +636,30 @@ private:
 static_assert(sizeof(SendText) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(TextType, SendText)
 
+//! update status of a module (or other entity)
+class V_COREEXPORT UpdateStatus: public MessageBase<UpdateStatus, UPDATESTATUS> {
+
+public:
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Importance,
+                                       (Bulk)
+                                       (Low)
+                                       (Medium)
+                                       (High)
+   )
+
+   UpdateStatus(const std::string &text, Importance prio=Low);
+   const char *text() const;
+   Importance importance() const;
+
+private:
+   //! message text
+   text_t m_text;
+   // message importance
+   Importance m_importance;
+};
+static_assert(sizeof(UpdateStatus) <= Message::MESSAGE_SIZE, "message too large");
+V_ENUM_OUTPUT_OP(Importance, UpdateStatus)
+
 class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, OBJECTRECEIVEPOLICY> {
 
 public:

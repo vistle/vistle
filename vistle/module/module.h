@@ -224,6 +224,9 @@ protected:
    virtual bool cancelExecute(); //< if execution has been canceled early before all objects have been processed
    int numTimesteps() const;
 
+   void setStatus(const std::string &text, message::UpdateStatus::Importance prio=message::UpdateStatus::Low);
+   void clearStatus();
+
  private:
    bool reduceWrapper(const message::Execute *exec);
    bool prepareWrapper(const message::Execute *exec);

@@ -47,6 +47,8 @@ private slots:
     void newParameter(int moduleId, QString parameterName);
     void parameterValueChanged(int moduleId, QString parameterName);
 
+    void statusUpdated(int id, QString text, int prio);
+
 private:
     vistle::VistleConnection *m_vistleConnection;
     vistle::UserInterface *m_ui;

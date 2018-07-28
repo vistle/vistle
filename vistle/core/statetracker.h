@@ -56,6 +56,10 @@ class V_COREEXPORT StateObserver {
          int toId, const std::string &toName) = 0;
 
    virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) = 0;
+   //! a module sends at status update
+   virtual void status(int id, const std::string &text, message::UpdateStatus::Importance importance) = 0;
+   //! the overall status has changed
+   virtual void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance importance) = 0;
 
    virtual void quitRequested();
 
@@ -151,6 +155,9 @@ class V_COREEXPORT StateTracker {
       ParameterMap parameters;
       ParameterOrder paramOrder;
       int height; //< length of shortest path to a sink
+      std::string statusText;
+      message::UpdateStatus::Importance statusImportance = message::UpdateStatus::Bulk;
+      unsigned long statusTime = 0;
 
       message::ObjectReceivePolicy::Policy objectPolicy;
       message::SchedulingPolicy::Schedule schedulingPolicy;
@@ -179,7 +186,11 @@ class V_COREEXPORT StateTracker {
    void processQueue();
    void cleanQueue(int moduleId);
 
+   std::string statusText() const;
+
  private:
+   void updateStatus();
+
    bool handlePriv(const message::AddHub &slave);
    bool handlePriv(const message::Ping &ping);
    bool handlePriv(const message::Pong &pong);
@@ -205,6 +216,7 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
    bool handlePriv(const message::SendText &info);
+   bool handlePriv(const message::UpdateStatus &status);
    bool handlePriv(const message::ReplayFinished &reset);
    bool handlePriv(const message::Quit &quit);
    bool handlePriv(const message::ModuleAvailable &mod);
@@ -228,6 +240,11 @@ class V_COREEXPORT StateTracker {
    int m_traceId;
    std::string m_name;
    std::vector<HubData> m_hubs;
+
+   unsigned long m_statusTime = 1;
+   int m_currentStatusId = message::Id::Invalid;
+   std::string m_currentStatus;
+   message::UpdateStatus::Importance m_currentStatusImportance = message::UpdateStatus::Bulk;
 };
 
 } // namespace vistle

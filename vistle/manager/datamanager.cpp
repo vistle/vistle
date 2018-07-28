@@ -209,6 +209,15 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    it->takeObject();
    //CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
    m_inTransitObjects.erase(it);
+
+   std::stringstream str;
+   if (m_inTransitObjects.empty()) {
+       Communicator::the().clearStatus();
+   } else {
+       str << "waiting for " << m_inTransitObjects.size() << " objects" << std::endl;
+       Communicator::the().setStatus(str.str(), message::UpdateStatus::Low);
+   }
+
    return true;
 }
 

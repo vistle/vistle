@@ -127,6 +127,8 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
    opencover::coVRPlugin *m_plugin = nullptr;
    static OsgRenderer *s_instance;
 
+   void updateStatus();
+
    std::string setupEnvAndGetLibDir(const std::string &bindir);
    int runMain(int argc, char *argv[]);
    bool m_requireUpdate = true;

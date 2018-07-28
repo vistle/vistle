@@ -489,7 +489,20 @@ void Module::setStatus(Module::Status status)
 
    m_cancelExecAct->setEnabled(status == BUSY);
 
+   if (m_statusText.isEmpty()) {
+       setToolTip(toolTip);
+   }
+
    update();
+}
+
+void Module::setStatusText(QString text, int prio)
+{
+    m_statusText = text;
+    setToolTip(text);
+    if (text.isEmpty()) {
+        setStatus(m_Status);
+    }
 }
 
 } //namespace gui

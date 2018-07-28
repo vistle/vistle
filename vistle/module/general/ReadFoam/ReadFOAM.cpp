@@ -172,8 +172,7 @@ bool ReadFOAM::examine(const Parameter *)
                 sendInfo("%s", info.str().c_str());
             }
         } else {
-            sendInfo("No global boundary file was found at:");
-            sendInfo(meshdir.str());
+            sendInfo("No global boundary file was found at %s", meshdir.str().c_str());
         }
     }
 

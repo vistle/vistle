@@ -181,6 +181,13 @@ void DataFlowNetwork::deleteConnection(int fromId, QString fromName,
    }
 }
 
+void DataFlowNetwork::moduleStatus(int id, QString status, int prio) {
+
+   if (Module *m = findModule(id)) {
+       m->setStatusText(status, prio);
+   }
+}
+
 
 
 void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController) {

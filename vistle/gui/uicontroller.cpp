@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QDockWidget>
 #include <QGuiApplication>
+#include <QStatusBar>
 
 namespace dir = vistle::directory;
 
@@ -108,6 +109,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 
    connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)),
            m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString)));
+
+   connect(&m_observer, SIGNAL(status_s(int, QString, int)),
+           SLOT(statusUpdated(int, QString, int)));
+   connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)),
+           m_scene, SLOT(moduleStatus(int, QString, int)));
 
    m_mainWindow->show();
 }
@@ -312,6 +318,16 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
          }
       }
    }
+}
+
+void UiController::statusUpdated(int id, QString text, int prio) {
+
+    if (m_mainWindow) {
+        if (text.isEmpty())
+            m_mainWindow->statusBar()->clearMessage();
+        else
+            m_mainWindow->statusBar()->showMessage(text);
+    }
 }
 
 } // namespace gui

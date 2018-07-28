@@ -1124,6 +1124,22 @@ bool SendText::truncated() const {
    return m_truncated;
 }
 
+UpdateStatus::UpdateStatus(const std::string &text, UpdateStatus::Importance prio)
+: m_importance(prio)
+{
+   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
+}
+
+const char *UpdateStatus::text() const {
+
+   return m_text.data();
+}
+
+UpdateStatus::Importance UpdateStatus::importance() const {
+
+   return m_importance;
+}
+
 ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)
 : m_policy(pol)
 {
@@ -1591,6 +1607,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case SENDTEXT: {
          auto &mm = static_cast<const SendText &>(m);
          s << ", text: " << mm.text();
+         break;
+      }
+      case UPDATESTATUS: {
+         auto &mm = static_cast<const UpdateStatus &>(m);
+         s << ", status: " << mm.text();
          break;
       }
       case ADDOBJECT: {

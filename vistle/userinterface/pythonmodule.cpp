@@ -536,6 +536,17 @@ static void printError(const std::string &message) {
    sendMessage(m);
 }
 
+static void setStatus(const std::string &text, message::UpdateStatus::Importance prio=message::UpdateStatus::Low) {
+
+   message::UpdateStatus m(text, prio);
+   sendMessage(m);
+}
+
+static void clearStatus() {
+
+    setStatus(std::string(), message::UpdateStatus::Bulk);
+}
+
 
 #define param1(T, f) \
    m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a); \
@@ -561,9 +572,11 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     // make values of vistle::message::Type enum known to Python as Message.xxx
     py::class_<message::Message> message(m, "Message");
     vistle::message::enumForPython_Type(message, "Message");
+
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
             .value("Invalid", message::Id::Invalid)
+            .value("Vistle", message::Id::Vistle)
             .value("Broadcast", message::Id::Broadcast)
             .value("ForBroadcast", message::Id::ForBroadcast)
             .value("NextHop", message::Id::NextHop)
@@ -600,6 +613,9 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     m.def("printInfo", printInfo, "show info message to user");
     m.def("printWarning", printWarning, "show warning message to user");
     m.def("printError", printError, "show error message to user");
+    //m.def("setStatus", setStatus, "update status information", "text"_a, "importance"_a=message::UpdateStatus::Low);
+    m.def("setStatus", setStatus, "update status information");
+    m.def("clearStatus", clearStatus, "clear status information");
 
     param1(Int, setIntParam);
     param1(Float, setFloatParam);

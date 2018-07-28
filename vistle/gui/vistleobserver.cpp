@@ -137,6 +137,16 @@ void gui::VistleObserver::info(const std::string &text, vistle::message::SendTex
    emit info_s(msg, textType);
 }
 
+void VistleObserver::updateStatus(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) {
+
+    emit status_s(id, QString::fromStdString(text), priority);
+}
+
+void VistleObserver::status(int id, const std::string &text, vistle::message::UpdateStatus::Importance priority) {
+
+    emit moduleStatus_s(id, QString::fromStdString(text), priority);
+}
+
 void VistleObserver::quitRequested() {
 
    emit quit_s();

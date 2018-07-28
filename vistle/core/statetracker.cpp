@@ -472,6 +472,11 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(info);
          break;
       }
+      case UPDATESTATUS: {
+         const UpdateStatus &status = static_cast<const UpdateStatus &>(msg);
+         handled = handlePriv(status);
+         break;
+      }
       case MODULEAVAILABLE: {
          const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
          handled = handlePriv(mod);
@@ -1047,10 +1052,41 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 
 bool StateTracker::handlePriv(const message::SendText &info)
 {
-   for (StateObserver *o: m_observers) {
-      o->info(info.text(), info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
-   }
-   return true;
+    for (StateObserver *o: m_observers) {
+        o->info(info.text(), info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
+    }
+    return true;
+}
+
+bool StateTracker::handlePriv(const message::UpdateStatus &status) {
+
+    auto it = runningMap.find(status.senderId());
+    if (it == runningMap.end())
+        return false;
+
+    auto &mod = it->second;
+    mod.statusText = status.text();
+    mod.statusImportance = status.importance();
+    mod.statusTime = m_statusTime;
+    ++m_statusTime;
+
+    for (StateObserver *o: m_observers) {
+        o->status(mod.id, mod.statusText, mod.statusImportance);
+    }
+
+    if (mod.statusText.empty() || mod.statusImportance >= m_currentStatusImportance) {
+        auto oid = m_currentStatusId;
+        auto otext = m_currentStatus;
+        auto oprio = m_currentStatusImportance;
+        updateStatus();
+        if (oid != m_currentStatusId || otext != m_currentStatus || oprio != m_currentStatusImportance) {
+            for (StateObserver *o: m_observers) {
+                o->updateStatus(m_currentStatusId, m_currentStatus, m_currentStatusImportance);
+            }
+        }
+    }
+
+    return true;
 }
 
 bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
@@ -1346,22 +1382,56 @@ int StateTracker::graphChangeCount() const {
     return m_graphChangeCount;
 }
 
+std::string StateTracker::statusText() const {
+
+    return m_currentStatus;
+}
+
+void StateTracker::updateStatus() {
+
+    using namespace message;
+
+    m_currentStatusImportance = UpdateStatus::Bulk;
+    m_currentStatus.clear();
+    m_currentStatusId = Id::Invalid;
+    unsigned long time = 0;
+    bool system = false;
+
+    for (auto &p: runningMap) {
+        auto &mod = p.second;
+        if (!mod.statusText.empty()) {
+            if (mod.statusImportance > m_currentStatusImportance) {
+                m_currentStatusImportance = mod.statusImportance;
+                time = mod.statusTime;
+                m_currentStatusId = mod.id;
+                system = !Id::isModule(mod.id);
+            }
+            if (mod.statusImportance == m_currentStatusImportance) {
+                if ((mod.statusTime>=time && (!system || !Id::isModule(mod.id)))
+                        || (!system && !Id::isModule(mod.id))) {
+                    time = mod.statusTime;
+                    m_currentStatus = mod.statusText;
+                    m_currentStatusId = mod.id;
+                    system = !Id::isModule(mod.id);
+                }
+            }
+        }
+    }
+}
+
 void StateObserver::quitRequested() {
 
 }
 
-void StateObserver::incModificationCount()
-{
+void StateObserver::incModificationCount() {
    ++m_modificationCount;
 }
 
-long StateObserver::modificationCount() const
-{
+long StateObserver::modificationCount() const {
    return m_modificationCount;
 }
 
-void StateObserver::resetModificationCount()
-{
+void StateObserver::resetModificationCount() {
    m_modificationCount = 0;
 }
 

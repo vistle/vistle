@@ -2006,6 +2006,18 @@ int Module::numTimesteps() const {
     return m_numTimesteps;
 }
 
+void Module::setStatus(const std::string &text, message::UpdateStatus::Importance prio) {
+
+    message::UpdateStatus status(text, prio);
+    status.setDestId(Id::ForBroadcast);
+    sendMessage(status);
+}
+
+void Module::clearStatus() {
+
+    setStatus(std::string(), message::UpdateStatus::Bulk);
+}
+
 bool Module::cancelRequested(bool sync) {
 
     if (sync) {

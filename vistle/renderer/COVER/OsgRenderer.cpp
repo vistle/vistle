@@ -439,6 +439,7 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    auto cro = pro->coverRenderObject;
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, normals, texture)));
+   updateStatus();
    osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
 
    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
@@ -512,7 +513,25 @@ bool OsgRenderer::render() {
       m_delayedObjects.pop_front();
    }
 
+   if (numAdd > 0) {
+       updateStatus();
+   }
+
    return true;
+}
+
+void OsgRenderer::updateStatus() {
+
+    if (comm().rank() != 0)
+        return;
+
+    if (m_delayedObjects.empty()) {
+        clearStatus();
+    } else {
+        std::stringstream str;
+        str << m_delayedObjects.size() << " objects to add";
+        setStatus(str.str());
+    }
 }
 
 

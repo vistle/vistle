@@ -85,6 +85,9 @@ class Communicator {
    boost::asio::ip::tcp::resolver::iterator m_dataEndpoint;
 
    AvailableMap m_localModules;
+
+   void setStatus(const std::string &text, int prio);
+   void clearStatus();
 };
 
 } // namespace vistle

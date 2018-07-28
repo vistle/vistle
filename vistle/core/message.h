@@ -58,6 +58,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (BARRIER)
       (BARRIERREACHED)
       (SENDTEXT)
+      (UPDATESTATUS)
       (OBJECTRECEIVEPOLICY)
       (SCHEDULINGPOLICY)
       (REDUCEPOLICY)
@@ -275,6 +276,11 @@ V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode 
 V_COREEXPORT std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
+
+class V_COREEXPORT MessageSender {
+public:
+    virtual bool sendMessage(const Message &msg) const = 0;
+};
 
 } // namespace message
 } // namespace vistle

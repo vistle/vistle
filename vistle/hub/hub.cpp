@@ -1201,6 +1201,17 @@ void Hub::sendError(const std::string &s) const {
     sendUi(t);
 }
 
+void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio) {
+   CERR << "Status: " << s << std::endl;
+   message::UpdateStatus t(s, prio);
+   m_stateTracker.handle(t);
+   sendUi(t);
+}
+
+void Hub::clearStatus() {
+   m_statusText.clear();
+}
+
 bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
    vassert(!m_isMaster);

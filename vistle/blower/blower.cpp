@@ -117,6 +117,16 @@ class StatePrinter: public StateObserver {
       std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
    }
 
+   void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+
+      std::cerr << "Module status: " << id << ": " << text << std::endl;
+   }
+
+   void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+
+      std::cerr << "Overall status: " << id << ": " << text << std::endl;
+   }
+
  private:
    std::ostream &m_out;
 };

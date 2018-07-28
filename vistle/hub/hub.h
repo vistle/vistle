@@ -114,6 +114,8 @@ private:
    unsigned m_barrierReached;
    message::uuid_t m_barrierUuid;
 
+   std::string m_statusText;
+
    bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::CancelExecute &cancel);
    bool handlePriv(const message::Barrier &barrier);
@@ -126,6 +128,9 @@ private:
 
    std::vector<message::Buffer> m_queue;
    bool handleQueue();
+
+   void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
+   void clearStatus();
 };
 
 }
