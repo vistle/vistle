@@ -525,9 +525,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
-   if (m_hubId == Id::MasterHub) {
-       if (msg.destId() == Id::ForBroadcast)
+   if (msg.destId() == Id::ForBroadcast) {
+       if (m_hubId == Id::MasterHub) {
            msg.setDestId(Id::Broadcast);
+       } else {
+           return sendMaster(msg);
+       }
    }
 
    bool masterAdded = false;
