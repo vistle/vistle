@@ -86,10 +86,10 @@ bool Reader::prepare()
     int numtime = -1;
     if (inc > 0) {
         if (last >= first)
-            numtime = (last+inc-1 - first)/inc+1;
+            numtime = (last - first)/inc+1;
     } else if (inc < 0) {
         if (last <= first)
-            numtime = (last+inc+1 - first)/inc+1;
+            numtime = (last - first)/inc+1;
     }
     meta.setNumTimesteps(numtime);
 
