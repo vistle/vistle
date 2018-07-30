@@ -1578,14 +1578,12 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    vassert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
-    if (i != runningMap.end()) {
-        mod = &i->second;
-#if 0
+    if (i == runningMap.end()) {
         if (isLocal(setParam.getModule()))
             CERR << "did not find module for SetParameter: " << setParam.getModule() << std::endl;
         return true;
-#endif
     }
+    mod = &i->second;
 
    bool handled = true;
    int sender = setParam.senderId();
