@@ -408,8 +408,9 @@ bool Gendat::compute() {
         blocks[i] = m_blocks[i]->getValue();
     }
     Index steps = m_steps->getValue();
+    Index num = steps <= 0 ? 1 : steps;
 
-    for (Index t=0; t<steps; ++t) {
+    for (Index t=0; t<num; ++t) {
         int b = 0;
         for (Index bx=0; bx<blocks[0]; ++bx) {
             for (Index by=0; by<blocks[1]; ++by) {
