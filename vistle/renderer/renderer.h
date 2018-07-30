@@ -38,6 +38,8 @@ class V_RENDEREREXPORT Renderer: public Module {
    virtual void removeObject(std::shared_ptr<RenderObject> ro);
 
    bool changeParameter(const Parameter *p) override;
+   bool compute() override; // provide dummy implementation of Module::compute
+   void connectionRemoved(const Port *from, const Port *to) override;
 
    int m_fastestObjectReceivePolicy;
    void removeAllObjects();
@@ -45,7 +47,6 @@ class V_RENDEREREXPORT Renderer: public Module {
    bool m_maySleep = true;
 
  private:
-   bool compute() override; // provide dummy implementation of Module::compute
 
    virtual bool render() = 0;
    bool handle(const message::ObjectReceived &recv);
@@ -55,7 +56,6 @@ class V_RENDEREREXPORT Renderer: public Module {
    std::shared_ptr<RenderObject> addObjectWrapper(int senderId, const std::string &senderPort,
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture);
    void removeObjectWrapper(std::shared_ptr<RenderObject> ro);
-   void connectionRemoved(const Port *from, const Port *to) override;
 
    void removeAllCreatedBy(int creatorId);
    void removeAllSentBy(int sender, const std::string &senderPort);

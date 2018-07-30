@@ -177,6 +177,7 @@ void DisCOVERay::prepareQuit() {
 void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
 
     std::cerr << "Ray: new connection from " << *from << " to " << *to << std::endl;
+    Renderer::connectionAdded(from, to);
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionAdded(to);
     }
@@ -187,6 +188,7 @@ void DisCOVERay::connectionRemoved(const Port *from, const Port *to) {
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionRemoved(to);
     }
+    Renderer::connectionRemoved(from, to);
 }
 
 bool DisCOVERay::changeParameter(const Parameter *p) {
@@ -558,7 +560,10 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
+   std::cerr << "DisCOVERay: removeObject(" << ro->senderId << "/" << ro->variant << ")" << std::endl;
+
    if (rod->scene) {
+      rtcDisable(m_scene, rod->instId);
       rtcDeleteGeometry(m_scene, rod->instId);
       rtcCommit(m_scene);
 
