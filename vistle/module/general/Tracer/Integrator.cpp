@@ -178,8 +178,6 @@ bool Integrator::StepRK32() {
    Scalar cellSize = grid->cellDiameter(m_ptcl->m_el);
 
    for (;;) {
-      Index el=m_ptcl->m_el;
-
       const Vector x1 = m_ptcl->m_x + 0.5*m_h*k[0];
       Index el1 = grid->findCell(x1, m_ptcl->m_el, m_cellSearchFlags);
       if (el1==InvalidIndex){
@@ -191,7 +189,7 @@ bool Integrator::StepRK32() {
          cellSize = std::min(grid->cellDiameter(el1), cellSize);
       }
 
-      k[1] = m_velTransform*sign*Interpolator(m_ptcl->m_block,el, x1);
+      k[1] = m_velTransform*sign*Interpolator(m_ptcl->m_block, el1, x1);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
 
       const Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
@@ -205,7 +203,7 @@ bool Integrator::StepRK32() {
          cellSize = std::min(grid->cellDiameter(el2), cellSize);
       }
 
-      k[2] = m_velTransform*sign*Interpolator(m_ptcl->m_block,el2,x2);
+      k[2] = m_velTransform*sign*Interpolator(m_ptcl->m_block,el2, x2);
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
       m_hact = m_h;
 
