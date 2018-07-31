@@ -226,18 +226,19 @@ VariantRenderObject::VariantRenderObject(const std::string &variantName, vistle:
 {
     std::string nn("RhrClient:Variant:");
     m_node->setName(nn+variant);
-    variant_onoff = variant;
-    if (visible == vistle::RenderObject::Hidden)
-        variant_onoff += "_off";
-    else if (visible == vistle::RenderObject::Visible)
-        variant_onoff += "_on";
 }
 
 const char *VariantRenderObject::getAttribute(const char *key) const {
     if (key) {
         std::string k(key);
         if (k == "VARIANT") {
-            return variant_onoff.c_str();
+            return variant.c_str();
+        }
+        if (k == "VARIANT_VISIBLE") {
+            if (m_visible == vistle::RenderObject::Hidden)
+                return  "off";
+            if (m_visible == vistle::RenderObject::Visible)
+                return "on";
         }
     }
     return nullptr;

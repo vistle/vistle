@@ -124,7 +124,7 @@ public:
    osg::ref_ptr<osg::Node> node() const;
 
 private:
-    std::string variant, variant_onoff;
+    std::string variant;
     osg::ref_ptr<osg::Node> m_node; //< dummy osg node
     vistle::RenderObject::InitialVariantVisibility m_visible;
 };
