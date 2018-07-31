@@ -106,7 +106,8 @@ bool Reader::prepare()
     }
     assert(concurrency >= 1);
 
-    sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
+    if (rank() == 0)
+        sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
 
     std::shared_ptr<Token> prev;
     // read constant parts
@@ -184,7 +185,7 @@ bool Reader::prepare()
     }
 
     if (!finishRead()) {
-        sendInfo("error inishing read");
+        sendInfo("error finishing read");
         result = false;
     }
 
