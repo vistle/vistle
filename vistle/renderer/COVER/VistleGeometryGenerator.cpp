@@ -590,7 +590,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
       case vistle::Object::PLACEHOLDER: {
 
          vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
-         //debug << "Placeholder [" << ph->originalName() << "]";
+         debug << "Placeholder [" << ph->originalName() << "]";
          if (isSupported(ph->originalType())) {
             nodename = ph->originalName();
             geode->setName(nodename);

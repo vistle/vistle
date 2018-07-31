@@ -199,16 +199,6 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    creator.iter = object->getIteration();
 
    std::shared_ptr<RenderObject> ro;
-#if 1
-   std::cout << "++++++Renderer addInputObject " << object->getName()
-             << " type " << object->getType()
-             << " creator " << object->getCreator()
-             << " exec " << object->getExecutionCounter()
-             << " iter " << object->getIteration()
-             << " block " << object->getBlock()
-             << " timestep " << object->getTimestep() << std::endl;
-#endif
-
    if (auto tex = vistle::Texture1D::as(object)) {
        if (auto grid = vistle::Coords::as(tex->grid())) {
          ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), tex);
@@ -232,6 +222,27 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
          m_objectList.resize(ro->timestep+2);
       m_objectList[ro->timestep+1].push_back(ro);
    }
+
+#if 1
+   std::string variant;
+   std::string noobject;
+   if (ro) {
+       if (!ro->variant.empty())
+           variant = " variant " + ro->variant;
+   } else {
+       noobject = " NO OBJECT generated";
+   }
+   std::cerr << "++++++Renderer addInputObject " << object->getName()
+             << " type " << object->getType()
+             << " creator " << object->getCreator()
+             << " exec " << object->getExecutionCounter()
+             << " iter " << object->getIteration()
+             << " block " << object->getBlock()
+             << " timestep " << object->getTimestep()
+             << variant
+             << noobject
+             << std::endl;
+#endif
 
    return true;
 }
