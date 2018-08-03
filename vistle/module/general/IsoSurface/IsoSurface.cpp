@@ -249,7 +249,10 @@ bool IsoSurface::compute() {
    auto str = StructuredGrid::as(grid);
    auto unstr = UnstructuredGrid::as(grid);
    if (!uni && !rect && !str && !unstr) {
-       sendError("grid required on input data");
+       if (grid)
+           sendError("grid required on input data: invalid type");
+       else
+           sendError("grid required on input data: none present");
        return true;
    }
 

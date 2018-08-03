@@ -975,9 +975,11 @@ bool Module::dispatch(bool *messageReceived) {
          int sync = 0, allsync = 0;
 
          switch (buf.type()) {
-            case vistle::message::OBJECTRECEIVED:
             case vistle::message::QUIT:
                sync = 1;
+               break;
+            case vistle::message::ADDOBJECT:
+               sync = objectReceivePolicy() != vistle::message::ObjectReceivePolicy::Local;
                break;
             default:
                break;
@@ -987,9 +989,11 @@ bool Module::dispatch(bool *messageReceived) {
 
          do {
             switch (buf.type()) {
-               case vistle::message::OBJECTRECEIVED:
                case vistle::message::QUIT:
                   sync = 1;
+                  break;
+               case vistle::message::ADDOBJECT:
+                  sync = objectReceivePolicy() != vistle::message::ObjectReceivePolicy::Local;
                   break;
                default:
                   break;
@@ -1347,10 +1351,6 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          sendMessage(reached);
          break;
       }
-
-      case message::OBJECTRECEIVED:
-         // currently only relevant for renderers
-         break;
 
       case message::CANCELEXECUTE:
          // not relevant if not within prepare/compute/reduce

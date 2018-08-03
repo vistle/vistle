@@ -647,12 +647,6 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
 
-      case message::OBJECTRECEIVED: {
-         const message::ObjectReceived &m = message.as<ObjectReceived>();
-         result = handlePriv(m);
-         break;
-      }
-
       case message::SETPARAMETER: {
 
          const message::SetParameter &m = message.as<SetParameter>();
@@ -1194,70 +1188,88 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
    std::set<message::AddObject> delayedAdds;
    for (const Port *destPort: *list) {
 
-      int destId = destPort->getModuleID();
-      if (!isLocal(destId))
-          continue;
+       int destId = destPort->getModuleID();
+       if (!isLocal(destId))
+           continue;
 
-      auto it = m_stateTracker.runningMap.find(destId);
-      if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
-         vassert("port connection to module that is not running" == 0);
-         continue;
-      }
-      auto &destMod = it->second;
+       auto it = m_stateTracker.runningMap.find(destId);
+       if (it == m_stateTracker.runningMap.end()) {
+           CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
+           vassert("port connection to module that is not running" == 0);
+           continue;
+       }
+       auto &destMod = it->second;
 
-      message::AddObject a(addObj);
-      a.setDestId(destId);
-      a.setDestPort(destPort->getName());
+       message::AddObject addObj2(addObj);
+       addObj2.setRank(m_rank); // object is/will be present on this rank
+       addObj2.setDestId(destId);
+       addObj2.setDestPort(destPort->getName());
+       if (obj) {
+           addObj2.setObject(obj);
+       }
 
-      if (obj) {
-          a.setObject(obj);
-      } else {
-         // block messages of receiving module until remote object is available
-         vassert(!localAdd);
-         auto it = runningMap.find(destId);
-         if (it != runningMap.end()) {
-            it->second.block(a);
-            delayedAdds.insert(a);
-         }
-      }
-
-      sendMessage(destId, a);
-      portManager().addObject(destPort);
-
-      if (!checkExecuteObject(destId))
-          return false;
-
-      // FIXME: obj already deleted
-      if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-          || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-         message::ObjectReceived recv(a, a.getDestPort());
-         recv.setDestId(destId);
-
-         if (!Communicator::the().broadcastAndHandleMessage(recv))
-            return false;
-      }
-   }
-
-   if (!delayedAdds.empty()) {
-       assert(!obj);
-       Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, delayedAdds]() {
-           auto obj = addObj.getObject();
-           assert(obj);
-           for (auto a: delayedAdds) {
-               auto it = runningMap.find(a.destId());
-               if (it != runningMap.end()) {
-                   a.setObject(obj);
-                   it->second.unblock(a);
-               }
+       if (destMod.objectPolicy != message::ObjectReceivePolicy::Local) {
+           addObj2.setBroadcast(true);
+           if (obj) {
+               if (!Communicator::the().broadcastAndHandleMessage(addObj2))
+                   return false;
+               continue;
            }
-       });
+       }
+
+       if (!obj) {
+           // block messages of receiving module until remote object is available
+           vassert(!localAdd);
+           auto it = runningMap.find(destId);
+           if (it != runningMap.end()) {
+               if (!addObj2.isBroadcast())
+                   it->second.block(addObj2);
+               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2]() mutable {
+                   auto obj = addObj.getObject();
+                   assert(obj);
+                   auto it = runningMap.find(addObj2.destId());
+                   if (it != runningMap.end()) {
+                       addObj2.setObject(obj);
+                       if (addObj2.isBroadcast()) {
+                           CERR << "DELAYED broadcast: " << addObj2 << std::endl;
+                           if (!Communicator::the().broadcastAndHandleMessage(addObj2))
+                               CERR << "object broadcast failed" << std::endl;
+                       } else {
+                           it->second.unblock(addObj2);
+                       }
+                   }
+               });
+           }
+       }
+
+       if (!addObj2.isBroadcast()) {
+           if (!sendMessage(destId, addObj2))
+               return false;
+           portManager().addObject(destPort);
+
+           if (!checkExecuteObject(destId))
+               return false;
+       }
    }
 
    return true;
 }
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
+
+   if (addObj.isBroadcast()) {
+       assert(isLocal(addObj.destId()));
+       if (!sendMessage(addObj.destId(), addObj))
+           return false;
+
+       if (auto destPort = portManager().getPort(addObj.destId(), addObj.getDestPort()))
+           portManager().addObject(destPort);
+       else
+           return false;
+
+       if (!checkExecuteObject(addObj.destId()))
+           return false;
+   }
 
    const bool localAdd = isLocal(addObj.senderId());
 
@@ -1303,101 +1315,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    return addObjectDestination(addObj, obj);
 }
-
-#if 0
-   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
-   if (!port) {
-      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      //vassert(port);
-      return true;
-   }
-   const Port::ConstPortSet *list = portManager().getConnectionList(port);
-   if (!list) {
-      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      vassert(list);
-      return true;
-   }
-
-   std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
-   for (const Port *destPort: *list) {
-      int destId = destPort->getModuleID();
-      message::AddObject a(addObj);
-
-      if (!isLocal(destId)) {
-         if (localAdd) {
-            // if object was generated locally, forward message to remote hubs with connected modules
-            const int hub = idToHub(destId);
-            if (receivingHubs.find(hub) == receivingHubs.end()) {
-               a.setDestId(hub);
-               sendHub(a, hub);
-               receivingHubs.insert(hub);
-               Communicator::the().dataManager().prepareTransfer(a);
-            }
-         }
-         continue;
-      }
-
-      if (!obj) {
-         // block messages of receiving module until remote object is available
-         vassert(!synthesized);
-         vassert(!localAdd);
-         auto it = runningMap.find(destId);
-         if (it != runningMap.end()) {
-            it->second.block(a);
-         }
-      } else if (synthesized) {
-         // remote object available: unblock messages of receiving module and update AddObject message - all further messages have already been queued
-         auto it = runningMap.find(destId);
-         if (it != runningMap.end()) {
-            message::AddObject add(a.getSenderPort(), obj, destPort->getName());
-            add.setUuid(a.uuid());
-            add.setDestId(destId);
-            add.setSenderId(a.senderId());
-            it->second.unblock(add);
-         }
-         continue;
-      }
-
-      auto it = m_stateTracker.runningMap.find(destId);
-      if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
-         vassert("port connection to module that is not running" == 0);
-         continue;
-      }
-
-      auto &destMod = it->second;
-      a.setDestId(destId);
-      a.setDestPort(destPort->getName());
-      if (isLocal(destId) && localAdd && onThisRank) {
-#if 0
-          if (destMod.objectPolicy == message::ObjectReceivePolicy::Master) {
-              sendMessage(destId, a, 0);
-              continue;
-          }
-#endif
-          a.ref();
-      }
-      sendMessage(destId, a);
-      portManager().addObject(destPort);
-
-      if (!checkExecuteObject(destId))
-          return false;
-
-      // FIXME: obj already deleted
-      if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-          || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-         message::ObjectReceived recv(addObj, addObj.getDestPort());
-         recv.setDestId(destId);
-
-         if (!Communicator::the().broadcastAndHandleMessage(recv))
-            return false;
-
-      }
-   }
-
-   return true;
-}
-#endif
 
 bool ClusterManager::checkExecuteObject(int destId) {
 
@@ -1698,13 +1615,6 @@ bool ClusterManager::handlePriv(const message::Idle &idle) {
    }
    return true;
 }
-
-bool ClusterManager::handlePriv(const message::ObjectReceived &objRecv) {
-
-   sendMessage(objRecv.senderId(), objRecv);
-   return true;
-}
-
 
 bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 

@@ -57,7 +57,6 @@ void Router::initRoutingTable() {
 
    rt[BARRIER]               = HandleOnDest;
    rt[BARRIERREACHED]        = HandleOnDest;
-   rt[OBJECTRECEIVED]        = HandleOnRank0;
 
    rt[REQUESTTUNNEL]         = HandleOnNode|HandleOnHub;
 

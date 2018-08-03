@@ -49,7 +49,8 @@ class V_RENDEREREXPORT Renderer: public Module {
  private:
 
    virtual bool render() = 0;
-   bool handle(const message::ObjectReceived &recv);
+
+   void handleAddObject(const message::AddObject &add);
 
    bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
          vistle::Object::const_ptr object) override;
@@ -81,6 +82,7 @@ class V_RENDEREREXPORT Renderer: public Module {
 
    std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
    IntParameter *m_renderMode;
+   bool needsSync(const message::Message &m) const;
 
    VariantMap m_variants;
 };

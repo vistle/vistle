@@ -46,20 +46,65 @@ Renderer::~Renderer() {
 
 }
 
-static bool needsSync(const message::Message &m) {
+bool Renderer::needsSync(const message::Message &m) const {
+
+   using namespace vistle::message;
 
    switch (m.type()) {
-      case vistle::message::CANCELEXECUTE:
-      case vistle::message::OBJECTRECEIVED:
-      case vistle::message::QUIT:
-      case vistle::message::KILL:
-      case vistle::message::ADDPARAMETER:
-      case vistle::message::SETPARAMETER:
-      case vistle::message::REMOVEPARAMETER:
+      case CANCELEXECUTE:
+      case QUIT:
+      case KILL:
+      case ADDPARAMETER:
+      case SETPARAMETER:
+      case REMOVEPARAMETER:
          return true;
+      case ADDOBJECT:
+         return objectReceivePolicy() != ObjectReceivePolicy::Local;
       default:
          return false;
    }
+}
+
+void Renderer::handleAddObject(const message::AddObject &add) {
+
+    Object::const_ptr obj, placeholder;
+    if (add.rank() == rank()) {
+        obj = add.takeObject();
+        assert(obj);
+        if (size() > 1) {
+            auto ph = std::make_shared<PlaceHolder>(add.objectName(), add.meta(), add.objectType());
+            ph->copyAttributes(obj);
+            placeholder = ph;
+            assert(placeholder);
+        }
+    }
+
+    RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
+    if (size() > 1) {
+        if (rm == AllNodes) {
+            broadcastObject(obj, add.rank());
+            assert(obj);
+        } else {
+            broadcastObject(placeholder, add.rank());
+            assert(placeholder);
+            if (rm == MasterOnly) {
+                if (rank() == 0) {
+                    if (add.rank() != 0)
+                        obj = receiveObject(add.rank());
+                } else if (rank() == add.rank()) {
+                    sendObject(obj, 0);
+                }
+            }
+        }
+    }
+
+    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || (rm != MasterOnly && rank() == add.rank())) {
+        assert(obj);
+        addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), obj);
+    } else {
+        assert(placeholder);
+        addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), placeholder);
+    }
 }
 
 bool Renderer::dispatch(bool *messageReceived) {
@@ -96,27 +141,18 @@ bool Renderer::dispatch(bool *messageReceived) {
             m_stateTracker->handle(message);
 
             switch (message.type()) {
-               case vistle::message::ADDOBJECT: {
-                  if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Local) {
-                     auto &add = static_cast<const message::AddObject &>(message);
-                     addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), add.takeObject());
-                  }
-                  break;
-               }
-               case vistle::message::OBJECTRECEIVED: {
-                  vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Local);
-                  if (size() > 1) {
-                     auto &recv = static_cast<const message::ObjectReceived &>(message);
-                     handle(recv);
-                  }
-                  break;
-               }
-               default:
-                  quit = !handleMessage(&message);
-                  if (quit) {
-                      std::cerr << "Quitting: " << message << std::endl;
-                  }
-                  break;
+            case vistle::message::ADDOBJECT: {
+                auto &add = static_cast<const message::AddObject &>(message);
+                handleAddObject(add);
+                break;
+            }
+            default: {
+                quit = !handleMessage(&message);
+                if (quit) {
+                    std::cerr << "Quitting: " << message << std::endl;
+                }
+                break;
+            }
             }
 
             if (needsSync(message))
@@ -333,43 +369,6 @@ const Renderer::VariantMap &Renderer::variants() const {
 }
 
 bool Renderer::compute() {
-    return true;
-}
-
-bool Renderer::handle(const message::ObjectReceived &recv) {
-
-    Object::const_ptr obj, placeholder;
-    if (recv.rank() == rank()) {
-        obj = Shm::the().getObjectFromName(recv.objectName());
-        assert(obj);
-        auto ph = std::make_shared<PlaceHolder>(recv.objectName(), recv.meta(), recv.objectType());
-        ph->copyAttributes(obj);
-        placeholder = ph;
-        assert(placeholder);
-    }
-    RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
-    if (rm == AllNodes) {
-        broadcastObject(obj, recv.rank());
-        assert(obj);
-    } else {
-        broadcastObject(placeholder, recv.rank());
-        assert(placeholder);
-        if (rm == MasterOnly) {
-            if (rank() == 0) {
-                if (recv.rank() != 0)
-                    obj = receiveObject(recv.rank());
-            } else if (rank() == recv.rank()) {
-                sendObject(obj, 0);
-            }
-        }
-    }
-    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || rank() == recv.rank()) {
-        assert(obj);
-        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
-    } else {
-        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), placeholder);
-    }
-
     return true;
 }
 

@@ -120,7 +120,6 @@ class ClusterManager: public ParameterManager
    bool handlePriv(const message::SetParameterChoices &setChoices);
    bool handlePriv(const message::AddObject &addObj);
    bool handlePriv(const message::AddObjectCompleted &complete);
-   bool handlePriv(const message::ObjectReceived &objRecv);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
    bool handlePriv(const message::SendText &text);

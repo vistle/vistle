@@ -451,17 +451,25 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
 #ifdef NO_SHMEM
+    lockObjects();
     Object::Data *od = static_cast<Object::Data *>(handle);
-    return Object::const_ptr(Object::create(od));
+    auto ret = Object::const_ptr(Object::create(od));
+    unlockObjects();
+    return ret;
 #else
-   try {
-      Object::Data *od = static_cast<Object::Data *>
-         (m_shm->get_address_from_handle(handle));
+    lockObjects();
+    try {
+        Object::Data *od = static_cast<Object::Data *>
+                (m_shm->get_address_from_handle(handle));
 
-      return Object::const_ptr(Object::create(od));
-   } catch (interprocess_exception &ex) { }
+        auto ret = Object::const_ptr(Object::create(od));
+        unlockObjects();
+        return ret;
+    } catch (interprocess_exception &ex) {
+        unlockObjects();
+    }
 
-   return Object::const_ptr();
+    return Object::const_ptr();
 #endif
 }
 

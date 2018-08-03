@@ -43,7 +43,6 @@ int main() {
          M(CANCELEXECUTE, CancelExecute)
          M(ADDOBJECT, AddObject)
          M(ADDOBJECTCOMPLETED, AddObjectCompleted)
-         M(OBJECTRECEIVED, ObjectReceived)
          M(ADDPORT, AddPort)
          M(REMOVEPORT, AddPort)
          M(CONNECT, Connect)

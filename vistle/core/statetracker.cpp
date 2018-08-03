@@ -381,9 +381,6 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       case ADDOBJECTCOMPLETED: {
          break;
       }
-      case OBJECTRECEIVED: {
-         break;
-      }
       case ADDPORT: {
          const AddPort &cp = static_cast<const AddPort &>(msg);
          handled = handlePriv(cp);
@@ -992,11 +989,6 @@ bool StateTracker::handlePriv(const message::Kill &kill) {
 bool StateTracker::handlePriv(const message::AddObject &addObj) {
 
    ++m_numObjects;
-   return true;
-}
-
-bool StateTracker::handlePriv(const message::ObjectReceived &objRecv) {
-
    return true;
 }
 

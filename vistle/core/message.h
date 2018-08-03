@@ -44,7 +44,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (CANCELEXECUTE)
       (ADDOBJECT)
       (ADDOBJECTCOMPLETED)
-      (OBJECTRECEIVED)
       (DATATRANSFERSTATE)
       (ADDPORT)
       (REMOVEPORT)
@@ -82,7 +81,7 @@ struct Id {
       ModuleBase = 1, //< >= ModuleBase: modules
       Invalid = 0,
       Vistle = -1, //< session parameters
-      Broadcast = -2, //< master is broadcasting
+      Broadcast = -2, //< master is broadcasting to all modules/hubs
       ForBroadcast = -3, //< to master for broadcasting
       NextHop = -4,
       UI = -5,

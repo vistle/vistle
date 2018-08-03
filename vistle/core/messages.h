@@ -395,26 +395,6 @@ class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, AD
 };
 static_assert(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE, "message too large");
 
-//! notify rank 0 controller that an object was received
-class V_COREEXPORT ObjectReceived: public MessageBase<ObjectReceived, OBJECTRECEIVED> {
-
- public:
-   ObjectReceived(const AddObject &add, const std::string &destPort="");
-   const char * getSenderPort() const;
-   const char *getDestPort() const;
-   const char *objectName() const;
-   const Meta &meta() const;
-   Object::Type objectType() const;
-
- private:
-   port_name_t senderPort;
-   port_name_t portName;
-   shm_name_t m_name;
-   Meta m_meta;
-   int m_objectType;
-};
-static_assert(sizeof(ObjectReceived) <= Message::MESSAGE_SIZE, "message too large");
-
 //! connect an output port to an input port of another module
 class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT> {
 
@@ -665,13 +645,13 @@ private:
 static_assert(sizeof(UpdateStatus) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Importance, UpdateStatus)
 
+//! control where AddObject messages are sent
 class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, OBJECTRECEIVEPOLICY> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy,
       (Local)
       (Master)
-      (NotifyAll)
       (Distribute)
    )
    ObjectReceivePolicy(Policy pol);

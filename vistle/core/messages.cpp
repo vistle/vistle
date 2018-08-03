@@ -598,46 +598,6 @@ const char *AddObjectCompleted::originalDestPort() const {
     return m_orgDestPort.data();
 }
 
-ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
-: m_name(add.objectName())
-, m_meta(add.meta())
-, m_objectType(add.objectType())
-{
-   m_broadcast = true;
-
-   setReferrer(add.uuid());
-   setSenderId(add.senderId());
-
-   std::string port(add.getSenderPort());
-   COPY_STRING(senderPort, port);
-   COPY_STRING(portName, p);
-}
-
-const Meta &ObjectReceived::meta() const {
-
-   return m_meta;
-}
-
-const char *ObjectReceived::getSenderPort() const {
-
-   return senderPort.data();
-}
-
-const char *ObjectReceived::getDestPort() const {
-
-   return portName.data();
-}
-
-const char *ObjectReceived::objectName() const {
-
-   return m_name;
-}
-
-Object::Type ObjectReceived::objectType() const {
-
-   return static_cast<Object::Type>(m_objectType);
-}
-
 Connect::Connect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
    : moduleA(moduleIDA), moduleB(moduleIDB) {
