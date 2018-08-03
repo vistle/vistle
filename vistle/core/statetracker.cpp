@@ -302,6 +302,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
 
    using namespace vistle::message;
 
+   ++m_numMessages;
+   m_aggregatedPayload += msg.payloadSize();
+
 #ifndef NDEBUG
    if (m_alreadySeen.find(msg.uuid()) != m_alreadySeen.end()) {
        CERR << "duplicate message: " << msg << std::endl;
@@ -987,6 +990,7 @@ bool StateTracker::handlePriv(const message::Kill &kill) {
 
 bool StateTracker::handlePriv(const message::AddObject &addObj) {
 
+   ++m_numObjects;
    return true;
 }
 

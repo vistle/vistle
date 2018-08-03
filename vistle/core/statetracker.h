@@ -245,6 +245,10 @@ class V_COREEXPORT StateTracker {
    int m_currentStatusId = message::Id::Invalid;
    std::string m_currentStatus;
    message::UpdateStatus::Importance m_currentStatusImportance = message::UpdateStatus::Bulk;
+
+   size_t m_numMessages = 0;
+   size_t m_numObjects = 0;
+   size_t m_aggregatedPayload = 0;
 };
 
 } // namespace vistle
