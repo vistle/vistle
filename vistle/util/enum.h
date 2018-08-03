@@ -20,7 +20,7 @@
    .value(BOOST_PP_STRINGIZE(elem), elem)
 
 #define X_DEFINE_ENUM_ADD_VALUE(r, data, elem) \
-   values.push_back(BOOST_PP_STRINGIZE(elem));
+   values.emplace_back(BOOST_PP_STRINGIZE(elem));
 
 #ifdef ENUMS_FOR_PYTHON
 #define DEFINE_ENUM_WITH_STRING_CONVERSIONS(name, enumerators)               \
