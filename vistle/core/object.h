@@ -6,6 +6,7 @@
 #include <memory>
 #include <iostream>
 #include <string>
+#include <atomic>
 
 #ifdef NO_SHMEM
 #include <map>
@@ -227,14 +228,7 @@ ARCHIVE_ASSUME_ABSTRACT(Object)
 struct ObjectData {
     Object::Type type;
     shm_name_t name;
-#ifdef NO_SHMEM
-    mutable std::mutex ref_mutex; //< protects refcount
-    typedef std::lock_guard<std::mutex> ref_mutex_lock_type;
-#else
-    mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
-    typedef std::lock_guard<boost::interprocess::interprocess_mutex> ref_mutex_lock_type;
-#endif
-    mutable int refcount;
+    mutable std::atomic<int> refcount;
 
     int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
 
@@ -525,10 +519,7 @@ private:
    ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \
    : ObjType::Base::Data(id, name, meta) { initData(); } \
    ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
-      Data *t = nullptr; \
-      Shm::the().lockObjects(); \
-      t = shm<Data>::construct(name)(id, name, Meta()); \
-      Shm::the().unlockObjects(); \
+      Data *t = shm<Data>::construct(name)(id, name, Meta()); \
       publish(t); \
       return t; \
    }

@@ -39,7 +39,7 @@ void DeepArchiveFetcher::requestObject(const std::string & name, const std::func
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     Object::ptr obj(Object::loadObject(ar));
-    if (obj->isComplete()) {
+    if (obj && obj->isComplete()) {
         //std::cerr << "DeepArchiveFetcher: success object " << name << std::endl;
         completeCallback();
     }

@@ -79,8 +79,9 @@ struct shm {
    typedef array *array_ptr;
    struct Constructor {
        std::string name;
-       Constructor(const std::string &name): name(name) {}
 
+       Constructor(const std::string &name);
+       ~Constructor();
        template<typename... Args>
        T *operator()(Args&&... args);
    };
@@ -138,6 +139,8 @@ class V_COREEXPORT Shm {
 
    void lockObjects() const;
    void unlockObjects() const;
+   void lockDictionary() const;
+   void unlockDictionary() const;
 
    std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t &handle) const;
    shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;
@@ -177,9 +180,11 @@ class V_COREEXPORT Shm {
    static Shm *s_singleton;
 #ifdef NO_SHMEM
    mutable std::recursive_mutex *m_shmDeletionMutex;
+   mutable std::recursive_mutex *m_objectDictionaryMutex;
    std::map<std::string, void*> m_objectDictionary;
 #else
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
+   mutable boost::interprocess::interprocess_recursive_mutex *m_objectDictionaryMutex;
    boost::interprocess::managed_shared_memory *m_shm;
 #endif
    mutable std::atomic<int> m_lockCount;
@@ -188,14 +193,14 @@ class V_COREEXPORT Shm {
 template<typename T>
 T *shm<T>::find(const std::string &name) {
 #ifdef NO_SHMEM
-    Shm::the().lockObjects();
+    Shm::the().lockDictionary();
     auto &dict = Shm::the().m_objectDictionary;
     auto it = dict.find(name);
     if (it == dict.end()) {
-        Shm::the().unlockObjects();
+        Shm::the().unlockDictionary();
         return nullptr;
     }
-    Shm::the().unlockObjects();
+    Shm::the().unlockDictionary();
     return static_cast<T *>(it->second);
 #else
    return Shm::the().shm().find<T>(name.c_str()).first;
@@ -205,17 +210,17 @@ T *shm<T>::find(const std::string &name) {
 template<typename T>
 bool shm<T>::destroy(const std::string &name) {
 #ifdef NO_SHMEM
-    Shm::the().lockObjects();
+    Shm::the().lockDictionary();
     auto &dict = Shm::the().m_objectDictionary;
     auto it = dict.find(name);
     bool ret = true;
     if (it == dict.end()) {
-        Shm::the().unlockObjects();
+        Shm::the().unlockDictionary();
         ret = false;
     } else {
         T *t = static_cast<T *>(it->second);
         dict.erase(it);
-        Shm::the().unlockObjects();
+        Shm::the().unlockDictionary();
         delete t;
     }
 #else
@@ -227,13 +232,23 @@ bool shm<T>::destroy(const std::string &name) {
 
 #ifdef NO_SHMEM
 template<typename T>
+shm<T>::Constructor::Constructor(const std::string &name): name(name) {
+    Shm::the().lockDictionary();
+}
+
+template<typename T>
+shm<T>::Constructor::~Constructor() {
+    Shm::the().unlockDictionary();
+}
+
+template<typename T>
 template<typename... Args>
 T *shm<T>::Constructor::operator()(Args&&... args) {
     T *t = new T(std::forward<Args>(args)...);
-    Shm::the().lockObjects();
+    Shm::the().lockDictionary();
     auto &dict = Shm::the().m_objectDictionary;
     dict[name] = t;
-    Shm::the().unlockObjects();
+    Shm::the().unlockDictionary();
     return t;
 }
 #endif

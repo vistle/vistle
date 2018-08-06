@@ -545,8 +545,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
     memar.setFetcher(fetcher);
     Object::ptr p(Object::loadObject(memar));
-    //p->unref();
-    std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
+    //std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
     return p;
 }
 

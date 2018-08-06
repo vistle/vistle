@@ -170,7 +170,6 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    }
    m_requestedObjects[objId].completionHandlers.push_back(handler);
 
-   m_outstandingRequests.emplace(objId, add);
    message::RequestObject req(add, objId);
    send(req);
 
@@ -377,23 +376,6 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
     auto senderId = snd.senderId();
     auto senderRank = snd.rank();
     auto completionHandler = [this, senderId, senderRank, objName] () mutable -> void {
-        //CERR << "object completion handler for " << objName << std::endl;
-        auto obj = Shm::the().getObjectFromName(objName);
-        if (!obj) {
-            CERR << "did not receive an object for " << objName << std::endl;
-            return;
-        }
-        vassert(obj);
-        //CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
-        vassert(obj->check());
-
-        auto reqIt = m_outstandingRequests.find(objName);
-        if (reqIt != m_outstandingRequests.end()) {
-            m_outstandingRequests.erase(reqIt);
-        } else {
-            //CERR << "no outstanding request for " << obj->getName() << std::endl;
-        }
-
         auto addIt = m_outstandingAdds.find(objName);
         if (addIt == m_outstandingAdds.end()) {
             // that's normal if a sub-object was loaded
@@ -407,13 +389,14 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
 
         auto objIt = m_requestedObjects.find(objName);
         if (objIt != m_requestedObjects.end()) {
+            auto obj = objIt->second.obj;
+            assert(obj->isComplete());
             for (const auto &handler: objIt->second.completionHandlers) {
                 handler();
             }
             m_requestedObjects.erase(objIt);
-            //CERR << "erasing from outstanding objects: " << obj->getName() << std::endl;
         } else {
-            CERR << "no outstanding object for " << obj->getName() << std::endl;
+            CERR << "no outstanding object for " << objName << std::endl;
         }
     };
 
@@ -421,9 +404,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
     memar.setObjectCompletionHandler(completionHandler);
     std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
     memar.setFetcher(fetcher);
-    //CERR << "loading object " << objName << " from memar" << std::endl;
     objIt->second.obj.reset(Object::loadObject(memar));
-    objIt->second.obj->unref();
 
     return true;
 }

@@ -80,6 +80,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
    , m_objectId(0)
    , m_arrayId(0)
    , m_shmDeletionMutex(nullptr)
+   , m_objectDictionaryMutex(nullptr)
 #ifndef NO_SHMEM
    , m_shm(nullptr)
 #endif
@@ -95,6 +96,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 #ifdef NO_SHMEM
       m_allocator = new void_allocator();
       m_shmDeletionMutex = new std::recursive_mutex;
+      m_objectDictionaryMutex = new std::recursive_mutex;
 #else
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
@@ -105,6 +107,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       m_allocator = new void_allocator(shm().get_segment_manager());
 
       m_shmDeletionMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdelete_mutex")();
+      m_objectDictionaryMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shm_dictionary_mutex")();
 
 #ifdef SHMDEBUG
       s_shmdebugMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
@@ -176,21 +179,41 @@ std::string Shm::shmIdFilename() {
 }
 
 void Shm::lockObjects() const {
+#ifndef NO_SHMEM
+#ifndef SHMPERRANK
    if (m_lockCount != 0) {
        //std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
    }
    //assert(m_lockCount==0);
    ++m_lockCount;
    m_shmDeletionMutex->lock();
+#endif
+#endif
 }
 
 void Shm::unlockObjects() const {
+#ifndef NO_SHMEM
+#ifndef SHMPERRANK
    m_shmDeletionMutex->unlock();
    --m_lockCount;
    //assert(m_lockCount==0);
    if (m_lockCount != 0) {
        //std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
    }
+#endif
+#endif
+}
+
+void Shm::lockDictionary() const {
+#ifdef NO_SHMEM
+   m_objectDictionaryMutex->lock();
+#endif
+}
+
+void Shm::unlockDictionary() const {
+#ifdef NO_SHMEM
+   m_objectDictionaryMutex->unlock();
+#endif
 }
 
 namespace {
@@ -404,8 +427,10 @@ void Shm::markAsRemoved(const std::string &name) {
    s_shmdebugMutex->lock();
 
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
-      if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t)))
+      if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t))) {
+         assert((*s_shmdebug)[i].deleted == 0);
          ++(*s_shmdebug)[i].deleted;
+      }
    }
 
    s_shmdebugMutex->unlock();
@@ -453,9 +478,14 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
     Object::const_ptr ret;
     lockObjects();
     Object::Data *od = getObjectDataFromHandle(handle);
-    if (od)
+    if (od) {
+        od->ref();
+        unlockObjects();
         ret.reset(Object::create(od));
-    unlockObjects();
+        od->unref();
+    } else {
+        unlockObjects();
+    }
     return ret;
 }
 
@@ -472,8 +502,7 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
     return od;
 #else
     try {
-        Object::Data *od = static_cast<Object::Data *>
-                (m_shm->get_address_from_handle(handle));
+        Object::Data *od = static_cast<Object::Data *>(m_shm->get_address_from_handle(handle));
         return od;
     } catch (interprocess_exception &ex) {
         std::cerr << "Shm::getObjectDataFromHandle: invalid handle " << handle << std::endl;
@@ -487,19 +516,21 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {
 
    lockObjects();
-   auto mem = getObjectDataFromName(name);
-   if (mem) {
-      if (mem->isComplete() || !onlyComplete) {
-          Object::const_ptr obj(Object::create(mem));
+   auto od = getObjectDataFromName(name);
+   if (od) {
+      if (od->isComplete() || !onlyComplete) {
+          od->ref();
           unlockObjects();
+          Object::const_ptr obj(Object::create(od));
+          od->unref();
           return obj;
       }
       std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
    } else {
+       unlockObjects();
        std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
    }
 
-   unlockObjects();
    return Object::const_ptr();
 }
 

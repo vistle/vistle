@@ -534,15 +534,21 @@ void AddObject::setObject(Object::const_ptr obj) {
 
     if (m_handleValid) {
         if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
-            vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
-            obj->unref();
+            vistle::Object::const_ptr o = Shm::the().getObjectFromHandle(handle);
+            assert(o);
+            o->unref();
         }
 
         m_handleValid = false;
     }
 
-    handle = obj->getHandle();
-    obj->ref();
+    COPY_STRING(m_shmname, Shm::the().name());
+    if (obj) {
+        handle = obj->getHandle();
+        obj->ref();
+    } else {
+        handle = 0;
+    }
     m_handleValid = true;
 }
 
@@ -552,6 +558,7 @@ Object::const_ptr AddObject::takeObject() const {
    if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
       vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
       if (obj) {
+         assert(obj->getName() == objectName());
          // ref count has been increased during AddObject construction
          obj->unref();
          //std::cerr << "takeObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;

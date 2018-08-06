@@ -145,12 +145,20 @@ yas_iarchive::yas_iarchive(yas_iarchive::Stream &mi, unsigned int flags)
 {
 }
 
+yas_iarchive::~yas_iarchive() {
+    setCurrentObject(nullptr);
+}
+
 void yas_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
 void yas_iarchive::setCurrentObject(ObjectData *data) {
+    if (m_currentObject)
+        m_currentObject->unref();
     m_currentObject = data;
+    if (m_currentObject)
+        m_currentObject->ref();
 }
 
 ObjectData *yas_iarchive::currentObject() const {
@@ -164,6 +172,16 @@ void yas_iarchive::setObjectCompletionHandler(const std::function<void ()> &comp
 const std::function<void ()> &yas_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
+
+obj_const_ptr yas_iarchive::getObject(const std::string &name, const std::function<void()> &completeCallback) const {
+    auto obj = Shm::the().getObjectFromName(name);
+    if (!obj) {
+        assert(m_fetcher);
+        m_fetcher->requestObject(name, completeCallback);
+        obj = Shm::the().getObjectFromName(name);
+    }
+    return obj;
+}
 #endif
 
 
@@ -174,14 +192,20 @@ boost_iarchive::boost_iarchive(std::streambuf &bsb, unsigned int flags)
 {}
 
 boost_iarchive::~boost_iarchive()
-{}
+{
+    setCurrentObject(nullptr);
+}
 
 void boost_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
 void boost_iarchive::setCurrentObject(ObjectData *data) {
+    if (m_currentObject)
+        m_currentObject->unref();
     m_currentObject = data;
+    if (m_currentObject)
+        m_currentObject->ref();
 }
 
 ObjectData *boost_iarchive::currentObject() const {

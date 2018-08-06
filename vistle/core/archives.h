@@ -322,6 +322,7 @@ class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecist
     typedef yas_binary_iarchive<yas_iarchive, Stream> Base;
 public:
     yas_iarchive(Stream &mi, unsigned int flags=0);
+    ~yas_iarchive();
 
     void setFetcher(std::shared_ptr<Fetcher> fetcher);
     void setCurrentObject(ObjectData *data);
@@ -338,16 +339,7 @@ public:
         return arr;
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const {
-        auto obj = Shm::the().getObjectFromName(name);
-        if (!obj) {
-            assert(m_fetcher);
-            m_fetcher->requestObject(name, completeCallback);
-            obj = Shm::the().getObjectFromName(name);
-        }
-        return obj;
-    }
-
+    obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const;
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 

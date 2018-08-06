@@ -68,15 +68,13 @@ private:
     std::set<message::AddObject> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs -- cannot be deleted yet
 
     std::map<std::string, std::set<message::AddObject>> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
-    std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
-
 
     std::map<std::string, std::vector<std::function<void()>>> m_requestedArrays; //!< requests for (sub-)objects which have not been serviced yet
+
     struct OutstandingObject {
        vistle::Object::const_ptr obj;
        std::vector<std::function<void()>> completionHandlers;
     };
-
     std::map<std::string, OutstandingObject> m_requestedObjects; //!< requests for (sub-)objects which have not been serviced yet
 };
 

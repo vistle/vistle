@@ -67,11 +67,14 @@ bool Renderer::needsSync(const message::Message &m) const {
 
 void Renderer::handleAddObject(const message::AddObject &add) {
 
+    using namespace vistle::message;
+    auto pol = objectReceivePolicy();
+
     Object::const_ptr obj, placeholder;
     if (add.rank() == rank()) {
         obj = add.takeObject();
         assert(obj);
-        if (size() > 1) {
+        if (size() > 1 && pol == ObjectReceivePolicy::Distribute) {
             auto ph = std::make_shared<PlaceHolder>(add.objectName(), add.meta(), add.objectType());
             ph->copyAttributes(obj);
             placeholder = ph;
@@ -82,18 +85,19 @@ void Renderer::handleAddObject(const message::AddObject &add) {
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
     if (size() > 1) {
         if (rm == AllNodes) {
+            assert(pol == ObjectReceivePolicy::Distribute);
             broadcastObject(obj, add.rank());
             assert(obj);
-        } else {
+        } else if (pol == ObjectReceivePolicy::Distribute) {
             broadcastObject(placeholder, add.rank());
             assert(placeholder);
-            if (rm == MasterOnly) {
-                if (rank() == 0) {
-                    if (add.rank() != 0)
-                        obj = receiveObject(add.rank());
-                } else if (rank() == add.rank()) {
-                    sendObject(obj, 0);
-                }
+        }
+        if (rm == MasterOnly) {
+            if (rank() == 0) {
+                if (add.rank() != 0)
+                    obj = receiveObject(add.rank());
+            } else if (rank() == add.rank()) {
+                sendObject(obj, 0);
             }
         }
     }
@@ -101,7 +105,7 @@ void Renderer::handleAddObject(const message::AddObject &add) {
     if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || (rm != MasterOnly && rank() == add.rank())) {
         assert(obj);
         addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), obj);
-    } else {
+    } else if (pol == ObjectReceivePolicy::Distribute) {
         assert(placeholder);
         addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), placeholder);
     }
@@ -379,7 +383,7 @@ bool Renderer::changeParameter(const Parameter *p) {
             setObjectReceivePolicy(m_fastestObjectReceivePolicy);
             break;
         case MasterOnly:
-            setObjectReceivePolicy(message::ObjectReceivePolicy::Master);
+            setObjectReceivePolicy(m_fastestObjectReceivePolicy >= message::ObjectReceivePolicy::Master ? m_fastestObjectReceivePolicy : message::ObjectReceivePolicy::Master);
             break;
         case AllNodes:
             setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);

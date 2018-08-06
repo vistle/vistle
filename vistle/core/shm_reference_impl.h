@@ -2,6 +2,7 @@
 #define SHM_REFERENCE_IMPL_H
 
 #include "archives_config.h"
+#include "object.h"
 
 namespace vistle {
 
@@ -21,13 +22,13 @@ void shm_ref<T>::load(Archive &ar) {
 
    unref();
    m_p = nullptr;
-   auto obj = ar.currentObject();
+   ObjectData *obj = ar.currentObject();
    if (obj && !valid()) {
        //std::cerr << "obj " << obj->name << ": unresolved: " << name << std::endl;
        obj->unresolvedReference();
    }
    auto handler = ar.objectCompletionHandler();
-   auto ref =  ar.template getArray<typename T::value_type>(name, [this, name, obj, handler]() -> void {
+   auto ref = ar.template getArray<typename T::value_type>(name, [this, name, obj, handler]() -> void {
       //std::cerr << "array completion handler: " << name << std::endl;
       auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
       assert(ref);

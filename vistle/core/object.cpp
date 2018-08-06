@@ -193,6 +193,8 @@ ObjectData::~ObjectData() {
 
    //std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
 
+    assert(refcount == 0);
+
     attachment_mutex_lock_type lock(attachment_mutex);
     for (auto &objd: attachments) {
         // referenced in addAttachment
@@ -202,8 +204,8 @@ ObjectData::~ObjectData() {
 
 bool Object::Data::isComplete() const {
 
-   ref_mutex_lock_type lock(ref_mutex);
    // a reference is only established upon return from Object::load
+   //assert(unresolvedReferences==0 || refcount==0);
    return refcount>0 && unresolvedReferences==0;
 }
 
@@ -244,7 +246,7 @@ ObjectData *ObjectData::create(Object::Type id, const std::string &objId, const 
 Object::Object(Object::Data *data)
 : m_data(data)
 {
-   m_data->ref();
+   ref();
 #ifndef NDEBUG
    m_name = getName();
 #endif
@@ -299,7 +301,7 @@ void Object::refresh() const {
 
 bool Object::check() const {
 
-   V_CHECK (d()->refcount >= 0);
+   V_CHECK (d()->refcount > 0); // we are holding a reference
 
    bool terminated = false;
    for (size_t i=0; i<sizeof(shm_name_t); ++i) {
@@ -379,22 +381,17 @@ void instantiate_all_io(Object::const_ptr obj) {
 #endif
 
 void ObjectData::ref() const {
-   ref_mutex_lock_type lock(ref_mutex);
    ++refcount;
 }
 
 void ObjectData::unref() const {
-   ref_mutex.lock();
-   --refcount;
-   assert(refcount >= 0);
-   if (refcount == 0) {
+   assert(refcount > 0);
+   if (--refcount == 0) {
       Shm::the().lockObjects();
-      ref_mutex.unlock();
-      ObjectTypeRegistry::getDestroyer(type)(name);
+      if (refcount == 0)
+          ObjectTypeRegistry::getDestroyer(type)(name);
       Shm::the().unlockObjects();
-      return;
    }
-   ref_mutex.unlock();
 }
 
 shm_handle_t Object::getHandle() const {

@@ -34,7 +34,6 @@ int main(int argc, char *argv[])
       a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
       std::cerr << "installing debug msg handler" << std::endl;
       qInstallMessageHandler(debugMessageHandler);
-      qInfo() << "TEST";
       QIcon icon(":/icons/vistle.png");
       a.setWindowIcon(icon);
       UiController control(argc, argv, &a);

@@ -142,9 +142,7 @@ DataBase::DataBase(): DataBase::Base() { refreshImpl(); }
 #else
 DataBase::Data *DataBase::Data::createNamed(Object::Type id, const std::string &name) {
     Data *t = nullptr;
-    Shm::the().lockObjects();
     t = shm<Data>::construct(name)(id, name, Meta());
-    Shm::the().unlockObjects();
     publish(t);
     return t;
 }

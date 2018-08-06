@@ -237,9 +237,7 @@ Vec<T,Dim>::Data::Data(Object::Type id, const std::string &name, const Meta &m)
 
 template <class T, int Dim>
 typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::createNamed(Object::Type id, const std::string &name, const Meta &meta) {
-   Shm::the().lockObjects();
    Data *t = shm<Data>::construct(name)(id, name, meta);
-   Shm::the().unlockObjects();
    publish(t);
    return t;
 }

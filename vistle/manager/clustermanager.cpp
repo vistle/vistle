@@ -1153,12 +1153,12 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
    std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
    for (const Port *destPort: *list) {
       int destId = destPort->getModuleID();
-      message::AddObject a(addObj);
 
       if (!isLocal(destId)) {
           const int hub = idToHub(destId);
           if (receivingHubs.find(hub) == receivingHubs.end()) {
               receivingHubs.insert(hub);
+              message::AddObject a(addObj);
               a.setDestId(hub);
               Communicator::the().dataManager().prepareTransfer(a);
               sendHub(a, hub);
@@ -1185,7 +1185,6 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
       return true;
    }
 
-   std::set<message::AddObject> delayedAdds;
    for (const Port *destPort: *list) {
 
        int destId = destPort->getModuleID();
@@ -1225,18 +1224,20 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                if (!addObj2.isBroadcast())
                    it->second.block(addObj2);
                Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2]() mutable {
+                   auto it = runningMap.find(addObj2.destId());
+                   if (it == runningMap.end()) {
+                       std::cerr << "AddObject: did not find module " << addObj2.destId() << std::endl;
+                       return;
+                   }
                    auto obj = addObj.getObject();
                    assert(obj);
-                   auto it = runningMap.find(addObj2.destId());
-                   if (it != runningMap.end()) {
-                       addObj2.setObject(obj);
-                       if (addObj2.isBroadcast()) {
-                           CERR << "DELAYED broadcast: " << addObj2 << std::endl;
-                           if (!Communicator::the().broadcastAndHandleMessage(addObj2))
-                               CERR << "object broadcast failed" << std::endl;
-                       } else {
-                           it->second.unblock(addObj2);
-                       }
+                   addObj2.setObject(obj);
+                   obj.reset();
+                   if (addObj2.isBroadcast()) {
+                       if (!Communicator::the().broadcastAndHandleMessage(addObj2))
+                           CERR << "object broadcast failed" << std::endl;
+                   } else {
+                       it->second.unblock(addObj2);
                    }
                });
            }
