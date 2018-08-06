@@ -666,7 +666,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
          debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices << ", indexed=" << (indexGeom?"t":"f") << " ]";
 
-         osg::Vec3Array *gnormals = nullptr;
+         osg::ref_ptr<osg::Vec3Array> gnormals;
          if (!normals)
              gnormals = computeNormals<vistle::Triangles>(triangles, indexGeom);
 
@@ -685,7 +685,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
              osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Triangles, Normals::const_ptr, osg::Vec3Array, true>(triangles, normals, indexGeom, bin);
              if (!norm)
-                 norm = applyTriangle<Triangles, osg::Vec3Array*, osg::Vec3Array, false>(triangles, gnormals, indexGeom, bin);
+                 norm = applyTriangle<Triangles, osg::Vec3Array*, osg::Vec3Array, false>(triangles, gnormals.get(), indexGeom, bin);
              geom->setNormalArray(norm.get());
 
              auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex, indexGeom, bin);
@@ -713,7 +713,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
          const Index *el = &polygons->el()[0];
 
-         osg::Vec3Array *gnormals = nullptr;
+         osg::ref_ptr<osg::Vec3Array> gnormals;
          if (!normals)
              gnormals = computeNormals<vistle::Indexed>(polygons, indexGeom);
 
@@ -732,7 +732,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
              osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Indexed, Normals::const_ptr, osg::Vec3Array, true>(polygons, normals, indexGeom, bin);
              if (!norm)
-                 norm = applyTriangle<Indexed, osg::Vec3Array*, osg::Vec3Array, false>(polygons, gnormals, indexGeom, bin);
+                 norm = applyTriangle<Indexed, osg::Vec3Array*, osg::Vec3Array, false>(polygons, gnormals.get(), indexGeom, bin);
              geom->setNormalArray(norm.get());
 
              auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex, indexGeom, bin);
