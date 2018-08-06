@@ -1519,6 +1519,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
    }
    s  << ", dest: " << m.destId()
       << ", bcast: " << m.isBroadcast();
+   if (m.destRank() != -1)
+       s << ", dest rank: " << m.destRank();
 
    if (!m.referrer().is_nil())
        s << ", ref: " << boost::lexical_cast<std::string>(m.referrer());
