@@ -106,12 +106,12 @@ bool AbstractFileInfoGatherer::resolveSymlinks() const
 #endif
 }
 
-void AbstractFileInfoGatherer::setIconProvider(QFileIconProvider *provider)
+void AbstractFileInfoGatherer::setIconProvider(RemoteFileIconProvider *provider)
 {
     m_iconProvider = provider;
 }
 
-QFileIconProvider *AbstractFileInfoGatherer::iconProvider() const
+RemoteFileIconProvider *AbstractFileInfoGatherer::iconProvider() const
 {
     return m_iconProvider;
 }
@@ -134,14 +134,20 @@ QT_END_NAMESPACE
 
 void FileInfo::updateType()
 {
-    if (type() == FileInfo::Dir)
+    bool link = isSymLink();
+    if (type() == FileInfo::Dir) {
         displayType = "Directory";
-    else if (type() == FileInfo::File)
+        if (link)
+            displayType = "Directory (link)";
+    } else if (type() == FileInfo::File) {
         displayType = "File";
-    else if (type() == FileInfo::System)
+        if (link)
+            displayType = "File (link)";
+    } else if (type() == FileInfo::System) {
         displayType = "System";
-    else if (!exists())
+    } else if (!exists()) {
         displayType = "Non-existant";
-    else
+    } else {
         displayType = "Unknown";
+    }
 }

@@ -2,6 +2,15 @@
 #include <core/filequery.h>
 #include <util/filesystem.h>
 
+#ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
+
+#define CERR std::cerr << "FileInfoCrawler: "
+
 namespace vistle {
 
 namespace fs = vistle::filesystem;
@@ -19,7 +28,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
         info.casesensitive = false;
         info.hidden = false;
 #else
-        info.hidden = info.name.length()>1 && info.name[0] == '.' && info.name != "..";
+        info.hidden = info.name.length()>=1 && info.name[0] == '.';
         info.casesensitive = true;
 #endif
 
@@ -32,12 +41,15 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
 
         switch (stat.type()) {
         case fs::status_error:
+            info.status = false;
             info.exists = false;
             return FileQueryResult::Error;
         case fs::file_not_found:
+            info.status = true;
             info.exists = false;
             return FileQueryResult::DoesNotExist;
         default:
+            info.status = true;
             info.exists = true;
             break;
         }
@@ -58,7 +70,7 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
                 info.type = FileInfo::Directory;
                 break;
             case fs::symlink_file:
-                std::cerr << "FileInfoCrawler: symlink not fully followed" << std::endl;
+                CERR << "symlink not fully followed" << std::endl;
                 info.type = FileInfo::System;
                 break;
             default:
@@ -73,7 +85,8 @@ FileQueryResult::Status readEntry(const fs::path &path, FileInfo &info) {
         return FileQueryResult::Ok;
 
     } catch (fs::filesystem_error &ex) {
-        std::cerr << "FileInfoCrawler: exception " << ex.what() << std::endl;
+        CERR << "exception " << ex.what() << std::endl;
+        info.status = false;
         return FileQueryResult::Error;
     }
 }
@@ -84,7 +97,18 @@ std::vector<std::string> readDirectory(const std::string &path, message::FileQue
 
     std::vector<std::string> results;
     if (path.empty()) {
-        results.push_back("/");
+        // this is a query for drives
+#ifdef WIN32
+        char physical[65536];
+        QueryDosDevice(NULL, physical, sizeof(physical));
+        for (char *pos = physical; *pos; pos+=strlen(pos)+1) {
+            char logical[65536];
+            QueryDosDevice(pos, logical, sizeof(logical));
+            results.emplace_back(logical);
+        }
+#else
+        results.emplace_back("/");
+#endif
         return results;
     }
 
@@ -133,6 +157,8 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const std::vector<
                 info.homepath = h;
             else
                 info.homepath = "/";
+            if (const char *u = getenv("USER"))
+                info.username = u;
 #endif
             info.currentdir = fs::current_path().string();
             auto payload = createPayload(info);
@@ -140,18 +166,28 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const std::vector<
             break;
         }
         case FileQuery::LookUpFiles: {
-            const std::string path(query.path());
+            std::string path(query.path());
+            if (!path.empty() && path.back() != '/')
+                path += "/";
             auto files = unpackFileList(payload);
+            std::mutex mtx;
             std::vector<FileInfo> results;
+            std::vector<std::future<FileQueryResult::Status>> queryFutures;
             for (const auto &f: files) {
-                auto fn = path + "/" + f;
-                std::cerr << "LookUpFiles: name=" << fn << std::endl;
-                FileInfo fi;
-                status = readEntry(fs::path(fn), fi);
-                if (status != FileQueryResult::Ok) {
-                    break;
-                }
-                results.push_back(fi);
+                auto fn = path + f;
+                queryFutures.emplace_back(std::async(std::launch::async, [fn, &mtx, &results]() mutable -> FileQueryResult::Status {
+                    FileInfo fi;
+                    auto s = readEntry(fs::path(fn), fi);
+                    if (s != FileQueryResult::Ok) {
+                        CERR << "status not ok (" << s << ") for " << fn << std::endl;
+                    }
+                    std::lock_guard<std::mutex> guard(mtx);
+                    results.push_back(fi);
+                    return s;
+                }));
+            }
+            for (auto &f: queryFutures) {
+                f.get();
             }
             auto payload = createPayload(results);
             return sendResponse(query, status, payload);
@@ -179,7 +215,7 @@ bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::Fil
 {
     message::FileQueryResult response(query, s, payload.size());
     if (m_hub.id() == query.senderId()) {
-        std::cerr << "sending to " << query.uiId() << ", path=" << query.path() << ", payload sz=" << payload.size() << std::endl;
+        //CERR << "sending to " << query.uiId() << ", path=" << query.path() << ", payload sz=" << payload.size() << std::endl;
         return m_hub.sendUi(response, query.uiId(), &payload);
     }
 

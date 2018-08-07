@@ -3,12 +3,10 @@
 
 #include <QWidget>
 #include <QLineEdit>
-#include <QFileDialog>
 
 #include "../remotefilebrowser/remotefiledialog.h"
 #include <core/message.h>
 
-class QFileDialog;
 class QHBoxLayout;
 class QLineEdit;
 class QToolButton;
@@ -43,6 +41,7 @@ public:
     const QValidator *validator() const;
     void setValidator(QValidator *v);
     void setEchoMode(QLineEdit::EchoMode);
+    void setTitle(const QString &title);
 
     void setFileMode(FileMode fileMode);
 
@@ -60,6 +59,7 @@ private:
     RemoteFileDialog *m_browser = nullptr;
     AbstractFileInfoGatherer *m_fig = nullptr;
     AbstractFileSystemModel *m_model = nullptr;
+    QString m_title;
 
     void applyFileMode();
     void applyNameFilters();

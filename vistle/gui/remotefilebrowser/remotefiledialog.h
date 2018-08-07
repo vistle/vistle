@@ -55,7 +55,7 @@ QT_BEGIN_NAMESPACE
 class QModelIndex;
 class QItemSelection;
 struct RemoteFileDialogArgs;
-class QFileIconProvider;
+class RemoteFileIconProvider;
 class RemoteFileDialogPrivate;
 class QAbstractItemDelegate;
 class QAbstractProxyModel;
@@ -109,8 +109,7 @@ public:
     ~RemoteFileDialog();
 
     void setDirectory(const QString &directory);
-    inline void setDirectory(const QDir &directory);
-    QDir directory() const;
+    QString directory() const;
 
     void setDirectoryUrl(const QUrl &directory);
     QUrl directoryUrl() const;
@@ -158,9 +157,6 @@ public:
     void setSidebarUrls(const QList<QUrl> &urls);
     QList<QUrl> sidebarUrls() const;
 
-    QByteArray saveState() const;
-    bool restoreState(const QByteArray &state);
-
     void setConfirmOverwrite(bool enabled);
     bool confirmOverwrite() const;
 
@@ -173,8 +169,8 @@ public:
     void setItemDelegate(QAbstractItemDelegate *delegate);
     QAbstractItemDelegate *itemDelegate() const;
 
-    void setIconProvider(QFileIconProvider *provider);
-    QFileIconProvider *iconProvider() const;
+    void setIconProvider(RemoteFileIconProvider *provider);
+    RemoteFileIconProvider *iconProvider() const;
 
     void setLabelText(DialogLabel label, const QString &text);
     QString labelText(DialogLabel label) const;
@@ -210,65 +206,6 @@ Q_SIGNALS:
     void filterSelected(const QString &filter);
 
 public:
-
-#if 0
-    static QString getOpenFileName(QWidget *parent = nullptr,
-                                   const QString &caption = QString(),
-                                   const QString &dir = QString(),
-                                   const QString &filter = QString(),
-                                   QString *selectedFilter = nullptr,
-                                   Options options = Options());
-
-    static QUrl getOpenFileUrl(QWidget *parent = nullptr,
-                               const QString &caption = QString(),
-                               const QUrl &dir = QUrl(),
-                               const QString &filter = QString(),
-                               QString *selectedFilter = nullptr,
-                               Options options = Options(),
-                               const QStringList &supportedSchemes = QStringList());
-
-    static QString getSaveFileName(QWidget *parent = nullptr,
-                                   const QString &caption = QString(),
-                                   const QString &dir = QString(),
-                                   const QString &filter = QString(),
-                                   QString *selectedFilter = nullptr,
-                                   Options options = Options());
-
-    static QUrl getSaveFileUrl(QWidget *parent = nullptr,
-                               const QString &caption = QString(),
-                               const QUrl &dir = QUrl(),
-                               const QString &filter = QString(),
-                               QString *selectedFilter = nullptr,
-                               Options options = Options(),
-                               const QStringList &supportedSchemes = QStringList());
-
-    static QString getExistingDirectory(QWidget *parent = nullptr,
-                                        const QString &caption = QString(),
-                                        const QString &dir = QString(),
-                                        Options options = ShowDirsOnly);
-
-    static QUrl getExistingDirectoryUrl(QWidget *parent = nullptr,
-                                        const QString &caption = QString(),
-                                        const QUrl &dir = QUrl(),
-                                        Options options = ShowDirsOnly,
-                                        const QStringList &supportedSchemes = QStringList());
-
-    static QStringList getOpenFileNames(QWidget *parent = nullptr,
-                                        const QString &caption = QString(),
-                                        const QString &dir = QString(),
-                                        const QString &filter = QString(),
-                                        QString *selectedFilter = nullptr,
-                                        Options options = Options());
-
-    static QList<QUrl> getOpenFileUrls(QWidget *parent = nullptr,
-                                       const QString &caption = QString(),
-                                       const QUrl &dir = QUrl(),
-                                       const QString &filter = QString(),
-                                       QString *selectedFilter = nullptr,
-                                       Options options = Options(),
-                                       const QStringList &supportedSchemes = QStringList());
-#endif
-
 
 protected:
     RemoteFileDialog(const RemoteFileDialogArgs &args);
@@ -311,9 +248,6 @@ private:
     QScopedPointer<RemoteFileDialogPrivate> vd_ptr;
     AbstractFileSystemModel *m_model = nullptr;
 };
-
-inline void RemoteFileDialog::setDirectory(const QDir &adirectory)
-{ setDirectory(adirectory.absolutePath()); }
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(RemoteFileDialog::Options)
 

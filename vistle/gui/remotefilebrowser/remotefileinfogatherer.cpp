@@ -75,6 +75,36 @@ static QString translateDriveName(const QFileInfo &drive)
     return driveName;
 }
 
+FileInfo toFileInfo(const QFileInfo &info)
+{
+    FileInfo fi;
+
+    fi.m_valid = true;
+    fi.m_exists = info.exists();
+    fi.m_permissions = info.permissions();
+    fi.m_isSymlink = info.isSymLink();
+    fi.m_type = FileInfo::System;
+    fi.m_hidden = info.isHidden();
+    fi.m_size = -1;
+    fi.m_lastModified = info.lastModified();
+
+    if (info.isDir())
+        fi.m_type = FileInfo::Dir;
+    else if (info.isFile())
+        fi.m_type = FileInfo::File;
+    else if (!info.exists() && info.isSymLink())
+        fi.m_type = FileInfo::System;
+
+    if (fi.type() == FileInfo::Dir)
+        fi.m_size = 0;
+    else if (fi.type() == FileInfo::File)
+        fi.m_size = info.size();
+    if (!info.exists() && !info.isSymLink())
+        fi.m_size = -1;
+
+    return fi;
+}
+
 /*!
     Creates thread
 */
@@ -101,6 +131,8 @@ RemoteFileInfoGatherer::RemoteFileInfoGatherer(QObject *parent)
 #  endif // Q_OS_WIN && !Q_OS_WINRT
 #endif
     start(LowPriority);
+
+    emit initialized();
 }
 
 /*!
@@ -115,9 +147,26 @@ RemoteFileInfoGatherer::~RemoteFileInfoGatherer()
     wait();
 }
 
+QString RemoteFileInfoGatherer::identifier() const
+{
+    return QString("");
+}
+
 bool RemoteFileInfoGatherer::isRootDir(const QString &path) const
 {
     return QDir(path).isRoot();
+}
+
+QString RemoteFileInfoGatherer::userName() const
+{
+#if Q_OS_WIN
+#else
+    auto p = getenv("USER");
+    if (p) {
+        return QString::fromStdString(p);
+    }
+#endif
+    return QString("unknown");
 }
 
 QString RemoteFileInfoGatherer::homePath() const
@@ -213,9 +262,11 @@ void RemoteFileInfoGatherer::removePath(const QString &path)
 FileInfo RemoteFileInfoGatherer::getInfo(const QString &path)
 {
     QFileInfo finfo(path);
-    FileInfo info(path);
+    FileInfo info = toFileInfo(finfo);
+#if 0
     info.icon = m_iconProvider->icon(path);
     info.displayType = m_iconProvider->type(path);
+#endif
 #ifndef QT_NO_FILESYSTEMWATCHER
     // ### Not ready to listen all modifications by default
     static const bool watchFiles = qEnvironmentVariableIsSet("QT_FILESYSTEMMODEL_WATCH_FILES");
@@ -286,7 +337,7 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
         for (int i = infoList.count() - 1; i >= 0; --i) {
             QString driveName = translateDriveName(infoList.at(i));
             QVector<QPair<QString,FileInfo> > updatedFiles;
-            updatedFiles.append(QPair<QString,FileInfo>(driveName, FileInfo(infoList.at(i))));
+            updatedFiles.append(QPair<QString,FileInfo>(driveName, toFileInfo(infoList.at(i))));
             emit updates(path, updatedFiles);
         }
         return;
@@ -324,7 +375,7 @@ void RemoteFileInfoGatherer::getFileInfos(const QString &path, const QStringList
 }
 
 void RemoteFileInfoGatherer::fetch(const QFileInfo &fileInfo, QElapsedTimer &base, bool &firstTime, QVector<QPair<QString, FileInfo> > &updatedFiles, const QString &path) {
-    updatedFiles.append(QPair<QString, FileInfo>(fileInfo.fileName(), FileInfo(fileInfo)));
+    updatedFiles.append(QPair<QString, FileInfo>(fileInfo.fileName(), toFileInfo(fileInfo)));
     QElapsedTimer current;
     current.start();
     if ((firstTime && updatedFiles.count() > 100) || base.msecsTo(current) > 1000) {

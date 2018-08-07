@@ -179,6 +179,9 @@ void Parameters::newParameter(int moduleId, QString parameterName)
             || sp->presentation() == vistle::Parameter::ExistingFilename) {
          prop = m_browserManager->addProperty(displayName(parameterName));
          m_browserManager->setModuleId(prop, moduleId);
+         QString module = QString::fromStdString(m_vistle->ui().state().getModuleName(m_moduleId));
+         QString title = "Vistle - " + module + "_" + QString::number(m_moduleId) + ": " + displayName(parameterName);
+         m_browserManager->setTitle(prop, title);
          if (sp->presentation() == vistle::Parameter::Filename)
              m_browserManager->setFileMode(prop, VistleBrowserEdit::File);
          else if (sp->presentation() == vistle::Parameter::Directory)

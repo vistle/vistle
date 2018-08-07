@@ -37,8 +37,8 @@
 **
 ****************************************************************************/
 
-#ifndef QFSCOMPLETOR_P_H
-#define QFSCOMPLETOR_P_H
+#ifndef REMOTEFSCOMPLETOR_P_H
+#define REMOTEFSCOMPLETOR_P_H
 
 //
 //  W A R N I N G
@@ -60,11 +60,11 @@ QT_REQUIRE_CONFIG(fscompleter);
 QT_BEGIN_NAMESPACE
 
 /*!
-    QCompleter that can deal with QFileSystemModel
+    QCompleter that can deal with AbstractFileSystemModel
   */
-class Q_WIDGETS_EXPORT QFSCompleter :  public QCompleter {
+class Q_WIDGETS_EXPORT RemoteFSCompleter :  public QCompleter {
 public:
-    explicit QFSCompleter(AbstractFileSystemModel *model, QObject *parent = 0)
+    explicit RemoteFSCompleter(AbstractFileSystemModel *model, QObject *parent = 0)
         : QCompleter(model, parent), proxyModel(0), sourceModel(model)
     {
 #if defined(Q_OS_WIN)

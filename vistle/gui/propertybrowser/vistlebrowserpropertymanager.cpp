@@ -16,7 +16,7 @@ public:
     struct Data
     {
         Data() : moduleId(vistle::message::Id::Invalid), filters(QString(QLatin1Char('*'))), regExp(QString(QLatin1Char('*')),  Qt::CaseSensitive, QRegExp::Wildcard),
-            echoMode(QLineEdit::Normal), fileMode(QFileDialog::AnyFile), readOnly(false)
+            echoMode(QLineEdit::Normal), fileMode(RemoteFileDialog::AnyFile), readOnly(false)
         {
         }
         QString val;
@@ -26,6 +26,7 @@ public:
         int echoMode;
         int fileMode;
         bool readOnly;
+        QString title;
     };
 
     typedef QMap<const QtProperty *, Data> PropertyValueMap;
@@ -102,6 +103,11 @@ VistleBrowserPropertyManager::~VistleBrowserPropertyManager()
 QString VistleBrowserPropertyManager::value(const QtProperty *property) const
 {
     return getValue<QString>(d_ptr->m_values, property);
+}
+
+QString VistleBrowserPropertyManager::title(const QtProperty *property) const
+{
+    return getData<QString>(d_ptr->m_values, &VistleBrowserPropertyManagerPrivate::Data::title, property, "");
 }
 
 int VistleBrowserPropertyManager::moduleId(const QtProperty *property) const
@@ -209,6 +215,25 @@ void VistleBrowserPropertyManager::setValue(QtProperty *property, const QString 
 
     emit propertyChanged(property);
     emit valueChanged(property, data.val);
+}
+
+void VistleBrowserPropertyManager::setTitle(QtProperty *property, const QString &title)
+{
+    const VistleBrowserPropertyManagerPrivate::PropertyValueMap::iterator it = d_ptr->m_values.find(property);
+    if (it == d_ptr->m_values.end())
+        return;
+
+    VistleBrowserPropertyManagerPrivate::Data data = it.value();
+
+    if (data.title == title)
+        return;
+
+    data.title = title;
+
+    it.value() = data;
+
+    emit propertyChanged(property);
+    emit titleChanged(property, data.title);
 }
 
 void VistleBrowserPropertyManager::setModuleId(QtProperty *property, const int id)

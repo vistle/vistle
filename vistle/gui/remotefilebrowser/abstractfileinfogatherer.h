@@ -56,7 +56,7 @@
 #include <qthread.h>
 #include <qmutex.h>
 #include <qwaitcondition.h>
-#include <qfileiconprovider.h>
+#include "remotefileiconprovider.h"
 #include <qpair.h>
 #include <qstack.h>
 #include <qdatetime.h>
@@ -71,39 +71,15 @@ QT_BEGIN_NAMESPACE
 
 class FileInfo {
 public:
-    enum Type { Dir, File, System };
+    enum Type { Unknown, Dir, File, System };
 
-    FileInfo()
+    FileInfo(const QString &path = QString())
         : m_exists(false)
         , m_isSymlink(false)
-        , m_type(System)
+        , m_type(Unknown)
         , m_hidden(false)
         , m_size(-1)
     {}
-    explicit FileInfo(const QFileInfo &info)
-        : m_valid(true)
-        , m_exists(info.exists())
-        , m_permissions(info.permissions())
-        , m_isSymlink(info.isSymLink())
-        , m_type(FileInfo::System)
-        , m_hidden(info.isHidden())
-        , m_size(-1)
-        , m_lastModified(info.lastModified())
-    {
-        if (info.isDir())
-            m_type = FileInfo::Dir;
-        else if (info.isFile())
-            m_type = FileInfo::File;
-        else if (!info.exists() && info.isSymLink())
-            m_type = FileInfo::System;
-
-        if (type() == Dir)
-            m_size = 0;
-        else if (type() == FileInfo::File)
-            m_size = info.size();
-        if (!info.exists() && !info.isSymLink())
-            m_size = -1;
-    }
 
     inline bool exists() { return m_exists; }
     inline bool isDir() { return type() == Dir; }
@@ -159,30 +135,32 @@ public:
 
     void updateType();
 
-    QString displayType;
+    QString displayType = QString("Unknown");
     QIcon icon;
 
 public :
     bool m_valid = false;
     bool m_exists = false;
-    QFile::Permissions m_permissions;
-    bool m_isSymlink;
-    Type m_type;
-    bool m_hidden;
+    QFile::Permissions m_permissions = 0;
+    bool m_isSymlink = false;
+    Type m_type = Unknown;
+    bool m_hidden = false;
     qint64 m_size = -1;
     QDateTime m_lastModified;
     bool m_caseSensitive = true;
+    QString m_linkTarget;
 };
 
 Q_DECLARE_METATYPE(FileInfo)
 
-class QFileIconProvider;
+class RemoteFileIconProvider;
 
 class Q_AUTOTEST_EXPORT AbstractFileInfoGatherer : public QThread
 {
 Q_OBJECT
 
 Q_SIGNALS:
+    void initialized() const;
     void updates(const QString &directory, const QVector<QPair<QString, FileInfo> > &updates);
     void newListOfFiles(const QString &directory, const QStringList &listOfFiles) const;
     void nameResolved(const QString &fileName, const QString &resolvedName) const;
@@ -192,14 +170,16 @@ public:
     explicit AbstractFileInfoGatherer(QObject *parent = 0);
     ~AbstractFileInfoGatherer() override;
 
+    virtual QString identifier() const = 0;
     virtual bool isRootDir(const QString &path) const = 0;
+    virtual QString userName() const = 0;
     virtual QString homePath() const = 0;
     virtual QString workingDirectory() const = 0;
 
     // only callable from this->thread():
     virtual void removePath(const QString &path) = 0;
     virtual FileInfo getInfo(const QString &path) = 0;
-    QFileIconProvider *iconProvider() const;
+    RemoteFileIconProvider *iconProvider() const;
     bool resolveSymlinks() const;
     virtual bool isWindows() const = 0;
     virtual bool mkdir(const QString &path) = 0;
@@ -209,15 +189,15 @@ public Q_SLOTS:
     virtual void fetchExtendedInformation(const QString &path, const QStringList &files) = 0;
     virtual void updateFile(const QString &path) = 0;
     virtual void setResolveSymlinks(bool enable);
-    virtual void setIconProvider(QFileIconProvider *provider);
+    virtual void setIconProvider(RemoteFileIconProvider *provider);
 
 protected:
 
 #ifdef Q_OS_WIN
     bool m_resolveSymlinks; // not accessed by run()
 #endif
-    QFileIconProvider *m_iconProvider; // not accessed by run()
-    QFileIconProvider defaultProvider;
+    RemoteFileIconProvider *m_iconProvider; // not accessed by run()
+    RemoteFileIconProvider defaultProvider;
 };
 
 QT_END_NAMESPACE

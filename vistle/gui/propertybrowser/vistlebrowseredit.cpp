@@ -2,11 +2,12 @@
 
 #include <QHBoxLayout>
 #include <QLineEdit>
-#include <QFileDialog>
 #include <QToolButton>
 #include <QAction>
 #include <QDebug>
 #include <QIcon>
+#include <QApplication>
+#include <QStyle>
 
 #include "../remotefilebrowser/abstractfileinfogatherer.h"
 #include "../remotefilebrowser/vistlefileinfogatherer.h"
@@ -18,7 +19,7 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
 {
     m_layout = new QHBoxLayout(this);
     m_button = new QToolButton(this);
-    m_button->setIcon(QIcon::fromTheme("folder"));
+    m_button->setIcon(QIcon::fromTheme("folder", qApp->style()->standardIcon(QStyle::SP_DirClosedIcon)));
     m_edit = new QLineEdit(this);
     connect(m_edit, SIGNAL(editingFinished()), SIGNAL(editingFinished()));
 
@@ -26,6 +27,8 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
     m_layout->addWidget(m_edit);
 
     m_nameFilters << "All Files (*)";
+
+    m_title = "Vistle File Browser";
 
     connect(m_button, &QToolButton::pressed, [this](){
         if (!m_browser) {
@@ -36,6 +39,7 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
             }
             m_model = new RemoteFileSystemModel(m_fig);
             m_browser = new RemoteFileDialog(m_model);
+            m_browser->setWindowTitle(m_title);
             applyFileMode();
             applyNameFilters();
 
@@ -45,17 +49,23 @@ VistleBrowserEdit::VistleBrowserEdit(QWidget *parent)
                     setText(files[0]);
                 emit editingFinished();
             });
+
+            connect(m_browser, &QDialog::finished, [this](){
+                m_button->setIcon(QIcon::fromTheme("folder", qApp->style()->standardIcon(QStyle::SP_DirClosedIcon)));
+            });
         }
 
         if (m_browser->isHidden()) {
-            if (m_browser->fileMode() == QFileDialog::Directory) {
+            if (m_browser->fileMode() == RemoteFileDialog::Directory) {
                 m_browser->setDirectory(text());
             } else {
                 m_browser->selectFile(text());
             }
             m_browser->show();
+            m_button->setIcon(QIcon::fromTheme("folder-open", qApp->style()->standardIcon(QStyle::SP_DirOpenIcon)));
         } else {
             m_browser->hide();
+            m_button->setIcon(QIcon::fromTheme("folder", qApp->style()->standardIcon(QStyle::SP_DirClosedIcon)));
         }
     });
 
@@ -91,6 +101,13 @@ void VistleBrowserEdit::setModuleId(int id)
 void VistleBrowserEdit::setText(const QString &text)
 {
     m_edit->setText(text);
+}
+
+void VistleBrowserEdit::setTitle(const QString &title)
+{
+    m_title = title;
+    if (m_browser)
+        m_browser->setWindowTitle(title);
 }
 
 void VistleBrowserEdit::setFilters(const QString &filters)
@@ -154,9 +171,9 @@ void VistleBrowserEdit::applyFileMode() {
     }
 #if 0
     if (m_fileMode == Directory || m_fileMode == ExistingDirectory) {
-        m_browser->setOption(QFileDialog::ShowDirsOnly);
+        m_browser->setOption(RemoteFileDialog::ShowDirsOnly);
     } else {
-        m_browser->setOption(QFileDialog::ShowDirsOnly, false);
+        m_browser->setOption(RemoteFileDialog::ShowDirsOnly, false);
     }
 #endif
 }

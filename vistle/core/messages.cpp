@@ -1472,6 +1472,16 @@ const char *FileQuery::path() const
     return m_path.data();
 }
 
+void FileQuery::setFilebrowserId(int id)
+{
+    m_filebrowser = id;
+}
+
+int FileQuery::filebrowserId() const
+{
+    return m_filebrowser;
+}
+
 FileQuery::Command FileQuery::command() const
 {
     return Command(m_command);
@@ -1485,6 +1495,7 @@ int FileQuery::moduleId() const
 FileQueryResult::FileQueryResult(const FileQuery &request, Status status, size_t payloadsize)
 : m_command(request.command())
 , m_status(status)
+, m_filebrowser(request.filebrowserId())
 {
     setDestId(request.senderId());
     setDestUiId(request.uiId());
@@ -1506,6 +1517,11 @@ FileQuery::Command FileQueryResult::command() const
 FileQueryResult::Status FileQueryResult::status() const
 {
     return Status(m_status);
+}
+
+int FileQueryResult::filebrowserId() const
+{
+    return m_filebrowser;
 }
 
 DataTransferState::DataTransferState(size_t numTransferring)
@@ -1651,12 +1667,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case FILEQUERY: {
          auto &mm = static_cast<const FileQuery &>(m);
-         s << ", command: " << mm.command() << ", path: " << mm.path();
+         s << ", command: " << mm.command() << ", path: " << mm.path() << ", filebrowser: " << mm.filebrowserId();
          break;
       }
       case FILEQUERYRESULT: {
          auto &mm = static_cast<const FileQueryResult &>(m);
-         s << "status: " << mm.status() << ", path: " << mm.path();
+         s << "status: " << mm.status() << ", path: " << mm.path() << ", filebrowser: " << mm.filebrowserId();
          break;
       }
       default:

@@ -77,9 +77,7 @@
 #include <qpointer.h>
 #include <qdebug.h>
 #include "qsidebar_p.h"
-#if QT_CONFIG(fscompleter)
-#include "qfscompleter_p.h"
-#endif
+#include "remotefscompleter_p.h"
 
 #include "vistlefilesystemmodel.h"
 
@@ -129,7 +127,6 @@ public:
     void init(const QUrl &directory = QUrl(), const QString &nameFilter = QString(),
               const QString &caption = QString());
     bool itemViewKeyboardEvent(QKeyEvent *event);
-    QString getEnvironmentVariable(const QString &string);
     static QUrl workingDirectory(const QUrl &path);
     static QString initialSelection(const QUrl &path);
     QStringList typedFiles() const;
@@ -198,6 +195,7 @@ public:
     void retranslateWindowTitle();
     void retranslateStrings();
     void emitFilesSelected(const QStringList &files);
+    void updateCursor(bool waiting);
 
     void _q_goHome();
     void _q_pathChanged(const QString &);
@@ -235,9 +233,7 @@ public:
     QStringList watching;
     AbstractFileSystemModel *model;
 
-#if QT_CONFIG(fscompleter)
-    QFSCompleter *completer;
-#endif //QT_CONFIG(fscompleter)
+    RemoteFSCompleter *completer;
 
     QString setWindowTitle;
 
@@ -298,7 +294,7 @@ public:
     void paintEvent(QPaintEvent *) override;
 
 private:
-    QUrlModel *urlModel;
+    RemoteUrlModel *urlModel;
     RemoteFileDialogPrivate *d_ptr;
     QStringList m_history;
 };

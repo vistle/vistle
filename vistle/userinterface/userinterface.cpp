@@ -209,8 +209,18 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
       }
 
       case message::FILEQUERYRESULT: {
-          for (auto b: m_fileBrowser)
-              b->handleMessage(*message, payload);
+          auto &fq = message->as<message::FileQueryResult>();
+          bool found = false;
+          for (auto b: m_fileBrowser) {
+              if (b->id() == fq.filebrowserId()) {
+                  b->handleMessage(fq, payload);
+                  found = true;
+              }
+              if (!found) {
+                  std::cerr << "userinterface [" << host() << "] [" << id() << "] "
+                            << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
+              }
+          }
           break;
       }
 
@@ -272,7 +282,9 @@ void UserInterface::registerFileBrowser(FileBrowser *browser)
 {
     assert(browser->m_ui == nullptr);
 
+    ++m_fileBrowserCount;
     browser->m_ui = this;
+    browser->m_id = m_fileBrowserCount;
     m_fileBrowser.push_back(browser);
 }
 
@@ -293,10 +305,22 @@ UserInterface::~UserInterface() {
              << "] quit" << std::endl;
 }
 
+FileBrowser::~FileBrowser() {
+}
+
+int FileBrowser::id() const {
+    return m_id;
+}
+
 bool FileBrowser::sendMessage(const message::Message &message, const std::vector<char> *payload)
 {
     assert(m_ui);
-    return m_ui->sendMessage(message, payload);
+    message::Buffer buf(message);
+    if (buf.type() == message::FILEQUERY) {
+        auto &fq = buf.as<message::FileQuery>();
+        fq.setFilebrowserId(m_id);
+    }
+    return m_ui->sendMessage(buf, payload);
 }
 
 } // namespace vistle

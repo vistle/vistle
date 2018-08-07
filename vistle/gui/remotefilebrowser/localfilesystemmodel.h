@@ -32,6 +32,7 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
     QVariant myComputer(int role = Qt::DisplayRole) const override;
+    QVariant homePath(int role = Qt::DisplayRole) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
@@ -49,7 +50,6 @@ public:
 #endif
 
     bool isRootDir(const QString &path) const override;
-    QString homePath() const override;
     QString workingDirectory() const override;
 
     // QFileSystemModel specific API
@@ -57,8 +57,8 @@ public:
     QString rootPath() const override;
     QDir rootDirectory() const;
 
-    void setIconProvider(QFileIconProvider *provider) override;
-    QFileIconProvider *iconProvider() const override;
+    void setIconProvider(RemoteFileIconProvider *provider) override;
+    RemoteFileIconProvider *iconProvider() const override;
 
     void setFilter(QDir::Filters filters) override;
     QDir::Filters filter() const override;
@@ -106,6 +106,7 @@ private:
     QScopedPointer<FSModel> m_model;
     QList<QPersistentModelIndex> layoutChangePersistentIndexes;
     QModelIndexList proxyIndexes;
+    QScopedPointer<RemoteFileIconProvider> m_fileIconProvider;
 
     Q_DISABLE_COPY(LocalFileSystemModel)
 };

@@ -70,7 +70,7 @@ QT_BEGIN_NAMESPACE
 
 class ExtendedInformation;
 class RemoteFileSystemModelPrivate;
-class QFileIconProvider;
+class RemoteFileIconProvider;
 
 #if defined(Q_OS_WIN)
 class RemoteFileSystemModelNodePathKey : public QString
@@ -101,7 +101,7 @@ public:
     {
     public:
         explicit RemoteFileSystemNode(RemoteFileSystemModel *model, const QString &filename = QString(), RemoteFileSystemNode *p = 0)
-            : model(model), fileName(filename), populatedChildren(false), m_isVisible(false), dirtyChildrenIndex(-1), parent(p), info(0) {}
+            : fileName(filename), populatedChildren(false), m_isVisible(false), dirtyChildrenIndex(-1), parent(p), info(0), model(model) {}
         ~RemoteFileSystemNode() {
             qDeleteAll(children);
             delete info;
@@ -133,6 +133,7 @@ public:
         inline bool isSymLink(bool ignoreNtfsSymLinks = false) const { return info && info->isSymLink(ignoreNtfsSymLinks); }
         inline bool caseSensitive() const { if (info) return info->isCaseSensitive(); return false; }
         inline QIcon icon() const { if (info) return info->icon; return QIcon(); }
+        QString linkTarget() const { if (info) return info->m_linkTarget; return QString(); }
 
         inline bool operator <(const RemoteFileSystemNode &node) const {
             if (caseSensitive() || node.caseSensitive())
@@ -176,20 +177,21 @@ public:
         inline int visibleLocation(const QString &childName) {
             return visibleChildren.indexOf(childName);
         }
-        void updateIcon(QFileIconProvider *iconProvider, const QString &path) {
+
+        void updateIcon(RemoteFileIconProvider *iconProvider, const QString &path) {
             if (info) {
                 if (info->type() == FileInfo::Dir) {
-                    info->icon = iconProvider->icon(QFileIconProvider::Folder);
+                    info->icon = iconProvider->icon(RemoteFileIconProvider::Folder);
                     if (model->homePath() == path)
                         info->icon = qApp->style()->standardIcon(QStyle::SP_DirHomeIcon);
                 } else if (info->type() == FileInfo::File) {
-                    info->icon = iconProvider->icon(QFileIconProvider::File);
+                    info->icon = iconProvider->icon(RemoteFileIconProvider::File);
                 } else if (info->type() == FileInfo::System) {
-                    info->icon = iconProvider->icon(QFileIconProvider::Drive);
+                    info->icon = iconProvider->icon(RemoteFileIconProvider::Drive);
                 } else if (!info->exists()) {
-                    info->icon = iconProvider->icon(QFileIconProvider::Trashcan);
+                    info->icon = iconProvider->icon(RemoteFileIconProvider::Trashcan);
                 } else {
-                    info->icon = iconProvider->icon(QFileIconProvider::Network);
+                    info->icon = iconProvider->icon(RemoteFileIconProvider::Network);
                 }
             }
             for (RemoteFileSystemNode *child : qAsConst(children)) {
@@ -204,7 +206,7 @@ public:
             }
         }
 
-        void retranslateStrings(QFileIconProvider *iconProvider, const QString &path) {
+        void retranslateStrings(RemoteFileIconProvider *iconProvider, const QString &path) {
             if (info) {
                 info->updateType();
             }
@@ -227,6 +229,7 @@ public:
         QList<QString> visibleChildren;
         int dirtyChildrenIndex;
         RemoteFileSystemNode *parent;
+        QString m_linkTarget;
 
         FileInfo *info = nullptr;
         RemoteFileSystemModel *model = nullptr;
@@ -309,6 +312,7 @@ public:
     QString type(const QModelIndex &index) const;
     QString time(const QModelIndex &index) const;
 
+    void _q_modelInitialized();
     void _q_directoryChanged(const QString &directory, const QStringList &list);
     void _q_performDelayedSort();
     void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo> > &);
@@ -334,7 +338,7 @@ public:
     QDir::Filters filters;
     QHash<const RemoteFileSystemNode*, bool> bypassFilters;
     bool nameFilterDisables;
-    //This flag is an optimization for the QFileDialog
+    //This flag is an optimization for the RemoteFileDialog
     //It enable a sort which is not recursive, it means
     //we sort only what we see.
     bool disableRecursiveSort;
@@ -352,6 +356,7 @@ public:
         const RemoteFileSystemNode *node;
     };
     QVector<Fetching> toFetch;
+    bool fileinfoGathererInitialized = false;
 
 };
 Q_DECLARE_TYPEINFO(RemoteFileSystemModelPrivate::Fetching, Q_MOVABLE_TYPE);

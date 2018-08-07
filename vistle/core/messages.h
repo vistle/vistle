@@ -870,10 +870,13 @@ public:
     Command command() const;
     int moduleId() const;
     const char *path() const;
+    void setFilebrowserId(int id);
+    int filebrowserId() const;
 
 private:
     int m_command;
     int m_moduleId;
+    int m_filebrowser = -1;
     text_t m_path;
 };
 static_assert(sizeof(FileQuery) <= Message::MESSAGE_SIZE, "message too large");
@@ -890,10 +893,12 @@ public:
     const char *path() const;
     FileQuery::Command command() const;
     Status status() const;
+    int filebrowserId() const;
 
 private:
     int m_command;
     int m_status;
+    int m_filebrowser;
     text_t m_path;
 };
 static_assert(sizeof(FileQueryResult) <= Message::MESSAGE_SIZE, "message too large");

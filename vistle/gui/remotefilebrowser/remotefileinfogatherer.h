@@ -66,7 +66,7 @@ QT_REQUIRE_CONFIG(filesystemmodel);
 
 QT_BEGIN_NAMESPACE
 
-class QFileIconProvider;
+class RemoteFileIconProvider;
 
 class Q_AUTOTEST_EXPORT RemoteFileInfoGatherer : public AbstractFileInfoGatherer
 {
@@ -83,7 +83,9 @@ public:
     void unwatchPaths(const QStringList &paths) { watcher->removePaths(paths); }
 #endif // filesystemwatcher && Q_OS_WIN
 
+    QString identifier() const override;
     bool isRootDir(const QString &path) const override;
+    QString userName() const override;
     QString homePath() const override;
     QString workingDirectory() const override;
 

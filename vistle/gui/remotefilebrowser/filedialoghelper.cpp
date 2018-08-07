@@ -188,7 +188,7 @@ QStringList RemoteFileDialogOptions::nameFilters() const
 
 QString RemoteFileDialogOptions::defaultNameFilterString()
 {
-    return QCoreApplication::translate("QFileDialog", "All Files (*)");
+    return QCoreApplication::translate("RemoteFileDialog", "All Files (*)");
 }
 
 void RemoteFileDialogOptions::setMimeTypeFilters(const QStringList &filters)

@@ -32,6 +32,7 @@ public:
     void slotEchoModeChanged(QtProperty *, int);
     void slotReadOnlyChanged(QtProperty *, bool);
     void slotFileModeChanged(QtProperty *, int);
+    void slotTitleChanged(QtProperty *, const QString &title);
 };
 
 VistleBrowserFactoryPrivate::VistleBrowserFactoryPrivate()
@@ -177,6 +178,24 @@ void VistleBrowserFactoryPrivate::slotFileModeChanged(QtProperty *property, int 
     }
 }
 
+void VistleBrowserFactoryPrivate::slotTitleChanged( QtProperty *property, const QString &title)
+{
+    if (!m_createdEditors.contains(property))
+        return;
+
+    VistleBrowserPropertyManager *manager = q_ptr->propertyManager(property);
+    if (!manager)
+        return;
+
+    QListIterator<VistleBrowserEdit *> itEditor(m_createdEditors[property]);
+    while (itEditor.hasNext()) {
+        VistleBrowserEdit *editor = itEditor.next();
+        editor->blockSignals(true);
+        editor->setTitle(title);
+        editor->blockSignals(false);
+    }
+}
+
 void VistleBrowserFactoryPrivate::slotSetValue(const QString &value)
 {
     QObject *object = q_ptr->sender();
@@ -249,6 +268,8 @@ void VistleBrowserFactory::connectPropertyManager(VistleBrowserPropertyManager *
         this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
     connect(manager, SIGNAL(fileModeChanged(QtProperty*, int)),
             this, SLOT(slotFileModeChanged(QtProperty *, int)));
+    connect(manager, SIGNAL(titleChanged(QtProperty*, const QString &)),
+            this, SLOT(slotTitleChanged(QtProperty *, const QString &)));
 }
 
 /*!
@@ -266,6 +287,7 @@ QWidget *VistleBrowserFactory::createEditor(VistleBrowserPropertyManager *manage
     editor->setEchoMode((EchoMode)manager->echoMode(property));
     editor->setReadOnly(manager->isReadOnly(property));
     editor->setFileMode((FileMode)manager->fileMode(property));
+    editor->setTitle(manager->title(property));
     QRegExp regExp = manager->regExp(property);
     if (regExp.isValid()) {
         QValidator *validator = new QRegExpValidator(regExp, editor);
@@ -307,6 +329,8 @@ void VistleBrowserFactory::disconnectPropertyManager(VistleBrowserPropertyManage
         this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
     disconnect(manager, SIGNAL(fileModeChanged(QtProperty*,int)),
                 this, SLOT(slotFileModeChanged(QtProperty *, int)));
+    disconnect(manager, SIGNAL(titleChanged(QtProperty*, const QString &)),
+                this, SLOT(slotTitleChanged(QtProperty *,  const QString &)));
 
 }
 

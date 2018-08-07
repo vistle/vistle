@@ -62,6 +62,7 @@
 #include <qdir.h>
 #include <qelapsedtimer.h>
 #include <QSet>
+#include <QMap>
 
 #include <userinterface/userinterface.h>
 
@@ -69,7 +70,7 @@ QT_REQUIRE_CONFIG(filesystemmodel);
 
 QT_BEGIN_NAMESPACE
 
-class QFileIconProvider;
+class RemoteFileIconProvider;
 
 class Q_AUTOTEST_EXPORT VistleFileInfoGatherer : public AbstractFileInfoGatherer, public vistle::FileBrowser
 {
@@ -81,8 +82,10 @@ public:
 
     bool handleMessage(const vistle::message::Message &message, const std::vector<char> &payload) override;
 
+    QString identifier() const override;
     bool isRootDir(const QString &path) const override;
     QString homePath() const override;
+    QString userName() const override;
     QString workingDirectory() const override;
 
     // only callable from this->thread():
@@ -101,14 +104,17 @@ private:
     // called by run():
     void getFileInfos(const QString &path, const QStringList &files) override;
 #endif
-    QSet<QString> m_dirs, m_files; // ongoing queries
+    QSet<QString> m_dirs; // on-going queries
+    QMap<QString, QSet<QString>> m_files; // ongoing queries
 
     vistle::UserInterface *m_ui = nullptr;
     int m_moduleId = vistle::message::Id::Invalid;
     bool m_initialized = false;
     bool m_isWindows = false;
-    QString m_homePath;
     QString m_workingDirectory;
+    QString m_userName;
+    QString m_homePath;
+    QString m_identifier;
 };
 
 QT_END_NAMESPACE

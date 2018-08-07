@@ -52,6 +52,7 @@ QString RemoteFileSystemModel::workingDirectory() const
 #include <qmessagebox.h>
 #endif
 #include <qapplication.h>
+#include <qstyle.h>
 #include <QtCore/qcollator.h>
 
 #include <algorithm>
@@ -337,23 +338,19 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
         return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
 
     // Construct the nodes up to the new root path if they need to be built
-    QString absolutePath;
+#if 0
 #ifdef Q_OS_WIN32
     QString longPath = qt_GetLongPathName(path);
 #else
     QString longPath = path;
 #endif
-#if 0
-    if (longPath == rootDir.path())
-        absolutePath = rootDir.absolutePath();
-    else
-        absolutePath = QDir(longPath).absolutePath();
-#else
+#endif
+    QString absolutePath;
+    QString longPath = path;
     if (longPath == q->rootPath())
         absolutePath = q->rootPath();
     else
         absolutePath = longPath;
-#endif
 
     // ### TODO can we use bool QAbstractFileEngine::caseSensitive() const?
     QStringList pathElements = absolutePath.split(QLatin1Char('/'), QString::SkipEmptyParts);
@@ -365,71 +362,70 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
     QChar separator = QLatin1Char('/');
     QString trailingSeparator;
     if (q->isWindows()) {
-    if (absolutePath.startsWith(QLatin1String("//"))) { // UNC path
-        QString host = QLatin1String("\\\\") + pathElements.constFirst();
-        if (absolutePath == QDir::fromNativeSeparators(host))
-            absolutePath.append(QLatin1Char('/'));
-        if (longPath.endsWith(QLatin1Char('/')) && !absolutePath.endsWith(QLatin1Char('/')))
-            absolutePath.append(QLatin1Char('/'));
-        if (absolutePath.endsWith(QLatin1Char('/')))
-            trailingSeparator = QLatin1String("\\");
-        int r = 0;
-        RemoteFileSystemModelPrivate::RemoteFileSystemNode *rootNode = const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
-#ifdef Q_OS_WIN
-        if (!root.children.contains(host.toLower())) {
-            if (pathElements.count() == 1 && !absolutePath.endsWith(QLatin1Char('/')))
-                return rootNode;
-            QFileInfo info(host);
-            if (!info.exists())
-                return rootNode;
-            RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate*>(this);
-            p->addNode(rootNode, host,info);
-            p->addVisibleFiles(rootNode, QStringList(host));
+        if (absolutePath.startsWith(QLatin1String("//"))) { // UNC path
+            QString host = QLatin1String("\\\\") + pathElements.constFirst();
+            if (absolutePath == QDir::fromNativeSeparators(host))
+                absolutePath.append(QLatin1Char('/'));
+            if (longPath.endsWith(QLatin1Char('/')) && !absolutePath.endsWith(QLatin1Char('/')))
+                absolutePath.append(QLatin1Char('/'));
+            if (absolutePath.endsWith(QLatin1Char('/')))
+                trailingSeparator = QLatin1String("\\");
+            int r = 0;
+            RemoteFileSystemModelPrivate::RemoteFileSystemNode *rootNode = const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
+            if (!root.children.contains(host.toLower())) {
+                if (pathElements.count() == 1 && !absolutePath.endsWith(QLatin1Char('/')))
+                    return rootNode;
+                FileInfo info = fileInfoGatherer->getInfo(host);
+                QModelIndex idx = q->index(host);
+                if (!idx.isValid())
+                    return rootNode;
+                RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate*>(this);
+                p->addNode(rootNode, host, info);
+                p->addVisibleFiles(rootNode, QStringList(host));
+            }
+            r = rootNode->visibleLocation(host);
+            r = translateVisibleLocation(rootNode, r);
+            index = q->index(r, 0, QModelIndex());
+            pathElements.pop_front();
+            separator = QLatin1Char('\\');
+            elementPath = host;
+            elementPath.append(separator);
+        } else {
+            if (!pathElements.at(0).contains(QLatin1Char(':'))) {
+                QString rootPath = QDir(longPath).rootPath();
+                pathElements.prepend(rootPath);
+            }
+            if (pathElements.at(0).endsWith(QLatin1Char('/')))
+                pathElements[0].chop(1);
         }
-#endif
-        r = rootNode->visibleLocation(host);
-        r = translateVisibleLocation(rootNode, r);
-        index = q->index(r, 0, QModelIndex());
-        pathElements.pop_front();
-        separator = QLatin1Char('\\');
-        elementPath = host;
-        elementPath.append(separator);
     } else {
-        if (!pathElements.at(0).contains(QLatin1Char(':'))) {
-            QString rootPath = QDir(longPath).rootPath();
-            pathElements.prepend(rootPath);
-        }
-        if (pathElements.at(0).endsWith(QLatin1Char('/')))
-            pathElements[0].chop(1);
-    }
-    } else {
-    // add the "/" item, since it is a valid path element on Unix
-    if (absolutePath[0] == QLatin1Char('/'))
-        pathElements.prepend(QLatin1String("/"));
+        // add the "/" item, since it is a valid path element on Unix
+        if (absolutePath[0] == QLatin1Char('/'))
+            pathElements.prepend(QLatin1String("/"));
     }
 
     RemoteFileSystemModelPrivate::RemoteFileSystemNode *parent = node(index);
 
     for (int i = 0; i < pathElements.count(); ++i) {
         QString element = pathElements.at(i);
-        if (i != 0)
+        if (i != 0 && !elementPath.endsWith(separator))
             elementPath.append(separator);
         elementPath.append(element);
         if (i == pathElements.count() - 1)
             elementPath.append(trailingSeparator);
         if (q->isWindows()) {
-        // On Windows, "filename    " and "filename" are equivalent and
-        // "filename  .  " and "filename" are equivalent
-        // "filename......." and "filename" are equivalent Task #133928
-        // whereas "filename  .txt" is still "filename  .txt"
-        // If after stripping the characters there is nothing left then we
-        // just return the parent directory as it is assumed that the path
-        // is referring to the parent
-        while (element.endsWith(QLatin1Char('.')) || element.endsWith(QLatin1Char(' ')))
-            element.chop(1);
-        // Only filenames that can't possibly exist will be end up being empty
-        if (element.isEmpty())
-            return parent;
+            // On Windows, "filename    " and "filename" are equivalent and
+            // "filename  .  " and "filename" are equivalent
+            // "filename......." and "filename" are equivalent Task #133928
+            // whereas "filename  .txt" is still "filename  .txt"
+            // If after stripping the characters there is nothing left then we
+            // just return the parent directory as it is assumed that the path
+            // is referring to the parent
+            while (element.endsWith(QLatin1Char('.')) || element.endsWith(QLatin1Char(' ')))
+                element.chop(1);
+            // Only filenames that can't possibly exist will be end up being empty
+            if (element.isEmpty())
+                return parent;
         }
         bool alreadyExisted = parent->children.contains(element);
 
@@ -455,10 +451,12 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
                 return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
 #endif
             RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate*>(this);
-            node = p->addNode(parent, element, FileInfo());
 #ifndef QT_NO_FILESYSTEMWATCHER
-            node->populate(fileInfoGatherer->getInfo(elementPath));
+            FileInfo fi = fileInfoGatherer->getInfo(elementPath);
+#else
+            FileInfo fi(elementPath);
 #endif
+            node = p->addNode(parent, element, fi);
         } else {
             node = parent->children.value(element);
         }
@@ -470,7 +468,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
                 return const_cast<RemoteFileSystemModelPrivate::RemoteFileSystemNode*>(&root);
 
             RemoteFileSystemModelPrivate *p = const_cast<RemoteFileSystemModelPrivate*>(this);
-            if (true || node->exists) {
+            if (node->exists) {
                 p->addVisibleFiles(parent, QStringList(element));
                 if (!p->bypassFilters.contains(node))
                     p->bypassFilters[node] = 1;
@@ -673,6 +671,12 @@ int RemoteFileSystemModel::columnCount(const QModelIndex &parent) const
     return (parent.column() > 0) ? 0 : RemoteFileSystemModelPrivate::NumColumns;
 }
 
+QString RemoteFileSystemModel::identifier() const
+{
+    Q_D(const RemoteFileSystemModel);
+    return d->fileInfoGatherer->identifier();
+}
+
 /*!
     Returns the data stored under the given \a role for the item "My Computer".
 
@@ -688,11 +692,32 @@ QVariant RemoteFileSystemModel::myComputer(int role) const
         return RemoteFileSystemModelPrivate::myComputer();
 #ifndef QT_NO_FILESYSTEMWATCHER
     case Qt::DecorationRole:
-        return d->fileInfoGatherer->iconProvider()->icon(QFileIconProvider::Computer);
+        return d->fileInfoGatherer->iconProvider()->icon(RemoteFileIconProvider::Computer);
 #endif
     }
     return QVariant();
 }
+
+QVariant RemoteFileSystemModel::homePath(int role) const
+{
+    Q_D(const RemoteFileSystemModel);
+    switch (role) {
+    case Qt::DisplayRole:
+        if (!d->fileinfoGathererInitialized)
+            qInfo() << "HOMEPATH not initialized" << d->fileInfoGatherer->homePath();
+        return d->fileInfoGatherer->homePath();
+        //return QString("~")+d->fileInfoGatherer->userName();
+    case FilePathRole:
+        if (!d->fileinfoGathererInitialized)
+            qInfo() << "HOMEPATH not initialized" << d->fileInfoGatherer->homePath();
+        return d->fileInfoGatherer->homePath();
+    case Qt::DecorationRole:
+        return qApp->style()->standardIcon(QStyle::SP_DirHomeIcon);
+    }
+    qInfo() << "RemoteFileSystemModel::homePath: role=" << role;
+    return QVariant();
+}
+
 
 /*!
     \reimp
@@ -726,9 +751,9 @@ QVariant RemoteFileSystemModel::data(const QModelIndex &index, int role) const
 #ifndef QT_NO_FILESYSTEMWATCHER
             if (icon.isNull()) {
                 if (d->node(index)->isDir())
-                    icon = d->fileInfoGatherer->iconProvider()->icon(QFileIconProvider::Folder);
+                    icon = d->fileInfoGatherer->iconProvider()->icon(RemoteFileIconProvider::Folder);
                 else
-                    icon = d->fileInfoGatherer->iconProvider()->icon(QFileIconProvider::File);
+                    icon = d->fileInfoGatherer->iconProvider()->icon(RemoteFileIconProvider::File);
             }
 #endif // QT_NO_FILESYSTEMWATCHER
             return icon;
@@ -790,6 +815,13 @@ QString RemoteFileSystemModelPrivate::time(const QModelIndex &index) const
     Q_UNUSED(index);
     return QString();
 #endif
+}
+
+void RemoteFileSystemModelPrivate::_q_modelInitialized()
+{
+    Q_Q(RemoteFileSystemModel);
+    fileinfoGathererInitialized = true;
+    emit q->initialized();
 }
 
 /*
@@ -1135,12 +1167,6 @@ bool RemoteFileSystemModel::isRootDir(const QString &path) const
     return d->fileInfoGatherer->isRootDir(path);
 }
 
-QString RemoteFileSystemModel::homePath() const
-{
-    Q_D(const RemoteFileSystemModel);
-    return d->fileInfoGatherer->homePath();
-}
-
 QString RemoteFileSystemModel::workingDirectory() const
 {
     Q_D(const RemoteFileSystemModel);
@@ -1151,6 +1177,12 @@ bool RemoteFileSystemModel::isWindows() const
 {
     Q_D(const RemoteFileSystemModel);
     return d->fileInfoGatherer->isWindows();
+}
+
+QString RemoteFileSystemModel::userName() const
+{
+    Q_D(const RemoteFileSystemModel);
+    return d->fileInfoGatherer->userName();
 }
 
 /*!
@@ -1168,10 +1200,7 @@ QString RemoteFileSystemModel::filePath(const QModelIndex &index) const
 #endif
         && d->resolvedSymLinks.contains(fullPath)
         && dirNode->isDir()) {
-        QFileInfo resolvedInfo(fullPath);
-        resolvedInfo = resolvedInfo.canonicalFilePath();
-        if (resolvedInfo.exists())
-            return resolvedInfo.filePath();
+        return dirNode->linkTarget();
     }
     return fullPath;
 }
@@ -1179,7 +1208,6 @@ QString RemoteFileSystemModel::filePath(const QModelIndex &index) const
 QString RemoteFileSystemModelPrivate::filePath(const QModelIndex &index) const
 {
     Q_Q(const RemoteFileSystemModel);
-    Q_UNUSED(q);
     if (!index.isValid())
         return QString();
     Q_ASSERT(index.model() == q);
@@ -1193,14 +1221,16 @@ QString RemoteFileSystemModelPrivate::filePath(const QModelIndex &index) const
         idx = idx.parent();
     }
     QString fullPath = QDir::fromNativeSeparators(path.join(QDir::separator()));
-#if !defined(Q_OS_WIN)
-    if ((fullPath.length() > 2) && fullPath[0] == QLatin1Char('/') && fullPath[1] == QLatin1Char('/'))
-        fullPath = fullPath.mid(1);
-#else
-    if (fullPath.length() == 2 && fullPath.endsWith(QLatin1Char(':')))
-        fullPath.append(QLatin1Char('/'));
-#endif
-    return fullPath;
+    if (q->isWindows()) {
+        if (fullPath.length() == 2 && fullPath.endsWith(QLatin1Char(':')))
+            fullPath.append(QLatin1Char('/'));
+    } else {
+        if (!fullPath.startsWith(QLatin1Char('/')))
+            fullPath = "/" + fullPath;
+        if ((fullPath.length() > 2) && fullPath[0] == QLatin1Char('/') && fullPath[1] == QLatin1Char('/'))
+            fullPath = fullPath.mid(1);
+    }
+    return QDir::cleanPath(fullPath);
 }
 
 /*!
@@ -1214,11 +1244,11 @@ QModelIndex RemoteFileSystemModel::mkdir(const QModelIndex &parent, const QStrin
 
     QString dir(filePath(parent));
     RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = d->node(parent);
-    d->addNode(parentNode, name, FileInfo());
+    d->addNode(parentNode, name, FileInfo(dir));
     Q_ASSERT(parentNode->children.contains(name));
     RemoteFileSystemModelPrivate::RemoteFileSystemNode *node = parentNode->children[name];
 #ifndef QT_NO_FILESYSTEMWATCHER
-    QString newDir = dir + "/" + name;
+    QString newDir = QDir::cleanPath(dir + "/" + name);
     d->fileInfoGatherer->mkdir(newDir);
     node->populate(d->fileInfoGatherer->getInfo(newDir));
 #endif
@@ -1346,7 +1376,7 @@ QDir RemoteFileSystemModel::rootDirectory() const
 /*!
     Sets the \a provider of file icons for the directory model.
 */
-void RemoteFileSystemModel::setIconProvider(QFileIconProvider *provider)
+void RemoteFileSystemModel::setIconProvider(RemoteFileIconProvider *provider)
 {
     Q_D(RemoteFileSystemModel);
 #ifndef QT_NO_FILESYSTEMWATCHER
@@ -1358,7 +1388,7 @@ void RemoteFileSystemModel::setIconProvider(QFileIconProvider *provider)
 /*!
     Returns the file icon provider for this directory model.
 */
-QFileIconProvider *RemoteFileSystemModel::iconProvider() const
+RemoteFileIconProvider *RemoteFileSystemModel::iconProvider() const
 {
 #ifndef QT_NO_FILESYSTEMWATCHER
     Q_D(const RemoteFileSystemModel);
@@ -1568,19 +1598,36 @@ bool RemoteFileSystemModel::indexValid(const QModelIndex &index) const
  */
 void RemoteFileSystemModelPrivate::_q_directoryChanged(const QString &directory, const QStringList &files)
 {
-    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = node(directory, false);
-    if (parentNode->children.count() == 0)
-        return;
-    QStringList toRemove;
-    QStringList newFiles = files;
-    std::sort(newFiles.begin(), newFiles.end());
-    for (auto i = parentNode->children.constBegin(), cend = parentNode->children.constEnd(); i != cend; ++i) {
-        QStringList::iterator iterator = std::lower_bound(newFiles.begin(), newFiles.end(), i.value()->fileName);
-        if ((iterator == newFiles.end()) || (i.value()->fileName < *iterator))
-            toRemove.append(i.value()->fileName);
+    Q_Q(RemoteFileSystemModel);
+
+    RemoteFileSystemModelPrivate::RemoteFileSystemNode *parentNode = node(directory, true);
+    if (!parentNode->children.isEmpty()) {
+        QStringList toRemove;
+        QStringList newFiles = files;
+        std::sort(newFiles.begin(), newFiles.end());
+        for (auto i = parentNode->children.constBegin(), cend = parentNode->children.constEnd(); i != cend; ++i) {
+            QStringList::iterator iterator = std::lower_bound(newFiles.begin(), newFiles.end(), i.value()->fileName);
+            if ((iterator == newFiles.end()) || (i.value()->fileName < *iterator))
+                toRemove.append(i.value()->fileName);
+        }
+        for (int i = 0 ; i < toRemove.count() ; ++i )
+            removeNode(parentNode, toRemove[i]);
     }
-    for (int i = 0 ; i < toRemove.count() ; ++i )
-        removeNode(parentNode, toRemove[i]);
+
+#if 0
+    for (auto &f: files) {
+        FileInfo fi = fileInfoGatherer->getInfo(QDir::cleanPath(directory + "/" + f));
+        fi.m_exists = true;
+        auto node = addNode(parentNode, f, fi);
+#if 0
+        if (!node->hasInformation()) {
+            Fetching fetch = { directory, f, node };
+            toFetch.append(std::move(fetch));
+        }
+#endif
+    }
+    //fetchingTimer.start(0, q);
+#endif
 }
 
 /*!
@@ -1860,6 +1907,8 @@ void RemoteFileSystemModelPrivate::init()
 {
     Q_Q(RemoteFileSystemModel);
     qRegisterMetaType<QVector<QPair<QString,FileInfo> > >();
+    q->connect(fileInfoGatherer, SIGNAL(initialized()),
+               q, SLOT(_q_modelInitialized()));
 #ifndef QT_NO_FILESYSTEMWATCHER
     q->connect(fileInfoGatherer, SIGNAL(newListOfFiles(QString,QStringList)),
                q, SLOT(_q_directoryChanged(QString,QStringList)));
@@ -1883,25 +1932,38 @@ void RemoteFileSystemModelPrivate::init()
 */
 bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode *node) const
 {
-    // always accept drives
-    if (node->parent == &root) {
-        qDebug() << "accept drive:" << node->fileName;
-        return true;
-    }
+    Q_Q(const RemoteFileSystemModel);
 
     if (bypassFilters.contains(node)) {
-        qDebug() << "filter bypass:" << node->fileName;
+        qDebug() << "filter bypass:" << node->parent->fileName << "/" << node->fileName;
         return true;
     }
 
+#if 0
     // If we don't know anything yet don't accept it
     if (!node->hasInformation()) {
-        qDebug() << "no information:" << node->fileName;
+        qDebug() << "no information:" << node->parent->fileName << "/" << node->fileName;
         return false;
+    }
+#endif
+
+    bool isDot    = (node->fileName == QLatin1String("."));
+    bool isDotDot = (node->fileName == QLatin1String(".."));
+
+    // always accept drives
+    if (node->parent == &root) {
+        if (isDot || isDotDot)
+            return false;
+        if (q->isWindows()) {
+            qDebug() << "accept drive:" << node->fileName;
+            return true;
+        } else {
+            return node->fileName == "/";
+        }
     }
 
     if (!node->exists) {
-        qDebug() << "does not exist:" << node->fileName;
+        qDebug() << "does not exist:" << node->parent->fileName << "/" << node->fileName;
         return false;
     }
 
@@ -1919,8 +1981,6 @@ bool RemoteFileSystemModelPrivate::filtersAcceptsNode(const RemoteFileSystemNode
     const bool hideDotDot        = (filters & QDir::NoDotDot);
 
     // Note that we match the behavior of entryList and not QFileInfo on this.
-    bool isDot    = (node->fileName == QLatin1String("."));
-    bool isDotDot = (node->fileName == QLatin1String(".."));
     if (   (hideHidden && !(isDot || isDotDot) && node->isHidden())
         || (hideSystem && node->isSystem())
         || (hideDirs && node->isDir())

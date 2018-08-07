@@ -23,6 +23,7 @@ public:
     EchoMode echoMode(const QtProperty *property) const;
     bool isReadOnly(const QtProperty *property) const;
     FileMode fileMode(const QtProperty *property) const;
+    QString title(const QtProperty *property) const;
 
 
 public Q_SLOTS:
@@ -33,6 +34,7 @@ public Q_SLOTS:
     void setEchoMode(QtProperty *property, EchoMode echoMode);
     void setReadOnly(QtProperty *property, bool readOnly);
     void setFileMode(QtProperty *property, FileMode fileMode);
+    void setTitle(QtProperty *property, const QString &title);
 
 Q_SIGNALS:
     void valueChanged(QtProperty *property, const QString &val);
@@ -42,6 +44,7 @@ Q_SIGNALS:
     void echoModeChanged(QtProperty *property, const int);
     void readOnlyChanged(QtProperty *property, bool);
     void fileModeChanged(QtProperty *property, const int);
+    void titleChanged(QtProperty *property, const QString &title);
 
 protected:
     QString valueText(const QtProperty *property) const;

@@ -24,11 +24,15 @@ class UserInterface;
 class V_UIEXPORT FileBrowser {
     friend class UserInterface;
 public:
+    virtual ~FileBrowser();
+    int id() const;
+
     bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr);
     virtual bool handleMessage(const message::Message &message, const std::vector<char> &payload) = 0;
 
 private:
     UserInterface *m_ui = nullptr;
+    int m_id = -1;
 };
 
 class V_UIEXPORT UserInterface {
@@ -94,6 +98,7 @@ class V_UIEXPORT UserInterface {
    bool m_locked;
    std::vector<message::Buffer> m_sendQueue;
 
+   int m_fileBrowserCount = 0;
    std::vector<FileBrowser *> m_fileBrowser;
 };
 

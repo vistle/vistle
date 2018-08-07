@@ -12,6 +12,7 @@ namespace vistle {
 
 struct V_COREEXPORT SystemInfo {
     bool iswindows;
+    std::string username;
     std::string homepath;
     std::string currentdir;
 
@@ -20,6 +21,7 @@ struct V_COREEXPORT SystemInfo {
    void serialize(Archive & ar)
    {
        ar & iswindows;
+       ar & username;
        ar & homepath;
        ar & currentdir;
    }
@@ -33,6 +35,7 @@ struct V_COREEXPORT FileInfo {
    };
 
    std::string name;
+   bool status = false;
    bool exists = false;
    int32_t permissions = 0;
    FileType type = System;
@@ -47,6 +50,7 @@ struct V_COREEXPORT FileInfo {
    void serialize(Archive & ar)
    {
        ar & name;
+       ar & status;
        ar & exists;
        ar & permissions;
        ar & type;

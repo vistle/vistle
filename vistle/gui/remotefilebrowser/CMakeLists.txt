@@ -11,19 +11,15 @@ include_directories(
 )
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
-#add_definitions(-DQFileDialog=RemoteFileDialog)
-#add_definitions(-DQFileDialogPrivate=RemoteFileDialogPrivate)
-#add_definitions(-DQFileSystemModel=RemoteFileSystemModel)
-#add_definitions(-DQFileSystemModelPrivate=RemoteFileSystemModelPrivate)
-
 set(SOURCES
    remotefiledialog.cpp
    filedialoghelper.cpp
    qsidebar.cpp
    abstractfilesystemmodel.cpp
-   localfilesystemmodel.cpp
+   #localfilesystemmodel.cpp
    remotefilesystemmodel.cpp
    abstractfileinfogatherer.cpp
+   remotefileiconprovider.cpp
    remotefileinfogatherer.cpp
    vistlefileinfogatherer.cpp
 )
@@ -33,12 +29,13 @@ set(HEADERS
    remotefiledialog_p.h
    filedialoghelper.h
    qsidebar_p.h
-   qfscompleter_p.h
+   remotefscompleter_p.h
    abstractfilesystemmodel.h
-   localfilesystemmodel.h
+   #localfilesystemmodel.h
    remotefilesystemmodel.h
    remotefilesystemmodel_p.h
    abstractfileinfogatherer.h
+   remotefileiconprovider.h
    remotefileinfogatherer.h
    vistlefileinfogatherer.h
 )

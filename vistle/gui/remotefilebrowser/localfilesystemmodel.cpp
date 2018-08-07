@@ -1,6 +1,8 @@
 #include "localfilesystemmodel.h"
 #include <QDateTime>
 #include <QDebug>
+#include <QApplication>
+#include <QStyle>
 
 // to make createIndex accessible
 class FSModel: public QFileSystemModel {
@@ -13,6 +15,7 @@ class FSModel: public QFileSystemModel {
 LocalFileSystemModel::LocalFileSystemModel(QObject *parent)
 : AbstractFileSystemModel(parent)
 , m_model(new FSModel(this))
+, m_fileIconProvider(new RemoteFileIconProvider)
 {
     connect(&*m_model, &FSModel::dataChanged, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
         emit dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight), roles);
@@ -145,6 +148,20 @@ QVariant LocalFileSystemModel::myComputer(int role) const
     return m_model->myComputer(role);
 }
 
+QVariant LocalFileSystemModel::homePath(int role) const
+{
+    switch(role)
+    {
+    case Qt::DisplayRole:
+        return QDir::homePath();
+    case Qt::DecorationRole:
+        return qApp->style()->standardIcon(QStyle::SP_DirHomeIcon);
+    }
+
+    return QVariant();
+}
+
+
 QVariant LocalFileSystemModel::data(const QModelIndex &index, int role) const
 {
     return m_model->data(mapToSource(index), role);
@@ -199,11 +216,6 @@ bool LocalFileSystemModel::isRootDir(const QString &path) const
     return dir.isRoot();
 }
 
-QString LocalFileSystemModel::homePath() const
-{
-    return QDir::homePath();
-}
-
 QModelIndex LocalFileSystemModel::setRootPath(const QString &path)
 {
     return mapFromSource(m_model->setRootPath(path));
@@ -219,14 +231,13 @@ QDir LocalFileSystemModel::rootDirectory() const
     return m_model->rootDirectory();
 }
 
-void LocalFileSystemModel::setIconProvider(QFileIconProvider *provider)
+void LocalFileSystemModel::setIconProvider(RemoteFileIconProvider *provider)
 {
-    return m_model->setIconProvider(provider);
 }
 
-QFileIconProvider *LocalFileSystemModel::iconProvider() const
+RemoteFileIconProvider *LocalFileSystemModel::iconProvider() const
 {
-    return m_model->iconProvider();
+    return m_fileIconProvider.get();
 }
 
 void LocalFileSystemModel::setFilter(QDir::Filters filters)

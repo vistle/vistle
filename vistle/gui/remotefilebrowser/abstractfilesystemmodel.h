@@ -30,6 +30,8 @@ public:
 
     QHash<int, QByteArray> roleNames() const override;
 
+    virtual QString identifier() const = 0;
+
     // QFileSystemModel
 #if 0
     QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
@@ -48,6 +50,8 @@ public:
 #endif
 
     virtual QVariant myComputer(int role = Qt::DisplayRole) const = 0;
+    virtual QVariant homePath(int role = Qt::DisplayRole) const = 0;
+    virtual QString userName() const = 0;
 
 #if 0
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -67,15 +71,15 @@ public:
 #endif
 
     virtual bool isRootDir(const QString &path) const = 0;
-    virtual QString homePath() const = 0;
     virtual QString workingDirectory() const = 0;
+    virtual bool isWindows() const = 0;
 
     // QFileSystemModel specific API
     virtual QModelIndex setRootPath(const QString &path) = 0;
     virtual QString rootPath() const = 0;
 
-    virtual void setIconProvider(QFileIconProvider *provider) = 0;
-    virtual QFileIconProvider *iconProvider() const = 0;
+    virtual void setIconProvider(RemoteFileIconProvider *provider) = 0;
+    virtual RemoteFileIconProvider *iconProvider() const = 0;
 
     virtual void setFilter(QDir::Filters filters) = 0;
     virtual QDir::Filters filter() const = 0;

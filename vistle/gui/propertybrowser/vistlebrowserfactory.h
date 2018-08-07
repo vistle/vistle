@@ -35,19 +35,6 @@ private:
     Q_PRIVATE_SLOT(d_func(), void slotFileModeChanged(QtProperty *, int))
     Q_PRIVATE_SLOT(d_func(), void slotSetValue(const QString &))
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed(QObject *))
+    Q_PRIVATE_SLOT(d_func(), void slotTitleChanged(QtProperty *, const QString &))
 };
-
-
-#if 0
-class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserFactory: public QtLineEditFactory {
-    Q_OBJECT
-
-public:
-    VistleBrowserFactory(QObject *parent = 0);
-    QWidget *createEditor(VistleBrowserPropertyManager *manager, QtProperty *property,
-                QWidget *parent);
-
-};
-#endif
-
 #endif

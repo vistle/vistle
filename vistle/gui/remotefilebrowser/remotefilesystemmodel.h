@@ -56,7 +56,7 @@ QT_BEGIN_NAMESPACE
 class ExtendedInformation;
 class RemoteFileSystemModelPrivate;
 class AbstractFileInfoGatherer;
-class QFileIconProvider;
+class RemoteFileIconProvider;
 
 #include "abstractfilesystemmodel.h"
 
@@ -68,6 +68,7 @@ class Q_WIDGETS_EXPORT RemoteFileSystemModel : public AbstractFileSystemModel
     Q_PROPERTY(bool nameFilterDisables READ nameFilterDisables WRITE setNameFilterDisables)
 
 Q_SIGNALS:
+    void initialized();
     void rootPathChanged(const QString &newPath);
     void fileRenamed(const QString &path, const QString &oldName, const QString &newName);
     void directoryLoaded(const QString &path);
@@ -89,6 +90,7 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
+    QString identifier() const override;
     QVariant myComputer(int role = Qt::DisplayRole) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
@@ -103,16 +105,17 @@ public:
     Qt::DropActions supportedDropActions() const override;
 
     bool isRootDir(const QString &path) const override;
-    QString homePath() const override;
+    QVariant homePath(int role = Qt::DisplayRole) const override;
     QString workingDirectory() const override;
-    bool isWindows() const;
+    bool isWindows() const override;
+    QString userName() const override;
 
     // RemoteFileSystemModel specific API
     QModelIndex setRootPath(const QString &path) override;
     QString rootPath() const override;
 
-    void setIconProvider(QFileIconProvider *provider) override;
-    QFileIconProvider *iconProvider() const override;
+    void setIconProvider(RemoteFileIconProvider *provider) override;
+    RemoteFileIconProvider *iconProvider() const override;
 
     void setDisableRecursiveSort(bool enable) override;
     bool disableRecursiveSort() const override;
@@ -154,6 +157,7 @@ private:
     Q_DECLARE_PRIVATE_D(vd_ptr, RemoteFileSystemModel)
     Q_DISABLE_COPY(RemoteFileSystemModel)
 
+    Q_PRIVATE_SLOT(d_func(), void _q_modelInitialized())
     Q_PRIVATE_SLOT(d_func(), void _q_directoryChanged(const QString &directory, const QStringList &list))
     Q_PRIVATE_SLOT(d_func(), void _q_performDelayedSort())
     Q_PRIVATE_SLOT(d_func(), void _q_fileSystemChanged(const QString &path, const QVector<QPair<QString, FileInfo> > &))

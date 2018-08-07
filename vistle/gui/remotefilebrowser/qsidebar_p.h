@@ -71,9 +71,10 @@ class QSideBarDelegate : public QStyledItemDelegate
                           const QModelIndex &index) const override;
 };
 
-class Q_AUTOTEST_EXPORT QUrlModel : public QStandardItemModel
+class Q_AUTOTEST_EXPORT RemoteUrlModel : public QStandardItemModel
 {
     Q_OBJECT
+    friend class QSidebar;
 
 public:
     enum Roles {
@@ -81,7 +82,7 @@ public:
         EnabledRole = Qt::UserRole + 2
     };
 
-    QUrlModel(QObject *parent = 0);
+    RemoteUrlModel(QObject *parent = 0);
 
     QStringList mimeTypes() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
@@ -97,6 +98,9 @@ public:
     QList<QUrl> urls() const;
     void setFileSystemModel(AbstractFileSystemModel *model);
     bool showFullPath;
+
+public Q_SLOTS:
+    void updateHomePath();
 
 private Q_SLOTS:
     void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
@@ -116,7 +120,7 @@ private:
     QVector<WatchItem> watching;
     QList<QUrl> invalidUrls;
 };
-Q_DECLARE_TYPEINFO(QUrlModel::WatchItem, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(RemoteUrlModel::WatchItem, Q_MOVABLE_TYPE);
 
 class Q_AUTOTEST_EXPORT QSidebar : public QListView
 {
@@ -153,7 +157,7 @@ private Q_SLOTS:
     void removeEntry();
 
 private:
-    QUrlModel *urlModel;
+    RemoteUrlModel *urlModel;
 };
 
 QT_END_NAMESPACE

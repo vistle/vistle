@@ -42,6 +42,9 @@
 
 #include <qdebug.h>
 #include <qdiriterator.h>
+#include <qstyle.h>
+#include <qapplication.h>
+#include <qglobal.h>
 #ifndef Q_OS_WIN
 #  include <unistd.h>
 #  include <sys/types.h>
@@ -51,6 +54,8 @@
 #endif
 
 QT_BEGIN_NAMESPACE
+
+#define CERR std::cerr << "VistleFileInfoGatherer: "
 
 #ifdef QT_BUILD_INTERNAL
 static QBasicAtomicInt fetchedRoot = Q_BASIC_ATOMIC_INITIALIZER(false);
@@ -73,12 +78,15 @@ VistleFileInfoGatherer::VistleFileInfoGatherer(vistle::UserInterface *ui, int id
     , m_ui(ui)
     , m_moduleId(id)
 {
-    qDebug() << "new VistleFileInfoGatherer";
     m_ui->registerFileBrowser(this);
     //start(LowPriority);
 
+    auto &state = m_ui->state();
+    int hub = state.getHub(id);
+    m_identifier = QString::fromStdString(state.hubName(hub));
+
     using namespace vistle::message;
-    FileQuery fq(m_moduleId, "/", FileQuery::SystemInfo);
+    FileQuery fq(m_moduleId, "", FileQuery::SystemInfo);
     sendMessage(fq);
 }
 
@@ -112,25 +120,26 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
         m_isWindows = info.iswindows;
         m_homePath = QString::fromStdString(info.homepath);
         m_workingDirectory = QString::fromStdString(info.currentdir);
+        m_userName = QString::fromStdString(info.username);
+        emit initialized();
         break;
     }
     case FileQuery::ReadDirectory: {
         QString path = QString::fromStdString(mm.path());
 
         auto files = vistle::unpackFileList(payload);
-        std::cerr << "result for " << mm.path() << ": " << files.size() << " entries" << std::endl;
+        CERR << "ReadDirectory result for " << mm.path() << ": " << files.size() << " entries" << std::endl;
 
         QStringList allFiles;
         for (auto &f: files) {
             allFiles.push_back(QString::fromStdString(f));
         }
-        emit newListOfFiles(path, allFiles);
-        emit directoryLoaded(QString::fromStdString(mm.path()));
 
+#if 1
         QStringList filelist;
         for (auto &f: allFiles) {
             filelist.push_back(f);
-            if (filelist.size() >= 50) {
+            if (filelist.size() >= 100) {
                 fetchExtendedInformation(path, filelist);
                 filelist.clear();
             }
@@ -139,35 +148,51 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
             fetchExtendedInformation(path, filelist);
             filelist.clear();
         }
+#endif
+
+        if (!allFiles.isEmpty())
+            emit newListOfFiles(path, allFiles);
 
         auto it = m_dirs.find(QString::fromStdString(mm.path()));
         if (it == m_dirs.end()) {
-            std::cerr << "VistleFileInfoGatherer: result for unknown directory query " << mm.path() << std::endl;
+            CERR << "ReadDirectory result for unknown directory query " << mm.path() << std::endl;
         } else {
             m_dirs.erase(it);
+            if (allFiles.isEmpty())
+                emit directoryLoaded(path);
+        }
+        if (!m_dirs.isEmpty()) {
+            qInfo() << "DIRS still waiting" << m_dirs;
         }
 
         break;
     }
     case FileQuery::LookUpFiles: {
         if (mm.status() != FileQueryResult::Ok) {
-            std::cerr << "result for " << mm.path() << ": status not Ok: " << mm.status() << std::endl;
+            CERR << "LookUpFiles result for '" << mm.path() << "': status not Ok: " << mm.status() << std::endl;
             break;
         }
 
         auto fivec = vistle::unpackFileInfos(payload);
-        std::cerr << "result for " << mm.path() << ": " << fivec.size() << " entries" << std::endl;
+        CERR << "LookUpFiles result for " << mm.path() << ": " << fivec.size() << " entries" << std::endl;
         std::string path(mm.path());
+        if (!path.empty() && path.back() != '/')
+            path += "/";
 
         QVector<QPair<QString, FileInfo>> results;
 
+        auto &qfiles = m_files[QString::fromStdString(mm.path())];
+
         QStringList allFiles;
         for (auto &f: fivec) {
-            FileInfo fi;
-            fi.m_valid = true;
+            FileInfo fi(QDir::cleanPath(QString::fromStdString(path+f.name)));
+            fi.m_valid = f.status;
+            if (!f.status) {
+                CERR << "invalid status for file " << f.name << std::endl;
+            }
             fi.m_exists = f.exists;
             if (!f.exists) {
-                std::cerr << "result for non-existing file " << f.name << std::endl;
+                CERR << "LookUpFiles result for non-existing file " << f.name << std::endl;
             }
             fi.m_isSymlink = f.symlink;
             fi.m_hidden = f.hidden;
@@ -191,33 +216,48 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
             if (f.permissions & 01) fi.m_permissions |= QFile::Permission::ExeOther;
 
             fi.updateType();
+            fi.icon = iconProvider()->icon(fi);
+            fi.displayType = iconProvider()->type(fi);
 
             QString name = QString::fromStdString(f.name);
             results.append(QPair<QString,FileInfo>(name, fi));
 
-            std::string file = path + "/" + f.name;
-            auto it = m_files.find(QString::fromStdString(file));
-            if (it == m_files.end()) {
-                std::cerr << "VistleFileInfoGatherer: result for unknown file query " << file << std::endl;
+            std::string file = path + f.name;
+            auto it = qfiles.find(QString::fromStdString(f.name));
+            if (it == qfiles.end()) {
+                CERR << "LookUpFiles result for unknown file query " << file << std::endl;
+                qInfo() << "STILL WAITING" << qfiles;
             } else {
-                m_files.erase(it);
+                qfiles.erase(it);
             }
         }
 
         emit updates(QString::fromStdString(mm.path()), results);
-        emit directoryLoaded(QString::fromStdString(mm.path()));
+        if (qfiles.empty()) {
+            emit directoryLoaded(QString::fromStdString(mm.path()));
+            auto it = m_files.find(QString::fromStdString(mm.path()));
+            if (it != m_files.end())
+                m_files.erase(it);
+        } else {
+            //qInfo() << "STILL WAITING" << qfiles;
+        }
 
         break;
     }
     case FileQuery::MakeDirectory: {
         if (mm.status() != FileQueryResult::Ok)
-            std::cerr << "VistleFileInfoGatherer: making directory " << mm.path() << " failed" << std::endl;
+            CERR << "making directory " << mm.path() << " failed" << std::endl;
         break;
     }
 
     }
 
     return true;
+}
+
+QString VistleFileInfoGatherer::identifier() const
+{
+    return m_identifier;
 }
 
 bool VistleFileInfoGatherer::isRootDir(const QString &path) const
@@ -231,6 +271,11 @@ QString VistleFileInfoGatherer::homePath() const
     return m_homePath;
 }
 
+QString VistleFileInfoGatherer::userName() const
+{
+    return m_userName;
+}
+
 /*!
     Fetch extended information for all \a files in \a path
 
@@ -239,28 +284,37 @@ QString VistleFileInfoGatherer::homePath() const
 void VistleFileInfoGatherer::fetchExtendedInformation(const QString &path, const QStringList &files)
 {
     using namespace vistle::message;
+    QString cleanPath = QDir::cleanPath(path);
 
     if (files.empty()) {
-        if (m_dirs.find(path) == m_dirs.end()) {
-            m_dirs.insert(path);
-            vistle::message::FileQuery query(m_moduleId, path.toStdString(), FileQuery::ReadDirectory);
+        if (m_dirs.find(cleanPath) == m_dirs.end()) {
+            qInfo() << "directory query for" << cleanPath;
+            m_dirs.insert(cleanPath);
+            vistle::message::FileQuery query(m_moduleId, cleanPath.toStdString(), FileQuery::ReadDirectory);
             sendMessage(query);
         }
     } else {
-        std::vector<std::string> filelist;
-        for (auto &f: files) {
-            filelist.push_back(f.toStdString());
-            QString p = path;
+        QString p = cleanPath;
+        if (!p.isEmpty() && !p.endsWith('/'))
             p += "/";
-            p += f;
-            if (m_files.find(p) == m_files.end()) {
-                m_files.insert(p);
-                std::cerr << "file query for " << p.toStdString() << std::endl;
+        std::vector<std::string> filelist;
+        for (auto f: files) {
+            while (f.length()>1 && f.startsWith('/'))
+                f = f.mid(1);
+            if (f.isEmpty())
+                f += "/";
+            auto &qfiles = m_files[cleanPath];
+            if (qfiles.find(f) == qfiles.end()) {
+                qfiles.insert(f);
+                filelist.push_back(f.toStdString());
             }
         }
-        auto payload = vistle::packFileList(filelist);
-        vistle::message::FileQuery query(m_moduleId, path.toStdString(), FileQuery::LookUpFiles, payload.size());
-        sendMessage(query, &payload);
+        if (!filelist.empty()) {
+            qInfo() << "file metadata query for" << cleanPath << ":" << filelist.size() << "files";
+            auto payload = vistle::packFileList(filelist);
+            vistle::message::FileQuery query(m_moduleId, cleanPath.toStdString(), FileQuery::LookUpFiles, payload.size());
+            sendMessage(query, &payload);
+        }
     }
 }
 
@@ -271,8 +325,10 @@ void VistleFileInfoGatherer::fetchExtendedInformation(const QString &path, const
 */
 void VistleFileInfoGatherer::updateFile(const QString &filePath)
 {
-    QString dir = filePath.mid(0, filePath.lastIndexOf(QLatin1Char('/')));
-    QString fileName = filePath.mid(dir.length() + 1);
+    QString p = QDir::cleanPath(filePath);
+    QString dir = p.mid(0, p.lastIndexOf(QLatin1Char('/')));
+    QString fileName = p.mid(dir.length() + 1);
+    qInfo() << "updateFile(" << dir << "/" << fileName << ")";
     fetchExtendedInformation(dir, QStringList(fileName));
 }
 
@@ -287,10 +343,14 @@ void VistleFileInfoGatherer::removePath(const QString &path)
 
 FileInfo VistleFileInfoGatherer::getInfo(const QString &path)
 {
-    FileInfo info(path);
-    info.m_valid = false;
-    info.icon = m_iconProvider->icon(QFileIconProvider::Network);
-    info.displayType = "Unknown";
+    FileInfo info;
+    QString p = QDir::cleanPath(path);
+    if (path.isEmpty())
+        info.icon = m_iconProvider->icon(RemoteFileIconProvider::Computer);
+    else if (p == homePath())
+        info.icon = qApp->style()->standardIcon(QStyle::SP_DirHomeIcon);
+    else
+        info.icon = m_iconProvider->icon(RemoteFileIconProvider::Network);
 
     updateFile(path);
 
@@ -309,85 +369,6 @@ bool VistleFileInfoGatherer::mkdir(const QString &path)
     FileQuery fq(m_moduleId, path.toStdString(), FileQuery::MakeDirectory);
     return sendMessage(fq);
 }
-
-#if 0
-/*
-    Get specific file info's, batch the files so update when we have 100
-    items and every 200ms after that
- */
-void VistleFileInfoGatherer::getFileInfos(const QString &path, const QStringList &files)
-{
-#if 0
-    // List drives
-    if (path.isEmpty()) {
-#ifdef QT_BUILD_INTERNAL
-        fetchedRoot.store(true);
-#endif
-        QFileInfoList infoList;
-        if (files.isEmpty()) {
-            infoList = QDir::drives();
-        } else {
-            infoList.reserve(files.count());
-            for (const auto &file : files)
-                infoList << QFileInfo(file);
-        }
-        for (int i = infoList.count() - 1; i >= 0; --i) {
-            QString driveName = translateDriveName(infoList.at(i));
-            QVector<QPair<QString,FileInfo> > updatedFiles;
-            updatedFiles.append(QPair<QString,FileInfo>(driveName, FileInfo(infoList.at(i))));
-            emit updates(path, updatedFiles);
-        }
-        return;
-    }
-
-    QElapsedTimer base;
-    base.start();
-    QFileInfo fileInfo;
-    bool firstTime = true;
-    QVector<QPair<QString, FileInfo> > updatedFiles;
-    QStringList filesToCheck = files;
-
-    QStringList allFiles;
-    if (files.isEmpty()) {
-        QDirIterator dirIt(path, QDir::AllEntries | QDir::System | QDir::Hidden);
-        while (!abort.load() && dirIt.hasNext()) {
-            dirIt.next();
-            fileInfo = dirIt.fileInfo();
-            allFiles.append(fileInfo.fileName());
-            fetch(fileInfo, base, firstTime, updatedFiles, path);
-        }
-    }
-    if (!allFiles.isEmpty())
-        emit newListOfFiles(path, allFiles);
-
-    QStringList::const_iterator filesIt = filesToCheck.constBegin();
-    while (!abort.load() && filesIt != filesToCheck.constEnd()) {
-        fileInfo.setFile(path + QDir::separator() + *filesIt);
-        ++filesIt;
-        fetch(fileInfo, base, firstTime, updatedFiles, path);
-    }
-    if (!updatedFiles.isEmpty())
-        emit updates(path, updatedFiles);
-    emit directoryLoaded(path);
-#endif
-}
-#endif
-
-#if 0
-void VistleFileInfoGatherer::fetch(const QFileInfo &fileInfo, QElapsedTimer &base, bool &firstTime, QVector<QPair<QString, FileInfo> > &updatedFiles, const QString &path) {
-    updatedFiles.append(QPair<QString, FileInfo>(fileInfo.fileName(), fileInfo));
-    QElapsedTimer current;
-    current.start();
-    if ((firstTime && updatedFiles.count() > 100) || base.msecsTo(current) > 1000) {
-        emit updates(path, updatedFiles);
-        updatedFiles.clear();
-        base = current;
-        firstTime = false;
-    }
-}
-#endif
-
-
 
 QString VistleFileInfoGatherer::workingDirectory() const
 {
