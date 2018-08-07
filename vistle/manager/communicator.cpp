@@ -49,7 +49,6 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 , m_hubId(message::Id::Invalid)
 , m_rank(r)
 , m_size(hosts.size())
-, m_quitFlag(false)
 , m_recvSize(0)
 , m_hubSocket(m_ioService)
 {
@@ -185,12 +184,6 @@ bool Communicator::scanModules(const std::string &dir) {
    return result;
 }
 
-void Communicator::setQuitFlag() {
-
-   CERR << "Quit reason: setQuitFlag" << std::endl;
-   m_quitFlag = true;
-}
-
 void Communicator::run() {
 
    bool work = false;
@@ -211,20 +204,6 @@ bool Communicator::dispatch(bool *work) {
    bool received = false;
 
    // check for new UIs and other network clients
-   if (m_rank == 0) {
-
-      if (!done) {
-         done = m_quitFlag;
-         if (done) {
-            CERR << "Quit reason: quitflag" << std::endl;
-         }
-      }
-
-      if (done) {
-         sendHub(message::Quit());
-      }
-   }
-
    // handle or broadcast messages received from slaves (rank > 0)
    if (m_size > 1) {
       int flag;
@@ -306,7 +285,6 @@ bool Communicator::dispatch(bool *work) {
       CERR << "telling clusterManager to quit" << std::endl;
       if (m_clusterManager) {
          m_clusterManager->quit();
-         m_quitFlag = false;
          done = false;
       }
    }
@@ -329,6 +307,11 @@ bool Communicator::dispatch(bool *work) {
 
    if (work)
       *work = received;
+
+   if (m_rank == 0 && done) {
+
+       sendHub(message::Quit());
+   }
 
    return !done;
 }

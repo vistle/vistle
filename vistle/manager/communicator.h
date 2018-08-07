@@ -40,7 +40,6 @@ class Communicator {
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
    bool sendMessage(int receiver, const message::Message &message, int rank=-1) const;
-   void setQuitFlag();
 
    int hubId() const;
    int getRank() const;
@@ -69,8 +68,6 @@ class Communicator {
    const int m_rank;
    const int m_size;
    std::string m_moduleDir;
-
-   bool m_quitFlag;
 
    unsigned m_recvSize;
    message::Buffer m_recvBufToRank, m_recvBufToAny;
