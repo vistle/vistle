@@ -155,8 +155,6 @@ using namespace vistle;
 ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("object statistics", name, moduleID, comm)
 {
-
-   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
 
    createInputPort("data_in", "input data", Port::MULTI);
