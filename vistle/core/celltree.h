@@ -82,8 +82,10 @@ class V_COREEXPORT Celltree: public Object {
    template<class BoundsFunctor>
    bool validateTree(BoundsFunctor &func) const;
 
-   Scalar *min() const { return &(*d()->m_bounds)[0]; }
-   Scalar *max() const { return &(*d()->m_bounds)[NumDimensions]; }
+   Scalar *min() { return &(d()->m_bounds)[0]; }
+   const Scalar *min() const { return &(d()->m_bounds)[0]; }
+   Scalar *max() { return &(d()->m_bounds)[NumDimensions]; }
+   const Scalar *max() const { return &(d()->m_bounds)[NumDimensions]; }
    typename shm<Node>::array &nodes() { return *d()->m_nodes; }
    const typename shm<Node>::array &nodes() const { return *d()->m_nodes; }
    typename shm<Index>::array &cells() { return *d()->m_cells; }
@@ -132,7 +134,7 @@ class V_COREEXPORT Celltree: public Object {
    bool traverseNode(Index curNode, Functor &func) const;
 
    V_DATA_BEGIN(Celltree);
-      ShmVector<Scalar> m_bounds;
+      Scalar m_bounds[NumDimensions*2];
       ShmVector<Index> m_cells;
       ShmVector<Node> m_nodes;
 

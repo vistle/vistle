@@ -335,8 +335,6 @@ template <class Scalar, class Index, int NumDimensions>
 template <class Archive>
 void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar) {
 
-   m_bounds->resize(NumDimensions*2);
-
    assert("serialization of Celltree::Node not implemented" == 0);
 }
 
@@ -371,7 +369,6 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty() const {
 template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 
-   V_CHECK(d()->m_bounds->size() == 2*NumDimensions);
    V_CHECK(d()->m_nodes->size() >= 1);
    V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
    if ((*d()->m_nodes)[0].isLeaf()) {
@@ -385,7 +382,12 @@ bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 template<typename Scalar, typename Index, int NumDimensions>
 void Celltree<Scalar, Index, NumDimensions>::Data::initData() {
 
-   m_bounds.construct(2*NumDimensions);
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   for(int d=0; d<NumDimensions; ++d) {
+       m_bounds[d] = smax;
+       m_bounds[NumDimensions+d] = -smax;
+   }
+
    m_nodes.construct(1);
    (*m_nodes)[0] = Node(0, 0);
 }
@@ -393,10 +395,10 @@ void Celltree<Scalar, Index, NumDimensions>::Data::initData() {
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::string &n)
 : Celltree::Base::Data(o, n)
-, m_bounds(o.m_bounds)
 , m_cells(o.m_cells)
 , m_nodes(o.m_nodes)
 {
+    memcpy(m_bounds, o.m_bounds, sizeof(m_bounds));
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
