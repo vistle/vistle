@@ -260,8 +260,7 @@ Object::Object()
 
 Object::~Object() {
 
-
-    m_data->unref();
+    unref();
 }
 
 bool Object::operator==(const Object &other) const

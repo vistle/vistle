@@ -71,6 +71,7 @@ class shm_array {
    }
 
    ~shm_array() {
+      assert(m_refcount == 0);
       reserve_or_shrink(0);
    }
 
@@ -187,9 +188,9 @@ class shm_array {
    }
    void shrink_to_fit() { reserve_or_shrink(m_size); assert(m_capacity == m_size); }
 
-   int ref() const { return ++m_refcount; }
-   int unref() const { return --m_refcount; }
-   int refcount() const { return m_refcount; }
+   int ref() const { assert(m_refcount >= 0); return ++m_refcount; }
+   int unref() const { assert(m_refcount > 0); return --m_refcount; }
+   int refcount() const { assert(m_refcount >= 0); return m_refcount; }
 
  private:
    const uint32_t m_type;

@@ -400,7 +400,7 @@ std::string Shm::createArrayId(const std::string &id) {
 }
 
 void Shm::markAsRemoved(const std::string &name) {
-#ifdef SHMDBEBUG
+#ifdef SHMDEBUG
    s_shmdebugMutex->lock();
 
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
@@ -449,34 +449,39 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 }
 
 Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
-
-#ifdef NO_SHMEM
+    
+    Object::const_ptr ret;
     lockObjects();
-    Object::Data *od = static_cast<Object::Data *>(handle);
-    auto ret = Object::const_ptr(Object::create(od));
+    Object::Data *od = getObjectDataFromHandle(handle);
+    if (od)
+        ret.reset(Object::create(od));
     unlockObjects();
     return ret;
-#else
-    lockObjects();
-    try {
-        Object::Data *od = static_cast<Object::Data *>
-                (m_shm->get_address_from_handle(handle));
-
-        auto ret = Object::const_ptr(Object::create(od));
-        unlockObjects();
-        return ret;
-    } catch (interprocess_exception &ex) {
-        unlockObjects();
-    }
-
-    return Object::const_ptr();
-#endif
 }
 
 ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
 
    // we have to use char here, otherwise boost-internal consistency checks fail
-   return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+    return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+}
+
+ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
+{
+#ifdef NO_SHMEM
+    Object::Data *od = static_cast<Object::Data *>(handle);
+    return od;
+#else
+    try {
+        Object::Data *od = static_cast<Object::Data *>
+                (m_shm->get_address_from_handle(handle));
+        return od;
+    } catch (interprocess_exception &ex) {
+        std::cerr << "Shm::getObjectDataFromHandle: invalid handle " << handle << std::endl;
+    }
+    
+    return nullptr;
+#endif
+    
 }
 
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {

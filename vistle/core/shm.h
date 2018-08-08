@@ -139,10 +139,11 @@ class V_COREEXPORT Shm {
    void lockObjects() const;
    void unlockObjects() const;
 
-   std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
+   std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t &handle) const;
    shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
    ObjectData *getObjectDataFromName(const std::string &name) const;
+   ObjectData *getObjectDataFromHandle(const shm_handle_t &handle) const;
    std::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
    template<typename T>
    const ShmVector<T> getArrayFromName(const std::string &name) const;

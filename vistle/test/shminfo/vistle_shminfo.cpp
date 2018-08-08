@@ -54,14 +54,6 @@ int main(int argc, char ** argv) {
         size = 1;
     }
 
-    try {
-        Shm::attach(shmid, -1, forceRank >= 0 ? forceRank : rank);
-    } catch (std::exception &ex) {
-        std::cerr << "failed to attach to " << shmid << ": " << ex.what() << std::endl;
-        MPI_Finalize();
-        exit(1);
-    }
-
 #ifndef SHMDEBUG
    std::cerr << "recompile with -DSHMDEBUG" << std::endl;
 #endif
@@ -77,26 +69,28 @@ int main(int argc, char ** argv) {
                 continue;
         }
 
+        try {
+            Shm::attach(shmid, -1, forceRank >= 0 ? forceRank : rank);
+        } catch (std::exception &ex) {
+            std::cerr << "failed to attach to " << shmid << ": " << ex.what() << std::endl;
+            MPI_Finalize();
+            exit(1);
+        }
+
 #ifdef SHMDEBUG
        for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
            const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
-           std::cout << (info.type ? info.type : '0') << " " << (info.deleted ? "del" : "ref") << " " << info.name;
+           std::cout << (info.type ? info.type : '0') << " " << (info.deleted ? (info.deleted>1?"DEL"+std::to_string(info.deleted):"del") : "ref") << " " << info.name;
            if (info.deleted) {
                std::cout << std::endl;
            } else {
                switch(info.type) {
                case 'O':
                    if (info.handle) {
-                       std::shared_ptr<const Object> obj;
-                       try {
-                          obj = Shm::the().getObjectFromHandle(info.handle);
-                       } catch (vistle::exception e) {
-                          std::cout << " ERR " << e.what() << std::endl;
-                          continue;
-                       }
-                       if (obj) {
-                           std::cout << " type " << obj->getType();
-                           std::cout << " ref " << obj->refcount() << std::endl;
+                       Object::Data *od = Shm::the().getObjectDataFromHandle(info.handle);
+                       if (od) {
+                           std::cout << " type " << od->type;
+                           std::cout << " ref " << od->refcount << std::endl;
                        } else {
                            std::cout << " ERR" << std::endl;
                        }
@@ -127,6 +121,8 @@ int main(int argc, char ** argv) {
            }
        }
 #endif
+
+       Shm::the().detach();
    }
 
    MPI_Finalize();
