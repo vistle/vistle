@@ -2,6 +2,7 @@
 #include "sysdep.h"
 #include <map>
 #include <iostream>
+#include <mutex>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -12,16 +13,19 @@ namespace vistle {
 
 bool adaptive_wait(bool work, const void *client) {
 
+   static std::mutex protect;
    static std::map<const void *, long> idleMap;
    const long Sec = 1000000; // 1 s
    const long MinDelay = Sec/10000;
    const long MaxDelay = Sec/100;
 
+   protect.lock();
    auto it = idleMap.find(client);
    if (it == idleMap.end())
       it = idleMap.insert(std::make_pair(client, 0)).first;
 
    auto &idle = it->second;
+   protect.unlock();
 
    if (work) {
       idle = 0;

@@ -538,10 +538,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
 
 void StateTracker::processQueue() {
 
-   static bool processing = false;
-   if (processing)
+   if (m_processingQueue)
       return;
-   processing = true;
+   m_processingQueue = true;
 
    std::vector<message::Buffer> queue;
    std::swap(m_queue, queue);
@@ -550,7 +549,7 @@ void StateTracker::processQueue() {
       handle(m);
    }
 
-   processing = false;
+   m_processingQueue = false;
 }
 
 void StateTracker::cleanQueue(int id) {

@@ -195,7 +195,6 @@ ObjectData::~ObjectData() {
 
     assert(refcount == 0);
 
-    attachment_mutex_lock_type lock(attachment_mutex);
     for (auto &objd: attachments) {
         // referenced in addAttachment
         objd.second->unref();
@@ -700,6 +699,7 @@ bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) 
 
 void Object::Data::copyAttachments(const ObjectData *src, bool replace) {
 
+   attachment_mutex_lock_type lock(attachment_mutex);
    const AttachmentMap &a = src->attachments;
 
    for (AttachmentMap::const_iterator it = a.begin(); it != a.end(); ++it) {

@@ -185,6 +185,7 @@ class V_COREEXPORT StateTracker {
    std::vector<message::Buffer> m_queue;
    void processQueue();
    void cleanQueue(int moduleId);
+   bool m_processingQueue = false;
 
    std::string statusText() const;
 
