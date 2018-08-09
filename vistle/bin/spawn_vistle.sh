@@ -43,6 +43,7 @@ fi
 
 WRAPPER=""
 #WRAPPER="valgrind"
+export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then
