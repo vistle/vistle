@@ -80,12 +80,19 @@ Object *Object::loadObject(Archive &ar) {
    try {
       std::string name;
       ar & V_NAME(ar, "object_name", name);
-      std::cerr << "LOADING " << name << std::endl;
       int type;
       ar & V_NAME(ar, "object_type", type);
-      auto funcs = ObjectTypeRegistry::getType(type);
-      obj = funcs.createEmpty(name);
-      obj->loadFromArchive(ar);
+      auto objData = Shm::the().getObjectDataFromName(name);
+      if (objData && objData->isComplete()) {
+          obj = Object::create(objData);
+          if (!ar.currentObject())
+              ar.setCurrentObject(objData);
+      } else {
+          auto funcs = ObjectTypeRegistry::getType(type);
+          obj = funcs.createEmpty(name);
+          obj->loadFromArchive(ar);
+      }
+      obj->ref();
 #ifdef USE_BOOST_ARCHIVE
    } catch (const boost::archive::archive_exception &ex) {
       std::cerr << "Boost.Archive exception: " << ex.what() << std::endl;
@@ -99,12 +106,14 @@ Object *Object::loadObject(Archive &ar) {
    } catch (...) {
        throw;
    }
-   obj->ref();
    assert(ar.currentObject() == obj->d());
    if (obj->d()->unresolvedReferences == 0) {
        obj->refresh();
+       obj->check();
        if (ar.objectCompletionHandler())
            ar.objectCompletionHandler()();
+   } else {
+      std::cerr << "LOADED " << obj->d()->name << " (" << obj->d()->type << "): " << obj->d()->unresolvedReferences << " unresolved references" << std::endl;
    }
    return obj;
 }

@@ -210,7 +210,7 @@ public:
    Object();
 
    static void publish(const Data *d);
-   static Object::ptr create(Data *);
+   static Object *create(Data *);
  private:
    std::string m_name; // just a debugging aid
    template<class Archive>
@@ -295,7 +295,7 @@ struct ObjectData {
     V_COREEXPORT void ref() const;
     V_COREEXPORT void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
-    bool isComplete() const; //! check whether all references have been resolved
+    V_COREEXPORT bool isComplete() const; //! check whether all references have been resolved
     V_COREEXPORT void unresolvedReference();
     V_COREEXPORT void referenceResolved(const std::function<void()> &completeCallback);
 
@@ -314,7 +314,7 @@ struct ObjectData {
 class V_COREEXPORT ObjectTypeRegistry {
 public:
    typedef Object *(*CreateEmptyFunc)(const std::string &name);
-   typedef Object::ptr (*CreateFunc)(Object::Data *d);
+   typedef Object *(*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
 
    struct FunctionTable {
@@ -371,13 +371,13 @@ private:
    static const char *typeName() { return #ObjType; } \
    static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) { return std::dynamic_pointer_cast<const ObjType>(ptr); } \
    static std::shared_ptr<ObjType> as(std::shared_ptr<Object> ptr) { return std::dynamic_pointer_cast<ObjType>(ptr); } \
-   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
+   static Object *createFromData(Object::Data *data) { return new ObjType(static_cast<ObjType::Data *>(data)); } \
    std::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); } \
    Object::ptr cloneInternal() const override { \
       const std::string n(Shm::the().createObjectId()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
             publish(data); \
-            return createFromData(data); \
+            return Object::ptr(createFromData(data)); \
    } \
    ptr clone() const { \
       return ObjType::as(cloneInternal()); \
@@ -399,10 +399,10 @@ private:
       const std::string n(Shm::the().createObjectId()); \
       typename ObjType::Data *data = shm<typename ObjType::Data>::construct(n)(*other->d(), n); \
       assert(data->type == ObjType::type()); \
-      ptr ret = ObjType::as(createFromData(data)); \
+      ObjType *ret = dynamic_cast<ObjType *>(createFromData(data)); \
       assert(ret); \
       publish(data); \
-      return ret; \
+      return ptr(ret); \
    } \
    template<class OtherType> \
    static ptr clone(typename OtherType::const_ptr other) { \
@@ -431,7 +431,6 @@ private:
          ar & V_NAME(ar, "name", name); \
          int type = Object::UNKNOWN; \
          ar & V_NAME(ar, "type", type); \
-         std::cerr << "Object::load: LOADING " << name << ", type=" << type << std::endl; \
          if (!ar.currentObject()) \
             ar.setCurrentObject(Object::m_data); \
          d()->template serialize<Archive>(ar); \
@@ -447,7 +446,7 @@ private:
       } \
    friend std::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
    friend shm_handle_t Shm::getHandleFromObject(std::shared_ptr<const Object>) const; \
-   friend std::shared_ptr<Object> Object::create(Object::Data *); \
+   friend Object *Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 
 #define V_DATA_BEGIN(ObjType) \

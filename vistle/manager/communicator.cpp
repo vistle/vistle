@@ -221,7 +221,6 @@ bool Communicator::dispatch(bool *work) {
       MPI_Test(&m_reqToRank, &flag, &status);
       if (flag && status.MPI_TAG == TagToRank) {
 
-         vassert(m_rank == 0);
          received = true;
          message::Message *message = &m_recvBufToRank;
          if (m_rank == 0 && message->isBroadcast()) {
@@ -280,7 +279,11 @@ bool Communicator::dispatch(bool *work) {
          done = true;
       } else if (gotMsg) {
          received = true;
-         if(!broadcastAndHandleMessage(buf)) {
+         if (buf.destRank() == 0) {
+             handleMessage(buf);
+         } else if (buf.destRank() >= 0) {
+             MPI_Send(buf.data(), buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD);
+         } else if(!broadcastAndHandleMessage(buf)) {
             CERR << "Quit reason: broadcast & handle 2: " << buf << std::endl;
             done = true;
          }
@@ -349,29 +352,38 @@ bool Communicator::forwardToMaster(const message::Message &message) {
 
 bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
+   assert(message.destRank() == -1);
+
    if (m_rank == 0) {
-      std::vector<MPI_Request> s(m_size);
-      for (int index = 0; index < m_size; ++index) {
-         unsigned int size = message.size();
-         if (index != m_rank) {
-            MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
-         }
-      }
+       if (message.destRank() == -1) {
+           std::vector<MPI_Request> s(m_size);
+           for (int index = 0; index < m_size; ++index) {
+               unsigned int size = message.size();
+               if (index != m_rank) {
+                   MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
+               }
+           }
 
-      MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
+           MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
 
-      const bool result = handleMessage(message);
+           const bool result = handleMessage(message);
 
-      // wait for completion
-      for (int index=0; index<m_size; ++index) {
+           // wait for completion
+           for (int index=0; index<m_size; ++index) {
 
-         if (index == m_rank)
-            continue;
+               if (index == m_rank)
+                   continue;
 
-         MPI_Wait(&s[index], MPI_STATUS_IGNORE);
-      }
+               MPI_Wait(&s[index], MPI_STATUS_IGNORE);
+           }
 
-      return result;
+           return result;
+       } else if (message.destRank() == -1) {
+           return handleMessage(message);
+       } else {
+           MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, message.destRank(), TagToRank, MPI_COMM_WORLD);
+           return true;
+       }
    } else {
 
       // message will be handled when received again from rank 0

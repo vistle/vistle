@@ -83,56 +83,59 @@ ClusterManager::Module::~Module() {
 void ClusterManager::Module::block(const message::Message &msg) {
    std::cerr << "BLOCK: " << msg << std::endl;
    blocked = true;
-   blockers.push_back(message::Buffer(msg));
+   blockers.emplace_back(message::Buffer(msg));
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) {
-   vassert(blocked);
-   vassert(!blockers.empty());
+    vassert(blocked);
+    vassert(!blockers.empty());
 
-   auto pred = [msg](const message::Buffer &buf) -> bool {
-      return buf.uuid() == msg.uuid()
-            && buf.type() == msg.type();
-   };
+    if (!blocked)
+        return;
+    if (blockers.empty())
+        return;
 
-   if (blocked) {
-      if (pred(blockers.front())) {
-         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
-         blockers.pop_front();
-         vassert(blockedMessages.front().uuid() == msg.uuid()
+    auto pred = [msg](const message::Buffer &buf) -> bool {
+        return buf.uuid() == msg.uuid()
+                && buf.type() == msg.type();
+    };
+
+    if (pred(blockers.front())) {
+        std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
+        blockers.pop_front();
+        vassert(blockedMessages.front().uuid() == msg.uuid()
                 && blockedMessages.front().type() == msg.type());
-         blockedMessages.pop_front();
-         sendQueue->send(msg);
-         if (blockers.empty()) {
+        blockedMessages.pop_front();
+        sendQueue->send(msg);
+        if (blockers.empty()) {
             //std::cerr << "UNBLOCK: completely unblocked" << std::endl;
             blocked = false;
             while (!blockedMessages.empty()) {
-               sendQueue->send(blockedMessages.front());
-               blockedMessages.pop_front();
+                sendQueue->send(blockedMessages.front());
+                blockedMessages.pop_front();
             }
-         } else {
+        } else {
             const auto &uuid = blockers.front().uuid();
             while (blockedMessages.front().uuid() != uuid) {
-               sendQueue->send(blockedMessages.front());
-               blockedMessages.pop_front();
+                sendQueue->send(blockedMessages.front());
+                blockedMessages.pop_front();
             }
-         }
-      } else {
-         std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
-         auto it = std::find_if(blockers.begin(), blockers.end(), pred);
-         vassert(it != blockers.end());
-         if (it != blockers.end()) {
+        }
+    } else {
+        std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
+        auto it = std::find_if(blockers.begin(), blockers.end(), pred);
+        vassert(it != blockers.end());
+        if (it != blockers.end()) {
             //std::cerr << "UNBLOCK: found in blockers" << std::endl;
             blockers.erase(it);
-         }
-         it = std::find_if(blockedMessages.begin(), blockedMessages.end(), pred);
-         vassert (it != blockedMessages.end());
-         if (it != blockedMessages.end()) {
+        }
+        it = std::find_if(blockedMessages.begin(), blockedMessages.end(), pred);
+        vassert (it != blockedMessages.end());
+        if (it != blockedMessages.end()) {
             //std::cerr << "UNBLOCK: updating message" << std::endl;
             *it = message::Buffer(msg);
-         }
-      }
-   }
+        }
+    }
 }
 
 bool ClusterManager::Module::send(const message::Message &msg) const {
@@ -274,6 +277,10 @@ int ClusterManager::getSize() const {
    return m_size;
 }
 
+int ClusterManager::idToHub(int id) const {
+   return m_stateTracker.getHub(id);
+}
+
 bool ClusterManager::isLocal(int id) const {
 
    if (id == Id::LocalHub)
@@ -281,7 +288,7 @@ bool ClusterManager::isLocal(int id) const {
    if (Id::isHub(id)) {
       return (id == Communicator::the().hubId());
    }
-   int hub = m_stateTracker.getHub(id);
+   int hub = idToHub(id);
    return hub == Communicator::the().hubId();
 }
 
@@ -301,10 +308,7 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 #ifdef BARRIER_DEBUG
    CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
 #endif
-   if (reachedSet.size() == numLocal)
-      return true;
-
-   return false;
+   return reachedSet.size() == numLocal;
 }
 
 void ClusterManager::barrierReached(const message::uuid_t &uuid) {
@@ -415,7 +419,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
       } else {
          int senderHub = message.senderId();
          if (senderHub >= Id::ModuleBase)
-            senderHub = m_stateTracker.getHub(senderHub);
+            senderHub = idToHub(senderHub);
          if (senderHub == Communicator::the().hubId()) {
             if (getRank() == 0)
                sendHub(buf);
@@ -436,7 +440,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
       if (modId == excluded)
          continue;
       const auto &mod = it->second;
-      const int hub = m_stateTracker.getHub(modId);
+      const int hub = idToHub(modId);
 
       if (hub == Communicator::the().hubId()) {
          mod.send(message);
@@ -465,7 +469,7 @@ bool ClusterManager::sendHub(const message::Message &message, int destHub) const
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
 
-   const int hub = m_stateTracker.getHub(moduleId);
+   const int hub = idToHub(moduleId);
 
    if (hub == Communicator::the().hubId()) {
       //std::cerr << "local send to " << moduleId << ": " << message << std::endl;
@@ -520,10 +524,10 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
    int senderHub = message.senderId();
    if (senderHub >= Id::ModuleBase)
-      senderHub = m_stateTracker.getHub(senderHub);
+      senderHub = idToHub(senderHub);
    int destHub = message.destId();
    if (destHub >= Id::ModuleBase)
-      destHub = m_stateTracker.getHub(destHub);
+      destHub = idToHub(destHub);
    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
 #if 0
       if (message.senderId() != hubId && senderHub == hubId) {
@@ -694,6 +698,12 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
 
+      case message::DATATRANSFERSTATE: {
+         const message::DataTransferState &m = message.as<DataTransferState>();
+         result = handlePriv(m);
+         break;
+      }
+
       case message::ADDHUB:
       case message::REMOVESLAVE:
       case message::STARTED:
@@ -706,6 +716,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case message::SCHEDULINGPOLICY:
       case message::OBJECTRECEIVEPOLICY:
       case message::PONG:
+      case message::UPDATESTATUS:
          break;
 
       default:
@@ -1128,11 +1139,133 @@ bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
     return true;
 }
 
-bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
+bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
 
+   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
+   if (!port) {
+      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      //vassert(port);
+      return true;
+   }
+
+   const Port::ConstPortSet *list = portManager().getConnectionList(port);
+   if (!list) {
+      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+      vassert(list);
+      return true;
+   }
+
+   // if object was generated locally, forward message to remote hubs with connected modules
+   std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
+   for (const Port *destPort: *list) {
+      int destId = destPort->getModuleID();
+      message::AddObject a(addObj);
+
+      if (!isLocal(destId)) {
+          const int hub = idToHub(destId);
+          if (receivingHubs.find(hub) == receivingHubs.end()) {
+              receivingHubs.insert(hub);
+              a.setDestId(hub);
+              Communicator::the().dataManager().prepareTransfer(a);
+              sendHub(a, hub);
+          }
+      }
+   }
+
+   return true;
+}
+
+bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj) {
 
    const bool localAdd = isLocal(addObj.senderId());
-   //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
+   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
+   if (!port) {
+      CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      //vassert(port);
+      return true;
+   }
+   const Port::ConstPortSet *list = portManager().getConnectionList(port);
+   if (!list) {
+      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+      vassert(list);
+      return true;
+   }
+
+   std::set<message::AddObject> delayedAdds;
+   for (const Port *destPort: *list) {
+
+      int destId = destPort->getModuleID();
+      if (!isLocal(destId))
+          continue;
+
+      auto it = m_stateTracker.runningMap.find(destId);
+      if (it == m_stateTracker.runningMap.end()) {
+         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
+         vassert("port connection to module that is not running" == 0);
+         continue;
+      }
+      auto &destMod = it->second;
+
+      message::AddObject a(addObj);
+      a.setDestId(destId);
+      a.setDestPort(destPort->getName());
+
+      if (obj) {
+          a.setObject(obj);
+      } else {
+         // block messages of receiving module until remote object is available
+         vassert(!localAdd);
+         auto it = runningMap.find(destId);
+         if (it != runningMap.end()) {
+            it->second.block(a);
+            delayedAdds.insert(a);
+         }
+      }
+
+      sendMessage(destId, a);
+      portManager().addObject(destPort);
+
+      if (!checkExecuteObject(destId))
+          return false;
+
+      // FIXME: obj already deleted
+      if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+          || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+         message::ObjectReceived recv(a, a.getDestPort());
+         recv.setDestId(destId);
+
+         if (!Communicator::the().broadcastAndHandleMessage(recv))
+            return false;
+      }
+   }
+
+   if (!delayedAdds.empty()) {
+       assert(!obj);
+       Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, delayedAdds]() {
+           auto obj = addObj.getObject();
+           assert(obj);
+           for (auto a: delayedAdds) {
+               auto it = runningMap.find(a.destId());
+               if (it != runningMap.end()) {
+                   a.setObject(obj);
+                   it->second.unblock(a);
+               }
+           }
+       });
+   }
+
+   return true;
+}
+
+bool ClusterManager::handlePriv(const message::AddObject &addObj) {
+
+   const bool localAdd = isLocal(addObj.senderId());
+
+   if (localAdd) {
+       addObjectSource(addObj);
+   }
+
+   CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << std::endl;
    Object::const_ptr obj;
 
    bool onThisRank = false;
@@ -1155,22 +1288,23 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       //CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
       if (onThisRank) {
          obj = addObj.getObject();
-         if (!obj) {
-            vassert(!synthesized);
-            //CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), []() -> void { /* FIXME */ });
-         }
+         if (obj)
+             Communicator::the().dataManager().notifyTransferComplete(addObj);
       } else {
+          // nothing to do
           return true;
       }
    }
 
-   vassert(!(synthesized && localAdd));
-   if (synthesized || (localAdd && onThisRank)) {
+   if (localAdd && onThisRank) {
       vassert(obj);
    }
-   vassert(!obj || (obj->refcount() >= 1 && (localAdd || synthesized)));
+   vassert(!obj || obj->refcount() >= 1);
 
+   return addObjectDestination(addObj, obj);
+}
+
+#if 0
    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
       CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
@@ -1192,7 +1326,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       if (!isLocal(destId)) {
          if (localAdd) {
             // if object was generated locally, forward message to remote hubs with connected modules
-            const int hub = m_stateTracker.getHub(destId);
+            const int hub = idToHub(destId);
             if (receivingHubs.find(hub) == receivingHubs.end()) {
                a.setDestId(hub);
                sendHub(a, hub);
@@ -1235,10 +1369,12 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       a.setDestId(destId);
       a.setDestPort(destPort->getName());
       if (isLocal(destId) && localAdd && onThisRank) {
+#if 0
           if (destMod.objectPolicy == message::ObjectReceivePolicy::Master) {
               sendMessage(destId, a, 0);
               continue;
           }
+#endif
           a.ref();
       }
       sendMessage(destId, a);
@@ -1261,6 +1397,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    return true;
 }
+#endif
 
 bool ClusterManager::checkExecuteObject(int destId) {
 
@@ -1310,7 +1447,7 @@ bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
-   const bool localSender = m_stateTracker.getHub(prog.senderId()) == Communicator::the().hubId();
+   const bool localSender = idToHub(prog.senderId()) == Communicator::the().hubId();
    RunningMap::iterator i = runningMap.find(prog.senderId());
    if (i == runningMap.end()) {
       vassert(localSender == false);
@@ -1335,7 +1472,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
          for (const Port *destPort: *list) {
             int destId = destPort->getModuleID();
             if (!isLocal(destId)) {
-               int hub = m_stateTracker.getHub(destId);
+               int hub = idToHub(destId);
                receivingHubs.insert(hub);
             }
             const auto it = m_stateTracker.runningMap.find(destId);
@@ -1795,6 +1932,29 @@ bool ClusterManager::handlePriv(const message::Ping &ping) {
       sendHub(pong);
    }
    return true;
+}
+
+bool ClusterManager::handlePriv(const message::DataTransferState &state) {
+
+    assert(m_rank == 0);
+    if (m_numTransfering.size() < m_size)
+        m_numTransfering.resize(m_size);
+
+    int r = state.rank();
+    assert(r >= 0);
+    m_totalNumTransferring -= m_numTransfering[r];
+    m_numTransfering[r] = state.numTransferring();
+    m_totalNumTransferring += m_numTransfering[r];
+
+    std::stringstream str;
+    if (m_totalNumTransferring == 0) {
+        Communicator::the().clearStatus();
+    } else {
+        str << m_totalNumTransferring << " objects to transfer" << std::endl;
+        Communicator::the().setStatus(str.str(), message::UpdateStatus::Low);
+    }
+
+    return true;
 }
 
 bool ClusterManager::quit() {

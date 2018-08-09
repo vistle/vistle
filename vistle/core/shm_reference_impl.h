@@ -41,6 +41,8 @@ void shm_ref<T>::load(Archive &ar) {
    });
    if (ref) {
       *this = ref;
+      if (handler)
+          handler();
 #if 0
    } else {
       //std::cerr << "waiting for completion of " << name << std::endl;

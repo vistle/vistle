@@ -452,13 +452,13 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
 #ifdef NO_SHMEM
     Object::Data *od = static_cast<Object::Data *>(handle);
-    return Object::create(od);
+    return Object::const_ptr(Object::create(od));
 #else
    try {
       Object::Data *od = static_cast<Object::Data *>
          (m_shm->get_address_from_handle(handle));
 
-      return Object::create(od);
+      return Object::const_ptr(Object::create(od));
    } catch (interprocess_exception &ex) { }
 
    return Object::const_ptr();
@@ -477,7 +477,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    auto mem = getObjectDataFromName(name);
    if (mem) {
       if (mem->isComplete() || !onlyComplete) {
-          Object::const_ptr obj = Object::create(mem);
+          Object::const_ptr obj(Object::create(mem));
           unlockObjects();
           return obj;
       }

@@ -25,11 +25,14 @@ public:
     DataManager(boost::mpi::communicator &comm);
     ~DataManager();
     bool handle(const message::Message &msg, std::vector<char> *payload);
+    //! request a remote object for servicing an AddObject request
     bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
+    //! request a remote object for resolving a reference to a sub-object
     bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
     bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
+    bool notifyTransferComplete(const message::AddObject &add);
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
     bool dispatch();
 
@@ -38,6 +41,8 @@ public:
 private:
     bool handlePriv(const message::RequestObject &req);
     bool handlePriv(const message::SendObject &snd, std::vector<char> *payload);
+    bool handlePriv(const message::AddObjectCompleted &complete);
+    void updateStatus();
 
     struct Msg {
        Msg(message::Buffer &buf, std::vector<char> &payload);
@@ -60,37 +65,19 @@ private:
 
     std::thread m_recvThread;
 
-    struct AddObjectLess {
-       bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {
-          if (a1.uuid() != a2.uuid()) {
-             return a1.uuid() < a2.uuid();
-          }
-          if (a1.destId() != a2.destId()) {
-             return a1.destId() < a2.destId();
-          }
-#if 0
-          if (!strcmp(a1.getDestPort(), a2.getDestPort())) {
-             return strcmp(a1.getDestPort(), a2.getDestPort()) < 0;
-          }
-#endif
-          return false;
-       }
-    };
-    std::set<message::AddObject, AddObjectLess> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
+    std::set<message::AddObject> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs -- cannot be deleted yet
 
-    std::map<message::AddObject, std::vector<std::string>, AddObjectLess> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
+    std::map<std::string, std::set<message::AddObject>> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
     std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
 
 
-    std::map<std::string, std::vector<std::function<void()>>> m_outstandingArrays; //!< requests for (sub-)objects which have not been serviced yet
+    std::map<std::string, std::vector<std::function<void()>>> m_requestedArrays; //!< requests for (sub-)objects which have not been serviced yet
     struct OutstandingObject {
-       OutstandingObject(): obj(nullptr) {}
-
-       vistle::Object *obj;
+       vistle::Object::const_ptr obj;
        std::vector<std::function<void()>> completionHandlers;
     };
 
-    std::map<std::string, OutstandingObject> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
+    std::map<std::string, OutstandingObject> m_requestedObjects; //!< requests for (sub-)objects which have not been serviced yet
 };
 
 } // namespace vistle

@@ -452,14 +452,26 @@ AddObject::AddObject(const AddObject &o)
 }
 
 AddObject::AddObject(const AddObjectCompleted &complete)
-: handle(0)
+: m_objectType(Object::UNKNOWN)
+, handle(0)
 , m_handleValid(false)
 {
     setUuid(complete.referrer());
     setDestId(complete.originalDestination());
+    setDestPort(complete.originalDestPort());
 }
 
-AddObject::~AddObject() {
+AddObject::~AddObject() = default;
+
+bool AddObject::operator<(const AddObject &other) const {
+
+    if (uuid() == other.uuid()) {
+        if (destId() == other.destId()) {
+            return strcmp(getDestPort(), other.getDestPort()) < 0;
+        }
+        return destId() < other.destId();
+    }
+    return uuid() < other.uuid();
 }
 
 bool AddObject::ref() const {
@@ -518,6 +530,22 @@ Object::Type AddObject::objectType() const {
    return static_cast<Object::Type>(m_objectType);
 }
 
+void AddObject::setObject(Object::const_ptr obj) {
+
+    if (m_handleValid) {
+        if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
+            vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
+            obj->unref();
+        }
+
+        m_handleValid = false;
+    }
+
+    handle = obj->getHandle();
+    obj->ref();
+    m_handleValid = true;
+}
+
 Object::const_ptr AddObject::takeObject() const {
 
    vassert(m_handleValid);
@@ -529,7 +557,7 @@ Object::const_ptr AddObject::takeObject() const {
          //std::cerr << "takeObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
          m_handleValid = false;
       } else {
-          std::cerr << "did not find " << m_name << " by handle" << std::endl;
+          std::cerr << "AddObject::takeObject: did not find " << m_name << " by handle" << std::endl;
       }
       return obj;
    }
@@ -539,7 +567,7 @@ Object::const_ptr AddObject::takeObject() const {
 Object::const_ptr AddObject::getObject() const {
    auto obj = Shm::the().getObjectFromName(m_name);
    if (!obj) {
-      std::cerr << "did not find " << m_name << " by name" << std::endl;
+      std::cerr << "AddObject::getObject: did not find " << m_name << " by name" << std::endl;
    }
    return obj;
 }
@@ -549,7 +577,12 @@ AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
 : m_name(msg.objectName())
 , m_orgDestId(msg.destId())
 {
+   std::string port(msg.getDestPort());
+   COPY_STRING(m_orgDestPort, port);
    setReferrer(msg.uuid());
+
+   setDestId(msg.senderId());
+   setDestRank(msg.rank());
 }
 
 const char *AddObjectCompleted::objectName() const {
@@ -559,6 +592,10 @@ const char *AddObjectCompleted::objectName() const {
 
 int AddObjectCompleted::originalDestination() const {
    return m_orgDestId;
+}
+
+const char *AddObjectCompleted::originalDestPort() const {
+    return m_orgDestPort.data();
 }
 
 ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
@@ -1502,6 +1539,15 @@ FileQuery::Command FileQueryResult::command() const
 FileQueryResult::Status FileQueryResult::status() const
 {
     return Status(m_status);
+}
+
+DataTransferState::DataTransferState(size_t numTransferring)
+    : m_numTransferring(numTransferring)
+{
+}
+
+size_t DataTransferState::numTransferring() const {
+    return m_numTransferring;
 }
 
 std::ostream &operator<<(std::ostream &s, const Message &m) {

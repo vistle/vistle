@@ -265,6 +265,20 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
+        case ADDOBJECTCOMPLETED: {
+            auto &complete = msg->as<const AddObjectCompleted>();
+            int hubId = idToHub(complete.destId());
+            auto remote = getRemoteDataSock(hubId);
+            if (remote) {
+                async_send(*remote, *msg, nullptr, [remote, msg, hubId](error_code ec){
+                    if (ec) {
+                        CERR << "error in forwarding AddObjectCompleted msg to remote hub " << hubId << std::endl;
+                        return;
+                    }
+                });
+            }
+            break;
+        }
         case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() != Identify::LOCALBULKDATA) {

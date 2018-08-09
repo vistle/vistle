@@ -514,6 +514,7 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
 
       case FILEQUERY:
       case FILEQUERYRESULT:
+      case DATATRANSFERSTATE:
          break;
 
       default:

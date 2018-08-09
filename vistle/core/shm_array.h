@@ -228,7 +228,7 @@ void shm_array<T, allocator>::save(Archive &ar) const {
     ar & V_NAME(ar, "type", m_type);
     ar & V_NAME(ar, "size", size_type(m_size));
     ar & V_NAME(ar, "exact", m_exact);
-    std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
+    //std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
         if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
             ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));

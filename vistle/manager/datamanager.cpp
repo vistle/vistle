@@ -139,14 +139,13 @@ bool DataManager::send(const message::Message &message, const std::vector<char> 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
 
    //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
-   auto it = m_outstandingArrays.find(arrayId);
-   if (it != m_outstandingArrays.end()) {
+   auto it = m_requestedArrays.find(arrayId);
+   if (it != m_requestedArrays.end()) {
        it->second.push_back(handler);
        return true;
    }
 
-   m_outstandingArrays[arrayId].push_back(handler);
-
+   m_requestedArrays[arrayId].push_back(handler);
    message::RequestObject req(hub, rank, arrayId, type, referrer);
    send(req);
 
@@ -157,18 +156,24 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
+      handler();
       return false;
    }
-   auto it = m_outstandingObjects.find(objId);
-   if (it != m_outstandingObjects.end()) {
+
+   m_outstandingAdds[objId].insert(add);
+   CERR << m_outstandingAdds[objId].size() << " outstanding adds for " << objId << std::endl;
+
+   auto it = m_requestedObjects.find(objId);
+   if (it != m_requestedObjects.end()) {
        it->second.completionHandlers.push_back(handler);
        return true;
    }
-   m_outstandingObjects[objId].completionHandlers.push_back(handler);
-   m_outstandingAdds[add].push_back(objId);
+   m_requestedObjects[objId].completionHandlers.push_back(handler);
+
    m_outstandingRequests.emplace(objId, add);
    message::RequestObject req(add, objId);
    send(req);
+
    return true;
 }
 
@@ -176,25 +181,31 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
+      handler();
       return false;
    }
-   auto it = m_outstandingObjects.find(objId);
-   if (it != m_outstandingObjects.end()) {
+
+   auto it = m_requestedObjects.find(objId);
+   if (it != m_requestedObjects.end()) {
        it->second.completionHandlers.push_back(handler);
        return true;
    }
 
-   m_outstandingObjects[objId].completionHandlers.push_back(handler);
+   m_requestedObjects[objId].completionHandlers.push_back(handler);
    message::RequestObject req(hub, rank, objId, referrer);
    send(req);
    return true;
 }
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
-    auto result =  m_inTransitObjects.emplace(add);
+    CERR << "prepareTransfer: retaining " << add.objectName() << std::endl;
+    auto result = m_inTransitObjects.emplace(add);
     if (result.second) {
         result.first->ref();
     }
+
+    updateStatus();
+
     return true;
 }
 
@@ -210,15 +221,26 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    //CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
    m_inTransitObjects.erase(it);
 
-   std::stringstream str;
-   if (m_inTransitObjects.empty()) {
-       Communicator::the().clearStatus();
-   } else {
-       str << "waiting for " << m_inTransitObjects.size() << " objects" << std::endl;
-       Communicator::the().setStatus(str.str(), message::UpdateStatus::Low);
-   }
+   updateStatus();
 
    return true;
+}
+
+void DataManager::updateStatus() {
+
+    if (m_rank == 0)
+        Communicator::the().handleMessage(message::DataTransferState(m_inTransitObjects.size()));
+    else
+        Communicator::the().forwardToMaster(message::DataTransferState(m_inTransitObjects.size()));
+}
+
+bool DataManager::notifyTransferComplete(const message::AddObject &addObj) {
+
+    //CERR << "sending completion notification for " << objName << std::endl;
+    message::AddObjectCompleted complete(addObj);
+    int hub = Communicator::the().clusterManager().idToHub(addObj.senderId());
+    return Communicator::the().clusterManager().sendMessage(hub, complete, addObj.rank());
+    //return send(complete);
 }
 
 bool DataManager::handle(const message::Message &msg, std::vector<char> *payload)
@@ -238,6 +260,8 @@ bool DataManager::handle(const message::Message &msg, std::vector<char> *payload
         return handlePriv(static_cast<const RequestObject &>(msg));
     case message::SENDOBJECT:
         return handlePriv(static_cast<const SendObject &>(msg), payload);
+    case message::ADDOBJECTCOMPLETED:
+        return handlePriv(msg.as<AddObjectCompleted>());
     default:
         break;
     }
@@ -253,7 +277,6 @@ public:
         , m_add(&add)
         , m_hub(Communicator::the().clusterManager().state().getHub(add.senderId()))
         , m_rank(add.rank())
-        , m_numRequests(0)
     {
     }
 
@@ -263,30 +286,22 @@ public:
         , m_referrer(referrer)
         , m_hub(hub)
         , m_rank(rank)
-        , m_numRequests(0)
     {
     }
 
-    virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override {
+    void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override {
         vassert(!m_add);
-        ++m_numRequests;
         m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
     }
 
-    virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) override {
-        ++m_numRequests;
-        if (m_add) {
-           m_dmgr->requestObject(*m_add, name, completeCallback);
-        } else {
-           m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
-        }
+    void requestObject(const std::string &name, const std::function<void()> &completeCallback) override {
+        m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
     }
 
     DataManager *m_dmgr;
     const message::AddObject *m_add;
     const std::string m_referrer;
     int m_hub, m_rank;
-    size_t m_numRequests;
 };
 
 bool DataManager::handlePriv(const message::RequestObject &req) {
@@ -329,103 +344,92 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
 
 bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *payload) {
 
-   std::vector<char> uncompressed = decompressPayload(snd, *payload);
+    std::vector<char> uncompressed = decompressPayload(snd, *payload);
+    vecistreambuf<char> membuf(uncompressed);
 
-   vecistreambuf<char> membuf(uncompressed);
-   if (snd.isArray()) {
-       vistle::iarchive memar(membuf);
-       ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
-       if (!loader.load()) {
-           return false;
-       }
-       //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
-       auto it = m_outstandingArrays.find(snd.objectId());
-       vassert(it != m_outstandingArrays.end());
-       if (it != m_outstandingArrays.end()) {
-           for (const auto &completionHandler: it->second)
-               completionHandler();
-           m_outstandingArrays.erase(it);
-       }
+    if (snd.isArray()) {
+        // an array was received
+        vistle::iarchive memar(membuf);
+        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
+        if (!loader.load()) {
+            return false;
+        }
+        //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
+        auto it = m_requestedArrays.find(snd.objectId());
+        vassert(it != m_requestedArrays.end());
+        if (it != m_requestedArrays.end()) {
+            for (const auto &completionHandler: it->second)
+                completionHandler();
+            m_requestedArrays.erase(it);
+        }
 
-       return true;
-   } else {
-       vistle::iarchive memar(membuf);
-       std::string objName = snd.objectId();
-       auto objIt = m_outstandingObjects.find(objName);
-       if (objIt == m_outstandingObjects.end()) {
-           CERR << "object " << objName << " unexpected" << std::endl;
-           return false;
-       }
+        return true;
+    }
 
-       auto &outstandingAdds = m_outstandingAdds;
-       auto &outstandingRequests = m_outstandingRequests;
-       auto &outstandingObjects = m_outstandingObjects;
-       auto senderId = snd.senderId();
-       auto senderRank = snd.rank();
-       auto completionHandler = [this, &outstandingAdds, &outstandingRequests, &outstandingObjects, senderId, senderRank, objName] () mutable -> void {
-           //CERR << "object completion handler for " << objName << std::endl;
-           auto obj = Shm::the().getObjectFromName(objName);
-           if (!obj) {
-               CERR << "did not receive an object for " << objName << std::endl;
-               return;
-           }
-           vassert(obj);
-           //CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
-           vassert(obj->check());
+    // an object was received
+    std::string objName = snd.objectId();
+    auto objIt = m_requestedObjects.find(objName);
+    if (objIt == m_requestedObjects.end()) {
+        CERR << "object " << objName << " unexpected" << std::endl;
+        return false;
+    }
 
-           auto reqIt = outstandingRequests.find(objName);
-           if (reqIt != outstandingRequests.end()) {
-               message::AddObject &add = reqIt->second;
+    auto senderId = snd.senderId();
+    auto senderRank = snd.rank();
+    auto completionHandler = [this, senderId, senderRank, objName] () mutable -> void {
+        //CERR << "object completion handler for " << objName << std::endl;
+        auto obj = Shm::the().getObjectFromName(objName);
+        if (!obj) {
+            CERR << "did not receive an object for " << objName << std::endl;
+            return;
+        }
+        vassert(obj);
+        //CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
+        vassert(obj->check());
 
-               auto addIt = outstandingAdds.find(add);
-               if (addIt == outstandingAdds.end()) {
-                   CERR << "no outstanding add for " << objName << std::endl;
-                   return;
-               }
-               auto &ids = addIt->second;
-               auto it = std::find(ids.begin(), ids.end(), objName);
-               if (it != ids.end()) {
-                   ids.erase(it);
-               }
+        auto reqIt = m_outstandingRequests.find(objName);
+        if (reqIt != m_outstandingRequests.end()) {
+            m_outstandingRequests.erase(reqIt);
+        } else {
+            //CERR << "no outstanding request for " << obj->getName() << std::endl;
+        }
 
-               if (ids.empty()) {
-                   //CERR << "sending completion notification for " << objName << std::endl;
-                   message::AddObjectCompleted complete(add);
-                   Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
-                   //message::AddObject nadd(add.getSenderPort(), obj);
-                   Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
-                   m_outstandingAdds.erase(addIt);
-               }
-               outstandingRequests.erase(reqIt);
-           } else {
-               //CERR << "no outstanding request for " << obj->getName() << std::endl;
-           }
+        auto addIt = m_outstandingAdds.find(objName);
+        if (addIt == m_outstandingAdds.end()) {
+            // that's normal if a sub-object was loaded
+            //CERR << "no outstanding add for " << objName << std::endl;
+        } else {
+            for (const auto &add: addIt->second) {
+                notifyTransferComplete(add);
+            }
+            m_outstandingAdds.erase(addIt);
+        }
 
-           auto objIt = outstandingObjects.find(objName);
-           if (objIt != outstandingObjects.end()) {
-               for (const auto &handler: objIt->second.completionHandlers) {
-                   handler();
-               }
-               if (objIt->second.obj) {
-                   objIt->second.obj->unref();
-               } else {
-                   CERR << "failed to load: " << objName << std::endl;
-               }
-               outstandingObjects.erase(objIt);
-               //CERR << "erasing from outstanding objects: " << obj->getName() << std::endl;
-           } else {
-               CERR << "no outstanding object for " << obj->getName() << std::endl;
-           }
-       };
-       memar.setObjectCompletionHandler(completionHandler);
+        auto objIt = m_requestedObjects.find(objName);
+        if (objIt != m_requestedObjects.end()) {
+            for (const auto &handler: objIt->second.completionHandlers) {
+                handler();
+            }
+            m_requestedObjects.erase(objIt);
+            //CERR << "erasing from outstanding objects: " << obj->getName() << std::endl;
+        } else {
+            CERR << "no outstanding object for " << obj->getName() << std::endl;
+        }
+    };
 
-       std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
-       memar.setFetcher(fetcher);
-       //CERR << "loading object " << objName << " from memar" << std::endl;
-       objIt->second.obj = Object::loadObject(memar);
-   }
+    vistle::iarchive memar(membuf);
+    memar.setObjectCompletionHandler(completionHandler);
+    std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
+    memar.setFetcher(fetcher);
+    //CERR << "loading object " << objName << " from memar" << std::endl;
+    objIt->second.obj.reset(Object::loadObject(memar));
+    objIt->second.obj->unref();
 
-   return true;
+    return true;
+}
+
+bool DataManager::handlePriv(const message::AddObjectCompleted &complete) {
+    return completeTransfer(complete);
 }
 
 void DataManager::recvLoop()

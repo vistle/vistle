@@ -272,7 +272,7 @@ std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vecto
     }
 
     msg.setPayloadSize(compressed.size());
-    std::cerr << "compressPayload " << msg.payloadRawSize() << " -> " << msg.payloadSize() << std::endl;
+    //std::cerr << "compressPayload " << msg.payloadRawSize() << " -> " << msg.payloadSize() << std::endl;
     return compressed;
 }
 

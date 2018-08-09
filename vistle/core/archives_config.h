@@ -253,7 +253,7 @@ struct archive_helper<yas_tag> {
         template<class Archive>
         void save(Archive &ar) const {
             bool compress = ar.compressionMode()!=Uncompressed && !m_exact;
-            std::cerr << "ar.compressed()=" << compress << std::endl;
+            //std::cerr << "ar.compressed()=" << compress << std::endl;
             if (compress) {
 #ifdef HAVE_ZFP
                 ZfpParameters param;
@@ -261,7 +261,7 @@ struct archive_helper<yas_tag> {
                 param.rate = ar.zfpRate();
                 param.precision = ar.zfpPrecision();
                 param.accuracy = ar.zfpAccuracy();
-                std::cerr << "trying to compresss " << std::endl;
+                //std::cerr << "trying to compresss " << std::endl;
                 std::vector<char> compressed;
                 Index dim[3];
                 for (int c=0; c<3; ++c)

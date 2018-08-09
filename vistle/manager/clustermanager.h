@@ -81,10 +81,12 @@ class ClusterManager: public ParameterManager
    message::CompressionMode archiveCompressionMode() const;
    int archiveCompressionSpeed() const;
 
+   bool isLocal(int id) const;
+   int idToHub(int id) const;
+
  private:
    void queueMessage(const message::Message &msg);
    void replayMessages();
-   bool isLocal(int id) const;
    std::vector<message::Buffer> m_messageQueue;
 
    std::shared_ptr<PortManager> m_portManager;
@@ -101,6 +103,9 @@ class ClusterManager: public ParameterManager
 
    bool m_quitFlag;
 
+   bool addObjectSource(const message::AddObject &addObj);
+   bool addObjectDestination(const message::AddObject &addObj, Object::const_ptr obj);
+
    bool handlePriv(const message::Trace &trace);
    bool handlePriv(const message::Spawn &spawn);
    bool handlePriv(const message::Connect &connect);
@@ -113,7 +118,7 @@ class ClusterManager: public ParameterManager
    bool handlePriv(const message::Idle &idle);
    bool handlePriv(const message::SetParameter &setParam);
    bool handlePriv(const message::SetParameterChoices &setChoices);
-   bool handlePriv(const message::AddObject &addObj, bool synthesized=false);
+   bool handlePriv(const message::AddObject &addObj);
    bool handlePriv(const message::AddObjectCompleted &complete);
    bool handlePriv(const message::ObjectReceived &objRecv);
    bool handlePriv(const message::Barrier &barrier);
@@ -121,6 +126,7 @@ class ClusterManager: public ParameterManager
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
    bool handlePriv(const message::Ping &ping);
+   bool handlePriv(const message::DataTransferState &state);
 
    //! check whether objects are available for a module and compute() should be called
    bool checkExecuteObject(int modId);
@@ -163,6 +169,7 @@ class ClusterManager: public ParameterManager
    RunningMap runningMap;
    int numRunning() const;
    bool isReadyForExecute(int modId) const;
+   int m_numExecuting = 0;
 
    // barrier related stuff
    bool checkBarrier(const message::uuid_t &uuid) const;
@@ -181,6 +188,9 @@ class ClusterManager: public ParameterManager
 
    IntParameter *m_archiveCompression = nullptr;
    IntParameter *m_archiveCompressionSpeed = nullptr;
+
+   std::vector<int> m_numTransfering;
+   long m_totalNumTransferring = 0;
 };
 
 } // namespace vistle

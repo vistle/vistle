@@ -132,10 +132,10 @@ const char *Object::toString(Type v) {
     return buf;
 }
 
-Object::ptr Object::create(Data *data) {
+Object *Object::create(Data *data) {
 
    if (!data)
-      return Object::ptr();
+      return nullptr;
 
    return ObjectTypeRegistry::getCreator(data->type)(data);
 }
@@ -684,7 +684,7 @@ Object::const_ptr ObjectData::getAttachment(const std::string &key) const {
    if (it == attachments.end()) {
       return Object::ptr();
    }
-   return Object::create(const_cast<Object::Data *>(&*it->second));
+   return Object::const_ptr(Object::create(const_cast<Object::Data *>(&*it->second)));
 }
 
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) {

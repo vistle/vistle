@@ -352,11 +352,14 @@ class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
    AddObject(const AddObjectCompleted &complete);
    ~AddObject();
 
+   bool operator<(const AddObject &other) const;
+
    void setSenderPort(const std::string &sendPort);
    const char * getSenderPort() const;
    void setDestPort(const std::string &destPort);
    const char * getDestPort() const;
    const char *objectName() const;
+   void setObject(Object::const_ptr obj);
    Object::const_ptr takeObject() const; //!< may only be called once
    Object::const_ptr getObject() const; //! try to retrieve from shmem by name
    bool ref() const; //!< may only be called once
@@ -371,9 +374,9 @@ class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
    shm_name_t m_name;
    shmsegname_t m_shmname;
    Meta m_meta;
-   int m_objectType;
-   const shm_handle_t handle;
-   mutable bool m_handleValid;
+   int m_objectType = Object::UNKNOWN;
+   shm_handle_t handle = 0;
+   mutable bool m_handleValid = false;
 };
 static_assert(sizeof(AddObject) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -383,10 +386,12 @@ class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, AD
    AddObjectCompleted(const AddObject &msg);
    const char *objectName() const;
    int originalDestination() const;
+   const char *originalDestPort() const;
 
  private:
    shm_name_t m_name;
    int m_orgDestId;
+   port_name_t m_orgDestPort;
 };
 static_assert(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -912,6 +917,15 @@ private:
     text_t m_path;
 };
 static_assert(sizeof(FileQueryResult) <= Message::MESSAGE_SIZE, "message too large");
+
+class V_COREEXPORT DataTransferState: public MessageBase<DataTransferState, DATATRANSFERSTATE> {
+public:
+    DataTransferState(size_t numTransferring);
+    size_t numTransferring() const;
+
+private:
+    long m_numTransferring;
+};
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

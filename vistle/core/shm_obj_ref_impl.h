@@ -109,7 +109,8 @@ template<class T>
 typename shm_obj_ref<T>::ObjType::const_ptr shm_obj_ref<T>::getObject() const {
     if (!valid())
         return nullptr;
-    return ObjType::as(Object::create(const_cast<typename ObjType::Data *>(&*m_d)));
+    typedef typename shm_obj_ref<T>::ObjType ObjType;
+    return typename ObjType::const_ptr(dynamic_cast<ObjType *>(Object::create(const_cast<typename ObjType::Data *>(&*m_d))));
 }
 
 template<class T>

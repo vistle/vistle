@@ -50,6 +50,7 @@ void Router::initRoutingTable() {
    rt[SCHEDULINGPOLICY]      = DestLocalManager|Track;
    rt[REDUCEPOLICY]          = DestLocalManager|Track;
    rt[EXECUTIONPROGRESS]     = DestManager|HandleOnRank0;
+   rt[DATATRANSFERSTATE]     = Special;
 
    rt[ADDOBJECT]             = DestManager|HandleOnNode;
    rt[ADDOBJECTCOMPLETED]    = DestManager|HandleOnNode;
