@@ -147,6 +147,12 @@ void MainWindow::closeEvent(QCloseEvent *e) {
    emit quitRequested(allowed);
    if (!allowed) {
       e->ignore();
+      return;
+   }
+
+   QWidgetList allToplevelWidgets = QApplication::topLevelWidgets();
+   for (auto w: allToplevelWidgets) {
+       w->close();
    }
 }
 
