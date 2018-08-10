@@ -13,6 +13,7 @@ set(boost_mpi_SOURCES
    ${BOOST_MPI_DIR}/src/computation_tree.cpp
    ${BOOST_MPI_DIR}/src/content_oarchive.cpp
    ${BOOST_MPI_DIR}/src/environment.cpp
+   ${BOOST_MPI_DIR}/src/error_string.cpp
    ${BOOST_MPI_DIR}/src/exception.cpp
    ${BOOST_MPI_DIR}/src/graph_communicator.cpp
    ${BOOST_MPI_DIR}/src/group.cpp
