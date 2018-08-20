@@ -55,11 +55,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->drawArea->show();
 
     connect(ui->actionQuit, SIGNAL(triggered()), SLOT(close()));
+    ui->actionQuit->setShortcut(QKeySequence::StandardKey::Quit);
     connect(ui->actionNew, SIGNAL(triggered()), SIGNAL(newDataFlow()));
+    ui->actionNew->setShortcut(QKeySequence::StandardKey::New);
     connect(ui->actionOpen, SIGNAL(triggered()), SIGNAL(loadDataFlow()));
+    ui->actionOpen->setShortcut(QKeySequence::StandardKey::Open);
     connect(ui->actionSave, SIGNAL(triggered()), SIGNAL(saveDataFlow()));
+    ui->actionSave->setShortcut(QKeySequence::StandardKey::Save);
     connect(ui->actionSave_As, SIGNAL(triggered()), SIGNAL(saveDataFlowAs()));
+    ui->actionSave_As->setShortcut(QKeySequence::StandardKey::SaveAs);
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
+    ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
 
     ui->modulesDock->show();
