@@ -215,11 +215,12 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
               if (b->id() == fq.filebrowserId()) {
                   b->handleMessage(fq, payload);
                   found = true;
+                  break;
               }
-              if (!found) {
-                  std::cerr << "userinterface [" << host() << "] [" << id() << "] "
-                            << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
-              }
+          }
+          if (!found) {
+              std::cerr << "userinterface [" << host() << "] [" << id() << "] "
+                        << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
           }
           break;
       }
