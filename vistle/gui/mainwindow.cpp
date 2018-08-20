@@ -37,7 +37,6 @@ MainWindow::MainWindow(QWidget *parent)
     tabifyDockWidget(ui->modulesDock, ui->parameterDock);
 
     m_console = ui->consoleWidget;
-    setFocusProxy(m_console);
 
     //m_parameters = ui->parameterEditor;
     m_parameters = new Parameters();
@@ -68,8 +67,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
 
+    ui->modulesDock->setFocusProxy(ui->moduleBrowser);
     ui->modulesDock->show();
     ui->modulesDock->raise();
+    ui->modulesDock->setFocus();
 }
 
 MainWindow::~MainWindow()

@@ -10,22 +10,28 @@
     <height>248</height>
    </rect>
   </property>
+  <property name="focusPolicy">
+   <enum>Qt::ClickFocus</enum>
+  </property>
   <property name="windowTitle">
    <string/>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <property name="verticalSpacing">
-    <number>-1</number>
+    <number>6</number>
    </property>
    <item row="0" column="0">
     <widget class="QLabel" name="filterLabel">
+     <property name="focusPolicy">
+      <enum>Qt::ClickFocus</enum>
+     </property>
      <property name="text">
       <string>Filter:</string>
      </property>
+     <property name="buddy">
+      <cstring>filterEdit</cstring>
+     </property>
     </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QLineEdit" name="filterEdit"/>
    </item>
    <item row="1" column="0" colspan="2">
     <widget class="ModuleListWidget" name="moduleListWidget">
@@ -42,6 +48,9 @@
       <enum>QAbstractItemView::DragOnly</enum>
      </property>
     </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLineEdit" name="filterEdit"/>
    </item>
   </layout>
  </widget>

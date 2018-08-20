@@ -75,6 +75,7 @@ ModuleBrowser::ModuleBrowser(QWidget *parent)
 
    connect(filterEdit(), SIGNAL(textChanged(QString)), SLOT(setFilter(QString)));
    ui->moduleListWidget->setFocusProxy(filterEdit());
+   setFocusProxy(filterEdit());
 }
 
 ModuleBrowser::~ModuleBrowser()
