@@ -158,6 +158,7 @@ class ReadFOAM: public vistle::Reader
                      const std::vector<vistle::Index> &owners,
                      const std::vector<vistle::Index> &neighbours);
 
+      bool loadCoords(const std::string &meshdir, vistle::Coords::ptr grid);
       GridDataContainer loadGrid(const std::string &dir, std::string topologyDir=std::string());
       vistle::DataBase::ptr loadField(const std::string &dir, const std::string &field);
       std::vector<vistle::DataBase::ptr> loadBoundaryField(const std::string &dir, const std::string &field,

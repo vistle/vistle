@@ -161,9 +161,7 @@ bool ReadFOAM::examine(const Parameter *)
 
     //print out a list of boundary patches to Vistle Console
     if (rank() == 0) {
-        std::stringstream meshdir;
-        meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
-        Boundaries bounds = loadBoundary(meshdir.str());
+        Boundaries bounds = m_case.loadBoundary("constant/polyMesh");
         if (bounds.valid) {
             sendInfo("boundary patches:");
             for (Index i=0;i<bounds.boundaries.size();++i) {
@@ -172,7 +170,7 @@ bool ReadFOAM::examine(const Parameter *)
                 sendInfo("%s", info.str().c_str());
             }
         } else {
-            sendInfo("No global boundary file was found at %s", meshdir.str().c_str());
+            sendInfo("No global boundary file was found at %s", (m_case.casedir + "/constant/polyMesh/boundary").c_str());
         }
     }
 
@@ -213,11 +211,6 @@ bool ReadFOAM::prepareRead()
       return false;
    }
 
-   if (!checkPolyMeshDirContent(m_case)) {
-      std::cerr << "failed to gather topology directories for " << casedir << std::endl;
-      return false;
-   }
-
    m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
    m_onlyPolyhedra = m_onlyPolyhedraParam->getValue();
 
@@ -252,9 +245,9 @@ bool ReadFOAM::finishRead()
    return true;
 }
 
-bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
+bool ReadFOAM::loadCoords(const std::string &meshdir, Coords::ptr grid) {
 
-   std::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
+   std::shared_ptr<std::istream> pointsIn = m_case.getStreamForFile(meshdir, "points");
    if (!pointsIn)
       return false;
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
@@ -268,7 +261,7 @@ bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
 
 GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string topologyDir) {
 
-   //std::cerr << "loadGrid(\"" << meshdir << "\", \"" << topologyDir << "\")" << std::endl;
+   std::cerr << "loadGrid('" << meshdir << "', '" << topologyDir << "')" << std::endl;
    if (topologyDir.empty())
        topologyDir = meshdir;
    bool readGrid = m_readGrid->getValue();
@@ -276,7 +269,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    bool patchesAsVariants = m_boundaryPatchesAsVariants->getValue();
 
    std::shared_ptr<Boundaries> boundaries(new Boundaries());
-   *boundaries = loadBoundary(topologyDir);
+   *boundaries = m_case.loadBoundary(topologyDir);
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    std::vector<Polygons::ptr> polyList;
    size_t numPatches = 0;
@@ -296,7 +289,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    }
 
    //read mesh files
-   std::shared_ptr<std::istream> ownersIn = getStreamForFile(topologyDir, "owner");
+   std::shared_ptr<std::istream> ownersIn = m_case.getStreamForFile(topologyDir, "owner");
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
@@ -309,7 +302,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
    {
 
-      std::shared_ptr<std::istream> facesIn = getStreamForFile(topologyDir, "faces");
+      std::shared_ptr<std::istream> facesIn = m_case.getStreamForFile(topologyDir, "faces");
       if (!facesIn)
          return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
@@ -319,7 +312,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
          return result;
       }
 
-      std::shared_ptr<std::istream> neighboursIn = getStreamForFile(topologyDir, "neighbour");
+      std::shared_ptr<std::istream> neighboursIn = m_case.getStreamForFile(topologyDir, "neighbour");
       if (!neighboursIn)
          return result;
       HeaderInfo neighbourH = readFoamHeader(*neighboursIn);
@@ -672,7 +665,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
 DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
-   std::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   std::shared_ptr<std::istream> stream = m_case.getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
       return DataBase::ptr();
@@ -733,7 +726,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
        }
    }
 
-   std::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   std::shared_ptr<std::istream> stream = m_case.getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
    }
@@ -845,63 +838,65 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 
 
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
-   std::string dir = casedir;
+    std::string dir;
 
-   if (processor >= 0) {
-      std::stringstream s;
-      s << "/processor" << processor;
-      dir += s.str();
-   }
+    if (processor >= 0) {
+        std::stringstream s;
+        s << "processor" << processor << "/";
+        dir += s.str();
+    }
 
-   if (timestep < 0) {
-      dir += "/" + m_case.constantdir;
-      if (!m_case.varyingGrid){
-         auto ret = loadGrid(dir + "/polyMesh");
-         UnstructuredGrid::ptr grid = ret.grid;
-         setMeta(grid, processor, timestep);
-         for (auto &poly: ret.polygon)
-             setMeta(poly, processor, timestep);
-         m_owners[processor] = ret.owners;
-         m_boundaries[processor] = ret.boundaries;
+    if (timestep < 0) {
+        dir += m_case.constantdir + "/";
+        if (!m_case.varyingGrid){
+            auto ret = loadGrid(dir + "polyMesh");
+            UnstructuredGrid::ptr grid = ret.grid;
+            setMeta(grid, processor, timestep);
+            for (auto &poly: ret.polygon)
+                setMeta(poly, processor, timestep);
+            m_owners[processor] = ret.owners;
+            m_boundaries[processor] = ret.boundaries;
 
-         m_currentgrid[processor] = grid;
-         m_currentbound[processor] = ret.polygon;
-         m_basedir[processor] = dir;
-      }
-      loadFields(dir, m_case.constantFields, processor, timestep);
-   } else {
-      Index i = 0;
-      Index skipfactor = timeIncrement();
-      std::string completeMeshDir;
-      for (auto &ts: m_case.timedirs) {
-         if (i == timestep*skipfactor) {
+            m_currentgrid[processor] = grid;
+            m_currentbound[processor] = ret.polygon;
+            m_basedir[processor] = dir;
+        }
+        loadFields(dir, m_case.constantFields, processor, timestep);
+        return true;
+    }
+
+    Index i = 0;
+    Index skipfactor = timeIncrement();
+    std::string completeMeshDir;
+    for (auto &ts: m_case.timedirs) {
+        if (i == timestep*skipfactor) {
             completeMeshDir = dir;
             auto it = m_case.completeMeshDirs.find(ts.first);
             if (it != m_case.completeMeshDirs.end()) {
-                completeMeshDir = dir + "/" + it->second;
+                completeMeshDir = dir + it->second + "/";
             }
-            dir += "/" + ts.second;
+            dir += ts.second;
             break;
-         }
-         ++i;
-      }
-      if (i == m_case.timedirs.size()) {
-         std::cerr << "no directory for timestep " << timestep << " found" << std::endl;
-         return false;
-      }
-      if (m_case.varyingGrid || m_case.varyingCoords) {
-         UnstructuredGrid::ptr grid;
-         std::vector<Polygons::ptr> polygons;
-         if (completeMeshDir == m_basedir[processor]) {
+        }
+        ++i;
+    }
+    if (i == m_case.timedirs.size()) {
+        std::cerr << "no directory for timestep " << timestep << " found" << std::endl;
+        return false;
+    }
+    if (m_case.varyingGrid || m_case.varyingCoords) {
+        UnstructuredGrid::ptr grid;
+        std::vector<Polygons::ptr> polygons;
+        if (completeMeshDir == m_basedir[processor]) {
             {
-               grid.reset(new UnstructuredGrid(0, 0, 0));
-               UnstructuredGrid::Data *od = m_currentgrid[processor]->d();
-               UnstructuredGrid::Data *nd = grid->d();
-               nd->tl = od->tl;
-               nd->el = od->el;
-               nd->cl = od->cl;
+                grid.reset(new UnstructuredGrid(0, 0, 0));
+                UnstructuredGrid::Data *od = m_currentgrid[processor]->d();
+                UnstructuredGrid::Data *nd = grid->d();
+                nd->tl = od->tl;
+                nd->el = od->el;
+                nd->cl = od->cl;
             }
-            loadCoords(dir + "/polyMesh", grid);
+            loadCoords(dir + "polyMesh", grid);
             {
                 for (size_t j=0; j<m_currentbound[processor].size(); ++j) {
                     Polygons::ptr poly(new Polygons(0, 0, 0));
@@ -914,24 +909,23 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
                     polygons.push_back(poly);
                 }
             }
-         } else {
-            auto ret = loadGrid(dir + "/polyMesh", completeMeshDir + "/polyMesh");
+        } else {
+            auto ret = loadGrid(dir + "polyMesh", completeMeshDir + "polyMesh");
             grid = ret.grid;
             polygons = ret.polygon;
             m_owners[processor] = ret.owners;
             m_boundaries[processor] = ret.boundaries;
             m_basedir[processor] = completeMeshDir;
-         }
-         setMeta(grid, processor, timestep);
-         for (auto &poly: polygons)
-             setMeta(poly, processor, timestep);
-         m_currentgrid[processor] = grid;
-         m_currentbound[processor] = polygons;
-      }
-      loadFields(dir, m_case.varyingFields, processor, timestep);
-   }
+        }
+        setMeta(grid, processor, timestep);
+        for (auto &poly: polygons)
+            setMeta(poly, processor, timestep);
+        m_currentgrid[processor] = grid;
+        m_currentbound[processor] = polygons;
+    }
+    loadFields(dir, m_case.varyingFields, processor, timestep);
 
-   return true;
+    return true;
 }
 
 int tag(int p, int n, int i=0) { //MPI needs a unique ID for each pair of send/receive request, this function creates unique ids for each processor pairing
