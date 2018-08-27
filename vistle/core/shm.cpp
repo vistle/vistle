@@ -428,7 +428,10 @@ void Shm::markAsRemoved(const std::string &name) {
 
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
       if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t))) {
-         assert((*s_shmdebug)[i].deleted == 0);
+         //assert((*s_shmdebug)[i].deleted == 0);
+          if ((*s_shmdebug)[i].deleted > 0) {
+              std::cerr << "Shm: MULTIPLE deletion of " << name << " (count=" << (int)(*s_shmdebug)[i].deleted << ")" << std::endl;
+          }
          ++(*s_shmdebug)[i].deleted;
       }
    }
