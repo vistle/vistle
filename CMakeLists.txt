@@ -70,8 +70,7 @@ else()
 endif()
 
 # allow for optimizations in Boost.MPI
-# do not use for now: causes crash in broadcast on OS X
-#add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+add_definitions(-DBOOST_MPI_HOMOGENEOUS)
 
 enable_testing()
 
