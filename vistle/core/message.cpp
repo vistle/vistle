@@ -318,6 +318,9 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
 #endif
         break;
     }
+    case CompressionNone: {
+        break;
+    }
     }
 
     return decompressed;
