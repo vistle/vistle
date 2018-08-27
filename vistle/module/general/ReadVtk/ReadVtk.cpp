@@ -22,6 +22,7 @@
 #include <vtkCompositeDataPipeline.h>
 #include <vtkCompositeDataSet.h>
 #include <vtkGenericDataSet.h>
+#include <vtkCompositeDataIterator.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
 #endif
@@ -48,6 +49,7 @@ const double ConstantTime = -std::numeric_limits<double>::max();
 struct VtkFile {
     std::string filename;
     std::string part;
+    std::string index;
     int partNum = -1;
     int pieces = 1;
     double realtime = ConstantTime;
@@ -55,6 +57,15 @@ struct VtkFile {
     std::vector<std::string> pointfields;
     std::vector<std::string> cellfields;
 };
+
+bool isCollectionFile(const std::string &fn) {
+    if (boost::algorithm::ends_with(fn, ".pvd"))
+        return true;
+    if (boost::algorithm::ends_with(fn, ".vtm"))
+        return true;
+
+    return false;
+}
 
 template<class Reader>
 VtkFile readFile(const std::string &filename, int piece=-1, bool ghost=false, bool onlyMeta=false) {
@@ -82,7 +93,14 @@ VtkFile readFile(const std::string &filename, int piece=-1, bool ghost=false, bo
 #endif
    result.pieces = numPieces;
 
-   if (auto xmlreader = vtkXMLReader::SafeDownCast(reader)) {
+   if (auto mbreader = vtkXMLMultiBlockDataReader::SafeDownCast(reader)) {
+       const int np = mbreader->GetNumberOfPointArrays();
+       for (int i=0; i<np; ++i)
+           result.pointfields.push_back(mbreader->GetPointArrayName(i));
+       const int nc = mbreader->GetNumberOfCellArrays();
+       for (int i=0; i<nc; ++i)
+           result.cellfields.push_back(mbreader->GetCellArrayName(i));
+   } else if (auto xmlreader = vtkXMLReader::SafeDownCast(reader)) {
        const int np = xmlreader->GetNumberOfPointArrays();
        for (int i=0; i<np; ++i)
            result.pointfields.push_back(xmlreader->GetPointArrayName(i));
@@ -121,7 +139,7 @@ VtkFile readFile(const std::string &filename, int piece=-1, bool ghost=false, bo
 
    if (reader->GetOutput()) {
       reader->GetOutput()->Register(reader);
-           result.dataset = reader->GetOutput();
+      result.dataset = reader->GetOutput();
    }
    return result;
 }
@@ -164,37 +182,48 @@ struct ReadVtkData {
 };
 
 
-std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool piecesAsBlocks=false) {
+std::map<double, std::vector<VtkFile>> readXmlCollection(const std::string &filename, bool piecesAsBlocks=false) {
 
     std::map<double, std::vector<VtkFile>> timesteps;
+    const std::array<std::string,2> types{"Collection", "vtkMultiBlockDataSet"};
 
 #ifdef HAVE_TINYXML2
     vistle::filesystem::path pvdpath(filename);
     if (!vistle::filesystem::is_regular_file(pvdpath)) {
-        std::cerr << "readPvd: " << filename << " is not a regular file" << std::endl;
+        std::cerr << "readXmlCollection: " << filename << " is not a regular file" << std::endl;
         return timesteps;
     }
     xml::XMLDocument doc;
     doc.LoadFile(filename.c_str());
     auto VTKFile = doc.FirstChildElement("VTKFile");
     if (!VTKFile) {
-        std::cerr << "readPvd: did not find VTKFile element" << std::endl;
+        std::cerr << "readXmlCollection: did not find VTKFile element" << std::endl;
         return timesteps;
     }
-    const char *type = VTKFile->Attribute("type");
-    if (!type || std::string(type) != "Collection") {
-        std::cerr << "readPvd: VTKFile not of required type 'Collection'" << std::endl;
+    const char *typep = VTKFile->Attribute("type");
+    if (!typep) {
+        std::cerr << "readXmlCollection: VTKFile does not contain type" << std::endl;
         return timesteps;
     }
 
-    auto Collection = VTKFile->FirstChildElement("Collection");
+    const std::string type(typep);
+    auto it = std::find(types.begin(), types.end(), type);
+    if (it == types.end()) {
+        std::cerr << "readXmlCollection: VTKFile not of required type:";
+        for (auto &t: types)
+            std::cerr << " '" << t << "'";
+        std::cerr << std::endl;
+        return timesteps;
+    }
+
+    auto Collection = VTKFile->FirstChildElement(type.c_str());
     if (!Collection) {
-        std::cerr << "readPvd: did not find Collection element" << std::endl;
+        std::cerr << "readXmlCollection: did not find Collection element" << std::endl;
         return timesteps;
     }
     auto DataSet = Collection->FirstChildElement("DataSet");
     if (!DataSet) {
-        std::cerr << "readPvd: did not find a DataSet element" << std::endl;
+        std::cerr << "readXmlCollection: did not find a DataSet element" << std::endl;
         return timesteps;
     }
 
@@ -210,6 +239,10 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool
         if (part) {
             p = atoi(part);
         }
+        const char *index = DataSet->Attribute("index");
+        if (index && !part) {
+            p = atoi(index);
+        }
 
         if (file) {
             VtkFile vtkFile;
@@ -224,6 +257,8 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool
             vtkFile.partNum = p;
             if (part)
                 vtkFile.part = part;
+            if (index)
+                vtkFile.index = index;
             vtkFile.realtime = time;
             if (piecesAsBlocks) {
                 vtkFile.pieces = getNumPieces(vtkFile.filename);
@@ -239,7 +274,7 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool
     }
 #endif
 
-    //std::cerr << "readPvd(" << filename << "): num timesteps: " << timesteps.size() << ", num blocks: " << numBlocks <<  std::endl;
+    //std::cerr << "readXmlCollection(" << filename << "): num timesteps: " << timesteps.size() << ", num blocks: " << numBlocks <<  std::endl;
 
     return timesteps;
 }
@@ -281,7 +316,7 @@ ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm)
 
    createOutputPort("grid_out");
    m_filename = addStringParameter("filename", "name of VTK file", "", Parameter::ExistingFilename);
-   setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Legacy VTK Files (*.vtk)/All Files (*)");
+   setParameterFilters(m_filename, "PVD Files (*.pvd)/XML VTK Files (*.vti *.vtp *.vtr *.vts *.vtu)/Legacy VTK Files (*.vtk)/XML VTK Multiblock Data (*.vtm)/All Files (*)");
    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true, Parameter::Boolean);
    m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true, Parameter::Boolean);
 
@@ -319,12 +354,12 @@ bool ReadVtk::examine(const Parameter *param) {
 
     int maxNumPieces = 0;
     const std::string filename = m_filename->getValue();
-    if (boost::algorithm::ends_with(filename, ".pvd")) {
+    if (isCollectionFile(filename)) {
 #ifndef HAVE_TINYXML2
-        sendError("not compiled against TinyXML2 - no support for parsing .pvd files");
+        sendError("not compiled against TinyXML2 - no support for parsing XML collection files");
 #endif
 
-        auto timesteps = readPvd(m_filename->getValue(), readPieces);
+        auto timesteps = readXmlCollection(m_filename->getValue(), readPieces);
         int numt = 0;
         for (auto t: timesteps) {
             if (t.first != ConstantTime)
@@ -373,13 +408,13 @@ bool ReadVtk::prepareRead()
    const std::string filename = m_filename->getValue();
    const bool readPieces = m_readPieces->getValue();
 
-   if (boost::algorithm::ends_with(filename, ".pvd")) {
+   if (isCollectionFile(filename)) {
 
 #ifndef HAVE_TINYXML2
-       sendError("not compiled against TinyXML2 - no support for parsing .pvd files");
+       sendError("not compiled against TinyXML2 - no support for parsing XML collection files");
 #endif
 
-       m_d->timesteps = readPvd(filename, readPieces);
+       m_d->timesteps = readXmlCollection(filename, readPieces);
        if (m_d->timesteps.empty()) {
            delete m_d;
            m_d = nullptr;
@@ -432,7 +467,7 @@ bool ReadVtk::read(Reader::Token &token, int timestep, int block)
             t = m_d->times[timestep];
         }
 
-        std::cerr << "Reading t=" << timestep << " (#=" << token.meta().numTimesteps() << ") , block=" << block << " (#=" << token.meta().numBlocks() << ")" << std::endl;
+        //std::cerr << "Reading t=" << timestep << " (#=" << token.meta().numTimesteps() << ") , block=" << block << " (#=" << token.meta().numBlocks() << ")" << std::endl;
 
         auto it = m_d->timesteps.find(t);
         if (it != m_d->timesteps.end()) {
@@ -454,27 +489,6 @@ bool ReadVtk::read(Reader::Token &token, int timestep, int block)
 
     return true;
 }
-
-#if 0
-bool ReadVtk::changeParameter(const vistle::Parameter *p) {
-   if (p == m_filename) {
-      const std::string filename = m_filename->getValue();
-      if (boost::algorithm::ends_with(filename, ".pvd")) {
-          auto files = readPvd(m_filename->getValue());
-          if (!files.empty()) {
-              auto firstts = files.begin()->second;
-              if (!firstts.empty()) {
-                  setChoices(getDataSet(firstts[0].filename).first);
-              }
-          }
-      } else {
-          setChoices(getDataSet(filename).first);
-      }
-   }
-
-   return Module::changeParameter(p);
-}
-#endif
 
 bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) {
 
@@ -531,75 +545,3 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
 
    return true;
 }
-
-#if 0
-bool ReadVtk::compute() {
-
-   const std::string filename = m_filename->getValue();
-   const bool readPieces = m_readPieces->getValue();
-   const bool ghostCells = m_ghostCells->getValue();
-
-   if (boost::algorithm::ends_with(filename, ".pvd")) {
-
-#ifndef HAVE_TINYXML2
-       sendError("not compiled against TinyXML2 - no support for parsing .pvd files");
-#endif
-
-       auto files = readPvd(filename, readPieces);
-       int time = 0;
-       for (auto timestep: files) {
-           int numBlocks=0;
-           for (auto file: timestep.second) {
-               if (readPieces)
-                   numBlocks += file.pieces;
-               else
-                   ++numBlocks;
-           }
-           int block=0;
-           for (auto file: timestep.second) {
-               for (int piece=0; piece<file.pieces; ++piece) {
-                   if (cancelRequested()) {
-                       break;
-                   }
-                   Meta meta;
-                   meta.setBlock(block);
-                   meta.setNumBlocks(numBlocks);
-                   meta.setTimeStep(time);
-                   meta.setNumTimesteps(files.size());
-                   meta.setRealTime(file.realtime);
-                   if (block%size() == rank())
-                       load(file.filename, meta, readPieces ? piece : -1, ghostCells, file.part);
-                   ++block;
-               }
-               if (cancelRequested())
-                   break;
-           }
-           ++time;
-           if (cancelRequested())
-               break;
-       }
-       return true;
-   }
-
-   if (readPieces) {
-
-       auto numPieces = getDataSet(filename).second;
-       for (int piece=0; piece<numPieces; ++piece) {
-           if (cancelRequested()) {
-               break;
-           }
-           Meta meta;
-           meta.setBlock(piece);
-           meta.setNumBlocks(numPieces);
-           if (piece%size() == rank())
-               load(filename, meta, piece, ghostCells);
-       }
-       return true;
-   }
-
-   if (rank() == 0)
-       load(filename);
-
-   return true;
-}
-#endif
