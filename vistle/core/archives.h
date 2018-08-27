@@ -187,14 +187,13 @@ struct yas_binary_oarchive
 class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<char>> {
 
     typedef vecostreambuf<char> Stream;
-    //typedef yas::mem_ostream Stream;
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
-    std::ostream * m_os = nullptr;
-    std::streambuf *m_sbuf = nullptr;
     FieldCompressionMode m_compress = Uncompressed;
     double m_zfpRate = 8.;
     int m_zfpPrecision = 8.;
     double m_zfpAccuracy = 1e-20;
+    std::shared_ptr<Saver> m_saver;
+    Stream &m_os;
 
 public:
     void setCompressionMode(vistle::FieldCompressionMode mode);
@@ -207,15 +206,17 @@ public:
     void setZfpPrecision(int precision);
     int zfpPrecision() const;
 
-    typedef yas::mem_ostream stream_type;
     yas_oarchive(Stream &mo, unsigned int flags=0);
 
     void setSaver(std::shared_ptr<Saver> saver);
 
     template<class T>
     void saveArray(const vistle::ShmVector<T> &t) {
-        if (m_saver)
+        if (m_saver) {
+            std::size_t sz = m_os.get_vector().capacity();
+            m_os.get_vector().reserve(sz + sizeof(T)*t->size() + 10000);
             m_saver->saveArray(t.name(), t->type(), &t);
+        }
     }
 
     template<class T>
@@ -223,8 +224,6 @@ public:
         if (m_saver)
             m_saver->saveObject(t.name(), t.getObject());
     }
-
-    std::shared_ptr<Saver> m_saver;
 };
 #endif
 

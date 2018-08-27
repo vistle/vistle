@@ -133,6 +133,7 @@ int yas_oarchive::zfpPrecision() const {
 
 yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags)
 : yas_oarchive::Base(mo)
+, m_os(mo)
 {
 }
 

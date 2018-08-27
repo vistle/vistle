@@ -14,7 +14,7 @@ void DeepArchiveSaver::saveArray(const std::string & name, int type, const void 
     ar.setSaver(shared_from_this());
     ArraySaver as(name, type, ar, array);
     if (as.save()) {
-        m_arrays.emplace(name, vb.get_vector());
+        m_arrays.emplace(name, std::move(vb.get_vector()));
     }
 }
 
@@ -26,7 +26,7 @@ void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::cons
     oarchive ar(vb);
     ar.setSaver(shared_from_this());
     obj->saveObject(ar);
-    m_objects.emplace(name, vb.get_vector());
+    m_objects.emplace(name, std::move(vb.get_vector()));
 }
 
 SubArchiveDirectory DeepArchiveSaver::getDirectory() {
