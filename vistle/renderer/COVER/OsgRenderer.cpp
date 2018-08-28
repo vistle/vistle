@@ -10,6 +10,7 @@
 // vistle
 #include <core/messages.h>
 #include <core/object.h>
+#include <core/placeholder.h>
 
 #include <osg/Node>
 #include <osg/Group>
@@ -426,8 +427,15 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (!geometry)
        return nullptr;
 
-   if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
-      return nullptr;
+   if (geometry->getType() == vistle::Object::PLACEHOLDER) {
+      auto ph = vistle::PlaceHolder::as(geometry);
+      assert(ph);
+      if (!VistleGeometryGenerator::isSupported(ph->originalType()))
+         return nullptr;
+   } else {
+       if (!VistleGeometryGenerator::isSupported(geometry->getType()))
+           return nullptr;
+   }
 
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, texture));

@@ -65,20 +65,62 @@ bool Renderer::needsSync(const message::Message &m) const {
    }
 }
 
+std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
+
+    std::array<Object::const_ptr,3> geo_norm_tex;
+    Object::const_ptr &grid = geo_norm_tex[0];
+    Object::const_ptr &normals = geo_norm_tex[1];
+    Object::const_ptr &tex = geo_norm_tex[2];
+
+    if (auto ph = vistle::PlaceHolder::as(container)) {
+        grid = ph->geometry();
+        normals = ph->normals();
+        tex = ph->texture();
+    } else if (auto t = vistle::Texture1D::as(container)) {
+        if (auto g = vistle::Coords::as(t->grid())) {
+            grid = g;
+            normals = g->normals();
+            tex = t;
+        }
+    } else if (auto g = vistle::Coords::as(container)) {
+        grid = g;
+        normals = g->normals();
+    } else if (auto data = vistle::DataBase::as(container)) {
+        if (auto g = vistle::Coords::as(data->grid())) {
+            grid = g;
+            normals = g->normals();
+        } else {
+            grid = data->grid();
+        }
+    } else {
+        grid = container;
+    }
+
+    return geo_norm_tex;
+}
+
 void Renderer::handleAddObject(const message::AddObject &add) {
 
     using namespace vistle::message;
     auto pol = objectReceivePolicy();
 
     Object::const_ptr obj, placeholder;
+    std::vector<Object::const_ptr> objs;
     if (add.rank() == rank()) {
         obj = add.takeObject();
         assert(obj);
+
+        auto geo_norm_tex = splitObject(obj);
+        auto &grid = geo_norm_tex[0];
+        auto &normals = geo_norm_tex[1];
+        auto &tex = geo_norm_tex[2];
+
         if (size() > 1 && pol == ObjectReceivePolicy::Distribute) {
-            auto ph = std::make_shared<PlaceHolder>(add.objectName(), add.meta(), add.objectType());
-            ph->copyAttributes(obj);
+            auto ph = std::make_shared<PlaceHolder>(obj);
+            ph->setGeometry(grid);
+            ph->setNormals(normals);
+            ph->setTexture(tex);
             placeholder = ph;
-            assert(placeholder);
         }
     }
 
@@ -238,24 +280,9 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    creator.age = object->getExecutionCounter();
    creator.iter = object->getIteration();
 
-   std::shared_ptr<RenderObject> ro;
-   if (auto tex = vistle::Texture1D::as(object)) {
-       if (auto grid = vistle::Coords::as(tex->grid())) {
-         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), tex);
-       }
-   } else if (auto grid = vistle::Coords::as(object)) {
-       ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr);
-   } else if (auto data = vistle::DataBase::as(object)) {
-       if (auto grid = vistle::Coords::as(data->grid())) {
-         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr);
-       } else {
-         ro = addObjectWrapper(sender, senderPort, object, data->grid(), nullptr, nullptr);
-       }
-   }
-   if (!ro) {
-      ro = addObjectWrapper(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr());
-   }
-
+   auto geo_norm_tex = splitObject(object);
+   std::shared_ptr<RenderObject> ro = addObjectWrapper(sender, senderPort,
+                                                       object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
    if (ro) {
       vassert(ro->timestep >= -1);
       if (m_objectList.size() <= size_t(ro->timestep+1))
