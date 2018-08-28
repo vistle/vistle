@@ -6,6 +6,7 @@
 
 #include <osg/Group>
 #include <osg/Sequence>
+#include <osg/Texture1D>
 
 #include <renderer/renderobject.h>
 #include <renderer/renderer.h>
@@ -55,6 +56,10 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
    void clearUpdate();
 
    bool render() override;
+
+   bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
+   bool removeColorMap(const std::string &species) override;
+
    std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
@@ -133,6 +138,9 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
    std::string setupEnvAndGetLibDir(const std::string &bindir);
    int runMain(int argc, char *argv[]);
    bool m_requireUpdate = true;
+
+   typedef std::map<std::string, OsgColorMap> ColorMapMap;
+   ColorMapMap m_colormaps;
 };
 
 #endif

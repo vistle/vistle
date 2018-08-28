@@ -14,6 +14,7 @@
 #include <osg/LightModel>
 #include <osg/Material>
 #include <osg/Texture1D>
+#include <osg/TexEnv>
 #include <osg/Point>
 #include <osg/LineWidth>
 #include <osg/MatrixTransform>
@@ -39,11 +40,15 @@
 namespace  {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
+
+const int TfTexUnit = 1;
+const int DataAttrib = 10;
 }
 
 using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
+osg::ref_ptr<osg::KdTreeBuilder> VistleGeometryGenerator::s_kdtree;
 
 template<class Geo>
 struct PrimitiveAdapter {
@@ -211,6 +216,20 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
         s_kdtree = new osg::KdTreeBuilder;
     s_coverMutex.unlock();
 #endif
+
+   if (m_tex) {
+       m_species = m_tex->getAttribute("_species");
+   }
+}
+
+const std::string &VistleGeometryGenerator::species() const {
+
+    return m_species;
+}
+
+void VistleGeometryGenerator::setColorMaps(const OsgColorMapMap *colormaps) {
+
+    m_colormaps = colormaps;
 }
 
 bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
@@ -521,7 +540,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    if (b<0 && m_tex)
       b = m_tex->getBlock();
 
-   debug << "b " << b << ", t " << t << "  ";
+   debug << "b " << b << ", t " << t << " ";
 
    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
    geode->setName(nodename);
@@ -577,7 +596,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
        if (m != vistle::DataBase::Vertex)
        {
            indexGeom = false;
-           debug << " NoIndex: normals";
+           debug << "NoIndex: normals ";
        }
    }
    vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex);
@@ -586,7 +605,24 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
        if (m != vistle::DataBase::Vertex)
        {
            indexGeom = false;
-           debug << " NoIndex: tex";
+           debug << "NoIndex: tex ";
+       }
+   }
+
+   vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_tex);
+   if (data) {
+       auto m = data->guessMapping();
+       if (m != vistle::DataBase::Vertex)
+       {
+           indexGeom = false;
+           debug << "NoIndex: tex/data ";
+       }
+   }
+   const OsgColorMap *colormap = nullptr;
+   if (m_colormaps && !m_species.empty()) {
+       auto it = m_colormaps->find(m_species);
+       if (it != m_colormaps->end()) {
+           colormap = &it->second;
        }
    }
 
@@ -694,8 +730,13 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
              geom->setNormalArray(norm.get());
 
              auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex, indexGeom, bin);
-             if (tc)
+             if (tc) {
                  geom->setTexCoordArray(0, tc);
+             } else {
+                 auto fl = applyTriangle<Triangles, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(triangles, data, indexGeom, bin);
+                 if (fl)
+                     geom->setVertexAttribArray(DataAttrib, fl);
+             }
 
              bin.clear();
          }
@@ -741,8 +782,13 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
              geom->setNormalArray(norm.get());
 
              auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex, indexGeom, bin);
-             if (tc)
+             if (tc) {
                  geom->setTexCoordArray(0, tc);
+             } else {
+                 auto fl = applyTriangle<Indexed, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(polygons, data, indexGeom, bin);
+                 if (fl)
+                     geom->setVertexAttribArray(DataAttrib, fl);
+             }
 
              bin.clear();
          }
@@ -843,10 +889,23 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    }
 
 #ifdef COVER_PLUGIN
-   if (!name.empty()) {
+   if (colormap) {
+       state->setTextureAttribute(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
+
        s_coverMutex.lock();
-       opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(name, &parammap);
-       shader->apply(geode);
+       parammap["dataAttrib"] = std::to_string(DataAttrib);
+       parammap["texUnit1"] = std::to_string(TfTexUnit);
+       parammap["rangeMin"] = std::to_string(colormap->rangeMin);
+       parammap["rangeMax"] = std::to_string(colormap->rangeMax);
+       if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get("MapColorsAttrib", &parammap)) {
+           shader->apply(state);
+       }
+       s_coverMutex.unlock();
+   } else if (!name.empty()) {
+       s_coverMutex.lock();
+       if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(name, &parammap)) {
+           shader->apply(state);
+       }
        s_coverMutex.unlock();
    }
 #endif
@@ -917,16 +976,6 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
                debug << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
            } else {
-               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-               osgTex->setName(nodename+".tex");
-               osgTex->setDataVariance(osg::Object::DYNAMIC);
-
-               osg::ref_ptr<osg::Image> image = new osg::Image();
-               image->setName(nodename+".img");
-               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                               GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                       osg::Image::NO_DELETE);
-               osgTex->setImage(image);
                osg::ref_ptr<osg::FloatArray> tc;
                if (!triangles && !polygons) {
                    tc = new osg::FloatArray;
@@ -983,13 +1032,23 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                        geom->setTexCoordArray(0, tc);
                    }
                }
+               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+               osgTex->setName(nodename+".tex");
+               osgTex->setDataVariance(osg::Object::DYNAMIC);
+
+               osg::ref_ptr<osg::Image> image = new osg::Image();
+               image->setName(nodename+".img");
+               image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0], osg::Image::NO_DELETE);
+               osgTex->setImage(image);
                if (tc || (tex && triangles)) {
-                   state->setTextureAttributeAndModes(0, osgTex,
-                                                      osg::StateAttribute::ON);
-                   osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                                     osg::Texture1D::NEAREST);
-                   osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                                     osg::Texture1D::NEAREST);
+                   state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);
+                   osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
+                   osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
+#if 0
+                   osg::TexEnv * texEnv = new osg::TexEnv();
+                   texEnv->setMode(osg::TexEnv::MODULATE);
+                   state->setTextureAttribute(0, texEnv);
+#endif
                }
            }
        }
@@ -998,4 +1057,23 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    std::cerr << debug.str() << std::endl;
 
    return transform;
+}
+
+OsgColorMap::OsgColorMap()
+: texture(new osg::Texture1D)
+, image(new osg::Image)
+{
+    texture->setInternalFormat(GL_RGBA8);
+
+    texture->setBorderWidth(0);
+    texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
+    texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
+    texture->setWrap(osg::Texture1D::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
+
+    image->allocateImage(2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    unsigned char *rgba = image->data();
+    rgba[0] = 16; rgba[1] = 16; rgba[2] = 16; rgba[3] = 255;
+    rgba[4] = 200; rgba[5] = 200; rgba[6] = 200; rgba[7] = 255;
+
+    texture->setImage(image);
 }

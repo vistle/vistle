@@ -1,6 +1,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <core/coords.h>
 #include <core/coordswradius.h>
+#include <core/vec.h>
 #include <core/assert.h>
 
 #include "renderobject.h"
@@ -11,13 +12,14 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
       Object::const_ptr normals,
-      Object::const_ptr texture)
+      Object::const_ptr mapdata)
 : senderId(senderId)
 , senderPort(senderPort)
 , container(container)
 , geometry(geometry)
 , normals(Normals::as(normals))
-, texture(Texture1D::as(texture))
+, texture(Texture1D::as(mapdata))
+, scalars(texture ? nullptr : Vec<Scalar>::as(mapdata))
 , timestep(-1)
 , hasSolidColor(false)
 , solidColor(0., 0., 0., 0.)
@@ -121,6 +123,9 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
    }
    if (timestep < 0 && texture) {
       timestep = texture->getTimestep();
+   }
+   if (timestep < 0 && scalars) {
+      timestep = scalars->getTimestep();
    }
 
    variant = container->getAttribute("_variant");

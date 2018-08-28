@@ -96,6 +96,10 @@ class DisCOVERay: public vistle::Renderer {
    bool m_uvVis = false;
    FloatParameter *m_pointSizeParam;
 
+   // colormaps
+   bool addColorMap(const std::string &species, vistle::Texture1D::const_ptr texture) override;
+   bool removeColorMap(const std::string &species) override;
+
    // object lifetime management
    std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
          vistle::Object::const_ptr container,
@@ -109,6 +113,7 @@ class DisCOVERay: public vistle::Renderer {
 
    std::vector<std::shared_ptr<RayRenderObject>> static_geometry;
    std::vector<std::vector<std::shared_ptr<RayRenderObject>>> anim_geometry;
+   std::map<std::string, RayColorMap> m_colormaps;
 
    RTCDevice m_device;
    RTCScene m_scene;
@@ -196,7 +201,6 @@ void DisCOVERay::prepareQuit() {
 
 void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
 
-    CERR << "new connection from " << *from << " to " << *to << std::endl;
     Renderer::connectionAdded(from, to);
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionAdded(to);
@@ -209,6 +213,37 @@ void DisCOVERay::connectionRemoved(const Port *from, const Port *to) {
         m_renderManager.connectionRemoved(to);
     }
     Renderer::connectionRemoved(from, to);
+}
+
+bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
+
+    auto &cmap = m_colormaps[species];
+    cmap.tex = texture;
+    if (!cmap.cmap)
+        cmap.cmap.reset(new ispc::ColorMapData);
+    cmap.cmap->min = texture->getMin();
+    cmap.cmap->max = texture->getMax();
+    cmap.cmap->texWidth = texture->getWidth();
+    cmap.cmap->texData = texture->pixels().data();
+
+    m_renderManager.setModified();
+
+    return true;
+}
+
+bool DisCOVERay::removeColorMap(const std::string &species) {
+
+    std::cerr << "removing colormap " << species << std::endl;
+    auto it = m_colormaps.find(species);
+    if (it == m_colormaps.end())
+        return false;
+
+    auto &cmap = it->second;
+    // referenced texture will go away, use a safe default colormap
+    cmap.deinit();
+    //m_colormaps.erase(it);
+    m_renderManager.setModified();
+    return true;
 }
 
 bool DisCOVERay::changeParameter(const Parameter *p) {
@@ -390,13 +425,13 @@ bool DisCOVERay::render() {
 
     // switch time steps in embree scene
     if (m_timestep != m_renderManager.timestep() || m_renderManager.sceneChanged()) {
-       if (m_timestep>=0 && anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
+        if (m_timestep>=0 && anim_geometry.size() > unsigned(m_timestep) && m_timestep != m_renderManager.timestep()) {
           for (auto &ro: anim_geometry[m_timestep])
              if (ro->data->scene)
                 rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
        }
        m_timestep = m_renderManager.timestep();
-       if (m_timestep>=0 && anim_geometry.size() > m_timestep) {
+       if (m_timestep>=0 && anim_geometry.size() > unsigned(m_timestep)) {
            for (auto &ro: anim_geometry[m_timestep])
                if (ro->data->scene) {
                    if (m_renderManager.isVariantVisible(ro->variant)) {
@@ -586,8 +621,6 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
-   CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ")" << std::endl;
-
    if (rod->scene) {
       rtcDisableGeometry(rtcGetGeometry(m_scene,rod->instID));
       rtcDetachGeometry(m_scene, rod->instID);
@@ -599,10 +632,6 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    const int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
-   if (t == -1 || t == m_timestep) {
-      m_renderManager.setModified();
-   }
-
    auto it = std::find(objlist.begin(), objlist.end(), ro);
    if (it != objlist.end()) {
       std::swap(*it, objlist.back());
@@ -611,6 +640,12 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
 
    while (!anim_geometry.empty() && anim_geometry.back().empty())
       anim_geometry.pop_back();
+
+   if (t == -1 || t == m_timestep) {
+      m_renderManager.setModified();
+   }
+
+   CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ", t=" << t << "@" << m_timestep << "/" << numTimesteps() << ")" << std::endl;
 
    m_renderManager.removeObject(ro);
 }
@@ -623,6 +658,16 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
                                  vistle::Object::const_ptr texture) {
 
    std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, texture));
+
+   std::string species = container->getAttribute("_species");
+   if (!species.empty() && !ro->data->cmap) {
+       std::cerr << "applying colormap for " << species << std::endl;
+       auto &cmap = m_colormaps[species];
+       if (!cmap.cmap) {
+           cmap.cmap.reset(new ispc::ColorMapData);
+       }
+       ro->data->cmap = cmap.cmap.get();
+   }
 
    const int t = ro->timestep;
    if (t == -1) {

@@ -39,6 +39,20 @@ inline void setUpRay(uniform const TileData *uniform tile,
 }
 
 
+inline unsigned texIndex(const ColorMapData *cmap, float val) {
+
+    const float tc = clamp((val - cmap->min)/(cmap->max-cmap->min), 0.f, 1.f);
+    const unsigned idx = tc * cmap->texWidth;
+    return min(idx, cmap->texWidth-1);
+}
+
+inline Vec4f texColor(const ColorMapData *cmap, float val) {
+    const unsigned idx = texIndex(cmap, val);
+    const unsigned int8 *c = &cmap->texData[idx*4];
+    return make_Vec4f(c[0], c[1], c[2], c[3]);
+}
+
+
 inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileData *uniform tile,
                      const varying RTCRayHit &rayhit, const varying int x, const varying int y) {
 
@@ -85,19 +99,16 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 color.z = w*255.f;
                 color.w = 255.f;
             }
-            else if (ro->texData && ro->texCoords) {
+            else if (ro->texCoords && ro->cmap && ro->cmap->texData) {
 
                 const float &u = hit.u;
                 const float &v = hit.v;
                 const float w = 1.f - u - v;
-                unsigned idx = 0;
                 if (ro->perPrimitiveMapping) {
                     if (ro->indexBuffer) {
-                        const float tc = clamp(ro->texCoords[ro->indexBuffer[hit.primID].elem], 0.f, 1.f);
-                        idx = min(tc * ro->texWidth, ro->texWidth-1);
+                        color = texColor(ro->cmap, ro->texCoords[ro->indexBuffer[hit.primID].elem]);
                     } else {
-                        const float tc = clamp(ro->texCoords[hit.primID], 0.f, 1.f);
-                        idx = min(tc * ro->texWidth, ro->texWidth-1);
+                        color = texColor(ro->cmap, ro->texCoords[hit.primID]);
                     }
                 } else if (ro->indexBuffer) {
                     const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
@@ -107,21 +118,14 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
                     const float tc2 = ro->texCoords[v2];
-                    const float tc = clamp(w*tc0 + u*tc1 + v*tc2, 0.f, 1.f);
-                    idx = min(tc * ro->texWidth, ro->texWidth-1);
+                    color = texColor(ro->cmap, w*tc0 + u*tc1 + v*tc2);
                 } else {
                     const unsigned int v0 = hit.primID;
                     const unsigned int v1 = hit.primID + 1;
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
-                    const float tc = clamp(w*tc0 + u*tc1, 0.f, 1.f);
-                    idx = min(tc * ro->texWidth, ro->texWidth-1);
+                    color = texColor(ro->cmap, w*tc0 + u*tc1);
                 }
-                const unsigned int8 *c = &ro->texData[idx*4];
-                color.x = c[0];
-                color.y = c[1];
-                color.z = c[2];
-                color.w = c[3];
             }
 
             if (ro->lighted) {

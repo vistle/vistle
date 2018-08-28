@@ -40,8 +40,20 @@ class V_RENDEREREXPORT Renderer: public Module {
    typedef std::map<std::string, Variant> VariantMap;
    const VariantMap &variants() const;
 
+   struct ColorMap {
+       int creator = vistle::message::Id::Invalid;
+       int sender = vistle::message::Id::Invalid;
+       std::string senderPort;
+       vistle::Texture1D::const_ptr texture;
+   };
+
+   typedef std::map<std::string, ColorMap> ColorMapMap;
+
  protected:
    bool handleMessage(const message::Message *message) override;
+
+   virtual bool addColorMap(const std::string &species, Texture1D::const_ptr texture);
+   virtual bool removeColorMap(const std::string &species);
 
    virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture) = 0;
@@ -95,6 +107,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    bool needsSync(const message::Message &m) const;
 
    VariantMap m_variants;
+   ColorMapMap m_colormaps;
 };
 
 } // namespace vistle

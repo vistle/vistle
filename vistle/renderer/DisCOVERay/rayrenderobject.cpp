@@ -4,6 +4,7 @@
 #include <core/tubes.h>
 #include <core/spheres.h>
 #include <core/points.h>
+#include <core/vec.h>
 
 #include <core/assert.h>
 
@@ -36,13 +37,12 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    data->spheres = nullptr;
    data->primitiveFlags = nullptr;
    data->indexBuffer = nullptr;
-   data->texWidth = 0;
-   data->texData = nullptr;
    data->texCoords = nullptr;
    data->lighted = 1;
    data->hasSolidColor = hasSolidColor;
    data->perPrimitiveMapping = 0;
    data->normalsPerPrimitiveMapping = 0;
+   data->cmap = nullptr;
    for (int c=0; c<3; ++c) {
        data->normalTransform[c].x = c==0 ? 1 : 0;
        data->normalTransform[c].y = c==1 ? 1 : 0;
@@ -54,14 +54,31 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    for (int c=0; c<4; ++c) {
       data->solidColor[c] = solidColor[c];
    }
-   if (this->texture) {
+   if (this->scalars) {
+       if (this->scalars->guessMapping(geometry) == DataBase::Element)
+         data->perPrimitiveMapping = 1;
+
+       data->texCoords = &this->scalars->x()[0];
+
+       std::cerr << "texcoords from scalar field" << std::endl;
+
+   } else if (this->texture) {
       if (this->texture->guessMapping(geometry) == DataBase::Element)
          data->perPrimitiveMapping = 1;
 
-      data->texWidth = this->texture->getWidth();
-      data->texData = this->texture->pixels().data();
       data->texCoords = &this->texture->coords()[0];
+
+      cmap.reset(new ispc::ColorMapData);
+      data->cmap = cmap.get();
+      data->cmap->texData = this->texture->pixels().data();
+      data->cmap->texWidth = this->texture->getWidth();
+      // texcoords as computed by Color module are between 0 and 1
+      data->cmap->min = 0.;
+      data->cmap->max = 1.;
+
+       std::cerr << "texcoords from texture" << std::endl;
    }
+
    if (geometry->isEmpty()) {
       return;
    }
@@ -309,6 +326,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
        data->geomID = rtcAttachGeometry(data->scene, geom);
        rtcReleaseGeometry(geom);
        rtcCommitGeometry(geom);
+
+       std::cerr << "added geom " << (data->indexBuffer ? " with " : " without " ) << " indexbuffer" << std::endl;
    }
 
    rtcCommitScene(data->scene);
@@ -322,4 +341,14 @@ RayRenderObject::~RayRenderObject() {
    if (data->scene)
       rtcReleaseScene(data->scene);
    //delete[] data->indexBuffer;
+}
+
+void RayColorMap::deinit() {
+
+    if (cmap) {
+        cmap->min = 0.f;
+        cmap->max = 1.f;
+        cmap->texWidth = 0;
+        cmap->texData = nullptr;
+    }
 }

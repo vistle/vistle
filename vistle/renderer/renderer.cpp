@@ -63,10 +63,10 @@ bool Renderer::needsSync(const message::Message &m) const {
 
 std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
 
-    std::array<Object::const_ptr,3> geo_norm_tex;
-    Object::const_ptr &grid = geo_norm_tex[0];
-    Object::const_ptr &normals = geo_norm_tex[1];
-    Object::const_ptr &tex = geo_norm_tex[2];
+    std::array<Object::const_ptr,3> geo_norm_data;
+    Object::const_ptr &grid = geo_norm_data[0];
+    Object::const_ptr &normals = geo_norm_data[1];
+    Object::const_ptr &tex = geo_norm_data[2];
 
     if (auto ph = vistle::PlaceHolder::as(container)) {
         grid = ph->geometry();
@@ -82,17 +82,16 @@ std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
         grid = g;
         normals = g->normals();
     } else if (auto data = vistle::DataBase::as(container)) {
+        tex = data;
+        grid = data->grid();
         if (auto g = vistle::Coords::as(data->grid())) {
-            grid = g;
             normals = g->normals();
-        } else {
-            grid = data->grid();
         }
     } else {
         grid = container;
     }
 
-    return geo_norm_tex;
+    return geo_norm_data;
 }
 
 bool Renderer::handleMessage(const message::Message *message) {
@@ -110,6 +109,16 @@ bool Renderer::handleMessage(const message::Message *message) {
     }
 
     return Module::handleMessage(message);
+}
+
+bool Renderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
+
+    return true;
+}
+
+bool Renderer::removeColorMap(const std::string &species) {
+
+    return true;
 }
 
 bool Renderer::handleAddObject(const message::AddObject &add) {
@@ -276,6 +285,20 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
        return true;
 
    auto geo_norm_tex = splitObject(object);
+
+   if (!geo_norm_tex[0]) {
+       std::string species = object->getAttribute("_species");
+       if (auto tex = vistle::Texture1D::as(object)) {
+           auto &cmap = m_colormaps[species];
+           cmap.texture = tex;
+           cmap.creator = object->getCreator();
+           cmap.sender = sender;
+           cmap.senderPort = senderPort;
+            std::cerr << "added colormap " << species << " without object, width=" << tex->getWidth() << ", range=" << tex->getMin() << " to " << tex->getMax() << std::endl;
+            return addColorMap(species, tex);
+        }
+   }
+
    std::shared_ptr<RenderObject> ro = addObjectWrapper(sender, senderPort,
                                                        object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
    if (ro) {
@@ -359,6 +382,8 @@ void Renderer::removeAllCreatedBy(int creatorId) {
    }
    while (!m_objectList.empty() && m_objectList.back().empty())
       m_objectList.pop_back();
+
+   // only objects are updated: keep colormap
 }
 
 void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
@@ -374,6 +399,18 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
    }
    while (!m_objectList.empty() && m_objectList.back().empty())
       m_objectList.pop_back();
+
+   // connection cut: remove colormap
+   auto it = m_colormaps.begin();
+   while (it != m_colormaps.end()) {
+       auto &cmap = it->second;
+       if (cmap.sender == sender && cmap.senderPort == senderPort) {
+           removeColorMap(it->first);
+           it = m_colormaps.erase(it);
+       } else {
+           ++it;
+       }
+   }
 }
 
 void Renderer::removeAllObjects() {
@@ -387,6 +424,11 @@ void Renderer::removeAllObjects() {
       ol.clear();
    }
    m_objectList.clear();
+
+   for (auto &cmap: m_colormaps) {
+       removeColorMap(cmap.first);
+   }
+   m_colormaps.clear();
 }
 
 const Renderer::VariantMap &Renderer::variants() const {

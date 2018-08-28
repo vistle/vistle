@@ -6,11 +6,23 @@
 #include <mutex>
 #include <osg/StateSet>
 #include <osg/KdTree>
+#include <osg/Texture1D>
+#include <osg/Image>
 #include <osg/ref_ptr>
 
 namespace osg {
    class MatrixTransform;
 }
+
+struct OsgColorMap {
+    OsgColorMap();
+    float rangeMin = 0.f;
+    float rangeMax = 1.f;
+    osg::ref_ptr<osg::Texture1D> texture;
+    osg::ref_ptr<osg::Image> image;
+};
+
+typedef std::map<std::string, OsgColorMap> OsgColorMapMap;
 
 class VistleGeometryGenerator {
    public:
@@ -18,6 +30,9 @@ class VistleGeometryGenerator {
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex);
+
+      const std::string &species() const;
+      void setColorMaps(const OsgColorMapMap *colormaps);
 
       osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
@@ -29,9 +44,12 @@ class VistleGeometryGenerator {
       vistle::Object::const_ptr m_normal;
       vistle::Object::const_ptr m_tex;
 
-      static std::mutex s_coverMutex;
+      std::string m_species;
 
-      osg::ref_ptr<osg::KdTreeBuilder> s_kdtree;
+      const OsgColorMapMap *m_colormaps = nullptr;
+
+      static std::mutex s_coverMutex;
+      static osg::ref_ptr<osg::KdTreeBuilder> s_kdtree;
 };
 
 #endif

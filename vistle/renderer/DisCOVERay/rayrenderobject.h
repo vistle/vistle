@@ -16,6 +16,13 @@
 
 #include "common.h"
 
+struct RayColorMap {
+    void deinit();
+
+    vistle::Texture1D::const_ptr tex;
+    std::shared_ptr<ispc::ColorMapData> cmap;
+};
+
 struct RayRenderObject: public vistle::RenderObject {
 
    static float pointSize;
@@ -29,5 +36,6 @@ struct RayRenderObject: public vistle::RenderObject {
    ~RayRenderObject();
 
    std::unique_ptr<ispc::RenderObjectData> data;
+   std::unique_ptr<ispc::ColorMapData> cmap;
 };
 #endif

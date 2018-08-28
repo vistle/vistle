@@ -23,6 +23,13 @@ enum PrimitiveFlags {
    PFEndDisc = 64,
 };
 
+struct RTC_ALIGN(16) ColorMapData {
+    uniform unsigned int texWidth; //!< size of 1D texture (color table size)
+    const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
+    const float min;
+    const float max;
+};
+
 struct RTC_ALIGN(16) RenderObjectData {
 
    int t; //!< timestep number
@@ -40,12 +47,11 @@ struct RTC_ALIGN(16) RenderObjectData {
    unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
    float solidColor[4]; //!< object color (if there is no texture)
 
-   unsigned int texWidth; //!< size of 1D texture (color table size)
-   const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
    const float *texCoords; //!< 1D texture coordinates (mapped data)
    Vec3f normalTransform[3]; //!< how normals are to be transformed
    unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
    const float *normals[3]; //!< normals
+   ColorMapData *cmap; //!< color map
 };
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);
