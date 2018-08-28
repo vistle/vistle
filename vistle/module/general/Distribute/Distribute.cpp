@@ -19,7 +19,7 @@ using namespace vistle;
 Distribute::Distribute(const std::string &name, int moduleID, mpi::communicator comm)
 : Module("broadcast input objects", name, moduleID, comm)
 {
-   setSchedulingPolicy(message::SchedulingPolicy::Gang);
+   setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
 
    createInputPort("data_in", "input data");
    createOutputPort("data_out", "output data");
