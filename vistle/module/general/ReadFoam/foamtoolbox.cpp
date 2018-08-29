@@ -1608,7 +1608,7 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
     if (!s->is_open())
     {
         delete s;
-        std::cerr << "getStreamForFile: failed to open " << filename << std::endl;
+        std::cerr << "getStreamForFile(base=" << base << ", filename=" << filename << "): failed to open " << container << std::endl;
         return std::shared_ptr<std::istream>();
     }
     if (offset>0)

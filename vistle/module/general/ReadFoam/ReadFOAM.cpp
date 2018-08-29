@@ -875,7 +875,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             if (it != m_case.completeMeshDirs.end()) {
                 completeMeshDir = dir + it->second + "/";
             }
-            dir += ts.second;
+            dir += ts.second + "/";
             break;
         }
         ++i;
