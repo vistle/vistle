@@ -54,7 +54,11 @@ int Reader::rankForTimestepAndPartition(int t, int p) const {
     if (!distTime)
         t = 0;
 
-    return (t+p+baseRank) % comm().size();
+    int np = m_numPartitions;
+    if (np < 1)
+        np = 1;
+
+    return (t*np+p+baseRank) % comm().size();
 }
 
 bool Reader::prepare()
@@ -233,6 +237,10 @@ void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
             setCurrentParameterGroup();
         }
     }
+
+    if (m_parallel == ParallelizeTimesteps) {
+        setAllowTimestepDistribution(true);
+    }
 }
 
 void Reader::setHandlePartitions(bool enable)
@@ -246,7 +254,7 @@ void Reader::setAllowTimestepDistribution(bool allow)
     if (m_allowTimestepDistribution) {
         if (!m_distributeTime) {
             setCurrentParameterGroup("Reader");
-            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", 0, Parameter::Boolean);
+            m_distributeTime = addIntParameter("distribute_time", "distribute timesteps across MPI ranks", m_parallel==ParallelizeTimesteps, Parameter::Boolean);
             setCurrentParameterGroup();
         }
     } else {
