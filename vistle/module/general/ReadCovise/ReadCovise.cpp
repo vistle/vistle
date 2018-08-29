@@ -872,9 +872,11 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
       if (elem->objnum < 0)
          return object;
 
+#if 0
       int block = findBlockNum(*elem);
       if (rankForTimestepAndPartition(timestep, block) != rank())
          return object;
+#endif
 
       if (elem->obj) {
           if (elem->obj->getTimestep() == token.meta().timeStep())
