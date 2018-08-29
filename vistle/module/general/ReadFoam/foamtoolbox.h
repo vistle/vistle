@@ -34,23 +34,21 @@ class Model;
 
 struct HeaderInfo
 {
-    HeaderInfo()
-        : lines(0)
-        , valid(false)
-    {
-    }
-
     std::string header;
 
     std::string version;
     std::string format;
     std::string fieldclass;
+    std::string arch;
+    std::string note;
     std::string location;
     std::string object;
     std::string dimensions;
     std::string internalField;
-    index_t lines;
-    bool valid;
+    index_t lines = 0;
+
+    int numbits = 32;
+    bool valid = false;
 };
 
 struct DimensionInfo

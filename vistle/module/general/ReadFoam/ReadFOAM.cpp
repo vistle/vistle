@@ -293,7 +293,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
-   DimensionInfo dim = parseDimensions(ownerH.header);
+   DimensionInfo dim = parseDimensions(ownerH.note);
    owners->resize(ownerH.lines);
    if (!readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size())) {
       std::cerr << "readIndexArray for " << topologyDir << "/owner failed" << std::endl;
