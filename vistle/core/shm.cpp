@@ -525,6 +525,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
           od->unref();
           return obj;
       }
+      unlockObjects();
       std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
    } else {
        unlockObjects();
