@@ -126,6 +126,7 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
 bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) const {
 
    bool result = true;
+#if 0
    try {
       result = message::send(*sock, msg, payload);
    } catch(const boost::system::system_error &err) {
@@ -137,6 +138,17 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
          throw(err);
       }
    }
+#else
+   std::shared_ptr<std::vector<char>> pl;
+   if (payload)
+       pl = std::make_shared<std::vector<char>>(*payload);
+
+   message::async_send(*sock, msg, pl, [this](boost::system::error_code ec){
+       if (ec) {
+           CERR << "send error: " << ec.message() << std::endl;
+       }
+   });
+#endif
    return result;
 }
 
