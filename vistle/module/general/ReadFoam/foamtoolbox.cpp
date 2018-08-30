@@ -302,7 +302,7 @@ bool checkLagrangianDirectory(CaseInfo &info, Path lagdir, bool time)
 template<class Directory, class Iterator, class Path>
 bool checkCaseDataDirectory(CaseInfo &info, const Path &timedir, bool time)
 {
-    std::cerr << "checkCaseDataDirectory: path=" << timedir.string() << std::endl;
+    //std::cerr << "checkCaseDataDirectory: path=" << timedir.string() << std::endl;
 
     if (!exists(timedir))
     {
@@ -381,7 +381,10 @@ bool checkPolyMeshDirContent(CaseInfo &info, const Path &basedir)
 template<class Directory, class Iterator, class Path>
 bool checkCaseSubDirectory(CaseInfo &info, const Path &dir, bool compare, bool exact, bool verbose)
 {
-    std::cerr << "checkCaseSubDirectory: opening " << dir.string() << std::endl;
+    if (verbose)
+    {
+        std::cerr << "checkCaseSubDirectory: opening " << dir.string() << std::endl;
+    }
 
     index_t num_timesteps = 0;
     for (Iterator it(dir); it != Iterator(); ++it)
@@ -519,7 +522,10 @@ bool checkCaseProcessorDirectories(CaseInfo &info, bool compare, bool exact, boo
 
 bool checkCaseRootDirectory(CaseInfo &info, bool compare, bool exact, bool verbose)
 {
-    std::cerr << "reading casedir: " << info.casedir << std::endl;
+    if (verbose)
+    {
+        std::cerr << "reading casedir: " << info.casedir << std::endl;
+    }
 
     bf::path dir(info.casedir);
     if (!bf::exists(dir))
@@ -559,20 +565,11 @@ bool checkCaseRootDirectory(CaseInfo &info, bool compare, bool exact, bool verbo
         info.archived = true;
         num_processors = numProcessorArchives;
     }
+    info.numblocks = num_processors;
 
-    std::cerr << "case directory " << info.casedir << " is " << (info.archived ? "" : "not ") << "an archive: #archives=" << numProcessorArchives << std::endl;
-
-
-    if (!compare && num_processors > 0)
+    if (verbose)
     {
-        info.numblocks = num_processors;
-    }
-
-    if (compare && num_processors > 0)
-    {
-        if (verbose)
-            std::cerr << "found processor subdirectory in processor directory" << std::endl;
-        return false;
+        std::cerr << "case directory " << info.casedir << " is " << (info.archived ? "" : "not ") << "an archive: #archives=" << numProcessorArchives << std::endl;
     }
 
     if (num_processors > 0)
@@ -584,14 +581,22 @@ bool checkCaseRootDirectory(CaseInfo &info, bool compare, bool exact, bool verbo
         return checkCaseProcessorDirectories<bf::path, bf::path, bf::directory_iterator, bf::path>(info, compare, exact, verbose);
     }
 
-    bool ret = checkPolyMeshDirContent<bf::path, bf::directory_iterator>(info, bf::path(info.casedir));
-    if (!ret) {
-        std::cerr << "failed to gather topology directories in " << info.casedir << std::endl;
+    if (!checkCaseSubDirectory<bf::path, bf::directory_iterator>(info, bf::path(info.casedir), false, exact, verbose))
+    {
+        std::cerr << "failed to read global case directory " << info.casedir << std::endl;
+        return false;
     }
-    return ret;
+
+    if (!checkPolyMeshDirContent<bf::path, bf::directory_iterator>(info, bf::path(info.casedir)))
+    {
+        std::cerr << "failed to gather topology directories in " << info.casedir << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
-bool checkFields(std::map<std::string, int> &fields, int nRequired, bool exact)
+bool checkFields(std::map<std::string, int> &fields, int nRequired, bool exact, bool verbose)
 {
     bool ignored = false;
     for (std::map<std::string, int>::iterator it = fields.begin(), next;
@@ -600,15 +605,18 @@ bool checkFields(std::map<std::string, int> &fields, int nRequired, bool exact)
     {
         next = it;
         ++next;
-        std::cerr << "  " << it->first << ": " << it->second;
+        if (verbose)
+            std::cerr << "  " << it->first << ": " << it->second;
         if (exact && it->second != nRequired)
         {
             ignored = true;
-            std::cerr << " (ignored)";
+            if (verbose)
+                std::cerr << " (ignored)";
             fields.erase(it->first);
         }
     }
-    std::cerr << std::endl;
+    if (verbose)
+        std::cerr << std::endl;
     return !ignored;
 }
 
@@ -630,17 +638,17 @@ CaseInfo getCaseInfo(const std::string &casedir, bool exact, bool verbose)
     int np = info.numblocks > 0 ? info.numblocks : 1;
     if (verbose)
         std::cerr << "  constant:";
-    checkFields(info.constantFields, np, exact);
+    checkFields(info.constantFields, np, exact, verbose);
 
     if (verbose)
         std::cerr << "  varying: ";
-    checkFields(info.varyingFields, np * int(info.timedirs.size()), exact);
+    checkFields(info.varyingFields, np * int(info.timedirs.size()), exact, verbose);
 
     if (info.hasParticles)
     {
         if (verbose)
             std::cerr << "  lagrangian from " << info.lagrangiandir << ": ";
-        checkFields(info.particleFields, np * int(info.timedirs.size()), exact);
+        checkFields(info.particleFields, np * int(info.timedirs.size()), exact, verbose);
     }
     else
     {
@@ -1205,11 +1213,6 @@ bool readArrayAscii(std::istream &stream, T *p, const size_t lines)
     for (size_t i = 0; i < lines; ++i)
     {
         stream >> p[i];
-        if (!stream.good())
-        {
-           std::cerr << "readArrayAscii: failure at element " << i << " of " << lines << std::endl;
-           return false;
-        }
     }
     expect('\n');
     return stream.good();
@@ -1223,11 +1226,6 @@ bool readArrayAscii(std::istream &stream, float *p, const size_t lines)
         double val;
         stream >> val;
         p[i] = float(val);
-        if (!stream.good())
-        {
-           std::cerr << "readArrayAscii: failure at element " << i << " of " << lines << std::endl;
-           return false;
-        }
     }
     expect('\n');
     return stream.good();
