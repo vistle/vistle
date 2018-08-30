@@ -161,7 +161,7 @@ Path::Path(const Model *model, const std::string &path)
     if (path.front() != '/')
         absolute = false;
     std::vector<std::string> c;
-    boost::split(c, path, [](char c){return c=='/';});
+    boost::split(c, path, [](char c){return c=='/';}, boost::token_compress_on);
     std::copy(c.begin(), c.end(), std::back_inserter(components));
 }
 
@@ -317,7 +317,7 @@ Model::operator Directory() const {
 
 Entry *Model::addPath(const std::string &path) {
     std::vector<std::string> components;
-    boost::split(components, path, [](char c){return c=='/';});
+    boost::split(components, path, [](char c){return c=='/';}, boost::token_compress_on);
     Directory *dir = &root;
     for (size_t i=0; i+1<components.size(); ++i) {
         File *f = dir->findFile(components[i]);
@@ -391,7 +391,7 @@ const Directory *Model::findDirectory(const Path &path) const {
 
 const File *Model::findFile(const std::string &pathname) const {
     std::vector<std::string> components;
-    boost::split(components, pathname, [](char c){return c=='/';});
+    boost::split(components, pathname, [](char c){return c=='/';}, boost::token_compress_on);
     auto e = findEntry(components);
     return dynamic_cast<const File *>(e);
 }
