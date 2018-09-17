@@ -45,6 +45,11 @@ endif()
 # Automatically link Qt executables to qtmain target on Windows
 cmake_policy(SET CMP0020 NEW)
 
+if (POLICY CMP0074)
+   # make find_include/find_library search in <PackageName>_ROOT prefix
+   cmake_policy(SET CMP0074 NEW)
+endif()
+
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
