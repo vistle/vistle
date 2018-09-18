@@ -1642,6 +1642,12 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
             if (file) {
                 container = root.getModel()->getContainer();
                 size = file->size;
+#ifdef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
+                if (format == FormatTar || format == FormatZip) {
+                    offset = file->offset;
+                    intar = true;
+                }
+#else
                 if (format == FormatTar) {
                     offset = file->offset;
                     intar = true;
@@ -1649,6 +1655,7 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
                     buf = new archive_streambuf(file);
                     inzip = true;
                 }
+#endif
             }
         }
     } else {
