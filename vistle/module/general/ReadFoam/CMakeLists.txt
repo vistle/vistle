@@ -9,6 +9,8 @@ if (APPLE)
 endif()
 vistle_find_package(LibArchive)
 
+vistle_find_package(LibZip)
+
 #vistle_find_package(ZLIB)
 vistle_find_package(Boost 1.53 COMPONENTS ${BOOST_COMPONENTS})
 if (NOT Boost_FOUND)
@@ -34,6 +36,11 @@ if (LibArchive_FOUND)
    endif()
 endif()
 
+if (LIBZIP_FOUND)
+    add_definitions(-DHAVE_LIBZIP)
+    include_directories(SYSTEM ${LIBZIP_INCLUDE_DIRS})
+endif()
+
 add_module(ReadFoam ReadFOAM.cpp
    foamtoolbox.cpp foamtoolbox.h
    archivemodel.cpp archivemodel.h)
@@ -48,6 +55,10 @@ target_link_libraries(ReadFoam
 
 if (LibArchive_FOUND)
    target_link_libraries(ReadFoam ${LibArchive_LIBRARIES})
+endif()
+
+if (LIBZIP_FOUND)
+   target_link_libraries(ReadFoam ${LIBZIP_LIBRARIES})
 endif()
 
 #add_executable(foambounds bounds.cpp foamtoolbox.cpp)

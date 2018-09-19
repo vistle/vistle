@@ -1627,6 +1627,7 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
     size_t size = 0;
     bool intar = false;
     bool inzip = false;
+    bool partialfile = false;
     archive_streambuf *buf = nullptr;
     if (archived) {
         if (boost::algorithm::starts_with(base, "processor")) {
@@ -1642,20 +1643,18 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
             if (file) {
                 container = root.getModel()->getContainer();
                 size = file->size;
+                if (file->index<0 && (format == FormatTar
 #ifdef HAVE_LIBARCHIVE_READ_CURRENT_POSITION
-                if (format == FormatTar || format == FormatZip) {
+                                      || format == FormatZip
+#endif
+                                      )) {
                     offset = file->offset;
                     intar = true;
-                }
-#else
-                if (format == FormatTar) {
-                    offset = file->offset;
-                    intar = true;
+                    partialfile = true;
                 } else if (format == FormatZip) {
                     buf = new archive_streambuf(file);
                     inzip = true;
                 }
-#endif
             }
         }
     } else {
@@ -1690,7 +1689,7 @@ std::shared_ptr<std::istream> CaseInfo::getStreamForFile(const std::string &base
     if (zipped) {
         fi->push(bi::gzip_decompressor());
     }
-    if (intar) {
+    if (partialfile) {
         fi->push(stream_limiter<char>(size));
     }
     fi->push(*s);
