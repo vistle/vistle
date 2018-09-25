@@ -310,6 +310,9 @@ macro(vistle_add_library targetname)
        ARCHIVE DESTINATION ${INSTALL_LIB_DIR})
 endmacro(vistle_add_library)
 
+if (APPLE)
+    add_definitions(-DGL_SILENCE_DEPRECATION)
+endif()
 
 add_subdirectory(3rdparty)
 add_subdirectory(vistle)
