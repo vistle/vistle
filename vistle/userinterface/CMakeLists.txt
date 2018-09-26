@@ -1,13 +1,4 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
-vistle_find_package(Readline)
-
-set(EXTRA_LIBRARIES)
-if(READLINE_FOUND)
-   add_definitions(-DHAVE_READLINE)
-   include_directories(SYSTEM ${READLINE_INCLUDE_DIR})
-   set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
-endif()
-
 set(userinterface_SOURCES
    userinterface.cpp
    vistleconnection.cpp
