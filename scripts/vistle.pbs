@@ -22,6 +22,8 @@ export VISTLE_LAUNCH=aprun
 
 #module load forge
 #export VISTLE_LAUNCH=ddt-aprun
+export MPICH_MAX_THREAD_SAFETY=multiple
+export MPICH_VERSION_DISPLAY=1
 
 export PATH="$VDIR/bin:$PATH"
 export LD_LIBRARY_PATH="$VDIR/lib:$HOME/hazelhen/lib:$LD_LIBRARY_PATH:$PYTHON_DIR/lib"

@@ -65,8 +65,8 @@ int main(int argc, char ** argv)
 {
    int provided = MPI_THREAD_SINGLE;
    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-   if (provided == MPI_THREAD_SINGLE) {
-      std::cerr << "no thread support in MPI" << std::endl;
+   if (provided != MPI_THREAD_MULTIPLE) {
+      std::cerr << "insufficient thread support in MPI: MPI_THREAD_MULTIPLE is required (maybe set MPICH_MAX_THREAD_SAFETY=multiple?)" << std::endl;
       exit(1);
    }
 
