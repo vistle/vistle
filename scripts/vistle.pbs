@@ -13,9 +13,9 @@ ulimit -c unlimited
 
 # load modules
 module swap PrgEnv-cray PrgEnv-gnu
-module load tools/vtk/7.0.0
-module load numlib/intel/tbb/2017.4
-module load tools/boost/1.62.0
+module load tools/vtk/8.1.0
+#module load numlib/intel/tbb/2017.4
+module load tools/boost/1.66.0
 
 VDIR="$HOME/vistle/build-xc40"
 export VISTLE_LAUNCH=aprun
@@ -24,6 +24,6 @@ export VISTLE_LAUNCH=aprun
 #export VISTLE_LAUNCH=ddt-aprun
 
 export PATH="$VDIR/bin:$PATH"
-export LD_LIBRARY_PATH="$VDIR/lib:$HOME/hornet/lib:$LD_LIBRARY_PATH:$PYTHON_DIR/lib"
+export LD_LIBRARY_PATH="$VDIR/lib:$HOME/hazelhen/lib:$LD_LIBRARY_PATH:$PYTHON_DIR/lib"
 #vistle -b -c visard.hlrs.de > vistle.out 2>&1
 vistle -b -c 141.58.8.1
