@@ -32,6 +32,10 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
       return()
    endif()
 
+   # use faster multi-threaded MPI
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -craympich-mt")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -craympich-mt")
+
    # work around broken FindCUDA
    macro( find_host_program )
       set( CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER )
