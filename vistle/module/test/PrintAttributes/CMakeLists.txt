@@ -3,10 +3,3 @@ include_directories(SYSTEM
 )
 
 add_module(PrintAttributes PrintAttributes.cpp)
-
-target_link_libraries(PrintAttributes
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
-)
-

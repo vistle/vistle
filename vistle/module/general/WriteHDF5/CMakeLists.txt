@@ -22,8 +22,5 @@ add_module(WriteHDF5 WriteHDF5.cpp HDF5Objects.h)
 use_openmp()
 
 target_link_libraries(WriteHDF5
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
 	${HDF5_LIBRARIES}
-        vistle_module
 )

@@ -3,10 +3,3 @@ include_directories(SYSTEM
 )
 
 add_module(AttachShader AttachShader.cpp)
-
-target_link_libraries(AttachShader
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
-)
-

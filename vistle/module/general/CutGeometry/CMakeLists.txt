@@ -41,9 +41,3 @@ include_directories(SYSTEM
 )
 
 add_module(CutGeometry CutGeometry.cpp ../IsoSurface/IsoDataFunctor.cpp)
-
-target_link_libraries(CutGeometry
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
-)

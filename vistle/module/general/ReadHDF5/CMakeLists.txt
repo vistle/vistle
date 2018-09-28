@@ -22,8 +22,5 @@ add_module(ReadHDF5 ReadHDF5.cpp)
 use_openmp()
 
 target_link_libraries(ReadHDF5
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
 	${HDF5_LIBRARIES}
-        vistle_module
 )

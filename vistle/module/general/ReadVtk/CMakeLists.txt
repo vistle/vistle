@@ -33,10 +33,7 @@ include_directories(SYSTEM
 )
 
 target_link_libraries(ReadVtk
-   ${Boost_LIBRARIES}
-   ${MPI_C_LIBRARIES}
    ${VTK_LIBRARIES}
-   vistle_module
 )
 
 if (TINYXML2_FOUND)

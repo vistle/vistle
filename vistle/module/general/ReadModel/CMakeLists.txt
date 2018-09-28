@@ -20,7 +20,4 @@ add_module(ReadModel ReadModel.cpp)
 
 target_link_libraries(ReadModel
         ${ASSIMP_LIBRARIES}
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
 )

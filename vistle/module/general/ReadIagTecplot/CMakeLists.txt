@@ -20,8 +20,6 @@ include_directories(SYSTEM
 )
 
 target_link_libraries(ReadIagTecplot
-   ${MPI_C_LIBRARIES}
    ${VTK_LIBRARIES}
-   vistle_module
 )
 

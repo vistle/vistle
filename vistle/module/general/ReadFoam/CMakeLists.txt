@@ -46,11 +46,7 @@ add_module(ReadFoam ReadFOAM.cpp
    archivemodel.cpp archivemodel.h)
 
 target_link_libraries(ReadFoam
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        vistle_module
-        vistle_boost_mpi
 )
 
 if (LibArchive_FOUND)

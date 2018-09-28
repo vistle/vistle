@@ -47,10 +47,6 @@ include_directories(SYSTEM
 add_module(${NAME} ${SOURCES} ${CUDA_OBJ})
 
 target_link_libraries(${NAME}
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
-        vistle_boost_mpi
         ${TBB_LIBRARIES}
 )
 

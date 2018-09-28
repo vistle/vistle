@@ -4,9 +4,3 @@ include_directories(SYSTEM
 )
 
 add_module(LoadCover LoadCover.cpp)
-
-target_link_libraries(LoadCover
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_module
-)

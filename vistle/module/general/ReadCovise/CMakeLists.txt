@@ -15,8 +15,5 @@ include_directories(
 )
 
 target_link_libraries(ReadCovise
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
         ${COVISE_FILE_LIBRARY}
-        vistle_module
 )

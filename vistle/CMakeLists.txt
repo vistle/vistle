@@ -78,6 +78,12 @@ macro(add_module targetname)
        endif()
     endif()
     set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
+    target_link_libraries(${targetname}
+        ${Boost_LIBRARIES}
+        ${MPI_C_LIBRARIES}
+        vistle_module
+        vistle_boost_mpi
+    )
 endmacro(add_module)
 
 

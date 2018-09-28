@@ -17,8 +17,5 @@ include_directories(SYSTEM
 add_module(ReadCFX ReadCFX.cpp)
 
 target_link_libraries(ReadCFX
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
 	${CFX_LIBRARIES}
-        vistle_module
 )
