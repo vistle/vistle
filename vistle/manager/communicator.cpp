@@ -44,7 +44,7 @@ Communicator *Communicator::s_singleton = NULL;
 
 Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 : m_comm(MPI_COMM_WORLD, mpi::comm_attach)
-, m_clusterManager(new ClusterManager(r, hosts))
+, m_clusterManager(new ClusterManager(m_comm, hosts))
 , m_dataManager(new DataManager(m_comm))
 , m_hubId(message::Id::Invalid)
 , m_rank(r)

@@ -16,6 +16,8 @@
 
 #include "portmanager.h"
 
+#include <boost/mpi.hpp>
+
 #ifdef MODULE_THREAD
 #include <module/module.h>
 #include <boost/function.hpp>
@@ -40,7 +42,7 @@ class ClusterManager: public ParameterManager
    friend class DataManager;
 
  public:
-   ClusterManager(int rank, const std::vector<std::string> &hosts);
+   ClusterManager(boost::mpi::communicator comm, const std::vector<std::string> &hosts);
    virtual ~ClusterManager();
 
    void init(); // to be called when message sending is possible
@@ -89,6 +91,7 @@ class ClusterManager: public ParameterManager
    void replayMessages();
    std::vector<message::Buffer> m_messageQueue;
 
+   boost::mpi::communicator m_comm;
    std::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
    message::Type m_traceMessages;

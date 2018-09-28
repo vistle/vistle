@@ -15,8 +15,6 @@
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <mpi.h>
-
 #include <sys/types.h>
 
 #include <cstdlib>
@@ -183,13 +181,14 @@ bool ClusterManager::Module::haveDelayed() const {
     return !delayedMessages.empty();
 }
 
-ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
+ClusterManager::ClusterManager(boost::mpi::communicator comm, const std::vector<std::string> &hosts)
 : ParameterManager("Vistle", message::Id::Vistle)
+, m_comm(comm)
 , m_portManager(new PortManager(this))
-, m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
+, m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(m_comm.rank()), m_portManager)
 , m_traceMessages(message::INVALID)
 , m_quitFlag(false)
-, m_rank(r)
+, m_rank(m_comm.rank())
 , m_size(hosts.size())
 , m_barrierActive(false)
 {
@@ -314,7 +313,7 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 void ClusterManager::barrierReached(const message::uuid_t &uuid) {
 
    vassert(m_barrierActive);
-   MPI_Barrier(MPI_COMM_WORLD);
+   m_comm.barrier();
    reachedSet.clear();
    CERR << "Barrier [" << uuid << "] reached" << std::endl;
    message::BarrierReached m(uuid);
@@ -789,7 +788,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
    mod.sendQueue->makeNonBlocking();
 
-   MPI_Barrier(MPI_COMM_WORLD);
+   m_comm.barrier();
 
 #ifdef MODULE_THREAD
    //AvailableModule::Key key(Communicator::the().hubId(), name);
@@ -826,7 +825,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
           }
        }
        if (mod.newModule) {
-           boost::mpi::communicator ncomm(Communicator::the().comm(), boost::mpi::comm_duplicate);
+           boost::mpi::communicator ncomm(m_comm, boost::mpi::comm_duplicate);
            std::thread t([newId, name, ncomm, &mod]() {
                std::string mname = "vistle:" + name + ":" + std::to_string(newId);
 #ifdef __linux__
@@ -1878,7 +1877,7 @@ bool ClusterManager::quit() {
    CERR << "waiting for " << numRunning() << " modules to quit" << std::endl;
 
    if (m_size > 1)
-      MPI_Barrier(MPI_COMM_WORLD);
+      m_comm.barrier();
 
    m_quitFlag = true;
 
