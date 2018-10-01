@@ -267,6 +267,14 @@ bool Communicator::dispatch(bool *work) {
 
          MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, MPI_COMM_WORLD, &m_reqAny);
       }
+
+      for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
+          ++next;
+          MPI_Test(&(*it)->req, &flag, &status);
+          if (flag) {
+              m_ongoingSends.erase(it);
+          }
+      }
    }
 
    m_ioService.poll();
@@ -282,7 +290,9 @@ bool Communicator::dispatch(bool *work) {
          if (buf.destRank() == 0) {
              handleMessage(buf);
          } else if (buf.destRank() >= 0) {
-             MPI_Send(buf.data(), buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD);
+             auto p = m_ongoingSends.emplace(new SendRequest(buf));
+             auto it = p.first;
+             MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD, &(*it)->req);
          } else if(!broadcastAndHandleMessage(buf)) {
             CERR << "Quit reason: broadcast & handle 2: " << buf << std::endl;
             done = true;
@@ -329,12 +339,14 @@ bool Communicator::dispatch(bool *work) {
    return !done;
 }
 
-bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
+bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank) {
 
    if (m_rank == destRank || destRank == -1) {
       return clusterManager().sendMessage(moduleId, message);
    } else {
-      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD);
+      auto p = m_ongoingSends.emplace(new SendRequest(message));
+      auto it = p.first;
+      MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD, &(*it)->req);
    }
    return true;
 }
@@ -343,8 +355,9 @@ bool Communicator::forwardToMaster(const message::Message &message) {
 
    vassert(m_rank != 0);
    if (m_rank != 0) {
-
-      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
+      auto p = m_ongoingSends.emplace(new SendRequest(message));
+      auto it = p.first;
+      MPI_Isend(&(*it)->buf, (*it)->buf.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &(*it)->req);
    }
 
    return true;

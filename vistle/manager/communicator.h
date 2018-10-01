@@ -2,6 +2,7 @@
 #define COMMUNICATOR_COLLECTIVE_H
 
 #include <vector>
+#include <set>
 
 #include <boost/asio.hpp>
 #include <boost/mpi.hpp>
@@ -39,7 +40,7 @@ class Communicator {
    bool handleDataMessage(const message::Message &message);
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
-   bool sendMessage(int receiver, const message::Message &message, int rank=-1) const;
+   bool sendMessage(int receiver, const message::Message &message, int rank=-1);
 
    int hubId() const;
    int getRank() const;
@@ -76,6 +77,13 @@ class Communicator {
    unsigned m_recvSize;
    message::Buffer m_recvBufToRank, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank;
+   struct SendRequest {
+       SendRequest(const message::Message &msg): buf(msg) {}
+       SendRequest(const message::Buffer &buf): buf(buf) {}
+       MPI_Request req;
+       message::Buffer buf;
+   };
+   std::set<std::shared_ptr<SendRequest>> m_ongoingSends;
 
    static Communicator *s_singleton;
 
