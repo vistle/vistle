@@ -382,10 +382,6 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
         }
     }
 
-    MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
-
-    const bool result = handleMessage(message);
-
     // wait for completion
     for (int index=0; index<m_size; ++index) {
 
@@ -394,6 +390,11 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
         MPI_Wait(&s[index], MPI_STATUS_IGNORE);
     }
+
+    MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
+
+    const bool result = handleMessage(message);
+
     return result;
 }
 
