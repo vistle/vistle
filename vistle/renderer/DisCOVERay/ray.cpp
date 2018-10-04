@@ -29,6 +29,8 @@
 
 #define ICET_CALLBACK
 
+#define CERR std::cerr << "DisCOVERay: "
+
 namespace mpi = boost::mpi;
 
 using namespace vistle;
@@ -54,7 +56,7 @@ class DisCOVERay: public vistle::Renderer {
          case RTC_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
       }
 
-      std::cerr << "RTC error: " << desc << " - " << err << std::endl;
+      CERR << "RTC error: " << desc << " - " << err << std::endl;
    }
 
    struct RGBA {
@@ -129,7 +131,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 , m_currentView(-1)
 {
 #if 0
-    std::cerr << "Ray: " << getpid() << std::endl;
+    CERR << getpid() << std::endl;
     sleep(10);
 #endif
 
@@ -149,7 +151,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 
    m_device = rtcNewDevice("verbose=0");
    if (!m_device) {
-       std::cerr << "Ray: failed to create device" << std::endl;
+       CERR << "failed to create device" << std::endl;
        throw(vistle::exception("failed to create Embree device"));
    }
    rtcDeviceSetErrorFunction2(m_device, rtcErrorCallback, nullptr);
@@ -176,7 +178,7 @@ void DisCOVERay::prepareQuit() {
 
 void DisCOVERay::connectionAdded(const Port *from, const Port *to) {
 
-    std::cerr << "Ray: new connection from " << *from << " to " << *to << std::endl;
+    CERR << "new connection from " << *from << " to " << *to << std::endl;
     Renderer::connectionAdded(from, to);
     if (from == m_renderManager.outputPort()) {
         m_renderManager.connectionAdded(to);
@@ -399,7 +401,7 @@ bool DisCOVERay::render() {
        m_currentView = i;
 
        auto &vd = m_renderManager.viewData(i);
-       //std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
+       //CERR << "rendering view " << i << ", proj=" << vd.proj << std::endl;
        const vistle::Matrix4 lightTransform = vd.model.inverse();
        for (auto &light: vd.lights) {
           light.transformedPosition = lightTransform * light.position;
@@ -411,7 +413,7 @@ bool DisCOVERay::render() {
           }
 #if 0
           if (light.enabled)
-             std::cerr << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
+             CERR << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
 #endif
        }
        IceTDouble proj[16], mv[16];
@@ -450,7 +452,7 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
    //StopWatch timer("DisCOVERay::render()");
 
 #if 0
-   std::cerr << "IceT draw CB: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
+   CERR << "IceT draw CB: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
              << ", img: " << width << "x" << height
              << std::endl;
 #endif
@@ -463,7 +465,7 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
    const int ntx = wt/ts;
    const int nty = ht/ts;
 
-   //std::cerr << "PROJ:" << P << std::endl << std::endl;
+   //CERR << "PROJ:" << P << std::endl << std::endl;
 
    const vistle::Matrix4 MVP = P * MV;
    const auto inv = MVP.inverse();
@@ -550,7 +552,7 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
 
    int err = rtcDeviceGetError(m_device);
    if (err != 0) {
-      std::cerr << "RTC error: " << err << std::endl;
+      CERR << "RTC error: " << err << std::endl;
    }
 }
 
@@ -560,7 +562,7 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
-   std::cerr << "DisCOVERay: removeObject(" << ro->senderId << "/" << ro->variant << ")" << std::endl;
+   CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ")" << std::endl;
 
    if (rod->scene) {
       rtcDisable(m_scene, rod->instId);

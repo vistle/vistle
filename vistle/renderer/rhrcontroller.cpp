@@ -4,6 +4,8 @@
 #include <core/points.h>
 #include <util/hostname.h>
 
+#define CERR std::cerr << "RhrController(" << m_module->id() << "): "
+
 namespace vistle {
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub)(Reverse))
@@ -252,7 +254,7 @@ std::string RhrController::getConfigString() const {
 Object::ptr RhrController::getConfigObject() const {
 
     auto conf = getConfigString();
-    std::cerr << "ParallelRemoteRenderManager: creating config object: " << conf << std::endl;
+    CERR << "creating config object: " << conf << std::endl;
 
     Points::ptr points(new Points(Index(0)));
     points->addAttribute("_rhr_config", conf);
@@ -263,7 +265,7 @@ Object::ptr RhrController::getConfigObject() const {
 void RhrController::sendConfigObject() const {
 
     if (m_module->rank() == 0) {
-        std::cerr << "sending rhr config object" << std::endl;
+        CERR << "sending rhr config object" << std::endl;
         static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
     }
 }
@@ -271,7 +273,7 @@ void RhrController::sendConfigObject() const {
 void RhrController::addClient(const Port *client) {
 
     if (!m_clients.empty()) {
-        std::cerr << "ParallelRemoteRenderManager: not servicing client port " << *client << std::endl;
+        CERR << "not servicing client port " << *client << std::endl;
     }
 
     m_clients.insert(client);
@@ -287,7 +289,7 @@ void RhrController::removeClient(const Port *client) {
 
     auto it = m_clients.find(client);
     if (it == m_clients.end()) {
-        std::cerr << "ParallelRemoteRenderManager: did not find disconnected destination port " << *client << std::endl;
+        CERR << "did not find disconnected destination port " << *client << std::endl;
         return;
     }
 
@@ -298,7 +300,7 @@ void RhrController::removeClient(const Port *client) {
     }
 
     if (m_module->rank() == 0) {
-        std::cerr << "sending rhr config object" << std::endl;
+        CERR << "sending rhr config object" << std::endl;
         static_cast<Module *>(m_module)->addObject(m_imageOutPort, getConfigObject());
     }
 }
