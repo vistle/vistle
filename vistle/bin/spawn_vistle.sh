@@ -1,13 +1,43 @@
 #! /bin/bash
 
+#if [ -z "${OMP_NUM_THREADS}" ]; then
+#   APRUN_FLAGS="-j2 --cc none"
+#else
+#   APRUN_FLAGS="-j2 --cc numa_node -d$OMP_NUM_THREADS"
+#fi
+#APRUN_FLAGS="-j2 --cc numa_node" # enable hyper-threading and bind processes to NUMA nodes
+#APRUN_FLAGS="-j2" # enable hyper-threading
+
+#APRUN_FLAGS="-j2 -cc 0-11,24-35:12-23,36-47" # enable hyper-threading
+
+
+
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
+      *aprun*)
+         NUMNODES=$(wc -l $PBS_NODEFILE | awk '{print $1}')
+         APRUN_FLAGS="-b -j 2 -d 24 -cc numa_node -N 2 -n $NUMNODES" # enable hyper-threading
+         ;;
+   esac
+
+   case $VISTLE_LAUNCH in
+      manual)
+      echo '**********************************************************'
+      echo "log in to $(hostname) and launch "$@" in parallel (mpirun, aprun, ...)"
+      echo '**********************************************************'
+      sleep 999999999
+      exit 0
+      ;;
       aprun)
-      exec aprun -b -B "$@"
+      exec aprun $APRUN_FLAGS "$@"
       exit 0
       ;;
       ddt-aprun)
-      exec ddt --connect aprun -b -B "$@"
+      exec ddt --start --noqueue aprun $APRUN_FLAGS "$@"
+      exit 0
+      ;;
+      ddt-connect-aprun)
+      exec ddt --connect aprun $APRUN_FLAGS "$@"
       exit 0
       ;;
    esac
