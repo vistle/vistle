@@ -40,8 +40,8 @@ void Router::initRoutingTable() {
    rt[SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
    rt[PING]                  = DestManager|DestModules|HandleOnDest;
    rt[PONG]                  = DestUi|HandleOnDest;
-   rt[BUSY]                  = Special;
-   rt[IDLE]                  = Special;
+   rt[BUSY]                  = DestUi|DestMasterHub;
+   rt[IDLE]                  = DestUi|DestMasterHub;
    rt[LOCKUI]                = DestUi;
    rt[SENDTEXT]              = DestUi|DestMasterHub;
    rt[UPDATESTATUS]          = DestUi|DestMasterHub;

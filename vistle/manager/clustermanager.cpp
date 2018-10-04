@@ -1590,7 +1590,7 @@ bool ClusterManager::handlePriv(const message::Busy &busy) {
       if (mod.busyCount == 0) {
          message::Buffer buf(busy);
          buf.setDestId(Id::UI);
-         sendHub(buf);
+         sendHub(buf, Id::MasterHub);
       }
       ++mod.busyCount;
    } else {
@@ -1608,7 +1608,7 @@ bool ClusterManager::handlePriv(const message::Idle &idle) {
       if (mod.busyCount == 0) {
          message::Buffer buf(idle);
          buf.setDestId(Id::UI);
-         sendHub(buf);
+         sendHub(buf, Id::MasterHub);
       }
    } else {
       Communicator::the().forwardToMaster(idle);
