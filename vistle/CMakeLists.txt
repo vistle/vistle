@@ -152,6 +152,7 @@ include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
 vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)
+set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
