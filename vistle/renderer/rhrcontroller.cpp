@@ -212,16 +212,22 @@ void RhrController::tryConnect() {
         return;
 
     switch(m_rhrConnectionMethod->getValue()) {
-    case Reverse:
-        if (m_rhr->numClients() < 1) {
+    case Reverse: {
+        int tries = 0;
+        while (m_rhr->numClients() < 1) {
             std::string host = m_rhrRemoteEndpoint->getValue();
             unsigned short port = m_rhrRemotePort->getValue();
             m_module->sendInfo("trying to connect to %s:%hu", host.c_str(), port);
             if (!m_rhr->makeConnection(m_rhrRemoteEndpoint->getValue(), m_rhrRemotePort->getValue(), 10)) {
                 m_module->sendWarning("connection to %s:%hu failed", host.c_str(), port);
             }
+            ++tries;
+            if (tries > 3)
+                break;
+            sleep(1);
         }
         break;
+    }
     default:
         return;
     }
