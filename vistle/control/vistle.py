@@ -159,13 +159,16 @@ def modvar(id):
        return "VistleSession"
    return "v"+str(-id)
 
-def hubvar(id, numSlaves):
-   hub = _vistle.getHub(id)
+def hubVar(hub, numSlaves):
    if (hub == getMasterHub()):
       return "MasterHub"
    if (numSlaves == 1):
       return "SlaveHub"
-   return "Slave"+str(hub);
+   return "Slave"+str(-hub);
+
+def hubVarForModule(id, numSlaves):
+   hub = _vistle.getHub(id)
+   return hubVar(hub, numSlaves)
 
 def saveParameters(f, mod):
       params = getParameters(mod)
@@ -182,7 +185,7 @@ def saveWorkflow(f, mods, numSlaves, remote):
       if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
             continue
       #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+hubVarForModule(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
 
    for m in mods:
       hub = _vistle.getHub(m)
@@ -234,8 +237,11 @@ def save(filename = None):
 
    if numSlaves > 1:
       print("slave hubs: %s" % slavehubs)
-      f.write("waitForSlaves()\n")
-      f.write("waitForHub()\n")
+      f.write("slavehubs = waitForHubs("+str(numSlaves)+")\n")
+      count = 0
+      for h in slavehubs:
+          f.write(hubVar(h, numSlaves) + " = slavehubs["+str(count)+"]\n")
+          count = count+1
    elif numSlaves > 0:
       print("slave hubs: %s" % slavehubs)
       f.write("print('waiting for a slave hub to connect...')\n")

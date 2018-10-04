@@ -184,6 +184,11 @@ static int waitForAnySlaveHub() {
    return message::Id::Invalid;
 }
 
+static std::vector<int> waitForSlaveHubs(int count) {
+   auto hubs = MODULEMANAGER.waitForSlaveHubs(count);
+   return hubs;
+}
+
 static int waitForNamedHub(const std::string &name) {
    std::vector<std::string> names;
    names.push_back(name);
@@ -198,7 +203,7 @@ static int waitForNamedHub(const std::string &name) {
    return message::Id::Invalid;
 }
 
-static std::vector<int> waitForHubs(const std::vector<std::string> &names) {
+static std::vector<int> waitForNamedHubs(const std::vector<std::string> &names) {
    return MODULEMANAGER.waitForSlaveHubs(names);
 }
 
@@ -636,7 +641,8 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     m.def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
     m.def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
     m.def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
-    m.def("waitForHubs", waitForHubs, "wait for named hubs to connect");
+    m.def("waitForHubs", waitForSlaveHubs, "wait for `count` additional slave hubs to connect");
+    m.def("waitForNamedHubs", waitForNamedHubs, "wait for named hubs to connect");
     m.def("getMasterHub", getMasterHub, "get ID of master hub");
     m.def("getVistleSession", getVistleSession, "get ID for Vistle session");
     m.def("getAllHubs", getAllHubs, "get ID of all known hubs");
