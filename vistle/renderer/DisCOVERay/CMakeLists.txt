@@ -38,7 +38,7 @@ endif()
 # ISA configuration
 ##############################################################
 
-SET(XEON_ISA "AVX2" CACHE STRING "Selects highest ISA to support.")
+SET(XEON_ISA "AVX512" CACHE STRING "Selects highest ISA to support.")
 SET_PROPERTY(CACHE XEON_ISA PROPERTY STRINGS SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 AVX AVX-I AVX2 AVX512)
 
 IF (XEON_ISA STREQUAL "SSE2")
@@ -125,6 +125,7 @@ ENDIF ()
 
 IF (ISA GREATER 8)
   SET(TARGET_AVX512  ON)
+  LIST(APPEND ISPC_TARGETS "avx512skx-i32x16")
 ENDIF ()
 
 set(__XEON__ 1)
