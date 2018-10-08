@@ -202,7 +202,7 @@ void Communicator::run() {
       if (parentProcessDied())
          throw(except::parent_died());
 
-      vistle::adaptive_wait(work);
+      vistle::adaptive_wait(work, this);
    }
    CERR << "Comm: run done" << std::endl;
 }

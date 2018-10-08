@@ -431,7 +431,7 @@ void DataManager::recvLoop()
                 //CERR << "Data received" << std::endl;
             }
         }
-        vistle::adaptive_wait(gotMsg || m_quit);
+        vistle::adaptive_wait(gotMsg || m_quit, this);
     }
 }
 

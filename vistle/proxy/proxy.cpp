@@ -232,7 +232,7 @@ bool Proxy::dispatch() {
        ret = false;
    }
 
-   vistle::adaptive_wait(work);
+   vistle::adaptive_wait(work, this);
 
    return ret;
 }

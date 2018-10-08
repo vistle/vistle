@@ -18,7 +18,7 @@ namespace mpi = boost::mpi;
 
 namespace vistle {
 
-const int MaxObjectsPerFrame = 50;
+const int MaxObjectsPerFrame = 10;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
 (LocalOnly)
@@ -46,6 +46,7 @@ Renderer::~Renderer() {
 
 }
 
+// all of those messages have to arrive in the same order an all ranks, but other messages may be interspersed
 bool Renderer::needsSync(const message::Message &m) const {
 
    using namespace vistle::message;
@@ -179,7 +180,7 @@ bool Renderer::dispatch(bool *messageReceived) {
       }
       int allsync = boost::mpi::all_reduce(comm(), sync, boost::mpi::maximum<int>());
       if (m_maySleep)
-          vistle::adaptive_wait(haveMessage || allsync);
+          vistle::adaptive_wait(haveMessage || allsync, this);
 
       do {
          if (haveMessage) {
@@ -221,7 +222,7 @@ bool Renderer::dispatch(bool *messageReceived) {
       int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
       int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
       ++numSync;
-      checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame;
+      checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame*size();
 
       if (maxNumMessages > 0)
          received = true;
