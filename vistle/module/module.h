@@ -227,6 +227,8 @@ protected:
    void setStatus(const std::string &text, message::UpdateStatus::Importance prio=message::UpdateStatus::Low);
    void clearStatus();
 
+   bool getNextMessage(message::Buffer &buf, bool block=true);
+
  private:
    bool reduceWrapper(const message::Execute *exec);
    bool prepareWrapper(const message::Execute *exec);
@@ -240,6 +242,8 @@ protected:
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
+
+   bool needsSync(const message::Message &m) const;
 
    //! notify that a module has added a parameter
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);

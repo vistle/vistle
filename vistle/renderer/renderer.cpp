@@ -164,15 +164,7 @@ bool Renderer::dispatch(bool *messageReceived) {
    bool checkAgain = false;
    int numSync = 0;
    do {
-      bool haveMessage = false;
-      if (messageBacklog.empty()) {
-          haveMessage = receiveMessageQueue->tryReceive(message);
-      } else {
-          buf = messageBacklog.front();
-          messageBacklog.pop_front();
-          haveMessage = true;
-      }
-
+      bool haveMessage = getNextMessage(buf, false);
       int sync = 0;
       if (haveMessage) {
          if (needsSync(message))
@@ -184,6 +176,7 @@ bool Renderer::dispatch(bool *messageReceived) {
 
       do {
          if (haveMessage) {
+            received = true;
 
             m_stateTracker->handle(message);
 
@@ -207,14 +200,7 @@ bool Renderer::dispatch(bool *messageReceived) {
          }
 
          if (allsync && !sync) {
-            if (messageBacklog.empty()) {
-                receiveMessageQueue->receive(message);
-            } else {
-                 buf = messageBacklog.front();
-                 messageBacklog.pop_front();
-            }
-
-            haveMessage = true;
+            haveMessage = getNextMessage(buf);
          }
 
       } while(allsync && !sync);

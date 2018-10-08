@@ -949,6 +949,35 @@ void Module::connectionRemoved(const Port *from, const Port *to) {
 
 }
 
+bool Module::getNextMessage(message::Buffer &buf, bool block) {
+
+    if (!messageBacklog.empty()) {
+        buf = messageBacklog.front();
+        messageBacklog.pop_front();
+        return true;
+    }
+
+    if (block) {
+        receiveMessageQueue->receive(buf);
+        return true;
+    }
+
+    return receiveMessageQueue->tryReceive(buf);
+}
+
+bool Module::needsSync(const message::Message &m) const {
+    switch (m.type()) {
+    case vistle::message::QUIT:
+        return true;
+    case vistle::message::ADDOBJECT:
+        return objectReceivePolicy() != vistle::message::ObjectReceivePolicy::Local;
+    default:
+        break;
+    }
+
+    return false;
+}
+
 bool Module::dispatch(bool *messageReceived) {
 
    bool again = true;
@@ -963,51 +992,21 @@ bool Module::dispatch(bool *messageReceived) {
          *messageReceived = true;
 
       message::Buffer buf;
-      if (!messageBacklog.empty()) {
-          buf = messageBacklog.front();
-          messageBacklog.pop_front();
-      } else {
-          receiveMessageQueue->receive(buf);
-      }
+      getNextMessage(buf);
 
       if (syncMessageProcessing()) {
-         int sync = 0, allsync = 0;
-
-         switch (buf.type()) {
-            case vistle::message::QUIT:
-               sync = 1;
-               break;
-            case vistle::message::ADDOBJECT:
-               sync = objectReceivePolicy() != vistle::message::ObjectReceivePolicy::Local;
-               break;
-            default:
-               break;
-         }
-
+         int sync = needsSync(buf) ? 1 : 0;
+         int allsync = 0;
          mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
 
          do {
-            switch (buf.type()) {
-               case vistle::message::QUIT:
-                  sync = 1;
-                  break;
-               case vistle::message::ADDOBJECT:
-                  sync = objectReceivePolicy() != vistle::message::ObjectReceivePolicy::Local;
-                  break;
-               default:
-                  break;
-            }
+            sync = needsSync(buf) ? 1 : 0;
 
             m_stateTracker->handle(buf);
             again &= handleMessage(&buf);
 
             if (allsync && !sync) {
-                if (!messageBacklog.empty()) {
-                    buf = messageBacklog.front();
-                    messageBacklog.pop_front();
-                } else {
-                    receiveMessageQueue->receive(buf);
-                }
+                getNextMessage(buf);
             }
 
          } while(allsync && !sync);
