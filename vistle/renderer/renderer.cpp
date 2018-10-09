@@ -175,75 +175,70 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
 
 bool Renderer::dispatch(bool *messageReceived) {
 
-   message::Buffer buf;
-   message::Message &message = buf;
-   bool received = false;
-
    int quit = 0;
    bool checkAgain = false;
    int numSync = 0;
    do {
+      // process all messages until one needs cooperative processing
+      message::Buffer buf;
+      message::Message &message = buf;
       bool haveMessage = getNextMessage(buf, false);
-      int sync = 0;
+      int needSync = 0;
       if (haveMessage) {
          if (needsSync(message))
-            sync = 1;
+            needSync = 1;
       }
-      int allsync = boost::mpi::all_reduce(comm(), sync, boost::mpi::maximum<int>());
+      int anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
       if (m_maySleep)
-          vistle::adaptive_wait(haveMessage || allsync, this);
+          vistle::adaptive_wait(haveMessage || anySync, this);
 
       do {
          if (haveMessage) {
-            received = true;
+            if (messageReceived)
+               *messageReceived = true;
 
             quit = !handleMessage(&message);
             if (quit) {
                 std::cerr << "Quitting: " << message << std::endl;
+                break;
             }
 
             if (needsSync(message))
-               sync = 1;
+               needSync = 1;
          }
 
-         if (allsync && !sync) {
+         if (anySync && !needSync) {
             haveMessage = getNextMessage(buf);
          }
 
-      } while(allsync && !sync);
+      } while(anySync && !needSync);
+
+      int anyQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
+      if (anyQuit) {
+          prepareQuit();
+          return false;
+      }
 
       int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
       int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
       ++numSync;
       checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame*size();
+   } while (checkAgain);
 
-      if (maxNumMessages > 0)
-         received = true;
-   } while (checkAgain && !quit);
-
-   int doQuit = boost::mpi::all_reduce(comm(), quit, boost::mpi::maximum<int>());
-   if (doQuit) {
-      prepareQuit();
-   } else {
-      double start = 0.;
-      if (m_benchmark) {
-         comm().barrier();
-         start = Clock::time();
-      }
-      if (render() && m_benchmark) {
-         comm().barrier();
-         const double duration = Clock::time() - start;
-         if (rank() == 0) {
-             sendInfo("render took %f s", duration);
-         }
-      }
+   double start = 0.;
+   if (m_benchmark) {
+       comm().barrier();
+       start = Clock::time();
+   }
+   if (render() && m_benchmark) {
+       comm().barrier();
+       const double duration = Clock::time() - start;
+       if (rank() == 0) {
+           sendInfo("render took %f s", duration);
+       }
    }
 
-   if (messageReceived) {
-      *messageReceived = received;
-   }
-
-   return !quit;
+   return true;
 }
 
 
