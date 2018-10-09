@@ -194,7 +194,7 @@ protected:
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
    std::deque<message::Buffer> messageBacklog;
-   bool handleMessage(const message::Message *message);
+   virtual bool handleMessage(const message::Message *message);
    bool handleExecute(const message::Execute *exec);
    bool cancelRequested(bool sync=false);
 

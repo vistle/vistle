@@ -1002,7 +1002,6 @@ bool Module::dispatch(bool *messageReceived) {
          do {
             sync = needsSync(buf) ? 1 : 0;
 
-            m_stateTracker->handle(buf);
             again &= handleMessage(&buf);
 
             if (allsync && !sync) {
@@ -1012,7 +1011,6 @@ bool Module::dispatch(bool *messageReceived) {
          } while(allsync && !sync);
       } else {
 
-         m_stateTracker->handle(buf);
          again &= handleMessage(&buf);
       }
    } catch (vistle::except::parent_died &e) {
@@ -1053,6 +1051,8 @@ void Module::sendMessage(const message::Message &message) const {
 bool Module::handleMessage(const vistle::message::Message *message) {
 
    using namespace vistle::message;
+
+    m_stateTracker->handle(*message);
 
    if (m_traceMessages == message::ANY || message->type() == m_traceMessages) {
       CERR << "RECV: " << *message << std::endl;

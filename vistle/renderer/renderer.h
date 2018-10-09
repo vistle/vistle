@@ -33,6 +33,8 @@ class V_RENDEREREXPORT Renderer: public Module {
    const VariantMap &variants() const;
 
  protected:
+   bool handleMessage(const message::Message *message) override;
+
    virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr texture) = 0;
    virtual void removeObject(std::shared_ptr<RenderObject> ro);
@@ -50,7 +52,7 @@ class V_RENDEREREXPORT Renderer: public Module {
 
    virtual bool render() = 0;
 
-   void handleAddObject(const message::AddObject &add);
+   bool handleAddObject(const message::AddObject &add);
 
    bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
          vistle::Object::const_ptr object) override;

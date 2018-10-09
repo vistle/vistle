@@ -100,7 +100,24 @@ std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
     return geo_norm_tex;
 }
 
-void Renderer::handleAddObject(const message::AddObject &add) {
+bool Renderer::handleMessage(const message::Message *message) {
+
+    switch (message->type()) {
+    case vistle::message::ADDOBJECT: {
+        auto add = static_cast<const message::AddObject *>(message);
+        m_stateTracker->handle(*add);
+        return handleAddObject(*add);
+        break;
+    }
+    default: {
+        break;
+    }
+    }
+
+    return Module::handleMessage(message);
+}
+
+bool Renderer::handleAddObject(const message::AddObject &add) {
 
     using namespace vistle::message;
     auto pol = objectReceivePolicy();
@@ -152,6 +169,8 @@ void Renderer::handleAddObject(const message::AddObject &add) {
         assert(placeholder);
         addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), placeholder);
     }
+
+    return true;
 }
 
 bool Renderer::dispatch(bool *messageReceived) {
@@ -178,21 +197,9 @@ bool Renderer::dispatch(bool *messageReceived) {
          if (haveMessage) {
             received = true;
 
-            m_stateTracker->handle(message);
-
-            switch (message.type()) {
-            case vistle::message::ADDOBJECT: {
-                auto &add = static_cast<const message::AddObject &>(message);
-                handleAddObject(add);
-                break;
-            }
-            default: {
-                quit = !handleMessage(&message);
-                if (quit) {
-                    std::cerr << "Quitting: " << message << std::endl;
-                }
-                break;
-            }
+            quit = !handleMessage(&message);
+            if (quit) {
+                std::cerr << "Quitting: " << message << std::endl;
             }
 
             if (needsSync(message))
