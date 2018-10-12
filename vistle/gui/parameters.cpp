@@ -151,9 +151,11 @@ void Parameters::newParameter(int moduleId, QString parameterName)
       return;
 
    const auto it = m_paramToProp.find(parameterName);
-   assert(it == m_paramToProp.end());
-   if (it != m_paramToProp.end()) {
-      //qDebug() << "duplicate parameter " << parameterName << " for module " << m_moduleId;
+   if (vistle::message::Id::isModule(moduleId)) {
+       assert(it == m_paramToProp.end());
+       if (it != m_paramToProp.end()) {
+           qDebug() << "duplicate parameter " << parameterName << " for module " << m_moduleId;
+       }
    }
 
    QtProperty *prop = nullptr;
