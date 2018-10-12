@@ -155,6 +155,9 @@ vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUti
 set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
 
+set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
+vistle_find_package(Threads)
+
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(COVISEDESTDIR ${PROJECT_BINARY_DIR})

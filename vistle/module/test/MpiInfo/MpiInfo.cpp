@@ -14,6 +14,7 @@
 #include <core/triangles.h>
 #include <core/indexed.h>
 #include <util/hostname.h>
+#include <util/affinity.h>
 
 using namespace vistle;
 
@@ -41,15 +42,16 @@ MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm)
    sendInfo(str.str());
 }
 
-MpiInfo::~MpiInfo() {
-
-}
+MpiInfo::~MpiInfo() = default;
 
 bool MpiInfo::compute() {
 
    std::stringstream str;
    str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
+   str << "Process affinity: " << sched_affinity_map() << std::endl;
+   str << "Thread affinity:  " << thread_affinity_map() << std::endl;
    sendInfo(str.str());
+
    if (rank() == 0) {
        int len = 0;
        char version[MPI_MAX_LIBRARY_VERSION_STRING];

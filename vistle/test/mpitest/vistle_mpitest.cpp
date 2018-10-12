@@ -2,48 +2,26 @@
 #include <iostream>
 #include <sstream>
 
-#ifdef __linux__
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <sched.h>
-#include <unistd.h>
-#define AFFINITY
-#endif
+#include <util/affinity.h>
+#include <util/hostname.h>
 
 int main(int argc, char *argv[]) {
 
-   std::cerr << "trying MPI_Init..." << std::endl;
+   //std::cerr << "trying MPI_Init..." << std::endl;
    MPI_Init(&argc, &argv);
-   std::cerr << "after MPI_Init" << std::endl;
+   //std::cerr << "after MPI_Init" << std::endl;
 
    int rank=-1, size=-1;
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-   std::cerr << "rank " << rank << "/" << size << std::endl;
-#ifdef AFFINITY
-   const int ncpu = 1024;
-   cpu_set_t *mask = CPU_ALLOC(ncpu);
-   if (!mask) {
-      std::cerr << "CPU_ALLOC failed" << std::endl;
-   }  else {
-      size_t size = CPU_ALLOC_SIZE(ncpu);
-      std::cerr << "cpu size " << size << std::endl;
-      CPU_ZERO_S(size, mask);
-      if(sched_getaffinity(getpid(), size, mask) == -1) {
-         perror("sched_getaffinity");
-      } else {
-         std::stringstream str;
-         str << "affinity mask on rank " << rank << ": ";
-         for (int i=0; i<16; ++i) {
-            str << (CPU_ISSET_S(i, size, mask) ? "1" : "0");
-         }
-         std::cerr << str.str() << std::endl;
-      }
-      CPU_FREE(mask);
+   for (int i=0; i<size; ++i) {
+       MPI_Barrier(MPI_COMM_WORLD);
+       if (i == rank) {
+           std::cerr << "rank " << rank << "/" << size << " on host " << vistle::hostname() << ", process affinity: " << vistle::sched_affinity_map() << std::endl;
+       }
    }
-#endif
+   MPI_Barrier(MPI_COMM_WORLD);
 
    std::cerr << "trying MPI_Finalize..." << std::endl;
    MPI_Finalize();

@@ -1,6 +1,7 @@
 vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system filesystem)
 
 set(util_SOURCES
+   affinity.cpp
    coRestraint.cpp
    exception.cpp
    findself.cpp
@@ -15,6 +16,7 @@ set(util_SOURCES
 
 set(util_HEADERS
    export.h
+   affinity.h
    coRestraint.h
    enum.h
    exception.h
@@ -42,6 +44,11 @@ vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
 )
+if(UNIX AND NOT APPLE)
+   target_link_libraries(vistle_util
+        -lpthread                                                                                                                                                                                                                                                                           
+   )
+endif()
 
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
