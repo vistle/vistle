@@ -1078,47 +1078,47 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
    const int mod = moduleExit.senderId();
-   sendAllOthers(mod, moduleExit, MessagePayload(), true);
-   const bool local = isLocal(mod);
 
-   if (!moduleExit.isForwarded()) {
+    //CERR << " Module [" << mod << "] quit" << std::endl;
 
-      if (local) {
-          if (runningMap.find(mod) == runningMap.end()) {
-              CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
-              return true;
-          }
+    if (moduleExit.isForwarded()) {
+        sendAllOthers(mod, moduleExit, MessagePayload(), true);
 
-          ModuleSet::iterator it = reachedSet.find(mod);
-          if (it != reachedSet.end()) {
-              reachedSet.erase(it);
-          } else {
-              if (m_barrierActive && checkBarrier(m_barrierUuid))
-                  barrierReached(m_barrierUuid);
-          }
-      }
+        RunningMap::iterator it = runningMap.find(mod);
+        if (it != runningMap.end()) {
+            runningMap.erase(it);
+        } else {
+            //CERR << " Module [" << mod << "] not found in map" << std::endl;
+        }
 
-      if (m_rank == 0) {
-         message::ModuleExit exit = moduleExit;
-         exit.setForwarded();
-         sendHub(exit);
-         if (!Communicator::the().broadcastAndHandleMessage(exit))
+        return true;
+    }
+
+    const bool local = isLocal(mod);
+    if (local) {
+        if (runningMap.find(mod) == runningMap.end()) {
+            CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
+            return true;
+        }
+
+        ModuleSet::iterator it = reachedSet.find(mod);
+        if (it != reachedSet.end()) {
+            reachedSet.erase(it);
+        } else {
+            if (m_barrierActive && checkBarrier(m_barrierUuid))
+                barrierReached(m_barrierUuid);
+        }
+    }
+
+    if (m_rank == 0) {
+        message::ModuleExit exit = moduleExit;
+        exit.setForwarded();
+        sendHub(exit);
+        if (!Communicator::the().broadcastAndHandleMessage(exit))
             return false;
-      }
-   }
+    }
 
-   //CERR << " Module [" << mod << "] quit" << std::endl;
-
-   { 
-      RunningMap::iterator it = runningMap.find(mod);
-      if (it != runningMap.end()) {
-         runningMap.erase(it);
-      } else {
-         //CERR << " Module [" << mod << "] not found in map" << std::endl;
-      }
-   }
-
-   return true;
+    return true;
 }
 
 bool ClusterManager::handlePriv(const message::Execute &exec) {
