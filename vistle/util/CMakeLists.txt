@@ -42,11 +42,11 @@ endif()
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
-        ${Boost_LIBRARIES}
+    PRIVATE ${Boost_LIBRARIES}
 )
-if(UNIX)
-   target_link_libraries(vistle_util Threads::Threads)
-endif()
+target_link_libraries(vistle_util
+    PRIVATE Threads::Threads
+)
 
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}

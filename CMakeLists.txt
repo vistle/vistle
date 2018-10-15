@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_C_STANDARD 99)
 project(Vistle C CXX)
+
+#find_package(Threads)
+#message("THREADS: ${CMAKE_THREAD_LIB_INIT}")
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "CrayLinuxEnvironment")
    message("compiling for Cray")

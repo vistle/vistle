@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system filesystem)
 
 if (NOT VISTLE_MULTI_PROCESS)
     set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
