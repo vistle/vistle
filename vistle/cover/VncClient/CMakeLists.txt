@@ -54,9 +54,8 @@ endif()
 
 cover_add_plugin(VncClient ${HEADER} ${SOURCES})
 target_link_libraries(VncClient vistle_rhr ${TURBOJPEG_LIBRARIES} ${LIBVNCSERVER_CLIENT_LIBRARY} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
-if(UNIX AND NOT APPLE)
-    target_link_libraries(VncClient
-        -lpthread                                                                                                                                                                                                                                                                           
-    )
+if(UNIX)
+   target_link_libraries(VncClient Threads::Threads)
+endif()
 endif()
 

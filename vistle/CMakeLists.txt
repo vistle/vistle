@@ -156,7 +156,8 @@ set(OpenGL_GL_PREFERENCE LEGACY)
 vistle_find_package(OpenGL)
 
 set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
-vistle_find_package(Threads)
+set (THREADS_PREFER_PTHREAD_FLAG TRUE)
+vistle_find_package(Threads REQUIRED)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

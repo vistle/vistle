@@ -44,10 +44,8 @@ vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
 )
-if(UNIX AND NOT APPLE)
-   target_link_libraries(vistle_util
-        -lpthread                                                                                                                                                                                                                                                                           
-   )
+if(UNIX)
+   target_link_libraries(vistle_util Threads::Threads)
 endif()
 
 include_directories(SYSTEM
