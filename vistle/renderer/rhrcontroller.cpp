@@ -208,25 +208,29 @@ int RhrController::rootRank() const {
     return m_displayRank==-1 ? 0 : m_displayRank;
 }
 
-void RhrController::tryConnect() {
+bool RhrController::hasConnection() const {
+
+    if (!m_rhr)
+        return false;
+
+    return m_rhr->numClients() > 0;
+}
+
+void RhrController::tryConnect(double wait) {
 
     if (!m_rhr)
         return;
 
     switch(m_rhrConnectionMethod->getValue()) {
     case Reverse: {
-        int tries = 0;
-        while (m_rhr->numClients() < 1) {
+        int seconds = wait;
+        if (m_rhr->numClients() < 1) {
             std::string host = m_rhrRemoteEndpoint->getValue();
             unsigned short port = m_rhrRemotePort->getValue();
-            m_module->sendInfo("trying to connect to %s:%hu", host.c_str(), port);
-            if (!m_rhr->makeConnection(m_rhrRemoteEndpoint->getValue(), m_rhrRemotePort->getValue(), 10)) {
-                m_module->sendWarning("connection to %s:%hu failed", host.c_str(), port);
+            m_module->sendInfo("trying for %d seconds to connect to %s:%hu", seconds, host.c_str(), port);
+            if (!m_rhr->makeConnection(m_rhrRemoteEndpoint->getValue(), m_rhrRemotePort->getValue(), seconds)) {
+                m_module->sendWarning("connection attempt to %s:%hu failed", host.c_str(), port);
             }
-            ++tries;
-            if (tries > 3)
-                break;
-            sleep(1);
         }
         break;
     }

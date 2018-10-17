@@ -244,6 +244,9 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
+   if (!m_rhrControl.hasConnection())
+       m_rhrControl.tryConnect(0.0);
+
    m_updateScene = 0;
    auto rhr = m_rhrControl.server();
    if (rhr) {

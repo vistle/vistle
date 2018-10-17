@@ -17,7 +17,8 @@ class V_RENDEREREXPORT RhrController {
 
    std::shared_ptr<RhrServer> server() const;
    int rootRank() const;
-   void tryConnect();
+   bool hasConnection() const;
+   void tryConnect(double wait=1.);
 
    void addClient(const Port *client);
    void removeClient(const Port *client);
