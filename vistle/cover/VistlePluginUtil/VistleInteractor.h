@@ -4,6 +4,9 @@
 #include <cover/coInteractor.h>
 #include <core/message.h>
 #include <core/messages.h>
+#include <core/messagesender.h>
+
+#include "export.h"
 
 class ModuleRenderObject;
 
@@ -11,7 +14,7 @@ namespace vistle {
 class Module;
 };
 
-class VistleInteractor: public opencover::coInteractor {
+class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
 
  public:
    VistleInteractor(const vistle::Module *owner, const std::string &moduleName, int moduleId);
@@ -122,7 +125,7 @@ class VistleInteractor: public opencover::coInteractor {
    virtual const char *getString(unsigned int i) const;
 
  private:
-   const vistle::Module *m_owner;
+   const vistle::MessageSender *m_owner;
    std::string m_moduleName;
    int m_moduleId;
    std::shared_ptr<ModuleRenderObject> m_object;

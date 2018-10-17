@@ -18,9 +18,9 @@
 #include <osg/MatrixTransform>
 
 #include <VistlePluginUtil/VistleRenderObject.h>
+#include <VistlePluginUtil/VistleInteractor.h>
 #include <PluginUtil/StaticSequence.h>
 #include "VistleGeometryGenerator.h"
-#include "VistleInteractor.h"
 
 #include "OsgRenderer.h"
 
@@ -216,30 +216,30 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
+   if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
+       plugin = "RhrClient";
    // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
-   if (plugin == "CuttingSurface"
-         || plugin == "Tracer"
-         || plugin == "IsoSurface") {
-      cover->addPlugin(plugin.c_str());
-
 #if 0
-      auto creator = creatorMap.find(senderId);
-      if (creator == creatorMap.end()) {
-         creatorMap.insert(std::make_pair(senderId, Creator(senderId, moduleName, vistleRoot)));
-      }
+   auto creator = creatorMap.find(senderId);
+   if (creator == creatorMap.end()) {
+       creatorMap.insert(std::make_pair(senderId, Creator(senderId, moduleName, vistleRoot)));
+   }
 #endif
 
-      InteractorMap::iterator it = m_interactorMap.find(senderId);
-      if (it == m_interactorMap.end()) {
-         m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
-         it = m_interactorMap.find(senderId);
-         std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
-         it->second->incRefCount();
-      }
-      VistleInteractor *inter = it->second;
-      inter->addParam(name, msg);
+   InteractorMap::iterator it = m_interactorMap.find(senderId);
+   if (it == m_interactorMap.end()) {
+       if (vistle::message::Id::isModule(senderId))
+           cover->addPlugin(plugin.c_str());
+
+       m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
+       it = m_interactorMap.find(senderId);
+       std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
+       it->second->incRefCount();
    }
+   VistleInteractor *inter = it->second;
+   inter->addParam(name, msg);
+
    return true;
 }
 

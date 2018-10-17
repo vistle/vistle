@@ -11,10 +11,11 @@
 #include <renderer/renderer.h>
 #include <core/messages.h>
 #include <VistlePluginUtil/VistleRenderObject.h>
-#include "VistleInteractor.h"
 #include "VistleGeometryGenerator.h"
 
 #include "export.h"
+
+class VistleInteractor;
 
 #define OsgRenderer COVER
 

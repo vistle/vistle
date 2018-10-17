@@ -24,6 +24,7 @@
 #include <core/grid.h>
 #include <core/message.h>
 #include <core/parametermanager.h>
+#include <core/messagesender.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -54,7 +55,7 @@ class RemoveParameter;
 class MessageQueue;
 }
 
-class V_MODULEEXPORT Module: public ParameterManager {
+class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    friend class Renderer;
 
  public:
@@ -123,7 +124,7 @@ class V_MODULEEXPORT Module: public ParameterManager {
    void removePortMapping(unsigned short forwardPort);
 
    void sendParameterMessage(const message::Message &message) const override;
-   void sendMessage(const message::Message &message) const;
+   bool sendMessage(const message::Message &message) const override;
 
    //! type should be a message::SendText::TextType
    void sendText(int type, const std::string &msg) const;

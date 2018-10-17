@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub)(Reverse))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub)(AutomaticReverse)(UserReverse))
 
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
@@ -45,6 +45,9 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    m_rhrRemotePort = module->addIntParameter("rhr_remote_port", "port where renderer should connect to", 31589);
    module->setParameterRange(m_rhrRemotePort, (Integer)1, (Integer)((1<<16)-1));
    m_rhrRemoteEndpoint = module->addStringParameter("rhr_remote_host", "address where renderer should connect to", "localhost");
+   m_rhrAutoRemotePort = module->addIntParameter("_rhr_auto_remote_port", "port where renderer should connect to", 0);
+   module->setParameterRange(m_rhrAutoRemotePort, (Integer)0, (Integer)((1<<16)-1));
+   m_rhrAutoRemoteEndpoint = module->addStringParameter("_rhr_auto_remote_host", "address where renderer should connect to", "localhost");
 
    m_sendTileSizeParam = module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
@@ -78,20 +81,22 @@ bool RhrController::initializeServer() {
        return true;
    }
 
-   // make sure that dtor runs before ctor of new RhrServer
-   if (m_rhr && m_rhrConnectionMethod->getValue()==Reverse) {
-       if (!m_rhr->isConnecting() || m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort())
-           m_rhr.reset();
-   }
+   bool requireServer = m_rhrConnectionMethod->getValue()!=UserReverse && m_rhrConnectionMethod->getValue()!=AutomaticReverse;
 
-   if (m_rhr && m_rhrConnectionMethod->getValue()!=Reverse) {
-       if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
-           m_rhr.reset();
+   if (m_rhr) {
+       // make sure that dtor runs before ctor of new RhrServer
+       if (requireServer) {
+           if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
+               m_rhr.reset();
+       } else {
+           if (!m_rhr->isConnecting() || m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort())
+               m_rhr.reset();
+       }
    }
 
    if (!m_rhr) {
        m_rhr.reset(new RhrServer());
-       if (m_rhrConnectionMethod->getValue() != Reverse) {
+       if (requireServer) {
            m_rhr->startServer(m_rhrBasePort->getValue());
        }
    }
@@ -137,7 +142,10 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
           }
           break;
       }
-      case Reverse: {
+      case AutomaticReverse: {
+          break;
+      }
+      case UserReverse: {
           break;
       }
       }
@@ -222,14 +230,21 @@ void RhrController::tryConnect(double wait) {
         return;
 
     switch(m_rhrConnectionMethod->getValue()) {
-    case Reverse: {
+    case AutomaticReverse:
+    case UserReverse: {
         int seconds = wait;
         if (m_rhr->numClients() < 1) {
             std::string host = m_rhrRemoteEndpoint->getValue();
             unsigned short port = m_rhrRemotePort->getValue();
-            m_module->sendInfo("trying for %d seconds to connect to %s:%hu", seconds, host.c_str(), port);
-            if (!m_rhr->makeConnection(m_rhrRemoteEndpoint->getValue(), m_rhrRemotePort->getValue(), seconds)) {
-                m_module->sendWarning("connection attempt to %s:%hu failed", host.c_str(), port);
+            if (m_rhrConnectionMethod->getValue() == AutomaticReverse) {
+                host = m_rhrAutoRemoteEndpoint->getValue();
+                port = m_rhrAutoRemotePort->getValue();
+            }
+            if (port > 0) {
+                m_module->sendInfo("trying for %d seconds to connect to %s:%hu", seconds, host.c_str(), port);
+                if (!m_rhr->makeConnection(host, port, seconds)) {
+                    m_module->sendWarning("connection attempt to %s:%hu failed", host.c_str(), port);
+                }
             }
         }
         break;
@@ -246,10 +261,15 @@ std::string RhrController::getConfigString() const {
         auto host = listenHost();
         unsigned short port = listenPort();
         config << "connect " << host << " " << port;
-    } else {
+    } else if (connectionMethod() == RhrController::Listen) {
         auto host = connectHost();
         unsigned short port = connectPort();
-        config << "listen " << host << " " << port;
+        if (port > 0) {
+            config << "listen " << host << " " << port;
+        } else {
+            int id = m_module->id();
+            config << "listen " << ":" << id << " " << ":" << id;
+        }
     }
 
     return config.str();
@@ -312,7 +332,8 @@ void RhrController::removeClient(const Port *client) {
 RhrController::ConnectionDirection RhrController::connectionMethod() const {
 
     switch(m_rhrConnectionMethod->getValue()) {
-    case Reverse:
+    case AutomaticReverse:
+    case UserReverse:
         return Listen;
     default:
         break;
@@ -351,13 +372,20 @@ std::string RhrController::listenHost() const {
 
 unsigned short RhrController::connectPort() const {
 
-    return m_rhrRemotePort->getValue();
+    switch (m_rhrConnectionMethod->getValue()) {
+    case UserHostname:
+        return m_rhrRemotePort->getValue();
+    default:
+        break;
+    }
+
+    return 0;
 }
 
 std::string RhrController::connectHost() const {
 
     switch (m_rhrConnectionMethod->getValue()) {
-    case Reverse:
+    case UserReverse:
         return m_rhrRemoteEndpoint->getValue();
     default:
         break;

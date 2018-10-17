@@ -44,6 +44,8 @@ class SelectionList;
 }
 }
 
+class VistleInteractor;
+
 using namespace opencover;
 using namespace vistle;
 
@@ -75,6 +77,7 @@ public:
                   const RenderObject *geometry, const RenderObject *normals,
                   const RenderObject *colors, const RenderObject *texture) override;
    void removeObject(const char *objName, bool replaceFlag) override;
+   void newInteractor(const RenderObject *container, coInteractor *it) override;
    bool update() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
    void setTimestep(int t) override;
@@ -100,8 +103,8 @@ private:
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
-   bool connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
-   bool startListen(const std::string &connectionName, unsigned short port);
+   std::shared_ptr<RemoteConnection> connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
+   std::shared_ptr<RemoteConnection> startListen(const std::string &connectionName, unsigned short port, unsigned short portLast=0);
    void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
    bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
    bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote, bool updateOnly=false);
@@ -157,5 +160,7 @@ private:
    osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
    std::map<std::string, std::shared_ptr<RemoteConnection>> m_remotes;
    std::map<std::string, bool> m_coverVariants; //< whether a Variant is visible
+   std::map<int, VistleInteractor *> m_interactors;
+   void setServerParameters(int module, const std::string &host, unsigned short port) const;
 };
 #endif

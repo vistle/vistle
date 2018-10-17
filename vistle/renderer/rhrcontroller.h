@@ -30,7 +30,7 @@ class V_RENDEREREXPORT RhrController {
        Listen, // server connects to client
    };
 
-   ConnectionDirection connectionMethod() const;
+   ConnectionDirection connectionMethod() const; // for the client
 
    // where this server is listening
    unsigned short listenPort() const;
@@ -58,6 +58,8 @@ class V_RENDEREREXPORT RhrController {
    unsigned short m_forwardPort; //< current port mapping
    StringParameter *m_rhrRemoteEndpoint;
    IntParameter *m_rhrRemotePort;
+   StringParameter *m_rhrAutoRemoteEndpoint;
+   IntParameter *m_rhrAutoRemotePort;
 
    IntParameter *m_rgbaEncoding;
    RhrServer::ColorCodec m_rgbaCodec;

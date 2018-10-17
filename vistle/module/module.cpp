@@ -1028,7 +1028,7 @@ void Module::sendParameterMessage(const message::Message &message) const {
     sendMessage(message);
 }
 
-void Module::sendMessage(const message::Message &message) const {
+bool Module::sendMessage(const message::Message &message) const {
 
    // exclude SendText messages to avoid circular calls
    if (message.type() != message::SENDTEXT
@@ -1046,6 +1046,8 @@ void Module::sendMessage(const message::Message &message) const {
        sendMessageQueue->send(message);
 #endif
    }
+
+   return true;
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {

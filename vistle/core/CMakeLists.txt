@@ -106,6 +106,7 @@ set(core_HEADERS
    messages.h
    messagequeue.h
    messagerouter.h
+   messagesender.h
    normals.h
    normals_impl.h
    object.h

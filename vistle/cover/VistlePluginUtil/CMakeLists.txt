@@ -1,9 +1,11 @@
 set(pluginutil_SOURCES
+   VistleInteractor.cpp
    VistleRenderObject.cpp
 )
 
 set(pluginutil_HEADERS
    export.h
+   VistleInteractor.h
    VistleRenderObject.h
 )
 

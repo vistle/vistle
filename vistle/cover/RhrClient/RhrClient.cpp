@@ -69,8 +69,10 @@
 
 using message::RemoteRenderMessage;
 #include <core/tcpmessage.h>
+#include <util/hostname.h>
 
 #include <VistlePluginUtil/VistleRenderObject.h>
+#include <VistlePluginUtil/VistleInteractor.h>
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
@@ -92,6 +94,8 @@ typedef tbb::enumerable_thread_specific<TjDecomp> TjContext;
 static TjContext tjContexts;
 #endif
 
+static const unsigned short PortRange[] = { 31000, 32000 };
+
 typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 RhrClient *RhrClient::plugin = NULL;
@@ -105,15 +109,20 @@ class RemoteConnection {
 
     bool m_listen;
     std::string m_host;
-    unsigned short m_port;
+    unsigned short m_port = 0;
+    unsigned short m_portFirst = 0, m_portLast = 0;
+    bool m_findPort = false;
     asio::ip::tcp::socket m_sock;
     std::recursive_mutex *m_mutex=nullptr, *m_sendMutex=nullptr;
     std::thread *m_thread = nullptr;
     bool haveMessage = false;
     bool m_running = false;
+    bool m_listening = false;
     bool m_connected = false;
     bool m_interrupt = false;
     bool m_isMaster = false;
+    bool m_setServerParameters = false;
+    int m_moduleId = 0;
     std::deque<TileMessage> m_receivedTiles;
     std::map<std::string, vistle::RenderObject::InitialVariantVisibility> m_variantsToAdd;
     std::set<std::string> m_variantsToRemove;
@@ -146,6 +155,25 @@ class RemoteConnection {
         , m_port(port)
         , m_sock(plugin->m_io)
         , m_isMaster(isMaster)
+    {
+        boundsNode = new osg::Node;
+        m_mutex = new std::recursive_mutex;
+        m_sendMutex = new std::recursive_mutex;
+        if (isMaster) {
+            m_running = true;
+            m_thread = new std::thread(std::ref(*this));
+        }
+    }
+
+    RemoteConnection(RhrClient *plugin, unsigned short portFirst, unsigned short portLast, bool isMaster)
+        : plugin(plugin)
+        , m_listen(true)
+        , m_port(0)
+        , m_portFirst(portFirst)
+        , m_portLast(portLast)
+        , m_sock(plugin->m_io)
+        , m_isMaster(isMaster)
+        , m_setServerParameters(true)
     {
         boundsNode = new osg::Node;
         m_mutex = new std::recursive_mutex;
@@ -208,16 +236,28 @@ class RemoteConnection {
         {
             lock_guard locker(*m_mutex);
             assert(m_running);
+            m_listening = false;
         }
 
         if (m_listen) {
             boost::system::error_code ec;
             asio::ip::tcp::acceptor acceptor(plugin->m_io);
-            asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
-            acceptor.open(endpoint.protocol(), ec);
-            if (ec == boost::system::errc::address_family_not_supported) {
-                endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+            int first = m_port, last = m_port;
+            if (m_portFirst>0 && m_portLast>0) {
+                first = m_portFirst;
+                last = m_portLast;
+            }
+            asio::ip::tcp::endpoint endpoint;
+            for (m_port=first; m_port<last; ++m_port) {
+                endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v6(), m_port);
                 acceptor.open(endpoint.protocol(), ec);
+                if (ec == boost::system::errc::address_family_not_supported) {
+                    endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+                    acceptor.open(endpoint.protocol(), ec);
+                }
+                if (ec != boost::system::errc::address_in_use) {
+                    break;
+                }
             }
             if (ec) {
                 cover->notify(Notify::Error) << "RhrClient: could not open port " << m_port << " for listening: " << ec.message() << std::endl;
@@ -242,6 +282,10 @@ class RemoteConnection {
                 lock_guard locker(*m_mutex);
                 m_running = false;
                 return;
+            }
+            {
+                lock_guard locker(*m_mutex);
+                m_listening = true;
             }
             do {
                 acceptor.accept(m_sock, ec);
@@ -393,6 +437,7 @@ class RemoteConnection {
         }
         return true;
     }
+
     void update() {
         lock_guard locker(*m_mutex);
         updateVariants();
@@ -458,7 +503,6 @@ class RemoteConnection {
         m_variantsToRemove.clear();
     }
 
-
     //! handle RFB bounds message
     bool handleBounds(const RemoteRenderMessage &msg, const boundsMsg &bound) {
 
@@ -506,6 +550,11 @@ class RemoteConnection {
     bool isRunning() const {
         lock_guard locker(*m_mutex);
         return m_running;
+    }
+
+    bool isListening() const {
+        lock_guard locker(*m_mutex);
+        return m_running && m_listening;
     }
 
     bool isConnecting() const {
@@ -1215,9 +1264,15 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
     //std::cerr << "RhrClient: connection config string=" << attr << std::endl;
 
     std::stringstream config(attr);
-    unsigned short port;
-    std::string method, address;
-    config >> method >> address >> port;
+    std::string method, address, portString;
+    config >> method >> address >> portString;
+    unsigned short port = 0;
+    int moduleId = 0;
+    if (portString[0] == ':') {
+        std::stringstream(portString.substr(1)) >> moduleId;
+    } else {
+        std::stringstream(portString) >> port;
+    }
     std::cerr << "RhrClient: connection config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
 
     if (method == "connect") {
@@ -1229,10 +1284,14 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
             connectClient(baseObj->getName(), address, port);
         }
     } else if (method == "listen") {
-        if (port == 0) {
-            cover->notify(Notify::Error) << "RhrClient: no attempt to start server: invalid port: " << port << std::endl;
-        } else {
+        if (moduleId > 0) {
+            if (auto remote = startListen(baseObj->getName(), PortRange[0], PortRange[1])) {
+                remote->m_moduleId = moduleId;
+            }
+        } else if (port > 0) {
             startListen(baseObj->getName(), port);
+        } else {
+            cover->notify(Notify::Error) << "RhrClient: no attempt to start server: invalid port: " << port << std::endl;
         }
     }
 }
@@ -1246,6 +1305,23 @@ void RhrClient::removeObject(const char *objName, bool replaceFlag) {
         return;
     clientCleanup(it->second);
     m_remote.reset();
+}
+
+void RhrClient::newInteractor(const opencover::RenderObject *container, coInteractor *it) {
+
+    auto vit = dynamic_cast<VistleInteractor *>(it);
+    if (!vit)
+        return;
+
+    int id = vit->getModuleInstance();
+    auto iter = m_interactors.find(id);
+    if (iter != m_interactors.end()) {
+        iter->second->decRefCount();
+        m_interactors.erase(iter);
+    }
+
+    m_interactors[id] = vit;
+    vit->incRefCount();
 }
 
 //! this is called if the plugin is removed at runtime
@@ -1265,6 +1341,16 @@ RhrClient::~RhrClient()
    plugin = NULL;
 }
 
+void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const {
+    auto it = m_interactors.find(m_remote->m_moduleId);
+    if (it == m_interactors.end())
+        return;
+
+    auto inter = it->second;
+    inter->setScalarParam("_rhr_auto_remote_port", int(port));
+    inter->setStringParam("_rhr_auto_remote_host", host.c_str());
+}
+
 //! this is called before every frame, used for polling for RFB messages
 bool
 RhrClient::update()
@@ -1277,7 +1363,17 @@ RhrClient::update()
    bool running = coVRMSController::instance()->syncBool(m_remote && m_remote->isRunning());
    if (m_remote && !running) {
        clientCleanup(m_remote);
+       if (m_remote->m_moduleId) {
+           setServerParameters(m_remote->m_moduleId, "", 0);
+       }
        m_remote.reset();
+   }
+
+   if (m_remote && m_remote->isListening()) {
+       if (m_remote->m_setServerParameters) {
+           m_remote->m_setServerParameters = false;
+           setServerParameters(m_remote->m_moduleId, vistle::hostname(), m_remote->m_port);
+       }
    }
 
    bool needUpdate = false;
@@ -1696,7 +1792,7 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
     }
 }
 
-bool RhrClient::connectClient(const std::string &connectionName, const std::string &address, unsigned short port) {
+std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &connectionName, const std::string &address, unsigned short port) {
 
    m_avgDelay = 0.;
 
@@ -1706,20 +1802,25 @@ bool RhrClient::connectClient(const std::string &connectionName, const std::stri
    m_remote.reset(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
    m_remotes[connectionName] = m_remote;
 
-   return true;
+   return m_remote;
 }
 
-bool RhrClient::startListen(const std::string &connectionName, unsigned short port) {
+std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &connectionName, unsigned short port, unsigned short portLast) {
 
    m_avgDelay = 0.;
 
    m_remotes.clear();
    m_remote.reset();
-   cover->notify(Notify::Info) << "RhrClient: listening for new RemoteConnection " << connectionName << " on port: " << port << std::endl;
-   m_remote.reset(new RemoteConnection(this, port, coVRMSController::instance()->isMaster()));
+   if (portLast > 0) {
+       cover->notify(Notify::Info) << "RhrClient: new RemoteConnection " << connectionName << " in port range: " << port << "-" << portLast << std::endl;
+       m_remote.reset(new RemoteConnection(this, port, portLast, coVRMSController::instance()->isMaster()));
+   } else {
+       cover->notify(Notify::Info) << "RhrClient: listening for new RemoteConnection " << connectionName << " on port: " << port << std::endl;
+       m_remote.reset(new RemoteConnection(this, port, coVRMSController::instance()->isMaster()));
+   }
    m_remotes[connectionName] = m_remote;
 
-   return true;
+   return m_remote;
 }
 
 //! clean up when connection to server is lost
