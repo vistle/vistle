@@ -8,8 +8,6 @@ endif()
 add_definitions(-DH5_HAVE_PARALLEL)
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
 	${HDF5_INCLUDE_DIRS}
 )
 

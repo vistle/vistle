@@ -1,8 +1,6 @@
 use_openmp()
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
         ${THRUST_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
 )

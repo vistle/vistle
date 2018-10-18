@@ -146,17 +146,13 @@ add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tu
 
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${EMBREE_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
 )
 
 target_link_libraries(DisCOVERay
-        ${Boost_LIBRARIES}
         vistle_boost_mpi
-        ${MPI_C_LIBRARIES}
         vistle_module
         vistle_renderer
         vistle_rhr

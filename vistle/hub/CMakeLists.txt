@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system filesystem)
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
 
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
@@ -28,6 +28,7 @@ vistle_add_executable(vistle ${hub_SOURCES})
 target_link_libraries(vistle
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
+        vistle_util
         vistle_core
         vistle_net
 )

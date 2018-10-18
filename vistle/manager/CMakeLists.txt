@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system filesystem)
+vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
 
 if (NOT VISTLE_MULTI_PROCESS)
     set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
@@ -52,6 +52,7 @@ target_link_libraries(vistle_manager
         vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
+        vistle_util
         vistle_core
         vistle_boost_mpi
 )

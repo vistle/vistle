@@ -1,4 +1,4 @@
-set(BOOST_COMPONENTS iostreams filesystem system)
+set(BOOST_COMPONENTS iostreams system)
 if (WIN32)
    set(BOOST_COMPONENTS ${BOOST_COMPONENTS} zlib)
 endif()
@@ -16,11 +16,6 @@ vistle_find_package(Boost 1.53 COMPONENTS ${BOOST_COMPONENTS})
 if (NOT Boost_FOUND)
     return()
 endif()
-
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-)
 
 if (LibArchive_FOUND)
    include_directories(SYSTEM ${LibArchive_INCLUDE_DIRS})

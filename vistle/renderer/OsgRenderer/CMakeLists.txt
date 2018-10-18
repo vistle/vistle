@@ -50,8 +50,6 @@ set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overl
 endif(WIN32)
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${GLEW_INCLUDE_DIR}
         ${OPENGL_INCLUDE_DIRS}
@@ -68,9 +66,6 @@ if(NOT APPLE AND X11_FOUND)
 endif()
 
 target_link_libraries(OsgRenderer
-        vistle_boost_mpi
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         ${GLEW_LIBRARY}
         ${OPENGL_LIBRARIES}

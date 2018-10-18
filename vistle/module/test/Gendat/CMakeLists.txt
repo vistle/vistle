@@ -1,11 +1,6 @@
 use_openmp()
 enable_testing()
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-)
-
 add_module(Gendat Gendat.cpp)
 
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})

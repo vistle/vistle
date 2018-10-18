@@ -5,8 +5,6 @@ return()
 endif()
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
 	${CFX_INCLUDE_DIRS}
 )
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pg")

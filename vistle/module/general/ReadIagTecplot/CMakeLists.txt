@@ -14,11 +14,6 @@ set(SOURCES
 
 add_module(ReadIagTecplot ${HEADERS} ${SOURCES})
 
-include_directories(SYSTEM
-   ${Boost_INCLUDE_DIRS}
-   ${MPI_C_INCLUDE_PATH}
-)
-
 target_link_libraries(ReadIagTecplot
    ${VTK_LIBRARIES}
 )

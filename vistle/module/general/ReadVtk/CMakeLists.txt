@@ -28,8 +28,6 @@ add_module(ReadVtk
 
 include_directories(SYSTEM
    ${VTK_INCLUDE_DIRS}
-   ${Boost_INCLUDE_DIRS}
-   ${MPI_C_INCLUDE_PATH}
 )
 
 target_link_libraries(ReadVtk

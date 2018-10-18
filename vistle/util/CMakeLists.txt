@@ -42,7 +42,7 @@ endif()
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
-    PRIVATE ${Boost_LIBRARIES}
+    PUBLIC ${Boost_LIBRARIES}
 )
 target_link_libraries(vistle_util
     PRIVATE Threads::Threads

@@ -8,8 +8,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASSIMP_CXX_FLAGS}")
 
 include_directories(
         ${ASSIMP_INCLUDE_DIRS}
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
 )
 
 link_directories(

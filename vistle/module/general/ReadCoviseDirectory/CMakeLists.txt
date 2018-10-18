@@ -8,10 +8,6 @@ add_definitions(-DREAD_DIRECTORY)
 
 add_module(ReadCoviseDirectory ../ReadCovise/ReadCovise.cpp)
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-)
 include_directories(
         ${COVISE_FILE_INCLUDE_DIRS}
 )
