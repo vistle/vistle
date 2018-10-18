@@ -25,6 +25,7 @@
 
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
 #include <QApplication>
+#include <QCoreApplication>
 #include <QIcon>
 #endif
 #endif
@@ -74,10 +75,17 @@ int main(int argc, char ** argv)
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
    if (!qApp) {
        std::cerr << "early creation of QApplication object" << std::endl;
-       auto app = new QApplication(argc, argv);
-       app->setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
-       QIcon icon(":/icons/vistle.png");
-       app->setWindowIcon(icon);
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+       if (getenv("DISPLAY"))
+#endif
+       {
+           auto app = new QApplication(argc, argv);
+       }
+       if (qApp) {
+           qApp->setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
+           QIcon icon(":/icons/vistle.png");
+           qApp->setWindowIcon(icon);
+       }
    }
 #endif
    auto t = std::thread([argc, argv](){
