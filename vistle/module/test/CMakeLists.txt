@@ -1,6 +1,7 @@
 add_subdirectory(AttachObject)
 add_subdirectory(CreateCelltree)
 add_subdirectory(CuttingSurfaceOld)
+add_subdirectory(Dropbear)
 add_subdirectory(FilterNode)
 add_subdirectory(Gendat)
 add_subdirectory(GenIsoDat)
