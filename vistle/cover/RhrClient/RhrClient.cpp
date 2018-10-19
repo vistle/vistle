@@ -1305,6 +1305,7 @@ void RhrClient::removeObject(const char *objName, bool replaceFlag) {
         return;
     clientCleanup(it->second);
     m_remote.reset();
+    m_clientsChanged = true;
 }
 
 void RhrClient::newInteractor(const opencover::RenderObject *container, coInteractor *it) {
@@ -1367,6 +1368,7 @@ RhrClient::update()
            setServerParameters(m_remote->m_moduleId, "", 0);
        }
        m_remote.reset();
+       m_clientsChanged = true;
    }
 
    if (m_remote && m_remote->isListening()) {
@@ -1376,7 +1378,8 @@ RhrClient::update()
        }
    }
 
-   bool needUpdate = false;
+   bool needUpdate = m_clientsChanged;
+   m_clientsChanged = false;
    bool connected = coVRMSController::instance()->syncBool(m_remote && m_remote->isConnected());
    if (m_haveConnection != connected) {
        needUpdate = true;
@@ -1801,6 +1804,7 @@ std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &co
    m_remote.reset();
    m_remote.reset(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
    m_remotes[connectionName] = m_remote;
+   m_clientsChanged = true;
 
    return m_remote;
 }
@@ -1819,6 +1823,7 @@ std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &conn
        m_remote.reset(new RemoteConnection(this, port, coVRMSController::instance()->isMaster()));
    }
    m_remotes[connectionName] = m_remote;
+   m_clientsChanged = true;
 
    return m_remote;
 }

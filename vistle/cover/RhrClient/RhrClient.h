@@ -116,6 +116,7 @@ private:
    asio::io_service m_io;
    //std::shared_ptr<asio::ip::tcp::socket> m_sock;
    bool m_haveConnection;
+   bool m_clientsChanged = false;
    std::shared_ptr<RemoteConnection> m_remote;
 
    int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_oldNumRemoteTimesteps, m_timestepToCommit;
