@@ -25,6 +25,9 @@ public:
    Tunnel(TunnelManager &tunnel, unsigned short listenPort,
          address destAddr, unsigned short destPort);
    ~Tunnel();
+   void startAccept(std::shared_ptr<Tunnel> self);
+   void shutdown();
+
    void cleanUp();
    const address &destAddr() const;
    unsigned short destPort() const;
@@ -37,9 +40,8 @@ private:
    acceptor m_acceptor;
    std::shared_ptr<socket> m_listeningSocket;
    std::vector<std::weak_ptr<TunnelStream>> m_streams;
-   void startAccept();
-   void handleAccept(const boost::system::error_code &error);
-   void handleConnect(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
+   void handleAccept(std::shared_ptr<Tunnel> self, const boost::system::error_code &error);
+   void handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
 };
 
 //! a single established connection being tunneled
@@ -49,12 +51,11 @@ class V_NETEXPORT TunnelStream {
  public:
    TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1);
    ~TunnelStream();
-   std::shared_ptr<TunnelStream> self();
+   void start(std::shared_ptr<TunnelStream> self);
    void destroy();
    void close();
 
  private:
-   std::shared_ptr<TunnelStream> m_self;
    std::vector<std::vector<char>> m_buf;
    std::vector<std::shared_ptr<socket>> m_sock;
    void handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length);

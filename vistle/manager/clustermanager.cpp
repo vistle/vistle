@@ -1812,26 +1812,28 @@ bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel) {
    }
    std::cerr << std::endl;
 
+   if (m_rank > 0) {
+       return Communicator::the().forwardToMaster(tunnel);
+   }
+
    message::RequestTunnel tun(tunnel);
    tun.setDestId(Id::LocalHub);
-   if (m_rank == 0) {
-      if (!tunnel.remove() && tunnel.destType()==RequestTunnel::Unspecified) {
-         CERR << "RequestTunnel: fill in local address" << std::endl;
-         try {
-            auto addr = Communicator::the().m_hubSocket.local_endpoint().address();
-            if (addr.is_v6()) {
+   if (!tunnel.remove() && tunnel.destType()==RequestTunnel::Unspecified) {
+       CERR << "RequestTunnel: fill in local address" << std::endl;
+       try {
+           auto addr = Communicator::the().m_hubSocket.local_endpoint().address();
+           if (addr.is_v6()) {
                tun.setDestAddr(addr.to_v6());
-            } else if (addr.is_v4()) {
+           } else if (addr.is_v4()) {
                tun.setDestAddr(addr.to_v4());
-            }
-         } catch (std::bad_cast &except) {
+           }
+           CERR << "RequestTunnel: " << tun << std::endl;
+       } catch (std::bad_cast &except) {
            CERR << "RequestTunnel: failed to convert local address to v6" << std::endl;
-         }
-      }
+       }
    }
-   if (getRank() == 0)
-      sendHub(tun);
-   return true;
+
+   return sendHub(tun);
 }
 
 bool ClusterManager::handlePriv(const message::Ping &ping) {

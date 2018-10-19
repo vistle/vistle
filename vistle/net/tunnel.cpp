@@ -93,12 +93,13 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
       return false;
    }
    try {
-      std::shared_ptr<Tunnel> tun(new Tunnel(*this, listenPort, destAddr, destPort));
+      auto tun = std::make_shared<Tunnel>(*this, listenPort, destAddr, destPort);
       m_tunnels[listenPort] = tun;
+      tun->startAccept(tun);
       if (m_threads.size() < std::thread::hardware_concurrency())
          startThread();
-   } catch(...) {
-      CERR << "error during tunnel creation" << std::endl;
+   } catch(std::exception &ex) {
+      CERR << "error during tunnel creation: " << ex.what() << std::endl;
    }
    return true;
 }
@@ -122,6 +123,7 @@ bool TunnelManager::removeTunnel(const message::RequestTunnel &msg) {
    }
 #endif
 
+   it->second->shutdown();
    m_tunnels.erase(it);
    return true;
 }
@@ -159,17 +161,34 @@ Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::addres
       throw(err);
    }
    m_acceptor.listen();
-   CERR << "forwarding connections on port " << listenPort << std::endl;
-
-   startAccept();
+   CERR << "forwarding connections on port " << listenPort  << " to " << m_destAddr << ":" << m_destPort << std::endl;
 }
 
 Tunnel::~Tunnel() {
+    shutdown();
+}
+
+void Tunnel::shutdown() {
+
+   if (m_listeningSocket) {
+       if (m_listeningSocket->is_open())
+           m_listeningSocket->close();
+       boost::system::error_code ec;
+       m_listeningSocket->shutdown(asio::socket_base::shutdown_both, ec);
+       if (ec) {
+           CERR << "error during socket shutdown: " << ec.message() << std::endl;
+       }
+       m_listeningSocket.reset();
+   }
+
+   m_acceptor.cancel();
 
    for (auto &s: m_streams) {
       if (std::shared_ptr<TunnelStream> p = s.lock())
          p->destroy();
    }
+
+   cleanUp();
 }
 
 void Tunnel::cleanUp() {
@@ -195,31 +214,30 @@ unsigned short Tunnel::destPort() const {
    return m_destPort;
 }
 
-void Tunnel::startAccept() {
+void Tunnel::startAccept(std::shared_ptr<Tunnel> self) {
 
    m_listeningSocket.reset(new tcp_socket(m_manager.io()));
-   m_acceptor.async_accept(*m_listeningSocket, [this](boost::system::error_code ec){handleAccept(ec);});
+   m_acceptor.async_accept(*m_listeningSocket, [this, self](boost::system::error_code ec){handleAccept(self, ec);});
 }
 
-void Tunnel::handleAccept(const boost::system::error_code &error) {
+void Tunnel::handleAccept(std::shared_ptr<Tunnel> self, const boost::system::error_code &error) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
       return;
    }
 
-   CERR << "incoming connection..." << std::endl;
-
-   std::shared_ptr<tcp_socket> sock(new tcp_socket(m_manager.io()));
+   std::shared_ptr<tcp_socket> sock0 = m_listeningSocket;
+   std::shared_ptr<tcp_socket> sock1(new tcp_socket(m_manager.io()));
    boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
-   CERR << "forwarding to " << dest << std::endl;
-   sock->async_connect(dest,
-         [this, sock](boost::system::error_code ec){ handleConnect(m_listeningSocket, sock, ec); });
+   CERR << "incoming connection from " << sock0->remote_endpoint() << ", forwarding to " << dest << std::endl;
+   sock1->async_connect(dest,
+         [this, self, sock0, sock1](boost::system::error_code ec){ handleConnect(self, sock0, sock1, ec); });
 
-   startAccept();
+   startAccept(self);
 }
 
-void Tunnel::handleConnect(std::shared_ptr<ip::tcp::socket> sock0, std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {
+void Tunnel::handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<ip::tcp::socket> sock0, std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {
 
    if (error) {
       CERR << "error in connect: " << error.message() << std::endl;
@@ -228,8 +246,9 @@ void Tunnel::handleConnect(std::shared_ptr<ip::tcp::socket> sock0, std::shared_p
       return;
    }
    CERR << "connected stream..." << std::endl;
-   TunnelStream *tun = new TunnelStream(sock0, sock1);
-   m_streams.emplace_back(tun->self());
+   auto stream = std::make_shared<TunnelStream>(sock0, sock1);
+   m_streams.emplace_back(stream);
+   stream->start(stream);
 }
 
 #undef CERR
@@ -237,8 +256,6 @@ void Tunnel::handleConnect(std::shared_ptr<ip::tcp::socket> sock0, std::shared_p
 
 TunnelStream::TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1)
 {
-   m_self.reset(this);
-
    m_sock.push_back(sock0);
    m_sock.push_back(sock1);
 
@@ -247,10 +264,9 @@ TunnelStream::TunnelStream(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, 
    }
 
    for (size_t i=0; i<m_sock.size(); ++i) {
-      m_sock[i]->async_read_some(asio::buffer(m_buf[i].data(), m_buf[i].size()),
-            [this, i](boost::system::error_code ec, size_t length) {
-               handleRead(self(), i, ec, length);
-            });
+       auto &sock = m_sock[i];
+       if (!sock->is_open())
+           CERR << "TunnelStream: PROBLEM: socket " << i << " not open" << std::endl;
    }
 }
 
@@ -259,21 +275,35 @@ TunnelStream::~TunnelStream() {
    close();
 }
 
-std::shared_ptr<TunnelStream> TunnelStream::self() {
-   return m_self;
+void TunnelStream::start(std::shared_ptr<TunnelStream> self) {
+    for (size_t i=0; i<m_sock.size(); ++i) {
+        m_sock[i]->async_read_some(asio::buffer(m_buf[i].data(), m_buf[i].size()),
+                                   [this, self, i](boost::system::error_code ec, size_t length) {
+            handleRead(self, i, ec, length);
+        });
+    }
 }
 
 void TunnelStream::close() {
-   for (auto &sock: m_sock)
-      if (sock->is_open())
-         sock->close();
+    for (auto &sock: m_sock) {
+        try {
+            if (sock->is_open())
+                sock->close();
+            boost::system::error_code ec;
+            sock->shutdown(asio::socket_base::shutdown_both, ec);
+            if (ec) {
+                CERR << "error during socket shutdown: " << ec.message() << std::endl;
+            }
+        } catch(const std::exception &ex) {
+            CERR << "caught exception while closing socket: " << ex.what() << std::endl;
+        }
+    }
 }
 
 void TunnelStream::destroy() {
 
    //CERR << "self destruction" << std::endl;
    close();
-   m_self.reset();
 }
 
 void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length) {
@@ -281,12 +311,15 @@ void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx
    //CERR << "handleRead:  sockIdx=" << sockIdx << ", len=" << length << std::endl;
    int other = (sockIdx+1)%2;
    if (ec) {
-      CERR << "read error: " << ec.message() << ", closing stream" << std::endl;
+      CERR << "read error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
       destroy();
       return;
    }
+   //std::cerr << "R" << sockIdx << "(" << length << ")" << std::flush;
    async_write(*m_sock[other], asio::buffer(m_buf[sockIdx].data(), length),
          [this, self, sockIdx](boost::system::error_code error, size_t length) {
+            int other = (sockIdx+1)%2;
+            //std::cerr << "W" << other << "(" << length << ")" << std::flush;
             handleWrite(self, sockIdx, error);
          });
 }
@@ -296,11 +329,11 @@ void TunnelStream::handleWrite(std::shared_ptr<TunnelStream> self, size_t sockId
    //CERR << "handleWrite: sockIdx=" << sockIdx << std::endl;
    int other = (sockIdx+1)%2;
    if (ec) {
-      CERR << "write error: " << ec.message() << ", closing stream" << std::endl;
+      CERR << "write error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
       destroy();
       return;
    }
-   m_sock[other]->async_read_some(asio::buffer(m_buf[other].data(), m_buf[other].size()),
+   m_sock[sockIdx]->async_read_some(asio::buffer(m_buf[sockIdx].data(), m_buf[sockIdx].size()),
          [this, self, sockIdx](boost::system::error_code error, size_t length) {
             handleRead(self, sockIdx, error, length);
          });
