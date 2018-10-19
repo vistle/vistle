@@ -248,7 +248,7 @@ class RemoteConnection {
                 last = m_portLast;
             }
             asio::ip::tcp::endpoint endpoint;
-            for (m_port=first; m_port<last; ++m_port) {
+            for (m_port=first; m_port<=last; ++m_port) {
                 endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v6(), m_port);
                 acceptor.open(endpoint.protocol(), ec);
                 if (ec == boost::system::errc::address_family_not_supported) {

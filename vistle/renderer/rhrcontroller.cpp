@@ -272,7 +272,7 @@ std::string RhrController::getConfigString() const {
             config << "listen " << host << " " << port;
         } else {
             int id = m_module->id();
-            config << "listen " << ":" << id << " " << ":" << id;
+            config << "listen " << "_" << " " << ":" << id;
         }
     }
 
@@ -377,7 +377,7 @@ std::string RhrController::listenHost() const {
 unsigned short RhrController::connectPort() const {
 
     switch (m_rhrConnectionMethod->getValue()) {
-    case UserHostname:
+    case UserReverse:
         return m_rhrRemotePort->getValue();
     default:
         break;
