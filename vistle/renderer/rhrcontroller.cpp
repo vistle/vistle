@@ -89,7 +89,9 @@ bool RhrController::initializeServer() {
            if (m_rhr->isConnecting() || m_rhr->port() != m_rhrBasePort->getValue())
                m_rhr.reset();
        } else {
-           if (!m_rhr->isConnecting() || m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort())
+           if (!m_rhr->isConnecting()
+                   || (m_rhrConnectionMethod->getValue() == UserReverse && (m_rhrRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrRemotePort ->getValue() != m_rhr->destinationPort()))
+                   || (m_rhrConnectionMethod->getValue() == AutomaticReverse && (m_rhrAutoRemoteEndpoint->getValue() != m_rhr->destinationHost() || m_rhrAutoRemotePort ->getValue() != m_rhr->destinationPort())))
                m_rhr.reset();
        }
    }
@@ -109,6 +111,8 @@ bool RhrController::initializeServer() {
    m_rhr->setColorCodec(m_rgbaCodec);
    m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
    m_rhr->setColorCompression(m_rgbaCompress);
+
+   sendConfigObject();
 
    return true;
 }
