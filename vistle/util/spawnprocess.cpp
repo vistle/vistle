@@ -51,17 +51,35 @@ bool kill_process(process_handle pid) {
 #endif
 }
 
-process_handle try_wait() {
+process_handle try_wait(int *status) {
 
 #ifdef _WIN32
 	return 0;
 #else
    int stat = 0;
    pid_t pid = wait3(&stat, WNOHANG, nullptr);
+   if (status)
+       *status = stat;
    if (pid > 0)
       return pid;
-   else
-      return 0;
+
+   return 0;
+#endif
+}
+
+process_handle try_wait(process_handle pid0, int *status) {
+
+#ifdef _WIN32
+    return 0;
+#else
+   int stat = 0;
+   pid_t pid = wait4(pid0, &stat, WNOHANG, nullptr);
+   if (status)
+       *status = stat;
+   if (pid > 0)
+      return pid;
+
+   return 0;
 #endif
 }
 
