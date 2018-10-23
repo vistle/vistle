@@ -30,9 +30,21 @@
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
 #include <xcb/xcb.h>
+#include <X11/ICE/ICElib.h>
 #endif
 #endif
 #endif
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+namespace {
+void iceIOErrorHandler(IceConn conn)
+{
+    (void)conn;
+    std::cerr << "Vistle: ignoring ICE IO error" << std::endl;
+}
+}
+#endif
+
 
 using namespace vistle;
 namespace dir = vistle::directory;
@@ -84,6 +96,7 @@ int main(int argc, char ** argv)
        {
            if (!xcb_connection_has_error(xconn)) {
                std::cerr << "X11 connection!" << std::endl;
+               IceSetIOErrorHandler(&iceIOErrorHandler);
                auto app = new QApplication(argc, argv);
            }
            xcb_disconnect(xconn);
