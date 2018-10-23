@@ -27,6 +27,10 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QIcon>
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#include <xcb/xcb.h>
+#endif
 #endif
 #endif
 
@@ -76,11 +80,17 @@ int main(int argc, char ** argv)
    if (!qApp) {
        std::cerr << "early creation of QApplication object" << std::endl;
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
-       if (getenv("DISPLAY"))
-#endif
+       if (xcb_connection_t *xconn = xcb_connect(nullptr, nullptr))
        {
-           auto app = new QApplication(argc, argv);
+           if (!xcb_connection_has_error(xconn)) {
+               std::cerr << "X11 connection!" << std::endl;
+               auto app = new QApplication(argc, argv);
+           }
+           xcb_disconnect(xconn);
        }
+#else
+       auto app = new QApplication(argc, argv);
+#endif
        if (qApp) {
            qApp->setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
            QIcon icon(":/icons/vistle.png");
