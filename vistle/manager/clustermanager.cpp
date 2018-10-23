@@ -766,10 +766,14 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
       return true;
    }
 
-   if (spawn.destId() == Id::Broadcast) {
+   if (spawn.destId() == Id::Broadcast || spawn.destId() == Id::NextHop) {
       m_stateTracker.handle(spawn);
       sendAllLocal(spawn);
       return true;
+   }
+
+   if (spawn.destId() != Communicator::the().hubId()) {
+       return true;
    }
 
    int newId = spawn.spawnId();
@@ -1629,18 +1633,25 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 #endif
 
    vassert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
+   int sender = setParam.senderId();
+   int dest = setParam.destId();
     RunningMap::iterator i = runningMap.find(setParam.getModule());
     Module *mod = nullptr;
     if (i == runningMap.end()) {
+        if (setParam.getModule() == Id::Vistle || setParam.getModule() == Communicator::the().hubId()) {
+            if (setParam.getModule() == dest) {
+                std::lock_guard<std::mutex> locker(m_parameterMutex);
+                return ParameterManager::handleMessage(setParam);
+            }
+            return true;
+        }
         if (isLocal(setParam.getModule()))
-            CERR << "did not find module for SetParameter: " << setParam.getModule() << std::endl;
-        return true;
+            CERR << "did not find module for SetParameter: " << setParam.getModule() << ": " << setParam << std::endl;
+    } else {
+        mod = &i->second;
     }
-    mod = &i->second;
 
    bool handled = true;
-   int sender = setParam.senderId();
-   int dest = setParam.destId();
    std::shared_ptr<Parameter> applied;
    if (message::Id::isModule(dest)) {
       assert(mod);
@@ -1653,15 +1664,10 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
           }
           mod->send(setParam);
       } else {
-        CERR << "non-broadcast SetParameter: " << setParam << std::endl;
         message::Buffer buf(setParam);
         buf.setBroadcast(true);
-        Communicator::the().broadcastAndHandleMessage(buf);
-        return true;
+        return Communicator::the().broadcastAndHandleMessage(buf);
       }
-   } else if (dest == Id::Vistle || dest==Communicator::the().hubId()) {
-       std::lock_guard<std::mutex> locker(m_parameterMutex);
-       return ParameterManager::handleMessage(setParam);
    } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module
       auto param = getParameter(sender, setParam.getName());

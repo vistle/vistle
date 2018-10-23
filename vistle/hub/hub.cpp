@@ -768,6 +768,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        }
 
        if (m_traceMessages == message::ANY || msg.type() == m_traceMessages
+               || msg.type() == message::SPAWN
 #ifdef DEBUG_DISTRIBUTED
                || msg.type() == message::ADDOBJECT
                || msg.type() == message::ADDOBJECTCOMPLETED
@@ -791,12 +792,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                auto notify = spawn;
                notify.setReferrer(spawn.uuid());
                notify.setSenderId(m_hubId);
+               bool doSpawn = false;
                if (spawn.spawnId() == Id::Invalid) {
                   vassert(spawn.spawnId() == Id::Invalid);
                   notify.setSpawnId(Id::ModuleBase + m_moduleCount);
                   ++m_moduleCount;
-                  notify.setDestId(spawn.hubId());
-                  sendManager(notify, spawn.hubId());
+                  doSpawn = true;
                }
                CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
@@ -804,13 +805,18 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                sendManager(notify);
                sendUi(notify);
                sendSlaves(notify, true /* return to sender */);
+               if (doSpawn) {
+                  notify.setDestId(spawn.hubId());
+                  sendManager(notify, spawn.hubId());
+               }
             } else {
-               if (spawn.spawnId() != Id::Invalid) {
+               CERR << "SLAVE: handle spawn: " << spawn << std::endl;
+               if (spawn.spawnId() == Id::Invalid) {
+                  sendMaster(spawn);
+               } else {
                   m_stateTracker.handle(spawn);
                   sendManager(spawn);
                   sendUi(spawn);
-               } else {
-                  sendMaster(spawn);
                }
             }
             break;

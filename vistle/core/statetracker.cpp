@@ -840,6 +840,8 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    ParameterOrder &po = mod.paramOrder;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
+      if (addParam.senderId() == Id::Vistle)
+          return true;
       CERR << "duplicate parameter " << addParam.moduleName() << ":" << addParam.getName() << std::endl;
    } else {
       pm[addParam.getName()] = addParam.getParameter();
