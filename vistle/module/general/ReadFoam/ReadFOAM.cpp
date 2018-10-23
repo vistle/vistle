@@ -140,47 +140,52 @@ int ReadFOAM::rankForBlock(int processor) const {
    return processor % size();
 }
 
-bool ReadFOAM::examine(const Parameter *)
+bool ReadFOAM::examine(const Parameter *p)
 {
-    std::string casedir = m_casedir->getValue();
+    if (p == m_casedir) {
+        std::string casedir = m_casedir->getValue();
+        if (m_case.valid && m_case.casedir == casedir)
+            return true;
 
-    m_case = getCaseInfo(casedir);
-    if (!m_case.valid) {
-        std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
-        return false;
-    }
-
-    if (rank() == 0) {
-        std::cerr << "# processors: " << m_case.numblocks << std::endl;
-        std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
-        std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
-        std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
-    }
-
-    setTimesteps(m_case.timedirs.size());
-
-    //print out a list of boundary patches to Vistle Console
-    if (rank() == 0) {
-        Boundaries bounds = m_case.loadBoundary("constant/polyMesh");
-        if (bounds.valid) {
-            sendInfo("boundary patches:");
-            for (Index i=0;i<bounds.boundaries.size();++i) {
-                std::stringstream info;
-                info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
-                sendInfo("%s", info.str().c_str());
-            }
-        } else {
-            sendInfo("No global boundary file was found at %s", (m_case.casedir + "/constant/polyMesh/boundary").c_str());
+        m_case = getCaseInfo(casedir);
+        if (!m_case.valid) {
+            std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+            return false;
         }
-    }
 
-    //fill choice parameters
-    std::vector<std::string> choices = getFieldList();
-    for (auto out: m_fieldOut) {
-        setParameterChoices(out, choices);
-    }
-    for (auto out: m_boundaryOut) {
-        setParameterChoices(out, choices);
+        if (rank() == 0) {
+            std::cerr << "OpenFOAM case: " << m_case.casedir << std::endl;
+            std::cerr << "# processors: " << m_case.numblocks << std::endl;
+            std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+            std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+            std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+        }
+
+        setTimesteps(m_case.timedirs.size());
+
+        //print out a list of boundary patches to Vistle Console
+        if (rank() == 0) {
+            Boundaries bounds = m_case.loadBoundary("constant/polyMesh");
+            if (bounds.valid) {
+                sendInfo("boundary patches:");
+                for (Index i=0;i<bounds.boundaries.size();++i) {
+                    std::stringstream info;
+                    info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
+                    sendInfo("%s", info.str().c_str());
+                }
+            } else {
+                sendInfo("No global boundary file was found at %s", (m_case.casedir + "/constant/polyMesh/boundary").c_str());
+            }
+        }
+
+        //fill choice parameters
+        std::vector<std::string> choices = getFieldList();
+        for (auto out: m_fieldOut) {
+            setParameterChoices(out, choices);
+        }
+        for (auto out: m_boundaryOut) {
+            setParameterChoices(out, choices);
+        }
     }
 
     return true;
