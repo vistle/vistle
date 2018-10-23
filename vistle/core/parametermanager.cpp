@@ -92,6 +92,7 @@ Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::s
    message::AddParameter add(*param, m_name);
    add.setDestId(message::Id::ForBroadcast);
    sendParameterMessage(add);
+
    message::SetParameter set(m_id, name, param);
    set.setDestId(message::Id::ForBroadcast);
    set.setInit();

@@ -511,6 +511,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
    switch (message.type()) {
       case CONNECT:
       case DISCONNECT:
+      case SPAWN:
          // handled in handlePriv(...)
          break;
       default:
@@ -764,8 +765,10 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
       // ignore messages where master hub did not yet create an id
       return true;
    }
-   sendAllLocal(spawn);
-   if (spawn.destId() != Communicator::the().hubId()) {
+
+   if (spawn.destId() == Id::Broadcast) {
+      m_stateTracker.handle(spawn);
+      sendAllLocal(spawn);
       return true;
    }
 

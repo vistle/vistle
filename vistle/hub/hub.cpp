@@ -795,9 +795,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   vassert(spawn.spawnId() == Id::Invalid);
                   notify.setSpawnId(Id::ModuleBase + m_moduleCount);
                   ++m_moduleCount;
+                  notify.setDestId(spawn.hubId());
+                  sendManager(notify, spawn.hubId());
                }
-               notify.setDestId(spawn.hubId());
-               sendManager(notify, spawn.hubId());
                CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
                m_stateTracker.handle(notify);
