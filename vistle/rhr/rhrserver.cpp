@@ -40,15 +40,15 @@ namespace vistle {
 
 struct TjComp {
 
-       TjComp()
-                 : handle(tjInitCompress())
-                       {}
+    TjComp()
+    : handle(tjInitCompress())
+    {}
 
-          ~TjComp() {
-                    tjDestroy(handle);
-                       }
+    ~TjComp() {
+        tjDestroy(handle);
+    }
 
-             tjhandle handle;
+    tjhandle handle;
 };
 
 typedef tbb::enumerable_thread_specific<TjComp> TjContext;
@@ -1060,8 +1060,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
 
 bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish, bool sendTiles) {
 
-    static int framecount=0;
-    ++framecount;
+    ++m_framecount;
 
     bool tileReady = false;
     do {
@@ -1087,7 +1086,7 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
               tm.flags |= rfbTileLast;
               //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
            }
-           tm.frameNumber = framecount;
+           tm.frameNumber = m_framecount;
            if (sendTiles)
                send(*msg, &result.payload);
         }

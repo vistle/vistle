@@ -324,6 +324,7 @@ private:
 
    bool send(const RemoteRenderMessage &msg, const std::vector<char> *payload=nullptr);
    void resetClient();
+   int m_framecount = 0;
 };
 
 } // namespace vistle
