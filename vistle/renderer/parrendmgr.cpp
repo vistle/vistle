@@ -49,8 +49,6 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
    m_delay = m_module->addFloatParameter("delay", "artificial delay (s)", m_delaySec);
    m_module->setParameterRange(m_delay, 0., 3.);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
-
-   m_icetComm = icetCreateMPICommunicator((MPI_Comm)m_module->comm());
 }
 
 ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
@@ -59,7 +57,6 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
       if (icet.ctxValid)
          icetDestroyContext(icet.ctx);
    }
-   icetDestroyMPICommunicator(m_icetComm);
 }
 
 Port *ParallelRemoteRenderManager::outputPort() const {
@@ -382,7 +379,9 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       resetTiles = 1;
       m_icet.emplace_back();
       auto &icet = m_icet.back();
-      icet.ctx = icetCreateContext(m_icetComm);
+      auto icetComm = icetCreateMPICommunicator((MPI_Comm)m_module->comm());
+      icet.ctx = icetCreateContext(icetComm);
+      icetDestroyMPICommunicator(icetComm);
       icet.ctxValid = true;
 #ifndef NDEBUG
       // that's too much output

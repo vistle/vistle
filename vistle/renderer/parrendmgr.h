@@ -173,7 +173,6 @@ public:
        }
    };
    std::vector<IceTData> m_icet; // managed locally
-   IceTCommunicator m_icetComm; // common for all contexts
 
    void updateVariants();
    RhrServer::VariantVisibilityMap m_clientVariants;
