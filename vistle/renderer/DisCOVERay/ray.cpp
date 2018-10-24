@@ -27,7 +27,7 @@
 //#include <future>
 #endif
 
-#define ICET_CALLBACK
+//#define ICET_CALLBACK
 
 #define CERR std::cerr << "DisCOVERay: "
 
@@ -39,7 +39,9 @@ const float Epsilon = 1e-9f;
 
 class DisCOVERay: public vistle::Renderer {
 
+#ifdef ICET_CALLBACK
    static DisCOVERay *s_instance;
+#endif
 
  public:
    static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc) {
@@ -64,13 +66,14 @@ class DisCOVERay: public vistle::Renderer {
    };
 
    DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm);
-   ~DisCOVERay();
+   ~DisCOVERay() override;
    void prepareQuit() override;
 
+#ifdef ICET_CALLBACK
    static DisCOVERay &the() {
-
       return *s_instance;
    }
+#endif
 
    bool render() override;
 
@@ -109,12 +112,16 @@ class DisCOVERay: public vistle::Renderer {
    size_t m_timestep;
 
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
+#ifdef ICET_CALLBACK
    static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
+#endif
    void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const IceTInt *viewport,
                    int width, int height, unsigned char *rgba, float *depth);
 };
 
+#ifdef ICET_CALLBACK
 DisCOVERay *DisCOVERay::s_instance = nullptr;
+#endif
 
 
 DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm)
@@ -135,8 +142,10 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
     sleep(10);
 #endif
 
+#ifdef ICET_CALLBACK
    vassert(s_instance == nullptr);
    s_instance = this;
+#endif
 
    /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
@@ -165,8 +174,10 @@ DisCOVERay::~DisCOVERay() {
    rtcDeleteScene(m_scene);
    rtcDeleteDevice(m_device);
 
+#ifdef ICET_CALLBACK
    assert(s_instance == this);
    s_instance = nullptr;
+#endif
 }
 
 void DisCOVERay::prepareQuit() {
@@ -643,6 +654,7 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
    return ro;
 }
 
+#ifdef ICET_CALLBACK
 void  DisCOVERay::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
 
     vistle::Matrix4 MV, P;
@@ -660,6 +672,6 @@ void  DisCOVERay::drawCallback(const IceTDouble *proj, const IceTDouble *mv, con
 
     DisCOVERay::the().renderRect(P, MV, viewport, width, height, rgba, depth);
 }
-
+#endif
 
 MODULE_MAIN(DisCOVERay)
