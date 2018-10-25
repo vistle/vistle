@@ -1432,17 +1432,17 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             if (m_prioritizeVisible && !gang && !exec->allRanks()) {
                 reordered = true;
 
-                if (exec->animationStep() > 0.) {
+                if (exec->animationStepDuration() > 0.) {
                     direction = 1;
-                } else if (exec->animationStep() < 0.) {
+                } else if (exec->animationStepDuration() < 0.) {
                     direction = -1;
                 } else {
                     direction = 0;
                 }
 
                 int headStart = 0;
-                if (std::abs(exec->animationStep()) > 1e-5)
-                    headStart = m_avgComputeTime / std::abs(exec->animationStep());
+                if (std::abs(exec->animationStepDuration()) > 1e-5)
+                    headStart = m_avgComputeTime / std::abs(exec->animationStepDuration());
                 headStart = std::max(1, headStart)+2;
 
                 struct TimeIndex {

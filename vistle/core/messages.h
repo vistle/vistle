@@ -255,8 +255,8 @@ class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
       (Reduce) // call reduce()
    )
 
-   Execute(What what=Execute::ComputeExecute, const int module=Id::Broadcast, const int count=-1);
-   Execute(const int module, double realtime, double step);
+   Execute(What what=Execute::ComputeExecute, int module=Id::Broadcast, int count=-1);
+   Execute(int module, double realtime, double step=0.);
 
    void setModule(int );
    int getModule() const;
@@ -270,7 +270,7 @@ class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
    void setWhat(What r);
 
    double animationRealTime() const;
-   double animationStep() const;
+   double animationStepDuration() const;
 
 private:
    bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
@@ -278,7 +278,7 @@ private:
    int executionCount; //!< count of execution which triggered this execute
    What m_what; //!< reason why this message was generated
    double m_realtime; //!< realtime/timestep currently displayed
-   double m_animationStep; //!< duration of a single timestep
+   double m_animationStepDuration; //!< duration of a single timestep
 };
 static_assert(sizeof(Execute) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(What, Execute)

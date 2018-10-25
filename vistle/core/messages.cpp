@@ -313,17 +313,17 @@ Execute::Execute(Execute::What what, const int module, const int count)
    , executionCount(count)
    , m_what(what)
    , m_realtime(0.)
-   , m_animationStep(1./25.)
+   , m_animationStepDuration(1./25.)
 {
 }
 
-Execute::Execute(const int module, double realtime, double step)
+Execute::Execute(const int module, double realtime, double stepsize)
 : m_allRanks(false)
 , module(module)
 , executionCount(-1)
 , m_what(ComputeExecute)
 , m_realtime(realtime)
-, m_animationStep(step)
+, m_animationStepDuration(stepsize)
 {
 }
 
@@ -371,8 +371,8 @@ double Execute::animationRealTime() const {
     return m_realtime;
 }
 
-double Execute::animationStep() const {
-    return m_animationStep;
+double Execute::animationStepDuration() const {
+    return m_animationStepDuration;
 }
 
 
