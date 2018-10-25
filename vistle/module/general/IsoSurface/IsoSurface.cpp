@@ -51,9 +51,9 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
 #else
-   setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
    m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
+   setReducePolicy(message::ReducePolicy::Locally);
    m_pointOrValue = addIntParameter("Interactor", "point or value interaction", Value, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 
@@ -104,13 +104,19 @@ bool IsoSurface::prepare() {
 
    m_min = std::numeric_limits<Scalar>::max() ;
    m_max = -std::numeric_limits<Scalar>::max();
+
+   m_performedPointSearch = false;
+
    return Module::prepare();
 }
 
 bool IsoSurface::reduce(int timestep) {
 
 #ifndef CUTTINGSURFACE
-   if (timestep <=0 && m_pointOrValue->getValue() == Point) {
+   if (rank() == 0)
+       std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
+   if (timestep <=0 && m_pointOrValue->getValue() == Point && !m_performedPointSearch) {
+       m_performedPointSearch = true;
        Scalar value = m_isovalue->getValue();
        int found = 0;
        Vector point = m_isopoint->getValue();
@@ -126,8 +132,11 @@ bool IsoSurface::reduce(int timestep) {
            }
        }
        int numFound = boost::mpi::all_reduce(comm(), found, std::plus<int>());
-       if (m_rank == 0 && numFound > 1) {
-           sendWarning("found isopoint in %d blocks", numFound);
+       if (m_rank == 0) {
+           if (numFound == 0)
+               sendWarning("did not find isopoint in any block");
+           else if (numFound > 1)
+               sendWarning("found isopoint in %d blocks", numFound);
        }
        int valRank = found ? m_rank : m_size;
        valRank = boost::mpi::all_reduce(comm(), valRank, boost::mpi::minimum<int>());

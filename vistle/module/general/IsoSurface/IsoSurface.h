@@ -42,6 +42,7 @@ class IsoSurface: public vistle::Module {
 
    vistle::Scalar m_min, m_max;
    vistle::Float m_paraMin, m_paraMax;
+   bool m_performedPointSearch = false;
 
    IsoController isocontrol;
 };
