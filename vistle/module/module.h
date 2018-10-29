@@ -231,7 +231,7 @@ protected:
    bool getNextMessage(message::Buffer &buf, bool block=true);
 
  private:
-   bool reduceWrapper(const message::Execute *exec);
+   bool reduceWrapper(const message::Execute *exec, bool reordered=false);
    bool prepareWrapper(const message::Execute *exec);
 
    std::shared_ptr<StateTracker> m_stateTracker;
@@ -253,7 +253,7 @@ protected:
    //! notify that a module removed a parameter
    virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
-   virtual bool compute() = 0; //< do processing - called on each rank individually
+   virtual bool compute(); //< do processing - called on each rank individually
 
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;
