@@ -1,6 +1,8 @@
 vistle_find_package(TBB)
 use_openmp()
 
+set(PREFER_TBB TRUE)
+
 set(SOURCES
     ../IsoSurface/IsoSurface.cpp
     ../IsoSurface/IsoSurface.h
@@ -17,7 +19,9 @@ if(NOT APPLE AND CUDA_FOUND AND FALSE)
    cuda_compile(CUDA_OBJ "../IsoSurface/Leveller.cu")
 else()
    set(SOURCES ${SOURCES} "../IsoSurface/Leveller.cpp")
-   if(OPENMP_FOUND)
+   if(TBB_FOUND AND PREFER_TBB)
+      add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
+   elseif(OPENMP_FOUND)
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
    elseif(TBB_FOUND)
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
@@ -26,7 +30,10 @@ else()
    endif()
 endif()
 
-if(OPENMP_FOUND)
+if(TBB_FOUND AND PREFER_TBB)
+   add_definitions(-DUSE_TBB)
+   add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
+elseif(OPENMP_FOUND)
    add_definitions(-DUSE_OMP)
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
 elseif(TBB_FOUND)
