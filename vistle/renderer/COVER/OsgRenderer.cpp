@@ -577,7 +577,7 @@ std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
         envvars.push_back("OSG_NOTIFY_LEVEL");
         envvars.push_back("OSG_LIBRARY_PATH");
         envvars.push_back("OSG_LD_LIBRARY_PATH");
-        for (auto v : envvars) {
+        for (auto v: envvars) {
 
             const char *val = getenv(v.c_str());
             if (val)
@@ -587,10 +587,18 @@ std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
         std::string covisedir = env["COVISEDIR"];
         std::string archsuffix = env["ARCHSUFFIX"];
 
+        if (covisedir.empty()) {
+            std::string print_covise_env = covisedir + "print_covise_env";
+#ifdef _WIN32
+            print_covise_env += ".bat";
+#endif
+#if 0
+        }
         if (!covisedir.empty()) {
             std::string print_covise_env = covisedir + "/bin/print_covise_env";
 #ifdef _WIN32
             print_covise_env += ".bat";
+#endif
 #endif
             if (FILE *fp = popen(print_covise_env.c_str(), "r")) {
                 std::vector<char> buf(10000);
