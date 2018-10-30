@@ -15,7 +15,7 @@ class ReadIagTecplot: public vistle::Module {
    static const int NumPorts = 3;
 
    bool changeParameter(const vistle::Parameter *p) override;
-   bool compute() override;
+   bool prepare() override;
    void setChoices();
 
    vistle::StringParameter *m_filename;

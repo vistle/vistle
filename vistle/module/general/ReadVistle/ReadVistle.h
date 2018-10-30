@@ -12,7 +12,7 @@ class ReadVistle: public vistle::Module {
 
  private:
    bool load(const std::string & name);
-   virtual bool compute();
+   bool prepare() override;
 };
 
 #endif

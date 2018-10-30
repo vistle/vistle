@@ -401,7 +401,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
     addObject("data_out1", vector);
 }
 
-bool Gendat::compute() {
+bool Gendat::prepare() {
 
     Index blocks[3];
     for (int i=0; i<3; ++i) {

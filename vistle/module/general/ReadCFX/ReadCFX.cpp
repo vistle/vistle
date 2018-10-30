@@ -1674,7 +1674,7 @@ bool ReadCFX::readTime(index_t numSel3dArea, index_t numSel2dArea, int setMetaTi
 }
 
 
-bool ReadCFX::compute() {
+bool ReadCFX::prepare() {
     //starts reading the .res file and loops than over all timesteps
 #ifdef CFX_DEBUG
     std::cerr << "Compute Start. \n";

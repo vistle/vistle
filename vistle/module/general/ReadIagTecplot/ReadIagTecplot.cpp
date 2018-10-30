@@ -87,7 +87,7 @@ bool ReadIagTecplot::changeParameter(const vistle::Parameter *p) {
    return Module::changeParameter(p);
 }
 
-bool ReadIagTecplot::compute() {
+bool ReadIagTecplot::prepare() {
 
    if (!m_tecplot) {
        if (rank() == 0)

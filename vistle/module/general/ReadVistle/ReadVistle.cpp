@@ -124,8 +124,7 @@ bool ReadVistle::load(const std::string & name) {
    return true;
 }
 
-bool ReadVistle::compute() {
-
+bool ReadVistle::prepare() {
    load(getStringParameter("filename"));
 
    return true;

@@ -7,10 +7,10 @@ class Gendat: public vistle::Module {
 
  public:
    Gendat(const std::string &name, int moduleID, mpi::communicator comm);
-   ~Gendat();
+   ~Gendat() override;
 
  private:
-   virtual bool compute();
+   bool prepare() override;
    void block(vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b, vistle::Index time);
 
    // parameters
