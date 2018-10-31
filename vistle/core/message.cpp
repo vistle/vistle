@@ -72,9 +72,10 @@ Message::Message(const Type t, const unsigned int s)
 , m_payloadSize(0)
 , m_payloadRawSize(0)
 , m_payloadCompression(CompressionNone)
-, m_broadcast(false)
+, m_forBroadcast(false)
+, m_wasBroadcast(false)
 , m_notification(false)
-, m_pad{0,0}
+, m_pad{0}
 {
 
    vassert(m_size <= MESSAGE_SIZE);
@@ -200,13 +201,22 @@ void Message::setPayloadRawSize(size_t size) {
     m_payloadRawSize = size;
 }
 
-bool Message::isBroadcast() const {
+bool Message::isForBroadcast() const {
 
-    return m_broadcast;
+    return m_forBroadcast;
 }
 
-void Message::setBroadcast(bool enable) {
-    m_broadcast = enable;
+void Message::setForBroadcast(bool enable) {
+    m_forBroadcast = enable;
+}
+
+bool Message::wasBroadcast() const {
+
+    return m_wasBroadcast;
+}
+
+void Message::setWasBroadcast(bool enable) {
+    m_wasBroadcast = enable;
 }
 
 bool Message::isNotification() const {

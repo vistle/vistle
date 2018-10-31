@@ -1058,7 +1058,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         break;
     }
     case message::Execute::ComputeExecute: {
-        if (exec.isBroadcast()) {
+        if (exec.wasBroadcast()) {
             mod.send(exec);
             mod.prepared = false;
             mod.reduced = true;
@@ -1070,9 +1070,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
                 vassert(!mod.prepared);
                 mod.prepared = false;
                 mod.reduced = true;
-                message::Buffer buf(exec);
-                buf.setBroadcast(true);
-                Communicator::the().broadcastAndHandleMessage(buf);
+                Communicator::the().broadcastAndHandleMessage(exec);
             }
         }
         break;
@@ -1084,7 +1082,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         if (it != m_stateTracker.runningMap.end()) {
             pol = it->second.schedulingPolicy;
         }
-        if (exec.isBroadcast() || pol == message::SchedulingPolicy::Single) {
+        if (exec.wasBroadcast() || pol == message::SchedulingPolicy::Single) {
             mod.reduced = false;
             mod.send(exec);
         } else {
@@ -1106,9 +1104,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
                 }
                 if (doExec) {
                     //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
-                    message::Buffer buf(exec);
-                    buf.setBroadcast(true);
-                    Communicator::the().broadcastAndHandleMessage(buf);
+                    Communicator::the().broadcastAndHandleMessage(exec);
                 }
             }
         }
@@ -1128,7 +1124,7 @@ bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
     }
 
     auto &mod = i->second;
-    if (cancel.isBroadcast()) {
+    if (cancel.wasBroadcast()) {
         mod.send(cancel);
         return true;
     }
@@ -1137,9 +1133,7 @@ bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
     }
 
     CERR << "non-broadcast CancelExecute: " << cancel << std::endl;
-    message::Buffer buf(cancel);
-    buf.setBroadcast(true);
-    return Communicator::the().broadcastAndHandleMessage(buf);
+    return Communicator::the().broadcastAndHandleMessage(cancel);
 }
 
 bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
@@ -1169,6 +1163,7 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
               receivingHubs.insert(hub);
               message::AddObject a(addObj);
               a.setDestId(hub);
+              a.setDestRank(0);
               Communicator::the().dataManager().prepareTransfer(a);
               sendHub(a, hub);
           }
@@ -1217,7 +1212,6 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
        }
 
        if (destMod.objectPolicy != message::ObjectReceivePolicy::Local) {
-           addObj2.setBroadcast(true);
            if (obj) {
                if (!Communicator::the().broadcastAndHandleMessage(addObj2))
                    return false;
@@ -1230,7 +1224,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
            vassert(!localAdd);
            auto it = runningMap.find(destId);
            if (it != runningMap.end()) {
-               if (!addObj2.isBroadcast())
+               if (!addObj2.wasBroadcast())
                    it->second.block(addObj2);
                Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2]() mutable {
                    auto it = runningMap.find(addObj2.destId());
@@ -1242,7 +1236,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                    assert(obj);
                    addObj2.setObject(obj);
                    obj.reset();
-                   if (addObj2.isBroadcast()) {
+                   if (addObj2.isForBroadcast()) {
                        if (!Communicator::the().broadcastAndHandleMessage(addObj2))
                            CERR << "object broadcast failed" << std::endl;
                    } else {
@@ -1252,7 +1246,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
            }
        }
 
-       if (!addObj2.isBroadcast()) {
+       if (!addObj2.wasBroadcast()) {
            if (!sendMessage(destId, addObj2))
                return false;
            portManager().addObject(destPort);
@@ -1267,7 +1261,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
-   if (addObj.isBroadcast()) {
+   if (addObj.wasBroadcast()) {
        assert(isLocal(addObj.destId()));
        if (!sendMessage(addObj.destId(), addObj))
            return false;
@@ -1468,7 +1462,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
        vassert(!(readyForPrepare && readyForReduce));
        for (auto hub: receivingHubs) {
            message::Buffer buf(prog);
-           buf.setBroadcast(false);
+           buf.setForBroadcast(false);
            buf.setDestRank(0);
            sendMessage(hub, buf);
        }
@@ -1556,9 +1550,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                              }
                              for (int i=0; i<maxNumObject; ++i) {
                                  message::Execute exec(message::Execute::ComputeObject, destId);
-                                 message::Buffer buf(exec);
-                                 buf.setBroadcast(true);
-                                 if (!Communicator::the().broadcastAndHandleMessage(buf))
+                                 if (!Communicator::the().broadcastAndHandleMessage(exec))
                                      return false;
                              }
                              vassert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) == 0);
@@ -1656,7 +1648,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    if (message::Id::isModule(dest)) {
       assert(mod);
       // message to owning module
-      if (setParam.isBroadcast()) {
+      if (setParam.wasBroadcast()) {
           auto param = getParameter(dest, setParam.getName());
           if (param) {
               applied.reset(param->clone());
@@ -1664,9 +1656,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
           }
           mod->send(setParam);
       } else {
-        message::Buffer buf(setParam);
-        buf.setBroadcast(true);
-        return Communicator::the().broadcastAndHandleMessage(buf);
+        return Communicator::the().broadcastAndHandleMessage(setParam);
       }
    } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module

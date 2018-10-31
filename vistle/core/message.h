@@ -157,10 +157,14 @@ class V_COREEXPORT Message {
    int uiId() const;
    //! messge size
    size_t size() const;
-   //! broadacast to all ranks?
-   bool isBroadcast() const;
+   //! message has to be broadcast to all ranks?
+   bool isForBroadcast() const;
    //! mark message for broadcast to all ranks on destination
-   void setBroadcast(bool enable=true);
+   void setForBroadcast(bool enable=true);
+   //! was message broadcast to all ranks?
+   bool wasBroadcast() const;
+   //! mark message as broadcast to all ranks
+   void setWasBroadcast(bool enable=true);
    //! message is not a request for action, just a notification that an action has been taken
    bool isNotification() const;
    //! mark message as notification
@@ -222,11 +226,11 @@ class V_COREEXPORT Message {
    //! payload compression method
    int m_payloadCompression;
    //! broadcast to all ranks?
-   bool m_broadcast;
+   bool m_forBroadcast, m_wasBroadcast;
    //! message is not a request for action
    bool m_notification;
    //! pad message to multiple of 8 bytes
-   char m_pad[2];
+   char m_pad[1];
 };
 // ensure alignment
 static_assert(sizeof(Message) % sizeof(double)==0, "not padded to ensure double alignment");

@@ -223,7 +223,7 @@ bool Communicator::dispatch(bool *work) {
 
          received = true;
          message::Message *message = &m_recvBufToRank;
-         if (m_rank == 0 && message->isBroadcast()) {
+         if (m_rank == 0 && message->isForBroadcast()) {
             if (!broadcastAndHandleMessage(*message)) {
                CERR << "Quit reason: broadcast & handle" << std::endl;
                done = true;
@@ -260,7 +260,7 @@ bool Communicator::dispatch(bool *work) {
                   m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
             if (!handleMessage(*message)) {
-               CERR << "Quit reason: handle 2" << std::endl;
+               CERR << "Quit reason: handle 2: " << *message << std::endl;
                done = true;
             }
          }
@@ -294,7 +294,7 @@ bool Communicator::dispatch(bool *work) {
              auto it = p.first;
              MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD, &(*it)->req);
          } else if(!broadcastAndHandleMessage(buf)) {
-            CERR << "Quit reason: broadcast & handle 2: " << buf << std::endl;
+            CERR << "Quit reason: broadcast & handle 2: " << buf << buf << std::endl;
             done = true;
          }
       }
@@ -374,9 +374,13 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
     if (m_size == 0)
         return handleMessage(message);
 
+    message::Buffer buf(message);
+    buf.setForBroadcast(false);
+    buf.setWasBroadcast(true);
+
     std::vector<MPI_Request> s(m_size);
     for (int index = 0; index < m_size; ++index) {
-        unsigned int size = message.size();
+        unsigned int size = buf.size();
         if (index != m_rank) {
             MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
         }
@@ -391,9 +395,9 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
         MPI_Wait(&s[index], MPI_STATUS_IGNORE);
     }
 
-    MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
+    MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
 
-    const bool result = handleMessage(message);
+    const bool result = handleMessage(buf);
 
     return result;
 }

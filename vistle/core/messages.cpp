@@ -1547,7 +1547,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
        s << ", rank: " << m.rank();
    }
    s  << ", dest: " << m.destId()
-      << ", bcast: " << m.isBroadcast();
+      << ", bcast: " << m.isForBroadcast() << "/" << m.wasBroadcast();
    if (m.destRank() != -1)
        s << ", dest rank: " << m.destRank();
 
