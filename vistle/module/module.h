@@ -188,6 +188,7 @@ protected:
    const int m_id;
 
    int m_executionCount, m_iteration;
+   std::set<Port *> m_withOutput;
 
    void setDefaultCacheMode(ObjectCache::CacheMode mode);
    void updateMeta(vistle::Object::ptr object) const;

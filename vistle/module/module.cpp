@@ -27,6 +27,8 @@
 #include <util/stopwatch.h>
 #include <util/exception.h>
 #include <core/object.h>
+#include <core/empty.h>
+#include <core/export.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
 #include <core/messagerouter.h>
@@ -683,6 +685,8 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
    if (!object)
       return false;
 
+   m_withOutput.insert(port);
+
    object->refresh();
    vassert(object->check());
 
@@ -1293,8 +1297,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
          addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), obj);
          if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
-            CERR << "error in objectAdded(" << add->getSenderPort() << ")" << std::endl;
-            return false;
+             CERR << "error in objectAdded(" << add->getSenderPort() << ")" << std::endl;
+             return false;
          }
 
          break;
@@ -1613,6 +1617,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             try {
                 double start = Clock::time();
                 int timestep = -1;
+                bool objectIsEmpty = false;
                 for (auto &port: inputPorts) {
                     if (!isConnected(port.second))
                         continue;
@@ -1621,9 +1626,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         int t = objs.front()->getTimestep();
                         if (t != -1)
                             timestep = t;
+                        if (Empty::as(objs.front()))
+                            objectIsEmpty = true;
                     }
                 }
                 if (cancelRequested()) {
+                    computeOk = true;
+                } else if (objectIsEmpty) {
                     computeOk = true;
                 } else {
                     computeOk = compute();
@@ -1915,6 +1924,8 @@ bool Module::prepareWrapper(const message::Execute *exec) {
    m_cancelRequested = false;
    m_cancelExecuteCalled = false;
 
+   m_withOutput.clear();
+
    if (reducePolicy() != message::ReducePolicy::Never) {
       vassert(!m_prepared);
    }
@@ -2017,6 +2028,13 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
            ret = false;
            std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
            std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
+   }
+
+   for (auto &port: outputPorts) {
+       if (isConnected(port.second) && m_withOutput.find(port.second) == m_withOutput.end()) {
+           Empty::ptr empty(new Empty(Object::Initialized));
+           addObject(port.second, empty);
+       }
    }
 
    if (m_benchmark) {

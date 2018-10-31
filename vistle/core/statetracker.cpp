@@ -112,7 +112,7 @@ std::vector<int> StateTracker::getBusyList() const {
 
 int StateTracker::getHub(int id) const {
 
-   if (id <= Id::MasterHub) {
+   if (Id::isHub(id)) {
        return id;
    }
 

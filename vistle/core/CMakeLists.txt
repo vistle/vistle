@@ -70,6 +70,7 @@ if(${TEMPLATES_IN_HEADERS})
       triangles.cpp
       polygons.cpp
       texture1d.cpp
+      empty.cpp
       placeholder.cpp
       unstr.cpp
       structuredgridbase.cpp
@@ -118,6 +119,8 @@ set(core_HEADERS
    parametermanager_impl.h
    paramvector.h
    paramvector_impl.h
+   empty.h
+   empty_impl.h
    placeholder.h
    placeholder_impl.h
    points.h

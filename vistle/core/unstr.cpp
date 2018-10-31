@@ -582,7 +582,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         if (insideCount > 0 && insideCount != raydirs.size()) {
             std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): disagreement: " << insideCount << " of " << raydirs.size() << std::endl;
         }
-        return insideCount >= raydirs.size()/2;
+        return insideCount >= raydirs.size();
         break;
         }
     case POLYHEDRON: {

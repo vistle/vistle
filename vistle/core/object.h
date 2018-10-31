@@ -87,6 +87,7 @@ public:
 
       UNKNOWN           = -1,
 
+      EMPTY             =  1,
       PLACEHOLDER       = 11,
 
       TEXTURE1D         = 16,

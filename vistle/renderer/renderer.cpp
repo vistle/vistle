@@ -2,6 +2,7 @@
 #include <core/messagequeue.h>
 #include <core/statetracker.h>
 #include <core/object.h>
+#include <core/empty.h>
 #include <core/placeholder.h>
 #include <core/coords.h>
 #include <core/archives.h>
@@ -268,6 +269,9 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    Creator &creator = it->second;
    creator.age = object->getExecutionCounter();
    creator.iter = object->getIteration();
+
+   if (Empty::as(object))
+       return true;
 
    auto geo_norm_tex = splitObject(object);
    std::shared_ptr<RenderObject> ro = addObjectWrapper(sender, senderPort,
