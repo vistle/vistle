@@ -1672,6 +1672,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 if (cancelRequested()) {
                     computeOk = true;
                 } else if (objectIsEmpty) {
+                    for (auto &port: inputPorts) {
+                        if (!isConnected(port.second))
+                            continue;
+                        auto &objs = port.second->objects();
+                        if (!objs.empty()) {
+                            objs.pop_front();
+                        }
+                    }
                     computeOk = true;
                 } else {
                     computeOk = compute();

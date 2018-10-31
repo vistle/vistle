@@ -70,9 +70,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
    m_paraMin = m_paraMax = 0.f;
 }
 
-IsoSurface::~IsoSurface() {
-
-}
+IsoSurface::~IsoSurface() = default;
 
 bool IsoSurface::changeParameter(const Parameter* param) {
 
@@ -219,7 +217,7 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
 
    Object::ptr result = l.result();
    DataBase::ptr mapresult = l.mapresult();
-   if (result) {
+   if (result && !result->isEmpty()) {
 #ifndef CUTTINGSURFACE
       result->copyAttributes(dataS);
 #endif
