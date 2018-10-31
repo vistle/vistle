@@ -106,6 +106,7 @@ bool IsoSurface::prepare() {
    m_max = -std::numeric_limits<Scalar>::max();
 
    m_performedPointSearch = false;
+   m_foundPoint = false;
 
    return Module::prepare();
 }
@@ -120,21 +121,28 @@ bool IsoSurface::reduce(int timestep) {
        Scalar value = m_isovalue->getValue();
        int found = 0;
        Vector point = m_isopoint->getValue();
+       int nb = 0;
        for (size_t i=0; i<m_grids.size(); ++i) {
-           if (m_datas[i]->getTimestep() == 0 || m_datas[i]->getTimestep() == -1) {
+           int t = m_grids[i]->getTimestep();
+           if (t < 0)
+               t = m_datas[i]->getTimestep();
+           if (t==0 || t==-1) {
+               ++nb;
                auto gi = m_grids[i]->getInterface<GridInterface>();
                Index cell = gi->findCell(point);
                if (cell != InvalidIndex) {
-                   found = 1;
+                   ++found;
                    auto interpol = gi->getInterpolator(cell, point);
                    value = interpol(m_datas[i]->x());
                }
            }
        }
+       std::cerr << "found " << nb << " candidate blocks" << std::endl;
        int numFound = boost::mpi::all_reduce(comm(), found, std::plus<int>());
+       m_foundPoint = numFound>0;
        if (m_rank == 0) {
            if (numFound == 0)
-               sendWarning("did not find isopoint in any block");
+               sendInfo("iso-value point out of domain");
            else if (numFound > 1)
                sendWarning("found isopoint in %d blocks", numFound);
        }
@@ -147,27 +155,33 @@ bool IsoSurface::reduce(int timestep) {
        }
    }
 
-   for (size_t i=0; i<m_grids.size(); ++i) {
-       int t = m_grids[i] ? m_grids[i]->getTimestep() : -1;
-       if (m_datas[i])
-           t = std::max(t, m_datas[i]->getTimestep());
-       if (m_mapdatas[i])
-           t = std::max(t, m_mapdatas[i]->getTimestep());
-       if (t == timestep)
-           work(m_grids[i], m_datas[i], m_mapdatas[i]);
+   if (m_foundPoint) {
+       for (size_t i=0; i<m_grids.size(); ++i) {
+           int t = m_grids[i] ? m_grids[i]->getTimestep() : -1;
+           if (m_datas[i])
+               t = std::max(t, m_datas[i]->getTimestep());
+           if (m_mapdatas[i])
+               t = std::max(t, m_mapdatas[i]->getTimestep());
+           if (t == timestep)
+               work(m_grids[i], m_datas[i], m_mapdatas[i]);
+       }
    }
 
-   Scalar min, max;
-   boost::mpi::all_reduce(comm(),
-                          m_min, min, boost::mpi::minimum<Scalar>());
-   boost::mpi::all_reduce(comm(),
-                          m_max, max, boost::mpi::maximum<Scalar>());
+   if (timestep == -1) {
+       Scalar min, max;
+       boost::mpi::all_reduce(comm(),
+                              m_min, min, boost::mpi::minimum<Scalar>());
+       boost::mpi::all_reduce(comm(),
+                              m_max, max, boost::mpi::maximum<Scalar>());
 
-   if (m_paraMin != (Float)min || m_paraMax != (Float)max)
-      setParameterRange(m_isovalue, (Float)min, (Float)max);
+       if (max >= min) {
+           if (m_paraMin != (Float)min || m_paraMax != (Float)max)
+               setParameterRange(m_isovalue, (Float)min, (Float)max);
 
-   m_paraMax = max;
-   m_paraMin = min;
+           m_paraMax = max;
+           m_paraMin = min;
+       }
+   }
 #endif
 
    return Module::reduce(timestep);
@@ -271,10 +285,16 @@ bool IsoSurface::compute() {
     if (m_pointOrValue->getValue() == Value) {
         return work(grid, dataS, mapdata);
     } else {
+        int t = -1;
         //unstr->getCelltree();
+        if (grid)
+            t = grid->getTimestep();
         m_grids.push_back(grid);
         m_datas.push_back(dataS);
+        if (t < 0)
+            t = dataS->getTimestep();
         m_mapdatas.push_back(mapdata);
+        //std::cerr << "compute with t=" << t << std::endl;
         return true;
     }
 #endif
