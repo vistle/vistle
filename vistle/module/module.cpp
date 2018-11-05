@@ -1385,10 +1385,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
     bool ret = true;
 
+#if 0
     Busy busy;
     busy.setReferrer(exec->uuid());
     busy.setDestId(Id::LocalManager);
     sendMessage(busy);
+#endif
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::Prepare ) {
         ret &= prepareWrapper(exec);
@@ -1717,10 +1719,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         ret &= reduceWrapper(exec, reordered);
         m_cache.clearOld();
     }
+#if 0
     message::Idle idle;
     idle.setReferrer(exec->uuid());
     idle.setDestId(Id::LocalManager);
     sendMessage(idle);
+#endif
 
     return ret;
 }
@@ -1902,6 +1906,11 @@ void Module::startIteration() {
 
 bool Module::prepareWrapper(const message::Execute *exec) {
 
+   message::Busy busy;
+   busy.setReferrer(exec->uuid());
+   busy.setDestId(Id::LocalManager);
+   sendMessage(busy);
+
    m_numTimesteps = 0;
    m_cancelRequested = false;
    m_cancelExecuteCalled = false;
@@ -2031,6 +2040,11 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
    fin.setReferrer(exec->uuid());
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
+
+   message::Idle idle;
+   idle.setReferrer(exec->uuid());
+   idle.setDestId(Id::LocalManager);
+   sendMessage(idle);
 
    m_computed = false;
    m_prepared = false;
