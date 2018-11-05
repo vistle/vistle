@@ -1116,6 +1116,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 }
 
 bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
+
     vassert (cancel.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = runningMap.find(cancel.getModule());
     if (i == runningMap.end()) {

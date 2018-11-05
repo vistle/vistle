@@ -275,7 +275,7 @@ protected:
    boost::mpi::communicator m_comm;
 
    int m_numTimesteps;
-   bool m_cancelRequested, m_cancelExecuteCalled;
+   bool m_cancelRequested=false, m_cancelExecuteCalled=false, m_executeAfterCancelFound=false;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 };

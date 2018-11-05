@@ -50,6 +50,7 @@
 
 //#define DEBUG
 //#define REDUCE_DEBUG
+//#define DETAILED_PROGRESS
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
@@ -149,6 +150,20 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 };
 
 
+namespace {
+int getTimestep(Object::const_ptr obj) {
+
+    int t = obj->getTimestep();
+    if (t < 0) {
+        if (auto data = DataBase::as(obj)) {
+            auto grid = data->grid();
+            t = grid->getTimestep();
+        }
+    }
+
+    return t;
+}
+}
 
 bool Module::setup(const std::string &shmname, int moduleID, int rank) {
 
@@ -1389,7 +1404,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
     bool ret = true;
 
-#if 0
+#ifdef DETAILED_PROGRESS
     Busy busy;
     busy.setReferrer(exec->uuid());
     busy.setDestId(Id::LocalManager);
@@ -1416,11 +1431,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         int direction = 1;
 
-        Index numObject = 0;
+        // just process one tuple of objects at a time
+        Index numObject = 1;
         int startTimestep = -1;
         bool waitForZero = false, startWithZero = false;
         if (exec->what() == Execute::ComputeExecute) {
-            // Compute not triggered by adding an object, get objects from cache
+            // Compute not triggered by adding an object, get objects from cache and determine no. of objects to process
+            numObject = 0;
 
             Index numConnected = 0;
             for (auto &port: inputPorts) {
@@ -1436,21 +1453,23 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     return false;
                 }
             }
+        }
 
-            for (auto &port: inputPorts) {
-                if (!isConnected(port.second))
-                    continue;
-                const auto &objs = port.second->objects();
-                for (Index i=0; i<numObject && i<objs.size(); ++i) {
-                    const auto obj = objs[i];
-                    int t = obj->getTimestep();
-                    m_numTimesteps = std::max(t+1, m_numTimesteps);
-                }
+        for (auto &port: inputPorts) {
+            if (!isConnected(port.second))
+                continue;
+            const auto &objs = port.second->objects();
+            for (Index i=0; i<numObject && i<objs.size(); ++i) {
+                const auto obj = objs[i];
+                int t = getTimestep(obj);
+                m_numTimesteps = std::max(t+1, m_numTimesteps);
             }
+        }
 #ifdef REDUCE_DEBUG
-            CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+        CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
 
+        if (exec->what() == Execute::ComputeExecute || gang) {
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
@@ -1458,7 +1477,9 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
+        }
 
+        if (exec->what() == Execute::ComputeExecute) {
             if (m_prioritizeVisible && !gang && !exec->allRanks()
                     && reducePolicy() != message::ReducePolicy::PerTimestepOrdered) {
                 reordered = true;
@@ -1484,7 +1505,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     size_t idx = 0;
 
                     bool operator<(const TimeIndex &other) const {
-                        return time < other.time;
+                        return step < other.step;
                     }
                 };
                 std::vector<TimeIndex> sortKey(numObject);
@@ -1493,7 +1514,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     size_t i=0;
                     for (auto &obj: objs) {
                         sortKey[i].idx = i;
-                        sortKey[i].step = obj->getTimestep();
+                        sortKey[i].step = getTimestep(obj);
                         sortKey[i].time = obj->getRealTime();
                         if (sortKey[i].step >= 0 && sortKey[i].time == 0.)
                             sortKey[i].time = sortKey[i].step;
@@ -1506,56 +1527,29 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     for (auto &ti: sortKey) {
                         if (std::abs(ti.step - exec->animationRealTime()) < std::abs(best.step - exec->animationRealTime())) {
                             best = ti;
-                            CERR << "starting with timestep=" << ti.step << ", anim=" << exec->animationRealTime() << ", cur=" << ti.time << std::endl;
                         }
                     }
+#ifdef REDUCE_DEBUG
+                    CERR << "starting with timestep=" << best.step << ", anim=" << exec->animationRealTime() << ", cur=" << best.time << std::endl;
+#endif
                     if (m_numTimesteps > 0) {
                         startTimestep = best.step + direction*headStart;
-                        while (startTimestep < 0)
-                            startTimestep += m_numTimesteps;
-                        startTimestep %= m_numTimesteps;
-                    }
-                    CERR << "startTimestep determined to be " << startTimestep << std::endl;
-
-                    for (auto &port: inputPorts) {
-                        if (!isConnected(port.second))
-                            continue;
-                        port.second->objects().clear();
-                        auto objs = m_cache.getObjects(port.first);
-                        int step = 1;
-                        if (direction < 0) {
-                            step = -1;
-                        }
-                        if (reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst) {
-                            waitForZero = true;
-                            startWithZero = true;
-                        }
-                        ssize_t cur = 0;
-                        for (size_t i=0; i<numObject; ++i) {
-                            if (startWithZero && sortKey[cur].time == 0)
-                                port.second->objects().push_back(objs[sortKey[cur].idx]);
-                            cur = (cur+step+numObject)%numObject;
-                        }
-                        bool push = false;
-                        cur = 0;
-                        for (size_t i=0; i<numObject; ++i) {
-                            if (sortKey[cur].step == startTimestep)
-                                push = true;
-                            if (push && (!startWithZero || sortKey[cur].time != 0))
-                                port.second->objects().push_back(objs[sortKey[cur].idx]);
-                            cur = (cur+step+numObject)%numObject;
-                        }
-                        cur = 0;
-                        for (size_t i=0; i<numObject; ++i) {
-                            if (sortKey[cur].step == startTimestep)
-                                break;
-                            if (!startWithZero || sortKey[cur].time != 0)
-                                port.second->objects().push_back(objs[sortKey[cur].idx]);
-                            cur = (cur+step+numObject)%numObject;
-                        }
                     }
                 }
 
+                if (reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst) {
+                    waitForZero = true;
+                    startWithZero = true;
+                }
+                const int step = direction<0 ? -1 : 1;
+                if (m_numTimesteps > 0) {
+                    while (startTimestep < 0)
+                        startTimestep += m_numTimesteps;
+                    startTimestep %= m_numTimesteps;
+                }
+#ifdef REDUCE_DEBUG
+                CERR << "startTimestep determined to be " << startTimestep << std::endl;
+#endif
                 if (startTimestep == -1)
                     startTimestep = 0;
                 if (direction < 0) {
@@ -1563,13 +1557,51 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 } else {
                     startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
                 }
+
+                for (auto &port: inputPorts) {
+                    port.second->objects().clear();
+                    if (!isConnected(port.second))
+                        continue;
+                    auto objs = m_cache.getObjects(port.first);
+                    // objects without timestep
+                    ssize_t cur = step<0 ? numObject-1 : 0;
+                    for (size_t i=0; i<numObject; ++i) {
+                        if (sortKey[cur].step < 0)
+                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                        cur = (cur+step+numObject)%numObject;
+                    }
+                    // objects with timestep 0 (if to be handled first)
+                    if (startWithZero) {
+                        cur = step<0 ? numObject-1 : 0;
+                        for (size_t i=0; i<numObject; ++i) {
+                            if (sortKey[cur].step == 0)
+                                port.second->objects().push_back(objs[sortKey[cur].idx]);
+                            cur = (cur+step+numObject)%numObject;
+                        }
+                    }
+                    bool push = false;
+                    cur = step<0 ? numObject-1 : 0;
+                    for (size_t i=0; i<numObject; ++i) {
+                        if (sortKey[cur].step == startTimestep)
+                            push = true;
+                        if (push && (!startWithZero || sortKey[cur].step > 0))
+                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                        cur = (cur+step+numObject)%numObject;
+                    }
+                    cur = step<0 ? numObject-1 : 0;
+                    for (size_t i=0; i<numObject; ++i) {
+                        if (sortKey[cur].step == startTimestep)
+                            break;
+                        if (!startWithZero || sortKey[cur].step > 0)
+                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                        cur = (cur+step+numObject)%numObject;
+                    }
+                    assert(port.second->objects().size() == numObject);
+                }
             }
             if (gang) {
                 numObject = mpi::all_reduce(comm(), numObject, mpi::maximum<int>());
             }
-        } else {
-            // just process one tuple of objects at a time
-            numObject = 1;
         }
 
 
@@ -1591,18 +1623,25 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         int prevTimestep = -1;
         if (m_numTimesteps > 0) {
+            int skip=1;
+            if (startTimestep==0 && startWithZero)
+                skip=2;
             if (direction >= 0)
                 prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
             else
                 prevTimestep = (startTimestep+1)%m_numTimesteps;
+#ifdef REDUCE_DEBUG
             if (rank() == 0 && exec->what() == message::Execute::ComputeExecute)
                 CERR << "last timestep to reduce: " << prevTimestep << std::endl;
+#endif
         }
         int numReductions = 0;
         bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
         auto runReduce = [this](int timestep, int &numReductions) -> bool {
+#ifdef REDUCE_DEBUG
             if (rank() == 0)
                 CERR << "running reduce for timestep " << timestep << ", already did " << numReductions  << " of " << m_numTimesteps << " reductions" << std::endl;
+#endif
             if (cancelRequested(true))
                 return true;
             if (timestep >= 0) {
@@ -1623,7 +1662,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         continue;
                     const auto &objs = port.second->objects();
                     if (!objs.empty()) {
-                        int t = objs.front()->getTimestep();
+                        int t = getTimestep(objs.front());
                         if (t != -1)
                             timestep = t;
                         if (Empty::as(objs.front()))
@@ -1637,6 +1676,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 } else {
                     computeOk = compute();
                 }
+
                 if (reordered && m_numTimesteps>0 && reducePerTimestep) {
                     // if processing for another timestep starts, run reduction for previous timesteps
                     if (startWithZero && waitForZero) {
@@ -1646,19 +1686,20 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         }
                     }
                     if (waitForZero) {
+                    } else if (timestep < 0) {
                     } else if (direction >= 0) {
                         if (prevTimestep > timestep) {
                             for (int t=prevTimestep; t<m_numTimesteps; ++t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                             for (int t=0; t<timestep; ++t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         } else {
                             for (int t=prevTimestep; t<timestep; ++t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         }
@@ -1666,16 +1707,16 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     } else {
                         if (prevTimestep < timestep) {
                             for (int t=prevTimestep; t>=0; --t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                             for (int t=m_numTimesteps-1; t>timestep; --t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         } else {
                             for (int t=prevTimestep; t>timestep; --t) {
-                                if (t != 0 || !startWithZero)
+                                if (t > 0 || !startWithZero)
                                     computeOk &= runReduce(t, numReductions);
                             }
                         }
@@ -1709,7 +1750,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         if (reordered && m_numTimesteps>0 && reducePerTimestep) {
             // run reduction for remaining (most often just the last) timesteps
             int t = prevTimestep;
-            while (numReductions < m_numTimesteps) {
+            while (numReductions < m_numTimesteps && !cancelRequested(true)) {
                 runReduce(t, numReductions);
                 if (direction >= 0) {
                     t = (t+1)%m_numTimesteps;
@@ -1728,7 +1769,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         ret &= reduceWrapper(exec, reordered);
         m_cache.clearOld();
     }
-#if 0
+#ifdef DETAILED_PROGRESS
     message::Idle idle;
     idle.setReferrer(exec->uuid());
     idle.setDestId(Id::LocalManager);
@@ -1915,17 +1956,21 @@ void Module::startIteration() {
 
 bool Module::prepareWrapper(const message::Execute *exec) {
 
+#ifndef DETAILED_PROGRESS
    message::Busy busy;
    busy.setReferrer(exec->uuid());
    busy.setDestId(Id::LocalManager);
    sendMessage(busy);
+#endif
 
    m_numTimesteps = 0;
    m_cancelRequested = false;
    m_cancelExecuteCalled = false;
+   m_executeAfterCancelFound = false;
 
    m_withOutput.clear();
 
+   bool collective = reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally;
    if (reducePolicy() != message::ReducePolicy::Never) {
       vassert(!m_prepared);
    }
@@ -1953,6 +1998,9 @@ bool Module::prepareWrapper(const message::Execute *exec) {
 
    //CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
    m_prepared = true;
+
+   if (cancelRequested(collective))
+       return true;
 
    if (reducePolicy() == message::ReducePolicy::Never)
       return true;
@@ -1993,7 +2041,6 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
    bool sync = false;
    if (reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally) {
        sync = true;
-       m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
        m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
    }
 
@@ -2037,6 +2084,10 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
        }
    }
 
+   if (sync) {
+       m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
+   }
+
    if (m_benchmark) {
       comm().barrier();
       double duration = Clock::time() - m_benchmarkStart;
@@ -2059,10 +2110,12 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
 
+#ifndef DETAILED_PROGRESS
    message::Idle idle;
    idle.setReferrer(exec->uuid());
    idle.setDestId(Id::LocalManager);
    sendMessage(idle);
+#endif
 
    m_computed = false;
    m_prepared = false;
@@ -2107,23 +2160,27 @@ void Module::clearStatus() {
 
 bool Module::cancelRequested(bool collective) {
 
-    if (!collective && m_cancelRequested) {
-        if (!m_cancelExecuteCalled) {
-            cancelExecute();
-            m_cancelExecuteCalled = true;
-        }
-        return true;
-    }
-
     message::Buffer buf;
-    while (receiveMessageQueue->tryReceive(buf)) {
+    while (!m_executeAfterCancelFound && receiveMessageQueue->tryReceive(buf)) {
         messageBacklog.push_back(buf);
-        if (buf.type() == message::CANCELEXECUTE) {
+        switch (buf.type()) {
+        case message::CANCELEXECUTE: {
             const auto &cancel = buf.as<message::CancelExecute>();
             if (cancel.getModule() == id()) {
                 std::cerr << "canceling execution requested" << std::endl;
                 m_cancelRequested = true;
             }
+            break;
+        }
+        case message::EXECUTE: {
+            if (m_cancelRequested) {
+                m_executeAfterCancelFound = true;
+            }
+            break;
+        }
+        default: {
+            break;
+        }
         }
     }
 
