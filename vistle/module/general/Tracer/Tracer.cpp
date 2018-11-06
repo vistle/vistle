@@ -212,6 +212,9 @@ bool Tracer::compute() {
 
 bool Tracer::reduce(int timestep) {
 
+   if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep)
+       return true;
+
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
    Index numpoints = m_numStartpoints->getValue();
@@ -289,6 +292,7 @@ bool Tracer::reduce(int timestep) {
 
    int numtime = numTimesteps();
    std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
+   numtime = std::min(timestep+1, numtime);
    if (numtime == 0)
        numtime = 1;
 
