@@ -13,7 +13,6 @@ set(boost_mpi_SOURCES
    ${BOOST_MPI_DIR}/src/computation_tree.cpp
    ${BOOST_MPI_DIR}/src/content_oarchive.cpp
    ${BOOST_MPI_DIR}/src/environment.cpp
-   ${BOOST_MPI_DIR}/src/error_string.cpp
    ${BOOST_MPI_DIR}/src/exception.cpp
    ${BOOST_MPI_DIR}/src/graph_communicator.cpp
    ${BOOST_MPI_DIR}/src/group.cpp
@@ -33,6 +32,12 @@ set(boost_mpi_SOURCES
 if (BOOST_MPI_DIR STREQUAL "boost-mpi")
    set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
       ${BOOST_MPI_DIR}/src/offsets.cpp
+   )
+endif()
+
+if (NOT BOOST_MPI_DIR STREQUAL "boost-mpi-1.55")
+   set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
+      ${BOOST_MPI_DIR}/src/error_string.cpp
    )
 endif()
 
