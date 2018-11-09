@@ -110,8 +110,13 @@ struct archive_helper<boost_tag> {
         return boost::serialization::make_nvp(name, obj);
     }
 
+#if BOOST_VERSION > 105300
     template<class T>
     using ArrayWrapper = const boost::serialization::array_wrapper<T>;
+#else
+    template<class T>
+    using ArrayWrapper = const boost::serialization::array<T>;
+#endif
     template<class T, class S>
     static ArrayWrapper<T> wrap_array(T *t, bool exact, S nx, S ny, S nz) {
         return boost::serialization::make_array(t, nx*ny*nz);
