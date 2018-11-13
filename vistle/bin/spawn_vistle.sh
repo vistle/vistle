@@ -35,15 +35,20 @@ case $(uname) in
       ;;
 esac
 
+WRAPPER=""
+LAUNCH=""
+if [ -n "$SINGULARITY_CONTAINER" ]; then
+    WRAPPER="singularity exec ${SINGULARITY_CONTAINER}"
+fi
+#WRAPPER="$WRAPPER valgrind"
+export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
+
+
 if [ -n "$SLURM_JOB_ID" ]; then
-   exec mpiexec -bind-to none "$@"
+   exec mpiexec -bind-to none $WRAPPER "$@"
    #exec srun --overcommit "$@"
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
-
-WRAPPER=""
-#WRAPPER="valgrind"
-export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
 
 OPENMPI=0
 if mpirun -version | grep open-mpi\.org > /dev/null; then
@@ -96,12 +101,12 @@ if [ "$OPENMPI" = "1" ]; then
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
-      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
