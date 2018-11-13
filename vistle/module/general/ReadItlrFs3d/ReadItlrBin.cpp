@@ -269,7 +269,7 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
         filesystem::path filename;
         if (m_haveListFile) {
             filename = m_directory[port];
-            filename.append(file);
+            filename /= file;
         } else {
             filename = m_fileList[port][timestep];
         }
@@ -567,7 +567,7 @@ bool ReadItlrBin::compute() {
                     filesystem::path filename;
                     if (haveListFile) {
                         filename = directory[port];
-                        filename.append(file);
+                        filename /= file;
                     } else {
                         filename = fileList[port][idx];
                     }
