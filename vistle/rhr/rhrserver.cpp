@@ -907,7 +907,7 @@ struct EncodeTask: public tbb::task {
                 switch (param.depthZfpMode) {
                 default:
                     CERR << "invalid ZfpMode " << param.depthZfpMode << std::endl;
-                    BOOST_FALLTHROUGH;
+                    // FALLTHRU
                 case RhrServer::ZfpFixedRate:
                     zfp_stream_set_rate(zfp, 8, type, 2, 0);
                     break;
