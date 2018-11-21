@@ -1442,9 +1442,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
             Index numConnected = 0;
             for (auto &port: inputPorts) {
-                port.second->objects() = m_cache.getObjects(port.first);
+                port.second->objects().clear();
                 if (!isConnected(port.second))
                     continue;
+                port.second->objects() = m_cache.getObjects(port.first);
                 ++numConnected;
                 if (numObject == 0) {
                     numObject = port.second->objects().size();
@@ -1580,22 +1581,27 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                             cur = (cur+step+numObject)%numObject;
                         }
                     }
+                    // all objects from current timestep until end...
                     bool push = false;
                     cur = step<0 ? numObject-1 : 0;
                     for (size_t i=0; i<numObject; ++i) {
                         if (sortKey[cur].step == startTimestep)
                             push = true;
-                        if (push && (!startWithZero || sortKey[cur].step > 0))
+                        if (push && (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0)))
                             port.second->objects().push_back(objs[sortKey[cur].idx]);
                         cur = (cur+step+numObject)%numObject;
                     }
+                    // ...and from start until current timestep
                     cur = step<0 ? numObject-1 : 0;
                     for (size_t i=0; i<numObject; ++i) {
                         if (sortKey[cur].step == startTimestep)
                             break;
-                        if (!startWithZero || sortKey[cur].step > 0)
+                        if (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0))
                             port.second->objects().push_back(objs[sortKey[cur].idx]);
                         cur = (cur+step+numObject)%numObject;
+                    }
+                    if (port.second->objects().size() != numObject) {
+                        CERR << "mismatch: expecting " << numObject << " objects, actually have " << port.second->objects().size() << " at port " << port.first << std::endl;
                     }
                     assert(port.second->objects().size() == numObject);
                 }
