@@ -289,8 +289,6 @@ void RhrServer::init() {
 
    lightsUpdateCount = 0;
 
-   m_appHandler = nullptr;
-
    m_tileWidth = 256;
    m_tileHeight = 256;
 
@@ -301,9 +299,11 @@ void RhrServer::init() {
 
    m_delay = 0;
 
+#if 0
    m_benchmark = false;
    m_errormetric = false;
    m_compressionrate = false;
+#endif
 
    m_imageParam.rgbaCompress = message::CompressionNone;
    m_imageParam.depthPrecision = 32;
@@ -466,11 +466,6 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
 }
 
 
-void RhrServer::setAppMessageHandler(AppMessageHandlerFunc handler) {
-
-   m_appHandler = handler;
-}
-
 void RhrServer::resize(size_t viewNum, int w, int h) {
 
 #if 0
@@ -552,6 +547,7 @@ bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderM
    //std::cerr << "handleMatrices: view " << mat.viewNum << ", proj: " << vd.nparam.proj << std::endl;
 
    if (mat.last) {
+       m_viewData.resize(viewNum+1);
        for (size_t i=0; i<numViews(); ++i) {
            m_viewData[i].param = m_viewData[i].nparam;
        }
@@ -601,7 +597,7 @@ bool RhrServer::handleLights(std::shared_ptr<socket> sock, const RemoteRenderMes
    return true;
 }
 
-unsigned RhrServer::timestep() const {
+int RhrServer::timestep() const {
 
    return m_imageParam.timestep;
 }
@@ -665,6 +661,8 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const v
 
     //CERR << "app timestep: " << anim.current << std::endl;
     m_imageParam.timestep = anim.current;
+    m_imageParam.timestepRequestTime = anim.time;
+
     return true;
 }
 
@@ -752,7 +750,7 @@ RhrServer::preFrame() {
    }
 }
 
-void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, const RhrServer::ViewParameters &param, bool lastView) {
+void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, RhrServer::ViewParameters param, bool lastView) {
 
    if (m_clientSocket)
       encodeAndSend(viewNum, x, y, w, h, param, lastView);
@@ -780,8 +778,9 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
 
    message->frameNumber = vp.frameNumber;
    message->requestNumber = vp.requestNumber;
-   message->requestTime = vp.matrixTime;
+   message->requestTime = vp.matrixTime > param.timestepRequestTime ? vp.matrixTime : param.timestepRequestTime;
    message->timestep = vp.timestep;
+   //std::cerr << "new tile msg: timestep=" << vp.timestep << std::endl;
    for (int i=0; i<16; ++i) {
       message->model[i] = vp.model.data()[i];
       message->view[i] = vp.view.data()[i];
@@ -1075,8 +1074,9 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
             tileReady = true;
             msg = result.rhrMessage;
         }
-        tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
         if (msg) {
+           tileMsg &tm = static_cast<tileMsg &>(msg->rhr());
+           tm.timestep = param.timestep;
            if (m_firstTile) {
               tm.flags |= rfbTileFirst;
               //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;

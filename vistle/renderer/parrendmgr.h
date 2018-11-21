@@ -30,7 +30,7 @@ public:
 
    bool handleParam(const Parameter *p);
    bool prepareFrame(size_t numTimesteps);
-   size_t timestep() const;
+   int timestep() const;
    size_t numViews() const;
    void setCurrentView(size_t i);
    void finishCurrentView(const IceTImage &img, int timestep);
@@ -133,12 +133,12 @@ public:
 
    //! state shared among all views
    struct GlobalState {
-      unsigned timestep;
-      unsigned numTimesteps;
+      int timestep = -1;
+      int numTimesteps = 0;
       Vector3 bMin, bMax;
 
       GlobalState()
-      : timestep(0)
+      : timestep(-1)
       , numTimesteps(0)
       {
       }

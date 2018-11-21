@@ -242,6 +242,14 @@ bool Renderer::dispatch(bool *messageReceived) {
    return true;
 }
 
+int Renderer::numTimesteps() const {
+
+    if (m_objectList.size() <= 1)
+        return 0;
+
+    return m_objectList.size() - 1;
+}
+
 
 bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                  vistle::Object::const_ptr object) {

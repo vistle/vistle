@@ -16,6 +16,7 @@ class V_RENDEREREXPORT Renderer: public Module {
 
    bool dispatch(bool *messageReceived=nullptr) override;
 
+   int numTimesteps() const;
    void getBounds(Vector3 &min, Vector3 &max);
    void getBounds(Vector3 &min, Vector3 &max, int time);
 

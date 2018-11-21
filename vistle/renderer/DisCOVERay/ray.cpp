@@ -113,7 +113,7 @@ class DisCOVERay: public vistle::Renderer {
    RTCDevice m_device;
    RTCScene m_scene;
 
-   size_t m_timestep;
+   int m_timestep;
 
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
 #ifdef ICET_CALLBACK
@@ -138,7 +138,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 , m_tilesize(64)
 , m_doShade(true)
 , m_uvVis(false)
-, m_timestep(0)
+, m_timestep(-1)
 , m_currentView(-1)
 {
 #if 0
@@ -390,13 +390,13 @@ bool DisCOVERay::render() {
 
     // switch time steps in embree scene
     if (m_timestep != m_renderManager.timestep() || m_renderManager.sceneChanged()) {
-       if (anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
+       if (m_timestep>=0 && anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
           for (auto &ro: anim_geometry[m_timestep])
              if (ro->data->scene)
                 rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
        }
        m_timestep = m_renderManager.timestep();
-       if (anim_geometry.size() > m_timestep) {
+       if (m_timestep>=0 && anim_geometry.size() > m_timestep) {
            for (auto &ro: anim_geometry[m_timestep])
                if (ro->data->scene) {
                    if (m_renderManager.isVariantVisible(ro->variant)) {
@@ -599,7 +599,7 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    const int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
-   if (t == -1 || size_t(t) == m_timestep) {
+   if (t == -1 || t == m_timestep) {
       m_renderManager.setModified();
    }
 
@@ -658,7 +658,7 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
       }
       rtcSetGeometryTransform(geom_0,0,RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR,transform);
       rtcCommitGeometry(geom_0);
-      if (t == -1 || size_t(t) == m_timestep) {
+      if (t == -1 || t == m_timestep) {
          rtcEnableGeometry(geom_0);
          m_renderManager.setModified();
       } else {

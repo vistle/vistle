@@ -21,7 +21,7 @@ endif()
 
 
 include_directories(
-   .. # VistlePluginUtil
+   .. # for VistlePluginUtil
 )
 include_directories(SYSTEM
    ${TBB_INCLUDE_DIR}
@@ -30,10 +30,14 @@ include_directories(SYSTEM
 
 set(HEADERS
   RhrClient.h
+  RemoteConnection.h
+  TileMessage.h
 )
 
 set(SOURCES
   RhrClient.cpp
+  RemoteConnection.cpp
+  TileMessage.cpp
 )
 
 #use_openmp()

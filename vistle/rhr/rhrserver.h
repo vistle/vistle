@@ -77,12 +77,9 @@ public:
    bool makeConnection(const std::string &host, unsigned short port, int secondsToTry=-1);
    void preFrame();
 
-   typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
-   void setAppMessageHandler(AppMessageHandlerFunc handler);
-
    struct ViewParameters;
    ViewParameters getViewParameters(int viewNum) const;
-   void invalidate(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
+   void invalidate(int viewNum, int x, int y, int w, int h, ViewParameters param, bool lastView);
 
    void setColorCodec(ColorCodec value);
    void setColorCompression(message::CompressionMode mode);
@@ -93,7 +90,7 @@ public:
    void setTileSize(int w, int h);
    void setZfpMode(ZfpMode mode);
 
-   unsigned timestep() const;
+   int timestep() const;
    void setNumTimesteps(unsigned num);
    size_t updateCount() const;
    typedef std::map<std::string, vistle::RenderObject::InitialVariantVisibility> InitialVariantVisibilityMap;
@@ -185,7 +182,8 @@ public:
    size_t lightsUpdateCount;
 
    struct ImageParameters {
-       unsigned timestep;
+       int timestep = -1;
+       double timestepRequestTime = -1.; // time for last animationMsg, for latency measurement
        bool depthFloat; //!< whether depth should be retrieved as floating point
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
        bool depthZfp; //!< whether depth should be compressed with floating point compressor zfp
@@ -197,7 +195,7 @@ public:
        message::CompressionMode rgbaCompress;
 
        ImageParameters()
-       : timestep(0)
+       : timestep(-1)
        , depthFloat(false)
        , depthPrecision(24)
        , depthZfp(false)
@@ -217,7 +215,7 @@ public:
        vistle::Matrix4 model;
        uint32_t frameNumber;
        uint32_t requestNumber;
-       int32_t timestep;
+       int32_t timestep = -1;
        double matrixTime;
        int width, height;
 
@@ -271,7 +269,6 @@ private:
    asio::ip::address m_listenAddress;
    unsigned short m_destPort;
    std::string m_destHost;
-   AppMessageHandlerFunc m_appHandler;
 
    bool startAccept();
    void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
@@ -281,11 +278,13 @@ private:
    int m_tileWidth, m_tileHeight;
 
    std::vector<ViewData, Eigen::aligned_allocator<ViewData>> m_viewData;
-   
+
+#if 0
    bool m_benchmark; //!< whether timing information should be printed
    bool m_errormetric; //!< whether compression errors should be checked
    bool m_compressionrate; //!< whether compression ratio should be evaluated
    double m_lastMatrixTime; //!< time when last matrix message was sent by client
+#endif
    int m_delay; //!< artificial delay (us)
    ImageParameters m_imageParam; //!< parameters for color/depth codec
    bool m_resizeBlocked, m_resizeDeferred;

@@ -228,6 +228,11 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
    m_state.numTimesteps = numTimesteps;
    m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
+   if (int(numTimesteps) != m_module->numTimesteps()) {
+       std::cerr << "ParallelRemoteRenderManager: WARNING: #timesteps mismatch: have "
+                 << m_module->numTimesteps() << ", expected " << numTimesteps << std::endl;
+   }
+
    if (m_updateBounds) {
       Vector min, max;
       m_module->getBounds(min, max);
@@ -261,6 +266,12 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       }
 
       rhr->setNumTimesteps(m_state.numTimesteps);
+#if 0
+      if (rhr->timestep() >= int(numTimesteps)) {
+          std::cerr << "ParallelRemoteRenderManager: WARNING: #timesteps mismatch: have "
+                    << m_module->numTimesteps() << ", current is " << rhr->timestep() << std::endl;
+      }
+#endif
 
       rhr->preFrame();
       if (m_module->rank() == rootRank()) {
@@ -276,6 +287,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       }
 
       if (m_viewData.size() > rhr->numViews()) {
+          std::cerr << "removing views " << rhr->numViews() << "-" << m_viewData.size()-1 << std::endl;
           m_viewData.resize(rhr->numViews());
           m_doRender = 1;
       }
@@ -284,6 +296,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           m_doRender = 1;
           m_viewData.emplace_back();
       }
+      assert(m_viewData.size() == rhr->numViews());
 
       for (size_t i=0; i<rhr->numViews(); ++i) {
 
@@ -359,7 +372,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
    return doRender;
 }
 
-size_t ParallelRemoteRenderManager::timestep() const {
+int ParallelRemoteRenderManager::timestep() const {
    return m_state.timestep;
 }
 
@@ -457,7 +470,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
    const size_t i = m_currentView;
    vassert(i < numViews());
 
-   //std::cerr << "finishCurrentView: " << i << std::endl;
+   //std::cerr << "finishCurrentView: " << i << ", time=" << timestep << std::endl;
    if (m_module->rank() == rootRank()) {
        if (auto rhr = m_rhrControl.server()) {
            vassert(rhr);

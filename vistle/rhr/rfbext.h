@@ -71,28 +71,49 @@ struct V_RHREXPORT rfbMsg
 
 //! send matrices from client to server
 struct V_RHREXPORT matricesMsg: public rfbMsg {
-   matricesMsg()
-   : rfbMsg(rfbMatrices)
-   , last(0)
-   , viewNum(-1)
-   , width(0)
-   , height(0)
-   , requestNumber(0)
-   , time(0.)
-   {
-      memset(model, '\0', sizeof(model));
-      memset(view, '\0', sizeof(view));
-      memset(proj, '\0', sizeof(proj));
-   }
+    matricesMsg()
+    : rfbMsg(rfbMatrices)
+    , last(0)
+    , viewNum(-1)
+    , width(0)
+    , height(0)
+    , requestNumber(0)
+    , time(0.)
+    {
+        memset(model, '\0', sizeof(model));
+        memset(view, '\0', sizeof(view));
+        memset(proj, '\0', sizeof(proj));
+    }
 
-   uint8_t last; //!< 1 if this is the last view requested for this frame
-   int16_t viewNum; //!< number of window/view that these matrices apply to
-   uint16_t width, height; //!< dimensions of requested viewport
-   uint32_t requestNumber; //!< number of render request
-   double time; //!< time of request - for latency measurement
-   double model[16]; //!< model matrix
-   double view[16]; //!< view matrix
-   double proj[16]; //!< projection matrix
+    uint8_t last; //!< 1 if this is the last view requested for this frame
+    int16_t viewNum; //!< number of window/view that these matrices apply to
+    uint16_t width, height; //!< dimensions of requested viewport
+    uint32_t requestNumber; //!< number of render request
+    double time; //!< time of request - for latency measurement
+    double model[16]; //!< model matrix
+    double view[16]; //!< view matrix
+    double proj[16]; //!< projection matrix
+
+    bool operator==(const matricesMsg &other) const {
+
+        if (viewNum != other.viewNum)
+            return false;
+        if (width != other.width)
+            return false;
+        if (height != other.height)
+            return false;
+
+        for (int i=0; i<16; ++i) {
+            if (model[i] != other.model[i])
+                return false;
+            if (view[i] != other.view[i])
+                return false;
+            if (proj[i] != other.proj[i])
+                return false;
+        }
+
+        return true;
+    }
 };
 static_assert(sizeof(matricesMsg) < RhrMessageSize, "RHR message too large");
 
@@ -144,7 +165,7 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
          attenuation[0] = 1;
       }
 
-      bool operator!=(const Light &o) {
+      bool operator!=(const Light &o) const {
 
           if (enabled != o.enabled)
               return true;
@@ -182,7 +203,7 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
    //! all light sources
    Light lights[NumLights];
 
-   bool operator!=(const lightsMsg &o) {
+   bool operator!=(const lightsMsg &o) const {
        if (viewNum != o.viewNum)
            return true;
        for (int i=0; i<NumLights; ++i) {
@@ -290,11 +311,12 @@ struct V_RHREXPORT animationMsg: public rfbMsg {
    animationMsg()
    : rfbMsg(rfbAnimation)
    , total(0)
-   , current(0)
+   , current(-1)
    {}
 
-   uint32_t total; //!< total number of animation timesteps
-   uint32_t current; //!< timestep currently displayed
+   int32_t total; //!< total number of animation timesteps
+   int32_t current; //!< timestep currently displayed
+   double time; //!< time of request - for latency measurement
 };
 static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
 
