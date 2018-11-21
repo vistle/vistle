@@ -156,8 +156,9 @@ int getTimestep(Object::const_ptr obj) {
     int t = obj->getTimestep();
     if (t < 0) {
         if (auto data = DataBase::as(obj)) {
-            auto grid = data->grid();
-            t = grid->getTimestep();
+            if (auto grid = data->grid()) {
+                t = grid->getTimestep();
+            }
         }
     }
 
