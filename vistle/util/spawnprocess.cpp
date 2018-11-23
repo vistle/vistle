@@ -13,6 +13,10 @@
 #include <sys/wait.h>
 #endif
 
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
+
 namespace vistle {
 
 process_handle spawn_process(const std::string &executable, const std::vector<std::string> args) {
@@ -28,11 +32,21 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
 	  std::cerr << "PATH is " << getenv("PATH") << std::endl;
    }
 #else
+   const pid_t ppid = getpid();
    const pid_t pid = fork();
    if (pid < 0) {
       std::cerr << "Error when forking for executing " << executable << ": " << strerror(errno) << std::endl;
       return -1;
    } else if (pid == 0) {  
+#ifdef __linux__
+      if (prctl(PR_SET_PDEATHSIG, SIGTERM) == -1) {
+          std::cerr << "Error when setting parent-death signal: " << strerror(errno) << std::endl;
+      }
+#endif
+      if (getppid() != ppid) {
+          std::cout << "Parent died before executing " << executable << ": " << strerror(errno) << std::endl;
+          exit(1);
+      }
       execvp(executable.c_str(), (char **)a.data());
       std::cout << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
       std::cerr << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
