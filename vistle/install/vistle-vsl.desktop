@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+   <mime-type type="text/x-vsl">
+      <comment>Vistle Dataflow Network</comment>
+      <glob pattern="*.vsl"/>
+      <glob pattern="*.VSL"/>
+   </mime-type>
+</mime-info>

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0.0
+Encoding=UTF-8
+Name=Vistle
+GenericName=Parallel Scientific Visualization Environment
+Exec=vistle %f
+Comment=Parallel tool for visualization of scientific data in virtual environments
+Icon=vistle
+MimeType=text/x-vsl;
+Terminal=false
+Categories=Graphics;Science;DataVisualization;

@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="icons" >
-        <file alias="vistle.png">../vistle.png</file>
+        <file alias="vistle.png">../install/vistle.png</file>
     </qresource>
 </RCC>
