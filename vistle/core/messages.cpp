@@ -579,6 +579,26 @@ Object::const_ptr AddObject::getObject() const {
    return obj;
 }
 
+void AddObject::setBlocker() {
+
+    m_blocker = true;
+}
+
+bool AddObject::isBlocker() const {
+
+    return m_blocker;
+}
+
+void AddObject::setUnblocking() {
+
+    m_unblock = true;
+}
+
+bool AddObject::isUnblocking() const {
+
+    return m_unblock;
+}
+
 
 AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
 : m_name(msg.objectName())

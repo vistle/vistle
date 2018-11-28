@@ -159,8 +159,8 @@ class ClusterManager: public ParameterManager
          {}
       ~Module();
 
-      void block(const message::Message &msg);
-      void unblock(const message::Message &msg);
+      void block(const message::Message &msg) const;
+      void unblock(const message::Message &msg) const;
       bool send(const message::Message &msg) const;
       bool update() const;
       void delay(const message::Message &msg);

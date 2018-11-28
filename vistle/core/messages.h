@@ -368,6 +368,11 @@ class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
    const shm_handle_t &getHandle() const;
    bool handleValid() const;
 
+   void setBlocker();
+   bool isBlocker() const;
+   void setUnblocking();
+   bool isUnblocking() const;
+
  private:
    port_name_t senderPort;
    port_name_t destPort;
@@ -377,6 +382,8 @@ class V_COREEXPORT AddObject: public MessageBase<AddObject, ADDOBJECT> {
    int m_objectType = Object::UNKNOWN;
    shm_handle_t handle = 0;
    mutable bool m_handleValid = false;
+   bool m_blocker = false;
+   bool m_unblock = false;
 };
 static_assert(sizeof(AddObject) <= Message::MESSAGE_SIZE, "message too large");
 

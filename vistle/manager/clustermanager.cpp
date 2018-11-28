@@ -78,13 +78,13 @@ ClusterManager::Module::~Module() {
 #endif
 }
 
-void ClusterManager::Module::block(const message::Message &msg) {
+void ClusterManager::Module::block(const message::Message &msg) const {
    std::cerr << "BLOCK: " << msg << std::endl;
    blocked = true;
    blockers.emplace_back(message::Buffer(msg));
 }
 
-void ClusterManager::Module::unblock(const message::Message &msg) {
+void ClusterManager::Module::unblock(const message::Message &msg) const {
     vassert(blocked);
     vassert(!blockers.empty());
 
@@ -472,15 +472,25 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
 
    if (hub == Communicator::the().hubId()) {
       //std::cerr << "local send to " << moduleId << ": " << message << std::endl;
-      RunningMap::const_iterator it = runningMap.find(moduleId);
-      if (it == runningMap.end()) {
-         CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
-         std::cerr << "  message: " << message << std::endl;
-         return true;
-      }
-
       if (destRank == -1 || destRank == getRank()) {
+         RunningMap::const_iterator it = runningMap.find(moduleId);
+         if (it == runningMap.end()) {
+             CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
+             std::cerr << "  message: " << message << std::endl;
+             return true;
+         }
+
          auto &mod = it->second;
+         if (message.type() == message::ADDOBJECT) {
+             auto &addObj = message.as<message::AddObject>();
+             if (addObj.isUnblocking()) {
+                 mod.unblock(addObj);
+                 return true;
+             }
+             if (addObj.isBlocker()) {
+                 mod.block(addObj);
+             }
+         }
          mod.send(message);
       } else {
          Communicator::the().sendMessage(moduleId, message, destRank);
@@ -1208,16 +1218,26 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
        addObj2.setRank(m_rank); // object is/will be present on this rank
        addObj2.setDestId(destId);
        addObj2.setDestPort(destPort->getName());
+       addObj2.setDestRank(-1);
        if (obj) {
            addObj2.setObject(obj);
+       } else {
+           // receiving module will wait until it is unblocked
+           addObj2.setBlocker();
        }
 
-       if (destMod.objectPolicy != message::ObjectReceivePolicy::Local) {
-           if (obj) {
-               if (!Communicator::the().broadcastAndHandleMessage(addObj2))
-                   return false;
-               continue;
-           }
+       bool broadcast = false;
+       if (destMod.objectPolicy == message::ObjectReceivePolicy::Local) {
+           if (!sendMessage(destId, addObj2))
+               return false;
+           portManager().addObject(destPort);
+
+           if (!checkExecuteObject(destId))
+               return false;
+       } else {
+           broadcast = true;
+           if (!Communicator::the().broadcastAndHandleMessage(addObj2))
+               return false;
        }
 
        if (!obj) {
@@ -1225,35 +1245,20 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
            vassert(!localAdd);
            auto it = runningMap.find(destId);
            if (it != runningMap.end()) {
-               if (!addObj2.wasBroadcast())
-                   it->second.block(addObj2);
-               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2]() mutable {
-                   auto it = runningMap.find(addObj2.destId());
-                   if (it == runningMap.end()) {
-                       std::cerr << "AddObject: did not find module " << addObj2.destId() << std::endl;
-                       return;
-                   }
+               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2, broadcast]() mutable {
                    auto obj = addObj.getObject();
                    assert(obj);
                    addObj2.setObject(obj);
                    obj.reset();
-                   if (addObj2.isForBroadcast()) {
-                       if (!Communicator::the().broadcastAndHandleMessage(addObj2))
-                           CERR << "object broadcast failed" << std::endl;
+                   // unblock receiving module
+                   addObj2.setUnblocking();
+                   if (broadcast) {
+                       Communicator::the().broadcastAndHandleMessage(addObj2);
                    } else {
-                       it->second.unblock(addObj2);
+                       sendMessage(addObj2.destId(), addObj2);
                    }
                });
            }
-       }
-
-       if (!addObj2.wasBroadcast()) {
-           if (!sendMessage(destId, addObj2))
-               return false;
-           portManager().addObject(destPort);
-
-           if (!checkExecuteObject(destId))
-               return false;
        }
    }
 
@@ -1267,6 +1272,10 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
        if (!sendMessage(addObj.destId(), addObj))
            return false;
 
+       if (addObj.isUnblocking()) {
+           return true;
+       }
+
        if (auto destPort = portManager().getPort(addObj.destId(), addObj.getDestPort()))
            portManager().addObject(destPort);
        else
@@ -1274,6 +1283,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
        if (!checkExecuteObject(addObj.destId()))
            return false;
+
+       return true;
    }
 
    const bool localAdd = isLocal(addObj.senderId());
@@ -1308,10 +1319,11 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
          if (obj)
              Communicator::the().dataManager().notifyTransferComplete(addObj);
       } else {
-          // nothing to do
-          return true;
+          return sendMessage(Communicator::the().hubId(), addObj, destRank);
       }
    }
+
+   vassert(onThisRank);
 
    if (localAdd && onThisRank) {
       vassert(obj);
