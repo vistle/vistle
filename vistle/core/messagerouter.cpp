@@ -227,10 +227,10 @@ bool Router::toTracker(const Message &msg, Identify::Identity senderType) {
    const int t = msg.type();
    if (rt[t] & Track) {
       if (m_identity == Identify::HUB) {
-         return senderType == Identify::SLAVEHUB || senderType == Identify::MANAGER;
+         return senderType == Identify::SLAVEHUB || senderType == Identify::MANAGER || senderType == Identify::UI;
       }
       if (m_identity == Identify::SLAVEHUB) {
-         return senderType == Identify::HUB || senderType == Identify::MANAGER;
+         return senderType == Identify::HUB || senderType == Identify::MANAGER || senderType == Identify::UI;
       }
    }
 
