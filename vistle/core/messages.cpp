@@ -1174,8 +1174,9 @@ ReducePolicy::Reduce ReducePolicy::policy() const {
    return m_reduce;
 }
 
-ExecutionProgress::ExecutionProgress(Progress stage)
+ExecutionProgress::ExecutionProgress(Progress stage, int count)
 : m_stage(stage)
+, m_executionCount(count)
 {
 }
 
@@ -1187,6 +1188,14 @@ ExecutionProgress::Progress ExecutionProgress::stage() const {
 void ExecutionProgress::setStage(ExecutionProgress::Progress stage) {
 
    m_stage = stage;
+}
+
+void ExecutionProgress::setExecutionCount(int count) {
+    m_executionCount = count;
+}
+
+int ExecutionProgress::getExecutionCount() const {
+    return m_executionCount;
 }
 
 Trace::Trace(int module, Type messageType, bool onoff)
@@ -1567,7 +1576,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case EXECUTIONPROGRESS: {
          auto &mm = static_cast<const ExecutionProgress &>(m);
-         s << ", stage: " << ExecutionProgress::toString(mm.stage());
+         s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", execcount: " << mm.getExecutionCount();
          break;
       }
       case ADDPARAMETER: {

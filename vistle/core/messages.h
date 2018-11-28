@@ -712,12 +712,15 @@ class V_COREEXPORT ExecutionProgress: public MessageBase<ExecutionProgress, EXEC
       (Start) //< execution starts - if applicable, prepare() will be invoked
       (Finish) //< execution finishes - if applicable, reduce() has finished
    )
-   ExecutionProgress(Progress stage);
+   ExecutionProgress(Progress stage, int count);
    Progress stage() const;
    void setStage(Progress stage);
+   void setExecutionCount(int count);
+   int getExecutionCount() const;
 
  private:
    Progress m_stage;
+   int m_executionCount; //!< count of execution which triggered this message
 };
 static_assert(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)

@@ -1510,6 +1510,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                   if (isLocal(destId)) {
                      //CERR << "Exec prepare 2" << std::endl;
                      auto exec = message::Execute(message::Execute::Prepare, destId);
+                     exec.setExecutionCount(prog.getExecutionCount());
                      exec.setDestId(destId);
                      if (broadcast) {
                         //CERR << "Exec prepare 3" << std::endl;
@@ -1551,6 +1552,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                              }
                              for (int i=0; i<maxNumObject; ++i) {
                                  message::Execute exec(message::Execute::ComputeObject, destId);
+                                 exec.setExecutionCount(prog.getExecutionCount());
                                  if (!Communicator::the().broadcastAndHandleMessage(exec))
                                      return false;
                              }
@@ -1563,6 +1565,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                   }
                   if (isLocal(destId)) {
                      auto exec = message::Execute(message::Execute::Reduce, destId);
+                     exec.setExecutionCount(prog.getExecutionCount());
                      exec.setDestId(destId);
                      if (broadcast) {
                         if (m_rank == 0)

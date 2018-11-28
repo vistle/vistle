@@ -1400,6 +1400,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
     using namespace vistle::message;
 
+    if (m_executionCount < exec->getExecutionCount()) {
+        m_executionCount = exec->getExecutionCount();
+        m_iteration = -1;
+    }
+
     if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
         return true;
 
@@ -1611,11 +1616,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             }
         }
 
-
-        if (m_executionCount < exec->getExecutionCount()) {
-            m_executionCount = exec->getExecutionCount();
-            m_iteration = -1;
-        }
 
         if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
 #ifdef REDUCE_DEBUG
@@ -2000,7 +2000,7 @@ bool Module::prepareWrapper(const message::Execute *exec) {
    }
 #endif
 
-   message::ExecutionProgress start(message::ExecutionProgress::Start);
+   message::ExecutionProgress start(message::ExecutionProgress::Start, m_executionCount);
    start.setReferrer(exec->uuid());
    start.setDestId(Id::LocalManager);
    sendMessage(start);
@@ -2120,7 +2120,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
       }
    }
 
-   message::ExecutionProgress fin(message::ExecutionProgress::Finish);
+   message::ExecutionProgress fin(message::ExecutionProgress::Finish, m_executionCount);
    fin.setReferrer(exec->uuid());
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
