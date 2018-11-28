@@ -371,35 +371,32 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
     if (m_rank > 0)
         return forwardToMaster(message);
 
-    if (m_size == 0)
-        return handleMessage(message);
-
     message::Buffer buf(message);
     buf.setForBroadcast(false);
     buf.setWasBroadcast(true);
 
-    std::vector<MPI_Request> s(m_size);
-    for (int index = 0; index < m_size; ++index) {
-        unsigned int size = buf.size();
-        if (index != m_rank) {
-            MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
+    if (m_size > 0) {
+        std::vector<MPI_Request> s(m_size);
+        for (int index = 0; index < m_size; ++index) {
+            unsigned int size = buf.size();
+            if (index != m_rank) {
+                MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
+            }
         }
+
+        // wait for completion
+        for (int index=0; index<m_size; ++index) {
+
+            if (index == m_rank)
+                continue;
+
+            MPI_Wait(&s[index], MPI_STATUS_IGNORE);
+        }
+
+        MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
     }
 
-    // wait for completion
-    for (int index=0; index<m_size; ++index) {
-
-        if (index == m_rank)
-            continue;
-
-        MPI_Wait(&s[index], MPI_STATUS_IGNORE);
-    }
-
-    MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
-
-    const bool result = handleMessage(buf);
-
-    return result;
+    return handleMessage(buf);
 }
 
 bool Communicator::handleMessage(const message::Buffer &message) {
