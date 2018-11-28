@@ -318,11 +318,11 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
     }
     case CompressionLz4: {
 #ifdef HAVE_LZ4
-        int n = LZ4_decompress_fast(compressed.data(), decompressed.data(), decompressed.size());
+        int n = LZ4_decompress_safe(compressed.data(), decompressed.data(), msg.payloadSize(), decompressed.size());
         if (n < 0) {
             throw vistle::exception("LZ4 decompression failed");
         }
-        assert(n == msg.payloadSize());
+        assert(n == msg.payloadRawSize());
 #else
         throw vistle::exception("cannot decompress LZ4");
 #endif
