@@ -368,10 +368,13 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
     assert(message.destRank() == -1);
 
     // message will be handled when received again from rank 0
-    if (m_rank > 0)
-        return forwardToMaster(message);
-
     message::Buffer buf(message);
+    if (m_rank > 0) {
+        buf.setForBroadcast(true);
+        buf.setWasBroadcast(false);
+        return forwardToMaster(buf);
+    }
+
     buf.setForBroadcast(false);
     buf.setWasBroadcast(true);
 
