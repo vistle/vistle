@@ -128,44 +128,46 @@ bool Renderer::removeColorMap(const std::string &species) {
 bool Renderer::handleAddObject(const message::AddObject &add) {
 
     using namespace vistle::message;
-    auto pol = objectReceivePolicy();
 
     Object::const_ptr obj, placeholder;
     std::vector<Object::const_ptr> objs;
     if (add.rank() == rank()) {
         obj = add.takeObject();
         assert(obj);
-
-        auto geo_norm_tex = splitObject(obj);
-        auto &grid = geo_norm_tex[0];
-        auto &normals = geo_norm_tex[1];
-        auto &tex = geo_norm_tex[2];
-
-        if (size() > 1 && pol == ObjectReceivePolicy::Distribute) {
-            auto ph = std::make_shared<PlaceHolder>(obj);
-            ph->setGeometry(grid);
-            ph->setNormals(normals);
-            ph->setTexture(tex);
-            placeholder = ph;
-        }
     }
 
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
+    auto pol = objectReceivePolicy();
     if (size() > 1) {
         if (rm == AllNodes) {
             assert(pol == ObjectReceivePolicy::Distribute);
             broadcastObject(obj, add.rank());
             assert(obj);
         } else if (pol == ObjectReceivePolicy::Distribute) {
+
+            if (add.rank() == rank()) {
+
+                auto geo_norm_tex = splitObject(obj);
+                auto &grid = geo_norm_tex[0];
+                auto &normals = geo_norm_tex[1];
+                auto &tex = geo_norm_tex[2];
+
+                auto ph = std::make_shared<PlaceHolder>(obj);
+                ph->setGeometry(grid);
+                ph->setNormals(normals);
+                ph->setTexture(tex);
+                placeholder = ph;
+            }
+
             broadcastObject(placeholder, add.rank());
             assert(placeholder);
         }
-        if (rm == MasterOnly) {
-            if (rank() == 0) {
-                if (add.rank() != 0)
-                    obj = receiveObject(add.rank());
-            } else if (rank() == add.rank()) {
+
+        if (rm == MasterOnly && add.rank() != 0) {
+            if (rank() == add.rank()) {
                 sendObject(obj, 0);
+            } else if (rank() == 0) {
+                obj = receiveObject(add.rank());
             }
         }
     }
