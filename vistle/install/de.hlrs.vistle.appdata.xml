@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2018 HLRS -->
+<component type="desktop-application">
+ <id>de.hlrs.vistle</id>
+ <metadata_license>CC0-1.0</metadata_license>
+ <project_license>LGPL-2.1</project_license>
+ <name>Vistle</name>
+ <summary>Interactive scientific visualization system</summary>
+ <description>
+  <p>
+      Vistle is an interactive visualization system for scientific with a focus on Virtual Reality.
+      Workflows can be created and modified with a graphical editor.
+      All nodes of a cluster can be used for data-parallel processing,
+      and several clusters can be chained for distributed workflows.
+      Remote-rendering is an integral part of the visualization pipeline.
+  </p>
+ </description>
+ <categories>
+  <category>Science</category>
+ </categories>
+ <screenshots>
+  <screenshot type="default">
+   <caption>Visualisation graph and output</caption>
+   <image width="800" height="513">https://www.hlrs.de/fileadmin/user_upload/vistle.png</image>
+  </screenshot>
+ </screenshots>
+ <launchable type="desktop-id">de.hlrs.vistle.desktop</launchable>
+ <url type="homepage">https://www.hlrs.de/vistle</url>
+ <developer_name>HLRS</developer_name>
+ <update_contact>aumueller@hlrs.de</updatecontact>
+</component>
