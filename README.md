@@ -74,7 +74,7 @@ Build Requirements
   the version of OpenSceneGraph that was used for compiling OpenCOVER
 
 - **Qt**:
-  Qt 5 is required by the graphical user interface
+  The Qt 5 libraries `Qt5Core`, `Qt5Widgets` and `Qt5Gui` are required by the graphical user interface.
 
 You can set the environment variable `EXTERNLIBS` to a directory where Vistle
 should search for 3rd party libraries.
