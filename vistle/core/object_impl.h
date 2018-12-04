@@ -88,21 +88,26 @@ Object *Object::loadObject(Archive &ar) {
           objData->ref();
           Shm::the().unlockObjects();
           obj = Object::create(objData);
-          objData->unref();
           if (!ar.currentObject())
               ar.setCurrentObject(objData);
+          objData->unref();
+          assert(obj->refcount() >= 1);
       } else {
+          if (objData) {
+              std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount << std::endl;
+          }
           Shm::the().unlockObjects();
           auto funcs = ObjectTypeRegistry::getType(type);
           obj = funcs.createEmpty(name);
           obj->loadFromArchive(ar);
+          assert(obj->refcount() >= 1);
       }
 #ifdef USE_BOOST_ARCHIVE
    } catch (const boost::archive::archive_exception &ex) {
       std::cerr << "Boost.Archive exception: " << ex.what() << std::endl;
       if (ex.code == boost::archive::archive_exception::unsupported_version) {
          std::cerr << "***" << std::endl;
-         std::cerr << "*** received Boost archive in unsupported formad, supported is up to " << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
+         std::cerr << "*** received Boost archive in unsupported format, supported is up to " << boost::archive::BOOST_ARCHIVE_VERSION() << std::endl;
          std::cerr << "***" << std::endl;
       }
       return obj;

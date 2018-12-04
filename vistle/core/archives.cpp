@@ -155,11 +155,11 @@ void yas_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
 }
 
 void yas_iarchive::setCurrentObject(ObjectData *data) {
+    if (data)
+        data->ref();
     if (m_currentObject)
         m_currentObject->unref();
     m_currentObject = data;
-    if (m_currentObject)
-        m_currentObject->ref();
 }
 
 ObjectData *yas_iarchive::currentObject() const {
@@ -202,11 +202,11 @@ void boost_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
 }
 
 void boost_iarchive::setCurrentObject(ObjectData *data) {
+    if (data)
+        data->ref();
     if (m_currentObject)
         m_currentObject->unref();
     m_currentObject = data;
-    if (m_currentObject)
-        m_currentObject->ref();
 }
 
 ObjectData *boost_iarchive::currentObject() const {
