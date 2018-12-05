@@ -28,7 +28,7 @@ void Router::initRoutingTable() {
    rt[DEBUG]                 = Track|HandleOnHub;
    rt[QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[EXECUTE]               = Special|HandleOnMaster|OnlyRank0;
-   rt[CANCELEXECUTE]         = Special|HandleOnMaster;
+   rt[CANCELEXECUTE]         = Special|HandleOnMaster|OnlyRank0;
    rt[MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
    rt[ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0|HandleOnMaster;
    rt[REMOVEPORT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
