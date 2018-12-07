@@ -37,7 +37,7 @@
 #endif
 #endif
 
-namespace mpi = boost::mpi;
+namespace mpi = ::boost::mpi;
 
 namespace vistle {
 
@@ -73,7 +73,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    bool removeParameter(Parameter *param) override;
 
    const std::string &name() const;
-   const boost::mpi::communicator &comm() const;
+   const mpi::communicator &comm() const;
    int rank() const;
    int size() const;
    int id() const;
@@ -239,7 +239,6 @@ protected:
    int m_receivePolicy;
    int m_schedulingPolicy;
    int m_reducePolicy;
-   int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
    Port *findInputPort(const std::string &name) const;
@@ -272,7 +271,7 @@ protected:
    bool m_benchmark;
    double m_benchmarkStart;
    double m_avgComputeTime;
-   boost::mpi::communicator m_comm;
+   mpi::communicator m_comm;
 
    int m_numTimesteps;
    bool m_cancelRequested=false, m_cancelExecuteCalled=false, m_executeAfterCancelFound=false;
@@ -295,14 +294,14 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #ifdef MODULE_THREAD
 #ifdef MODULE_STATIC
 #define MODULE_MAIN(X) \
-    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, boost::mpi::communicator comm) { \
+    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, mpi::communicator comm) { \
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     static vistle::ModuleRegistry::RegisterClass registerModule(VISTLE_MODULE_NAME, newModuleInstance);
 #else
 #define MODULE_MAIN(X) \
-    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, boost::mpi::communicator comm) { \
+    static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, mpi::communicator comm) { \
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
@@ -336,7 +335,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
          int moduleID = atoi(argv[3]); \
          vistle::Module::setup(shmname, moduleID, rank); \
          { \
-            X module(name, moduleID, boost::mpi::communicator()); \
+            X module(name, moduleID, mpi::communicator()); \
             module.eventLoop(); \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \

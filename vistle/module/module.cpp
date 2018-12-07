@@ -55,7 +55,6 @@
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
 namespace interprocess = ::boost::interprocess;
-namespace mpi = ::boost::mpi;
 
 namespace vistle {
 
@@ -187,7 +186,6 @@ Module::Module(const std::string &desc,
 , m_receivePolicy(message::ObjectReceivePolicy::Local)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Locally)
-, m_executionDepth(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_prioritizeVisible(true)
 , m_syncMessageProcessing(false)
@@ -1424,8 +1422,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
     bool reordered = false;
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::ComputeObject) {
-        //vassert(m_executionDepth == 0);
-        ++m_executionDepth;
 
         if (reducePolicy() != message::ReducePolicy::Never) {
             vassert(m_prepared);
@@ -1565,6 +1561,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
                 }
 
+                // add objects to port queue in processing order
                 for (auto &port: inputPorts) {
                     port.second->objects().clear();
                     if (!isConnected(port.second))
@@ -1630,13 +1627,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         int prevTimestep = -1;
         if (m_numTimesteps > 0) {
-            int skip=1;
-            if (startTimestep==0 && startWithZero)
-                skip=2;
-            if (direction >= 0)
-                prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
-            else
-                prevTimestep = (startTimestep+1)%m_numTimesteps;
+            prevTimestep = startTimestep;
 #ifdef REDUCE_DEBUG
             if (rank() == 0 && exec->what() == message::Execute::ComputeExecute)
                 CERR << "last timestep to reduce: " << prevTimestep << std::endl;
@@ -1655,6 +1646,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 ++numReductions;
                 assert(numReductions <= m_numTimesteps);
             }
+            //CERR << "runReduce(t=" << timestep << "): exec count = " << m_executionCount << std::endl;
             return reduce(timestep);
         };
         bool computeOk = false;
@@ -1679,6 +1671,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 if (cancelRequested()) {
                     computeOk = true;
                 } else if (objectIsEmpty) {
+                    //CERR << "timestep=" << timestep << ": empty objects, skipping compute" << std::endl;
                     for (auto &port: inputPorts) {
                         if (!isConnected(port.second))
                             continue;
@@ -1719,7 +1712,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                             }
                         }
                         prevTimestep = timestep;
-                    } else {
+                    } else if (direction < 0) {
                         if (prevTimestep < timestep) {
                             for (int t=prevTimestep; t>=0; --t) {
                                 if (t > 0 || !startWithZero)
@@ -1774,9 +1767,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 }
             }
         }
-
-        --m_executionDepth;
-        //vassert(m_executionDepth == 0);
     }
 
     if (exec->what() == Execute::ComputeExecute
@@ -2005,6 +1995,14 @@ bool Module::prepareWrapper(const message::Execute *exec) {
    start.setDestId(Id::LocalManager);
    sendMessage(start);
 
+   if (collective) {
+       int oldExecCount = m_executionCount;
+       m_executionCount = boost::mpi::all_reduce(comm(), m_executionCount, boost::mpi::maximum<int>());
+       if (oldExecCount < m_executionCount) {
+           m_iteration = -1;
+       }
+   }
+
    if (m_benchmark) {
 
       comm().barrier();
@@ -2039,7 +2037,7 @@ bool Module::compute() {
 
 bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
 
-   //CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
+   //CERR << "reduceWrapper: prepared=" << m_prepared << ", exec count = " << m_executionCount << std::endl;
 
    vassert(m_prepared);
    if (reducePolicy() != message::ReducePolicy::Never) {
@@ -2072,8 +2070,10 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
        case message::ReducePolicy::PerTimestepOrdered: {
            if (!reordered) {
                for (int t=0; t<m_numTimesteps; ++t) {
-                   if (!cancelRequested(sync))
+                   if (!cancelRequested(sync)) {
+                       //CERR << "run reduce(t=" << t << "): exec count = " << m_executionCount << std::endl;
                        ret &= reduce(t);
+                   }
                }
            }
        }
@@ -2081,6 +2081,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
        case message::ReducePolicy::Locally:
        case message::ReducePolicy::OverAll: {
            if (!cancelRequested(sync)) {
+               //CERR << "run reduce(t=" << -1 << "): exec count = " << m_executionCount << std::endl;
                ret = reduce(-1);
            }
            break;
