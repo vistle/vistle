@@ -1363,10 +1363,10 @@ RhrClient::update()
 
    bool running = coVRMSController::instance()->syncBool(m_remote && m_remote->isRunning());
    if (m_remote && !running) {
-       clientCleanup(m_remote);
        if (m_remote->m_moduleId) {
            setServerParameters(m_remote->m_moduleId, "", 0);
        }
+       clientCleanup(m_remote);
        m_remote.reset();
        m_clientsChanged = true;
    }
