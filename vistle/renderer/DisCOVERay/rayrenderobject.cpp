@@ -7,7 +7,8 @@
 
 #include <core/assert.h>
 
-#include <embree2/rtcore.h>
+#include <embree3/rtcore.h>
+#include <embree3/rtcore_device.h>
 
 #include "rayrenderobject.h"
 #include "spheres_ispc.h"
@@ -30,8 +31,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 {
    data->device = device;
    data->scene = nullptr;
-   data->geomId = RTC_INVALID_GEOMETRY_ID;
-   data->instId = RTC_INVALID_GEOMETRY_ID;
+   data->geomID = RTC_INVALID_GEOMETRY_ID;
+   data->instID = RTC_INVALID_GEOMETRY_ID;
    data->spheres = nullptr;
    data->primitiveFlags = nullptr;
    data->indexBuffer = nullptr;
@@ -65,26 +66,32 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       return;
    }
 
-   data->scene = rtcDeviceNewScene(data->device, RTC_SCENE_STATIC|sceneFlags, intersections);
+   data->scene = rtcNewScene(data->device);
+   rtcSetSceneFlags(data->scene, RTC_SCENE_FLAG_NONE);
+   rtcSetSceneBuildQuality(data->scene, RTC_BUILD_QUALITY_MEDIUM);
 
+   RTCGeometry geom = 0;
    bool useNormals = true;
    if (auto tri = Triangles::as(geometry)) {
 
       Index numElem = tri->getNumElements();
-      data->geomId = rtcNewTriangleMesh(data->scene, RTC_GEOMETRY_STATIC, numElem, tri->getNumCoords());
+      geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
+      rtcSetGeometryBuildQuality(geom,RTC_BUILD_QUALITY_MEDIUM);
+      rtcSetGeometryTimeStepCount(geom,1);
       std::cerr << "Tri: #: " << tri->getNumElements() << ", #corners: " << tri->getNumCorners() << ", #coord: " << tri->getNumCoords() << std::endl;
 
-      Vertex* vertices = (Vertex*) rtcMapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
+      Vertex* vertices = (Vertex*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_VERTEX,0,RTC_FORMAT_FLOAT3,4*sizeof(float),tri->getNumCoords());
       for (Index i=0; i<tri->getNumCoords(); ++i) {
          vertices[i].x = tri->x()[i];
          vertices[i].y = tri->y()[i];
          vertices[i].z = tri->z()[i];
       }
-      rtcUnmapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
+      
 
-      data->indexBuffer = new Triangle[numElem];
-      rtcSetBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER, data->indexBuffer, 0, sizeof(Triangle));
-      Triangle* triangles = (Triangle*) rtcMapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
+      //data->indexBuffer = new Triangle[numElem];
+      //rtcSetSharedGeometryBuffer(geom_0,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),numElem);
+      Triangle* triangles = (Triangle*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Triangle),numElem);
+      data->indexBuffer = triangles;
       if (tri->getNumCorners() == 0) {
          for (Index i=0; i<numElem; ++i) {
             triangles[i].v0 = i*3;
@@ -100,26 +107,29 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             triangles[i].elem = i;
          }
       }
-      rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
+      
    } else if (auto poly = Polygons::as(geometry)) {
 
       Index ntri = poly->getNumCorners()-2*poly->getNumElements();
       vassert(ntri >= 0);
 
-      data->geomId = rtcNewTriangleMesh(data->scene, RTC_GEOMETRY_STATIC, ntri, poly->getNumCoords());
+      geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
+      rtcSetGeometryBuildQuality(geom,RTC_BUILD_QUALITY_MEDIUM);
+      rtcSetGeometryTimeStepCount(geom,1);
       //std::cerr << "Poly: #tri: " << poly->getNumCorners()-2*poly->getNumElements() << ", #coord: " << poly->getNumCoords() << std::endl;
 
-      Vertex* vertices = (Vertex*) rtcMapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
+      Vertex* vertices = (Vertex*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_VERTEX,0,RTC_FORMAT_FLOAT3,4*sizeof(float),poly->getNumCoords());
       for (Index i=0; i<poly->getNumCoords(); ++i) {
          vertices[i].x = poly->x()[i];
          vertices[i].y = poly->y()[i];
          vertices[i].z = poly->z()[i];
       }
-      rtcUnmapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
+      
 
-      data->indexBuffer = new Triangle[ntri];
-      rtcSetBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER, data->indexBuffer, 0, sizeof(Triangle));
-      Triangle* triangles = (Triangle*) rtcMapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
+      //data->indexBuffer = new Triangle[ntri];
+      //rtcSetSharedGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),ntri);
+      Triangle* triangles = (Triangle*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Triangle),ntri);
+      data->indexBuffer = triangles;
       Index t = 0;
       for (Index i=0; i<poly->getNumElements(); ++i) {
          const Index start = poly->el()[i];
@@ -142,7 +152,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          }
       }
       vassert(t == ntri);
-      rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
+      
    } else if (auto sph = Spheres::as(geometry)) {
       useNormals = false;
 
@@ -160,7 +170,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          s[i].p.z = z[i];
          s[i].r = r[i];
       }
-      data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), nsph);
+      geom = newSpheres(data.get(), nsph);
    } else if (auto point = Points::as(geometry)) {
 
       Index np = point->getNumPoints();
@@ -177,7 +187,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          s[i].r = pointSize;
       }
       data->lighted = 0;
-      data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), np);
+      geom = newSpheres(data.get(), np);
    } else if (auto line = Lines::as(geometry)) {
 
       Index nStrips = line->getNumElements();
@@ -212,7 +222,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       }
       vassert(idx == nPoints);
       data->lighted = 0;
-      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints-1);
+      geom = newTubes(data.get(), nPoints-1);
    } else if (auto tube = Tubes::as(geometry)) {
       useNormals= false;
 
@@ -282,28 +292,34 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          vassert(idx == end);
       }
       vassert(idx == nPoints);
-      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints > 0 ? nPoints-1 : 0);
+      geom = newTubes(data.get(), nPoints > 0 ? nPoints-1 : 0);
    }
 
-   if (this->normals && useNormals) {
+   if (geom) {
+       if (this->normals && useNormals) {
 
-      if (this->normals->guessMapping(geometry) == DataBase::Element)
-         data->normalsPerPrimitiveMapping = 1;
+           if (this->normals->guessMapping(geometry) == DataBase::Element)
+               data->normalsPerPrimitiveMapping = 1;
 
-      for (int c=0; c<3; ++c) {
-          data->normals[c] = &this->normals->x(c)[0];
-      }
+           for (int c=0; c<3; ++c) {
+               data->normals[c] = &this->normals->x(c)[0];
+           }
+       }
+
+       data->geomID = rtcAttachGeometry(data->scene, geom);
+       rtcReleaseGeometry(geom);
+       rtcCommitGeometry(geom);
    }
 
-   rtcCommit(data->scene);
+   rtcCommitScene(data->scene);
 }
 
 RayRenderObject::~RayRenderObject() {
 
    delete[] data->spheres;
    delete[] data->primitiveFlags;
-   //rtcDeleteGeometry(data->scene, data->geomId); // not possible for static geometry
+   //rtcDeleteGeometry(data->scene, data->geomID); // not possible for static geometry
    if (data->scene)
-      rtcDeleteScene(data->scene);
-   delete[] data->indexBuffer;
+      rtcReleaseScene(data->scene);
+   //delete[] data->indexBuffer;
 }

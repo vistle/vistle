@@ -1,5 +1,5 @@
 include(FindPackageHandleStandardArgs)
-vistle_find_package(embree 2.0)
+vistle_find_package(embree 3.0)
 find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 
 vistle_find_package(TBB)
@@ -43,7 +43,7 @@ IF (EMBREE_MAX_ISA STREQUAL "NONE")
 ENDIF()
 
 IF (EMBREE_MAX_ISA STREQUAL "NONE")
-   SET(XEON_ISA "AVX2" CACHE STRING "Selects ISA to support.")
+   SET(XEON_ISA "AVX512" CACHE STRING "Selects ISA to support.")
 else()
    SET(XEON_ISA "RANGE" CACHE STRING "Selects ISA to support.")
 ENDIF ()
@@ -112,38 +112,44 @@ include (ispc)
 include_directories_ispc(${EMBREE_INCLUDE_DIRS})
 # END: ispc
 
-if (ENABLE_ISPC_SUPPORT)
-   set(ALL_MODULES ${ALL_MODULES} DisCOVERay CACHE INTERNAL "")
-   add_definitions(-DVISTLE_MODULE_NAME="DisCOVERay")
-   add_definitions(-DHAVE_ISPC)
-   if ((CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
-      set(ISPC_COMPILE_FLAGS "-g")
-   endif()
-   if(VISTLE_MULTI_PROCESS)
-      add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
-         render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
-      set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
-      install(TARGETS DisCOVERay RUNTIME DESTINATION libexec/module)
-   else()
-      if (VISTLE_MODULES_SHARED)
-         set(type MODULE)
-      else()
-         set(type STATIC)
-      endif()
-      add_ispc_library(DisCOVERay ${type} rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
-         render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
-      set_target_properties(DisCOVERay PROPERTIES
-         RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module
-         LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
-      if (VISTLE_MODULES_SHARED)
-         install(TARGETS DisCOVERay LIBRARY DESTINATION lib/module)
-      endif()
-   endif()
-else()
-   add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc common.h  rayrenderobject.h)
-endif()
-add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc render.isph  renderobjectdata.isph  spheres_isect.isph  spheres.isph  tubes.isph)
+set(RAY_HEADERS common.h rayrenderobject.h)
+set(RAY_SOURCES ray.cpp rayrenderobject.cpp)
+set(ISPC_HEADERS 
+    render.isph  renderobjectdata.isph
+    spheres_isect.isph  spheres.isph  
+    tubes.isph
+)
+set(ISPC_SOURCES 
+        render.ispc renderobjectdata.ispc
+        spheres.ispc
+        tubes.ispc
+)
 
+set(ALL_MODULES ${ALL_MODULES} DisCOVERay CACHE INTERNAL "")
+add_definitions(-DVISTLE_MODULE_NAME="DisCOVERay")
+add_definitions(-DHAVE_ISPC)
+if ((CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
+    set(ISPC_COMPILE_FLAGS "-g")
+endif()
+if(VISTLE_MULTI_PROCESS)
+    add_ispc_executable(DisCOVERay ${RAY_HEADERS} ${RAY_SOURCES} ${ISPC_SOURCES})
+    set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+    install(TARGETS DisCOVERay RUNTIME DESTINATION libexec/module)
+else()
+    if (VISTLE_MODULES_SHARED)
+        set(type MODULE)
+    else()
+        set(type STATIC)
+    endif()
+    add_ispc_library(DisCOVERay ${type} ${RAY_HEADERS} ${RAY_SOURCES} ${ISPC_SOURCES})
+    set_target_properties(DisCOVERay PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module
+        LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib/module)
+    if (VISTLE_MODULES_SHARED)
+        install(TARGETS DisCOVERay LIBRARY DESTINATION lib/module)
+    endif()
+endif()
+add_custom_target(ispc SOURCES ${ISPC_SOURCES} ${ISPC_HEADERS})
 
 include_directories(SYSTEM
         ${ICET_INCLUDE_DIRS}

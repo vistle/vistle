@@ -2,15 +2,14 @@
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
-#include <embree2/rtcore.isph>
+#include <embree3/rtcore.isph>
 
 struct RenderObjectData;
 
-struct Sphere
+struct RTC_ALIGN(16) Sphere
 {
-  //ALIGNED_STRUCT
   Vec3f p;                      //!< position of the sphere
   float r;                      //!< radius of the sphere
 };
 
-export uniform unsigned int registerSpheres(uniform RTCScene scene, uniform RenderObjectData *uniform data, uniform size_t N);
+export uniform RTCGeometry newSpheres(uniform RenderObjectData *uniform data, uniform uintptr_t N);

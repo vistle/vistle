@@ -1,8 +1,10 @@
 #include <IceT.h>
 #include <IceTMPI.h>
 
-#include <embree2/rtcore.h>
-#include <embree2/rtcore_ray.h>
+#include <embree3/rtcore.h>
+#include <embree3/rtcore_ray.h>
+#include <embree3/rtcore_geometry.h>
+#include <embree3/rtcore_scene.h>
 
 #include <boost/mpi.hpp>
 
@@ -49,13 +51,13 @@ class DisCOVERay: public vistle::Renderer {
       std::string err = "Error: Unknown RTC error.";
 
       switch (code) {
-         case RTC_NO_ERROR: err = "No error occurred."; break;
-         case RTC_UNKNOWN_ERROR: err = "An unknown error has occurred."; break;
-         case RTC_INVALID_ARGUMENT: err = "An invalid argument was specified."; break;
-         case RTC_INVALID_OPERATION: err = "The operation is not allowed for the specified object."; break;
-         case RTC_OUT_OF_MEMORY: err = "There is not enough memory left to complete the operation."; break;
-         case RTC_UNSUPPORTED_CPU: err = "The CPU is not supported as it does not support SSE2."; break;
-         case RTC_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
+         case RTC_ERROR_NONE: err = "No error occurred."; break;
+         case RTC_ERROR_UNKNOWN: err = "An unknown error has occurred."; break;
+         case RTC_ERROR_INVALID_ARGUMENT: err = "An invalid argument was specified."; break;
+         case RTC_ERROR_INVALID_OPERATION: err = "The operation is not allowed for the specified object."; break;
+         case RTC_ERROR_OUT_OF_MEMORY: err = "There is not enough memory left to complete the operation."; break;
+         case RTC_ERROR_UNSUPPORTED_CPU: err = "The CPU is not supported as it does not support SSE2."; break;
+         case RTC_ERROR_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
       }
 
       CERR << "RTC error: " << desc << " - " << err << std::endl;
@@ -84,12 +86,14 @@ class DisCOVERay: public vistle::Renderer {
    ParallelRemoteRenderManager m_renderManager;
 
    // parameters
+   IntParameter *m_useRayStreamsParam;
+   bool m_useRayStreams = true;
    IntParameter *m_renderTileSizeParam;
    int m_tilesize;
    IntParameter *m_shading;
-   bool m_doShade;
+   bool m_doShade = true;
    IntParameter *m_uvVisParam;
-   bool m_uvVis;
+   bool m_uvVis = false;
    FloatParameter *m_pointSizeParam;
 
    // object lifetime management
@@ -131,7 +135,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 #else
 , m_renderManager(this, nullptr)
 #endif
-, m_tilesize(TileSize)
+, m_tilesize(64)
 , m_doShade(true)
 , m_uvVis(false)
 , m_timestep(0)
@@ -151,6 +155,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
+   m_useRayStreamsParam = addIntParameter("ray_streams", "use ray streams API", (Integer)m_useRayStreams, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
@@ -163,16 +168,18 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
        CERR << "failed to create device" << std::endl;
        throw(vistle::exception("failed to create Embree device"));
    }
-   rtcDeviceSetErrorFunction2(m_device, rtcErrorCallback, nullptr);
-   m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, intersections);
-   rtcCommit(m_scene);
+   rtcSetDeviceErrorFunction(m_device,rtcErrorCallback,nullptr);
+   m_scene = rtcNewScene(m_device);
+   rtcSetSceneFlags(m_scene, RTC_SCENE_FLAG_DYNAMIC);
+   rtcSetSceneBuildQuality(m_scene,RTC_BUILD_QUALITY_MEDIUM);
+   rtcCommitScene(m_scene);
 }
 
 
 DisCOVERay::~DisCOVERay() {
 
-   rtcDeleteScene(m_scene);
-   rtcDeleteDevice(m_device);
+   rtcReleaseScene(m_scene);
+   rtcReleaseDevice (m_device);
 
 #ifdef ICET_CALLBACK
    assert(s_instance == this);
@@ -222,6 +229,9 @@ bool DisCOVERay::changeParameter(const Parameter *p) {
     } else if (p == m_renderTileSizeParam) {
 
         m_tilesize = m_renderTileSizeParam->getValue();
+    } else if (p == m_useRayStreamsParam) {
+
+        m_useRayStreams = m_useRayStreamsParam->getValue();
     }
 
    return Renderer::changeParameter(p);
@@ -271,7 +281,7 @@ void TileTask::render(int tile) const {
     const int ty = tile/ntx;
 
     ispc::SceneData sceneData;
-    sceneData.scene = (ispc::__RTCScene *)rc.m_scene;
+    sceneData.scene = rc.m_scene;
     for (int i=0; i<4; ++i) {
         auto row = modelView.block<1,4>(i,0);
         sceneData.modelView[i].x = row[0];
@@ -359,7 +369,10 @@ void TileTask::render(int tile) const {
     data.depthTransform3.w = depthTransform3[3];
 
 
-    ispcRenderTile(&sceneData, &data);
+    if (rc.m_useRayStreams)
+        ispcRenderTileStream(&sceneData, &data);
+    else
+        ispcRenderTilePacket(&sceneData, &data);
 }
 
 
@@ -380,16 +393,16 @@ bool DisCOVERay::render() {
        if (anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
           for (auto &ro: anim_geometry[m_timestep])
              if (ro->data->scene)
-                rtcDisable(m_scene, ro->data->instId);
+                rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
        }
        m_timestep = m_renderManager.timestep();
        if (anim_geometry.size() > m_timestep) {
            for (auto &ro: anim_geometry[m_timestep])
                if (ro->data->scene) {
                    if (m_renderManager.isVariantVisible(ro->variant)) {
-                       rtcEnable(m_scene, ro->data->instId);
+                       rtcEnableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
                    } else {
-                       rtcDisable(m_scene, ro->data->instId);
+                       rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
                    }
                }
        }
@@ -397,14 +410,14 @@ bool DisCOVERay::render() {
            for (auto &ro: static_geometry) {
                if (ro->data->scene) {
                    if (m_renderManager.isVariantVisible(ro->variant)) {
-                       rtcEnable(m_scene, ro->data->instId);
+                       rtcEnableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
                    } else {
-                       rtcDisable(m_scene, ro->data->instId);
+                       rtcDisableGeometry(rtcGetGeometry(m_scene,ro->data->instID));
                    }
                }
            }
        }
-       rtcCommit(m_scene);
+       rtcCommitScene(m_scene);
     }
 
     for (size_t i=0; i<m_renderManager.numViews(); ++i) {
@@ -561,7 +574,7 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
    m_renderManager.updateRect(m_currentView, viewport);
 #endif
 
-   int err = rtcDeviceGetError(m_device);
+   int err = rtcGetDeviceError (m_device);
    if (err != 0) {
       CERR << "RTC error: " << err << std::endl;
    }
@@ -576,11 +589,11 @@ void DisCOVERay::removeObject(std::shared_ptr<RenderObject> vro) {
    CERR << "removeObject(" << ro->senderId << "/" << ro->variant << ")" << std::endl;
 
    if (rod->scene) {
-      rtcDisable(m_scene, rod->instId);
-      rtcDeleteGeometry(m_scene, rod->instId);
-      rtcCommit(m_scene);
+      rtcDisableGeometry(rtcGetGeometry(m_scene,rod->instID));
+      rtcDetachGeometry(m_scene, rod->instID);
+      rtcCommitScene(m_scene);
 
-      instances[rod->instId] = nullptr;
+      instances[rod->instID] = nullptr;
    }
 
    const int t = ro->timestep;
@@ -622,11 +635,15 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
 
    auto rod = ro->data.get();
    if (rod->scene) {
-      rod->instId = rtcNewInstance3(m_scene, rod->scene, 1);
-      if (instances.size() <= rod->instId)
-         instances.resize(rod->instId+1);
-      vassert(!instances[rod->instId]);
-      instances[rod->instId] = rod;
+      RTCGeometry geom_0 = rtcNewGeometry (m_device, RTC_GEOMETRY_TYPE_INSTANCE);
+      rtcSetGeometryInstancedScene(geom_0,rod->scene);
+      rtcSetGeometryTimeStepCount(geom_0,1);
+      rod->instID = rtcAttachGeometry(m_scene,geom_0);
+      rtcReleaseGeometry(geom_0);
+      if (instances.size() <= rod->instID)
+         instances.resize(rod->instID+1);
+      vassert(!instances[rod->instID]);
+      instances[rod->instID] = rod;
 
       float transform[16];
       auto geoTransform = geometry->getTransform();
@@ -639,14 +656,15 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
           rod->normalTransform[c].y = inv(c,1);
           rod->normalTransform[c].z = inv(c,2);
       }
-      rtcSetTransform2(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, transform, 0);
+      rtcSetGeometryTransform(geom_0,0,RTC_FORMAT_FLOAT4X4_COLUMN_MAJOR,transform);
+      rtcCommitGeometry(geom_0);
       if (t == -1 || size_t(t) == m_timestep) {
-         rtcEnable(m_scene, rod->instId);
+         rtcEnableGeometry(geom_0);
          m_renderManager.setModified();
       } else {
-         rtcDisable(m_scene, rod->instId);
+         rtcDisableGeometry(geom_0);
       }
-      rtcCommit(m_scene);
+      rtcCommitScene(m_scene);
    }
 
    m_renderManager.addObject(ro);

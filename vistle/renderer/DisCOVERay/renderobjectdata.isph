@@ -1,6 +1,12 @@
 #pragma once
 
-#include <embree2/rtcore.isph>
+#include <embree3/rtcore.isph>
+#include <embree3/rtcore_geometry.isph>
+
+#include "linalg/math.isph"
+#include "linalg/vec.isph"
+
+struct Sphere;
 
 #include "spheres.isph"
 
@@ -17,13 +23,13 @@ enum PrimitiveFlags {
    PFEndDisc = 64,
 };
 
-struct RenderObjectData {
+struct RTC_ALIGN(16) RenderObjectData {
 
    int t; //!< timestep number
    RTCDevice device; //!< embree device
    RTCScene scene; //!< embree scene id for *this* object
-   int geomId; //!< embree geometry id of this object's scene
-   unsigned int instId; //!< embree instance id of this object's scene
+   int geomID; //!< embree geometry id of this object's scene
+   unsigned int instID; //!< embree instance id of this object's scene
 
    Triangle *indexBuffer; //< triangle list
    Sphere *spheres; //!< sphere data

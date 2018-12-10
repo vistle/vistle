@@ -14,10 +14,12 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
+#include <embree3/rtcore_ray.isph>
 
-  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
-  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+inline bool sphereIntersectN(const uniform Sphere &sphere, uniform int N, uniform int i, RTCRayN *uniform ray, RTCHitN *uniform hit) {
+
+  const Vec3f org = make_Vec3f(RTCRayN_org_x(ray,N,i),RTCRayN_org_y(ray,N,i),RTCRayN_org_z(ray,N,i));
+  const Vec3f dir = make_Vec3f(RTCRayN_dir_x(ray,N,i),RTCRayN_dir_y(ray,N,i),RTCRayN_dir_z(ray,N,i));
   const Vec3f v = org-sphere.p;
   const float A = dot(dir,dir);
   const float B = dot(v,dir);
@@ -28,63 +30,33 @@ inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
   const float rcpA = rcp(A);
   const float t0 = rcpA*(-B-Q);
   const float t1 = rcpA*(-B+Q);
-  bool hit = false;
-  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
-     hit = true;
-     ray.tfar = t0;
+  float &tnear = RTCRayN_tnear(ray,N,i);
+  float &tfar = RTCRayN_tfar(ray,N,i);
+  bool haveHit = false;
+  if ((tnear < t0) & (t0 < tfar)) {
+     haveHit = true;
+     tfar = t0;
   }
-  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
-     hit = true;
-     ray.tfar = t1;
+  if ((tnear < t1) & (t1 < tfar)) {
+     haveHit = true;
+     tfar = t1;
   }
-  if (hit) {
-     const Vec3f Ng = org+ray.tfar*dir-sphere.p;
-     ray.Ngx = Ng.x;
-     ray.Ngy = Ng.y;
-     ray.Ngz = Ng.z;
-     ray.u = 0.f;
-     ray.v = 0.f;
+  if (hit && haveHit) {
+     const Vec3f Ng = org+tfar*dir-sphere.p;
+     RTCHitN_Ng_x(hit,N,i) = Ng.x;
+     RTCHitN_Ng_y(hit,N,i) = Ng.y;
+     RTCHitN_Ng_z(hit,N,i) = Ng.z;
+     RTCHitN_u(hit,N,i) = 0.f;
+     RTCHitN_v(hit,N,i) = 0.f;
   }
-  return hit;
+  return haveHit;
 }
 
-inline bool sphereIsect2(const uniform Sphere &sphere,
-   varying const Vec3f &ray_org,
-   varying const Vec3f &ray_dir,
-   varying const float &ray_tnear,
-   varying float &ray_tfar,
-   varying Vec3f &ray_Ng)
-{
-  const Vec3f v = ray_org-sphere.p;
-  const float A = dot(ray_dir,ray_dir);
-  const float B = dot(v,ray_dir);
-  const float C = dot(v,v) - sqr(sphere.r);
-  const float D = B*B - A*C;
-  if (D < 0.0f) return false;
-  const float Q = sqrt(D);
-  const float rcpA = rcp(A);
-  const float t0 = rcpA*(-B-Q);
-  const float t1 = rcpA*(-B+Q);
-  bool hit = false;
-  if ((ray_tnear < t0) & (t0 < ray_tfar)) {
-     hit = true;
-     ray_tfar = t0;
-  }
-  if ((ray_tnear < t1) & (t1 < ray_tfar)) {
-     hit = true;
-     ray_tfar = t1;
-  }
-  if (hit) {
-     ray_Ng = ray_org+ray_tfar*ray_dir-sphere.p;
-  }
-  return hit;
-}
+#if 0
+inline bool sphereOccludedN(const uniform Sphere &sphere, uniform int N, uniform int i, RTCRayN *uniform ray) {
 
-
-inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
-
-  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
-  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const Vec3f org = make_Vec3f(RTCRayN_org_x(ray,N,i),RTCRayN_org_y(ray,N,i),RTCRayN_org_z(ray,N,i));
+  const Vec3f dir = make_Vec3f(RTCRayN_dir_x(ray,N,i),RTCRayN_dir_y(ray,N,i),RTCRayN_dir_z(ray,N,i));
   const Vec3f v = org-sphere.p;
   const float A = dot(dir,dir);
   const float B = dot(v,dir);
@@ -95,37 +67,17 @@ inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
   const float rcpA = rcp(A);
   const float t0 = rcpA*(-B-Q);
   const float t1 = rcpA*(-B+Q);
-  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
-     return true;
+  float &tnear = RTCRayN_tnear(ray,N,i);
+  float &tfar = RTCRayN_tfar(ray,N,i);
+  bool haveHit = false;
+  if ((tnear < t0) & (t0 < tfar)) {
+     haveHit = true;
+     tfar = t0;
   }
-  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
-     return true;
+  if ((tnear < t1) & (t1 < tfar)) {
+     haveHit = true;
+     tfar = t1;
   }
-  return false;
+  return haveHit;
 }
-
-inline bool sphereOcclude2(const uniform Sphere &sphere,
-   varying const Vec3f &ray_org,
-   varying const Vec3f &ray_dir,
-   varying const float &ray_tnear,
-   varying const float &ray_tfar)
-{
-  const Vec3f v = ray_org-sphere.p;
-  const float A = dot(ray_dir,ray_dir);
-  const float B = dot(v,ray_dir);
-  const float C = dot(v,v) - sqr(sphere.r);
-  const float D = B*B - A*C;
-  if (D < 0.0f) return false;
-  const float Q = sqrt(D);
-  const float rcpA = rcp(A);
-  const float t0 = rcpA*(-B-Q);
-  const float t1 = rcpA*(-B+Q);
-  bool hit = false;
-  if ((ray_tnear < t0) & (t0 < ray_tfar)) {
-     return true;
-  }
-  if ((ray_tnear < t1) & (t1 < ray_tfar)) {
-     return true;
-  }
-  return false;
-}
+#endif

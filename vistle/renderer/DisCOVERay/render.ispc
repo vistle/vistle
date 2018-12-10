@@ -1,7 +1,7 @@
 #include "render.isph"
 
-#include <embree2/rtcore.isph>
-#include <embree2/rtcore_ray.isph>
+#include <embree3/rtcore.isph>
+#include <embree3/rtcore_ray.isph>
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
@@ -12,33 +12,38 @@ inline uniform float dot(const uniform Vec4f a, const uniform Vec4f b) { return 
 inline varying float dot(const varying Vec4f a, const varying Vec4f b) { return a.x*b.x+a.y*b.y+a.z*b.z+a.w*b.w; }
 
 inline void setUpRay(uniform const TileData *uniform tile,
-                     varying RTCRay &ray, const varying int x, const varying int y) {
+                     varying RTCRayHit &rayhit, const varying int x, const varying int y) {
 
     const Vec3f origin = tile->origin;
+    RTCRay &ray = rayhit.ray;
+    RTCHit &hit = rayhit.hit;
 
-    ray.orgx = origin.x;
-    ray.orgy = origin.y;
-    ray.orgz = origin.z;
+    ray.org_x = origin.x;
+    ray.org_y = origin.y;
+    ray.org_z = origin.z;
 
     const Vec3f rdir = tile->corner + x*tile->dx + y*tile->dy;
-    ray.dirx = rdir.x;
-    ray.diry = rdir.y;
-    ray.dirz = rdir.z;
+    ray.dir_x = rdir.x;
+    ray.dir_y = rdir.y;
+    ray.dir_z = rdir.z;
 
     ray.tnear = tile->tNear;
     ray.tfar = tile->tFar;
 
-    ray.geomID = RTC_INVALID_GEOMETRY_ID;
-    ray.primID = RTC_INVALID_GEOMETRY_ID;
-    ray.instID = RTC_INVALID_GEOMETRY_ID;
+    hit.geomID = RTC_INVALID_GEOMETRY_ID;
+    hit.primID = RTC_INVALID_GEOMETRY_ID;
+    hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
 
     ray.mask = RayEnabled;
-    ray.time = 0.0f;
+    //ray.time = 0.0f;
 }
 
 
 inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileData *uniform tile,
-                     const varying RTCRay &ray, const varying int x, const varying int y) {
+                     const varying RTCRayHit &rayhit, const varying int x, const varying int y) {
+
+    varying const RTCRay &ray = rayhit.ray;
+    varying const RTCHit &hit = rayhit.hit;
 
     uniform const float ambientFactor = 0.2f;
     uniform const Vec4f specColor = make_Vec4f(0.4f, 0.4f, 0.4f, 1.0f);
@@ -52,28 +57,28 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
 
     Vec4f shaded = make_Vec4f(0);
     float zValue = 1.f;
-    if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
+    if (hit.geomID != RTC_INVALID_GEOMETRY_ID) {
 
-        const Vec3f rdir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+        const Vec3f rdir = make_Vec3f(ray.dir_x,ray.dir_y,ray.dir_z);
         const Vec3f pos = origin + ray.tfar * rdir;
         Vec3f dir = normalize(rdir);
         const Vec4f pos4 = make_Vec4f(pos.x, pos.y, pos.z, 1);
         const float win2 = dot(depthTransform2, pos4);
         const float win3 = dot(depthTransform3, pos4);
-        zValue= (win2/win3+1.f)*0.5f;
+        zValue = (win2/win3+1.f)*0.5f;
 
         cif (scene->doShade) {
 
-            RenderObjectData *ro = scene->ro[ray.instID];
-            assert(ro->geomId == ray.geomID);
+            RenderObjectData *ro = scene->ro[hit.instID[0]];
+            assert(ro->geomID == hit.geomID);
 
             Vec4f color = scene->defaultColor;
             if (ro->hasSolidColor) {
                 color = make_Vec4f(ro->solidColor[0]*255.f, ro->solidColor[1]*255.f, ro->solidColor[2]*255.f, ro->solidColor[3]*255.f);
             }
             if (scene->uvVis) {
-                const float &u = ray.u;
-                const float &v = ray.v;
+                const float &u = hit.u;
+                const float &v = hit.v;
                 const float w = 1.f - u - v;
                 color.x = u*255.f;
                 color.y = v*255.f;
@@ -82,22 +87,22 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
             }
             else if (ro->texData && ro->texCoords) {
 
-                const float &u = ray.u;
-                const float &v = ray.v;
+                const float &u = hit.u;
+                const float &v = hit.v;
                 const float w = 1.f - u - v;
                 unsigned idx = 0;
                 if (ro->perPrimitiveMapping) {
                     if (ro->indexBuffer) {
-                        const float tc = clamp(ro->texCoords[ro->indexBuffer[ray.primID].elem], 0.f, 1.f);
+                        const float tc = clamp(ro->texCoords[ro->indexBuffer[hit.primID].elem], 0.f, 1.f);
                         idx = min(tc * ro->texWidth, ro->texWidth-1);
                     } else {
-                        const float tc = clamp(ro->texCoords[ray.primID], 0.f, 1.f);
+                        const float tc = clamp(ro->texCoords[hit.primID], 0.f, 1.f);
                         idx = min(tc * ro->texWidth, ro->texWidth-1);
                     }
                 } else if (ro->indexBuffer) {
-                    const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
-                    const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
-                    const unsigned int v2 = ro->indexBuffer[ray.primID].v2;
+                    const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                    const unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                    const unsigned int v2 = ro->indexBuffer[hit.primID].v2;
 
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
@@ -105,8 +110,8 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     const float tc = clamp(w*tc0 + u*tc1 + v*tc2, 0.f, 1.f);
                     idx = min(tc * ro->texWidth, ro->texWidth-1);
                 } else {
-                    const unsigned int v0 = ray.primID;
-                    const unsigned int v1 = ray.primID + 1;
+                    const unsigned int v0 = hit.primID;
+                    const unsigned int v1 = hit.primID + 1;
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
                     const float tc = clamp(w*tc0 + u*tc1, 0.f, 1.f);
@@ -126,34 +131,34 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 ambientColor.z *= ambientFactor;
                 Vec3f normal;
                 if (ro->normals[0]) {
-                    const float &u = ray.u;
-                    const float &v = ray.v;
+                    const float &u = hit.u;
+                    const float &v = hit.v;
                     const float w = 1.f - u - v;
                     if (ro->normalsPerPrimitiveMapping) {
                         if (ro->indexBuffer) {
-                            const unsigned int idx = ro->indexBuffer[ray.primID].elem;
+                            const unsigned int idx = ro->indexBuffer[hit.primID].elem;
                             normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
                         } else {
-                            const unsigned int idx = ray.primID;
+                            const unsigned int idx = hit.primID;
                             normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
                         }
                     } else if (ro->indexBuffer) {
-                        const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
-                        const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
-                        const unsigned int v2 = ro->indexBuffer[ray.primID].v2;
+                        const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                        const unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                        const unsigned int v2 = ro->indexBuffer[hit.primID].v2;
                         const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
                         const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
                         const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
                         normal = w*n0 + u*n1 + v*n2;
                     } else {
-                        const unsigned int v0 = ray.primID;
-                        const unsigned int v1 = ray.primID + 1;
+                        const unsigned int v0 = hit.primID;
+                        const unsigned int v1 = hit.primID + 1;
                         const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
                         const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
                         normal = w*n0 + u*n1;
                     }
                 } else {
-                    normal = make_Vec3f(ray.Ngx,ray.Ngy,ray.Ngz);
+                    normal = make_Vec3f(hit.Ng_x,hit.Ng_y,hit.Ng_z);
                 }
                 normal = normalize(make_Vec3f(dot(normal, ro->normalTransform[0]), dot(normal, ro->normalTransform[1]), dot(normal, ro->normalTransform[2])));
                 if (twoSided && dot(normal, dir) > 0.f)
@@ -214,7 +219,7 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
 }
 
 
-inline void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
+export void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
 
    uniform const int x0=tile->x0, x1=tile->x1;
    uniform const int y0=tile->y0, y1=tile->y1;
@@ -222,64 +227,77 @@ inline void ispcRenderTilePacket(uniform const SceneData *uniform scene, uniform
    int x,y;
    foreach_tiled(y=y0...y1, x=x0...x1) {
 
-      RTCRay ray;
+      varying RTCRayHit ray;
+      ray.ray.flags = 0;
       setUpRay(tile, ray, x, y);
-      rtcIntersect(scene->scene, ray);
-      shadeRay(scene, tile, ray, x, y);
-   }
-}
-
-inline void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
-
-   uniform const int x0=tile->x0, x1=tile->x1;
-   uniform const int y0=tile->y0, y1=tile->y1;
-
-   bool valid_stream[TILESIZE*TILESIZE];
-   RTCRay primary_stream[TILESIZE*TILESIZE];
-
-   int x, y;
-   /* set up rays */
-   uniform int N=0;
-   foreach_tiled(y=y0...y1, x=x0...x1) {
-      /* ISPC workaround for mask == 0 */
-      if (all(__mask == 0)) continue;
-
-      bool mask = __mask; unmasked { valid_stream[N] = mask; }
-      RTCRay &ray = primary_stream[N];
-      setUpRay(tile, ray, x, y);
-      mask = __mask; unmasked { // invalidates inactive rays
-          ray.tnear = mask ? 0.0f         : (float)(pos_inf);
-          ray.tfar  = mask ? (float)(inf) : (float)(neg_inf);
+      {
+        uniform RTCIntersectContext context;
+        rtcInitIntersectContext(&context);
+        rtcIntersectV(scene->scene,&context,&ray);
       }
-
-      ++N;
-   }
-
-   /* shoot rays */
-   uniform RTCIntersectContext primary_context;
-   primary_context.flags = RTC_INTERSECT_COHERENT;
-   primary_context.userRayExt = &primary_stream;
-   rtcIntersectVM(scene->scene,&primary_context,(varying RTCRay* uniform)&primary_stream,N,sizeof(RTCRay));
-
-   /* shade rays */
-   N=-1;
-   foreach_tiled(y=y0...y1, x=x0...x1) {
-      ++N;
-      /* ISPC workaround for mask == 0 */
-      if (all(__mask == 0)) continue;
-
-      /* ignore invalid rays */
-      if (valid_stream[N] == false) continue;
-
-      RTCRay &ray = primary_stream[N];
       shadeRay(scene, tile, ray, x, y);
    }
 }
 
-export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
-#ifdef USE_STREAM
-    ispcRenderTileStream(scene, tile);
-#else
-    ispcRenderTilePacket(scene, tile);
-#endif
+export void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
+
+#define TSX 8
+#define TSY 8
+
+   uniform const int tx0=tile->x0, tx1=tile->x1;
+   uniform const int ty0=tile->y0, ty1=tile->y1;
+
+   for (uniform int y0=ty0; y0<ty1; y0 += TSY) {
+       uniform int y1 = min(y0+TSY, ty1);
+       for (uniform int x0=tx0; x0<tx1; x0 += TSX) {
+           uniform int x1 = min(x0+TSX, tx1);
+
+           bool valid_stream[TSX*TSY];
+           RTCRayHit primary_stream[TSX*TSY];
+
+           int x, y;
+           /* set up rays */
+           uniform int i=0;
+           foreach_tiled(y=y0...y1, x=x0...x1) {
+               /* ISPC workaround for mask == 0 */
+               if (all(__mask == 0)) continue;
+
+               bool mask = __mask; unmasked { valid_stream[i] = mask; }
+               RTCRayHit &rayhit = primary_stream[i];
+               setUpRay(tile, rayhit, x, y);
+               mask = __mask; unmasked { // invalidates inactive rays
+                   rayhit.ray.tnear = mask ? 0.0f         : (float)(pos_inf);
+                   rayhit.ray.tfar  = mask ? (float)(inf) : (float)(neg_inf);
+               }
+
+               ++i;
+           }
+
+           /* shoot rays */
+           uniform RTCIntersectContext primary_context;
+           rtcInitIntersectContext(&primary_context);
+           primary_context.flags = RTC_INTERSECT_CONTEXT_FLAG_COHERENT;
+           //primary_context.userRayExt = &primary_stream;
+           rtcIntersectVM(scene->scene,&primary_context,&primary_stream[0],i,sizeof(RTCRayHit));
+
+           /* shade rays */
+           i=-1;
+           foreach_tiled(y=y0...y1, x=x0...x1) {
+               /* ISPC workaround for mask == 0 */
+               if (all(__mask == 0)) continue;
+
+               ++i;
+               /* ignore invalid rays */
+               if (valid_stream[i] == false) continue;
+
+               RTCRayHit &rayhit = primary_stream[i];
+               shadeRay(scene, tile, rayhit, x, y);
+           }
+       }
+   }
+
+#undef TSX
+#undef TSY
+
+}
 }

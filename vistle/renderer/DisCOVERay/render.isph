@@ -1,7 +1,7 @@
 #ifndef RENDER_ISPC_H
 #define RENDER_ISPC_H
 
-#include <embree2/rtcore.isph>
+#include <embree3/rtcore.isph>
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"
@@ -46,14 +46,11 @@ struct TileData {
    Vec4f depthTransform2, depthTransform3;
 };
 
-export void ispcRenderTile(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
+export void ispcRenderTileStream(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
+export void ispcRenderTilePacket(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
 
 export void forceExportVertex(uniform Vertex *uniform vertex);
 
-#if RTCORE_VERSION >= 21602
 typedef uintptr_t item_t;
-#else
-typedef size_t item_t;
-#endif
 
 #endif
