@@ -75,5 +75,6 @@ public:
     vistle::IntParameter *m_useCelltree;
     bool m_havePressure;
 
+    bool m_haveTimeSteps = false;
 };
 #endif

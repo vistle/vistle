@@ -140,6 +140,7 @@ Tracer::~Tracer() {
 bool Tracer::prepare(){
 
     m_havePressure = true;
+    m_haveTimeSteps = false;
 
     grid_in.clear();
     celltree.clear();
@@ -173,21 +174,24 @@ bool Tracer::compute() {
        }
     }
     if (t < 0)
-       t = 0;
+       t = -1;
+
+    if (t >= 0)
+        m_haveTimeSteps = true;
 
     const size_t numSteps = t+1;
-    if (grid_in.size() < numSteps) {
-       grid_in.resize(numSteps);
-       celltree.resize(numSteps);
-       data_in0.resize(numSteps);
-       data_in1.resize(numSteps);
+    if (grid_in.size() < numSteps+1) {
+       grid_in.resize(numSteps+1);
+       celltree.resize(numSteps+1);
+       data_in0.resize(numSteps+1);
+       data_in1.resize(numSteps+1);
     }
 
     if (useCelltree) {
        if (unstr) {
-           celltree[t].emplace_back(std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr { return unstr->getCelltree(); }));
+           celltree[t+1].emplace_back(std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr { return unstr->getCelltree(); }));
        } else if(auto str = StructuredGrid::as(grid)) {
-           celltree[t].emplace_back(std::async(std::launch::async, [str]() -> Celltree3::const_ptr { return str->getCelltree(); }));
+           celltree[t+1].emplace_back(std::async(std::launch::async, [str]() -> Celltree3::const_ptr { return str->getCelltree(); }));
        }
     }
 
@@ -198,9 +202,9 @@ bool Tracer::compute() {
         }
     }
 
-    grid_in[t].push_back(grid);
-    data_in0[t].push_back(data0);
-    data_in1[t].push_back(data1);
+    grid_in[t+1].push_back(grid);
+    data_in0[t+1].push_back(data0);
+    data_in1[t+1].push_back(data1);
     if (!data1)
         m_havePressure = false;
 
@@ -291,7 +295,11 @@ bool Tracer::reduce(int timestep) {
    }
 
    int numtime = numTimesteps();
-   std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
+#if 0
+   std::cerr << "reduce(" << timestep << ") with " << numtime << " steps, #blocks="
+             << (timestep+1>grid_in.size() ? 0 : grid_in[timestep+1].size())
+             << std::endl;
+#endif
    numtime = std::min(timestep+1, numtime);
    if (numtime == 0)
        numtime = 1;
@@ -337,22 +345,33 @@ bool Tracer::reduce(int timestep) {
        return checkSet.size();
    };
 
+   Index numconstant = grid_in[0].size();
+   for (Index i=0; i<numconstant; ++i) {
+       if (useCelltree && !celltree.empty()) {
+           if (celltree[0].size() > i && celltree[0][i].valid())
+               celltree[0][i].get();
+       }
+   }
+
    // create particles
    Index id=0;
    for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
            continue;
-       Index numblocks = size_t(t)>=grid_in.size() ? 0 : grid_in[t].size();
+       Index numblocks = size_t(t)+1>=grid_in.size() ? 0 : grid_in[t+1].size();
 
        //create BlockData objects
-       global.blocks[t].resize(numblocks);
-       for(Index i=0; i<numblocks; i++){
+       global.blocks[t].resize(numblocks+numconstant);
+       for (Index i=0; i<numconstant; i++) {
+           global.blocks[t][i].reset(new BlockData(i, grid_in[0][i], data_in0[0][i], data_in1[0][i]));
+       }
+       for (Index i=0; i<numblocks; i++) {
 
-           if (useCelltree && celltree.size() > size_t(t)) {
-               if (celltree[t].size() > i)
-                   celltree[t][i].get();
+           if (useCelltree && celltree.size() > size_t(t+1)) {
+               if (celltree[t+1].size() > i && celltree[t+1][i].valid())
+                   celltree[t+1][i].get();
            }
-           global.blocks[t][i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
+           global.blocks[t][i+numconstant].reset(new BlockData(i+numconstant, grid_in[t+1][i], data_in0[t+1][i], data_in1[t+1][i]));
        }
 
        //create particle objects, 2 if traceDirecton==Both
