@@ -1104,6 +1104,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         break;
     }
     case message::Execute::ComputeObject: {
+        vassert(mod.prepared);
         //CERR << exec << std::endl;
         auto it = m_stateTracker.runningMap.find(exec.getModule());
         auto pol = message::SchedulingPolicy::Single;
@@ -1112,15 +1113,19 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         }
         if (exec.wasBroadcast() || pol == message::SchedulingPolicy::Single) {
             mod.reduced = false;
+            if (exec.wasBroadcast()) {
+                CERR << "executing after broadcast: " << exec << std::endl;
+            }
             mod.send(exec);
         } else {
             if (m_rank == 0) {
                 bool doExec = pol == message::SchedulingPolicy::Gang;
+                int numObjects = 0;
                 if (pol == message::SchedulingPolicy::LazyGang) {
                     if (ssize_t(mod.objectCount.size()) < getSize())
                         mod.objectCount.resize(getSize());
                     ++mod.objectCount[exec.rank()];
-                    int numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
+                    numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
                     if (numObjects>0 && numObjects>=getSize()*.2) {
                         doExec = true;
                         for (auto &c: mod.objectCount) {
@@ -1131,7 +1136,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
                     }
                 }
                 if (doExec) {
-                    //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
+                    CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
                     Communicator::the().broadcastAndHandleMessage(exec);
                 }
             }
@@ -1410,7 +1415,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
    if (i2 == m_stateTracker.runningMap.end()) {
-      CERR << "module " << prog.senderId() << " not found" << std::endl;
+      CERR << "handle ExecutionProgress: module " << prog.senderId() << " not found, msg=" << prog << std::endl;
       return false;
    }
    auto &mod = i->second;
@@ -1460,7 +1465,11 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    bool readyForPrepare = false, readyForReduce = false;
    bool unqueueExecute = false;
-   //CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
+   if (localSender) {
+       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", before: #started=" << mod.ranksStarted << ", #fin=" << mod.ranksFinished << std::endl;
+   } else {
+       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
+   }
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
@@ -1478,7 +1487,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
              ++mod.ranksFinished;
              if (mod.ranksFinished == m_size) {
                 if (mod.ranksStarted != m_size) {
-                   CERR << "mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
+                   CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
                 }
                 vassert(mod.ranksStarted >= m_size);
                 mod.ranksStarted -= m_size;
@@ -1490,6 +1499,10 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
          }
          break;
       }
+   }
+
+   if (localSender) {
+       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", after: #started=" << mod.ranksStarted << ", #fin=" << mod.ranksFinished << std::endl;
    }
 
    if (readyForPrepare || readyForReduce) {
@@ -1577,7 +1590,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                              for (size_t r=0; r<destMod.objectCount.size(); ++r) {
                                  auto &c = destMod.objectCount[r];
                                  if (c > 0) {
-                                     //CERR << "flushing " << c << " objects for rank " << r << ", module " << destId << std::endl;
+                                     CERR << "flushing " << c << " objects for rank " << r << ", module " << destId << std::endl;
                                  }
                                  if (c > maxNumObject)
                                      maxNumObject = c;

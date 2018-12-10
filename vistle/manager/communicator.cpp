@@ -260,7 +260,13 @@ bool Communicator::dispatch(bool *work) {
          vassert(m_recvSize <= m_recvBufToAny.bufferSize());
          MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
                status.MPI_SOURCE, MPI_COMM_WORLD);
-         if (m_recvSize > 0) {
+
+         unsigned recvSize = m_recvSize;
+
+         // post new receive
+         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, MPI_COMM_WORLD, &m_reqAny);
+
+         if (recvSize > 0) {
             received = true;
 
             message::Message *message = &m_recvBufToAny;
@@ -268,15 +274,19 @@ bool Communicator::dispatch(bool *work) {
             printf("[%02d] message from [%02d] message type %d m_size %d\n",
                   m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
+            //CERR << "handle broadcast: " << *message << std::endl;
             if (!handleMessage(*message)) {
-               CERR << "Quit reason: handle 2: " << *message << std::endl;
+               CERR << "Quit reason: handle message received via broadcast: " << *message << std::endl;
                done = true;
             }
          }
-
-         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, MPI_COMM_WORLD, &m_reqAny);
       }
 
+#if 0
+      if (m_ongoingSends.size() > 0) {
+          CERR << m_ongoingSends.size() << " ongoing MPI sends" << std::endl;
+      }
+#endif
       for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
           ++next;
           MPI_Test(&(*it)->req, &flag, &status);
