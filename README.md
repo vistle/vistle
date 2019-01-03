@@ -40,7 +40,7 @@ Build Requirements
   at least 3.0
 
 - **MPI**:
-  Microsoft MPI, Open MPI, MPICH and MVAPCH2 has been used successfully.
+  Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
 
 - **Boost**:
   Build boost with the following options:
