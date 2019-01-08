@@ -1,5 +1,6 @@
+# use with 'brew bundle'
+
 tap 'homebrew/core'
-tap 'homebrew/science'
 tap 'hlrs-vis/tap'
 
 brew 'cmake'
@@ -20,5 +21,5 @@ brew 'libzip'
 brew 'libarchive'
 brew 'vtk'
 brew 'tinyxml2'
-brew 'homebrew/science/hdf5', args: ['with-mpi']
+brew 'hdf5', args: ['with-mpi']
 brew 'hlrs-vis/tap/covise'
