@@ -365,6 +365,8 @@ unmasked void tubeIntersectFuncN(const RTCIntersectFunctionNArguments* uniform a
             }
         }
     }
+
+#undef HIT
 }
 
 unmasked void tubeOccludedFuncN(const RTCOccludedFunctionNArguments* uniform args) {

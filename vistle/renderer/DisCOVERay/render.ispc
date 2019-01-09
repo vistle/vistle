@@ -298,6 +298,4 @@ export void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform
 
 #undef TSX
 #undef TSY
-
-}
 }
