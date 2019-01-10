@@ -5,6 +5,7 @@ tap 'hlrs-vis/tap'
 
 brew 'cmake'
 
+brew 'libomp'
 brew 'boost'
 brew 'assimp'
 brew 'ispc'

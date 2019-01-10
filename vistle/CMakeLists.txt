@@ -37,7 +37,6 @@ if(${TEMPLATES_IN_HEADERS})
    add_definitions(-DVISTLE_IMPL)
 endif()
 
-find_package(OpenMP)
 macro(USE_OPENMP)
    if (OPENMP_FOUND)
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
