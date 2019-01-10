@@ -15,6 +15,7 @@
 #include "vistleconsole.h"
 
 #include <QString>
+#include <QSettings>
 
 namespace gui {
 
@@ -71,6 +72,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->modulesDock->show();
     ui->modulesDock->raise();
     ui->modulesDock->setFocus();
+
+    readSettings();
 }
 
 MainWindow::~MainWindow()
@@ -150,6 +153,8 @@ VistleConsole *MainWindow::console() const
 
 void MainWindow::closeEvent(QCloseEvent *e) {
 
+   writeSettings();
+
    bool allowed = true;
    emit quitRequested(allowed);
    if (!allowed) {
@@ -161,6 +166,32 @@ void MainWindow::closeEvent(QCloseEvent *e) {
    for (auto w: allToplevelWidgets) {
        w->close();
    }
+}
+
+void MainWindow::readSettings()
+{
+    QSettings settings;
+    settings.beginGroup("MainWindow");
+
+    resize(settings.value("size", size()).toSize());
+    move(settings.value("pos", pos()).toPoint());
+
+    restoreState(settings.value("windowState").toByteArray());
+
+    settings.endGroup();
+}
+
+void MainWindow::writeSettings()
+{
+    QSettings settings;
+    settings.beginGroup("MainWindow");
+
+    settings.setValue("size", size());
+    settings.setValue("pos", pos());
+
+    settings.setValue("windowState", saveState());
+
+    settings.endGroup();
 }
 
 } //namespace gui

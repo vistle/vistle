@@ -31,6 +31,11 @@ int main(int argc, char *argv[])
 
    try {
       QApplication a(argc, argv);
+
+      QCoreApplication::setOrganizationName("HLRS");
+      QCoreApplication::setOrganizationDomain("de.hlrs");
+      QCoreApplication::setApplicationName("Vistle");
+
       a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
       std::cerr << "installing debug msg handler" << std::endl;
       qInstallMessageHandler(debugMessageHandler);

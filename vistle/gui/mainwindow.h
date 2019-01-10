@@ -59,6 +59,9 @@ private:
     ModuleBrowser *m_moduleBrowser;
 
     QList<QString> loadModuleFile();
+
+    void readSettings();
+    void writeSettings();
 };
 
 } //namespace gui
