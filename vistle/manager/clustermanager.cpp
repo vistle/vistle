@@ -961,7 +961,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
             sendMessage(modFrom, disconnect);
         if (isLocal(modTo))
             sendMessage(modTo, disconnect);
-   } else {
+   } else if (isLocal(disconnect.senderId())) {
        sendHub(disconnect);
    }
 
