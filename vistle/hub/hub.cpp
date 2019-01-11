@@ -239,8 +239,12 @@ void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> so
    m_slaves[slaveid].ready = false;
    m_slaves[slaveid].id = slaveid;
 
-   message::SetId set(slaveid);
-   sendMessage(sock, set);
+   if (m_ready) {
+       message::SetId set(slaveid);
+       sendMessage(sock, set);
+   } else {
+       m_slavesToConnect.push_back(&m_slaves[slaveid]);
+   }
 }
 
 void Hub::slaveReady(Slave &slave) {
@@ -517,6 +521,12 @@ void Hub::hubReady() {
 
       sendMaster(hub);
       m_ready = true;
+
+      for (auto s: m_slavesToConnect) {
+          message::SetId set(s->id);
+          sendMessage(s->sock, set);
+      }
+      m_slavesToConnect.clear();
    }
 }
 
@@ -590,11 +600,19 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                break;
             }
             case Identify::HUB: {
+               if (m_isMaster) {
+                   CERR << "refusing connection from other master hub" << std::endl;
+                   return true;
+               }
                vassert(!m_isMaster);
                CERR << "master hub connected" << std::endl;
                break;
             }
             case Identify::SLAVEHUB: {
+               if (!m_isMaster) {
+                   CERR << "refusing connection from other slave hub, connect directly to master" << std::endl;
+                   return true;
+               }
                vassert(m_isMaster);
                CERR << "slave hub '" << id.name() << "' connected" << std::endl;
                addSlave(id.name(), sock);
@@ -929,10 +947,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m_localModules.clear();
             }
             if (m_managerConnected) {
+#if 0
                auto state = m_stateTracker.getState();
                for (auto &m: state) {
                   sendMessage(sock, m);
                }
+#endif
                hubReady();
             }
             break;

@@ -100,6 +100,7 @@ private:
       int id = 0;
    };
    std::map<int, Slave> m_slaves;
+   std::vector<Slave *> m_slavesToConnect;
    int m_slaveCount;
    int m_hubId;
    std::string m_name;
