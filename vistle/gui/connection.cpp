@@ -40,6 +40,8 @@ Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsIte
    setState(m_state);
 
    setAcceptHoverEvents(true);
+
+   updatePosition();
 }
 
 Port *Connection::source() const {
