@@ -334,19 +334,14 @@ struct WriteHDF5::WriteObjectContainer {
     bool operator<(const WriteObjectContainer &other) const {
         if (obj->getBlock() != other.obj->getBlock()) {
             return (obj->getBlock() < other.obj->getBlock());
-
-        } else {
-            if (obj->getTimestep() != other.obj->getTimestep()) {
-                return (obj->getTimestep() < other.obj->getTimestep());
-
-            } else {
-                if (port != other.port) {
-                    return (port < other.port);
-                } else {
-                    return (order < other.order);
-                }
-            }
         }
+        if (obj->getTimestep() != other.obj->getTimestep()) {
+            return (obj->getTimestep() < other.obj->getTimestep());
+        }
+        if (port != other.port) {
+            return (port < other.port);
+        }
+        return (order < other.order);
     }
 };
 

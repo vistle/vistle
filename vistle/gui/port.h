@@ -40,6 +40,7 @@ public:
     QPointF scenePos() const;
 
     bool operator<(const Port &other) const;
+    bool operator==(const Port &other) const;
 
 signals:
     void clicked(Port *port);

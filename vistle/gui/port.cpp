@@ -70,6 +70,12 @@ bool Port::operator<(const Port &other) const {
     return *m_port < *other.m_port;
 }
 
+bool Port::operator==(const Port &other) const {
+    assert(valid());
+    assert(other.valid());
+    return *m_port == *other.m_port;
+}
+
 Port::Type Port::portType() const {
 
    return m_portType;

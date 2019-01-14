@@ -63,6 +63,10 @@ class V_COREEXPORT Port {
       }
       return getModuleID() < other.getModuleID();
    }
+   bool operator==(const Port &other) const {
+       return getModuleID() == other.getModuleID()
+           && getName() == other.getName();
+   }
 
    //! children of 'MULTI' ports
    Port *child(size_t idx, bool link=false);

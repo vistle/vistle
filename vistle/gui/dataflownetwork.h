@@ -86,13 +86,10 @@ private:
           assert(valid());
           assert(c.valid());
 
-          if (*port1 < *c.port1)
-              return true;
+          if (*port1 == *c.port1)
+              return *port2 < *c.port2;
 
-          if (*c.port1 < *port1)
-              return false;
-
-          return *port2 < *c.port2;
+          return *port1 < *c.port1;
        }
     };
 

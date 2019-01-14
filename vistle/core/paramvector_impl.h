@@ -252,20 +252,26 @@ bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
 
 template<typename S>
 bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   for (int i=0; i<v1.dim && i<v2.dim; ++i)
-      if (v1[i] >= v2[i])
+   for (int i=0; i<v1.dim && i<v2.dim; ++i) {
+      if (v1[i] > v2[i])
          return false;
+      if (v1[i] < v2[i])
+         return true;
+   }
 
-   return true;
+   return v1.dim < v2.dim;
 }
 
 template<typename S>
 bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
-   for (int i=0; i<v1.dim && i<v2.dim; ++i)
-      if (v1[i] <= v2[i])
+   for (int i=0; i<v1.dim && i<v2.dim; ++i) {
+      if (v1[i] < v2[i])
          return false;
+      if (v1[i] > v2[i])
+         return true;
+   }
 
-   return true;
+   return v1.dim > v2.dim;
 }
 
 template<typename S>

@@ -21,9 +21,10 @@ struct AvailableModule {
 
       bool operator<(const Key &rhs) const {
 
-         if (hub < rhs.hub)
-            return true;
-         return name < rhs.name;
+         if (hub == rhs.hub) {
+             return name < rhs.name;
+         }
+         return hub < rhs.hub;
       }
    };
 
