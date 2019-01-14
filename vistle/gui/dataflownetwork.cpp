@@ -102,6 +102,19 @@ void DataFlowNetwork::deleteModule(int moduleId)
 {
    Module *m = findModule(moduleId);
    if (m) {
+
+      std::vector<Port *> p1, p2;
+      for (auto &c: m_connections) {
+          const auto &key = c.first;
+          if (key.port1->module()->id() == moduleId || key.port2->module()->id() == moduleId) {
+              p1.push_back(key.port1);
+              p2.push_back(key.port2);
+          }
+      }
+      for (size_t i=0; i<p1.size(); ++i) {
+          removeConnection(p1[i], p2[i]);
+      }
+
       removeItem(m);
       m_moduleList.removeAll(m);
    }
