@@ -1,6 +1,7 @@
 build
 build-*
 CMakeLists.txt.user*
+.release
 test
 *.log
 *.vsl
