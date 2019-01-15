@@ -64,8 +64,6 @@ class ClusterManager: public ParameterManager
    int getRank() const;
    int getSize() const;
 
-   std::vector<AvailableModule> availableModules() const;
-
    std::string getModuleName(int id) const;
    std::vector<std::string> getParameters(int id) const;
    std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;

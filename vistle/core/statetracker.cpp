@@ -184,7 +184,8 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
    // available modules
    auto avail = availableModules();
-   for(const auto &mod: avail) {
+   for(const auto &keymod: avail) {
+      const auto &mod = keymod.second;
       appendMessage(state, ModuleAvailable(mod.hub, mod.name, mod.path));
    }
 
@@ -219,7 +220,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
       const ParameterMap &pmap = m.parameters;
       for (const auto &it2: m.paramOrder) {
-         //std::cerr << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
+         //CERR << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
          const std::string &name = it2.second;
          const auto it3 = pmap.find(name);
          assert(it3 != pmap.end());
@@ -293,7 +294,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
    return state;
 }
 
-const std::vector<AvailableModule> &StateTracker::availableModules() const {
+const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableModules() const {
 
     return m_availableModules;
 }
@@ -1097,11 +1098,15 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
     mod.name = avail.name();
     mod.path = avail.path();
 
-    m_availableModules.push_back(mod);
+    AvailableModule::Key key(mod.hub, mod.name);
 
-   for (StateObserver *o: m_observers) {
-      o->moduleAvailable(mod.hub, mod.name, mod.path);
-   }
+    if (m_availableModules.emplace(key, mod).second) {
+        for (StateObserver *o: m_observers) {
+            o->moduleAvailable(mod.hub, mod.name, mod.path);
+        }
+    } else {
+        CERR << "Duplicate module: " << mod.hub << " " << mod.name << std::endl;
+    }
 
     return true;
 }

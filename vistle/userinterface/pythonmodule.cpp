@@ -244,7 +244,8 @@ static std::vector<std::string> getAvailable() {
    const auto &avail = MODULEMANAGER.availableModules();
    std::vector<std::string> ret;
    for (auto &a: avail) {
-      ret.push_back(a.name);
+      auto &m = a.second;
+      ret.push_back(m.name);
    }
    return ret;
 }

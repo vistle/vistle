@@ -423,7 +423,7 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          vassert(id.identity() == message::Identify::REQUEST);
          if (getRank() == 0)
              sendHub(message::Identify(message::Identify::MANAGER));
-         scanModules(m_moduleDir);
+         //scanModules(m_moduleDir);
          break;
       }
       default: {

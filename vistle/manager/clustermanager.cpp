@@ -291,11 +291,6 @@ bool ClusterManager::isLocal(int id) const {
    return hub == Communicator::the().hubId();
 }
 
-std::vector<AvailableModule> ClusterManager::availableModules() const {
-
-   return m_stateTracker.availableModules();
-}
-
 bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 
    vassert(m_barrierActive);

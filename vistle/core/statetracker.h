@@ -127,7 +127,7 @@ class V_COREEXPORT StateTracker {
 
    std::vector<message::Buffer> getState() const;
 
-   const std::vector<AvailableModule> &availableModules() const;
+   const std::map<AvailableModule::Key, AvailableModule> &availableModules() const;
 
    void registerObserver(StateObserver *observer);
 
@@ -178,7 +178,7 @@ class V_COREEXPORT StateTracker {
    ModuleSet busySet;
    int m_graphChangeCount = 0;
 
-   std::vector<AvailableModule> m_availableModules;
+   std::map<AvailableModule::Key, AvailableModule> m_availableModules;
 
    std::set<StateObserver *> m_observers;
 

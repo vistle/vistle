@@ -725,6 +725,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              AvailableModule::Key key(mod.hub, mod.name);
              m_availableModules.emplace(key, mod);
              message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
+             m_stateTracker.handle(avail);
              if (!m_isMaster)
                  sendMaster(avail);
              sendUi(avail);
