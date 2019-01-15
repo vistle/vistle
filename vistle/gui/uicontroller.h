@@ -34,6 +34,7 @@ public slots:
    void quitRequested(bool &allowed);
 
 private slots:
+    void setModified(bool mod);
    bool checkModified(const QString &reason);
    void clearDataFlowNetwork();
    void loadDataFlowNetwork();
@@ -61,7 +62,10 @@ private:
     MainWindow *m_mainWindow;
 
     QString m_currentFile;
+    bool m_modified = false;
     std::string m_pythonDir;
+
+    void setCurrentFile(QString file);
 };
 
 } // namespace gui

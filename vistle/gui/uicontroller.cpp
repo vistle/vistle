@@ -87,6 +87,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       m_mainWindow->console(), SLOT(appendInfo(QString, int)));
    connect(&m_observer, SIGNAL(modified(bool)),
       m_mainWindow, SLOT(setModified(bool)));
+   connect(&m_observer, SIGNAL(modified(bool)),
+      this, SLOT(setModified(bool)));
    connect(&m_observer, SIGNAL(newModule_s(int, boost::uuids::uuid, QString)),
       m_scene, SLOT(addModule(int,boost::uuids::uuid,QString)));
    connect(&m_observer, SIGNAL(deleteModule_s(int)),
@@ -166,7 +168,7 @@ void UiController::quitRequested(bool &allowed) {
 bool UiController::checkModified(const QString &reason)
 {
    //std::cerr << "modification count: " << m_observer->modificationCount() << std::endl;
-   if (m_observer.modificationCount() == 0)
+   if (m_observer.modificationCount() == 0 && !m_modified)
       return true;
 
    ModifiedDialog d(reason, m_mainWindow);
@@ -186,8 +188,8 @@ void UiController::clearDataFlowNetwork()
       return;
 
    m_vistleConnection->resetDataFlowNetwork();
-   m_mainWindow->setFilename(QString());
    m_observer.resetModificationCount();
+   setCurrentFile(QString());
 }
 
 void UiController::loadDataFlowNetwork()
@@ -204,12 +206,12 @@ void UiController::loadDataFlowNetwork()
    if (filename.isEmpty())
       return;
 
+   m_observer.resetModificationCount();
    clearDataFlowNetwork();
-
-   m_mainWindow->setFilename(filename);
 
    vistle::PythonInterface::the().exec_file(filename.toStdString());
 
+   setCurrentFile(filename);
    m_observer.resetModificationCount();
 }
 
@@ -222,7 +224,7 @@ void UiController::saveDataFlowNetwork(const QString &filename)
          saveDataFlowNetworkAs();
    } else {
       std::cerr << "writing to " << filename.toStdString() << std::endl;
-      m_mainWindow->setFilename(filename);
+      setCurrentFile(filename);
       std::string cmd = "save(\"";
       cmd += filename.toStdString();
       cmd += "\")";
@@ -238,8 +240,9 @@ void UiController::saveDataFlowNetworkAs(const QString &filename)
       filename.isEmpty() ? QDir::currentPath() : filename,
       tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
 
-   if (!newFile.isEmpty())
+   if (!newFile.isEmpty()) {
       saveDataFlowNetwork(newFile);
+   }
 }
 
 void UiController::executeDataFlowNetwork()
@@ -328,6 +331,15 @@ void UiController::statusUpdated(int id, QString text, int prio) {
         else
             m_mainWindow->statusBar()->showMessage(text);
     }
+}
+
+void UiController::setCurrentFile(QString file) {
+    m_currentFile = file;
+    m_mainWindow->setFilename(m_currentFile);
+}
+
+void UiController::setModified(bool modified) {
+    m_modified = modified;
 }
 
 } // namespace gui
