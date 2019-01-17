@@ -34,7 +34,6 @@ class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
 
  private:
    OsgRenderer *m_module = nullptr;
-   ui::Action *executeButton = nullptr;
 };
 
 VistlePlugin::VistlePlugin()
@@ -93,7 +92,8 @@ bool VistlePlugin::init() {
 
        cover->visMenu = new ui::Menu("Vistle", this);
 
-       executeButton = new ui::Action(cover->visMenu, "Execute");
+       auto executeButton = new ui::Action(cover->visMenu, "Execute");
+       executeButton->setShortcut("e");
        executeButton->setCallback([this](){
            executeAll();
        });
