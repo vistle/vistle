@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-class  V_COREEXPORT MessageSender {
+class  MessageSender {
  public:
     virtual bool sendMessage(const message::Message &message) const = 0;
 };
