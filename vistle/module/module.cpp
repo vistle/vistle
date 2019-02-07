@@ -1743,9 +1743,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                           << ", error code: " << e.get_error_code()
                           << ", native error: " << e.get_native_error()
                           << std::endl;
+                throw(e); // rethrow and probably crash - there is no guarantee that the module terminates gracefully
             } catch (std::exception &e) {
                 std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
                 std::cerr << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
+                throw(e);
             }
             ret &= computeOk;
             if (!computeOk) {
