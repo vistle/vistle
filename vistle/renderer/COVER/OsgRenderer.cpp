@@ -588,17 +588,9 @@ std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
         std::string archsuffix = env["ARCHSUFFIX"];
 
         if (covisedir.empty()) {
-            std::string print_covise_env = covisedir + "print_covise_env";
+            std::string print_covise_env = "print_covise_env";
 #ifdef _WIN32
             print_covise_env += ".bat";
-#endif
-#if 0
-        }
-        if (!covisedir.empty()) {
-            std::string print_covise_env = covisedir + "/bin/print_covise_env";
-#ifdef _WIN32
-            print_covise_env += ".bat";
-#endif
 #endif
             if (FILE *fp = popen(print_covise_env.c_str(), "r")) {
                 std::vector<char> buf(10000);
