@@ -53,17 +53,17 @@ class shm_obj_ref;
 #ifdef USE_BOOST_ARCHIVE
 namespace boost {
 namespace archive {
-extern template class V_COREEXPORT basic_binary_oprimitive<
+extern template class basic_binary_oprimitive<
     vistle::boost_oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
-extern template class V_COREEXPORT basic_binary_iprimitive<
+extern template class basic_binary_iprimitive<
     vistle::boost_iarchive,
     std::istream::char_type, 
     std::istream::traits_type
 >;
-extern template class V_COREEXPORT detail::common_oarchive<vistle::boost_oarchive>;
+extern template class detail::common_oarchive<vistle::boost_oarchive>;
 } // namespace archive
 } // namespace boost
 #endif

@@ -62,7 +62,7 @@ class QAbstractProxyModel;
 class AbstractFileInfoGatherer;
 class AbstractFileSystemModel;
 
-class Q_WIDGETS_EXPORT RemoteFileDialog : public QDialog
+class RemoteFileDialog : public QDialog
 {
     Q_OBJECT
     Q_PROPERTY(ViewMode viewMode READ viewMode WRITE setViewMode)

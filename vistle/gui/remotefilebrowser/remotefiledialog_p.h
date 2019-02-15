@@ -112,7 +112,7 @@ struct RemoteFileDialogArgs
 
 #define UrlRole (Qt::UserRole + 1)
 
-class Q_WIDGETS_EXPORT RemoteFileDialogPrivate // : public QDialogPrivate
+class RemoteFileDialogPrivate // : public QDialogPrivate
 {
     RemoteFileDialog *q_ptr = nullptr;
     Q_DECLARE_PUBLIC(RemoteFileDialog)

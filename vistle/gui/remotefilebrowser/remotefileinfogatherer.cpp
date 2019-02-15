@@ -159,13 +159,14 @@ bool RemoteFileInfoGatherer::isRootDir(const QString &path) const
 
 QString RemoteFileInfoGatherer::userName() const
 {
-#if Q_OS_WIN
+#ifdef Q_OS_WIN
+	auto p = getenv("USERNAME");
 #else
     auto p = getenv("USER");
-    if (p) {
-        return QString::fromStdString(p);
-    }
 #endif
+	if (p) {
+		return QString::fromStdString(p);
+	}
     return QString("unknown");
 }
 
@@ -285,10 +286,10 @@ FileInfo RemoteFileInfoGatherer::getInfo(const QString &path)
 
 #ifdef Q_OS_WIN
     if (m_resolveSymlinks && info.isSymLink(/* ignoreNtfsSymLinks = */ true)) {
-        QFileInfo resolvedInfo(fileInfo.symLinkTarget());
+        QFileInfo resolvedInfo(finfo.symLinkTarget());
         resolvedInfo = resolvedInfo.canonicalFilePath();
         if (resolvedInfo.exists()) {
-            emit nameResolved(fileInfo.filePath(), resolvedInfo.fileName());
+            emit nameResolved(finfo.filePath(), resolvedInfo.fileName());
         }
     }
 #endif

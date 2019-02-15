@@ -291,7 +291,7 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode *RemoteFileSystemModelPrivate
     return indexNode;
 }
 
-#ifdef Q_OS_WIN32
+#if 0
 static QString qt_GetLongPathName(const QString &strShortPath)
 {
     if (strShortPath.isEmpty()
@@ -1283,11 +1283,8 @@ QModelIndex RemoteFileSystemModel::setRootPath(const QString &newPath)
     Q_D(RemoteFileSystemModel);
     QString longNewPath = newPath;
     if (isWindows()) {
-#ifdef Q_OS_WIN32
-        longNewPath = qt_GetLongPathName(newPath);
-#else
+
         longNewPath = QDir::fromNativeSeparators(newPath);
-#endif
     }
     //QDir newPathDir(longNewPath);
     //we remove .. and . from the given path if exist
@@ -1647,20 +1644,6 @@ RemoteFileSystemModelPrivate::RemoteFileSystemNode* RemoteFileSystemModelPrivate
 #else
     Q_UNUSED(info)
 #endif
-    if (q->isWindows()) {
-#if defined(Q_OS_WIN) && !defined(Q_OS_WINRT)
-    //The parentNode is "" so we are listing the drives
-    if (parentNode->fileName.isEmpty()) {
-        wchar_t name[MAX_PATH + 1];
-        //GetVolumeInformation requires to add trailing backslash
-        const QString nodeName = fileName + QLatin1String("\\");
-        BOOL success = ::GetVolumeInformation((wchar_t *)(nodeName.utf16()),
-                name, MAX_PATH + 1, NULL, 0, NULL, NULL, 0);
-        if (success && name[0])
-            node->volumeName = QString::fromWCharArray(name);
-    }
-#endif
-    }
     Q_ASSERT(!parentNode->children.contains(fileName));
     parentNode->children.insert(fileName, node);
     return node;
@@ -1859,7 +1842,7 @@ void RemoteFileSystemModelPrivate::_q_resolvedName(const QString &fileName, cons
 {
     resolvedSymLinks[fileName] = resolvedName;
 }
-
+/*
 #if QT_CONFIG(filesystemwatcher) && defined(Q_OS_WIN)
 // Remove file system watchers at/below the index and return a list of previously
 // watched files. This should be called prior to operations like rename/remove
@@ -1899,7 +1882,7 @@ QStringList RemoteFileSystemModelPrivate::unwatchPathsAt(const QModelIndex &inde
     return result;
 }
 #endif // filesystemwatcher && Q_OS_WIN
-
+*/
 /*!
     \internal
 */

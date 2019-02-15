@@ -221,9 +221,9 @@ struct archive_helper<yas_tag> {
         void push_back(const T &) { assert("not supported" == 0); }
         void resize(std::size_t sz) { if (size() != sz) { std::cerr << "requesting resize from " << size() << " to " << sz << std::endl; assert("not supported" == 0); } }
         void setDimensions(size_t sx, size_t sy, size_t sz) {
-            m_dim[0] = sx;
-            m_dim[1] = sy;
-            m_dim[2] = sz;
+            m_dim[0] = (Index)sx;
+            m_dim[1] = (Index)sy;
+            m_dim[2] = (Index)sz;
         }
         void setExact(bool exact) {
             m_exact = exact;

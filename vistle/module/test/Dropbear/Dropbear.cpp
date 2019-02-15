@@ -9,7 +9,9 @@
 #include <util/sleep.h>
 
 #include <sys/types.h>
+#ifndef WIN32
 #include <sys/wait.h>
+#endif
 
 using namespace vistle;
 

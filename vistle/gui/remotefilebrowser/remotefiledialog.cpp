@@ -951,7 +951,6 @@ void RemoteFileDialog::selectUrl(const QUrl &url)
         qWarning("Non-native RemoteFileDialog supports only local files");
 }
 
-#ifdef Q_OS_UNIX
 Q_AUTOTEST_EXPORT QString qt_tildeExpansion(AbstractFileSystemModel *model, const QString &path)
 {
     if (!path.startsWith(QLatin1Char('~')))
@@ -962,35 +961,10 @@ Q_AUTOTEST_EXPORT QString qt_tildeExpansion(AbstractFileSystemModel *model, cons
     if (separatorPosition == 1) {
         return model->homePath().toString() + path.midRef(1);
     } else {
-#if defined(Q_OS_VXWORKS) || defined(Q_OS_INTEGRITY)
-        const QString homePath = model->homePath().toString();
-#else
-        const QByteArray userName = path.midRef(1, separatorPosition - 1).toLocal8Bit();
-# if defined(_POSIX_THREAD_SAFE_FUNCTIONS) && !defined(Q_OS_OPENBSD)
-        passwd pw;
-        passwd *tmpPw;
-        char buf[200];
-        const int bufSize = sizeof(buf);
-        int err = 0;
-#  if defined(Q_OS_SOLARIS) && (_POSIX_C_SOURCE - 0 < 199506L)
-        tmpPw = getpwnam_r(userName.constData(), &pw, buf, bufSize);
-#  else
-        err = getpwnam_r(userName.constData(), &pw, buf, bufSize, &tmpPw);
-#  endif
-        if (err || !tmpPw)
-            return path;
-        const QString homePath = QString::fromLocal8Bit(pw.pw_dir);
-# else
-        passwd *pw = getpwnam(userName.constData());
-        if (!pw)
-            return path;
-        const QString homePath = QString::fromLocal8Bit(pw->pw_dir);
-# endif
-#endif
-        return homePath + path.midRef(separatorPosition);
+        return path;
     }
 }
-#endif
+
 
 /**
     Returns the text in the line edit which can be one or more file names
@@ -1007,8 +981,10 @@ QStringList RemoteFileDialogPrivate::typedFiles() const
             const QString prefix = q->directory() + "/";
             if (QFile::exists(prefix + editText))
                 files << editText;
+#ifndef Q_OS_WIN
             else
                 files << qt_tildeExpansion(model, editText);
+#endif
         }
     } else {
         // " is used to separate files like so: "file1" "file2" "file3" ...
@@ -1024,8 +1000,10 @@ QStringList RemoteFileDialogPrivate::typedFiles() const
                 const QString prefix = q->directory() + "/";
                 if (QFile::exists(prefix + token))
                     files << token;
+#ifndef Q_OS_WIN
                 else
                     files << qt_tildeExpansion(model, token);
+#endif
             }
         }
     }
@@ -1595,7 +1573,7 @@ int RemoteFileDialogPrivate::maxNameLength(const QString &path)
 #elif defined(Q_OS_WIN)
     DWORD maxLength;
     const QString drive = path.left(3);
-    if (::GetVolumeInformation(reinterpret_cast<const wchar_t *>(drive.utf16()), NULL, 0, NULL, &maxLength, NULL, NULL, 0) == false)
+    if (::GetVolumeInformation(/*reinterpret_cast<const wchar_t *>*/(drive.toLatin1()), NULL, 0, NULL, &maxLength, NULL, NULL, 0) == false)
         return -1;
     return maxLength;
 #else

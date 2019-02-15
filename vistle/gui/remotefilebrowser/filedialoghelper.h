@@ -5,7 +5,7 @@
 
 class RemoteFileDialogOptionsPrivate;
 
-class Q_GUI_EXPORT RemoteFileDialogOptions
+class RemoteFileDialogOptions
 {
     Q_GADGET
     Q_DISABLE_COPY(RemoteFileDialogOptions)

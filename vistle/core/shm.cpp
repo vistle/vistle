@@ -316,7 +316,7 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
       do {
          try {
             s_singleton = new Shm(n, moduleID, rank, memsize, mq, true);
-         } catch (boost::interprocess::interprocess_exception &ex) {
+         } catch (boost::interprocess::interprocess_exception & /*ex*/) {
             memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);

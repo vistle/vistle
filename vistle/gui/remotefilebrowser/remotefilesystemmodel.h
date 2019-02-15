@@ -60,7 +60,7 @@ class RemoteFileIconProvider;
 
 #include "abstractfilesystemmodel.h"
 
-class Q_WIDGETS_EXPORT RemoteFileSystemModel : public AbstractFileSystemModel
+class RemoteFileSystemModel : public AbstractFileSystemModel
 {
     Q_OBJECT
     Q_PROPERTY(bool resolveSymlinks READ resolveSymlinks WRITE setResolveSymlinks)

@@ -62,7 +62,7 @@ QT_BEGIN_NAMESPACE
 /*!
     QCompleter that can deal with AbstractFileSystemModel
   */
-class Q_WIDGETS_EXPORT RemoteFSCompleter :  public QCompleter {
+class RemoteFSCompleter :  public QCompleter {
 public:
     explicit RemoteFSCompleter(AbstractFileSystemModel *model, QObject *parent = 0)
         : QCompleter(model, parent), proxyModel(0), sourceModel(model)
