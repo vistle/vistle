@@ -196,8 +196,8 @@ if(WIN32)
     add_definitions(-DBOOST_IOSTREAMS_DYN_LINK)
 
     add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /wd4250 /wd4661 /wd4996 /EHsc")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910  /wd4250 /wd4661 /wd4996 /EHsc")
 endif(WIN32)
 
 #vistle_find_package(IceT REQUIRED)
