@@ -472,45 +472,17 @@ private:
 
 #define V_SERIALIZERS(ObjType) V_SERIALIZERS2(ObjType,)
 
-#ifdef VISTLE_STATIC
-#define REGISTER_TYPE(ObjType, id) \
-{ \
-   ObjectTypeRegistry::registerType<ObjType >(id); \
-  ); \
-}
-
-#define V_INIT_STATIC
-#else
-#define V_INIT_STATIC static
-#endif
-
-#define V_OBJECT_TYPE3INT(ObjType, suffix, id) \
-      class RegisterObjectType_##suffix { \
-         public: \
-                 RegisterObjectType_##suffix() { \
-                    ObjectTypeRegistry::registerType<ObjType >(id); \
-                 } \
-      }; \
-      V_INIT_STATIC RegisterObjectType_##suffix registerObjectType_##suffix; \
-
-//! register a new Object type (complex form, specify suffix for symbol names)
-#define V_OBJECT_TYPE3(ObjType, suffix, id) \
-      V_OBJECT_TYPE3INT(ObjType, suffix, id)
-
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
       namespace suffix { \
       typedef Type1,Type2 ObjType; \
-      V_OBJECT_TYPE3INT(ObjType, suffix, id) \
    }
 
 #define V_OBJECT_TYPE_T(ObjType, id) \
-   V_SERIALIZERS2(ObjType, template<>) \
-   V_OBJECT_TYPE3(ObjType, ObjType, id)
+   V_SERIALIZERS2(ObjType, template<>)
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \
-   V_OBJECT_TYPE3(ObjType, ObjType, id) \
    Object::Type ObjType::type() { \
       return id; \
    } \

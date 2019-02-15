@@ -83,9 +83,13 @@ namespace {
 
 namespace vistle {
 
+#define REGISTER_TYPE(ObjType, id) \
+{ \
+   ObjectTypeRegistry::registerType<ObjType>(id); \
+}
+
 void registerTypes() {
 
-#ifdef VISTLE_STATIC
    using namespace vistle;
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
@@ -134,7 +138,6 @@ void registerTypes() {
    REGISTER_TYPE(Vec_double_1, Vec_double_1::type());
    typedef Vec<double,3> Vec_double_3;
    REGISTER_TYPE(Vec_double_3, Vec_double_3::type());
-#endif
 }
 
 } // namespace vistle
