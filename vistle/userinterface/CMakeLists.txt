@@ -32,7 +32,6 @@ include_directories(SYSTEM
 include_directories(
         ..
 )
-add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
 
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 

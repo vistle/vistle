@@ -8,6 +8,8 @@ endif()
 
 include(cmake/Qt4-5.cmake)
 
+add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
+
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 enable_testing()
