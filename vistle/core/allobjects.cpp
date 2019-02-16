@@ -57,31 +57,6 @@
 
 #endif
 
-namespace {
-   using namespace vistle;
-
-   class RegisterObjectTypeRelations {
-      public:
-         RegisterObjectTypeRelations() {
-
-#ifdef USE_BOOST_ARCHIVE
-            boost::serialization::void_cast_register<DataBase, DataBase::Base>
-               (static_cast<DataBase *>(NULL), static_cast<DataBase::Base *>(NULL));
-
-            boost::serialization::void_cast_register<Coords, Coords::Base>
-               (static_cast<Coords *>(NULL), static_cast<Coords::Base *>(NULL));
-
-            boost::serialization::void_cast_register<CoordsWithRadius, CoordsWithRadius::Base>
-               (static_cast<CoordsWithRadius *>(NULL), static_cast<CoordsWithRadius::Base *>(NULL));
-
-            boost::serialization::void_cast_register<Indexed, Indexed::Base>
-               (static_cast<Indexed *>(NULL), static_cast<Indexed::Base *>(NULL));
-#endif
-         }
-   };
-   static RegisterObjectTypeRelations registerObjectTypeRelations;
-}
-
 namespace vistle {
 
 #define REGISTER_TYPE(ObjType, id) \

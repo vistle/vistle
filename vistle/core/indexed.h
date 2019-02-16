@@ -93,8 +93,6 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
 ARCHIVE_ASSUME_ABSTRACT(Indexed)
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Indexed);
 #endif
 
 #ifdef VISTLE_IMPL

@@ -45,8 +45,6 @@ private:
 //ARCHIVE_ASSUME_ABSTRACT(DataBase)
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::DataBase);
 #endif
 
 #ifdef VISTLE_IMPL

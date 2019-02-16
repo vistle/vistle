@@ -30,8 +30,6 @@ class V_COREEXPORT Polygons: public Indexed {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Polygons)
 #endif
 
 #ifdef VISTLE_IMPL

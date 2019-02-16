@@ -28,8 +28,6 @@ class  V_COREEXPORT Spheres: public CoordsWithRadius {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Spheres)
 #endif
 
 #ifdef VISTLE_IMPL

@@ -37,8 +37,6 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
 //ARCHIVE_ASSUME_ABSTRACT(CoordsWithRadius)
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::CoordsWithRadius);
 #endif
 
 #ifdef VISTLE_IMPL

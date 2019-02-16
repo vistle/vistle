@@ -29,8 +29,6 @@ class V_COREEXPORT Lines: public Indexed {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Lines)
 #endif
 
 #ifdef VISTLE_IMPL

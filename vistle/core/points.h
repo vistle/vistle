@@ -29,8 +29,6 @@ class  V_COREEXPORT Points: public Coords {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Points);
 #endif
 
 #ifdef VISTLE_IMPL

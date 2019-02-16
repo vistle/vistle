@@ -49,8 +49,6 @@ private:
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::VertexOwnerList)
 #endif
 
 #ifdef VISTLE_IMPL

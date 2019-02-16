@@ -81,8 +81,6 @@ private:
 ARCHIVE_ASSUME_ABSTRACT(StructuredGrid)
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::StructuredGrid)
 #endif /* STRUCTURED_GRID_H */
 
 #ifdef VISTLE_IMPL

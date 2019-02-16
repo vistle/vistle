@@ -24,8 +24,6 @@ class V_COREEXPORT Empty: public Object {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Empty);
 #endif
 
 #ifdef VISTLE_IMPL

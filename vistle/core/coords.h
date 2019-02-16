@@ -44,8 +44,6 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
 //ARCHIVE_ASSUME_ABSTRACT(Coords)
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::Coords);
 #endif
 
 #ifdef VISTLE_IMPL

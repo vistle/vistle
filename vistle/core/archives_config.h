@@ -427,7 +427,6 @@ typedef boost_iarchive iarchive;
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/assume_abstract.hpp>
-#include <boost/type_traits/is_virtual_base_of.hpp>
 #include <boost/serialization/split_member.hpp>
 #include <boost/archive/archive_exception.hpp>
 

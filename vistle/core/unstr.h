@@ -90,8 +90,6 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::UnstructuredGrid)
 #endif
 
 #ifdef VISTLE_IMPL

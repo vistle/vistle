@@ -50,8 +50,6 @@ class V_COREEXPORT PlaceHolder: public Object {
 };
 
 } // namespace vistle
-
-V_OBJECT_DECLARE(vistle::PlaceHolder);
 #endif
 
 #ifdef VISTLE_IMPL

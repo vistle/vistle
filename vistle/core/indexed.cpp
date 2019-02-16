@@ -425,7 +425,6 @@ Object::Type Indexed::type() {
    return Object::UNKNOWN;
 }
 
-V_SERIALIZERS(Indexed);
 V_OBJECT_CTOR(Indexed);
 
 } // namespace vistle

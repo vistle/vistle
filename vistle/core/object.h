@@ -460,33 +460,11 @@ private:
       void initData(); \
    }
 
-#define V_OBJECT_DECLARE(ObjType) \
-    namespace boost { template<> \
-    struct is_virtual_base_of<ObjType::Base,ObjType>: public mpl::true_ {}; \
-    }
-
-#define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2)
-
-#define V_SERIALIZERS2(ObjType, prefix) \
-    /* ARCHIVE_REGISTRATION_IMPL(ObjType, prefix) */
-
-#define V_SERIALIZERS(ObjType) V_SERIALIZERS2(ObjType,)
-
-//! register a new Object type (complex form, specify suffix for symbol names)
-#define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
-      namespace suffix { \
-      typedef Type1,Type2 ObjType; \
-   }
-
-#define V_OBJECT_TYPE_T(ObjType, id) \
-   V_SERIALIZERS2(ObjType, template<>)
-
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \
    Object::Type ObjType::type() { \
       return id; \
-   } \
-   V_SERIALIZERS(ObjType)
+   }
 
 #define V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \

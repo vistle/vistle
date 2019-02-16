@@ -4,6 +4,4 @@
 
 namespace vistle {
 
-V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
-
 } // namespace vistle
