@@ -2,10 +2,6 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 
-#ifdef _WIN32
-#include <process.h>
-#endif
-
 #include <util/sysdep.h>
 #include <util/hostname.h>
 
