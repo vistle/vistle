@@ -499,7 +499,7 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
     XInitThreads();
 #endif
 #if 0
-   std::cerr << "waiting for debugger: pid=" << getpid() << std::endl;
+   std::cerr << "waiting for debugger: pid=" << get_process_handle() << std::endl;
    sleep(10);
 #endif
    icetMutex = new OpenThreads::Mutex;

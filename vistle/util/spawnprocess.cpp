@@ -97,6 +97,14 @@ process_handle try_wait(process_handle pid0, int *status) {
 #endif
 }
 
+process_handle get_process_handle() {
+#ifdef _WIN32
+    return _getpid();
+#else
+    return getpid();
+#endif
+}
+
 }
 
 

@@ -362,7 +362,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #define MODULE_DEBUG(X)
 #else
 #define MODULE_DEBUG(X) \
-   std::cerr << #X << ": PID " << getpid() << std::endl; \
+   std::cerr << #X << ": PID " << get_process_handle() << std::endl; \
    std::cerr << "   attach debugger within 10 s" << std::endl; \
    sleep(10); \
    std::cerr << "   continuing..." << std::endl;

@@ -6,6 +6,7 @@
 
 #include <util/hostname.h>
 #include <util/sleep.h>
+#include <util/spawnprocess.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/parameter.h>
@@ -31,11 +32,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
       m_stateTracker.registerObserver(observer);
 
    std::cerr << "  userinterface ["  << id() << "] started as " << hostname() << ":"
-#ifndef _WIN32
-             << getpid() << std::endl;
-#else
-             << std::endl;
-#endif
+             << get_process_handle() << std::endl;
 
    m_hostname = hostname();
 

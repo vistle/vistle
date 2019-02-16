@@ -228,9 +228,7 @@ Module::Module(const std::string &desc,
 #ifdef DEBUG
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] started as " << hostname() << ":"
-#ifndef _WIN32
-             << getpid()
-#endif
+             << get_process_handle()
              << std::endl;
 #endif
 

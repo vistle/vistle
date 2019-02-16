@@ -142,7 +142,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 , m_currentView(-1)
 {
 #if 0
-    CERR << getpid() << std::endl;
+    CERR << get_process_handle() << std::endl;
     sleep(10);
 #endif
 
