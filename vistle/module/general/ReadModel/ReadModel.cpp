@@ -47,12 +47,12 @@ ReadModel::~ReadModel() {
 
 bool ReadModel::examine(const Parameter *param)
 {
-    int numtime = 0;
+    vistle::Integer numtime = 0;
     if (m_first && m_first->getValue() > numtime)
         numtime = m_first->getValue();
     if (m_last && m_last->getValue() > numtime)
         numtime = m_last->getValue();
-    setTimesteps(numtime);
+    setTimesteps((int)numtime);
 
     m_firstBlock = getIntParameter("first_block");
     m_lastBlock = getIntParameter("last_block");

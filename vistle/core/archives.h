@@ -190,7 +190,7 @@ class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecost
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
     FieldCompressionMode m_compress = Uncompressed;
     double m_zfpRate = 8.;
-    int m_zfpPrecision = 8.;
+    int m_zfpPrecision = 8;
     double m_zfpAccuracy = 1e-20;
     std::shared_ptr<Saver> m_saver;
     Stream &m_os;

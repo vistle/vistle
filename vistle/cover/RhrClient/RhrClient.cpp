@@ -23,6 +23,7 @@
 #include <cover/RenderObject.h>
 
 #include <cover/ui/Button.h>
+#include <cover/ui/Menu.h>
 #include <cover/ui/SelectionList.h>
 
 #include <PluginUtil/PluginMessageTypes.h>

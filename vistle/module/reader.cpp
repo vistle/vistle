@@ -39,7 +39,7 @@ bool Reader::checkConvexity() const {
 int Reader::rankForTimestepAndPartition(int t, int p) const {
 
     bool distTime = m_distributeTime && m_distributeTime->getValue();
-    int baseRank = m_firstRank->getValue();
+    int baseRank = (int)m_firstRank->getValue();
 
     if (p < 0 ) {
         if (m_numPartitions > 0)

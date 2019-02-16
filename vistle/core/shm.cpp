@@ -345,7 +345,7 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
       do {
          try {
             s_singleton = new Shm(n, moduleID, rank, memsize, mq, false);
-         } catch (boost::interprocess::interprocess_exception &ex) {
+         } catch (boost::interprocess::interprocess_exception &) {
             memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);
@@ -456,7 +456,7 @@ shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) const {
    try {
       return m_shm->get_handle_from_address(object->d());
 
-   } catch (interprocess_exception &ex) { }
+   } catch (interprocess_exception &) { }
 
    return 0;
 #endif
@@ -470,7 +470,7 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const {
    try {
       return m_shm->get_handle_from_address(object->d());
 
-   } catch (interprocess_exception &ex) { }
+   } catch (interprocess_exception &) { }
 
    return 0;
 #endif
@@ -507,7 +507,7 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
     try {
         Object::Data *od = static_cast<Object::Data *>(m_shm->get_address_from_handle(handle));
         return od;
-    } catch (interprocess_exception &ex) {
+    } catch (interprocess_exception &) {
         std::cerr << "Shm::getObjectDataFromHandle: invalid handle " << handle << std::endl;
     }
     

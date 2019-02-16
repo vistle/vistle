@@ -29,6 +29,7 @@
 #else
 
 #include "object.h"
+#include "empty.h"
 #include "archives.h"
 #include "vec.h"
 #include "coords.h"
@@ -91,6 +92,7 @@ namespace vistle {
 void registerTypes() {
 
    using namespace vistle;
+   REGISTER_TYPE(Empty, Object::EMPTY);
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
    REGISTER_TYPE(Points, Object::POINTS);

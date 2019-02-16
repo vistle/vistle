@@ -110,6 +110,7 @@ bool Dropbear::compute() {
        adaptive_wait(false, this);
    }
 
+#ifndef WIN32
    if (WIFEXITED(status)) {
        sendInfo("Exit with status %d on %s", WEXITSTATUS(status), host.c_str());
    } else if (WIFSIGNALED(status)) {
@@ -117,6 +118,7 @@ bool Dropbear::compute() {
    } else {
        sendWarning("Unknown exit state %d on %s", status, host.c_str());
    }
+#endif
 
    if (rank() == exposed) {
        removePortMapping(port);

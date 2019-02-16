@@ -320,7 +320,7 @@ public:
 
    template<class O>
    static void registerType(int id) {
-#ifndef VISTLE_STATIC
+#if defined (VISTLE_STATIC) || defined (WIN32) 
       assert(typeMap().find(id) == typeMap().end());
 #endif
       struct FunctionTable t = {

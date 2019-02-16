@@ -151,6 +151,12 @@ else()
 endif()
 add_custom_target(ispc SOURCES ${ISPC_SOURCES} ${ISPC_HEADERS})
 
+include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
+set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
+set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
+
+SET(EXTRA_LIBS ${EXTRA_LIBS} ${MPI_C_LIBRARIES})
+ADD_DEFINITIONS(-DHAS_MPI)
 include_directories(SYSTEM
         ${ICET_INCLUDE_DIRS}
         ${EMBREE_INCLUDE_DIRS}
@@ -163,10 +169,11 @@ target_link_libraries(DisCOVERay
         vistle_renderer
         vistle_rhr
         ${ICET_CORE_LIBS}
-        ${ICET_MPI_LIBS}
+        #${ICET_MPI_LIBS}
         ${ZLIB_LIBRARIES}
         ${EMBREE_LIBRARY}
         ${TBB_LIBRARIES}
+		${EXTRA_LIBS}
 )
 
 if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)

@@ -7,8 +7,12 @@
 #endif
 #include <mpi.h>
 #else
+#pragma warning( push )
+#pragma warning( disable : 4267 )
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
+// Some code
+#pragma warning( pop )
 #endif
 #include <boost/config.hpp>
 

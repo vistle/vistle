@@ -36,6 +36,9 @@ int main(int argc, char *argv[])
       QCoreApplication::setOrganizationDomain("de.hlrs");
       QCoreApplication::setApplicationName("Vistle");
 
+	  // we want decimal points rather than commas
+	  QLocale::setDefault(QLocale::c());
+
       a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
       std::cerr << "installing debug msg handler" << std::endl;
       qInstallMessageHandler(debugMessageHandler);

@@ -323,7 +323,7 @@ int Module::size() const {
 
 int Module::openmpThreads() const {
 
-    int ret = getIntParameter("_openmp_threads");
+    int ret = (int)getIntParameter("_openmp_threads");
     if (ret <= 0) {
         ret = 0;
     }
@@ -884,7 +884,7 @@ bool Module::changeParameter(const Parameter *p) {
          updateCacheMode();
       } else if (name == "_openmp_threads") {
 
-         setOpenmpThreads(getIntParameter(name), false);
+         setOpenmpThreads((int)getIntParameter(name), false);
       } else if (name == "_benchmark") {
 
          enableBenchmark(getIntParameter(name), false);
@@ -1449,7 +1449,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 port.second->objects() = m_cache.getObjects(port.first);
                 ++numConnected;
                 if (numObject == 0) {
-                    numObject = port.second->objects().size();
+                    numObject = (vistle::Index)port.second->objects().size();
                 } else if (numObject != port.second->objects().size()) {
                     CERR << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
                     throw vistle::except::exception("input object mismatch");
@@ -1497,7 +1497,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
                 int headStart = 0;
                 if (std::abs(exec->animationStepDuration()) > 1e-5)
-                    headStart = m_avgComputeTime / std::abs(exec->animationStepDuration());
+                    headStart = (int)(m_avgComputeTime / std::abs(exec->animationStepDuration()));
                 if (reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst)
                     headStart *= 2;
                 headStart = 1+std::max(0, headStart);

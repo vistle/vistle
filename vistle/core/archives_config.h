@@ -215,7 +215,7 @@ struct archive_helper<yas_tag> {
         T *end() { return m_end; }
         const T *end() const { return m_end; }
         bool empty() const { return m_end == m_begin; }
-        Index size() const { return m_end - m_begin; }
+        Index size() const { return (Index)(m_end - m_begin); }
         T &operator[](size_t idx) { return *(m_begin+idx); }
         const T &operator[](size_t idx) const { return *(m_begin+idx); }
         void push_back(const T &) { assert("not supported" == 0); }
