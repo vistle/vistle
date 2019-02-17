@@ -79,7 +79,9 @@ else()
 endif()
 
 # allow for optimizations in Boost.MPI
-add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+if (NOT WIN32)
+   add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+endif()
 
 enable_testing()
 
@@ -196,8 +198,16 @@ if(WIN32)
     add_definitions(-DBOOST_IOSTREAMS_DYN_LINK)
 
     add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /wd4250 /wd4661 /wd4996 /EHsc")
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910  /wd4250 /wd4661 /wd4996 /EHsc")
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4244") # possible loss of data
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4250") # 'class1': inheritcs 'class2::member' via dominance
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4251") # 'identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4267") # 'var' : conversion from 'size_t' to 'type', possible loss of data
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4275") # non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4661") # 'identifier' : no suitable definition provided for explicit template instantiation request
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4910") # '<identifier>' : '__declspec(dllexport)' and 'extern' are incompatible on an explicit instantiation
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4996") # The compiler encountered a deprecated declaration.
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_WARNINGS} /EHsc")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MSVC_WARNINGS} /EHsc")
 endif(WIN32)
 
 #vistle_find_package(IceT REQUIRED)
