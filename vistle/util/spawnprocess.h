@@ -5,6 +5,7 @@
 #include <vector>
 #include "export.h"
 #include "sysdep.h"
+#include <list>
 
 namespace vistle {
 

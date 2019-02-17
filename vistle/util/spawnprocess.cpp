@@ -19,6 +19,9 @@
 
 namespace vistle {
 
+#ifdef _WIN32
+static	std::list<process_handle> childProcesses;
+#endif
 process_handle spawn_process(const std::string &executable, const std::vector<std::string> args) {
 	std::vector<const char *> a;
 	for (const auto &s : args) {
@@ -31,6 +34,7 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
       std::cerr << "Error when spawning " << executable << ": " << strerror(errno) << std::endl;
 	  std::cerr << "PATH is " << getenv("PATH") << std::endl;
    }
+   childProcesses.push_back(pid);
 #else
    const pid_t ppid = getpid();
    const pid_t pid = fork();
@@ -68,6 +72,21 @@ bool kill_process(process_handle pid) {
 process_handle try_wait(int *status) {
 
 #ifdef _WIN32
+	for (auto it = childProcesses.begin();it != childProcesses.end();it++)
+	{
+		DWORD exitCode;
+		process_handle pid = *it;
+		if (GetExitCodeProcess((HANDLE)pid, &exitCode))
+		{
+			if (exitCode != STILL_ACTIVE)
+			{
+				childProcesses.erase(it);
+				return(pid);
+			}
+		}
+	}
+
+	
 	return 0;
 #else
    int stat = 0;
@@ -84,7 +103,16 @@ process_handle try_wait(int *status) {
 process_handle try_wait(process_handle pid0, int *status) {
 
 #ifdef _WIN32
-    return 0;
+	DWORD exitCode;
+	if (GetExitCodeProcess((HANDLE)pid0, &exitCode))
+	{
+		if (exitCode != STILL_ACTIVE)
+		{
+			childProcesses.remove(pid0);
+			return(pid0);
+		}
+	}
+	return 0;
 #else
    int stat = 0;
    pid_t pid = wait4(pid0, &stat, WNOHANG, nullptr);

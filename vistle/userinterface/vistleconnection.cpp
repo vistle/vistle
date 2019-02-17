@@ -92,6 +92,11 @@ void VistleConnection::operator()() {
    {
       mutex_lock lock(m_mutex);
       m_done = true;
+	  if(m_quitOnExit)
+	  {
+	      fprintf(stderr, "Connection to vistle closed, exiting()\n");
+		  exit(0);
+	  }
    }
 }
 
