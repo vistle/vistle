@@ -10,7 +10,7 @@
 #include <boost/preprocessor.hpp>
 
 #ifdef ENUMS_FOR_PYTHON
-#include <pybind11/pybind11.h>
+#include "pybind.h"
 #endif
 
 #define X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE(r, data, elem)   \

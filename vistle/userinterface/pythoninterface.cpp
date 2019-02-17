@@ -1,5 +1,7 @@
-#include <pybind11/pybind11.h>
+#include <cstdio>
+
 #include <pybind11/embed.h>
+#include <util/pybind.h>
 
 #include "pythoninterface.h"
 

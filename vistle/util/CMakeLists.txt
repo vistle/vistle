@@ -32,6 +32,7 @@ set(util_HEADERS
    spawnprocess.h
    directory.h
    sleep.h
+   pybind.h
 )
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "")

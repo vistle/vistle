@@ -27,9 +27,10 @@
 
 // modified by YoungTaek Oh.
 
-#include <pybind11/pybind11.h>
+#include <cstdio>
 #include <pybind11/eval.h>
 #include <pybind11/embed.h>
+#include <util/pybind.h>
 #include "vistleconsole.h"
 #include <userinterface/pythonmodule.h>
 #include <userinterface/pythoninterface.h>

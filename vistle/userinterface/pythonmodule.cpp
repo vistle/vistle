@@ -1,10 +1,12 @@
 #define ENUMS_FOR_PYTHON
 
-#include <pybind11/pybind11.h>
+#include <cstdio>
+
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/eval.h>
+#include <util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>

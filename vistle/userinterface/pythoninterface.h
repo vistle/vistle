@@ -6,7 +6,7 @@
 #include <cassert>
 #include <string>
 #include <iostream>
-#include <pybind11/pybind11.h>
+#include <util/pybind.h>
 
 #include "export.h"
 
