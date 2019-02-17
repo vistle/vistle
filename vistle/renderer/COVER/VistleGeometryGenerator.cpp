@@ -1,4 +1,12 @@
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES // for M_PI with MSVC
+#endif
+
 #include "VistleGeometryGenerator.h"
+
+#include <cmath>
+#include <algorithm>
+#include <type_traits>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -18,9 +26,6 @@
 #include <core/texture1d.h>
 #include <core/placeholder.h>
 #include <core/normals.h>
-
-#include <algorithm>
-#include <type_traits>
 
 #ifdef COVER_PLUGIN
 #include <cover/RenderObject.h>
