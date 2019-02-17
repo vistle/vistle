@@ -28,7 +28,7 @@ public:
    RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta=Meta());
 
    // get functions for metadata
-   Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
+   Index getNumDivisions(int c) override { return (Index)(d()->coords[c]->size()); }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;

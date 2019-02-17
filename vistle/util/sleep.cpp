@@ -33,7 +33,7 @@ bool adaptive_wait(bool work, const void *client) {
    }
 
    
-   long delay = (float(idle)/Sec)*Sec*0.1f;
+   long delay = (long)((float(idle)/Sec)*Sec*0.1f);
    if (delay < MinDelay)
       delay = MinDelay;
    if (delay > MaxDelay)

@@ -205,7 +205,7 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const std::vector<
             break;
         }
         }
-    } catch (fs::filesystem_error &ex) {
+    } catch (fs::filesystem_error &) {
         status = FileQueryResult::Error;
         sendResponse(query, status, std::vector<char>());
     }

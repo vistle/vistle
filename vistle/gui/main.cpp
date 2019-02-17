@@ -40,7 +40,9 @@ int main(int argc, char *argv[])
 	  QLocale::setDefault(QLocale::c());
 
       a.setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
-      std::cerr << "installing debug msg handler" << std::endl;
+	  //DebugBreak();
+
+      //std::cerr << "installing debug msg handler" << std::endl;
       qInstallMessageHandler(debugMessageHandler);
       QIcon icon(":/icons/vistle.png");
       a.setWindowIcon(icon);
