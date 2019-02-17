@@ -44,7 +44,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 
    static const int NumVertices[POLYHEDRON+1];
    static const int NumFaces[POLYHEDRON+1];
-   static const int FaceSizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces];
+   static const unsigned FaceSizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces];
    static const int FaceVertices[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces][MaxNumVertices];
 
    UnstructuredGrid(const Index numElements,

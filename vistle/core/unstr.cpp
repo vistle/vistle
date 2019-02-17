@@ -28,7 +28,7 @@ const int UnstructuredGrid::NumFaces[UnstructuredGrid::POLYHEDRON+1] = {
    0, 0, 1, 1, 4, 5, 5, 6, -1, -1, 0, -1
 };
 
-const int UnstructuredGrid::FaceSizes[UnstructuredGrid::POLYHEDRON+1][UnstructuredGrid::MaxNumFaces] = {
+const unsigned UnstructuredGrid::FaceSizes[UnstructuredGrid::POLYHEDRON+1][UnstructuredGrid::MaxNumFaces] = {
    // none
    { 0, 0, 0, 0, 0, 0 },
    // bar
@@ -161,7 +161,7 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
 Index UnstructuredGrid::checkConvexity() {
 
-    const Scalar Tolerance = 1e-3;
+    const Scalar Tolerance = 1e-3f;
     const Index nelem = getNumElements();
     auto tl = this->tl().data();
     const auto cl = this->cl().data();
@@ -314,7 +314,7 @@ namespace {
 Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
 
     const int iter = 5;
-    const Scalar tol = 1e-6;
+    const Scalar tol = 1e-6f;
     Vector2 ss(0.5, 0.5); // initial guess
 
     const Scalar tol2 = tol*tol;
