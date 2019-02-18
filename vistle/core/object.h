@@ -320,9 +320,7 @@ public:
 
    template<class O>
    static void registerType(int id) {
-#if defined (VISTLE_STATIC) || defined (WIN32) 
       assert(typeMap().find(id) == typeMap().end());
-#endif
       struct FunctionTable t = {
          O::createEmpty,
          O::createFromData,
