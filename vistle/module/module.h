@@ -7,12 +7,16 @@
 #endif
 #include <mpi.h>
 #else
+#ifdef _MSC_VER
 #pragma warning( push )
 #pragma warning( disable : 4267 )
+#endif
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
+#ifdef _MSC_VER
 // Some code
 #pragma warning( pop )
+#endif
 #endif
 #include <boost/config.hpp>
 
