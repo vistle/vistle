@@ -53,20 +53,20 @@ class StatePrinter: public StateObserver {
       : m_out(out)
       {}
 
-   void moduleAvailable(int hub, const std::string &name, const std::string &path) {
+   void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
        m_out << "   hub: " << hub << ", module: " << name << " (" << path << ")" << std::endl;
    }
 
-   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override {
       (void)spawnUuid;
       m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
    }
 
-   void deleteModule(int moduleId) {
+   void deleteModule(int moduleId) override {
       m_out << "   module deleted: " << moduleId << std::endl;
    }
 
-   void moduleStateChanged(int moduleId, int stateBits) {
+   void moduleStateChanged(int moduleId, int stateBits) override {
       m_out << "   module state change: " << moduleId << " (";
       if (stateBits & StateObserver::Initialized) m_out << "I";
       if (stateBits & StateObserver::Killed) m_out << "K";
@@ -74,45 +74,45 @@ class StatePrinter: public StateObserver {
       m_out << ")" << std::endl;
    }
 
-   void newParameter(int moduleId, const std::string &parameterName) {
+   void newParameter(int moduleId, const std::string &parameterName) override {
       m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
    }
 
-   void deleteParameter(int moduleId, const std::string &parameterName) {
+   void deleteParameter(int moduleId, const std::string &parameterName) override {
       m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
    }
 
-   void parameterValueChanged(int moduleId, const std::string &parameterName) {
+   void parameterValueChanged(int moduleId, const std::string &parameterName) override {
       m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
    }
 
-   void parameterChoicesChanged(int moduleId, const std::string &parameterName) {
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) override {
       m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
    }
 
-   void newPort(int moduleId, const std::string &portName) {
+   void newPort(int moduleId, const std::string &portName) override {
       m_out << "   new port: " << moduleId << ":" << portName << std::endl;
    }
 
-   void deletePort(int moduleId, const std::string &portName) {
+   void deletePort(int moduleId, const std::string &portName) override {
       m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
    }
 
    void newConnection(int fromId, const std::string &fromName,
-         int toId, const std::string &toName) {
+         int toId, const std::string &toName) override {
       m_out << "   new connection: "
          << fromId << ":" << fromName << " -> "
          << toId << ":" << toName << std::endl;
    }
 
    void deleteConnection(int fromId, const std::string &fromName,
-         int toId, const std::string &toName) {
+         int toId, const std::string &toName) override {
       m_out << "   connection removed: "
          << fromId << ":" << fromName << " -> "
          << toId << ":" << toName << std::endl;
    }
 
-   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) {
+   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) override {
 
       std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
    }
