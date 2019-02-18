@@ -4,6 +4,7 @@
 #include <iostream>
 
 #ifdef _WIN32
+#include <list>
 #include <process.h>
 #include <Windows.h>
 #include <WinBase.h>
@@ -22,6 +23,7 @@ namespace vistle {
 #ifdef _WIN32
 static	std::list<process_handle> childProcesses;
 #endif
+
 process_handle spawn_process(const std::string &executable, const std::vector<std::string> args) {
 	std::vector<const char *> a;
 	for (const auto &s : args) {
