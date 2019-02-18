@@ -25,16 +25,16 @@ static	std::list<process_handle> childProcesses;
 #endif
 
 process_handle spawn_process(const std::string &executable, const std::vector<std::string> args) {
-	std::vector<const char *> a;
-	for (const auto &s : args) {
-		a.push_back(s.c_str());
-	}
-	a.push_back(nullptr);
+    std::vector<const char *> a;
+    for (const auto &s : args) {
+        a.push_back(s.c_str());
+    }
+    a.push_back(nullptr);
 #ifdef _WIN32
-   process_handle pid = _spawnvp(P_NOWAIT, a[0], (char *const *)&a[1]);
+   process_handle pid = _spawnvp(P_NOWAIT, executable, (char *const *)&a[0]);
    if (pid == -1) {
-      std::cerr << "Error when spawning " << executable << ": " << strerror(errno) << std::endl;
-	  std::cerr << "PATH is " << getenv("PATH") << std::endl;
+       std::cerr << "Error when spawning " << executable << ": " << strerror(errno) << std::endl;
+       std::cerr << "PATH is " << getenv("PATH") << std::endl;
    }
    childProcesses.push_back(pid);
 #else

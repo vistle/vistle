@@ -109,15 +109,17 @@ unsigned short Hub::port() const {
 
 vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) const {
 
-	assert(!argv.empty());
+    assert(!argv.empty());
     std::vector<std::string> args;
-    args.push_back(argv[0]);
-    std::copy(argv.begin(), argv.end(), std::back_inserter(args));
-    auto pid = spawn_process("spawn_vistle.sh", args);
 #ifdef _WIN32
-    CERR << "launched " << argv[0] << " with PID " << pid << std::endl;
+    std::string spawn = "spawn_vistle.bat";
+#else
+    std::string spawn = "spawn_vistle.sh";
 #endif
-	return pid;
+    args.push_back(spawn);
+    std::copy(argv.begin(), argv.end(), std::back_inserter(args));
+    auto pid = spawn_process(spawn, args);
+    return pid;
 }
 
 bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) const {
