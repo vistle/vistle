@@ -6,7 +6,12 @@ if(POLICY CMP0043)
    cmake_policy(SET CMP0043 NEW)
 endif()
 
-add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
+if (WIN32)
+   option(VISTLE_PYTHON_DEBUG "for Debug builds, use expect Python built in Debug mode" OFF)
+   if (VISTLE_PYTHON_DEBUG)
+      add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
+   endif()
+endif()
 
 enable_testing()
 
