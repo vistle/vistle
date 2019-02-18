@@ -738,6 +738,7 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
       return false;
    }
 
+   std::cerr << "done loading of vistle.py" << std::endl;
    return true;
 }
 

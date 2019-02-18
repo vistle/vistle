@@ -385,7 +385,7 @@ Vector UnstructuredGrid::cellCenter(Index elem) const {
         Vector p(x[v], y[v], z[v]);
         center += p;
     }
-    center *= 1./verts.size();
+    center *= 1.0f/verts.size();
 #ifndef NDEBUG
     const auto bounds = cellBounds(elem);
     auto &min = bounds.first, &max = bounds.second;
@@ -663,7 +663,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
    if (mode == Mean) {
       if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
          indices = cellVertices(elem);
-         const Index n = indices.size();
+         const Index n = (Index)indices.size();
          Scalar w = Scalar(1)/n;
          weights.resize(n, w);
       } else {
@@ -941,7 +941,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
          if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
              indices = cellVertices(elem);
-             const Index n = indices.size();
+             const Index n = (Index)indices.size();
              for (Index i=0; i<n; ++i) {
                  const Index k = indices[i];
                  const Vector3 vert(x[0][k], x[1][k], x[2][k]);

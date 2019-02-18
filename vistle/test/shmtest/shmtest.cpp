@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
    managed_shared_memory *shm = NULL;
    try {
-      shm = new managed_shared_memory(create_only, "/test", 1L<<shift);
+      shm = new managed_shared_memory(create_only, "/test", 1LL<<shift);
    } catch (std::exception &ex) {
       std::cerr << "exception: " << ex.what() << std::endl;
       MPI_Finalize();
