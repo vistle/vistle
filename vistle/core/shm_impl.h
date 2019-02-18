@@ -71,7 +71,7 @@ void shm_name_t::load(Archive &ar) {
 #ifdef NO_SHMEM
 #else
 template<typename T>
-typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
+typename managed_shm::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
     return Shm::the().shm().construct<T>(name.c_str());
 }
 #endif

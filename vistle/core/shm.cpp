@@ -98,11 +98,15 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       m_shmDeletionMutex = new std::recursive_mutex;
       m_objectDictionaryMutex = new std::recursive_mutex;
 #else
+#ifdef WIN32
+	  m_shm = new managed_windows_shared_memory(open_or_create, m_name.c_str(), size);
+#else
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
       } else {
          m_shm = new managed_shared_memory(open_only, m_name.c_str());
       }
+#endif
 
       m_allocator = new void_allocator(shm().get_segment_manager());
 
@@ -367,12 +371,12 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
 }
 
 #ifndef NO_SHMEM
-managed_shared_memory & Shm::shm() {
+managed_shm & Shm::shm() {
 
    return *m_shm;
 }
 
-const managed_shared_memory & Shm::shm() const {
+const managed_shm & Shm::shm() const {
 
    return *m_shm;
 }

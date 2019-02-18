@@ -39,7 +39,7 @@ namespace interprocess = boost::interprocess;
 
 #ifdef NO_SHMEM
 #else
-typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
+typedef managed_shm::handle_t shm_handle_t;
 #endif
 
 class Shm;

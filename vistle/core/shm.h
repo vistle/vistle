@@ -14,7 +14,13 @@
 #else
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>
+#ifdef WIN32
+#include <boost/interprocess/managed_windows_shared_memory.hpp>
+typedef boost::interprocess::managed_windows_shared_memory managed_shm;
+#else
 #include <boost/interprocess/managed_shared_memory.hpp>
+typedef boost::interprocess::managed_shared_memory managed_shm;
+#endif
 #endif
 
 #include "archives_config.h"
@@ -34,7 +40,7 @@ namespace vistle {
 #ifdef NO_SHMEM
 typedef void *shm_handle_t;
 #else
-typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
+typedef managed_shm::handle_t shm_handle_t;
 #endif
 
 namespace message {
@@ -89,12 +95,12 @@ struct shm {
        return Constructor(name);
    }
 #else
-   typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
+   typedef boost::interprocess::allocator<T, managed_shm::segment_manager> allocator;
    typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef vistle::shm_array<T, allocator> array;
    typedef boost::interprocess::offset_ptr<array> array_ptr;
-   static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
+   static typename managed_shm::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
 #endif
    static T *find(const std::string &name);
    static bool destroy(const std::string &name);
@@ -128,9 +134,9 @@ class V_COREEXPORT Shm {
 #ifdef NO_SHMEM
    typedef std::allocator<void> void_allocator;
 #else
-   typedef boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager> void_allocator;
-   boost::interprocess::managed_shared_memory &shm();
-   const boost::interprocess::managed_shared_memory &shm() const;
+   typedef boost::interprocess::allocator<void, managed_shm::segment_manager> void_allocator;
+   managed_shm &shm();
+   const managed_shm &shm() const;
 #endif
    const void_allocator &allocator() const;
 
@@ -185,7 +191,7 @@ class V_COREEXPORT Shm {
 #else
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
    mutable boost::interprocess::interprocess_recursive_mutex *m_objectDictionaryMutex;
-   boost::interprocess::managed_shared_memory *m_shm;
+   managed_shm *m_shm;
 #endif
    mutable std::atomic<int> m_lockCount;
 };
