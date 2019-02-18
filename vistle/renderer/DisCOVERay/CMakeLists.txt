@@ -169,7 +169,6 @@ target_link_libraries(DisCOVERay
         vistle_renderer
         vistle_rhr
         ${ICET_CORE_LIBS}
-        #${ICET_MPI_LIBS}
         ${ZLIB_LIBRARIES}
         ${EMBREE_LIBRARY}
         ${TBB_LIBRARIES}
