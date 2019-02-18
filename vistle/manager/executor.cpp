@@ -39,7 +39,6 @@ Executor::Executor(int argc, char *argv[])
      , m_argc(argc)
      , m_argv(argv)
 {
-	__debugbreak();
    auto comm = mpi::communicator();
    m_size = comm.size();
    m_rank = comm.rank();
