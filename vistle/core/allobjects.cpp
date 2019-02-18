@@ -64,6 +64,11 @@ namespace vistle {
    ObjectTypeRegistry::registerType<ObjType>(id); \
 }
 
+#define REGISTER_VEC_TYPE(t, d) \
+{ \
+   ObjectTypeRegistry::registerType<Vec<t,d>>(Vec<t,d>::type()); \
+}
+
 void registerTypes() {
 
    using namespace vistle;
@@ -86,35 +91,20 @@ void registerTypes() {
    REGISTER_TYPE(Celltree3, Object::CELLTREE3);
    REGISTER_TYPE(Normals, Object::NORMALS);
 
-   typedef Vec<unsigned char,1> Vec_uchar_1;
-   REGISTER_TYPE(Vec_uchar_1, Vec_uchar_1::type());
-   typedef Vec<unsigned char,3> Vec_uchar_3;
-   REGISTER_TYPE(Vec_uchar_3, Vec_uchar_3::type());
-
-   typedef Vec<int,1> Vec_int_1;
-   REGISTER_TYPE(Vec_int_1, Vec_int_1::type());
-   typedef Vec<int,3> Vec_int_3;
-   REGISTER_TYPE(Vec_int_3, Vec_int_3::type());
-
-   typedef Vec<unsigned int,1> Vec_uint_1;
-   REGISTER_TYPE(Vec_uint_1, Vec_uint_1::type());
-   typedef Vec<unsigned int,3> Vec_uint_3;
-   REGISTER_TYPE(Vec_uint_3, Vec_uint_3::type());
-
-   typedef Vec<size_t,1> Vec_szt_1;
-   REGISTER_TYPE(Vec_szt_1, Vec_szt_1::type());
-   typedef Vec<size_t,3> Vec_szt_3;
-   REGISTER_TYPE(Vec_szt_3, Vec_szt_3::type());
-
-   typedef Vec<float,1> Vec_float_1;
-   REGISTER_TYPE(Vec_float_1, Vec_float_1::type());
-   typedef Vec<float,3> Vec_float_3;
-   REGISTER_TYPE(Vec_float_3, Vec_float_3::type());
-
-   typedef Vec<double,1> Vec_double_1;
-   REGISTER_TYPE(Vec_double_1, Vec_double_1::type());
-   typedef Vec<double,3> Vec_double_3;
-   REGISTER_TYPE(Vec_double_3, Vec_double_3::type());
+   REGISTER_VEC_TYPE(unsigned char, 1);
+   REGISTER_VEC_TYPE(unsigned char, 3);
+   REGISTER_VEC_TYPE(int32_t, 1);
+   REGISTER_VEC_TYPE(int32_t, 3);
+   REGISTER_VEC_TYPE(uint32_t, 1);
+   REGISTER_VEC_TYPE(uint32_t, 3);
+   REGISTER_VEC_TYPE(int64_t, 1);
+   REGISTER_VEC_TYPE(int64_t, 3);
+   REGISTER_VEC_TYPE(uint64_t, 1);
+   REGISTER_VEC_TYPE(uint64_t, 3);
+   REGISTER_VEC_TYPE(float, 1);
+   REGISTER_VEC_TYPE(float, 3);
+   REGISTER_VEC_TYPE(double, 1);
+   REGISTER_VEC_TYPE(double, 3);
 }
 
 } // namespace vistle
