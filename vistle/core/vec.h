@@ -21,7 +21,7 @@ class Vec: public DataBase {
    typedef DataBase Base;
    typedef typename shm<T>::array array;
    typedef T Scalar;
-   typedef typename VistleScalarVector<Dim>::type Vector;
+   typedef VistleVector<Scalar,Dim> Vector;
 
    Vec(const Index size,
         const Meta &meta=Meta());

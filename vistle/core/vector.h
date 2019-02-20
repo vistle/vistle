@@ -13,12 +13,14 @@ namespace vistle {
 typedef Eigen::Quaternion<vistle::Scalar> Quaternion;
 typedef Eigen::AngleAxis<vistle::Scalar> AngleAxis;
 
+template<class T, int d>
+using VistleVector = Eigen::Matrix<T, d, 1>;
 template<int d>
-using ScalarVector = Eigen::Matrix<Scalar, d, 1>;
+using ScalarVector = VistleVector<Scalar, d>;
 template<int d>
-using DoubleVector = Eigen::Matrix<double, d, 1>;
+using DoubleVector = VistleVector<double, d>;
 template<int d>
-using FloatVector = Eigen::Matrix<float, d, 1>;
+using FloatVector = VistleVector<float, d>;
 
 template<int d>
 struct VistleScalarVector {
