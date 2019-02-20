@@ -176,7 +176,7 @@ struct ParameterType<Integer> {
    typedef Integer T;
    static const Parameter::Type type = Parameter::Integer;
    static const bool isNumber = true;
-   static T min() { return std::numeric_limits<T>::min(); }
+   static T min() { return std::numeric_limits<T>::lowest(); }
    static T max() { return std::numeric_limits<T>::max(); }
 };
 
@@ -185,7 +185,7 @@ struct ParameterType<Float> {
    typedef Float T;
    static const Parameter::Type type = Parameter::Float;
    static const bool isNumber = true;
-   static T min() { return -std::numeric_limits<T>::max(); }
+   static T min() { return std::numeric_limits<T>::lowest(); }
    static T max() { return std::numeric_limits<T>::max(); }
 };
 

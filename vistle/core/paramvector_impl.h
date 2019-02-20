@@ -126,8 +126,8 @@ template<typename S>
 ParameterVector<S> ParameterVector<S>::min(int dim) {
 
    S v[MaxDimension];
-   for (int i=0; i<MaxDimension; ++i)
-      v[i] = std::numeric_limits<S>::min() > 0 ? -std::numeric_limits<S>::max() : std::numeric_limits<S>::min();
+   for (int i = 0; i < MaxDimension; ++i)
+       v[i] = std::numeric_limits<S>::lowest();
    return ParameterVector<S>(dim, v);
 }
 

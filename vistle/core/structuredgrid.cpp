@@ -276,7 +276,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
         Vector edge1 = corners[faces[f][1]];
         edge1 -= v0;
         Vector n(0, 0, 0);
-        for (int i=2; i<sizes[f]; ++i) {
+        for (unsigned i=2; i<sizes[f]; ++i) {
             Vector edge = corners[faces[f][i]];
             edge -= v0;
             n += edge1.cross(edge);
