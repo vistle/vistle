@@ -1,5 +1,7 @@
 build
 build-*
+vcpkg
+vcpkgopt
 CMakeLists.txt.user*
 .release
 test
