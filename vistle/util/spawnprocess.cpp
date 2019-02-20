@@ -31,7 +31,7 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
     }
     a.push_back(nullptr);
 #ifdef _WIN32
-   process_handle pid = _spawnvp(P_NOWAIT, executable, (char *const *)&a[0]);
+   process_handle pid = _spawnvp(P_NOWAIT, executable.c_str(), (char *const *)&a[0]);
    if (pid == -1) {
        std::cerr << "Error when spawning " << executable << ": " << strerror(errno) << std::endl;
        std::cerr << "PATH is " << getenv("PATH") << std::endl;
