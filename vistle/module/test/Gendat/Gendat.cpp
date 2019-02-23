@@ -143,7 +143,7 @@ void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar sc
 }
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (ssize_t idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
         d[idx] = computeData(x, y, z, mode, scale, anim, time);
@@ -155,7 +155,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     for (int c=0; c<3; ++c) {
         dist[c] /= dim[c]-1;
     }
-#pragma omp parallel for
+//#pragma omp parallel for
     for (ssize_t i=0; i<dim[0]; ++i) {
         for (ssize_t j=0; j<dim[1]; ++j) {
             for (ssize_t k=0; k<dim[2]; ++k) {
@@ -299,11 +299,11 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
             Scalar *x = s->x().data();
             Scalar *y = s->y().data();
             Scalar *z = s->z().data();
-#pragma omp parallel for
+//#pragma omp parallel for
             for (ssize_t i=0; i<dim[0]; ++i) {
-#pragma omp parallel for
+//#pragma omp parallel for
                 for (ssize_t j=0; j<dim[1]; ++j) {
-#pragma omp parallel for
+//#pragma omp parallel for
                     for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         x[idx] = min[0]+i*dist[0];
@@ -322,11 +322,11 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
             Scalar *x = u->x().data();
             Scalar *y = u->y().data();
             Scalar *z = u->z().data();
-#pragma omp parallel for
+//#pragma omp parallel for
             for (ssize_t i=0; i<dim[0]; ++i) {
-#pragma omp parallel for
+//#pragma omp parallel for
                 for (ssize_t j=0; j<dim[1]; ++j) {
-#pragma omp parallel for
+//#pragma omp parallel for
                     for (ssize_t k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         x[idx] = min[0]+i*dist[0];
