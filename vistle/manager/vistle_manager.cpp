@@ -78,7 +78,7 @@ void run_on_main_thread(std::function<void()> &func) {
 }
 #endif
 
-int main(int argc, char ** argv)
+int main(int argc, char *argv[])
 {
    int provided = MPI_THREAD_SINGLE;
    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
