@@ -64,6 +64,7 @@ int StateTracker::getMasterHub() const {
 }
 
 std::vector<int> StateTracker::getHubs() const {
+    mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
     for (const auto &h: m_hubs)
        hubs.push_back(h.id);
@@ -71,6 +72,7 @@ std::vector<int> StateTracker::getHubs() const {
 }
 
 std::vector<int> StateTracker::getSlaveHubs() const {
+    mutex_locker guard(m_stateMutex);
     std::vector<int> hubs;
     for (const auto &h: m_hubs)
        if (h.id != Id::MasterHub)
@@ -80,6 +82,7 @@ std::vector<int> StateTracker::getSlaveHubs() const {
 
 const std::string &StateTracker::hubName(int id) const {
 
+    mutex_locker guard(m_stateMutex);
     for (const auto &h: m_hubs) {
        if (h.id == id)
           return h.name;
@@ -89,6 +92,7 @@ const std::string &StateTracker::hubName(int id) const {
 
 std::vector<int> StateTracker::getRunningList() const {
 
+   mutex_locker guard(m_stateMutex);
    std::vector<int> result;
    for (RunningMap::const_iterator it = runningMap.begin();
          it != runningMap.end(); 
@@ -101,6 +105,7 @@ std::vector<int> StateTracker::getRunningList() const {
 
 std::vector<int> StateTracker::getBusyList() const {
 
+   mutex_locker guard(m_stateMutex);
    std::vector<int> result;
    for (ModuleSet::const_iterator it = busySet.begin();
          it != busySet.end();
@@ -112,6 +117,7 @@ std::vector<int> StateTracker::getBusyList() const {
 
 int StateTracker::getHub(int id) const {
 
+   mutex_locker guard(m_stateMutex);
    if (Id::isHub(id)) {
        return id;
    }
@@ -133,6 +139,7 @@ int StateTracker::getHub(int id) const {
 const HubData &StateTracker::getHubData(int id) const {
     static HubData invalidHub(0, "");
 
+    mutex_locker guard(m_stateMutex);
     for (const auto &hub: m_hubs) {
         if (hub.id == id)
             return hub;
@@ -143,6 +150,7 @@ const HubData &StateTracker::getHubData(int id) const {
 
 std::string StateTracker::getModuleName(int id) const {
 
+   mutex_locker guard(m_stateMutex);
    RunningMap::const_iterator it = runningMap.find(id);
    if (it == runningMap.end())
       return std::string();
@@ -152,6 +160,7 @@ std::string StateTracker::getModuleName(int id) const {
 
 int StateTracker::getModuleState(int id) const {
 
+   mutex_locker guard(m_stateMutex);
    RunningMap::const_iterator it = runningMap.find(id);
    if (it == runningMap.end()) {
       it = quitMap.find(id);
@@ -171,6 +180,7 @@ static void appendMessage(std::vector<message::Buffer> &v, const message::Messag
 
 std::vector<message::Buffer> StateTracker::getState() const {
 
+   mutex_locker guard(m_stateMutex);
    using namespace vistle::message;
    std::vector<message::Buffer> state;
 
@@ -296,12 +306,15 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
 const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableModules() const {
 
+    mutex_locker guard(m_stateMutex);
     return m_availableModules;
 }
 
 bool StateTracker::handle(const message::Message &msg, bool track) {
 
    using namespace vistle::message;
+
+   mutex_locker guard(m_stateMutex);
 
    ++m_numMessages;
    m_aggregatedPayload += msg.payloadSize();
@@ -1173,6 +1186,8 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
 
    std::vector<std::string> result;
 
+   mutex_locker guard(m_stateMutex);
+
    RunningMap::const_iterator rit = runningMap.find(id);
    if (rit == runningMap.end())
       return result;
@@ -1187,6 +1202,8 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
 }
 
 std::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const {
+
+   mutex_locker guard(m_stateMutex);
 
    RunningMap::const_iterator rit = runningMap.find(id);
    if (rit == runningMap.end())
@@ -1306,10 +1323,13 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
 
 void StateTracker::registerObserver(StateObserver *observer) {
 
+   mutex_locker guard(m_stateMutex);
    m_observers.insert(observer);
 }
 
 ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const {
+
+   mutex_locker guard(m_stateMutex);
 
    std::function<ParameterSet (const Port *, ParameterSet)> findAllConnectedPorts;
    findAllConnectedPorts = [this, &findAllConnectedPorts] (const Port *port, ParameterSet conn) -> ParameterSet {

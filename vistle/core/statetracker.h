@@ -249,6 +249,8 @@ class V_COREEXPORT StateTracker {
    size_t m_numMessages = 0;
    size_t m_numObjects = 0;
    size_t m_aggregatedPayload = 0;
+
+   mutable mutex m_stateMutex;
 };
 
 } // namespace vistle
