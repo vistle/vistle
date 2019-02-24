@@ -205,7 +205,8 @@ bool Object::Data::isComplete() const {
 
    // a reference is only established upon return from Object::load
    //assert(unresolvedReferences==0 || refcount==0);
-   return refcount>0 && unresolvedReferences==0;
+   //return refcount>0 && unresolvedReferences==0;
+   return unresolvedReferences==0;
 }
 
 void ObjectData::referenceResolved(const std::function<void()> &completeCallback) {
