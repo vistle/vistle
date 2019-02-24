@@ -8,7 +8,8 @@
 int main(int argc, char *argv[]) {
 
    //std::cerr << "trying MPI_Init..." << std::endl;
-   MPI_Init(&argc, &argv);
+   int provided = MPI_THREAD_SINGLE;
+   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
    //std::cerr << "after MPI_Init" << std::endl;
 
    int rank=-1, size=-1;
