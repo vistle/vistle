@@ -29,12 +29,14 @@ include_directories(SYSTEM
 )
 
 set(HEADERS
+  DecodeTask.h
   RhrClient.h
   RemoteConnection.h
   TileMessage.h
 )
 
 set(SOURCES
+  DecodeTask.cpp
   RhrClient.cpp
   RemoteConnection.cpp
   TileMessage.cpp
