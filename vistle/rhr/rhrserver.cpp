@@ -537,6 +537,7 @@ bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderM
    vd.nparam.timestep = timestep();
    vd.nparam.matrixTime = mat.time;
    vd.nparam.requestNumber = mat.requestNumber;
+   vd.nparam.eye = mat.eye;
 
    for (int i=0; i<16; ++i) {
       vd.nparam.proj.data()[i] = mat.proj[i];
@@ -766,6 +767,7 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
    tileMsg *message = new tileMsg;
 
    message->viewNum = viewNum;
+   message->eye = vp.eye;
    message->width = w;
    message->height = h;
    message->x = x;

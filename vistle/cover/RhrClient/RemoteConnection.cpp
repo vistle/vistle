@@ -733,7 +733,7 @@ void RemoteConnection::setGeometryMode(RemoteConnection::GeometryMode mode) {
     m_numViews = numViewsForMode(mode);
 
     if (mode == Screen) {
-        m_drawer->setRenderAllViews(m_renderAllViews);
+        m_drawer->setViewsToRender(MultiChannelDrawer::Same);
         if (m_renderAllViews) {
             m_numViews = m_numClusterViews;
             m_drawer->setNumViews(m_numClusterViews);
@@ -742,7 +742,7 @@ void RemoteConnection::setGeometryMode(RemoteConnection::GeometryMode mode) {
             m_drawer->setNumViews(-1);
         }
     } else if (mode == CubeMap || mode == CubeMapFront || mode == Tiled) {
-        m_drawer->setRenderAllViews(true);
+        m_drawer->setViewsToRender(MultiChannelDrawer::MatchingEye);
         m_drawer->setNumViews(m_numViews);
     } else {
         m_drawer->setNumViews(0);
@@ -761,7 +761,7 @@ void RemoteConnection::setRenderAllViews(bool state) {
     if (m_geoMode != Screen)
         return;
 
-    m_drawer->setRenderAllViews(m_renderAllViews);
+    m_drawer->setViewsToRender(state ? MultiChannelDrawer::MatchingEye : MultiChannelDrawer::Same);
     if (m_renderAllViews) {
         m_numViews = m_numClusterViews;
         m_drawer->setNumViews(m_numClusterViews);
@@ -800,6 +800,17 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task) {
       task->viewData = m_drawer->getViewData(view);
       task->rgba = reinterpret_cast<char *>(m_drawer->rgba(view));
       task->depth = reinterpret_cast<char *>(m_drawer->depth(view));
+      switch (tile.eye) {
+      case 0:
+          m_drawer->setViewEye(view, Middle);
+          break;
+      case 1:
+          m_drawer->setViewEye(view, Left);
+          break;
+      case 2:
+          m_drawer->setViewEye(view, Right);
+          break;
+      }
    }
    if (first) {
        assert(m_queuedTiles==0);

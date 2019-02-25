@@ -218,6 +218,7 @@ public:
        int32_t timestep = -1;
        double matrixTime;
        int width, height;
+       uint8_t eye = 0;
 
        ViewParameters()
        : frameNumber(0)
@@ -241,6 +242,7 @@ public:
          ar & matrixTime;
          ar & width;
          ar & height;
+         ar & eye;
 
          ar & proj;
          ar & view;
@@ -279,12 +281,6 @@ private:
 
    std::vector<ViewData, Eigen::aligned_allocator<ViewData>> m_viewData;
 
-#if 0
-   bool m_benchmark; //!< whether timing information should be printed
-   bool m_errormetric; //!< whether compression errors should be checked
-   bool m_compressionrate; //!< whether compression ratio should be evaluated
-   double m_lastMatrixTime; //!< time when last matrix message was sent by client
-#endif
    int m_delay; //!< artificial delay (us)
    ImageParameters m_imageParam; //!< parameters for color/depth codec
    bool m_resizeBlocked, m_resizeDeferred;

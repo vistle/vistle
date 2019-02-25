@@ -74,6 +74,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
     matricesMsg()
     : rfbMsg(rfbMatrices)
     , last(0)
+    , eye(0)
     , viewNum(-1)
     , width(0)
     , height(0)
@@ -86,6 +87,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
     }
 
     uint8_t last; //!< 1 if this is the last view requested for this frame
+    uint8_t eye; //!< 0: middle, 1: left, 2: right
     int16_t viewNum; //!< number of window/view that these matrices apply to
     uint16_t width, height; //!< dimensions of requested viewport
     uint32_t requestNumber; //!< number of render request
@@ -96,6 +98,8 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
 
     bool operator==(const matricesMsg &other) const {
 
+        if (eye != other.eye)
+            return false;
         if (viewNum != other.viewNum)
             return false;
         if (width != other.width)
@@ -265,6 +269,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , flags(rfbTileNone)
    , format(rfbColorRGBA)
    , compression(rfbTileRaw)
+   , eye(0)
    , frameNumber(0)
    , requestNumber(0)
    , size(0)
@@ -287,6 +292,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint8_t flags; //!< request depth buffer update
    uint8_t format; //!< depth format, \see rfbDepthFormats
    uint8_t compression; //!< compression, \see rfbDepthCompressions
+   uint8_t eye; //!< 0: middle, 1: left, 2: right
    uint32_t frameNumber; //!< number of frame this tile belongs to
    uint32_t requestNumber; //!< number of request this tile is in response to, copied from matrices request
    uint32_t size; //!< size of payload, \see appSubMessage

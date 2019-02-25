@@ -8,6 +8,7 @@
 
 #include <osg/Geometry>
 
+
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
 
@@ -113,6 +114,7 @@ bool DecodeTask::work() {
             stream_close(stream);
         } else {
             CERR << "DecodeTask: zfp not in float format, cannot decompress" << std::endl;
+            return false;
         }
 #endif
     } else  if (tile.format!=rfbColorRGBA && (tile.compression & rfbTileDepthQuantize)) {

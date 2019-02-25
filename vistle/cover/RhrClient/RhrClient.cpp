@@ -95,6 +95,7 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
            left = true;
        view = left ? chan.leftView : chan.rightView;
        proj = left ? chan.leftProj : chan.rightProj;
+       msg.eye = left ? 1 : 2;
 
 #if 0
        CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << std::endl;
@@ -105,6 +106,7 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    } else {
        msg.width = 2048;
        msg.height = 2048;
+       msg.eye = 0;
 
        view.makeIdentity();
        proj.makeIdentity();
