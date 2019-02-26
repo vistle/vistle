@@ -33,6 +33,7 @@
 #include <osg/io_utils>
 
 #include <memory>
+#include <limits>
 
 #include <core/tcpmessage.h>
 #include <util/hostname.h>
@@ -40,6 +41,8 @@
 
 #include <VistlePluginUtil/VistleRenderObject.h>
 #include <VistlePluginUtil/VistleInteractor.h>
+
+#include <cover/input/input.h>
 
 #include "RemoteConnection.h"
 #include "RhrClient.h"
@@ -57,6 +60,34 @@ typedef std::lock_guard<std::recursive_mutex> lock_guard;
 static const unsigned short PortRange[] = { 31000, 32000 };
 static const std::string config("COVER.Plugin.RhrClient");
 
+std::pair<int,int> imageSizeForChannel(int channel) {
+
+    auto wh = std::make_pair(1024, 1024);
+    auto &w = wh.first, &h = wh.second;
+
+    auto &conf = *coVRConfig::instance();
+    if (channel < 0 || channel >= conf.numChannels())
+        return wh;
+
+    const channelStruct &chan = conf.channels[channel];
+    if (chan.PBONum >= 0) {
+        const PBOStruct &pbo = conf.PBOs[chan.PBONum];
+        w = pbo.PBOsx;
+        h = pbo.PBOsy;
+    } else {
+        if (chan.viewportNum < 0)
+            return wh;
+        const viewportStruct &vp = conf.viewports[chan.viewportNum];
+        if (vp.window < 0)
+            return wh;
+        const windowStruct &win = conf.windows[vp.window];
+        w = (vp.viewportXMax - vp.viewportXMin) * win.sx;
+        h = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+    }
+
+    return wh;
+}
+
 void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, bool second) {
 
    msg.type = rfbMatrices;
@@ -72,141 +103,113 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    else
        m_oldModelMatrix = model;
 
+   auto &conf = *coVRConfig::instance();
+
+   osg::Matrix headMat = cover->getViewerMat();
+   if (Input::instance()->hasHead() && Input::instance()->isHeadValid()) {
+       headMat = Input::instance()->getHeadMat();
+   }
+
    osg::Matrix view, proj;
    if (channel >= 0) {
-       const channelStruct &chan = coVRConfig::instance()->channels[channel];
-       if (chan.PBONum >= 0) {
-           const PBOStruct &pbo = coVRConfig::instance()->PBOs[chan.PBONum];
-           msg.width = pbo.PBOsx;
-           msg.height = pbo.PBOsy;
+       const channelStruct &chan = conf.channels[channel];
+       auto wh = imageSizeForChannel(channel);
+       msg.width = wh.first;
+       msg.height = wh.second;
+
+       bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
+       if (second)
+           left = false;
+       VRViewer::Eye eye;
+       if (chan.stereo) {
+           msg.eye = left ? rfbEyeLeft : rfbEyeRight;
+           eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
        } else {
-           if (chan.viewportNum < 0)
-               return;
-           const viewportStruct &vp = coVRConfig::instance()->viewports[chan.viewportNum];
-           if (vp.window < 0)
-               return;
-           const windowStruct &win = coVRConfig::instance()->windows[vp.window];
-           msg.width = (vp.viewportXMax - vp.viewportXMin) * win.sx;
-           msg.height = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+           msg.eye = rfbEyeMiddle;
+           eye = VRViewer::EyeMiddle;
+       }
+       if (cover->isViewerGrabbed()) {
+           osg::Vec3 off = VRViewer::instance()->eyeOffset(eye);
+           auto &xyz = conf.screens[channel].xyz;
+           auto &hpr = conf.screens[channel].hpr;
+           float dx = conf.screens[channel].hsize;
+           float dz = conf.screens[channel].vsize;
+           auto viewProj = opencover::computeViewProjFixedScreen(headMat, off, xyz, hpr, osg::Vec2(dx,dz),
+                                                                 conf.nearClip(), conf.farClip(), conf.orthographic());
+           view = viewProj.first;
+           proj = viewProj.second;
+       } else {
+           view = left ? chan.leftView : chan.rightView;
+           proj = left ? chan.leftProj : chan.rightProj;
        }
 
-       bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
-       if (second)
-           left = true;
-       view = left ? chan.leftView : chan.rightView;
-       proj = left ? chan.leftProj : chan.rightProj;
-       msg.eye = left ? 1 : 2;
-
 #if 0
-       CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << std::endl;
+       CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
        std::cerr << "  view mat: " << view << std::endl;
        std::cerr << "  proj mat: " << proj << std::endl;
 #endif
 
    } else {
-       msg.width = 2048;
-       msg.height = 2048;
-       msg.eye = 0;
+       auto wh = imageSizeForChannel(0);
+       msg.width = msg.height = 1.2 * std::min(wh.first, wh.second);
+       if (viewNum > 0 && m_geoMode==RemoteConnection::CubeMapCoarseSides) {
+           msg.width *= 0.7;
+           msg.height *= 0.7;
+       }
+       msg.eye = rfbEyeMiddle;
 
        view.makeIdentity();
        proj.makeIdentity();
 
-       float dx = 3000;
+       float dx = 0;
+       for (int c=0; c<3; ++c) {
+           dx = std::max(m_localConfig.screenMax[c]-m_localConfig.screenMin[c], dx);
+       }
        float dz = dx;
 
-       osg::Vec3 xyz(0, 0.5*dx, 0);
+       osg::Vec3 xyz(0,0,0);
        osg::Vec3 hpr(0,0,0);
-       if (m_geoMode == RemoteConnection::Tiled) {
-           xyz[1] = 0.0;
-           switch (viewNum) {
-           case 0: { // front-left
-               msg.width = msg.height = 256;
-               xyz[0] = -0.25*dx;
-               break;
-           }
-           case 1: { // front-right
-               xyz[0] = +0.25*dx;
-               break;
-           }
-           default:
-               return;
-           }
-
-       } else {
-           switch (viewNum) {
-           case 0: { // front
-               break;
-           }
-           case 1: { // top
-               hpr[1] = 90;
-               hpr[2] = 180;
-               break;
-           }
-           case 2: { // left
-               hpr[0] = 90;
-               break;
-           }
-           case 3: { // bottom
-               hpr[1] = -90;
-               break;
-           }
-           case 4: { // right
-               hpr[0] = -90;
-               break;
-           }
-           case 5: { // back
-               hpr[0] = 180;
-               break;
-           }
-           default:
-               return;
-           }
+       switch (viewNum) {
+       case 0: { // front
+           xyz = osg::Vec3(0, 0.5*dx, 0);
+           break;
+       }
+       case 1: { // top
+           hpr[1] = 90;
+           xyz = osg::Vec3(0, 0, 0.5*dx);
+           break;
+       }
+       case 2: { // left
+           hpr[0] = 90;
+           xyz = osg::Vec3(-0.5*dx, 0, 0);
+           break;
+       }
+       case 3: { // bottom
+           hpr[1] = -90;
+           xyz = osg::Vec3(0, 0, -0.5*dx);
+           break;
+       }
+       case 4: { // right
+           hpr[0] = -90;
+           xyz = osg::Vec3(0.5*dx, 0, 0);
+           break;
+       }
+       case 5: { // back
+           hpr[0] = 180;
+           xyz = osg::Vec3(0, -0.5*dx, 0);
+           break;
+       }
+       default:
+           break;
        }
 
-       osg::Matrix euler;
-       MAKE_EULER_MAT_VEC(euler, hpr);
-       xyz = xyz * euler;
-       euler.invert(euler);
-       CERR << "viewNum=" << viewNum << ", xyz=" << xyz << std::endl;
-
-       // transform the screen to fit the xz-plane
-       osg::Matrix trans;
-       trans.makeTranslate(-xyz);
-
-       osg::Matrix mat;
-       mat.mult(trans, euler);
-       mat.mult(euler, mat);
-       osg::Matrix offsetMat = mat;
-
-       osg::Matrix viewMat = VRViewer::instance()->getViewerMat();
-       osg::Vec3 middleEye(0, 0, 0);
-       middleEye = viewMat.preMult(middleEye);
-       middleEye = mat.preMult(middleEye);
-
-       // compute right frustum
-       // dist from eye to screen for left & right channel
-       float mc_dist = -middleEye[1];
-
-       // compute left frustum
-       coVRConfig *coco = coVRConfig::instance();
-       double n_over_d = coco->orthographic() ? 1.0 : coco->nearClip() / mc_dist;
-       float mc_right = n_over_d * (dx / 2.0 - middleEye[0]);
-       float mc_left = -n_over_d * (dx / 2.0 + middleEye[0]);
-       float mc_top = n_over_d * (dz / 2.0 - middleEye[2]);
-       float mc_bottom = -n_over_d * (dz / 2.0 + middleEye[2]);
-
-       if (coco->orthographic())
-       {
-           proj.makeOrtho(mc_left, mc_right, mc_bottom, mc_top, coco->nearClip(), coco->farClip());
-       }
-       else
-       {
-           proj.makeFrustum(mc_left, mc_right, mc_bottom, mc_top, coco->nearClip(), coco->farClip());
-       }
-
-       // set view
-       // take the normal to the plane as orientation this is (0,1,0)
-       view = offsetMat * osg::Matrix::lookAt(osg::Vec3(middleEye[0], middleEye[1], middleEye[2]), osg::Vec3(middleEye[0], middleEye[1] + 1, middleEye[2]), osg::Vec3(0, 0, 1));
+       // increase size of images so that centers of border pixels on neighboring images coincide
+       dx += dx*1./msg.width;
+       dz += dz*1./msg.height;
+       auto viewProj = opencover::computeViewProjFixedScreen(cover->getViewerMat(), osg::Vec3(0,0,0), xyz, hpr,
+                                                             osg::Vec2(dx,dz), conf.nearClip(), conf.farClip(), conf.orthographic());
+       view = viewProj.first;
+       proj = viewProj.second;
    }
 
    for (int i=0; i<16; ++i) {
@@ -214,6 +217,7 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
        msg.model[i] = model.ptr()[i];
        msg.view[i] = view.ptr()[i];
        msg.proj[i] = proj.ptr()[i];
+       msg.head[i] = headMat.ptr()[i];
    }
 
    //CERR << "M: " << model.getTrans() << ", V: " << view.getTrans() << ", P: " << proj.getTrans() << std::endl;
@@ -230,7 +234,8 @@ std::vector<matricesMsg> RhrClient::gatherAllMatrices() {
 
             fillMatricesMessage(matrices[view], i, view, false);
             ++view;
-            if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
+            auto stm = coVRConfig::instance()->channels[i].stereoMode;
+            if (coVRConfig::requiresTwoViewpoints(stm)) {
                 fillMatricesMessage(matrices[view], i, view, true);
                 ++view;
             }
@@ -319,20 +324,7 @@ bool RhrClient::checkAdvanceFrame()
         readyForAdvance = false;
     }
 
-    if (coVRMSController::instance()->isMaster()) {
-        coVRMSController::SlaveData sd(sizeof(readyForAdvance));
-        coVRMSController::instance()->readSlaves(&sd);
-        for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
-            bool *p = static_cast<bool *>(sd.data[i]);
-            if (!*p) {
-                readyForAdvance = false;
-                break;
-            }
-        }
-    } else {
-        coVRMSController::instance()->sendMaster(&readyForAdvance, sizeof(readyForAdvance));
-    }
-    readyForAdvance = coVRMSController::instance()->syncBool(readyForAdvance);
+    readyForAdvance = coVRMSController::instance()->allReduceAnd(readyForAdvance);
 
     return readyForAdvance;
 }
@@ -410,7 +402,6 @@ RhrClient::RhrClient()
 //! called after plug-in is loaded and scenegraph is initialized
 bool RhrClient::init()
 {
-   m_mode = MultiChannelDrawer::ReprojectMesh;
    m_noModelUpdate = false;
    m_oldModelMatrix = osg::Matrix::identity();
 
@@ -428,35 +419,95 @@ bool RhrClient::init()
 
    m_channelBase = 0;
 
-   const int numChannels = coVRConfig::instance()->numChannels();
+   auto &conf = *coVRConfig::instance();
+
+   auto &screenMin = m_localConfig.screenMin;
+   auto &screenMax = m_localConfig.screenMax;
+   for (int i=0; i<3; ++i) {
+       screenMin[i] = std::numeric_limits<float>::max();
+       screenMax[i] = std::numeric_limits<float>::lowest();
+   }
+
+   bool haveMiddle = false, haveLeft = false, haveRight = false;
+   const int numChannels = conf.numChannels();
    int numViews = numChannels;
    for (int i=0; i<numChannels; ++i) {
-       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+       auto &xyz = conf.screens[i].xyz;
+       auto &hpr = conf.screens[i].hpr;
+       auto &hsize = conf.screens[i].hsize;
+       auto &vsize = conf.screens[i].vsize;
+       osg::Matrix mat;
+       MAKE_EULER_MAT_VEC(mat, hpr);
+       osg::Vec3 size(hsize, 0, vsize);
+       size = size * mat;
+       size *= 0.5;
+       for (int c=0; c<3; ++c) {
+           size[c] = std::abs(size[c]);
+           screenMin[c] = std::min(screenMin[c], xyz[c]-size[c]);
+           screenMax[c] = std::max(screenMax[c], xyz[c]+size[c]);
+       }
+
+       if (!conf.channels[i].stereo) {
+           haveMiddle = true;
+           continue;
+       }
+
+       auto stm = conf.channels[i].stereoMode;
+       if (coVRConfig::requiresTwoViewpoints(stm)) {
           ++numViews;
+          haveLeft = true;
+          haveRight = true;
+       } else if (stm == osg::DisplaySettings::LEFT_EYE) {
+           haveLeft = true;
+       } else if (stm == osg::DisplaySettings::RIGHT_EYE) {
+           haveRight = true;
        }
    }
+
+   m_localConfig.numChannels = numChannels;
+   m_localConfig.numViews = numViews;
+   m_localConfig.haveMiddle = haveMiddle;
+   m_localConfig.haveLeft = haveLeft;
+   m_localConfig.haveRight = haveRight;
+   m_localConfig.viewIndexOffset = 0;
+
    m_numLocalViews = numViews;
    if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sd(sizeof(numViews));
+      m_nodeConfig.push_back(m_localConfig);
+
+      coVRMSController::SlaveData sd(sizeof(NodeConfig));
       coVRMSController::instance()->readSlaves(&sd);
       int channelBase = numViews;
       for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
-         int *p = static_cast<int *>(sd.data[i]);
-         int n = *p;
-         m_numChannels.push_back(n);
-         *p = channelBase;
-         channelBase += n;
+         auto *nc = static_cast<NodeConfig *>(sd.data[i]);
+         nc->viewIndexOffset = channelBase;
+         m_nodeConfig.push_back(*nc);
+         channelBase += nc->numViews;
       }
       coVRMSController::instance()->sendSlaves(sd);
       m_numClusterViews = channelBase;
    } else {
-      coVRMSController::instance()->sendMaster(&numViews, sizeof(numViews));
+      coVRMSController::instance()->sendMaster(&m_localConfig, sizeof(NodeConfig));
       coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
+      m_nodeConfig.resize(coVRMSController::instance()->getNumSlaves()+1);
    }
    coVRMSController::instance()->syncData(&m_numClusterViews, sizeof(m_numClusterViews));
+   coVRMSController::instance()->syncData(&m_nodeConfig[0], sizeof(m_nodeConfig[0])*m_nodeConfig.size());
+   m_localConfig.viewIndexOffset = m_nodeConfig[coVRMSController::instance()->getID()].viewIndexOffset;
+   for (auto &n: m_nodeConfig) {
+       for (int c=0; c<3; ++c) {
+           m_localConfig.screenMin[c] = std::min(m_localConfig.screenMin[c], n.screenMin[c]);
+           m_localConfig.screenMax[c] = std::max(m_localConfig.screenMax[c], n.screenMax[c]);
+       }
+   }
 
-   CERR << "#channels: " << numChannels << ", channel base: " << m_channelBase << std::endl;
-   CERR << "#views: " << numViews << ", #cluster views: " << m_numClusterViews << std::endl;
+   if (coVRMSController::instance()->isMaster()) {
+       int i=0;
+       for (auto &n: m_nodeConfig) {
+           CERR << "Node " << i << ": " << n << std::endl;
+           ++i;
+       }
+   }
 
    m_menu = new ui::Menu("RHR", this);
    m_menu->setText("Hybrid rendering");
@@ -469,41 +520,50 @@ bool RhrClient::init()
    reprojMode->append("Points (adaptive with neighbors)");
    reprojMode->append("Mesh");
    reprojMode->append("Mesh with holes");
+   reprojMode->append("Disable & adapt viewer");
    reprojMode->setCallback([this](int choice){
-         if (choice >= MultiChannelDrawer::AsIs && choice <= MultiChannelDrawer::ReprojectMeshWithHoles) {
-             m_mode = MultiChannelDrawer::Mode(choice);
-         }
-         for (auto &r: m_remotes)
-             r.second->drawer()->setMode(m_mode);
+       if (choice > MultiChannelDrawer::ReprojectMeshWithHoles) {
+           choice = MultiChannelDrawer::AsIs;
+           cover->grabViewer(this);
+       } else {
+           cover->releaseViewer(this);
+       }
+       if (choice >= MultiChannelDrawer::AsIs && choice <= MultiChannelDrawer::ReprojectMeshWithHoles) {
+           m_configuredMode = MultiChannelDrawer::Mode(choice);
+       }
+       setReprojectionMode(m_configuredMode);
    });
 
    auto geoMode = new ui::SelectionList(m_menu, "GeometryMode");
    geoMode->setText("Proxy geometry");
    geoMode->append("Screen");
-   geoMode->append("Tiled: 2x1");
    geoMode->append("Cubemap");
    geoMode->append("Cubemap (no back)");
+   geoMode->append("Cubemap (coarse sides)");
    geoMode->setCallback([this](int choice){
-       if (choice >= RemoteConnection::Screen && choice <= RemoteConnection::CubeMapFront) {
+       if (choice >= RemoteConnection::Screen && choice <= RemoteConnection::CubeMapCoarseSides) {
              m_configuredGeoMode = GeometryMode(choice);
          }
          setGeometryMode(m_configuredGeoMode);
    });
    geoMode->select(m_configuredGeoMode);
-   reprojMode->select(m_mode);
+   reprojMode->select(m_configuredMode);
 
-   auto allViews = new ui::Button(m_menu, "AllViews");
-   allViews->setText("Render all views");
-   allViews->setState(m_configuredAllViews);
-   allViews->setCallback([this](bool state){
-       m_configuredAllViews = state;
-       setRenderAllViews(state);
+   auto allViews = new ui::SelectionList(m_menu, "VisibleViews");
+   allViews->setText("Views to render");
+   allViews->append("Same");
+   allViews->append("Matching eye");
+   allViews->append("All");
+   allViews->setCallback([this](int choice){
+       if (choice < MultiChannelDrawer::Same || choice > MultiChannelDrawer::All)
+           return;
+       m_configuredVisibleViews = MultiChannelDrawer::ViewSelection(choice);
+       setVisibleViews(m_configuredVisibleViews);
    });
-   setRenderAllViews(m_configuredAllViews);
+   allViews->select(m_configuredVisibleViews);
+   setVisibleViews(m_configuredVisibleViews);
    setGeometryMode(m_configuredGeoMode);
-   for (auto &r: m_remotes) {
-       r.second->drawer()->setMode(m_mode);
-   }
+   setReprojectionMode(m_configuredMode);
 
    m_matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
    m_matrixUpdate->setText("Update model matrix");
@@ -703,18 +763,13 @@ void RhrClient::preFrame() {
    }
 
    if (cover->isHighQuality()) {
-       setRenderAllViews(false);
+       setVisibleViews(MultiChannelDrawer::Same);
        setGeometryMode(RemoteConnection::Screen);
-       for (auto &r: m_remotes) {
-           r.second->drawer()->setMode(MultiChannelDrawer::AsIs);
-       }
+       setReprojectionMode(MultiChannelDrawer::AsIs);
    } else {
-       setRenderAllViews(m_configuredAllViews);
+       setVisibleViews(m_configuredVisibleViews);
        setGeometryMode(m_configuredGeoMode);
-       for (auto &r: m_remotes) {
-           r.second->drawer()->setMode(m_mode);
-           r.second->drawer()->reproject();
-       }
+       setReprojectionMode(m_configuredMode);
    }
 
    for (auto r: m_remotes) {
@@ -840,6 +895,18 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
     }
 }
 
+bool RhrClient::updateViewer() {
+    auto it = m_remotes.begin();
+    if (it != m_remotes.end()) {
+        auto &m = it->second->getHeadMat();
+        if (VRViewer::instance()->getViewerMat() != m) {
+            VRViewer::instance()->updateViewerMat(m);
+            return true;
+        }
+    }
+    return false;
+}
+
 std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &connectionName, const std::string &address, unsigned short port) {
 
    m_remotes.erase(connectionName);
@@ -877,9 +944,9 @@ void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<Rem
    remote->setName(name);
    m_clientsChanged = true;
 
+   remote->setNodeConfigs(m_nodeConfig);
    remote->setNumLocalViews(m_numLocalViews);
    remote->setNumClusterViews(m_numClusterViews);
-   remote->setNumChannels(m_numChannels);
    remote->setFirstView(m_channelBase);
    remote->setVisibleTimestep(m_visibleTimestep);
    if (m_requestedTimestep != -1) {
@@ -890,6 +957,10 @@ void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<Rem
 
    auto matrices = gatherAllMatrices();
    remote->setMatrices(matrices);
+
+   remote->setReprojectionMode(m_mode);
+   remote->setViewsToRender(m_visibleViews);
+   remote->setGeometryMode(m_geoMode);
 
    for (auto &var: m_coverVariants) {
        remote->setVariantVisibility(var.first, var.second);
@@ -911,6 +982,8 @@ void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<Rem
            setServerParameters(remote->m_moduleId, vistle::hostname(), remote->m_port);
        }
    }
+
+   remote->start();
 }
 
 //! clean up when connection to server is lost
@@ -930,21 +1003,26 @@ void RhrClient::setGeometryMode(GeometryMode mode) {
     for (auto &r: m_remotes)
         r.second->setGeometryMode(mode);
 
-    if (m_geoMode == mode)
-        return;
-
     m_geoMode = mode;
 }
 
-void RhrClient::setRenderAllViews(bool state) {
+void RhrClient::setVisibleViews(RhrClient::ViewSelection selection) {
+
+    m_visibleViews = selection;
 
     for (auto &r: m_remotes)
-        r.second->setRenderAllViews(state);
+        r.second->setViewsToRender(m_visibleViews);
+}
 
-    m_renderAllViews = state;
+void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject) {
 
-    if (m_geoMode != RemoteConnection::Screen)
+    if (m_mode == reproject)
         return;
+
+    m_mode = reproject;
+    for (auto &r: m_remotes) {
+        r.second->setReprojectionMode(m_mode);
+    }
 }
 
 COVERPLUGIN(RhrClient)

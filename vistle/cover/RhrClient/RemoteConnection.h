@@ -22,6 +22,9 @@
 #include <renderer/renderobject.h>
 
 #include "TileMessage.h"
+#include "NodeConfig.h"
+
+#include <boost/mpi.hpp>
 
 namespace opencover {
 class MultiChannelDrawer;
@@ -36,11 +39,13 @@ class RemoteConnection {
 
    enum GeometryMode {
        Screen,
-       Tiled,
        CubeMap,
        CubeMapFront,
+       CubeMapCoarseSides,
        Invalid,
    };
+
+    using ViewSelection = opencover::MultiChannelDrawer::ViewSelection;
 
     static int numViewsForMode(GeometryMode mode);
 
@@ -59,7 +64,6 @@ class RemoteConnection {
     std::unique_ptr<std::recursive_mutex> m_mutex, m_sendMutex;
     std::unique_ptr<std::mutex> m_taskMutex;
     std::unique_ptr<std::thread> m_thread;
-    bool haveMessage = false;
     bool m_running = false;
     bool m_listening = false;
     bool m_connected = false;
@@ -69,7 +73,7 @@ class RemoteConnection {
     bool m_setServerParameters = false;
     int m_moduleId = 0;
     std::deque<TileMessage> m_receivedTiles;
-    int m_lastTileAt = -1;
+    std::deque<size_t> m_lastTileAt;
     std::map<std::string, vistle::RenderObject::InitialVariantVisibility> m_variantsToAdd;
     std::set<std::string> m_variantsToRemove;
     std::map<std::string, std::shared_ptr<VariantRenderObject>> m_variants;
@@ -79,13 +83,11 @@ class RemoteConnection {
     int m_channelBase = 0;
     int m_numViews = 0, m_numLocalViews = 0;
     int m_numClusterViews = 0;
-    std::vector<int> m_numChannels;
+    std::vector<NodeConfig> m_nodeConfig;
     osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
     opencover::MultiChannelDrawer::Mode m_mode;
-    GeometryMode m_configuredGeoMode = Screen;
     GeometryMode m_geoMode = Invalid;
-    bool m_configuredAllViews = false;
-    bool m_renderAllViews = !m_configuredAllViews;
+    opencover::MultiChannelDrawer::ViewSelection m_visibleViews = opencover::MultiChannelDrawer::Same;
 
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
@@ -95,6 +97,7 @@ class RemoteConnection {
     RemoteConnection(RhrClient *plugin, unsigned short portFirst, unsigned short portLast, bool isMaster);
     ~RemoteConnection();
     void init();
+    void start();
 
     void setName(const std::string &name);
     const std::string &name() const;
@@ -106,8 +109,8 @@ class RemoteConnection {
     bool requestTimestep(int t, int numTime=-1);
     bool setLights(const vistle::lightsMsg &msg);
     vistle::lightsMsg m_lights;
-    bool setMatrices(const std::vector<vistle::matricesMsg> &msgs);
-    std::vector<vistle::matricesMsg> m_matrices;
+    bool setMatrices(const std::vector<vistle::matricesMsg> &msgs, bool force=false);
+    std::vector<vistle::matricesMsg> m_matrices, m_savedMatrices;
     int m_numMatrixRequests = 0;
     bool handleAnimation(const vistle::message::RemoteRenderMessage &msg, const vistle::animationMsg &anim);
     bool handleVariant(const vistle::message::RemoteRenderMessage &msg, const vistle::variantMsg &variant);
@@ -123,7 +126,6 @@ class RemoteConnection {
     bool isListening() const;
     bool isConnecting() const;
     bool isConnected() const;
-    bool messageReceived();
     bool boundsUpdated();
     bool sendMessage(const vistle::message::Message &msg, const std::vector<char> *payload=nullptr);
 
@@ -140,9 +142,11 @@ class RemoteConnection {
     void setNumLocalViews(int nv);
     void setNumClusterViews(int nv);
     void setNumChannels(const std::vector<int> &numChannels);
+    void setNodeConfigs(const std::vector<NodeConfig> &configs);
     void setFirstView(int v);
     void setGeometryMode(GeometryMode mode);
-    void setRenderAllViews(bool state);
+    void setReprojectionMode(opencover::MultiChannelDrawer::Mode mode);
+    void setViewsToRender(opencover::MultiChannelDrawer::ViewSelection selection);
     void gatherTileStats(const vistle::message::RemoteRenderMessage &remote, const vistle::tileMsg &msg);
     void handleTileMeta(const vistle::message::RemoteRenderMessage &remote, const vistle::tileMsg &msg);
 
@@ -173,7 +177,6 @@ class RemoteConnection {
    TaskQueue m_queuedTasks, m_finishedTasks;
    std::set<std::shared_ptr<DecodeTask>> m_runningTasks;
 
-   opencover::MultiChannelDrawer *drawer();
    bool checkSwapFrame();
    void swapFrame();
    void processMessages();
@@ -186,6 +189,16 @@ class RemoteConnection {
    osg::Group *scene();
    osg::ref_ptr<osg::Group> m_scene;
    void printStats();
+
+   unsigned m_maxTilesPerFrame = 100;
+   bool m_handleTilesAsync = false;
+
+   std::unique_ptr<boost::mpi::communicator> m_comm;
+   std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
+   bool m_needUpdate = false;
+   osg::Matrix m_head, m_newHead, m_receivingHead;
+   const osg::Matrix &getHeadMat() const;
+   bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char> > payload);
 };
 
 #endif

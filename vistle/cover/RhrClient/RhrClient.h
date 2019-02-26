@@ -22,6 +22,7 @@
 
 #include "TileMessage.h"
 #include "RemoteConnection.h"
+#include "NodeConfig.h"
 
 namespace opencover {
 namespace ui {
@@ -41,6 +42,8 @@ class RhrClient: public opencover::coVRPlugin, public opencover::ui::Owner
 {
     friend class RemoteConnection;
     using GeometryMode = RemoteConnection::GeometryMode;
+    using ViewSelection = RemoteConnection::ViewSelection;
+
 public:
    RhrClient();
    ~RhrClient();
@@ -58,6 +61,8 @@ public:
    void requestTimestep(int t) override;
 
    void message(int toWhom, int type, int len, const void *msg) override;
+
+   bool updateViewer() override;
 
 private:
    //! do timings
@@ -84,8 +89,8 @@ private:
    int m_requestedTimestep, m_visibleTimestep, m_numRemoteTimesteps;
 
    // work queue management for decoding tiles
+   bool finishFrames();
    bool swapFrames();
-   //bool checkSwapFrame();
    bool checkAdvanceFrame();
    bool syncRemotes();
 
@@ -93,13 +98,15 @@ private:
 
    int m_channelBase = 0;
    int m_numLocalViews = 0, m_numClusterViews = 0;
-   std::vector<int> m_numChannels;
+   NodeConfig m_localConfig;
+   std::vector<NodeConfig> m_nodeConfig;
 
-   opencover::MultiChannelDrawer::Mode m_mode;
+   opencover::MultiChannelDrawer::Mode m_configuredMode = opencover::MultiChannelDrawer::ReprojectMesh;
+   opencover::MultiChannelDrawer::Mode m_mode = opencover::MultiChannelDrawer::AsIs;
    GeometryMode m_configuredGeoMode = RemoteConnection::Screen;
    GeometryMode m_geoMode = RemoteConnection::Invalid;
-   bool m_configuredAllViews = false;
-   bool m_renderAllViews = !m_configuredAllViews;
+   ViewSelection m_configuredVisibleViews = opencover::MultiChannelDrawer::Same;
+   ViewSelection m_visibleViews = opencover::MultiChannelDrawer::All;
 
    opencover::ui::Menu *m_menu = nullptr;
    opencover::ui::Button *m_matrixUpdate = nullptr;
@@ -113,6 +120,7 @@ private:
    void setServerParameters(int module, const std::string &host, unsigned short port) const;
 
    void setGeometryMode(GeometryMode mode);
-   void setRenderAllViews(bool state);
+   void setVisibleViews(ViewSelection selection);
+   void setReprojectionMode(opencover::MultiChannelDrawer::Mode reproject);
 };
 #endif

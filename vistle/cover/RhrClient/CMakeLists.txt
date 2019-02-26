@@ -33,6 +33,7 @@ set(HEADERS
   RhrClient.h
   RemoteConnection.h
   TileMessage.h
+  NodeConfig.h
 )
 
 set(SOURCES
@@ -40,6 +41,7 @@ set(SOURCES
   RhrClient.cpp
   RemoteConnection.cpp
   TileMessage.cpp
+  NodeConfig.cpp
 )
 
 #use_openmp()
@@ -49,7 +51,7 @@ if(NOT WIN32)
 endif()
 
 cover_add_plugin(RhrClient ${HEADER} ${SOURCES})
-target_link_libraries(RhrClient VistlePluginUtil ${COVISE_NET_LIBRARY} vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(RhrClient VistlePluginUtil ${COVISE_NET_LIBRARY} vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} vistle_boost_mpi ${Boost_LIBRARIES})
 if(UNIX)
    target_link_libraries(RhrClient Threads::Threads)
 endif()

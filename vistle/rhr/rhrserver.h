@@ -210,6 +210,7 @@ public:
    };
 
    struct ViewParameters {
+       vistle::Matrix4 head;
        vistle::Matrix4 proj;
        vistle::Matrix4 view;
        vistle::Matrix4 model;
@@ -228,6 +229,7 @@ public:
        , width(1)
        , height(1)
        {
+           head = vistle::Matrix4::Identity();
            proj = vistle::Matrix4::Identity();
            view = vistle::Matrix4::Identity();
            model = vistle::Matrix4::Identity();
@@ -244,6 +246,7 @@ public:
          ar & height;
          ar & eye;
 
+         ar & head;
          ar & proj;
          ar & view;
          ar & model;

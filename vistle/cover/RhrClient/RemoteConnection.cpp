@@ -5,6 +5,7 @@
 
 #include <VistlePluginUtil/VistleRenderObject.h>
 
+#include <config/CoviseConfig.h>
 #include <cover/coVRAnimationManager.h>
 #include <cover/coVRMSController.h>
 #include <cover/coVRPluginList.h>
@@ -13,6 +14,8 @@
 #include <cover/VRViewer.h>
 
 #include <core/tcpmessage.h>
+
+#include <osg/io_utils>
 
 #include <chrono>
 
@@ -39,6 +42,18 @@ using namespace opencover;
 using namespace vistle;
 using message::RemoteRenderMessage;
 
+enum {
+    TagQuit,
+    TagContinue,
+    TagTileAll,
+    TagTileAny,
+    TagTileMiddle,
+    TagTileLeft,
+    TagTileRight,
+    TagTileSend,
+    TagData,
+};
+
 
 
 int RemoteConnection::numViewsForMode(RemoteConnection::GeometryMode mode) {
@@ -46,11 +61,10 @@ int RemoteConnection::numViewsForMode(RemoteConnection::GeometryMode mode) {
     switch (mode) {
     case Screen:
         return -1;
-    case Tiled:
-        return 2;
     case CubeMap:
         return 6;
     case CubeMapFront:
+    case CubeMapCoarseSides:
         return 5;
     case Invalid:
         return 0;
@@ -113,6 +127,20 @@ RemoteConnection::~RemoteConnection() {
 
 void RemoteConnection::init() {
 
+    const std::string conf("COVER.Plugin.RhrClient");
+
+    m_handleTilesAsync = covise::coCoviseConfig::isOn("mpiThread", conf, m_handleTilesAsync);
+
+    if (coVRMSController::instance()->isCluster()) {
+        m_comm.reset(new boost::mpi::communicator(coVRMSController::instance()->getAppCommunicator(), boost::mpi::comm_duplicate));
+        if (!m_comm) {
+            m_handleTilesAsync = false;
+        }
+    }
+    if (m_handleTilesAsync) {
+        CERR << "handling tiles and MPI communication on separate thread" << std::endl;
+    }
+
     m_boundsNode = new osg::Node;
     m_mutex.reset(new std::recursive_mutex);
     m_sendMutex.reset(new std::recursive_mutex);
@@ -124,7 +152,14 @@ void RemoteConnection::init() {
     m_scene = new osg::Group;
     m_scene->setName("RemoteConnection");
 
-    if (m_isMaster) {
+    m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", conf, m_maxTilesPerFrame);
+
+    m_head = m_newHead = m_receivingHead = cover->getViewerMat();
+}
+
+void RemoteConnection::start()
+{
+    if (m_handleTilesAsync || m_isMaster) {
         m_running = true;
         m_thread.reset(new std::thread(std::ref(*this)));
     }
@@ -178,6 +213,30 @@ void RemoteConnection::operator()() {
         m_listening = false;
     }
 
+    if (!m_isMaster) {
+        assert(m_handleTilesAsync);
+        assert(m_comm);
+
+        std::shared_ptr<RemoteRenderMessage> msg;
+        std::shared_ptr<std::vector<char>> payload;
+        while (distributeAndHandleTileMpi(msg, payload)) {
+            lock_guard locker(*m_mutex);
+            if (m_interrupt) {
+                break;
+            }
+        }
+
+        lock_guard locker(*m_mutex);
+        m_running = false;
+        return;
+    }
+
+#define END \
+    if (m_comm) for (int i=1; i<m_comm->size(); ++i) { m_comm->send(i, TagQuit); } \
+    lock_guard locker(*m_mutex); \
+    m_running = false; \
+    return;
+
     if (m_listen) {
         boost::system::error_code ec;
         asio::ip::tcp::acceptor acceptor(plugin->m_io);
@@ -200,27 +259,21 @@ void RemoteConnection::operator()() {
         }
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: could not open port " << m_port << " for listening: " << ec.message() << std::endl;
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
         acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
         acceptor.bind(endpoint, ec);
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: could not bind port " << m_port << ": " << ec.message() << std::endl;
             acceptor.close();
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
         acceptor.listen();
         acceptor.non_blocking(true, ec);
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: could not make acceptor non-blocking: " << ec.message() << std::endl;
             acceptor.close();
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
         {
             lock_guard locker(*m_mutex);
@@ -241,9 +294,7 @@ void RemoteConnection::operator()() {
         acceptor.close();
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
     } else {
         asio::ip::tcp::resolver resolver(plugin->m_io);
@@ -252,16 +303,12 @@ void RemoteConnection::operator()() {
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: could not resolve " << m_host << ": " << ec.message() << std::endl;
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
         asio::connect(m_sock, endpoint_iterator, ec);
         if (ec) {
             cover->notify(Notify::Error) << "RhrClient: could not establish connection to " << m_host << ":" << m_port << ": " << ec.message() << std::endl;
-            lock_guard locker(*m_mutex);
-            m_running = false;
-            return;
+            END;
         }
     }
 
@@ -303,24 +350,25 @@ void RemoteConnection::operator()() {
         }
 
         {
-            lock_guard locker(*m_mutex);
-            haveMessage = true;
             auto &msg = buf.as<RemoteRenderMessage>();
             auto &rhr = msg.rhr();
             switch (rhr.type) {
-            case rfbBounds: {
-                handleBounds(msg, static_cast<const boundsMsg &>(rhr));
-                break;
-            }
             case rfbTile: {
                 handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
                 break;
             }
+            case rfbBounds: {
+                lock_guard locker(*m_mutex);
+                handleBounds(msg, static_cast<const boundsMsg &>(rhr));
+                break;
+            }
             case rfbAnimation: {
+                lock_guard locker(*m_mutex);
                 handleAnimation(msg, static_cast<const animationMsg &>(rhr));
                 break;
             }
             case rfbVariant: {
+                lock_guard locker(*m_mutex);
                 handleVariant(msg, static_cast<const variantMsg &>(rhr));
                 break;
             }
@@ -331,6 +379,11 @@ void RemoteConnection::operator()() {
         if (m_interrupt) {
             break;
         }
+    }
+
+    if (m_comm) {
+        for (int i=1; i<m_comm->size(); ++i)
+            m_comm->send(i, TagQuit);
     }
     lock_guard locker(*m_mutex);
     m_running = false;
@@ -387,13 +440,15 @@ bool RemoteConnection::setLights(const lightsMsg &msg) {
     return true;
 }
 
-bool RemoteConnection::setMatrices(const std::vector<matricesMsg> &msgs) {
+bool RemoteConnection::setMatrices(const std::vector<matricesMsg> &msgs, bool force) {
 
     lock_guard locker(*m_mutex);
 
-    if (m_matrices != msgs) {
+    if (force || m_matrices != msgs) {
+        m_savedMatrices = msgs;
+
         auto dt = cover->frameTime() - m_lastMatricesTime;
-        if (dt < std::min(0.3, m_avgDelay*0.5)) {
+        if (dt < std::min(0.1, m_avgDelay*0.5)) {
             return true;
         }
 
@@ -440,9 +495,14 @@ bool RemoteConnection::handleVariant(const RemoteRenderMessage &msg, const varia
 // called from OpenCOVER main thread
 bool RemoteConnection::update() {
 
-    updateTileQueue();
+    setMatrices(m_savedMatrices, m_needUpdate);
+    m_needUpdate = false;
 
-    processMessages();
+    if (!m_handleTilesAsync) {
+        updateTileQueue();
+
+        processMessages();
+    }
 
     {
         lock_guard locker(*m_mutex);
@@ -461,6 +521,7 @@ bool RemoteConnection::update() {
     return m_frameReady;
 }
 
+// called from OpenCOVER main thread
 void RemoteConnection::preFrame() {
 
     bool addDrawer = false, connected = false;
@@ -479,14 +540,18 @@ void RemoteConnection::preFrame() {
     }
 
     m_drawer->update();
+#if 0
+    if (m_mode != MultiChannelDrawer::AsIs)
+        m_drawer->reproject();
+#endif
 }
 
 void RemoteConnection::updateVariants() {
-    int numAdd = m_variantsToAdd.size(), numRemove = m_variantsToRemove.size();
+    unsigned numAdd = m_variantsToAdd.size(), numRemove = m_variantsToRemove.size();
     coVRMSController::instance()->syncData(&numAdd, sizeof(numAdd));
     coVRMSController::instance()->syncData(&numRemove, sizeof(numRemove));
     auto itAdd = m_variantsToAdd.begin();
-    for (int i=0; i<numAdd; ++i) {
+    for (unsigned i=0; i<numAdd; ++i) {
         std::string s;
         enum vistle::RenderObject::InitialVariantVisibility vis;
         if (m_isMaster) {
@@ -503,7 +568,7 @@ void RemoteConnection::updateVariants() {
     }
     assert(m_variantsToAdd.size() == numAdd);
     auto itRemove = m_variantsToRemove.begin();
-    for (int i=0; i<numRemove; ++i) {
+    for (unsigned i=0; i<numRemove; ++i) {
         std::string s;
         if (m_isMaster)
             s = *itRemove;
@@ -570,11 +635,21 @@ bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg 
         return true;
     }
 
+    assert(payload->size() == msg.payloadSize());
     auto m = std::make_shared<RemoteRenderMessage>(msg);
+    if (m_handleTilesAsync) {
+        if (m_comm) {
+            return distributeAndHandleTileMpi(m, payload);
+        } else {
+            handleTileMessage(m, payload);
+        }
+        return true;
+    }
+
     lock_guard locker(*m_mutex);
     m_receivedTiles.push_back(TileMessage(m, payload));
     if (tile.flags & rfbTileLast)
-        m_lastTileAt = m_receivedTiles.size();
+        m_lastTileAt.push_back(m_receivedTiles.size());
 
     return true;
 }
@@ -608,18 +683,20 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
       CERR << "TILE: " << (first?"F":" ") << "." << (last?"L":" ") << "t=" << msg.timestep << "req: " << msg.requestNumber << ", view: " << msg.viewNum << ", frame: " << msg.frameNumber << ", dt: " << cover->frameTime() - msg.requestTime  << std::endl;
    }
 #endif
-   osg::Matrix model, view, proj;
+   osg::Matrix model, view, proj, head;
    for (int i=0; i<16; ++i) {
+      head.ptr()[i] = msg.head[i];
       view.ptr()[i] = msg.view[i];
       proj.ptr()[i] = msg.proj[i];
       model.ptr()[i] = msg.model[i];
    }
    int viewIdx = msg.viewNum;
-   if (m_geoMode == Screen && !m_renderAllViews) {
+   if (m_geoMode == Screen && m_visibleViews == MultiChannelDrawer::Same) {
        viewIdx -= m_channelBase;
    }
    if (viewIdx < 0 || viewIdx >= m_numViews) {
-       CERR << "reject tile with viewIdx=" << viewIdx << ", base=" << m_channelBase << ", numViews=" << m_numViews << std::endl;
+       if (!msg.flags)
+           CERR << "reject tile with viewIdx=" << viewIdx << ", base=" << m_channelBase << ", numViews=" << m_numViews << std::endl;
        return;
    }
    m_drawer->updateMatrices(viewIdx, model, view, proj);
@@ -637,8 +714,10 @@ void RemoteConnection::handleTileMeta(const RemoteRenderMessage &remote, const t
          case rfbDepth32Bit: format = GL_FLOAT; m_depthBpp=4; break;
          default: CERR << "unhandled image format " << msg.format << std::endl;
       }
-      m_drawer->resizeView(viewIdx, w, h, format);
+      m_drawer->resizeView(viewIdx, w, h, format, 0);
    }
+
+   m_receivingHead = head;
 }
 
 
@@ -660,13 +739,6 @@ bool RemoteConnection::isConnecting() const {
 bool RemoteConnection::isConnected() const {
     lock_guard locker(*m_mutex);
     return m_running && m_connected && m_sock.is_open();
-}
-
-bool RemoteConnection::messageReceived() {
-    lock_guard locker(*m_mutex);
-    bool ret = haveMessage;
-    haveMessage = false;
-    return ret;
 }
 
 bool RemoteConnection::boundsUpdated() {
@@ -715,8 +787,18 @@ void RemoteConnection::setNumClusterViews(int nv) {
     m_numClusterViews = nv;
 }
 
-void RemoteConnection::setNumChannels(const std::vector<int> &numChannels) {
-    m_numChannels = numChannels;
+void RemoteConnection::setNodeConfigs(const std::vector<NodeConfig> &configs)
+{
+    m_nodeConfig = configs;
+
+    if (m_comm) {
+        auto &nc = m_nodeConfig[m_comm->rank()];
+
+        m_commAny.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle||nc.haveLeft||nc.haveRight ? 1 : MPI_UNDEFINED)));
+        m_commMiddle.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle ? 1 : MPI_UNDEFINED)));
+        m_commLeft.reset(new boost::mpi::communicator(m_comm->split(nc.haveLeft ? 1 : MPI_UNDEFINED)));
+        m_commRight.reset(new boost::mpi::communicator(m_comm->split(nc.haveRight ? 1 : MPI_UNDEFINED)));
+    }
 }
 
 void RemoteConnection::setFirstView(int v) {
@@ -733,44 +815,54 @@ void RemoteConnection::setGeometryMode(RemoteConnection::GeometryMode mode) {
     m_numViews = numViewsForMode(mode);
 
     if (mode == Screen) {
-        m_drawer->setViewsToRender(MultiChannelDrawer::Same);
-        if (m_renderAllViews) {
-            m_numViews = m_numClusterViews;
-            m_drawer->setNumViews(m_numClusterViews);
-        } else {
+        m_drawer->setViewsToRender(m_visibleViews);
+        if (m_visibleViews == MultiChannelDrawer::Same) {
             m_numViews = m_numLocalViews;
             m_drawer->setNumViews(-1);
+        } else {
+            m_numViews = m_numClusterViews;
+            m_drawer->setNumViews(m_numClusterViews);
         }
-    } else if (mode == CubeMap || mode == CubeMapFront || mode == Tiled) {
-        m_drawer->setViewsToRender(MultiChannelDrawer::MatchingEye);
+    } else if (mode == CubeMap || mode == CubeMapFront || mode == CubeMapCoarseSides) {
+        m_drawer->setViewsToRender(MultiChannelDrawer::All);
         m_drawer->setNumViews(m_numViews);
     } else {
         m_drawer->setNumViews(0);
     }
 
+    m_needUpdate = true;
+
     CERR << "setGeometryMode(mode=" << mode << "), numViews=" << m_numViews << std::endl;
 }
 
-void RemoteConnection::setRenderAllViews(bool state) {
+void RemoteConnection::setReprojectionMode(MultiChannelDrawer::Mode mode)
+{
+    m_mode = mode;
+    m_drawer->setMode(mode);
+}
 
-    if (state == m_renderAllViews)
+void RemoteConnection::setViewsToRender(MultiChannelDrawer::ViewSelection selection) {
+
+    if (selection == m_visibleViews)
         return;
 
-    m_renderAllViews = state;
+    m_visibleViews = selection;
 
     if (m_geoMode != Screen)
         return;
 
-    m_drawer->setViewsToRender(state ? MultiChannelDrawer::MatchingEye : MultiChannelDrawer::Same);
-    if (m_renderAllViews) {
-        m_numViews = m_numClusterViews;
-        m_drawer->setNumViews(m_numClusterViews);
-    } else {
+    m_drawer->setViewsToRender(selection);
+    if (selection == MultiChannelDrawer::Same) {
         m_numViews = m_numLocalViews;
         m_drawer->setNumViews(-1);
+    } else {
+        m_numViews = m_numClusterViews;
+        m_drawer->setNumViews(m_numClusterViews);
     }
 
-    CERR << "setRenderAllViews(state=" << state << "), numViews=" << m_numViews << std::endl;
+    m_needUpdate = true;
+
+    CERR << "setViewsToRender(state=" << selection << "), numViews=" << m_numViews << std::endl;
 }
 
 bool RemoteConnection::canEnqueue() const {
@@ -788,41 +880,45 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task) {
    const bool first = tile.flags & rfbTileFirst;
    const bool last = tile.flags & rfbTileLast;
    int view = tile.viewNum;
-   if (m_geoMode == RemoteConnection::Screen && !m_renderAllViews) {
+   if (m_geoMode == RemoteConnection::Screen && m_visibleViews == MultiChannelDrawer::Same) {
        view -= m_channelBase;
    }
 
    if (view < 0 || view >= m_numViews) {
-      //CERR << "NO FB for view " << view << std::endl;
+       if (!tile.flags) {
+           CERR << "NO FB for view " << view << std::endl;
+       }
       task->rgba = NULL;
       task->depth = NULL;
    } else {
       task->viewData = m_drawer->getViewData(view);
       task->rgba = reinterpret_cast<char *>(m_drawer->rgba(view));
       task->depth = reinterpret_cast<char *>(m_drawer->depth(view));
+
       switch (tile.eye) {
-      case 0:
+      case rfbEyeMiddle:
           m_drawer->setViewEye(view, Middle);
           break;
-      case 1:
+      case rfbEyeLeft:
           m_drawer->setViewEye(view, Left);
           break;
-      case 2:
+      case rfbEyeRight:
           m_drawer->setViewEye(view, Right);
           break;
       }
    }
-   if (first) {
-       assert(m_queuedTiles==0);
-   }
+
    if (last) {
       //CERR << "waiting for frame finish: x=" << task->msg->x << ", y=" << task->msg->y << std::endl;
 
       m_waitForFrame = true;
    }
+
+   if (first) {
+       assert(m_queuedTiles==0);
+   }
    ++m_queuedTiles;
 
-   std::lock_guard<std::mutex> locker(*m_taskMutex);
    m_runningTasks.emplace(task);
    task->result = std::async(std::launch::async, [this, task](){
        bool ok = task->work();
@@ -857,7 +953,7 @@ bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRe
 
    if (tile.flags) {
        // meta data for tiles with flags has to be processed on master and all slaves
-   } else if (m_geoMode == Screen && !m_renderAllViews) {
+   } else if (m_geoMode == Screen && m_visibleViews == MultiChannelDrawer::Same) {
        // ignore tiles for other nodes
        if (tile.viewNum < m_channelBase || tile.viewNum >= m_channelBase+m_numLocalViews) {
            //CERR << "RemoteConnection: ignoring tile for foreign view " << tile.viewNum << std::endl;
@@ -872,13 +968,13 @@ bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRe
    }
 
    auto task = std::make_shared<DecodeTask>(msg, payload);
-   if (canEnqueue()) {
+   std::lock_guard<std::mutex> locker(*m_taskMutex);
+   if (canEnqueue() && m_queuedTasks.empty()) {
       enqueueTask(task);
    } else {
       assert(m_deferredFrames >= 0);
       if (tile.flags & rfbTileFirst)
          ++m_deferredFrames;
-      std::lock_guard<std::mutex> locker(*m_taskMutex);
       m_queuedTasks.emplace_back(task);
    }
 
@@ -892,15 +988,26 @@ bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRe
 bool RemoteConnection::updateTileQueue() {
 
    //CERR << "tiles: " << m_queuedTiles << " queued, " << m_queuedTasks.size() << " deferred, " << m_finishedTasks.size() << " finished" << std::endl;
-   assert(m_queuedTiles >= m_finishedTasks.size());
-   while(!m_finishedTasks.empty()) {
+   //assert(m_queuedTiles >= m_finishedTasks.size());
+   bool haveFinishedTasks = false;
+   {
+       std::lock_guard<std::mutex> locker(*m_taskMutex);
+       haveFinishedTasks = !m_finishedTasks.empty();
+   }
+   while(haveFinishedTasks) {
+      bool frameDone = false;
+      bool waitForFrame = false;
       std::shared_ptr<DecodeTask> dt;
       {
           std::lock_guard<std::mutex> locker(*m_taskMutex);
-          if (m_finishedTasks.empty())
-              break;
+          waitForFrame = m_waitForFrame;
           dt = m_finishedTasks.front();
           m_finishedTasks.pop_front();
+          haveFinishedTasks = !m_finishedTasks.empty();
+
+          --m_queuedTiles;
+          assert(m_queuedTiles >= 0);
+          frameDone = m_queuedTiles==0;
       }
 
        bool ok = dt->result.get();
@@ -908,34 +1015,34 @@ bool RemoteConnection::updateTileQueue() {
            CERR << "error during DecodeTask" << std::endl;
        }
 
-       --m_queuedTiles;
-       assert(m_queuedTiles >= 0);
-
        auto msg = dt->msg;
-       if (m_queuedTiles==0 && m_waitForFrame) {
+       if (frameDone && waitForFrame) {
            finishFrame(*msg);
            assert(!m_waitForFrame);
            return true;
        }
    }
 
-   if (m_queuedTiles > 0) {
-      return false;
-   }
+   {
+       std::lock_guard<std::mutex> locker(*m_taskMutex);
+       if (m_queuedTiles > 0) {
+           return false;
+       }
 
 #if 0
-   if (!m_queuedTasks.empty() && !(m_queuedTasks.front()->msg->flags&rfbTileFirst)) {
-      CERR << "first deferred tile should have rfbTileFirst set" << std::endl;
-   }
+       if (!m_queuedTasks.empty() && !(m_queuedTasks.front()->msg->flags&rfbTileFirst)) {
+           CERR << "first deferred tile should have rfbTileFirst set" << std::endl;
+       }
 #endif
 
-   assert(m_deferredFrames == 0 || !m_queuedTasks.empty());
-   assert(m_queuedTasks.empty() || m_deferredFrames>0);
+       assert(m_deferredFrames == 0 || !m_queuedTasks.empty());
+       assert(m_queuedTasks.empty() || m_deferredFrames>0);
+   }
 
-   while(canEnqueue() && !m_queuedTasks.empty()) {
+   std::lock_guard<std::mutex> locker(*m_taskMutex);
+   while(canEnqueue()) {
       std::shared_ptr<DecodeTask> dt;
       {
-          std::lock_guard<std::mutex> locker(*m_taskMutex);
           if (m_queuedTasks.empty())
               break;
           //CERR << "emptying deferred queue: tiles=" << m_queuedTasks.size() << ", frames=" << m_deferredFrames << std::endl;
@@ -968,11 +1075,15 @@ bool RemoteConnection::updateTileQueue() {
 
 void RemoteConnection::finishFrame(const RemoteRenderMessage &msg) {
 
+    {
+        std::lock_guard<std::mutex> locker(*m_taskMutex);
+        m_frameReady = true;
+        m_waitForFrame = false;
+        m_newHead = m_receivingHead;
+    }
+
    const auto &tile = static_cast<const tileMsg &>(msg.rhr());
    //CERR << "finishFrame: #req=" << tile.requestNumber << ", t=" << tile.timestep << ", t req=" << m_requestedTimestep << std::endl;
-
-   m_frameReady = true;
-   m_waitForFrame = false;
 
    m_remoteTimestep = tile.timestep;
    if (m_requestedTimestep>=0) {
@@ -1018,21 +1129,8 @@ bool RemoteConnection::checkSwapFrame() {
    ++count;
 #endif
 
-   bool doSwap = m_frameReady;
-   if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sd(sizeof(bool));
-      coVRMSController::instance()->readSlaves(&sd);
-      for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
-         bool ready = *static_cast<bool *>(sd.data[s]);
-         if (!ready) {
-            doSwap = false;
-            break;
-         }
-      }
-   } else {
-      coVRMSController::instance()->sendMaster(&m_frameReady, sizeof(m_frameReady));
-   }
-   return coVRMSController::instance()->syncBool(doSwap);
+    bool doSwap = coVRMSController::instance()->allReduceAnd(m_frameReady);
+    return doSwap;
 }
 
 void RemoteConnection::swapFrame() {
@@ -1043,6 +1141,8 @@ void RemoteConnection::swapFrame() {
    //assert(m_visibleTimestep == m_remoteTimestep);
    m_remoteTimestep = -1;
 
+   m_head = m_newHead;
+
    //CERR << "swapFrame: timestep=" << m_visibleTimestep << std::endl;
 
    m_drawer->swapFrame();
@@ -1050,17 +1150,17 @@ void RemoteConnection::swapFrame() {
 
 void RemoteConnection::processMessages() {
 
-   int ntiles = 0;
+   unsigned ntiles = 0;
    {
        lock_guard locker(*m_mutex);
        ntiles = m_receivedTiles.size();
-       if (m_lastTileAt >= 0) {
-           assert(m_lastTileAt <= m_receivedTiles.size());
-           ntiles = m_lastTileAt;
-           m_lastTileAt = -1;
-       } else if (ntiles > 100) {
-           ntiles = 100;
+       if (!m_lastTileAt.empty()) {
+           assert(m_lastTileAt.back() <= m_receivedTiles.size());
+           ntiles = m_lastTileAt.front();
        }
+       if (coVRMSController::instance()->isCluster())
+           ntiles = std::min(ntiles, m_maxTilesPerFrame);
+
    }
 #ifdef CONNDEBUG
    if (ntiles > 0) {
@@ -1075,129 +1175,186 @@ void RemoteConnection::processMessages() {
                  << std::endl;
    }
 #endif
+   if (ntiles > 0) {
+       std::cerr << "processing " << ntiles << " tiles" << std::endl;
+   }
 
-   const bool broadcastTiles = m_geoMode!=RemoteConnection::Screen || m_renderAllViews;
-   const int numSlaves = coVRMSController::instance()->getNumSlaves();
-   if (coVRMSController::instance()->isMaster()) {
-       // COVER cluster master
-       std::vector<int> stiles;
-       std::vector<std::vector<bool>> forSlave;
-       std::vector<void *> md(ntiles), pd(ntiles);
-       std::vector<size_t> ms(ntiles), ps(ntiles);
-       {
-           lock_guard locker(*m_mutex);
-           assert(m_receivedTiles.size() >= ntiles);
-           for (int i=0; i<ntiles; ++i) {
-               TileMessage &tile = m_receivedTiles[i];
-               md[i] = tile.msg.get();
-               ms[i] = sizeof(*tile.msg);
-               ps[i] = tile.msg->payloadSize();
-               pd[i] = nullptr;
-               if (ps[i] > 0) {
-                   pd[i] = tile.payload->data();
-                   assert(pd[i]);
+   if (m_comm) {
+       std::shared_ptr<RemoteRenderMessage> msg;
+       std::shared_ptr<std::vector<char>> payload;
+       if (coVRMSController::instance()->isMaster()) {
+           for (unsigned i=0; i<ntiles; ++i) {
+               {
+                   lock_guard locker(*m_mutex);
+                   TileMessage &tile = m_receivedTiles[i];
+                   msg = tile.msg;
+                   payload = tile.payload;
                }
+               distributeAndHandleTileMpi(msg, payload);
            }
-
-           if (!broadcastTiles) {
-               stiles.resize(numSlaves);
-               forSlave.resize(numSlaves);
-               int channelBase = coVRConfig::instance()->numChannels();
-               for (int s=0; s<numSlaves; ++s) {
-                   const int numChannels = m_numChannels[s];
-                   stiles[s] = 0;
-                   forSlave[s].resize(ntiles);
-                   for (int i=0; i<ntiles; ++i) {
-                       TileMessage &tile = m_receivedTiles[i];
-                       forSlave[s][i] = false;
-                       //CERR << "ntiles=" << ntiles << ", have=" << m_receivedTiles.size() << ", i=" << i << std::endl;
-                       if (tile.tile.flags) {
-                       } else if (tile.tile.viewNum < channelBase || tile.tile.viewNum >= channelBase+numChannels) {
-                           continue;
-                       }
-                       forSlave[s][i] = true;
-                       ++stiles[s];
-                   }
-                   channelBase += numChannels;
-               }
-           }
+           for (int i=1; i<m_comm->size(); ++i)
+               m_comm->send(i, TagContinue);
+       } else {
+           while (distributeAndHandleTileMpi(msg, payload))
+               ;
        }
-       if (broadcastTiles) {
-           //CERR << "broadcasting " << ntiles << " tiles" << std::endl;
-           coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
-           for (int i=0; i<ntiles; ++i) {
-               assert(ms[i] == sizeof(RemoteRenderMessage));
-               //CERR << "broadcast tile " << i << std::endl;
-               coVRMSController::instance()->syncData(md[i], ms[i]);
-               if (ps[i] > 0) {
-                   coVRMSController::instance()->syncData(pd[i], ps[i]);
-               }
+   } else {
+
+       const bool broadcastTiles = m_geoMode!=RemoteConnection::Screen || m_visibleViews != MultiChannelDrawer::Same;
+       const int numSlaves = coVRMSController::instance()->getNumSlaves();
+       if (coVRMSController::instance()->isMaster()) {
+           // COVER cluster master
+           std::vector<int> stiles;
+           std::vector<std::vector<bool>> forSlave;
+           std::vector<void *> md(ntiles), pd(ntiles);
+           std::vector<size_t> ms(ntiles), ps(ntiles);
+           {
                lock_guard locker(*m_mutex);
-               TileMessage &tile = m_receivedTiles[i];
-               handleTileMessage(tile.msg, tile.payload);
+               assert(m_receivedTiles.size() >= ntiles);
+               for (unsigned i=0; i<ntiles; ++i) {
+                   TileMessage &tile = m_receivedTiles[i];
+                   md[i] = tile.msg.get();
+                   ms[i] = sizeof(*tile.msg);
+                   ps[i] = tile.msg->payloadSize();
+                   pd[i] = nullptr;
+                   if (ps[i] > 0) {
+                       pd[i] = tile.payload->data();
+                       assert(pd[i]);
+                   }
+               }
+
+               if (!broadcastTiles) {
+                   stiles.resize(numSlaves);
+                   forSlave.resize(numSlaves);
+                   for (int s=0; s<numSlaves; ++s) {
+                       auto &nc = m_nodeConfig[s+1];
+                       int channelBase = nc.viewIndexOffset;
+                       const int numChannels = nc.numViews;
+                       stiles[s] = 0;
+                       forSlave[s].resize(ntiles);
+                       for (unsigned i=0; i<ntiles; ++i) {
+                           TileMessage &tile = m_receivedTiles[i];
+                           forSlave[s][i] = false;
+                           //CERR << "ntiles=" << ntiles << ", have=" << m_receivedTiles.size() << ", i=" << i << std::endl;
+                           if (tile.tile.flags) {
+                           } else if (m_visibleViews == MultiChannelDrawer::All) {
+                           } else if (m_visibleViews == MultiChannelDrawer::Same) {
+                               if (tile.tile.viewNum < channelBase || tile.tile.viewNum >= channelBase+numChannels)
+                                   continue;
+                           } else if (m_visibleViews == MultiChannelDrawer::MatchingEye) {
+                               if (tile.tile.eye == rfbEyeMiddle && !nc.haveMiddle)
+                                   continue;
+                               if (tile.tile.eye == rfbEyeLeft && !nc.haveLeft)
+                                   continue;
+                               if (tile.tile.eye == rfbEyeRight && !nc.haveRight)
+                                   continue;
+                           }
+                           forSlave[s][i] = true;
+                           ++stiles[s];
+                       }
+                   }
+               }
+           }
+           if (broadcastTiles) {
+               //CERR << "broadcasting " << ntiles << " tiles" << std::endl;
+               coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
+               for (unsigned i=0; i<ntiles; ++i) {
+                   assert(ms[i] == sizeof(RemoteRenderMessage));
+                   //CERR << "broadcast tile " << i << std::endl;
+                   coVRMSController::instance()->syncData(md[i], ms[i]);
+                   if (ps[i] > 0) {
+                       coVRMSController::instance()->syncData(pd[i], ps[i]);
+                   }
+                   lock_guard locker(*m_mutex);
+                   TileMessage &tile = m_receivedTiles[i];
+                   handleTileMessage(tile.msg, tile.payload);
+               }
+           } else {
+               for (int s=0; s<numSlaves; ++s) {
+                   //CERR << "unicasting " << stiles[s] << " tiles to slave " << s << " << std::endl;
+                   coVRMSController::instance()->sendSlave(s, &stiles[s], sizeof(stiles[s]));
+               }
+               for (unsigned i=0; i<ntiles; ++i) {
+                   for (int s=0; s<numSlaves; ++s) {
+                       if (forSlave[s][i]) {
+                           //CERR << "send tile " << i << " to slave " << s << std::endl;
+                           coVRMSController::instance()->sendSlave(s, md[i], ms[i]);
+                           if (ps[i] > 0) {
+                               coVRMSController::instance()->sendSlave(s, pd[i], ps[i]);
+                           }
+                       }
+                   }
+                   lock_guard locker(*m_mutex);
+                   TileMessage &tile = m_receivedTiles[i];
+                   handleTileMessage(tile.msg, tile.payload);
+               }
            }
        } else {
-           for (int s=0; s<numSlaves; ++s) {
-               //CERR << "unicasting " << stiles[s] << " tiles to slave " << s << " << std::endl;
-               coVRMSController::instance()->sendSlave(s, &stiles[s], sizeof(stiles[s]));
-           }
-           for (int i=0; i<ntiles; ++i) {
-                for (int s=0; s<numSlaves; ++s) {
-                   if (forSlave[s][i]) {
-                       //CERR << "send tile " << i << " to slave " << s << std::endl;
-                       coVRMSController::instance()->sendSlave(s, md[i], ms[i]);
-                       if (ps[i] > 0) {
-                           coVRMSController::instance()->sendSlave(s, pd[i], ps[i]);
-                       }
+           // COVER cluster slave
+           if (broadcastTiles) {
+               coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
+               for (unsigned i=0; i<ntiles; ++i) {
+                   auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
+                   coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
+                   std::shared_ptr<std::vector<char>> payload;
+                   if (msg->payloadSize() > 0) {
+                       payload.reset(new std::vector<char>(msg->payloadSize()));
+                       coVRMSController::instance()->syncData(payload->data(), msg->payloadSize());
                    }
+                   lock_guard locker(*m_mutex);
+                   handleTileMessage(msg, payload);
                }
-               lock_guard locker(*m_mutex);
-               TileMessage &tile = m_receivedTiles[i];
-               handleTileMessage(tile.msg, tile.payload);
+           } else {
+               coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
+               //CERR << "receiving " << ntiles << " tiles" << std::endl;
+               for (unsigned i=0; i<ntiles; ++i) {
+                   auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
+                   coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
+                   std::shared_ptr<std::vector<char>> payload;
+                   if (msg->payloadSize() > 0) {
+                       payload.reset(new std::vector<char>(msg->payloadSize()));
+                       coVRMSController::instance()->readMaster(payload->data(), msg->payloadSize());
+                   }
+                   lock_guard locker(*m_mutex);
+                   handleTileMessage(msg, payload);
+               }
            }
-       }
+   }
+   }
+
+   if (coVRMSController::instance()->isMaster()) {
 
        lock_guard locker(*m_mutex);
-       for (int i=0;i<ntiles;++i) {
+       for (unsigned i=0;i<ntiles;++i) {
            m_receivedTiles.pop_front();
        }
-       if (m_lastTileAt >= 0)
-           m_lastTileAt -= ntiles;
-   } else {
-       // COVER cluster slave
-       if (broadcastTiles) {
-           coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
-           for (int i=0; i<ntiles; ++i) {
-               auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
-               coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
-               std::shared_ptr<std::vector<char>> payload;
-               if (msg->payloadSize() > 0) {
-                   payload.reset(new std::vector<char>(msg->payloadSize()));
-                   coVRMSController::instance()->syncData(payload->data(), msg->payloadSize());
-               }
-               lock_guard locker(*m_mutex);
-               handleTileMessage(msg, payload);
+       bool atFrameStart = false;
+       while (!m_lastTileAt.empty()) {
+           if (ntiles >= m_lastTileAt.front()) {
+               m_lastTileAt.pop_front();
+               atFrameStart = true;
+           } else {
+               break;
            }
-       } else {
-           coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
-           //CERR << "receiving " << ntiles << " tiles" << std::endl;
-           for (int i=0; i<ntiles; ++i) {
-               auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
-               coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
-               std::shared_ptr<std::vector<char>> payload;
-               if (msg->payloadSize() > 0) {
-                   payload.reset(new std::vector<char>(msg->payloadSize()));
-                   coVRMSController::instance()->readMaster(payload->data(), msg->payloadSize());
+       }
+       for (auto &t: m_lastTileAt)
+           t -= ntiles;
+       // discard unprocessed frames except for newest
+       if (atFrameStart) {
+           if (m_lastTileAt.size() > 1) {
+               CERR << "discarding " << m_lastTileAt.size()-1 << " remote frames" << std::endl;
+           }
+           while (m_lastTileAt.size() > 1) {
+               unsigned ntiles = m_lastTileAt.front();
+               m_lastTileAt.pop_front();
+               for (unsigned i=0; i<ntiles; ++i)
+                   m_receivedTiles.pop_front();
+               for (auto &t: m_lastTileAt) {
+                   t -= ntiles;
                }
-               lock_guard locker(*m_mutex);
-               handleTileMessage(msg, payload);
            }
        }
    }
-}
-
-MultiChannelDrawer *RemoteConnection::drawer() {
-    return m_drawer.get();
 }
 
 void RemoteConnection::setVisibleTimestep(int t) {
@@ -1259,4 +1416,102 @@ void RemoteConnection::printStats() {
     m_remoteFrames = 0;
     m_depthBytesS = 0;
     m_rgbBytesS = 0;
+}
+
+const osg::Matrix &RemoteConnection::getHeadMat() const {
+
+    return m_head;
+}
+
+bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMessage> msg, std::shared_ptr<std::vector<char> > payload) {
+
+    if (coVRMSController::instance()->isMaster()) {
+
+        int tag = TagTileAll;
+        auto comm = m_comm.get();
+        auto &tile = static_cast<tileMsg &>(msg->rhr());
+        if (m_geoMode==Screen && !tile.flags) {
+            if (m_visibleViews == MultiChannelDrawer::MatchingEye) {
+                if (tile.eye == rfbEyeMiddle) {
+                    tag = TagTileMiddle;
+                    comm = m_commMiddle.get();
+                }
+                if (tile.eye == rfbEyeLeft) {
+                    tag = TagTileLeft;
+                    comm = m_commLeft.get();
+                }
+                if (tile.eye == rfbEyeRight) {
+                    tag = TagTileRight;
+                    comm = m_commRight.get();
+                }
+            } else if (m_visibleViews == MultiChannelDrawer::Same) {
+                tag = TagTileSend;
+            } else {
+                tag = TagTileAny;
+                comm = m_commAny.get();
+            }
+        }
+
+        message::Buffer buf(*msg);
+        if (tag == TagTileSend) {
+            int dest = 0;
+            for (auto &nc: m_nodeConfig) {
+                if (dest>0 && tile.viewNum>=nc.viewIndexOffset && tile.viewNum<nc.viewIndexOffset+nc.numViews) {
+                    m_comm->send(dest, TagTileSend, buf.data(), sizeof(RemoteRenderMessage));
+                    m_comm->send(dest, TagData, payload->data(), payload->size());
+                    break;
+                }
+                ++dest;
+            }
+        } else {
+            for (int i=1; i<m_comm->size(); ++i) {
+                m_comm->send(i, tag);
+            }
+            boost::mpi::broadcast(*comm, buf.data(), sizeof(RemoteRenderMessage), 0);
+            boost::mpi::broadcast(*comm, payload->data(), payload->size(), 0);
+        }
+
+    } else {
+
+        auto status = m_comm->probe();
+        if (status.tag() == TagQuit) {
+            m_comm->recv(0, TagQuit);
+            CERR << "quitting MPI thread" << std::endl;
+            return false;
+        } else if (status.tag() == TagContinue) {
+            m_comm->recv(0, TagContinue);
+            return false;
+        } else if (status.tag() == TagTileSend) {
+            message::Buffer tile;
+            m_comm->recv(0, TagTileSend, tile.data(), sizeof(RemoteRenderMessage));
+            msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
+            payload = std::make_shared<std::vector<char>>(msg->payloadSize());
+            m_comm->recv(0, TagData, payload->data(), msg->payloadSize());
+        } else if (status.tag() == TagTileAll
+                   || status.tag() == TagTileAny
+                   || status.tag() == TagTileMiddle
+                   || status.tag() == TagTileLeft
+                   || status.tag() == TagTileRight) {
+            m_comm->recv(0, status.tag());
+            message::Buffer tile;
+            auto comm = m_comm.get();
+            if (status.tag() == TagTileAny)
+                comm = m_commAny.get();
+            if (status.tag() == TagTileMiddle)
+                comm = m_commMiddle.get();
+            if (status.tag() == TagTileLeft)
+                comm = m_commLeft.get();
+            if (status.tag() == TagTileRight)
+                comm = m_commRight.get();
+            boost::mpi::broadcast(*comm, tile.data(), sizeof(RemoteRenderMessage), 0);
+            msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
+            payload = std::make_shared<std::vector<char>>(tile.payloadSize());
+            boost::mpi::broadcast(*comm, payload->data(), payload->size(), 0);
+        }
+    }
+
+    assert(msg);
+    handleTileMessage(msg, payload);
+
+    return true;
 }

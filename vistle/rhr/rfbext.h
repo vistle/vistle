@@ -69,12 +69,18 @@ struct V_RHREXPORT rfbMsg
    uint8_t type; //!< type of RFB message
 };
 
+enum {
+    rfbEyeMiddle,
+    rfbEyeLeft,
+    rfbEyeRight
+};
+
 //! send matrices from client to server
 struct V_RHREXPORT matricesMsg: public rfbMsg {
     matricesMsg()
     : rfbMsg(rfbMatrices)
     , last(0)
-    , eye(0)
+    , eye(rfbEyeMiddle)
     , viewNum(-1)
     , width(0)
     , height(0)
@@ -84,6 +90,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
         memset(model, '\0', sizeof(model));
         memset(view, '\0', sizeof(view));
         memset(proj, '\0', sizeof(proj));
+        memset(head, '\0', sizeof(head));
     }
 
     uint8_t last; //!< 1 if this is the last view requested for this frame
@@ -95,6 +102,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
     double model[16]; //!< model matrix
     double view[16]; //!< view matrix
     double proj[16]; //!< projection matrix
+    double head[16]; //!< head matrix
 
     bool operator==(const matricesMsg &other) const {
 
@@ -113,6 +121,8 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
             if (view[i] != other.view[i])
                 return false;
             if (proj[i] != other.proj[i])
+                return false;
+            if (head[i] != other.head[i])
                 return false;
         }
 
@@ -269,7 +279,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , flags(rfbTileNone)
    , format(rfbColorRGBA)
    , compression(rfbTileRaw)
-   , eye(0)
+   , eye(rfbEyeMiddle)
    , frameNumber(0)
    , requestNumber(0)
    , size(0)
@@ -287,6 +297,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
       memset(model, '\0', sizeof(model));
       memset(view, '\0', sizeof(view));
       memset(proj, '\0', sizeof(proj));
+      memset(proj, '\0', sizeof(head));
    }
 
    uint8_t flags; //!< request depth buffer update
@@ -305,6 +316,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint16_t totalheight; //!< total height of image
    int32_t timestep; //! number of rendered timestep 
    int32_t unzippedsize; //! payload size before snappy compression
+   double head[16]; //!< head matrix from request
    double view[16]; //!< view matrix from request
    double proj[16]; //!< projection matrix from request
    double model[16]; //!< model matrix from request
