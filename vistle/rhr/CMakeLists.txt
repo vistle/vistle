@@ -71,6 +71,7 @@ else()
 endif()
 
 if (NOT "${TURBOJPEG_LIBRARY_DYNAMIC}" STREQUAL "")
+  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
   vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
 else()
   vistle_add_library(vistle_rhr STATIC ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
