@@ -109,7 +109,6 @@ private:
    ViewSelection m_visibleViews = opencover::MultiChannelDrawer::All;
 
    opencover::ui::Menu *m_menu = nullptr;
-   opencover::ui::Button *m_matrixUpdate = nullptr;
 
    bool m_noModelUpdate = false;
    osg::Matrix m_oldModelMatrix;
@@ -122,5 +121,7 @@ private:
    void setGeometryMode(GeometryMode mode);
    void setVisibleViews(ViewSelection selection);
    void setReprojectionMode(opencover::MultiChannelDrawer::Mode reproject);
+   double m_imageQuality = 1.0;
+   int m_maxTilesPerFrame = 100;
 };
 #endif

@@ -152,8 +152,6 @@ void RemoteConnection::init() {
     m_scene = new osg::Group;
     m_scene->setName("RemoteConnection");
 
-    m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", conf, m_maxTilesPerFrame);
-
     m_head = m_newHead = m_receivingHead = cover->getViewerMat();
 }
 
@@ -1514,4 +1512,8 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
     handleTileMessage(msg, payload);
 
     return true;
+}
+
+void RemoteConnection::setMaxTilesPerFrame(unsigned ntiles) {
+    m_maxTilesPerFrame = ntiles;
 }

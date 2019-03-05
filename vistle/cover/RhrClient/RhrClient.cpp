@@ -24,7 +24,7 @@
 #include <cover/ui/Button.h>
 #include <cover/ui/Menu.h>
 #include <cover/ui/SelectionList.h>
-#include <cover/ui/Menu.h>
+#include <cover/ui/Slider.h>
 
 #include <OpenVRUI/osg/mathUtils.h>
 
@@ -151,10 +151,10 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 
    } else {
        auto wh = imageSizeForChannel(0);
-       msg.width = msg.height = 1.2 * std::min(wh.first, wh.second);
+       msg.width = msg.height = m_imageQuality * std::min(wh.first, wh.second);
        if (viewNum > 0 && m_geoMode==RemoteConnection::CubeMapCoarseSides) {
-           msg.width *= 0.7;
-           msg.height *= 0.7;
+           msg.width *= 0.5;
+           msg.height *= 0.5;
        }
        msg.eye = rfbEyeMiddle;
 
@@ -411,6 +411,8 @@ bool RhrClient::init()
    std::cout << "COVER continuing..." << std::endl;
 #endif
 
+   m_maxTilesPerFrame = covise::coCoviseConfig::getInt("maxTilesPerFrame", config, m_maxTilesPerFrame);
+
    m_benchmark = covise::coCoviseConfig::isOn("benchmark", config, true);
    m_lastStat = cover->currentTime();
    m_localFrames = 0;
@@ -565,11 +567,30 @@ bool RhrClient::init()
    setGeometryMode(m_configuredGeoMode);
    setReprojectionMode(m_configuredMode);
 
-   m_matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
-   m_matrixUpdate->setText("Update model matrix");
-   m_matrixUpdate->setState(!m_noModelUpdate);
-   m_matrixUpdate->setCallback([this](bool state){
+   auto matrixUpdate = new ui::Button(m_menu, "MatrixUpdate");
+   matrixUpdate->setText("Update model matrix");
+   matrixUpdate->setState(!m_noModelUpdate);
+   matrixUpdate->setCallback([this](bool state){
          m_noModelUpdate = !state;
+   });
+
+   auto quality = new ui::Slider(m_menu, "CubemapQuality");
+   quality->setText("Cubemap quality");
+   quality->setValue(m_imageQuality);
+   quality->setBounds(0.01, 10.);
+   quality->setPresentation(ui::Slider::AsDial);
+   quality->setCallback([this](double value, bool moving){
+       m_imageQuality = value;
+   });
+
+   auto tilesPerFrame = new ui::Slider(m_menu, "TilesPerFrame");
+   tilesPerFrame->setText("Tiles/frame");
+   tilesPerFrame->setValue(m_maxTilesPerFrame);
+   tilesPerFrame->setBounds(1, 1000);
+   tilesPerFrame->setCallback([this](double value, bool moving){
+       m_maxTilesPerFrame = value;
+       for (auto &r: m_remotes)
+           r.second->setMaxTilesPerFrame(m_maxTilesPerFrame);
    });
 
    return true;
@@ -896,6 +917,7 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
 }
 
 bool RhrClient::updateViewer() {
+    CERR << "updating viewer matrix" << std::endl;
     auto it = m_remotes.begin();
     if (it != m_remotes.end()) {
         auto &m = it->second->getHeadMat();
@@ -944,6 +966,7 @@ void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<Rem
    remote->setName(name);
    m_clientsChanged = true;
 
+   remote->setMaxTilesPerFrame(m_maxTilesPerFrame);
    remote->setNodeConfigs(m_nodeConfig);
    remote->setNumLocalViews(m_numLocalViews);
    remote->setNumClusterViews(m_numClusterViews);
