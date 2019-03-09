@@ -70,12 +70,7 @@ else()
   add_custom_target(RHR_CUDA SOURCES ${RHR_CUDA_SOURCES})
 endif()
 
-if (NOT "${TURBOJPEG_LIBRARY_DYNAMIC}" STREQUAL "")
-  set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-  vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
-else()
-  vistle_add_library(vistle_rhr STATIC ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
-endif()
+vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
 
 if(USE_CUDA)
    target_link_libraries(vistle_rhr ${CUDA_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
@@ -89,7 +84,7 @@ target_link_libraries(vistle_rhr
         ${ZLIB_LIBRARIES}
 )
 
-if (JPEGTURBO_FOUND AND TURBOJPEG_LIBRARY_DYNAMIC)
+if (JPEGTURBO_FOUND)
    target_link_libraries(vistle_rhr ${TURBOJPEG_LIBRARIES})
 endif()
 
