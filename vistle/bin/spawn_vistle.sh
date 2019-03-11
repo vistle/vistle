@@ -54,7 +54,6 @@ fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
-export MPI_UNBUFFERED_STDIO=1
 case $(uname) in
    Darwin)
       libpath=DYLD_LIBRARY_PATH
@@ -77,6 +76,24 @@ fi
 #WRAPPER="$WRAPPER valgrind"
 export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
 
+export MPI_UNBUFFERED_STDIO=1
+export MPICH_MAX_THREAD_SAFETY=multiple
+export MPICH_VERSION_DISPLAY=1
+export KMP_AFFINITY=verbose,none
+
+if [ -n "$PBS_ENVIRONMENT" ]; then
+    echo "PBS: mpiexec $@"
+    mpiexec -genvall hostname
+    mpiexec -genvall printenv
+    exec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+    exec mpiexec -genvall \
+        "$@"
+
+        #-genv KMP_AFFINITY \
+        #-genv KMP_AFFINITY=verbose,none \
+        #-genv I_MPI_DEBUG=5 \
+
+fi
 
 if [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none $WRAPPER "$@"

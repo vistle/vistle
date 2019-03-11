@@ -1,0 +1,34 @@
+#! /bin/bash
+
+export sys=vulcan
+
+#PBS -N Vistle
+#PBS -l walltime=00:20:00             
+#xPBS -l nodes=1:ppn=2
+#xPBS -L tasks=2:lprocs=24:allowthreads
+#XPBS -l nodes=4:ppn=2
+
+export OMP_NUM_THREADS=12
+  
+# Change to the directory that the job was submitted from
+cd $PBS_O_WORKDIR
+
+# enable core dumps
+ulimit -c unlimited
+
+# load modules
+source $HOME/modules-${sys}.sh
+export LD_LIBRARY_PATH="$HOME/$sys/lib64:$HOME/$sys/lib:$LD_LIBRARY_PATH"
+
+VDIR="$HOME/vistle/build-$sys"
+
+export PATH="$VDIR/bin:$PATH"
+export LD_LIBRARY_PATH="$VDIR/lib:$LD_LIBRARY_PATH"
+
+#export MPICH_MAX_THREAD_SAFETY=multiple
+#xport MPICH_VERSION_DISPLAY=1
+
+#env
+#ls -lR $VDIR
+
+vistle -b -c 141.58.8.1
