@@ -33,6 +33,10 @@
 
 
 #define CERR std::cerr << "RemoteConnection: "
+#define NOTIFY_INFO CERR
+#define NOTIFY_ERROR CERR
+//#define NOTIFY_INFO cover->notify(Notify::Info) << "RhrClient: "
+//#define NOTIFY_ERROR cover->notify(Notify::Error) << "RhrClient: "
 
 namespace asio = boost::asio;
 
@@ -121,7 +125,7 @@ RemoteConnection::~RemoteConnection() {
         stopThread();
         m_thread->join();
         m_thread.reset();
-        cover->notify(Notify::Info) << "RhrClient: disconnected from server" << std::endl;
+        NOTIFY_INFO << "disconnected from server" << std::endl;
     }
 }
 
@@ -256,20 +260,20 @@ void RemoteConnection::operator()() {
             }
         }
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: could not open port " << m_port << " for listening: " << ec.message() << std::endl;
+            NOTIFY_ERROR << "could not open port " << m_port << " for listening: " << ec.message() << std::endl;
             END;
         }
         acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
         acceptor.bind(endpoint, ec);
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: could not bind port " << m_port << ": " << ec.message() << std::endl;
+            NOTIFY_ERROR << "could not bind port " << m_port << ": " << ec.message() << std::endl;
             acceptor.close();
             END;
         }
         acceptor.listen();
         acceptor.non_blocking(true, ec);
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: could not make acceptor non-blocking: " << ec.message() << std::endl;
+            NOTIFY_ERROR << "could not make acceptor non-blocking: " << ec.message() << std::endl;
             acceptor.close();
             END;
         }
@@ -291,7 +295,7 @@ void RemoteConnection::operator()() {
         } while (ec == boost::system::errc::operation_would_block || ec == boost::system::errc::resource_unavailable_try_again);
         acceptor.close();
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
+            NOTIFY_ERROR << "failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
             END;
         }
     } else {
@@ -300,12 +304,12 @@ void RemoteConnection::operator()() {
         boost::system::error_code ec;
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: could not resolve " << m_host << ": " << ec.message() << std::endl;
+            NOTIFY_ERROR << "could not resolve " << m_host << ": " << ec.message() << std::endl;
             END;
         }
         asio::connect(m_sock, endpoint_iterator, ec);
         if (ec) {
-            cover->notify(Notify::Error) << "RhrClient: could not establish connection to " << m_host << ":" << m_port << ": " << ec.message() << std::endl;
+            NOTIFY_ERROR << "could not establish connection to " << m_host << ":" << m_port << ": " << ec.message() << std::endl;
             END;
         }
     }
