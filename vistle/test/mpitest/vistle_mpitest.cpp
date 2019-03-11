@@ -7,9 +7,21 @@
 
 int main(int argc, char *argv[]) {
 
-   //std::cerr << "trying MPI_Init..." << std::endl;
+    bool threaded = true;
+    if (argc > 1) {
+        auto arg1 = std::string(argv[1]);
+        if (arg1 == "-single" || arg1 == "-s")
+            threaded = false;
+    }
+
    int provided = MPI_THREAD_SINGLE;
-   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+   if (threaded) {
+       std::cerr << "MPI_Init_thread..." << std::endl;
+       MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+   } else {
+       std::cerr << "MPI_Init..." << std::endl;
+       MPI_Init(&argc, &argv);
+   }
    //std::cerr << "after MPI_Init" << std::endl;
 
    int rank=-1, size=-1;
