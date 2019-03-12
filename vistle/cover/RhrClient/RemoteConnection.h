@@ -161,7 +161,7 @@ class RemoteConnection {
    size_t m_remoteFrames=0, m_localFrames=0;
    size_t m_depthBytes=0, m_rgbBytes=0, m_depthBpp=0, m_numPixels=0;
    size_t m_depthBytesS=0, m_rgbBytesS=0, m_depthBppS=0, m_numPixelsS=0;
-   int m_remoteSkipped = 0;
+   int m_remoteSkipped = 0, m_remoteSkippedPerFrame = 0;
    std::string m_name;
 
    bool canEnqueue() const;

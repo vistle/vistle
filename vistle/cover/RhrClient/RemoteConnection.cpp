@@ -1062,6 +1062,7 @@ bool RemoteConnection::updateTileQueue() {
           if (tile.flags & rfbTileFirst) {
               //CERR << "skipping remote frame" << std::endl;
               ++m_remoteSkipped;
+              ++m_remoteSkippedPerFrame;
           }
       } else {
           //CERR << "quueing from updateTaskQueue" << std::endl;
@@ -1118,8 +1119,10 @@ void RemoteConnection::finishFrame(const RemoteRenderMessage &msg) {
        stats->setAttribute(frameStamp->getFrameNumber(), "RHR FPS", 1./(frametime-m_lastFrameTime));
        stats->setAttribute(frameStamp->getFrameNumber(), "RHR Delay", delay);
        stats->setAttribute(frameStamp->getFrameNumber(), "RHR Bps", m_depthBytes+m_rgbBytes);
+       stats->setAttribute(frameStamp->getFrameNumber(), "RHR Skipped Frames", m_remoteSkippedPerFrame);
    }
    m_lastFrameTime = frametime;
+   m_remoteSkippedPerFrame = 0;
 }
 
 
@@ -1345,6 +1348,8 @@ void RemoteConnection::processMessages() {
        if (atFrameStart) {
            if (m_lastTileAt.size() > 1) {
                CERR << "discarding " << m_lastTileAt.size()-1 << " remote frames" << std::endl;
+               m_remoteSkipped += m_lastTileAt.size()-1;
+               m_remoteSkippedPerFrame += m_lastTileAt.size()-1;
            }
            while (m_lastTileAt.size() > 1) {
                unsigned ntiles = m_lastTileAt.front();
