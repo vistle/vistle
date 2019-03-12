@@ -235,7 +235,4 @@ size_t V_RHREXPORT depthquant_size(DepthFormat format, int depthps, int width, i
 
 //! reverse transformation done by depthquant
 void V_RHREXPORT depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
-
-//! compute (and optionally print) PSNR for compressed depth image check compared to reference image ref
-double V_RHREXPORT depthcompare(const char *ref, const char *check, DepthFormat format, int depthps, int x, int y, int w, int h, int stride, bool print=true);
 #endif

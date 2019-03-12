@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "depthquant.h"
+#include "depthcompare.h"
 #include <util/stopwatch.h>
 #include <cstring>
 #include <cstdlib>

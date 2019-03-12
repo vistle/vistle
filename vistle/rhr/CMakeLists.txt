@@ -103,8 +103,8 @@ if(LIBVNCSERVER_FOUND)
    target_link_libraries(vistle_rhr ${LIBVNCSERVER_SERVER_LIBRARY})
 endif()
 
-add_executable(depthtest depthtest.cpp)
+add_executable(depthtest depthtest.cpp depthcompare.cpp)
 target_link_libraries(depthtest vistle_rhr)
 
-add_executable(depthbench depthbench.cpp)
+add_executable(depthbench depthbench.cpp depthcompare.cpp)
 target_link_libraries(depthbench vistle_rhr)
