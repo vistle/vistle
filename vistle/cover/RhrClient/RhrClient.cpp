@@ -581,6 +581,7 @@ bool RhrClient::init()
    quality->setPresentation(ui::Slider::AsDial);
    quality->setCallback([this](double value, bool moving){
        m_imageQuality = value;
+       m_printViewSizes = true;
    });
 
    auto tilesPerFrame = new ui::Slider(m_menu, "TilesPerFrame");
@@ -757,6 +758,18 @@ bool RhrClient::update()
            r.second->setLights(lm);
            r.second->setMatrices(matrices);
        }
+   }
+
+   if (m_printViewSizes) {
+       if (coVRMSController::instance()->isMaster()) {
+           int numpix = 0;
+           for (auto &m: matrices) {
+               CERR << "view " << m.viewNum << ": " << m.width << "x" << m.height << std::endl;
+               numpix += m.width*m.height;
+           }
+           CERR << "#pixels " << numpix << " in " << matrices.size() << " views" << std::endl;
+       }
+       m_printViewSizes = false;
    }
 
    if (syncRemotes()) {
@@ -1022,6 +1035,9 @@ RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(RhrClient::Rem
 }
 
 void RhrClient::setGeometryMode(GeometryMode mode) {
+
+    if (m_geoMode != mode)
+        m_printViewSizes = true;
 
     for (auto &r: m_remotes)
         r.second->setGeometryMode(mode);

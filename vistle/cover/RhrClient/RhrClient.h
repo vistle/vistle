@@ -123,5 +123,6 @@ private:
    void setReprojectionMode(opencover::MultiChannelDrawer::Mode reproject);
    double m_imageQuality = 1.0;
    int m_maxTilesPerFrame = 100;
+   bool m_printViewSizes = true;
 };
 #endif

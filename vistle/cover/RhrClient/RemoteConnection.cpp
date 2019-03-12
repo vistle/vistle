@@ -1176,10 +1176,10 @@ void RemoteConnection::processMessages() {
                  << ", last=" << (tile.flags & rfbTileLast)
                  << std::endl;
    }
-#endif
    if (ntiles > 0) {
        std::cerr << "processing " << ntiles << " tiles" << std::endl;
    }
+#endif
 
    if (m_comm) {
        std::shared_ptr<RemoteRenderMessage> msg;
