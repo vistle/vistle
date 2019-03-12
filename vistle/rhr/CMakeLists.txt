@@ -105,3 +105,6 @@ endif()
 
 add_executable(depthtest depthtest.cpp)
 target_link_libraries(depthtest vistle_rhr)
+
+add_executable(depthbench depthbench.cpp)
+target_link_libraries(depthbench vistle_rhr)

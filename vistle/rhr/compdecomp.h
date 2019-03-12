@@ -47,6 +47,8 @@ struct CompressionParameters {
         : isDepth(true)
         , depth(depth)
     {}
+
+    CompressionParameters() = default;
 };
 
 
