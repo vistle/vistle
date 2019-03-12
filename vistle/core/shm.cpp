@@ -536,7 +536,7 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
       std::cerr << "Shm::getObjectFromName: " << name << " not complete" << std::endl;
    } else {
        unlockObjects();
-       std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
+       //std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
    }
 
    return Object::const_ptr();

@@ -1288,7 +1288,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
        addObjectSource(addObj);
    }
 
-   CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << std::endl;
+   //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << std::endl;
    Object::const_ptr obj;
 
    bool onThisRank = false;
