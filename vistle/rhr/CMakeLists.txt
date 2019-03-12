@@ -24,11 +24,13 @@ endif()
 
 set(RHR_SOURCES
    depthquant.cpp
+   compdecomp.cpp
    rfbext.cpp
    )
 
 set(RHR_HEADERS
    depthquant.h
+   compdecomp.h
    rfbext.h
    ReadBackCuda.h
    )

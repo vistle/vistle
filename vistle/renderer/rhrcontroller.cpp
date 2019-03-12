@@ -19,7 +19,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_rhrBasePort(nullptr)
 , m_forwardPort(0)
 , m_rgbaEncoding(nullptr)
-, m_rgbaCodec(RhrServer::Jpeg_YUV444)
+, m_rgbaCodec(CompressionParameters::Jpeg_YUV444)
 , m_rgbaCompressMode(nullptr)
 , m_rgbaCompress(message::CompressionNone)
 , m_depthPrec(nullptr)
@@ -29,7 +29,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_depthZfp(nullptr)
 , m_zfp(false)
 , m_depthZfpMode(nullptr)
-, m_zfpMode(RhrServer::ZfpFixedRate)
+, m_zfpMode(DepthCompressionParameters::ZfpFixedRate)
 , m_depthCompressMode(nullptr)
 , m_depthCompress(message::CompressionLz4)
 , m_sendTileSizeParam(nullptr)
@@ -54,13 +54,13 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 
    std::vector<std::string> choices;
    m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, RhrServer::ColorCodec, RhrServer);
+   module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, CompressionParameters::ColorCodec, CompressionParameters);
    m_rgbaCompressMode = module->addIntParameter("color_compress", "compression for RGBA messages", m_rgbaCompress, Parameter::Choice);
    module->V_ENUM_SET_CHOICES(m_rgbaCompressMode, message::CompressionMode);
 
    m_depthZfp = module->addIntParameter("depth_zfp", "compress depth with zfp floating point compressor", (Integer)m_zfp, Parameter::Boolean);
    m_depthZfpMode = module->addIntParameter("zfp_mode", "Accuracy:, Precision:, Rate: ", (Integer)m_zfpMode, Parameter::Choice);
-   module->V_ENUM_SET_CHOICES_SCOPE(m_depthZfpMode, RhrServer::ZfpMode, RhrServer);
+   module->V_ENUM_SET_CHOICES_SCOPE(m_depthZfpMode, DepthCompressionParameters::ZfpMode, DepthCompressionParameters);
    m_depthCompressMode = module->addIntParameter("depth_compress", "entropy compression for depth data", (Integer)m_depthCompress, Parameter::Choice);
    module->V_ENUM_SET_CHOICES(m_depthCompressMode, message::CompressionMode);
    m_depthQuant = module->addIntParameter("depth_quant", "DXT-like depth quantization", (Integer)m_quant, Parameter::Boolean);
@@ -170,7 +170,7 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
          m_rhr->enableDepthZfp(m_zfp);
       return true;
    } else if (p == m_depthZfpMode) {
-       m_zfpMode = (RhrServer::ZfpMode)m_depthZfpMode->getValue();
+       m_zfpMode = (DepthCompressionParameters::ZfpMode)m_depthZfpMode->getValue();
        if (m_rhr)
            m_rhr->setZfpMode(m_zfpMode);
    } else if (p == m_depthQuant) {
@@ -186,7 +186,7 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
            m_rhr->setDepthCompression(m_depthCompress);
    } else if (p == m_rgbaEncoding) {
 
-      m_rgbaCodec = (RhrServer::ColorCodec)m_rgbaEncoding->getValue();
+      m_rgbaCodec = (CompressionParameters::ColorCodec)m_rgbaEncoding->getValue();
       if (m_rhr)
          m_rhr->setColorCodec(m_rgbaCodec);
       return true;

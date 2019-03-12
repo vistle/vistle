@@ -12,13 +12,10 @@
 #include <cmath>
 #include <boost/lexical_cast.hpp>
 
-#ifdef HAVE_ZFP
-#include <zfp.h>
-#endif
-
 #include "rfbext.h"
 #include "depthquant.h"
 #include "rhrserver.h"
+#include "compdecomp.h"
 
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
@@ -31,31 +28,6 @@
 //#define TIMING
 
 #define CERR std::cerr << "RHR: "
-
-#ifdef HAVE_TURBOJPEG
-#include <turbojpeg.h>
-
-
-namespace vistle {
-
-struct TjComp {
-
-    TjComp()
-    : handle(tjInitCompress())
-    {}
-
-    ~TjComp() {
-        tjDestroy(handle);
-    }
-
-    tjhandle handle;
-};
-
-typedef tbb::enumerable_thread_specific<TjComp> TjContext;
-static TjContext tjContexts;
-
-}
-#endif
 
 namespace vistle {
 
@@ -118,48 +90,48 @@ bool RhrServer::isConnecting() const {
     return !m_listen;
 }
 
-void RhrServer::setColorCodec(ColorCodec value) {
+void RhrServer::setColorCodec(CompressionParameters::ColorCodec value) {
 
     switch(value) {
-        case Raw:
-            m_imageParam.rgbaJpeg = false;
+        case CompressionParameters::Raw:
+            m_imageParam.rgbaParam.rgbaJpeg = false;
             break;
-        case Jpeg_YUV411:
-        case Jpeg_YUV444:
-            m_imageParam.rgbaJpeg = true;
-            m_imageParam.rgbaChromaSubsamp = value==Jpeg_YUV411;
+        case CompressionParameters::Jpeg_YUV411:
+        case CompressionParameters::Jpeg_YUV444:
+            m_imageParam.rgbaParam.rgbaJpeg = true;
+            m_imageParam.rgbaParam.rgbaChromaSubsamp = value==CompressionParameters::Jpeg_YUV411;
             break;
     }
 }
 
 void RhrServer::enableDepthZfp(bool value) {
 
-    m_imageParam.depthZfp = value;
+    m_imageParam.depthParam.depthZfp = value;
 }
 
 void RhrServer::enableQuantization(bool value) {
 
-   m_imageParam.depthQuant = value;
+   m_imageParam.depthParam.depthQuant = value;
 }
 
 void RhrServer::setColorCompression(message::CompressionMode mode) {
 
-    m_imageParam.rgbaCompress = mode;
+    m_imageParam.rgbaParam.rgbaCompress = mode;
 }
 
 void RhrServer::setDepthCompression(message::CompressionMode mode) {
 
-    m_imageParam.depthCompress = mode;
+    m_imageParam.depthParam.depthCompress = mode;
 }
 
 void RhrServer::setDepthPrecision(int bits) {
 
-    m_imageParam.depthPrecision = bits;
+    m_imageParam.depthParam.depthPrecision = bits;
 }
 
-void RhrServer::setZfpMode(ZfpMode mode) {
+void RhrServer::setZfpMode(DepthCompressionParameters::ZfpMode mode) {
 
-    m_imageParam.depthZfpMode = mode;
+    m_imageParam.depthParam.depthZfpMode = mode;
 }
 
 unsigned short RhrServer::port() const {
@@ -305,13 +277,13 @@ void RhrServer::init() {
    m_compressionrate = false;
 #endif
 
-   m_imageParam.rgbaCompress = message::CompressionNone;
-   m_imageParam.depthPrecision = 32;
-   m_imageParam.depthZfp = true;
-   m_imageParam.depthQuant = true;
-   m_imageParam.depthCompress = message::CompressionLz4;
-   m_imageParam.depthFloat = true;
-   m_imageParam.depthZfpMode = ZfpFixedRate;
+   m_imageParam.rgbaParam.rgbaCompress = message::CompressionNone;
+   m_imageParam.depthParam.depthPrecision = 32;
+   m_imageParam.depthParam.depthZfp = true;
+   m_imageParam.depthParam.depthQuant = true;
+   m_imageParam.depthParam.depthCompress = message::CompressionLz4;
+   m_imageParam.depthParam.depthFloat = true;
+   m_imageParam.depthParam.depthZfpMode = DepthCompressionParameters::ZfpFixedRate;
 
    m_resizeBlocked = false;
    m_resizeDeferred = false;
@@ -828,11 +800,11 @@ struct EncodeTask: public tbb::task {
         message = newTileMsg(param, vp, viewNum, x, y, w, h);
 
         message->size = message->width * message->height;
-        if (param.depthFloat) {
+        if (param.depthParam.depthFloat) {
             message->format = rfbDepthFloat;
             bpp = 4;
         } else {
-            switch(param.depthPrecision) {
+            switch(param.depthParam.depthPrecision) {
                 case 8:
                     message->format = rfbDepth8Bit;
                     bpp = 1;
@@ -855,13 +827,13 @@ struct EncodeTask: public tbb::task {
         message->size = bpp * message->width * message->height;
 
 #ifdef HAVE_ZFP
-        if (param.depthZfp) {
+        if (param.depthParam.depthZfp) {
             message->format = rfbDepthFloat;
             message->compression |= rfbTileDepthZfp;
         } else
 #endif
-        if (param.depthQuant) {
-            message->format = param.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
+        if (param.depthParam.depthQuant) {
+            message->format = param.depthParam.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
         }
     }
@@ -876,7 +848,7 @@ struct EncodeTask: public tbb::task {
     , h(h)
     , stride(vp.width)
     , bpp(4)
-    , subsamp(param.rgbaChromaSubsamp)
+    , subsamp(param.rgbaParam.rgbaChromaSubsamp)
     , depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
@@ -887,7 +859,7 @@ struct EncodeTask: public tbb::task {
        message->size = message->width * message->height * bpp;
        message->format = rfbColorRGBA;
 
-        if (param.rgbaJpeg) {
+        if (param.rgbaParam.rgbaJpeg) {
             message->compression |= rfbTileJpeg;
         }
     }
@@ -898,116 +870,19 @@ struct EncodeTask: public tbb::task {
         RhrServer::EncodeResult result(message);
         message::CompressionMode compress = message::CompressionNone;
         if (depth) {
-            compress = param.depthCompress;
-            const char *zbuf = reinterpret_cast<const char *>(depth);
-            if (msg.compression & rfbTileDepthZfp) {
-#ifdef HAVE_ZFP
-                zfp_type type = zfp_type_float;
-                zfp_field *field = zfp_field_2d(const_cast<float *>(depth+y*stride+x), type, w, h);
-                zfp_field_set_stride_2d(field, 0, stride);
-
-                zfp_stream *zfp = zfp_stream_open(nullptr);
-                switch (param.depthZfpMode) {
-                default:
-                    CERR << "invalid ZfpMode " << param.depthZfpMode << std::endl;
-                    // FALLTHRU
-                case RhrServer::ZfpFixedRate:
-                    zfp_stream_set_rate(zfp, 8, type, 2, 0);
-                    break;
-                case RhrServer::ZfpPrecision:
-                    zfp_stream_set_precision(zfp, 16);
-                    break;
-                case RhrServer::ZfpAccuracy:
-                    zfp_stream_set_accuracy(zfp, 1./16.);
-                    break;
-                }
-                size_t bufsize = zfp_stream_maximum_size(zfp, field);
-                std::vector<char> zfpbuf(bufsize);
-                bitstream *stream = stream_open(zfpbuf.data(), bufsize);
-                zfp_stream_set_bit_stream(zfp, stream);
-
-                zfp_stream_rewind(zfp);
-                zfp_write_header(zfp, field, ZFP_HEADER_FULL);
-                size_t zfpsize = zfp_compress(zfp, field);
-                if (zfpsize == 0) {
-                    CERR << "zfp compression failed" << std::endl;
-                    msg.compression &= ~rfbTileDepthZfp;
-                } else {
-                    zfpbuf.resize(zfpsize);
-                    result.payload = std::move(zfpbuf);
-                    msg.size = zfpsize;
-                    msg.unzippedsize = zfpsize;
-                    msg.compression &= ~rfbTileDepthQuantize;
-                }
-                zfp_field_free(field);
-                zfp_stream_close(zfp);
-                stream_close(stream);
-#endif
-            } else if (msg.compression & rfbTileDepthQuantize) {
-                const int ds = msg.format == rfbDepth16Bit ? 2 : 3;
-                msg.size = depthquant_size(DepthFloat, ds, w, h);
-                msg.unzippedsize = msg.size;
-                std::vector<char> qbuf(msg.size);
-                depthquant(qbuf.data(), zbuf, DepthFloat, ds, x, y, w, h, stride);
-#ifdef QUANT_ERROR
-                std::vector<char> dequant(sizeof(float)*w*h);
-                depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
-                //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
-                depthcompare(zbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride);
-#endif
-                result.payload = std::move(qbuf);
-            } else {
-                std::vector<char> tilebuf(msg.size);
-                msg.unzippedsize = msg.size;
-                for (int yy=0; yy<h; ++yy) {
-                    memcpy(tilebuf.data()+yy*bpp*w, zbuf+((yy+y)*stride+x)*bpp, w*bpp);
-                }
-                result.payload = std::move(tilebuf);
-            }
+            compress = param.depthParam.depthCompress;
+            auto p = param.depthParam;
+            result.payload = compressDepth(depth, x, y, w, h, stride, p);
         } else if (rgba) {
-            compress = param.rgbaCompress;
-            if (msg.compression & rfbTileJpeg) {
-                int ret = -1;
-#ifdef HAVE_TURBOJPEG
-                TJSAMP sampling = subsamp ? TJSAMP_420 : TJSAMP_444;
-                TjContext::reference tj = tjContexts.local();
-                size_t maxsize = tjBufSize(msg.width, msg.height, sampling);
-                std::vector<char> jpegbuf(maxsize);
-                unsigned long sz = 0;
-                {
-                   auto col = rgba + (msg.totalwidth*msg.y+msg.x)*bpp;
-#ifdef TIMING
-                   double start = vistle::Clock::time();
-#endif
-                   ret = tjCompress(tj.handle, col, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, subsamp, 90, TJ_BGR);
-                   jpegbuf.resize(sz);
-#ifdef TIMING
-                   double dur = vistle::Clock::time() - start;
-                   std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
-#endif
-                }
-                if (ret >= 0) {
-                    msg.size = sz;
-                    msg.unzippedsize = sz;
-                    result.payload = std::move(jpegbuf);
-                }
-#endif
-                if (ret < 0)
-                    msg.compression &= ~rfbTileJpeg;
-            }
-            if (!(msg.compression & rfbTileJpeg)) {
-                msg.unzippedsize = msg.size;
-                std::vector<char> tilebuf(msg.size);
-                for (int yy=0; yy<h; ++yy) {
-                    memcpy(tilebuf.data()+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);
-                }
-                result.payload = std::move(tilebuf);
-            }
+            compress = param.rgbaParam.rgbaCompress;
+            auto p = param.rgbaParam;
+            result.payload = compressRgba(rgba, x, y, w, h, stride, p);
         }
-        assert(result.payload.size() == msg.size);
 
+        msg.unzippedsize = msg.size = result.payload.size();
         result.rhrMessage = new RemoteRenderMessage(msg, result.payload.size());
         result.payload = message::compressPayload(compress, *result.rhrMessage, result.payload);
+        msg.size = result.payload.size();
 
         resultQueue.push(result);
         return nullptr; // or a pointer to a new task to be executed immediately

@@ -19,13 +19,13 @@
 
 #include <rhr/rfbext.h>
 
-#include <util/enum.h>
 #include <core/vector.h>
 #include <renderer/renderobject.h>
 
 #include <tbb/concurrent_queue.h>
 
 #include "export.h"
+#include "compdecomp.h"
 
 namespace vistle {
 
@@ -39,14 +39,6 @@ public:
    typedef asio::ip::tcp::socket socket;
    typedef asio::ip::tcp::acceptor acceptor;
    typedef asio::ip::address address;
-
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
-                                     (Raw)
-                                     (Jpeg_YUV411)
-                                     (Jpeg_YUV444)
-                                     )
-
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 
    RhrServer();
    ~RhrServer();
@@ -81,14 +73,14 @@ public:
    ViewParameters getViewParameters(int viewNum) const;
    void invalidate(int viewNum, int x, int y, int w, int h, ViewParameters param, bool lastView);
 
-   void setColorCodec(ColorCodec value);
+   void setColorCodec(CompressionParameters::ColorCodec value);
    void setColorCompression(message::CompressionMode mode);
    void enableDepthZfp(bool value);
    void enableQuantization(bool value);
    void setDepthPrecision(int bits);
    void setDepthCompression(message::CompressionMode mode);
    void setTileSize(int w, int h);
-   void setZfpMode(ZfpMode mode);
+   void setZfpMode(DepthCompressionParameters::ZfpMode mode);
 
    int timestep() const;
    void setNumTimesteps(unsigned num);
@@ -184,18 +176,25 @@ public:
    struct ImageParameters {
        int timestep = -1;
        double timestepRequestTime = -1.; // time for last animationMsg, for latency measurement
+       DepthCompressionParameters depthParam;
+#if 0
        bool depthFloat; //!< whether depth should be retrieved as floating point
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
        bool depthZfp; //!< whether depth should be compressed with floating point compressor zfp
        bool depthQuant; //!< whether depth should be sent quantized
        ZfpMode depthZfpMode;
        message::CompressionMode depthCompress;
+#endif
+       RgbaCompressionParameters rgbaParam;
+#if 0
        bool rgbaJpeg;
        bool rgbaChromaSubsamp;
        message::CompressionMode rgbaCompress;
+#endif
 
        ImageParameters()
        : timestep(-1)
+#if 0
        , depthFloat(false)
        , depthPrecision(24)
        , depthZfp(false)
@@ -205,6 +204,7 @@ public:
        , rgbaJpeg(false)
        , rgbaChromaSubsamp(false)
        , rgbaCompress(message::CompressionNone)
+#endif
        {
        }
    };

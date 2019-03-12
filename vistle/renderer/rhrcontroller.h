@@ -62,7 +62,7 @@ class V_RENDEREREXPORT RhrController {
    IntParameter *m_rhrAutoRemotePort;
 
    IntParameter *m_rgbaEncoding;
-   RhrServer::ColorCodec m_rgbaCodec;
+   CompressionParameters::ColorCodec m_rgbaCodec;
    IntParameter *m_rgbaCompressMode;
    message::CompressionMode m_rgbaCompress;
 
@@ -73,7 +73,7 @@ class V_RENDEREREXPORT RhrController {
    IntParameter *m_depthZfp;
    bool m_zfp;
    IntParameter *m_depthZfpMode;
-   RhrServer::ZfpMode m_zfpMode;
+   DepthCompressionParameters::ZfpMode m_zfpMode;
    IntParameter *m_depthCompressMode;
    message::CompressionMode m_depthCompress;
 
