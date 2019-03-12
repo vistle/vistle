@@ -151,7 +151,7 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 
    } else {
        auto wh = imageSizeForChannel(0);
-       msg.width = msg.height = m_imageQuality * std::min(wh.first, wh.second);
+       msg.width = msg.height = m_imageQuality * std::max(wh.first, wh.second);
        if (viewNum > 0 && m_geoMode==RemoteConnection::CubeMapCoarseSides) {
            msg.width *= 0.5;
            msg.height *= 0.5;
