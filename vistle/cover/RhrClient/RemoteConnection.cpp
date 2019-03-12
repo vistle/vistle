@@ -1116,10 +1116,11 @@ void RemoteConnection::finishFrame(const RemoteRenderMessage &msg) {
    auto stats = VRViewer::instance()->getViewerStats();
    if (stats && stats->collectStats("frame_rate") && frameStamp)
    {
-       stats->setAttribute(frameStamp->getFrameNumber(), "RHR FPS", 1./(frametime-m_lastFrameTime));
+       double duration = frametime - m_lastFrameTime;
+       stats->setAttribute(frameStamp->getFrameNumber(), "RHR FPS", 1./duration);
        stats->setAttribute(frameStamp->getFrameNumber(), "RHR Delay", delay);
-       stats->setAttribute(frameStamp->getFrameNumber(), "RHR Bps", m_depthBytes+m_rgbBytes);
-       stats->setAttribute(frameStamp->getFrameNumber(), "RHR Skipped Frames", m_remoteSkippedPerFrame);
+       stats->setAttribute(frameStamp->getFrameNumber(), "RHR Bps", (m_depthBytes+m_rgbBytes)/duration);
+       stats->setAttribute(frameStamp->getFrameNumber(), "RHR Skipped Frames", m_remoteSkippedPerFrame/duration);
    }
    m_lastFrameTime = frametime;
    m_remoteSkippedPerFrame = 0;
