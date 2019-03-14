@@ -79,13 +79,13 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
             CERR << "invalid ZfpMode " << param.depthZfpMode << std::endl;
             // FALLTHRU
         case DepthCompressionParameters::ZfpFixedRate:
-            zfp_stream_set_rate(zfp, 8, type, 2, 0);
+            zfp_stream_set_rate(zfp, 6, type, 2, 0);
             break;
         case DepthCompressionParameters::ZfpPrecision:
             zfp_stream_set_precision(zfp, 16);
             break;
         case DepthCompressionParameters::ZfpAccuracy:
-            zfp_stream_set_accuracy(zfp, 1./16.);
+            zfp_stream_set_accuracy(zfp, 1./1024.);
             break;
         }
         size_t bufsize = zfp_stream_maximum_size(zfp, field);
