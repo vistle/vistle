@@ -22,6 +22,7 @@
 #include <tbb/enumerable_thread_specific.h>
 
 #include <util/stopwatch.h>
+#include <util/netpbmimage.h>
 #include <core/tcpmessage.h>
 
 //#define QUANT_ERROR
@@ -132,6 +133,11 @@ void RhrServer::setDepthPrecision(int bits) {
 void RhrServer::setZfpMode(DepthCompressionParameters::ZfpMode mode) {
 
     m_imageParam.depthParam.depthZfpMode = mode;
+}
+
+void RhrServer::setDumpImages(bool enable) {
+
+    m_dumpImages = enable;
 }
 
 unsigned short RhrServer::port() const {
@@ -902,6 +908,33 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         m_firstTile = true;
     }
     m_resizeBlocked = true;
+
+    if (m_dumpImages && viewNum >= 0 && viewNum < m_viewData.size()) {
+        std::stringstream cn, dn, dnfull;
+        cn << "color_frame" << m_framecount << "_view" << viewNum << ".ppm";
+        dn << "depth_frame" << m_framecount << "_view" << viewNum << ".pgm";
+        dnfull << "depth_frame" << m_framecount << "_view" << viewNum << "_full.pgm";
+        auto &vp = m_viewData[viewNum].param;
+        NetpbmImage dfull(dnfull.str(), vp.width, vp.height, NetpbmImage::PGM, (1<<24)-1);
+        NetpbmImage d(dn.str(), vp.width, vp.height, NetpbmImage::PGM);
+        NetpbmImage c(cn.str(), vp.width, vp.height, NetpbmImage::PPM);
+
+        float dmin = std::numeric_limits<float>::max(), dmax= std::numeric_limits<float>::lowest();
+        size_t numpix = vp.width * vp.height;
+        for (size_t i=0; i<numpix; ++i) {
+            auto col = &rgba(viewNum)[i*4];
+            c.append(col[0]/255.f, col[1]/255.f, col[2]/255.f);
+
+            auto dval = depth(viewNum)[i];
+            dmin = std::min(dmin, dval);
+            dmax = std::max(dmax, dval);
+
+            d.append(dval);
+            dfull.append(dval);
+        }
+
+        std::cerr << "Dumped depth to " << dn.str() << ", min=" << dmin << ", max=" << dmax << ": " << dfull << std::endl;
+    }
 
     //vistle::StopWatch timer("encodeAndSend");
     const int tileWidth = m_tileWidth, tileHeight = m_tileHeight;

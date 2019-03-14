@@ -80,6 +80,9 @@ class V_RENDEREREXPORT RhrController {
    IntVectorParameter *m_sendTileSizeParam;
    IntParamVector m_sendTileSize;
 
+   IntParameter *m_dumpImagesParam = nullptr;
+   bool m_dumpImages = false;
+
    std::shared_ptr<RhrServer> m_rhr;
 };
 

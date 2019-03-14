@@ -81,6 +81,7 @@ public:
    void setDepthCompression(message::CompressionMode mode);
    void setTileSize(int w, int h);
    void setZfpMode(DepthCompressionParameters::ZfpMode mode);
+   void setDumpImages(bool enable);
 
    int timestep() const;
    void setNumTimesteps(unsigned num);
@@ -323,6 +324,7 @@ private:
    bool send(const RemoteRenderMessage &msg, const std::vector<char> *payload=nullptr);
    void resetClient();
    int m_framecount = 0;
+   bool m_dumpImages = false;
 };
 
 } // namespace vistle

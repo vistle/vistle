@@ -71,6 +71,8 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    choices.push_back("24 bit + 3 bits/pixel");
    module->setParameterChoices(m_depthPrec, choices);
 
+   m_dumpImagesParam = module->addIntParameter("rhr_dump_images", "dump image data to disk", (Integer)m_dumpImages, Parameter::Boolean);
+
    initializeServer();
 }
 
@@ -201,6 +203,11 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
       if (m_rhr)
          m_rhr->setTileSize(m_sendTileSize[0], m_sendTileSize[1]);
       return true;
+   } else if (p == m_dumpImagesParam) {
+
+       m_dumpImages = m_dumpImagesParam->getValue() != 0;
+       if (m_rhr)
+           m_rhr->setDumpImages(m_dumpImages);
    }
 
    return false;
