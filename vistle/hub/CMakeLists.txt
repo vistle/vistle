@@ -12,7 +12,15 @@ set(hub_SOURCES
    uimanager.cpp
    uiclient.cpp
    fileinfocrawler.cpp
-   )
+)
+
+set(hub_HEADERS
+   export.h
+   hub.h
+   uimanager.h
+   uiclient.h
+   fileinfocrawler.h
+)
 
 if(PYTHONLIBS_FOUND)
    include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
@@ -24,15 +32,24 @@ if(PYTHONLIBS_FOUND)
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
-vistle_add_executable(vistle ${hub_SOURCES})
-target_link_libraries(vistle
+vistle_add_library(vistle_controller ${hub_SOURCES})
+target_link_libraries(vistle_controller
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_util
         vistle_core
         vistle_net
 )
-
 if(UNIX)
-	target_link_libraries(vistle ${CMAKE_DL_LIBS})
+        target_link_libraries(vistle_controller ${CMAKE_DL_LIBS})
 endif()
+
+vistle_add_executable(vistle hubmain.cpp)
+target_link_libraries(vistle
+        ${Boost_LIBRARIES}
+        ${EXTRA_LIBRARIES}
+        vistle_controller
+        vistle_util
+        vistle_core
+        vistle_net
+)

@@ -11,9 +11,11 @@
 #include <net/tunnel.h>
 #include <net/dataproxy.h>
 
+#include "export.h"
+
 namespace vistle {
 
-class Hub {
+class V_HUBEXPORT Hub {
 
  public:
    typedef boost::asio::ip::tcp::socket socket;
