@@ -92,7 +92,7 @@ endmacro(add_module)
 
 
 set (VISTLE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=512")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
