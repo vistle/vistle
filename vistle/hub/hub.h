@@ -23,14 +23,17 @@ class V_HUBEXPORT Hub {
    
    static Hub &the();
 
-   Hub();
+   Hub(bool inManager = false);
    ~Hub();
+
+   int run();
 
    bool init(int argc, char *argv[]);
    bool processScript();
    bool dispatch();
    bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload=nullptr) const;
    unsigned short port() const;
+   unsigned short dataPort() const;
    vistle::process_handle launchProcess(const std::vector<std::string>& argv) const;
    const std::string &name() const;
 
@@ -52,6 +55,8 @@ class V_HUBEXPORT Hub {
 private:
    struct Slave;
 
+   message::MessageFactory make;
+
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
    bool startUi(const std::string &uipath);
@@ -69,6 +74,8 @@ private:
 
    void sendInfo(const std::string &s) const;
    void sendError(const std::string &s) const;
+
+   bool m_inManager = false;
 
    unsigned short m_port, m_masterPort;
    std::string m_masterHost;

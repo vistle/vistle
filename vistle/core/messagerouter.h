@@ -56,6 +56,7 @@ class V_COREEXPORT Router {
  public:
    static Router &the();
    static void init(Identify::Identity identity, int hubId);
+   static bool toRank0(const Message &msg);
 
    bool toUi(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toMasterHub(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
@@ -64,7 +65,6 @@ class V_COREEXPORT Router {
    bool toModule(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toTracker(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toHandler(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
-   bool toRank0(const Message &msg);
 
  private:
    static unsigned rt[NumMessageTypes];

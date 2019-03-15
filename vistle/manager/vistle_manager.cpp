@@ -15,6 +15,9 @@
 #include <core/object.h>
 #include "executor.h"
 #include "vistle_manager.h"
+#include <util/hostname.h>
+#include <hub/hub.h>
+#include <boost/mpi.hpp>
 
 
 #ifdef COVER_ON_MAINTHREAD
@@ -86,6 +89,59 @@ int main(int argc, char *argv[])
       std::cerr << "insufficient thread support in MPI: MPI_THREAD_MULTIPLE is required (maybe set MPICH_MAX_THREAD_SAFETY=multiple?)" << std::endl;
       exit(1);
    }
+   int rank = -1;
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+   std::unique_ptr<std::thread> hubthread;
+
+   bool fromVistle = false;
+   if (argc > 1) {
+       std::string arg1(argv[1]);
+       fromVistle = arg1=="-from-vistle";
+   }
+
+   std::vector<std::string> args;
+   args.push_back(argv[0]);
+   if (fromVistle) {
+       // skip -from-vistle
+       for (int c=2; c<argc; ++c) {
+           args.push_back(argv[c]);
+       }
+   }
+
+#ifdef MODULE_THREAD
+   std::string rank0;
+   unsigned short port=0, dataPort=0;
+   if (!fromVistle && rank == 0) {
+       std::cerr << "not called from vistle, creating hub in a thread" << std::endl;
+       auto hub = new Hub(true);
+       hub->init(argc, argv);
+       port = hub->port();
+       dataPort = hub->dataPort();
+       rank0 = hostname();
+       hubthread.reset(new std::thread([hub, argc, argv](){
+           hub->run();
+           std::cerr << "Hub exited..." << std::endl;
+           delete hub;
+       }));
+
+   }
+
+   if (!fromVistle) {
+       boost::mpi::broadcast(boost::mpi::communicator(), rank0, 0);
+       boost::mpi::broadcast(boost::mpi::communicator(), port, 0);
+       boost::mpi::broadcast(boost::mpi::communicator(), dataPort, 0);
+
+       args.push_back(rank0);
+       args.push_back(std::to_string(port));
+       args.push_back(std::to_string(dataPort));
+   }
+#else
+   if (!fromVistle) {
+      std::cerr << "should be called from vistle, expecting 1st argument to be -from-vistle" << std::endl;
+      exit(1);
+   }
+#endif
 
 #ifdef COVER_ON_MAINTHREAD
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
@@ -111,12 +167,17 @@ int main(int argc, char *argv[])
        }
    }
 #endif
-   auto t = std::thread([argc, argv](){
+   auto t = std::thread([args](){
 #endif
 
    try {
       vistle::registerTypes();
-      Vistle(argc, argv).run();
+      std::vector<char *> argv;
+      for (auto &a: args) {
+          argv.push_back(const_cast<char *>(a.data()));
+          std::cerr << "arg: " << a << std::endl;
+      }
+      Vistle(argv.size(), argv.data()).run();
    } catch(vistle::exception &e) {
 
       std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;

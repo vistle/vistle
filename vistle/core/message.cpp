@@ -341,5 +341,27 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
     return decompressed;
 }
 
+MessageFactory::MessageFactory(int id, int rank)
+: m_id(id)
+, m_rank(rank)
+{
+}
+
+int MessageFactory::id() const {
+    return m_id;
+}
+
+void MessageFactory::setId(int id) {
+    m_id = id;
+}
+
+void MessageFactory::setRank(int rank) {
+    m_rank = rank;
+}
+
+int MessageFactory::rank() const {
+    return m_rank;
+}
+
 } // namespace message
 } // namespace vistle

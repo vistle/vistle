@@ -55,8 +55,9 @@ enum Id {
 
 Hub *hub_instance = nullptr;
 
-Hub::Hub()
-: m_port(31093)
+Hub::Hub(bool inManager)
+: m_inManager(inManager)
+, m_port(31093)
 , m_masterPort(m_port)
 , m_masterHost("localhost")
 , m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
@@ -77,7 +78,11 @@ Hub::Hub()
    vassert(!hub_instance);
    hub_instance = this;
 
-   message::DefaultSender::init(m_hubId, 0);
+   if (!inManager) {
+       message::DefaultSender::init(m_hubId, 0);
+   }
+   make.setId(m_hubId);
+   make.setRank(0);
    m_uiManager.lockUi(true);
 }
 
@@ -87,9 +92,151 @@ Hub::~Hub() {
    hub_instance = nullptr;
 }
 
+int Hub::run() {
+
+   try {
+      while(dispatch())
+         ;
+   } catch (vistle::exception &e) {
+      std::cerr << "Hub: fatal exception: " << e.what() << std::endl << e.where() << std::endl;
+      return 1;
+   } catch (std::exception &e) {
+      std::cerr << "Hub: fatal exception: " << e.what() << std::endl;
+      return 1;
+   }
+
+   return 0;
+}
+
 Hub &Hub::the() {
 
    return *hub_instance;
+}
+
+bool Hub::init(int argc, char *argv[]) {
+
+   m_prefix = dir::prefix(argc, argv);
+
+   m_name = hostname();
+
+   namespace po = boost::program_options;
+   po::options_description desc("usage");
+   desc.add_options()
+      ("help,h", "show this message")
+      ("hub,c", po::value<std::string>(), "connect to hub")
+      ("batch,b", "do not start user interface")
+      ("gui,g", "start graphical user interface")
+      ("tui,t", "start command line interface")
+      ("name", "Vistle script to process or slave name")
+      ;
+   po::variables_map vm;
+   try {
+      po::positional_options_description popt;
+      popt.add("name", 1);
+      po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
+      po::notify(vm);
+   } catch (std::exception &e) {
+      CERR << e.what() << std::endl;
+      CERR << desc << std::endl;
+      return false;
+   }
+
+   if (vm.count("help")) {
+      CERR << desc << std::endl;
+      return false;
+   }
+
+   if (vm.count("") > 0) {
+      CERR << desc << std::endl;
+      return false;
+   }
+
+   startServer();
+   m_dataProxy.reset(new DataProxy(m_stateTracker, m_port+1));
+
+   std::string uiCmd = "vistle_gui";
+
+   if (vm.count("hub") > 0) {
+      m_isMaster = false;
+      m_masterHost = vm["hub"].as<std::string>();
+      auto colon = m_masterHost.find(':');
+      if (colon != std::string::npos) {
+         m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon+1));
+         m_masterHost = m_masterHost.substr(0, colon);
+      }
+
+      if (!connectToMaster(m_masterHost, m_masterPort)) {
+         CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
+         return false;
+      }
+   } else {
+      // this is the master hub
+      m_hubId = Id::MasterHub;
+      if (!m_inManager) {
+          message::DefaultSender::init(m_hubId, 0);
+      }
+      make.setId(m_hubId);
+      make.setRank(0);
+      Router::init(message::Identify::HUB, m_hubId);
+
+      auto master = make.message<message::AddHub>(m_hubId, m_name);
+      master.setPort(m_port);
+      master.setDataPort(m_dataProxy->port());
+      m_stateTracker.handle(master);
+      m_masterPort = m_port;
+      m_dataProxy->setHubId(m_hubId);
+   }
+
+   // start UI
+   if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
+      if (std::string("PBS_INTERACTIVE") != pbs_env) {
+         if (!vm.count("batch"))
+            CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
+         uiCmd.clear();
+      }
+   }
+   if (vm.count("gui")) {
+      uiCmd = "vistle_gui";
+   } else if (vm.count("tui")) {
+      uiCmd = "blower";
+   }
+   if (vm.count("batch")) {
+      uiCmd.clear();
+   }
+
+   if (!m_inManager && !uiCmd.empty()) {
+      std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+      startUi(uipath);
+   }
+
+   if (vm.count("name") == 1) {
+      if (m_isMaster)
+         m_scriptPath = vm["name"].as<std::string>();
+      else
+         m_name = vm["name"].as<std::string>();
+   }
+
+   if (!m_inManager) {
+       std::string port = boost::lexical_cast<std::string>(this->port());
+       std::string dataport = boost::lexical_cast<std::string>(dataPort());
+
+       // start manager on cluster
+       std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
+       std::vector<std::string> args;
+       args.push_back(cmd);
+       args.push_back("-from-vistle");
+       args.push_back(hostname());
+       args.push_back(port);
+       args.push_back(dataport);
+       auto pid = launchProcess(args);
+       if (!pid) {
+           CERR << "failed to spawn Vistle manager " << std::endl;
+           exit(1);
+       }
+       m_processMap[pid] = Process::Manager;
+   }
+
+   return true;
 }
 
 const StateTracker &Hub::stateTracker() const {
@@ -104,7 +251,15 @@ StateTracker &Hub::stateTracker() {
 
 unsigned short Hub::port() const {
 
-   return m_port;
+    return m_port;
+}
+
+unsigned short Hub::dataPort() const {
+
+    if (!m_dataProxy)
+        return 0;
+
+    return m_dataProxy->port();
 }
 
 vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) const {
@@ -123,7 +278,6 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
 }
 
 bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) const {
-
    bool result = true;
 #if 0
    try {
@@ -204,7 +358,7 @@ void Hub::handleAccept(shared_ptr<asio::ip::tcp::socket> sock, const boost::syst
 
    addClient(sock);
 
-   message::Identify ident(message::Identify::REQUEST);
+   auto ident = make.message<message::Identify>(message::Identify::REQUEST);
    sendMessage(sock, ident);
 
    startAccept();
@@ -239,7 +393,7 @@ void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> so
    m_slaves[slaveid].id = slaveid;
 
    if (m_ready) {
-       message::SetId set(slaveid);
+       auto set = make.message<message::SetId>(slaveid);
        sendMessage(sock, set);
    } else {
        m_slavesToConnect.push_back(&m_slaves[slaveid]);
@@ -314,7 +468,7 @@ bool Hub::dispatch() {
                  && m_stateTracker.getModuleState(id) != StateObserver::Unknown
                  && m_stateTracker.getModuleState(id) != StateObserver::Quit) {
             // synthesize ModuleExit message for crashed modules
-            message::ModuleExit m;
+            auto m = make.message<message::ModuleExit>();
             m.setSenderId(id);
             sendManager(m); // will be returned and forwarded to master hub
          }
@@ -381,7 +535,7 @@ bool Hub::sendMaster(const message::Message &msg, const std::vector<char> *paylo
    for (auto &sock: m_sockets) {
       if (sock.second == message::Identify::HUB) {
          ++numSent;
-         sendMessage(sock.first, msg, payload);
+         sendMessage(sock.first, msg, payload); // FIXME
       }
    }
    vassert(numSent == 1);
@@ -401,7 +555,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const std::vector<ch
       for (auto &sock: m_sockets) {
          if (sock.second == message::Identify::MANAGER) {
             ++numSent;
-            sendMessage(sock.first, msg, payload);
+            sendMessage(sock.first, msg, payload); // FIXME
             break;
          }
       }
@@ -430,7 +584,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const std
       if (slave.first != senderHub || returnToSender) {
          //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
          if (slave.second.ready)
-            sendMessage(slave.second.sock, msg, payload);
+            sendMessage(slave.second.sock, msg, payload); // FIXME
       }
    }
    return true;
@@ -448,7 +602,7 @@ bool Hub::sendHub(const message::Message &msg, int hub, const std::vector<char> 
 
    for (auto &slave: m_slaves) {
       if (slave.first == hub) {
-         sendMessage(slave.second.sock, msg, payload);
+         sendMessage(slave.second.sock, msg, payload); // FIXME
          return true;
       }
    }
@@ -497,7 +651,7 @@ void Hub::hubReady() {
       m_ready = true;
       processScript();
    } else {
-      message::AddHub hub(m_hubId, m_name);
+      auto hub = make.message<message::AddHub>(m_hubId, m_name);
       hub.setDestId(Id::ForBroadcast);
       hub.setPort(m_port);
       hub.setDataPort(m_dataProxy->port());
@@ -522,7 +676,7 @@ void Hub::hubReady() {
       m_ready = true;
 
       for (auto s: m_slavesToConnect) {
-          message::SetId set(s->id);
+          auto set = make.message<message::SetId>(s->id);
           sendMessage(s->sock, set);
       }
       m_slavesToConnect.clear();
@@ -581,7 +735,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m_managerConnected = true;
 
                if (m_hubId != Id::Invalid) {
-                  message::SetId set(m_hubId);
+                  auto set = make.message<message::SetId>(m_hubId);
                   sendMessage(sock, set);
                   if (m_hubId <= Id::MasterHub) {
                      auto state = m_stateTracker.getState();
@@ -859,7 +1013,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    std::stringstream str;
                    str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
                    sendError(str.str());
-                   message::ModuleExit ex;
+                   auto ex = make.message<message::ModuleExit>();
                    ex.setSenderId(spawn.spawnId());
                    sendManager(ex);
                }
@@ -881,7 +1035,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                 std::stringstream str;
                 str << "program " << argv[0] << " failed to start";
                 sendError(str.str());
-                message::ModuleExit ex;
+                auto ex = make.message<message::ModuleExit>();
                 ex.setSenderId(spawn.spawnId());
                 sendManager(ex);
             }
@@ -929,7 +1083,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             vassert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
-            message::DefaultSender::init(m_hubId, 0);
+            if (!m_inManager) {
+                message::DefaultSender::init(m_hubId, 0);
+            }
+            make.setId(m_hubId);
+            make.setRank(0);
             Router::init(message::Identify::SLAVEHUB, m_hubId);
             CERR << "got hub id " << m_hubId << std::endl;
             m_dataProxy->setHubId(m_hubId);
@@ -1077,125 +1235,6 @@ bool Hub::handleQueue() {
     return true;
 }
 
-bool Hub::init(int argc, char *argv[]) {
-
-   m_prefix = dir::prefix(argc, argv);
-
-   m_name = hostname();
-
-   namespace po = boost::program_options;
-   po::options_description desc("usage");
-   desc.add_options()
-      ("help,h", "show this message")
-      ("hub,c", po::value<std::string>(), "connect to hub")
-      ("batch,b", "do not start user interface")
-      ("gui,g", "start graphical user interface")
-      ("tui,t", "start command line interface")
-      ("name", "Vistle script to process or slave name")
-      ;
-   po::variables_map vm;
-   try {
-      po::positional_options_description popt;
-      popt.add("name", 1);
-      po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
-      po::notify(vm);
-   } catch (std::exception &e) {
-      CERR << e.what() << std::endl;
-      CERR << desc << std::endl;
-      return false;
-   }
-
-   if (vm.count("help")) {
-      CERR << desc << std::endl;
-      return false;
-   }
-
-   if (vm.count("") > 0) {
-      CERR << desc << std::endl;
-      return false;
-   }
-
-   startServer();
-   m_dataProxy.reset(new DataProxy(m_stateTracker, m_port+1));
-
-   std::string uiCmd = "vistle_gui";
-
-   if (vm.count("hub") > 0) {
-      m_isMaster = false;
-      m_masterHost = vm["hub"].as<std::string>();
-      auto colon = m_masterHost.find(':');
-      if (colon != std::string::npos) {
-         m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon+1));
-         m_masterHost = m_masterHost.substr(0, colon);
-      }
-
-      if (!connectToMaster(m_masterHost, m_masterPort)) {
-         CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
-         return false;
-      }
-   } else {
-      // this is the master hub
-      m_hubId = Id::MasterHub;
-      message::DefaultSender::init(m_hubId, 0);
-      Router::init(message::Identify::HUB, m_hubId);
-
-      message::AddHub master(m_hubId, m_name);
-      master.setPort(m_port);
-      master.setDataPort(m_dataProxy->port());
-      m_stateTracker.handle(master);
-      m_masterPort = m_port;
-      m_dataProxy->setHubId(m_hubId);
-   }
-
-   // start UI
-   if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
-      if (std::string("PBS_INTERACTIVE") != pbs_env) {
-         if (!vm.count("batch"))
-            CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
-         uiCmd.clear();
-      }
-   }
-   if (vm.count("gui")) {
-      uiCmd = "vistle_gui";
-   } else if (vm.count("tui")) {
-      uiCmd = "blower";
-   }
-   if (vm.count("batch")) {
-      uiCmd.clear();
-   }
-
-   if (!uiCmd.empty()) {
-      std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
-      startUi(uipath);
-   }
-
-   if (vm.count("name") == 1) {
-      if (m_isMaster)
-         m_scriptPath = vm["name"].as<std::string>();
-      else
-         m_name = vm["name"].as<std::string>();
-   }
-
-   std::string port = boost::lexical_cast<std::string>(this->port());
-   std::string dataPort = boost::lexical_cast<std::string>(m_dataProxy->port());
-
-   // start manager on cluster
-   std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
-   std::vector<std::string> args;
-   args.push_back(cmd);
-   args.push_back(hostname());
-   args.push_back(port);
-   args.push_back(dataPort);
-   auto pid = launchProcess(args);
-   if (!pid) {
-      CERR << "failed to spawn Vistle manager " << std::endl;
-      exit(1);
-   }
-   m_processMap[pid] = Process::Manager;
-
-   return true;
-}
-
 bool Hub::startCleaner() {
 
 #if defined(MODULE_THREAD) && defined(NO_SHMEM)
@@ -1229,19 +1268,19 @@ bool Hub::startCleaner() {
 
 void Hub::sendInfo(const std::string &s) const {
     CERR << s << std::endl;
-    message::SendText t(message::SendText::Info, s);
+    auto t = make.message<message::SendText>(message::SendText::Info, s);
     sendUi(t);
 }
 
 void Hub::sendError(const std::string &s) const {
     CERR << "Error: " << s << std::endl;
-    message::SendText t(message::SendText::Error, s);
+    auto t = make.message<message::SendText>(message::SendText::Error, s);
     sendUi(t);
 }
 
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio) {
    CERR << "Status: " << s << std::endl;
-   message::UpdateStatus t(s, prio);
+   auto t = make.message<message::UpdateStatus>(s, prio);
    m_stateTracker.handle(t);
    sendUi(t);
 }
@@ -1314,7 +1353,7 @@ bool Hub::processScript() {
 
 bool Hub::handlePriv(const message::Execute &exec) {
 
-   message::Execute toSend(exec);
+   auto toSend = make.message<message::Execute>(exec);
    if (exec.getExecutionCount() > m_execCount)
       m_execCount = exec.getExecutionCount();
    if (exec.getExecutionCount() < 0)
@@ -1350,7 +1389,7 @@ bool Hub::handlePriv(const message::Execute &exec) {
 
 bool Hub::handlePriv(const message::CancelExecute &cancel) {
 
-    message::CancelExecute toSend(cancel);
+    auto toSend = make.message<message::CancelExecute>(cancel);
 
     if (Id::isModule(cancel.getModule())) {
         const int hub = m_stateTracker.getHub(cancel.getModule());
@@ -1387,7 +1426,7 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
       if (m_barrierReached == m_slaves.size()+1) {
          m_barrierActive = false;
          m_barrierReached = 0;
-         message::BarrierReached r(reached.uuid());
+         auto r = make.message<message::BarrierReached>(reached.uuid());
          r.setDestId(Id::NextHop);
          m_stateTracker.handle(r);
          sendUi(r);
@@ -1412,7 +1451,7 @@ bool Hub::handlePriv(const message::RequestTunnel &tunnel) {
 
 bool Hub::handlePriv(const message::Connect &conn) {
 
-    message::Connect c(conn);
+    auto c = make.message<message::Connect>(conn);
     c.setNotify(true);
     sendUi(c);
     sendManager(c);
@@ -1423,7 +1462,7 @@ bool Hub::handlePriv(const message::Connect &conn) {
 
 bool Hub::handlePriv(const message::Disconnect &disc) {
 
-    message::Disconnect d(disc);
+    auto d = make.message<message::Disconnect>(disc);
     d.setNotify(true);
     sendUi(d);
     sendManager(d);

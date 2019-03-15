@@ -109,6 +109,29 @@ class V_COREEXPORT DefaultSender {
       static DefaultSender s_instance;
 };
 
+class V_COREEXPORT MessageFactory {
+
+public:
+    MessageFactory(int id = Id::Invalid, int rank = -1);
+
+    int id() const;
+    void setId(int id);
+    int rank() const;
+    void setRank(int rank);
+
+    template<class M, class... P>
+    M message(P&&... p) const {
+        M m(std::forward<P>(p)...);
+        m.setSenderId(m_id);
+        m.setRank(m_rank);
+        return m;
+    }
+
+private:
+    int m_id = Id::Invalid;
+    int m_rank = -1;
+};
+
 typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 32> port_name_t;
 typedef std::array<char, 32> param_name_t;

@@ -52,6 +52,8 @@ private:
 
    void localMsgRecv(std::shared_ptr<tcp_socket> sock);
    void remoteMsgRecv(std::shared_ptr<tcp_socket> sock);
+
+   message::MessageFactory make;
 };
 
 }

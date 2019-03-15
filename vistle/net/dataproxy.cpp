@@ -58,9 +58,6 @@ DataProxy::DataProxy(StateTracker &state, unsigned short basePort)
 
    CERR << "proxying data connections through port " << m_port << std::endl;
    m_acceptor.listen();
-
-   startAccept();
-   startThread();
 }
 
 DataProxy::~DataProxy() {
@@ -69,7 +66,12 @@ DataProxy::~DataProxy() {
 }
 
 void DataProxy::setHubId(int id) {
-    m_hubId = id;
+   m_hubId = id;
+   make.setId(m_hubId);
+   make.setRank(0);
+
+   startAccept();
+   startThread();
 }
 
 unsigned short DataProxy::port() const {
@@ -141,7 +143,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
 
    startAccept();
 
-   message::Identify ident(Identify::REQUEST); // trigger Identify message from remote
+   auto ident = make.message<Identify>(Identify::REQUEST);
    if (message::send(*sock, ident)) {
       //CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
    }
@@ -176,7 +178,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
                     }
                  }
             }
-            Identify ident(Identify::REMOTEBULKDATA, m_hubId);
+            auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                 if (ec) {
                     CERR << "send error" << std::endl;
@@ -195,7 +197,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
                  m_boost_archive_version = id.boost_archive_version();
             }
 
-            Identify ident(Identify::LOCALBULKDATA, -1);
+            auto ident = make.message<Identify>(Identify::LOCALBULKDATA, -1);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                 if (ec) {
                     CERR << "send error" << std::endl;
@@ -313,7 +315,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::REQUEST) {
-                Identify ident(Identify::REMOTEBULKDATA, m_hubId);
+                auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
                 async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                     if (ec) {
                         CERR << "send error" << std::endl;
@@ -399,7 +401,7 @@ bool DataProxy::connectRemoteData(int hubId) {
          remoteMsgRecv(sock);
 
 #if 0
-         Identify ident(Identify::REMOTEBULKDATA, m_hubId);
+         auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
          if (!message::send(*sock, ident)) {
              CERR << "error when establishing bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
              return false;
@@ -408,7 +410,7 @@ bool DataProxy::connectRemoteData(int hubId) {
 
 #if 0
          addSocket(sock, message::Identify::REMOTEBULKDATA);
-         sendMessage(sock, message::Identify(message::Identify::REMOTEBULKDATA, m_hubId));
+         sendMessage(sock, make.message<message::Identify>(message::Identify::REMOTEBULKDATA, m_hubId));
 
          addRemoteData(hubId, sock);
          addClient(sock);
