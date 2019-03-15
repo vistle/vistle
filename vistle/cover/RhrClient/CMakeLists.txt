@@ -1,30 +1,11 @@
-vistle_find_package(TBB)
-vistle_find_package(JPEGTURBO)
 vistle_find_package(GLEW)
 vistle_find_package(Boost 1.53 REQUIRED)
-#vistle_find_package(ZFP)
 using(GLEW)
-
-if(NOT TBB_FOUND)
-   return()
-endif()
-
-if(JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
-   add_definitions(-DHAVE_TURBOJPEG)
-   include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
-endif()
-
-if(ZFP_FOUND)
-   add_definitions(-DHAVE_ZFP)
-   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
-endif()
-
 
 include_directories(
    .. # for VistlePluginUtil
 )
 include_directories(SYSTEM
-   ${TBB_INCLUDE_DIR}
    ${Boost_INCLUDE_DIRS}
 )
 

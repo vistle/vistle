@@ -1,6 +1,5 @@
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
-vistle_find_package(JPEGTURBO)
 vistle_find_package(X11)
 vistle_find_package(GLEW)
 
@@ -24,16 +23,6 @@ if(TBB_FOUND)
       #endif()
 else()
    use_openmp()
-endif()
-
-
-if(JPEGTURBO_FOUND)
-   if(TURBOJPEG_HAVE_TJMCUWIDTH)
-      add_definitions(-DHAVE_TURBOJPEG)
-      include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
-   else()
-      message("OsgRenderer: turbojpeg w/o tjMcuWidth")
-   endif()
 endif()
 
 
@@ -77,7 +66,3 @@ target_link_libraries(OsgRenderer
         ${ZLIB_LIBRARIES}
         ${TBB_LIBRARIES}
 )
-
-if (JPEGTURBO_FOUND AND TURBOJPEG_HAVE_TJMCUWIDTH)
-   target_link_libraries(OsgRenderer ${JPEG_LIBRARIES})
-endif()
