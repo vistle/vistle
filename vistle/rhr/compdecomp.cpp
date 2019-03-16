@@ -234,7 +234,7 @@ bool decompressTile(char *dest, const std::vector<char> &input, CompressionParam
             std::shared_ptr<TjDecomp> tjc;
             {
                 std::lock_guard<std::mutex> locker(tjMutex);
-                if (tjContexts.empty()) {
+                if (tjDecompContexts.empty()) {
                     tjc = std::make_shared<TjDecomp>();
                 } else {
                     tjc = tjDecompContexts.back();
