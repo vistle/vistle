@@ -60,6 +60,7 @@ struct HostData {
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
 
+   // for unstructured grids
    HostData(Scalar isoValue
             , IsoDataFunctor isoFunc
             , const Index *el
@@ -84,11 +85,12 @@ struct HostData {
       , m_haveCoords(true)
       , m_computeNormals(false)
    {
-      addmappeddata(x ? &x[0] : (Scalar *)nullptr);
-      addmappeddata(y ? &y[0] : (Scalar *)nullptr);
-      addmappeddata(z ? &z[0] : (Scalar *)nullptr);
+      addmappeddata(x);
+      addmappeddata(y);
+      addmappeddata(z);
    }
 
+   // for structured grids
    HostData(Scalar isoValue
             , IsoDataFunctor isoFunc
             , Index nx
@@ -118,9 +120,9 @@ struct HostData {
       addmappeddata((Scalar *)nullptr);
       addmappeddata((Scalar *)nullptr);
 
-      addmappeddata(x ? &x[0] : (Scalar *)nullptr);
-      addmappeddata(y ? &y[0] : (Scalar *)nullptr);
-      addmappeddata(z ? &z[0] : (Scalar *)nullptr);
+      addmappeddata(x);
+      addmappeddata(y);
+      addmappeddata(z);
    }
 
    void setHaveCoords(bool val) {
