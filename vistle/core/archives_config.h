@@ -202,6 +202,7 @@ struct archive_helper<yas_tag> {
     template<class T>
     struct ArrayWrapper {
         typedef T value_type;
+        typedef T& reference;
         T *m_begin, *m_end;
         Index m_dim[3] = {0, 1, 1};
         bool m_exact = true;
