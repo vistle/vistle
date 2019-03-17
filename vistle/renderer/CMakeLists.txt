@@ -35,11 +35,7 @@ endif()
 
 use_openmp()
 
-if (JPEGTURBO_FOUND AND ("${TURBOJPEG_LIBRARY_DYNAMIC}" STREQUAL ""))
-  vistle_add_library(vistle_renderer STATIC ${renderer_SOURCES} ${renderer_HEADERS})
-else()
-  vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
-endif()
+vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_renderer
