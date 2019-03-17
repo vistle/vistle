@@ -288,7 +288,7 @@ static off_t seek(const int fd, off_t off) {
    return lseek(abs(fd), off, SEEK_SET);
 }
 
-int findBlockNum(const Element &elem) {
+static int findBlockNum(const Element &elem) {
    bool isTimestep = false;
    for (size_t i=0; i<elem.attribs.size(); ++i) {
       const std::pair<std::string, std::string> &att = elem.attribs[i];
@@ -347,7 +347,7 @@ void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &e
    }
 }
 
-void parseAttributes(Element *elem) {
+static void parseAttributes(Element *elem) {
    for (size_t i=0; i<elem->attribs.size(); ++i) {
       const std::pair<std::string, std::string> &att = elem->attribs[i];
       if (att.first == "TIMESTEP") {
