@@ -37,10 +37,12 @@
 
 namespace asio = boost::asio;
 using std::shared_ptr;
-using namespace vistle;
+namespace dir = vistle::directory;
+
+namespace vistle {
+
 using message::Router;
 using message::Id;
-namespace dir = vistle::directory;
 
 namespace Process {
 enum Id {
@@ -1490,3 +1492,5 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const std::vector<c
 
     return sendHub(result, result.destId(), payload);
 }
+
+} // namespace vistle

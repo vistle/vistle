@@ -16,7 +16,7 @@
 #include "executor.h"
 #include "vistle_manager.h"
 #include <util/hostname.h>
-#include <hub/hub.h>
+#include <control/hub.h>
 #include <boost/mpi.hpp>
 
 

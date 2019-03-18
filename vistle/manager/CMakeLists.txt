@@ -59,7 +59,7 @@ target_link_libraries(vistle_manager
         vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
-        vistle_controller
+        vistle_control
         vistle_util
         vistle_core
         vistle_boost_mpi
