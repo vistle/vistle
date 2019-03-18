@@ -200,6 +200,8 @@ class RemoteConnection {
    const osg::Matrix &getHeadMat() const;
    bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char> > payload);
    void setMaxTilesPerFrame(unsigned ntiles);
+   bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
+   void skipFrames();
 };
 
 #endif

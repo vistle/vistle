@@ -640,10 +640,34 @@ bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg 
     assert(payload->size() == msg.payloadSize());
     auto m = std::make_shared<RemoteRenderMessage>(msg);
     if (m_handleTilesAsync) {
-        if (m_comm) {
-            return distributeAndHandleTileMpi(m, payload);
-        } else {
-            handleTileMessage(m, payload);
+        m_receivedTiles.push_back(TileMessage(m, payload));
+        if (tile.flags & rfbTileLast)
+            m_lastTileAt.push_back(m_receivedTiles.size());
+        skipFrames();
+        unsigned ntiles = m_receivedTiles.size();
+        if (!m_lastTileAt.empty()) {
+            ntiles = m_lastTileAt.front();
+            assert(ntiles <= m_receivedTiles.size());
+            m_lastTileAt.pop_front();
+        }
+        bool process = false;
+        {
+            std::lock_guard<std::mutex> locker(*m_taskMutex);
+            process = canEnqueue();
+        }
+        if (process) {
+            for (unsigned i=0; i<ntiles; ++i) {
+                auto &t = m_receivedTiles.front();
+                if (m_comm) {
+                    distributeAndHandleTileMpi(t.msg, t.payload);
+                } else {
+                    handleTileMessage(t.msg, t.payload);
+                }
+                m_receivedTiles.pop_front();
+            }
+            for (auto &l: m_lastTileAt) {
+                l -= ntiles;
+            }
         }
         return true;
     }
@@ -932,6 +956,11 @@ void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task) {
    });
 }
 
+bool RemoteConnection::canHandleTile(std::shared_ptr<const message::RemoteRenderMessage> msg) const {
+
+    return m_lastTileAt.empty();
+}
+
 bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload) {
 
     assert(msg->rhr().type == rfbTile);
@@ -978,6 +1007,7 @@ bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRe
       if (tile.flags & rfbTileFirst)
          ++m_deferredFrames;
       m_queuedTasks.emplace_back(task);
+      return false;
    }
 
    assert(m_deferredFrames == 0 || !m_queuedTasks.empty());
@@ -1331,6 +1361,8 @@ void RemoteConnection::processMessages() {
    if (coVRMSController::instance()->isMaster()) {
 
        lock_guard locker(*m_mutex);
+
+       // pop just processed tiles
        for (unsigned i=0;i<ntiles;++i) {
            m_receivedTiles.pop_front();
        }
@@ -1345,24 +1377,31 @@ void RemoteConnection::processMessages() {
        }
        for (auto &t: m_lastTileAt)
            t -= ntiles;
+
        // discard unprocessed frames except for newest
        if (atFrameStart) {
-           if (m_lastTileAt.size() > 1) {
-               CERR << "discarding " << m_lastTileAt.size()-1 << " remote frames" << std::endl;
-               m_remoteSkipped += m_lastTileAt.size()-1;
-               m_remoteSkippedPerFrame += m_lastTileAt.size()-1;
-           }
-           while (m_lastTileAt.size() > 1) {
-               unsigned ntiles = m_lastTileAt.front();
-               m_lastTileAt.pop_front();
-               for (unsigned i=0; i<ntiles; ++i)
-                   m_receivedTiles.pop_front();
-               for (auto &t: m_lastTileAt) {
-                   t -= ntiles;
-               }
-           }
+           skipFrames();
        }
    }
+}
+
+void RemoteConnection::skipFrames() {
+
+    if (m_lastTileAt.size() > 1) {
+        CERR << "discarding " << m_lastTileAt.size()-1 << " remote frames" << std::endl;
+        m_remoteSkipped += m_lastTileAt.size()-1;
+        m_remoteSkippedPerFrame += m_lastTileAt.size()-1;
+    }
+    while (m_lastTileAt.size() > 1) {
+        unsigned ntiles = m_lastTileAt.front();
+        m_lastTileAt.pop_front();
+        for (unsigned i=0; i<ntiles; ++i)
+            m_receivedTiles.pop_front();
+        for (auto &t: m_lastTileAt) {
+            t -= ntiles;
+            assert(t <= m_receivedTiles.size());
+        }
+    }
 }
 
 void RemoteConnection::setVisibleTimestep(int t) {
@@ -1520,7 +1559,6 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
 
     assert(msg);
     handleTileMessage(msg, payload);
-
     return true;
 }
 
