@@ -476,6 +476,7 @@ bool Hub::dispatch() {
    }
 
    if (m_quitting) {
+      m_ioService.poll();
       if (m_processMap.empty()) {
          ret = false;
       } else {
@@ -554,17 +555,17 @@ bool Hub::sendManager(const message::Message &msg, int hub, const std::vector<ch
       int numSent = 0;
       for (auto &sock: m_sockets) {
          if (sock.second == message::Identify::MANAGER) {
+            if (!sendMessage(sock.first, msg, payload))
+                break;
             ++numSent;
-            sendMessage(sock.first, msg, payload); // FIXME
             break;
          }
       }
       vassert(numSent == 1);
       return numSent == 1;
-   } else {
-      sendHub(msg, hub, payload);
    }
-   return true;
+
+   return sendHub(msg, hub, payload);
 }
 
 bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const std::vector<char> *payload) const {
@@ -602,8 +603,7 @@ bool Hub::sendHub(const message::Message &msg, int hub, const std::vector<char> 
 
    for (auto &slave: m_slaves) {
       if (slave.first == hub) {
-         sendMessage(slave.second.sock, msg, payload); // FIXME
-         return true;
+         return sendMessage(slave.second.sock, msg, payload); // FIXME
       }
    }
 
@@ -1118,24 +1118,21 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          case message::QUIT: {
 
-            std::cerr << "hub: got quit: " << msg << std::endl;
+            CERR << "quit requested by " <<  senderType << std::endl;
+            m_uiManager.requestQuit();
             auto &quit = static_cast<const Quit &>(msg);
             if (senderType == message::Identify::MANAGER) {
-               m_uiManager.requestQuit();
                if (m_isMaster)
                   sendSlaves(quit);
             } else if (senderType == message::Identify::HUB) {
-               m_uiManager.requestQuit();
                sendManager(quit);
             } else if (senderType == message::Identify::UI) {
-               m_uiManager.requestQuit();
                if (m_isMaster)
                   sendSlaves(quit);
                else
                   sendMaster(quit);
                sendManager(quit);
             } else {
-               m_uiManager.requestQuit();
                sendSlaves(quit);
                sendManager(quit);
             }
