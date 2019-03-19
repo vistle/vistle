@@ -320,7 +320,7 @@ static bool isParameterDefault(int id, const std::string &name) {
    LOCKED();
    const auto param = MODULEMANAGER.getParameter(id, name);
    if (!param) {
-      std::cerr << "Python: getParameterType: no such parameter" << std::endl;
+      std::cerr << "Python: getParameterType: no such parameter: id=" << id << ", name=" << name << std::endl;
       return false;
    }
 
@@ -333,13 +333,13 @@ static T getParameterValue(int id, const std::string &name) {
    LOCKED();
    const auto param = MODULEMANAGER.getParameter(id, name);
    if (!param) {
-      std::cerr << "Python: getParameterValue: no such parameter" << std::endl;
+      std::cerr << "Python: getParameterValue: no such parameter: id=" << id << ", name=" << name << std::endl;
       return T();
    }
 
    const auto tparam = std::dynamic_pointer_cast<const ParameterBase<T>>(param);
    if (!tparam) {
-      std::cerr << "Python: getParameterValue: type mismatch" << std::endl;
+      std::cerr << "Python: getParameterValue: type mismatch: id=" << id << ", name=" << name << std::endl;
       return T();
    }
 
