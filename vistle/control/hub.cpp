@@ -537,8 +537,9 @@ bool Hub::sendMaster(const message::Message &msg, const std::vector<char> *paylo
    int numSent = 0;
    for (auto &sock: m_sockets) {
       if (sock.second == message::Identify::HUB) {
+         if (!sendMessage(sock.first, msg, payload))
+             break;
          ++numSent;
-         sendMessage(sock.first, msg, payload); // FIXME
       }
    }
    vassert(numSent == 1);
@@ -560,7 +561,6 @@ bool Hub::sendManager(const message::Message &msg, int hub, const std::vector<ch
             if (!sendMessage(sock.first, msg, payload))
                 break;
             ++numSent;
-            break;
          }
       }
       vassert(numSent == 1);
@@ -583,14 +583,17 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const std
       //std::cerr << " -> hub id " << senderHub << std::endl;
    }
 
+   bool ok = true;
    for (auto &slave: m_slaves) {
       if (slave.first != senderHub || returnToSender) {
          //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
-         if (slave.second.ready)
-            sendMessage(slave.second.sock, msg, payload); // FIXME
+         if (slave.second.ready) {
+            if (!sendMessage(slave.second.sock, msg, payload))
+                ok = false;
+         }
       }
    }
-   return true;
+   return ok;
 }
 
 bool Hub::sendHub(const message::Message &msg, int hub, const std::vector<char> *payload) const {
