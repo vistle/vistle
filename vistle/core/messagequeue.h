@@ -2,6 +2,7 @@
 #define MESSAGEQUEUE_H
 
 #include <deque>
+#define BOOST_INTERPROCESS_MSG_QUEUE_CIRCULAR_INDEX
 #include <boost/interprocess/ipc/message_queue.hpp>
 
 #include "message.h"
