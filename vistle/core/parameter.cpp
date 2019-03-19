@@ -5,6 +5,16 @@
 
 namespace vistle {
 
+#define V_PARAM_TYPE_INST(ValueType,Name) \
+    template class ParameterBase<ValueType>;
+
+V_PARAM_TYPE_INST(ParamVector, VectorParameter);
+V_PARAM_TYPE_INST(IntParamVector, IntVectorParameter);
+V_PARAM_TYPE_INST(Float, FloatParameter);
+V_PARAM_TYPE_INST(Integer, IntParameter);
+V_PARAM_TYPE_INST(std::string, StringParameter);
+#undef V_PARAM_TYPE_INST
+
 Parameter::Parameter(int moduleId, const std::string & n, Parameter::Type type, Parameter::Presentation p)
    : m_module(moduleId)
    , m_name(n)

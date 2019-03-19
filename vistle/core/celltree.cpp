@@ -11,4 +11,8 @@ namespace mpl = boost::mpl;
 
 namespace vistle {
 
+template class V_COREEXPORT Celltree<Scalar, Index, 1>;
+template class V_COREEXPORT Celltree<Scalar, Index, 2>;
+template class V_COREEXPORT Celltree<Scalar, Index, 3>;
+
 } // namespace vistle

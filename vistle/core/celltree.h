@@ -149,8 +149,11 @@ class V_COREEXPORT Celltree: public Object {
 
 static_assert(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0, "bad padding");
 
+extern template class V_COREEXPORT Celltree<Scalar, Index, 1>;
 typedef Celltree<Scalar, Index, 1> Celltree1;
+extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
 typedef Celltree<Scalar, Index, 2> Celltree2;
+extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
 template<int Dim>

@@ -95,7 +95,7 @@ struct ParameterCheck {
 };
 
 template<typename T>
-class ParameterBase: public Parameter {
+class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
 
  public:
    typedef T ValueType;
@@ -172,7 +172,7 @@ class ParameterBase: public Parameter {
 };
 
 template<>
-struct ParameterType<Integer> {
+struct V_COREEXPORT ParameterType<Integer> {
    typedef Integer T;
    static const Parameter::Type type = Parameter::Integer;
    static const bool isNumber = true;
@@ -181,7 +181,7 @@ struct ParameterType<Integer> {
 };
 
 template<>
-struct ParameterType<Float> {
+struct V_COREEXPORT ParameterType<Float> {
    typedef Float T;
    static const Parameter::Type type = Parameter::Float;
    static const bool isNumber = true;
@@ -190,7 +190,7 @@ struct ParameterType<Float> {
 };
 
 template<>
-struct ParameterType<ParamVector> {
+struct V_COREEXPORT ParameterType<ParamVector> {
    typedef ParamVector T;
    static const Parameter::Type type = Parameter::Vector;
    static const bool isNumber = true;
@@ -199,7 +199,7 @@ struct ParameterType<ParamVector> {
 };
 
 template<>
-struct ParameterType<IntParamVector> {
+struct V_COREEXPORT ParameterType<IntParamVector> {
    typedef IntParamVector T;
    static const Parameter::Type type = Parameter::IntVector;
    static const bool isNumber = true;
@@ -208,7 +208,7 @@ struct ParameterType<IntParamVector> {
 };
 
 template<>
-struct ParameterType<std::string> {
+struct V_COREEXPORT ParameterType<std::string> {
    typedef std::string T;
    static const Parameter::Type type = Parameter::String;
    static const bool isNumber = false;
@@ -247,11 +247,15 @@ struct ParameterCheck<std::string> {
    }
 };
 
-typedef ParameterBase<ParamVector> VectorParameter;
-typedef ParameterBase<IntParamVector> IntVectorParameter;
-typedef ParameterBase<Float> FloatParameter;
-typedef ParameterBase<Integer> IntParameter;
-typedef ParameterBase<std::string> StringParameter;
+#define V_PARAM_TYPE(ValueType,Name) \
+    extern template class V_COREEXPORT ParameterBase<ValueType>; \
+    typedef ParameterBase<ValueType> Name;
+V_PARAM_TYPE(ParamVector, VectorParameter);
+V_PARAM_TYPE(IntParamVector, IntVectorParameter);
+V_PARAM_TYPE(Float, FloatParameter);
+V_PARAM_TYPE(Integer, IntParameter);
+V_PARAM_TYPE(std::string, StringParameter);
+#undef V_PARAM_TYPE
 
 V_ENUM_OUTPUT_OP(Type, Parameter)
 V_ENUM_OUTPUT_OP(Presentation, Parameter)
