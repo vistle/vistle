@@ -116,6 +116,7 @@ class RemoteConnection {
     bool handleVariant(const vistle::message::RemoteRenderMessage &msg, const vistle::variantMsg &variant);
     bool update();
     void preFrame();
+    void drawFinished();
     void updateVariants();
     void setVariantVisibility(const std::string &variant, bool visible);
 
@@ -173,6 +174,7 @@ class RemoteConnection {
 
    bool m_frameReady = false;
    bool m_waitForFrame = false;
+   bool m_frameDrawn = true;
    typedef std::deque<std::shared_ptr<DecodeTask>> TaskQueue;
    TaskQueue m_queuedTasks, m_finishedTasks;
    std::set<std::shared_ptr<DecodeTask>> m_runningTasks;

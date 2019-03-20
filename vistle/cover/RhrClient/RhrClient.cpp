@@ -811,6 +811,13 @@ void RhrClient::preFrame() {
    }
 }
 
+void RhrClient::clusterSyncDraw() {
+
+    for (auto &r: m_remotes) {
+        r.second->drawFinished();
+    }
+}
+
 //! called when scene bounding sphere is required
 void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 

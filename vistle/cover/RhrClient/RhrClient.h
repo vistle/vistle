@@ -56,6 +56,7 @@ public:
    void newInteractor(const opencover::RenderObject *container, opencover::coInteractor *it) override;
    bool update() override;
    void preFrame() override;
+   void clusterSyncDraw() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
    void setTimestep(int t) override;
    void requestTimestep(int t) override;

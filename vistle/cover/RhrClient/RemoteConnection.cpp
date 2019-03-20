@@ -548,6 +548,11 @@ void RemoteConnection::preFrame() {
 #endif
 }
 
+void RemoteConnection::drawFinished() {
+    std::lock_guard<std::mutex> locker(*m_taskMutex);
+    m_frameDrawn = true;
+}
+
 void RemoteConnection::updateVariants() {
     unsigned numAdd = m_variantsToAdd.size(), numRemove = m_variantsToRemove.size();
     coVRMSController::instance()->syncData(&numAdd, sizeof(numAdd));
@@ -893,7 +898,7 @@ void RemoteConnection::setViewsToRender(MultiChannelDrawer::ViewSelection select
 
 bool RemoteConnection::canEnqueue() const {
 
-    return !m_frameReady && !m_waitForFrame;
+    return !m_frameReady && !m_waitForFrame && m_frameDrawn;
 }
 
 void RemoteConnection::enqueueTask(std::shared_ptr<DecodeTask> task) {
@@ -1171,9 +1176,6 @@ bool RemoteConnection::checkSwapFrame() {
 
 void RemoteConnection::swapFrame() {
 
-   assert(m_frameReady == true);
-   m_frameReady = false;
-
    //assert(m_visibleTimestep == m_remoteTimestep);
    m_remoteTimestep = -1;
 
@@ -1182,6 +1184,11 @@ void RemoteConnection::swapFrame() {
    //CERR << "swapFrame: timestep=" << m_visibleTimestep << std::endl;
 
    m_drawer->swapFrame();
+
+   std::lock_guard<std::mutex> locker(*m_taskMutex);
+   assert(m_frameReady == true);
+   m_frameReady = false;
+   m_frameDrawn = false;
 }
 
 void RemoteConnection::processMessages() {
