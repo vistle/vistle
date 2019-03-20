@@ -121,19 +121,22 @@ V_CORETEMPLATE_EXPORT bool operator<(const ParameterVector<S> &v1, const Paramet
 template<typename S>
 V_CORETEMPLATE_EXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
-//typedef ParameterVector<Scalar> ScalarVector;
-//typedef ScalarVector Vector;
-typedef ParameterVector<Float> ParamVector;
-typedef ParameterVector<Integer> IntParamVector;
-
 template<typename S>
 V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
+
+#define V_DECLARE_PARAMVEC(S) \
+    extern template class V_COREEXPORT ParameterVector<S>; \
+    extern template V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2); \
+    extern template V_COREEXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2); \
+    extern template V_COREEXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2); \
+    extern template V_COREEXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2); \
+    extern template V_COREEXPORT std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
+
+V_DECLARE_PARAMVEC(Float)
+V_DECLARE_PARAMVEC(Integer)
+typedef ParameterVector<Float> ParamVector;
+typedef ParameterVector<Integer> IntParamVector;
 
 } // namespace vistle
 
 #endif // PARAMVECTOR_H
-
-
-#ifdef VISTLE_IMPL
-#include "paramvector_impl.h"
-#endif
