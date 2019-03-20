@@ -101,6 +101,7 @@ V_VEC_TEMPLATE(double)
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "vec_impl.h"
+#ifdef VISTLE_IMPL
+//#include "vec_impl.h"
 #endif

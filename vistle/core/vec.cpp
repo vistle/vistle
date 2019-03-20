@@ -1,6 +1,7 @@
 #include "vec.h"
 #include "scalars.h"
 #include "assert.h"
+#include "vec_template.h"
 
 namespace vistle {
 

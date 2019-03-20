@@ -164,6 +164,7 @@ set(core_HEADERS
    database_impl.h
    vec.h
    vec_impl.h
+   vec_template.h
    vector.h
    uniformgrid.h
    uniformgrid_impl.h
