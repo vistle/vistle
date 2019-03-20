@@ -172,6 +172,9 @@ set(core_HEADERS
    grid.h
    cellalgorithm.h
 )
+if (MSVC)
+  set_source_files_properties(unstr.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+endif()
 
 if (VISTLE_SHM_PER_RANK)
    add_definitions(-DSHMPERRANK)
