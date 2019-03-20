@@ -147,8 +147,6 @@ class V_COREEXPORT Celltree: public Object {
 
 #include "celltreenode.h"
 
-static_assert(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0, "bad padding");
-
 extern template class V_COREEXPORT Celltree<Scalar, Index, 1>;
 typedef Celltree<Scalar, Index, 1> Celltree1;
 extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
