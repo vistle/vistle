@@ -542,45 +542,4 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    return Object::const_ptr();
 }
 
-#if 0
-namespace {
-
-using namespace boost;
-
-template <class T>
-struct wrap {};
-
-template<typename S, class Stream>
-struct archive_instantiator {
-   template<class T> void operator()(wrap<T>) {
-      typedef ShmVector<S> V;
-      V p;
-      const V c = p;
-      Object::ptr obj;
-      V q = c;
-      //q.construct(2);
-      q->resize(1);
-      //std::cerr << q->refcount() << std::endl;
-      typedef T Archive;
-      Stream stream;
-      Archive ar(stream);
-      ar & V_NAME(ar, "shm_ptr", p);
-   }
-};
-
-struct instantiator {
-   template<typename S> void operator()(S) {
-      mpl::for_each<InputArchives, wrap<mpl::_1> >(archive_instantiator<S, std::ifstream>());
-      mpl::for_each<OutputArchives, wrap<mpl::_1> >(archive_instantiator<S, std::ofstream>());
-   }
-};
-
-} // namespace
-
-void instantiate_shmvector() {
-
-   mpl::for_each<VectorTypes>(instantiator());
-}
-#endif
-
 } // namespace vistle
