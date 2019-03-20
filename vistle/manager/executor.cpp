@@ -15,6 +15,7 @@
 #include <iomanip>
 
 #include <boost/mpi.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <core/message.h>
 #include <core/messagequeue.h>
