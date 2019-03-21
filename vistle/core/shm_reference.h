@@ -131,5 +131,24 @@ class shm_ref {
    void load(Archive &ar);
 };
 
+#define V_DECLARE_SHMREF(T) \
+    extern template class V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>;
+
+#define V_DEFINE_SHMREF(T) \
+    template class shm_ref<shm_array<T, typename shm<T>::allocator>>; \
+    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
+    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+
+V_DECLARE_SHMREF(unsigned char)
+V_DECLARE_SHMREF(int32_t)
+V_DECLARE_SHMREF(uint32_t)
+V_DECLARE_SHMREF(int64_t)
+V_DECLARE_SHMREF(uint64_t)
+V_DECLARE_SHMREF(float)
+V_DECLARE_SHMREF(double)
+
+
 } // namespace vistle
 #endif

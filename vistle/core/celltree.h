@@ -19,6 +19,14 @@ namespace vistle {
 template<size_t IndexSize, int NumDimensions>
 struct CelltreeNode;
 
+typedef CelltreeNode<sizeof(Index),1> CelltreeNode1;
+typedef CelltreeNode<sizeof(Index),2> CelltreeNode2;
+typedef CelltreeNode<sizeof(Index),3> CelltreeNode3;
+
+V_DECLARE_SHMREF(CelltreeNode1)
+V_DECLARE_SHMREF(CelltreeNode2)
+V_DECLARE_SHMREF(CelltreeNode3)
+
 template<typename Scalar, typename Index, int NumDimensions=3>
 class V_COREEXPORT Celltree: public Object {
    V_OBJECT(Celltree);
@@ -145,18 +153,16 @@ class V_COREEXPORT Celltree: public Object {
    V_DATA_END(Celltree);
 };
 
-#include "celltreenode.h"
-
-extern template class V_COREEXPORT Celltree<Scalar, Index, 1>;
 typedef Celltree<Scalar, Index, 1> Celltree1;
-extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
-typedef Celltree<Scalar, Index, 2> Celltree2;
-extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
-typedef Celltree<Scalar, Index, 3> Celltree3;
+extern template class V_COREEXPORT Celltree<Scalar, Index, 1>;
 
-V_DECLARE_SHMREF(Celltree1::Node)
-V_DECLARE_SHMREF(Celltree2::Node)
-V_DECLARE_SHMREF(Celltree3::Node)
+typedef Celltree<Scalar, Index, 2> Celltree2;
+extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
+
+typedef Celltree<Scalar, Index, 3> Celltree3;
+extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
+
+#include "celltreenode.h"
 
 template<int Dim>
 class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
