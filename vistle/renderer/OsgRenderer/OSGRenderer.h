@@ -129,6 +129,9 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    std::deque<int> m_previousTimesteps;
    int m_asyncFrames;
    ThreadingModel m_requestedThreadingModel;
+   void prepareQuit() override;
+   void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
+   void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
 };
 
 #endif

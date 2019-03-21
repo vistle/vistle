@@ -27,6 +27,8 @@
 #include <X11/Xlib.h>
 #endif
 
+#define CERR std::cerr << "OsgRenderer: "
+
 //#define USE_FBO
 const int MaxAsyncFrames = 2;
 static_assert(MaxAsyncFrames > 0, "MaxAsyncFrames needs to be positive");
@@ -76,7 +78,16 @@ public:
        if (release || init) {
           glewInit();
           if (!glGenBuffers || !glBindBuffer || !glBufferStorage || !glFenceSync || !glClientWaitSync || !glMemoryBarrier) {
-              std::cerr << "GL extensions missing" << std::endl;
+              CERR << "GL extensions missing: ";
+#define EXT(x) \
+    std::cerr << x << #x << (x ? " ok " : " missing ");
+              EXT(glGenBuffers);
+              EXT(glBindBuffer);
+              EXT(glBufferStorage);
+              EXT(glFenceSync);
+              EXT(glClientWaitSync);
+              EXT(glMemoryBarrier);
+              std::cerr << std::endl;
               return;
           }
           release = false;
@@ -215,13 +226,13 @@ bool OsgViewData::update(bool frameQueued) {
 
     bool create = false, resize = false;
     if (!camera) {
-        std::cerr << "creating graphics context: no camera" << std::endl;
+        CERR << "creating graphics context: no camera" << std::endl;
         create = true;
     } else if (!camera->getGraphicsContext()) {
-        std::cerr << "creating graphics context: no context" << std::endl;
+        CERR << "creating graphics context: no context" << std::endl;
         create = true;
     } else if(!camera->getGraphicsContext()->getTraits()) {
-        std::cerr << "creating graphics context: no traits" << std::endl;
+        CERR << "creating graphics context: no traits" << std::endl;
         create = true;
     } else {
 #ifdef USE_FBO
@@ -230,17 +241,17 @@ bool OsgViewData::update(bool frameQueued) {
        const auto &dep = buffers[osg::Camera::DEPTH_BUFFER];
        if (col.width() != vd.width || dep.width() != vd.width
                || col.height() != vd.height || dep.height() != vd.height) {
-           std::cerr << "resizing FBO" << std::endl;
+           CERR << "resizing FBO" << std::endl;
            resize = true;
        }
 #else
         auto traits = camera->getGraphicsContext()->getTraits();
         if (traits->width != vd.width || traits->height != vd.height) {
-            std::cerr << "recreating PBuffer for resizing" << std::endl;
+            CERR << "recreating PBuffer for resizing" << std::endl;
             create = true;
             resize = true;
             if (frameQueued)
-               std::cerr << "cannot create, because frames queued" << std::endl;
+               CERR << "cannot create, because frames queued" << std::endl;
         }
 #endif
     }
@@ -251,7 +262,7 @@ bool OsgViewData::update(bool frameQueued) {
 #ifdef USE_FBO
        if (!camera)
             createCamera();
-       std::cerr << "creating FBO of size " << vd.width << "x" << vd.height << std::endl;
+       CERR << "creating FBO of size " << vd.width << "x" << vd.height << std::endl;
        camera->setGraphicsContext(viewer.getCamera()->getGraphicsContext());
        camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
        camera->setViewport(new osg::Viewport(0, 0, vd.width, vd.height));
@@ -260,7 +271,7 @@ bool OsgViewData::update(bool frameQueued) {
        camera->attach(osg::Camera::DEPTH_BUFFER, GL_DEPTH_COMPONENT32F);
        GLenum buffer = GL_COLOR_ATTACHMENT0;
 #else
-       std::cerr << "creating PBuffer of size " << vd.width << "x" << vd.height << std::endl;
+       CERR << "creating PBuffer of size " << vd.width << "x" << vd.height << std::endl;
        createCamera();
 
        osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(viewer.displaySettings);
@@ -272,7 +283,7 @@ bool OsgViewData::update(bool frameQueued) {
        traits->y = 0;
        traits->width = vd.width;
        traits->height = vd.height;
-       traits->alpha = 8;
+       traits->alpha = 0;
        traits->depth = 24;
        traits->doubleBuffer = false;
        traits->windowDecoration = true;
@@ -281,10 +292,15 @@ bool OsgViewData::update(bool frameQueued) {
        traits->vsync = false;
        if (viewIdx >= 0) {
           gc = osg::GraphicsContext::createGraphicsContext(traits);
-          if (!traits->doubleBuffer)
-             gc->setSwapCallback(new NoSwapCallback);
-          gc->realize();
-          camera->setGraphicsContext(gc);
+          if (!gc) {
+              CERR << "failed to create graphics constext" << std::endl;
+          } else {
+              if (!traits->doubleBuffer)
+                  gc->setSwapCallback(new NoSwapCallback);
+              CERR << "realizing GC..." << std::endl;
+              gc->realize();
+              camera->setGraphicsContext(gc);
+          }
           camera->setDisplaySettings(viewer.displaySettings);
           camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
           GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
@@ -351,9 +367,9 @@ bool OsgViewData::update(bool frameQueued) {
        }
 #endif
 #if 0
-       std::cerr << "realizing viewer" << std::endl;
+       CERR << "realizing viewer" << std::endl;
        viewer.realize();
-       std::cerr << "realizing viewer: done" << std::endl;
+       CERR << "realizing viewer: done" << std::endl;
 #endif
        ReadOperation *readOp = dynamic_cast<ReadOperation *>(readOperation.get());
        if (readOp) {
@@ -381,7 +397,7 @@ bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(mutex);
        queued = outstanding.size();
        if (queued==0 || queued+1 < maxQueuedFrames) {
-          //std::cerr << "no outstanding frames to composite" << std::endl;
+          //CERR << "no outstanding frames to composite" << std::endl;
           return false;
        }
        sync = outstanding.front();
@@ -405,7 +421,7 @@ bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
     }
 
     if (ret == GL_WAIT_FAILED) {
-       std::cerr << "GL sync wait failed" << std::endl;
+       CERR << "GL sync wait failed" << std::endl;
        return true;
     }
 
@@ -426,6 +442,8 @@ bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
 
 TimestepHandler::TimestepHandler()
   : timestep(0) {
+
+      CERR << "creating timestep handler" << std::endl;
 
      m_root = new osg::MatrixTransform;
      m_fixed = new osg::Group;
@@ -479,12 +497,16 @@ osg::ref_ptr<osg::MatrixTransform> TimestepHandler::root() const {
 
 bool TimestepHandler::setTimestep(const int timestep) {
 
-   m_animated->setValue(timestep);
-   return true;
+    if (!m_animated)
+        return false;
+    m_animated->setValue(timestep);
+    return true;
 }
 
 size_t TimestepHandler::numTimesteps() const {
 
+    if (!m_animated)
+        return 0;
    return m_animated->getNumChildren();
 }
 
@@ -495,11 +517,12 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
    , m_numFramesToComposite(0)
    , m_asyncFrames(0)
 {
+    CERR << "creating..." << std::endl;
 #ifdef USE_X11
     XInitThreads();
 #endif
 #if 0
-   std::cerr << "waiting for debugger: pid=" << get_process_handle() << std::endl;
+   CERR << "waiting for debugger: pid=" << get_process_handle() << std::endl;
    sleep(10);
 #endif
    icetMutex = new OpenThreads::Mutex;
@@ -531,7 +554,7 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
    traits->y = 0;
    traits->width=1;
    traits->height=1;
-   traits->alpha = 8;
+   traits->alpha = 0;
    traits->windowDecoration = true;
    traits->windowName = "OsgRenderer: master";
    traits->doubleBuffer = false;
@@ -541,7 +564,7 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
    osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
    if (!gc)
    {
-       std::cerr << "Failed to create master graphics context" << std::endl;
+       CERR << "Failed to create master graphics context" << std::endl;
        return;
    }
    if (!traits->doubleBuffer)
@@ -594,15 +617,18 @@ OSGRenderer::OSGRenderer(const std::string &name, int moduleID, mpi::communicato
    defaultState->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
 
    scene->setStateSet(rootState);
+
+    CERR << "creation done" << std::endl;
 }
 
 OSGRenderer::~OSGRenderer() {
+    CERR << "destroying" << std::endl;
 
 }
 
 void OSGRenderer::flush() {
 
-    std::cerr << "flushing outstanding frames..." << std::endl;
+    CERR << "flushing outstanding frames..." << std::endl;
     for (size_t f=m_asyncFrames; f>0; --f) {
        composite(f-1);
     }
@@ -616,7 +642,7 @@ bool OSGRenderer::composite(size_t maxQueued) {
    vassert(maxQueued <= MaxAsyncFrames);
    vassert(m_viewData.size()*m_numFramesToComposite == m_numViewsToComposite);
 
-   //std::cerr << "composite(maxQueued=" << maxQueued <<"), to composite: frames=" << m_numFramesToComposite << ", views=" << m_numViewsToComposite << std::endl;
+   //CERR << "composite(maxQueued=" << maxQueued <<"), to composite: frames=" << m_numFramesToComposite << ", views=" << m_numViewsToComposite << std::endl;
 
    if (m_viewData.size() == 0)
       return false;
@@ -635,6 +661,7 @@ bool OSGRenderer::composite(size_t maxQueued) {
 
    vassert(m_numViewsToComposite%m_viewData.size() == 0);
    --m_numFramesToComposite;
+   CERR << "composite(queued=" << maxQueued << "): finishFrame(t=" << m_previousTimesteps.front() << "), #frames to composite=" << m_numFramesToComposite << std::endl;
    m_renderManager.finishFrame(m_previousTimesteps.front());
    m_previousTimesteps.pop_front();
 
@@ -659,7 +686,7 @@ bool OSGRenderer::render() {
     double time = getFrameStamp()->getReferenceTime();
     if (time - laststattime > 3.) {
        if (!rank() && m_debugLevel->getValue() >= 2)
-          std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
+          CERR << "FPS: " << framecounter/(time-laststattime) << std::endl;
        framecounter = 0;
        laststattime = time;
     }
@@ -688,7 +715,7 @@ bool OSGRenderer::render() {
 
        auto &l = m_renderManager.viewData(0).lights;
        if (lights.size() != l.size()) {
-          std::cerr<< "changing num lights from " << lights.size() << " to " << l.size() << std::endl;
+          CERR "changing num lights from " << lights.size() << " to " << l.size() << std::endl;
           for (size_t i=l.size(); i<lights.size(); ++i) {
              scene->removeChild(lights[i]);
           }
@@ -818,5 +845,30 @@ OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,
 , node(node)
 {
 }
+
+void OSGRenderer::prepareQuit() {
+
+   removeAllObjects();
+
+   Renderer::prepareQuit();
+}
+
+void OSGRenderer::connectionAdded(const vistle::Port *from, const vistle::Port *to) {
+
+    CERR << "new connection from " << *from << " to " << *to << std::endl;
+    Renderer::connectionAdded(from, to);
+    if (from == m_renderManager.outputPort()) {
+        m_renderManager.connectionAdded(to);
+    }
+}
+
+void OSGRenderer::connectionRemoved(const vistle::Port *from, const vistle::Port *to) {
+
+    if (from == m_renderManager.outputPort()) {
+        m_renderManager.connectionRemoved(to);
+    }
+    Renderer::connectionRemoved(from, to);
+}
+
 
 MODULE_MAIN(OSGRenderer)
