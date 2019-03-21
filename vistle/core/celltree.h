@@ -154,6 +154,10 @@ typedef Celltree<Scalar, Index, 2> Celltree2;
 extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
+V_DECLARE_SHMREF(Celltree1::Node)
+V_DECLARE_SHMREF(Celltree2::Node)
+V_DECLARE_SHMREF(Celltree3::Node)
+
 template<int Dim>
 class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
 

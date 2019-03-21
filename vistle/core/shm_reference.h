@@ -133,7 +133,3 @@ class shm_ref {
 
 } // namespace vistle
 #endif
-
-#ifdef VISTLE_IMPL
-#include "shm_reference_impl.h"
-#endif

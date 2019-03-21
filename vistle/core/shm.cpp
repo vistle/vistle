@@ -23,6 +23,10 @@
 #include "shm.h"
 #include "shm_reference.h"
 #include "object.h"
+#include "shm_reference_impl.h"
+
+#include "celltree.h"
+#include "archives_config.h"
 
 using namespace boost::interprocess;
 namespace interprocess = boost::interprocess;
@@ -541,5 +545,13 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
 
    return Object::const_ptr();
 }
+
+V_DEFINE_SHMREF(unsigned char)
+V_DEFINE_SHMREF(int32_t)
+V_DEFINE_SHMREF(uint32_t)
+V_DEFINE_SHMREF(int64_t)
+V_DEFINE_SHMREF(uint64_t)
+V_DEFINE_SHMREF(float)
+V_DEFINE_SHMREF(double)
 
 } // namespace vistle
