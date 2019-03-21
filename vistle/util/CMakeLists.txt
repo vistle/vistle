@@ -26,7 +26,6 @@ set(util_HEADERS
    math.h
    sysdep.h
    tools.h
-   triple.h
    stopwatch.h
    valgrind.h
    vecstreambuf.h
