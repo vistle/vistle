@@ -1,8 +1,12 @@
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif 
+#include <cmath>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <algorithm>
-#include <cmath>
+
 
 #include <core/object.h>
 #include <core/vec.h>
