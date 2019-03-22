@@ -132,7 +132,11 @@ class shm_ref {
 };
 
 #define V_DECLARE_SHMREF(T) \
-    extern template class V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>;
+    extern template class V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>; \
+    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
+    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
 
 #define V_DEFINE_SHMREF(T) \
     template class shm_ref<shm_array<T, typename shm<T>::allocator>>; \
