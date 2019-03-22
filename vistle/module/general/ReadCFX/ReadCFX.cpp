@@ -230,7 +230,7 @@ bool CaseInfo::checkFile(const char *filename) {
         return false;
     }
 
-    if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0) {
+    if (strncmp(magicBuf, magic, MACIC_LEN) != 0) {
         std::cout << filename << "does not start with '*INFO'" << std::endl;
         return false;
     }
