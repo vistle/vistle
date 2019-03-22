@@ -8,8 +8,8 @@
 
 find_path(LZ4_INCLUDE_DIR lz4.h)
 
-find_library(LZ4_LIBRARY_DEBUG NAMES lz4d)
-find_library(LZ4_LIBRARY_RELEASE NAMES lz4)
+find_library(LZ4_LIBRARY_DEBUG NAMES lz4d liblz4_d)
+find_library(LZ4_LIBRARY_RELEASE NAMES lz4 liblz4)
 
 include(SelectLibraryConfigurations)
 select_library_configurations(LZ4)
