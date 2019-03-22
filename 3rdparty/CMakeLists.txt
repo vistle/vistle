@@ -26,11 +26,11 @@ set(ZFP_LIBRARY_PREFIX "vistle_" CACHE STRING "Prefix to prepend to the output l
 mark_as_advanced(ZFP_LIBRARY_PREFIX)
 add_subdirectory(zfp)
 
-#set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
-set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED} CACHE INTERNAL "")
 set(ICET_BUILD_TESTING OFF CACHE INTERNAL "")
 set(ICET_USE_OPENGL OFF CACHE INTERNAL "")
 SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for building all libraries.")
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for building all binaries.")
 SET(ICET_LIBRARY_DIR ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for building all libraries.")
 SET(ICET_EXECUTABLE_DIR ${PROJECT_BINARY_DIR}/bin CACHE PATH "Output directory for building all executable.")
 set(ICET_BINARY_DIR ${PROJECT_BINARY_DIR} CACHE PATH "Value overriden by Vistle")
