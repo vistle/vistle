@@ -824,11 +824,12 @@ void RemoteConnection::setNodeConfigs(const std::vector<NodeConfig> &configs)
 
     if (m_comm) {
         auto &nc = m_nodeConfig[m_comm->rank()];
+        bool master = coVRMSController::instance()->isMaster();
 
-        m_commAny.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle||nc.haveLeft||nc.haveRight ? 1 : MPI_UNDEFINED)));
-        m_commMiddle.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle ? 1 : MPI_UNDEFINED)));
-        m_commLeft.reset(new boost::mpi::communicator(m_comm->split(nc.haveLeft ? 1 : MPI_UNDEFINED)));
-        m_commRight.reset(new boost::mpi::communicator(m_comm->split(nc.haveRight ? 1 : MPI_UNDEFINED)));
+        m_commAny.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle||nc.haveLeft||nc.haveRight||master ? 1 : MPI_UNDEFINED)));
+        m_commMiddle.reset(new boost::mpi::communicator(m_comm->split(nc.haveMiddle||master ? 1 : MPI_UNDEFINED)));
+        m_commLeft.reset(new boost::mpi::communicator(m_comm->split(nc.haveLeft||master ? 1 : MPI_UNDEFINED)));
+        m_commRight.reset(new boost::mpi::communicator(m_comm->split(nc.haveRight||master ? 1 : MPI_UNDEFINED)));
     }
 }
 
@@ -1549,14 +1550,27 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
             m_comm->recv(0, status.tag());
             message::Buffer tile;
             auto comm = m_comm.get();
-            if (status.tag() == TagTileAny)
+            bool participate = true;
+            auto &nc = m_nodeConfig[m_comm->rank()];
+            if (status.tag() == TagTileAny) {
                 comm = m_commAny.get();
-            if (status.tag() == TagTileMiddle)
+                participate = nc.haveMiddle||nc.haveLeft||nc.haveRight;
+            }
+            if (status.tag() == TagTileMiddle) {
                 comm = m_commMiddle.get();
-            if (status.tag() == TagTileLeft)
+                participate = nc.haveMiddle;
+            }
+            if (status.tag() == TagTileLeft) {
                 comm = m_commLeft.get();
-            if (status.tag() == TagTileRight)
+                participate = nc.haveLeft;
+            }
+            if (status.tag() == TagTileRight) {
                 comm = m_commRight.get();
+                participate = nc.haveRight;
+            }
+            if (!participate)
+                return true;
+
             boost::mpi::broadcast(*comm, tile.data(), sizeof(RemoteRenderMessage), 0);
             msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
             payload = std::make_shared<std::vector<char>>(tile.payloadSize());
