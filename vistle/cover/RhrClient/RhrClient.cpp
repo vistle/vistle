@@ -743,11 +743,17 @@ void RhrClient::setServerParameters(int module, const std::string &host, unsigne
     }
 }
 
-bool RhrClient::syncRemotes() {
+bool RhrClient::updateRemotes() {
 
+   bool needUpdate = false;
    for (auto r: m_remotes) {
-       r.second->update();
+       if (r.second->update())
+           needUpdate = true;
    }
+   return needUpdate;
+}
+
+bool RhrClient::syncRemotesAnim() {
 
    int nt = -1;
    for (auto &r: m_remotes) {
@@ -820,8 +826,12 @@ bool RhrClient::update()
        m_printViewSizes = false;
    }
 
-   if (syncRemotes()) {
+   if (updateRemotes())
+       render = true;
+
+   if (syncRemotesAnim()) {
        coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
+       render = true;
    }
 
    if (swapFrames())
@@ -935,7 +945,8 @@ void RhrClient::setTimestep(int t) {
 
 void RhrClient::requestTimestep(int t) {
 
-    syncRemotes();
+    updateRemotes();
+    syncRemotesAnim();
 
     //CERR << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
     if (t < 0) {

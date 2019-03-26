@@ -93,7 +93,8 @@ private:
    bool finishFrames();
    bool swapFrames();
    bool checkAdvanceFrame();
-   bool syncRemotes();
+   bool updateRemotes();
+   bool syncRemotesAnim();
 
    uint32_t m_matrixNum = 0;
 
