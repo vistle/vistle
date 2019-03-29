@@ -106,6 +106,8 @@ if mpirun -version | grep open-mpi\.org > /dev/null; then
    OPENMPI=1
    echo "OpenMPI spawn: $@"
    LAUNCH="--launch-agent $(which orted)"
+   export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
+   #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
 fi
 
 BIND=0
