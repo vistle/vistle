@@ -21,12 +21,6 @@ namespace vistle {
 
 const int MaxObjectsPerFrame = 10;
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
-(LocalOnly)
-(MasterOnly)
-(AllNodes)
-)
-
 Renderer::Renderer(const std::string &description,
                    const std::string &name, const int moduleID, mpi::communicator comm)
    : Module(description, name, moduleID, comm)

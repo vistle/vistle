@@ -179,6 +179,8 @@ OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicato
    m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
    setObjectReceivePolicy(m_fastestObjectReceivePolicy);
 
+   setIntParameter("render_mode", AllNodes);
+
    m_maySleep = false;
 }
 

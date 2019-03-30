@@ -2,10 +2,17 @@
 #define RENDERER_H
 
 #include <module/module.h>
+#include <util/enum.h>
 #include "renderobject.h"
 #include "export.h"
 
 namespace vistle {
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
+                                    (LocalOnly)
+                                    (MasterOnly)
+                                    (AllNodes)
+)
 
 class V_RENDEREREXPORT Renderer: public Module {
 
