@@ -34,6 +34,8 @@
 
 #include <memory>
 #include <limits>
+#include <algorithm>
+#include <cctype>
 
 #include <core/tcpmessage.h>
 #include <util/hostname.h>
@@ -513,6 +515,26 @@ bool RhrClient::init()
 
    m_menu = new ui::Menu("RHR", this);
    m_menu->setText("Hybrid rendering");
+
+   std::string confMode = covise::coCoviseConfig::getEntry("reprojectionMode", config);
+   if (!confMode.empty()) {
+       std::transform(confMode.begin(), confMode.end(), confMode.begin(), ::tolower);
+       if (confMode == "disable" || confMode == "asis")
+           m_configuredMode = MultiChannelDrawer::AsIs;
+       else if (confMode == "points")
+           m_configuredMode = MultiChannelDrawer::Reproject;
+       else if (confMode == "adaptive")
+           m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
+       else if (confMode == "adaptivewithneighbors" || confMode == "withneighbors")
+           m_configuredMode = MultiChannelDrawer::ReprojectAdaptive;
+       else if (confMode == "mesh")
+           m_configuredMode = MultiChannelDrawer::ReprojectMesh;
+       else if (confMode == "meshwithholes" || confMode == "withholes")
+           m_configuredMode = MultiChannelDrawer::ReprojectMeshWithHoles;
+       else
+           m_configuredMode = MultiChannelDrawer::Mode(atoi(confMode.c_str()));
+       CERR << "Reprojection mode configured: " << m_configuredMode << std::endl;
+   }
 
    auto reprojMode = new ui::SelectionList(m_menu, "ReprojectionMode");
    reprojMode->setText("Reprojection");
