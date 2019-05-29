@@ -297,6 +297,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 endif()
 
 if (NOT CRAY)
+   set(MPI_SKIP_MPICXX TRUE)
    vistle_find_package(MPI REQUIRED)
 
    include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
