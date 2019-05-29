@@ -39,6 +39,7 @@ class RemoteConnection {
 
    enum GeometryMode {
        Screen,
+       OnlyFront,
        CubeMap,
        CubeMapFront,
        CubeMapCoarseSides,

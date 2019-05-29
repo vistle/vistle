@@ -539,6 +539,7 @@ bool RhrClient::init()
    auto geoMode = new ui::SelectionList(m_menu, "GeometryMode");
    geoMode->setText("Proxy geometry");
    geoMode->append("Screen");
+   geoMode->append("Only front");
    geoMode->append("Cubemap");
    geoMode->append("Cubemap (no back)");
    geoMode->append("Cubemap (coarse sides)");
