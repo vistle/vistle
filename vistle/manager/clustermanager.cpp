@@ -947,7 +947,6 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    }
 #endif
 
-   message::Disconnect d = disconnect;
    if (disconnect.isNotification()) {
         m_stateTracker.handle(disconnect);
         int modFrom = disconnect.getModuleA();
