@@ -9,6 +9,8 @@
 #include "uiclient.h"
 #include "hub.h"
 
+#include <boost/version.hpp>
+
 namespace vistle {
 
 UiManager::UiManager(Hub &hub, StateTracker &stateTracker)
@@ -82,9 +84,14 @@ void UiManager::sendMessage(const message::Message &msg, int id, const std::vect
 
 bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const std::vector<char> *payload) const {
 
+#if BOOST_VERSION < 107000
+   //FIXME is message reliably sent, e.g. also during shutdown, without polling?
    auto &ioService = c->socket()->get_io_service();
+#endif
    bool ret = message::send(*c->socket(), msg, payload);
+#if BOOST_VERSION < 107000
    ioService.poll();
+#endif
    return ret;
 }
 
