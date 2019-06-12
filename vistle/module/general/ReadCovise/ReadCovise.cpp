@@ -175,6 +175,7 @@ bool ReadCovise::prepareRead()
 
 #ifdef READ_DIRECTORY
         std::string name;
+        m_species[port] = m_fieldFile[port]->getValue();
         if (m_fieldFile[port]->getValue() != NONE) {
             filesystem::path path(dir);
 			path += path.preferred_separator;
@@ -184,6 +185,7 @@ bool ReadCovise::prepareRead()
         }
 #else
         const std::string name = m_fieldFile[port]->getValue();
+        m_species[port] = name;
 #endif
         m_filename[port] = name;
         if (name.empty())
@@ -1034,8 +1036,10 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
       }
       token.wait();
       for (int port=0; port<NumPorts; ++port) {
-          if (m_out[port] && obj[port])
+          if (m_out[port] && obj[port]) {
+              obj[port]->addAttribute("_species", m_species[port]);
               addObject(m_out[port], obj[port]);
+          }
       }
    }
 

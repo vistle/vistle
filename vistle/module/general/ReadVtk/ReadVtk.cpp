@@ -519,6 +519,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
        if (cellData && m_cellDataChoice[i]->getValue() != Invalid) {
            auto field = vistle::vtk::getField(cellData, m_cellDataChoice[i]->getValue(), grid);
            if (field) {
+               field->addAttribute("_species", m_cellDataChoice[i]->getValue());
                field->setMapping(DataBase::Element);
                field->setMeta(meta);
                if (!part.empty())
@@ -533,6 +534,7 @@ bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, 
                field = vistle::vtk::getField(fieldData, m_pointDataChoice[i]->getValue(), grid);
            }
            if (field) {
+               field->addAttribute("_species", m_pointDataChoice[i]->getValue());
                field->setMeta(meta);
                field->setMapping(DataBase::Vertex);
                if (!part.empty())

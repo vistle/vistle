@@ -397,7 +397,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         vector->setGrid(geoOut);
     }
 
+    scalar->addAttribute("_species", "scalar");
     addObject("data_out0", scalar);
+    vector->addAttribute("_species", "vector");
     addObject("data_out1", vector);
 }
 

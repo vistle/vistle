@@ -814,6 +814,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       DataBase::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
+      obj->addAttribute("_species", field);
       m_currentvolumedata[processor][i]= obj;
    }
 
@@ -831,6 +832,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       for (size_t j=0; j<fields.size(); ++j) {
           auto &obj = fields[j];
           setMeta(obj, processor, timestep);
+          obj->addAttribute("_species", field);
           obj->setGrid(m_currentbound[processor][j]);
           obj->setMapping(DataBase::Element);
           addObject(m_boundaryDataOut[i], obj);

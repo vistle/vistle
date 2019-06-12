@@ -123,6 +123,7 @@ class ReadCovise: public vistle::Reader {
    vistle::Port *m_out[NumPorts];
 
    int m_fd[NumPorts];
+   std::string m_species[NumPorts];
    std::string m_filename[NumPorts];
    Element m_rootElement[NumPorts];
    size_t m_numObj[NumPorts];
