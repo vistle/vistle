@@ -31,6 +31,7 @@ class Color: public vistle::Module {
    void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar & min, vistle::Scalar & max);
    void binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec);
    void computeMap();
+   void sendColorMap();
 
    bool changeParameter(const vistle::Parameter *p) override;
    bool prepare() override;
@@ -49,6 +50,11 @@ class Color: public vistle::Module {
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
    vistle::Scalar m_min, m_max;
+
+   std::string m_species;
+   bool m_colorMapSent = false;
+   vistle::Port *m_dataIn = nullptr;
+   vistle::Port *m_dataOut = nullptr, *m_colorOut = nullptr;
 };
 
 #endif

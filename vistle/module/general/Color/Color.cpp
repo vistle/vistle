@@ -26,6 +26,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (CoolWarm)
                                     (Frosty)
                                     (Dolomiti)
+                                    (Grays)
                                     )
 
 ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
@@ -79,8 +80,9 @@ ColorMap::~ColorMap() {
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("Color", name, moduleID, comm) {
 
-   createInputPort("data_in");
-   createOutputPort("data_out");
+   m_dataIn = createInputPort("data_in");
+   m_dataOut = createOutputPort("data_out");
+   m_colorOut = createOutputPort("color_out");
 
    addFloatParameter("min", "minimum value of range to map", 0.0);
    addFloatParameter("max", "maximum value of range to map", 0.0);
@@ -195,6 +197,12 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins[1.0] = Vector(1.00, 0.00, 0.00);
    transferFunctions[Rainbow] = pins;
    pins.clear();
+
+   pins[0.00] = Vector(25,25,25)/255.;
+   pins[1.00] = Vector(230,230,230)/255.;
+   transferFunctions[Grays] = pins;
+   pins.clear();
+
 }
 
 Color::~Color() {
@@ -310,16 +318,21 @@ void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned lon
 
 bool Color::changeParameter(const Parameter *p) {
 
+    bool newMap = false;
+
     bool changeReduce = false;
     if (p == m_autoRangePara) {
         m_autoRange = m_autoRangePara->getValue();
         changeReduce = true;
+        newMap = true;
     } else if (p == m_autoInsetCenterPara) {
         m_autoInsetCenter = m_autoInsetCenterPara->getValue();
         changeReduce = true;
+        newMap = true;
     } else if (p == m_nestPara) {
         m_nest = m_nestPara->getValue();
         changeReduce = true;
+        newMap = true;
     }
 
     if (changeReduce) {
@@ -328,6 +341,12 @@ bool Color::changeParameter(const Parameter *p) {
         } else {
             setReducePolicy(message::ReducePolicy::Locally);
         }
+    }
+
+    newMap = true;
+
+    if (newMap) {
+        computeMap();
     }
 
     return Module::changeParameter(p);
@@ -435,9 +454,32 @@ void Color::computeMap() {
                m_colors->data[i*4+c] = inset.data[(i-insetStart)*4+c];
        }
    }
+
+   m_colorMapSent = false;
+   sendColorMap();
+}
+
+void Color::sendColorMap() {
+
+    if (m_colorMapSent)
+        return;
+
+   if (m_colorOut->isConnected() && !m_species.empty()) {
+       vistle::Texture1D::ptr tex(new vistle::Texture1D(m_colors->width, m_min, m_max));
+       unsigned char *pix = &tex->pixels()[0];
+       for (size_t index = 0; index < m_colors->width * 4; index ++)
+           pix[index] = m_colors->data[index];
+       tex->addAttribute("_species", m_species);
+       addObject(m_colorOut, tex);
+
+       m_colorMapSent = true;
+   }
 }
 
 bool Color::prepare() {
+
+    m_species.clear();
+    m_colorMapSent = false;
 
    m_min = std::numeric_limits<Scalar>::max();
    m_max = -std::numeric_limits<Scalar>::max();
@@ -463,14 +505,15 @@ bool Color::prepare() {
 
 bool Color::compute() {
 
-   Coords::const_ptr coords = accept<Coords>("data_in");
-   if (coords) {
-      passThroughObject("data_out", coords);
+   Coords::const_ptr coords = accept<Coords>(m_dataIn);
+   if (coords && m_dataOut->isConnected()) {
+      passThroughObject(m_dataOut, coords);
    }
-   DataBase::const_ptr data = accept<DataBase>("data_in");
+   DataBase::const_ptr data = accept<DataBase>(m_dataIn);
    if (!data) {
-      Object::const_ptr obj = accept<Object>("data_in");
-      passThroughObject("data_out", obj);
+      Object::const_ptr obj = accept<Object>(m_dataIn);
+      if (m_dataOut->isConnected())
+          passThroughObject(m_dataOut, obj);
       return true;
    }
 
@@ -565,10 +608,16 @@ bool Color::reduce(int timestep) {
 
 void Color::process(const DataBase::const_ptr data) {
 
-   auto out(addTexture(data, m_min, m_max, *m_colors));
-   out->setGrid(data->grid());
-   out->setMeta(data->meta());
-   out->copyAttributes(data);
+    m_species = data->getAttribute("_species");
+    sendColorMap();
 
-   addObject("data_out", out);
+    if (m_dataOut->isConnected()) {
+
+        auto out(addTexture(data, m_min, m_max, *m_colors));
+        out->setGrid(data->grid());
+        out->setMeta(data->meta());
+        out->copyAttributes(data);
+
+        addObject(m_dataOut, out);
+    }
 }
