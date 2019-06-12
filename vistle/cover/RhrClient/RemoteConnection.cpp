@@ -65,6 +65,7 @@ int RemoteConnection::numViewsForMode(RemoteConnection::GeometryMode mode) {
     switch (mode) {
     case Screen:
         return -1;
+    case FirstScreen:
     case OnlyFront:
         return 1;
     case CubeMap:
@@ -857,7 +858,7 @@ void RemoteConnection::setGeometryMode(RemoteConnection::GeometryMode mode) {
             m_numViews = m_numClusterViews;
             m_drawer->setNumViews(m_numClusterViews);
         }
-    } else if (mode == OnlyFront || mode == CubeMap || mode == CubeMapFront || mode == CubeMapCoarseSides) {
+    } else if (mode == FirstScreen || mode == OnlyFront || mode == CubeMap || mode == CubeMapFront || mode == CubeMapCoarseSides) {
         m_drawer->setViewsToRender(MultiChannelDrawer::All);
         m_drawer->setNumViews(m_numViews);
     } else {

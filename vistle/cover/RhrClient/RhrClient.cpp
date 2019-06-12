@@ -151,6 +151,31 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
        std::cerr << "  proj mat: " << proj << std::endl;
 #endif
 
+   } else if (m_geoMode == RemoteConnection::FirstScreen && !conf.channels.empty()) {
+       const channelStruct &chan = conf.channels[0];
+       auto wh = imageSizeForChannel(0);
+       msg.width = wh.first;
+       msg.height = wh.second;
+
+       bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
+       if (second)
+           left = false;
+       VRViewer::Eye eye;
+       if (chan.stereo) {
+           msg.eye = left ? rfbEyeLeft : rfbEyeRight;
+           eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
+       } else {
+           msg.eye = rfbEyeMiddle;
+           eye = VRViewer::EyeMiddle;
+       }
+       view = left ? chan.leftView : chan.rightView;
+       proj = left ? chan.leftProj : chan.rightProj;
+
+#if 0
+       CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
+       std::cerr << "  view mat: " << view << std::endl;
+       std::cerr << "  proj mat: " << proj << std::endl;
+#endif
    } else {
        auto wh = imageSizeForChannel(0);
        msg.width = msg.height = m_imageQuality * std::max(wh.first, wh.second);
