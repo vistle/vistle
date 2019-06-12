@@ -10,3 +10,4 @@ test
 *.autosave
 .flavor
 .vs
+.vscode
