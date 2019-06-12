@@ -75,6 +75,7 @@ protected:
    void setHandlePartitions(bool enable);
    void setAllowTimestepDistribution(bool allow);
 
+   //! whenever an observed parameter changes, data set should be rescanned
    void observeParameter(const Parameter *param);
    void setTimesteps(int number);
    void setPartitions(int number);
