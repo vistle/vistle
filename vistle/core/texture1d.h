@@ -20,6 +20,8 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
          const Meta &meta=Meta());
 
    Index getWidth() const;
+   Scalar getMin() const;
+   Scalar getMax() const;
    Index getNumCoords() const { return getSize(); }
    shm<unsigned char>::array &pixels() { return *d()->pixels; }
    const shm<unsigned char>::array &pixels() const { return *d()->pixels; }
@@ -27,8 +29,7 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
    const Scalar *coords() const  { return x(); }
 
    V_DATA_BEGIN(Texture1D);
-      Scalar min;
-      Scalar max;
+      Scalar range[2];
 
       ShmVector<unsigned char> pixels;
 

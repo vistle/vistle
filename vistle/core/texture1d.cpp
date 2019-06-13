@@ -25,30 +25,26 @@ bool Texture1D::checkImpl() const {
 }
 
 void Texture1D::Data::initData() {
-   min = max = 0.f;
+    range[0] = range[1] = 0.;
 }
 
 Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
 : Texture1D::Base::Data(o, n)
-, min(o.min)
-, max(o.max)
 , pixels(o.pixels)
 {
    initData();
-   min = o.min;
-   max = o.max;
+   range[0] = o.range[0];
+   range[1] = o.range[1];
 }
 
 Texture1D::Data::Data(const std::string &name, const Index width,
                      const Scalar mi, const Scalar ma,
                      const Meta &meta)
    : Texture1D::Base::Data(0, Object::TEXTURE1D, name, meta)
-   , min(mi)
-   , max(ma)
 {
    initData();
-   min = mi;
-   max = ma;
+   range[0] = mi;
+   range[1] = ma;
    pixels.construct(width * 4);
 }
 
@@ -66,6 +62,16 @@ Texture1D::Data *Texture1D::Data::create(const Index width,
 Index Texture1D::getWidth() const {
 
    return d()->pixels->size() / 4;
+}
+
+Scalar Texture1D::getMin() const {
+
+    return d()->range[0];
+}
+
+Scalar Texture1D::getMax() const {
+
+    return d()->range[1];
 }
 
 V_OBJECT_TYPE(Texture1D, Object::TEXTURE1D);
