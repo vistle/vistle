@@ -109,6 +109,9 @@ public:
          throw vistle::exception("out of range");
       }
    }
+   void shrink_to_fit() {
+       // nothing to do
+   }
 };
 
 template<typename S>
