@@ -154,17 +154,17 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins.clear();
 
    pins[0.00] = Vector(1,133,113)/255.;
-   pins[0.25] = Vector(128,205,193)/255.;
-   pins[0.50] = Vector(245,245,245)/255.;
-   pins[0.75] = Vector(223,194,125)/255.;
+   pins[0.25] = Vector(128,205,193)/280.;
+   pins[0.50] = Vector(245,245,245)/300.;
+   pins[0.75] = Vector(223,194,125)/280.;
    pins[1.00] = Vector(166, 97, 26)/255.;
    transferFunctions[Frosty] = pins;
    pins.clear();
 
    pins[0.00] = Vector(77,172,38)/255.;
-   pins[0.25] = Vector(184,225,134)/255.;
-   pins[0.50] = Vector(247,247,247)/255.;
-   pins[0.75] = Vector(241,182,218)/255.;
+   pins[0.25] = Vector(184,225,134)/280.;
+   pins[0.50] = Vector(247,247,247)/300.;
+   pins[0.75] = Vector(241,182,218)/280.;
    pins[1.00] = Vector(208,28,139)/255.;
    transferFunctions[Dolomiti] = pins;
    pins.clear();
