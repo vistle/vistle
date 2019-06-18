@@ -4,11 +4,17 @@
 #include <core/object.h>
 #include <renderer/renderobject.h>
 #include <mutex>
+#include <memory>
 #include <osg/StateSet>
 #include <osg/KdTree>
 #include <osg/Texture1D>
 #include <osg/Image>
+#include <osg/Uniform>
 #include <osg/ref_ptr>
+
+#ifdef COVER_PLUGIN
+#include <cover/coVRShader.h>
+#endif
 
 namespace osg {
    class MatrixTransform;
@@ -16,8 +22,12 @@ namespace osg {
 
 struct OsgColorMap {
     OsgColorMap();
-    float rangeMin = 0.f;
-    float rangeMax = 1.f;
+    void setName(const std::string &species);
+    void setRange(float min, float max);
+#ifdef COVER_PLUGIN
+    std::shared_ptr<opencover::coVRShader> shader;
+#endif
+    float rangeMin = 0.f, rangeMax = 1.f;
     osg::ref_ptr<osg::Texture1D> texture;
     osg::ref_ptr<osg::Image> image;
 };

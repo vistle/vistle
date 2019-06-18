@@ -539,14 +539,11 @@ bool OsgRenderer::render() {
 bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
 
     auto &cmap = m_colormaps[species];
-
-    cmap.texture->setName("Colormap texture: species="+species);
-    cmap.image->setName("Color image: species="+species);
+    cmap.setName(species);
+    cmap.setRange(texture->getMin(), texture->getMax());
 
     cmap.image->setPixelFormat(GL_RGBA);
     cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0], osg::Image::NO_DELETE);
-    cmap.rangeMin = texture->getMin();
-    cmap.rangeMax = texture->getMax();
     cmap.image->dirty();
 
     return true;
@@ -559,12 +556,11 @@ bool OsgRenderer::removeColorMap(const std::string &species) {
         return false;
 
     auto &cmap = it->second;
+    cmap.setRange(0.f, 1.f);
 
     cmap.image->setPixelFormat(GL_RGBA);
     unsigned char red_green[] = {1,0,0,1, 0,1,0,1};
     cmap.image->setImage(2, 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, red_green, osg::Image::NO_DELETE);
-    cmap.rangeMin = 0.f;
-    cmap.rangeMax = 1.f;
     cmap.image->dirty();
     //m_colormaps.erase(species);
     return true;

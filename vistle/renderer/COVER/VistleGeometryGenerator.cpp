@@ -891,16 +891,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 #ifdef COVER_PLUGIN
    if (colormap) {
        state->setTextureAttribute(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
+       colormap->shader->apply(state);
 
-       s_coverMutex.lock();
-       parammap["dataAttrib"] = std::to_string(DataAttrib);
-       parammap["texUnit1"] = std::to_string(TfTexUnit);
-       parammap["rangeMin"] = std::to_string(colormap->rangeMin);
-       parammap["rangeMax"] = std::to_string(colormap->rangeMax);
-       if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get("MapColorsAttrib", &parammap)) {
-           shader->apply(state);
-       }
-       s_coverMutex.unlock();
    } else if (!name.empty()) {
        s_coverMutex.lock();
        if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(name, &parammap)) {
@@ -1076,4 +1068,33 @@ OsgColorMap::OsgColorMap()
     rgba[4] = 200; rgba[5] = 200; rgba[6] = 200; rgba[7] = 255;
 
     texture->setImage(image);
+
+#ifdef COVER_PLUGIN
+    //s_coverMutex.lock();
+    std::map<std::string, std::string> parammap;
+    parammap["dataAttrib"] = std::to_string(DataAttrib);
+    parammap["texUnit1"] = std::to_string(TfTexUnit);
+    shader.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttrib", &parammap));
+    shader->setFloatUniform("rangeMin", rangeMin);
+    shader->setFloatUniform("rangeMax", rangeMax);
+    //s_coverMutex.unlock();
+#endif
+}
+
+void OsgColorMap::setName(const std::string &species) {
+
+    texture->setName("Colormap texture: species="+species);
+    image->setName("Colormap image: species="+species);
+}
+
+void OsgColorMap::setRange(float min, float max) {
+
+    rangeMin = min;
+    rangeMax = max;
+#ifdef COVER_PLUGIN
+    if (shader) {
+        shader->setFloatUniform("rangeMin", min);
+        shader->setFloatUniform("rangeMax", max);
+    }
+#endif
 }
