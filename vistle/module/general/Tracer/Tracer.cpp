@@ -150,6 +150,17 @@ bool Tracer::prepare(){
     return true;
 }
 
+void collectAttributes(std::map<std::string, std::string> &attrs, vistle::Object::const_ptr obj) {
+
+    if (!obj)
+        return;
+
+    auto al = obj->getAttributeList();
+    for (auto &a: al) {
+        attrs[a] = obj->getAttribute(a);
+    }
+}
+
 
 bool Tracer::compute() {
 
@@ -185,6 +196,10 @@ bool Tracer::compute() {
        celltree.resize(numSteps+1);
        data_in0.resize(numSteps+1);
        data_in1.resize(numSteps+1);
+
+       m_gridAttr.resize(numSteps+1);
+       m_data0Attr.resize(numSteps+1);
+       m_data1Attr.resize(numSteps+1);
     }
 
     if (useCelltree) {
@@ -202,6 +217,10 @@ bool Tracer::compute() {
         }
     }
 
+    collectAttributes(m_gridAttr[t+1], grid);
+    collectAttributes(m_data0Attr[t+1], data0);
+    collectAttributes(m_data1Attr[t+1], data1);
+
     grid_in[t+1].push_back(grid);
     data_in0[t+1].push_back(data0);
     data_in1[t+1].push_back(data1);
@@ -212,12 +231,48 @@ bool Tracer::compute() {
 }
 
 
+void mergeAttributes(Tracer::AttributeMap &dest, const Tracer::AttributeMap &other) {
 
+    for (auto &kv: other) {
+        dest.emplace(kv);
+    }
+}
+
+void applyAttributes(vistle::Object::ptr obj, const Tracer::AttributeMap &attrs) {
+
+    if (!obj)
+        return;
+
+    for (auto &a: attrs) {
+        obj->addAttribute(a.first, a.second);
+    }
+}
 
 bool Tracer::reduce(int timestep) {
 
    if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep)
        return true;
+
+   if (timestep == -1) {
+       for (int i=0; i<numTimesteps(); ++i) {
+           mergeAttributes(m_gridAttr[0], m_gridAttr[i+1]);
+           mergeAttributes(m_data0Attr[0], m_data0Attr[i+1]);
+           mergeAttributes(m_data1Attr[0], m_data1Attr[i+1]);
+       }
+   }
+
+   int attrGridRank = m_gridAttr[timestep+1].empty() ? size() : rank();
+   int attrData0Rank = m_data0Attr[timestep+1].empty() ? size() : rank();
+   int attrData1Rank = m_data1Attr[timestep+1].empty() ? size() : rank();
+   attrGridRank = mpi::all_reduce(comm(), attrGridRank, mpi::minimum<int>());
+   attrData0Rank = mpi::all_reduce(comm(), attrData0Rank, mpi::minimum<int>());
+   attrData1Rank = mpi::all_reduce(comm(), attrData1Rank, mpi::minimum<int>());
+   if (attrGridRank != size())
+       mpi::broadcast(comm(), m_gridAttr[timestep+1], attrGridRank);
+   if (attrData0Rank != size())
+       mpi::broadcast(comm(), m_data0Attr[timestep+1], attrData0Rank);
+   if (attrData1Rank != size())
+       mpi::broadcast(comm(), m_data0Attr[timestep+1], attrData1Rank);
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
@@ -538,12 +593,16 @@ bool Tracer::reduce(int timestep) {
            continue;
        if (taskType == MovingPoints) {
            global.points.emplace_back(new Points(Index(0)));
+           applyAttributes(global.points.back(), m_gridAttr[timestep+1]);
        } else {
            global.lines.emplace_back(new Lines(0,0,0));
+           applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
        }
 
        global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
+       applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
        global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
+       applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
        global.idField.emplace_back(new Vec<Index>(Index(0)));
        global.stepField.emplace_back(new Vec<Index>(Index(0)));
        global.timeField.emplace_back(new Vec<Scalar>(Index(0)));

@@ -3,6 +3,8 @@
 
 #include <future>
 #include <vector>
+#include <map>
+#include <string>
 
 #include <util/enum.h>
 #include <core/vec.h>
@@ -58,6 +60,7 @@ public:
     Tracer(const std::string &name, int moduleID, mpi::communicator comm);
     ~Tracer();
 
+    typedef std::map<std::string, std::string> AttributeMap;
 
  private:
     bool compute() override;
@@ -69,6 +72,8 @@ public:
     std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
     std::vector<std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
+
+    std::vector<AttributeMap> m_gridAttr, m_data0Attr, m_data1Attr;
 
     vistle::IntParameter *m_taskType;
     vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
