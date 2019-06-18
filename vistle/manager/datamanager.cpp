@@ -403,7 +403,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
     std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
     memar.setFetcher(fetcher);
     objIt->second.obj.reset(Object::loadObject(memar));
-    if (objIt->second.obj) {
+    if (!objIt->second.obj) {
         CERR << "loading from archive failed for " << objName << std::endl;
     }
     assert(objIt->second.obj);
