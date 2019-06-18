@@ -26,6 +26,7 @@ struct OsgColorMap {
     void setRange(float min, float max);
 #ifdef COVER_PLUGIN
     std::shared_ptr<opencover::coVRShader> shader;
+    std::shared_ptr<opencover::coVRShader> shaderUnlit;
 #endif
     float rangeMin = 0.f, rangeMax = 1.f;
     osg::ref_ptr<osg::Texture1D> texture;

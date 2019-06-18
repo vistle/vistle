@@ -542,6 +542,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
    debug << "b " << b << ", t " << t << " ";
 
+   bool lighted = true;
    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
    geode->setName(nodename);
    transform->addChild(geode);
@@ -599,7 +600,10 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            debug << "NoIndex: normals ";
        }
    }
+
    vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex);
+   const OsgColorMap *colormap = nullptr;
+   vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_tex);
    if (tex) {
        auto m = tex->guessMapping();
        if (m != vistle::DataBase::Vertex)
@@ -607,22 +611,20 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            indexGeom = false;
            debug << "NoIndex: tex ";
        }
-   }
-
-   vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_tex);
-   if (data) {
+       data.reset();
+   } else if (data) {
        auto m = data->guessMapping();
        if (m != vistle::DataBase::Vertex)
        {
            indexGeom = false;
            debug << "NoIndex: tex/data ";
        }
-   }
-   const OsgColorMap *colormap = nullptr;
-   if (m_colormaps && !m_species.empty()) {
-       auto it = m_colormaps->find(m_species);
-       if (it != m_colormaps->end()) {
-           colormap = &it->second;
+
+       if (m_colormaps && !m_species.empty()) {
+           auto it = m_colormaps->find(m_species);
+           if (it != m_colormaps->end()) {
+               colormap = &it->second;
+           }
        }
    }
 
@@ -664,6 +666,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
              state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
              state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+             lighted = false;
          }
          break;
       }
@@ -841,11 +844,12 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
              geom->setColorArray(colArray);
          }
 
-         state->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+         lighted = false;
          state->setAttributeAndModes(new osg::LineWidth(2.f), osg::StateAttribute::ON);
 
          geom->setVertexArray(vertices.get());
          geom->addPrimitiveSet(primitives.get());
+
          break;
       }
 
@@ -888,10 +892,15 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
        escaped = false;
    }
 
+   state->setMode(GL_LIGHTING, lighted ? osg::StateAttribute::ON : osg::StateAttribute::OFF);
 #ifdef COVER_PLUGIN
    if (colormap) {
        state->setTextureAttribute(TfTexUnit, colormap->texture, osg::StateAttribute::ON);
-       colormap->shader->apply(state);
+       if (lighted) {
+           colormap->shader->apply(state);
+       } else {
+           colormap->shaderUnlit->apply(state);
+       }
 
    } else if (!name.empty()) {
        s_coverMutex.lock();
@@ -1020,7 +1029,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                        std::cerr << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Texture1D" << std::endl;
                        debug << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Texture1D" << std::endl;
                    }
-                   if (!tc->empty()) {
+                   if (!tc->empty() && geom) {
                        geom->setTexCoordArray(0, tc);
                    }
                }
@@ -1041,6 +1050,70 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                    texEnv->setMode(osg::TexEnv::MODULATE);
                    state->setTextureAttribute(0, texEnv);
 #endif
+               }
+           }
+       } else if (vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_tex)) {
+           vistle::DataBase::Mapping mapping = data->guessMapping();
+           if (mapping == vistle::DataBase::Unspecified) {
+               std::cerr << "VistleGeometryGenerator: Coords: data size mismatch, expected: " << coords->getNumCoords() << ", have: " << data->getSize() << std::endl;
+               debug << "VistleGeometryGenerator: Coords: data size mismatch, expected: " << coords->getNumCoords() << ", have: " << data->getSize() << std::endl;
+           } else {
+               osg::ref_ptr<osg::FloatArray> fl;
+               if (!triangles && !polygons) {
+                   fl = new osg::FloatArray;
+                   if (mapping == vistle::DataBase::Vertex) {
+                       const Index *cl = nullptr;
+                       if (indexed && indexed->getNumCorners() > 0)
+                           cl =  &indexed->cl()[0];
+                       if (indexGeom || !cl)
+                       {
+                           const auto numCoords = coords->getNumCoords();
+                           const auto numData = data->getSize();
+                           if (numCoords == numData) {
+                               for (Index index = 0; index < numCoords; ++index) {
+                                   fl->push_back(data->x()[index]);
+                               }
+                           } else {
+                               std::cerr << "VistleGeometryGenerator: data mismatch: #coord=" << numCoords << ", #data=" << numData << std::endl;
+                               debug << "VistleGeometryGenerator: data mismatch: #coord=" << numCoords << ", #data=" << numData << std::endl;
+                           }
+                       }
+                       else if (indexed && cl) {
+                           const auto el = &indexed->el()[0];
+                           const auto numElements = indexed->getNumElements();
+                           for (Index index = 0; index < numElements; ++index) {
+                               const Index num = el[index + 1] - el[index];
+                               for (Index n = 0; n < num; n ++) {
+                                   Index v = cl[el[index] + n];
+                                   fl->push_back(data->x()[v]);
+                               }
+                           }
+                       }
+                   } else if (mapping == vistle::DataBase::Element) {
+                       if (indexed) {
+                           const auto el = &indexed->el()[0];
+                           const auto numElements = indexed->getNumElements();
+                           for (Index index = 0; index < numElements; ++index) {
+                               const Index num = el[index + 1] - el[index];
+                               for (Index n = 0; n < num; n ++) {
+                                   Index v = el[index];
+                                   fl->push_back(data->x()[v]);
+                               }
+                           }
+                       } else {
+                           const auto numCoords = coords->getNumCoords();
+                           for (Index index = 0; index < numCoords; ++index) {
+                               fl->push_back(data->x()[index]);
+                           }
+                       }
+                   } else {
+                       std::cerr << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Vec<Scalar>" << std::endl;
+                       debug << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Vec<Scalar>" << std::endl;
+                   }
+                   if (!fl->empty() && geom) {
+                       std::cerr << "VistleGeometryGenerator: setting VertexAttribArray " << mapping << " for Vec<Scalar> of size " << fl->size() << std::endl;
+                       geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                   }
                }
            }
        }
@@ -1074,6 +1147,11 @@ OsgColorMap::OsgColorMap()
     std::map<std::string, std::string> parammap;
     parammap["dataAttrib"] = std::to_string(DataAttrib);
     parammap["texUnit1"] = std::to_string(TfTexUnit);
+
+    shaderUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttribUnlit", &parammap));
+    shaderUnlit->setFloatUniform("rangeMin", rangeMin);
+    shaderUnlit->setFloatUniform("rangeMax", rangeMax);
+
     shader.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttrib", &parammap));
     shader->setFloatUniform("rangeMin", rangeMin);
     shader->setFloatUniform("rangeMax", rangeMax);
@@ -1095,6 +1173,10 @@ void OsgColorMap::setRange(float min, float max) {
     if (shader) {
         shader->setFloatUniform("rangeMin", min);
         shader->setFloatUniform("rangeMax", max);
+    }
+    if (shaderUnlit) {
+        shaderUnlit->setFloatUniform("rangeMin", min);
+        shaderUnlit->setFloatUniform("rangeMax", max);
     }
 #endif
 }
