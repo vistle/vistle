@@ -84,8 +84,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    m_dataOut = createOutputPort("data_out");
    m_colorOut = createOutputPort("color_out");
 
-   addFloatParameter("min", "minimum value of range to map", 0.0);
-   addFloatParameter("max", "maximum value of range to map", 0.0);
+   m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
+   m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
    V_ENUM_SET_CHOICES(map, TransferFunction);
    auto steps = addIntParameter("steps", "number of color map steps", 32);
@@ -332,6 +332,12 @@ bool Color::changeParameter(const Parameter *p) {
     } else if (p == m_nestPara) {
         m_nest = m_nestPara->getValue();
         changeReduce = true;
+        newMap = true;
+    } else if (p == m_minPara) {
+        m_min = m_minPara->getValue();
+        newMap = true;
+    } else if (p == m_maxPara) {
+        m_max = m_maxPara->getValue();
         newMap = true;
     }
 
