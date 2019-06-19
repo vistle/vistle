@@ -612,6 +612,15 @@ bool Color::reduce(int timestep) {
     return true;
 }
 
+void Color::connectionAdded(const Port *from, const Port *to) {
+
+    if (from != m_colorOut)
+        return;
+
+    m_colorMapSent = false;
+    sendColorMap();
+}
+
 void Color::process(const DataBase::const_ptr data) {
 
     m_species = data->getAttribute("_species");

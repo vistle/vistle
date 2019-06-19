@@ -37,6 +37,7 @@ class Color: public vistle::Module {
    bool prepare() override;
    bool compute() override;
    bool reduce(int timestep) override;
+   void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
 
    void process(const vistle::DataBase::const_ptr data);
 
