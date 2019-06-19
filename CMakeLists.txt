@@ -298,7 +298,8 @@ endif()
 
 if (NOT CRAY)
    set(MPI_SKIP_MPICXX TRUE)
-   vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
+   add_definitions(-DOMPI_SKIP_MPICXX)
+   vistle_find_package(MPI REQUIRED COMPONENTS C)
 
    include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
