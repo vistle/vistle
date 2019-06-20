@@ -64,10 +64,73 @@
 #include <module/reader.h>
 
 #include "Element.h"
+#include "Dyna3DReader.h"
 
 class ReadDyna3D: public vistle::Reader
 {
 public:
+private:
+    bool prepareRead() override;
+    bool read(Token &token, int timestep=-1, int block=-1) override;
+    bool examine(const vistle::Parameter *param) override;
+    bool finishRead() override;
+
+    Dyna3DReaderBase *newReader();
+
+    // Ports
+    vistle::Port *p_grid = nullptr;
+    vistle::Port *p_data_1 = nullptr;
+    vistle::Port *p_data_2 = nullptr;
+
+    // Parameters
+    vistle::StringParameter *p_data_path;
+    vistle::IntParameter *p_nodalDataType;
+    vistle::IntParameter *p_elementDataType;
+    vistle::IntParameter *p_component;
+    vistle::StringParameter *p_Selection;
+    // coIntSliderParam *p_State;
+    //vistle::IntVectorParameter *p_Step;
+    vistle::IntParameter *p_format;
+    vistle::IntParameter *p_only_geometry;
+    vistle::IntParameter *p_byteswap;
+
+public:
+    ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ReadDyna3D() override;
+
+    std::unique_ptr<Dyna3DReaderBase> dyna3dReader;
+};
+
+
+#if 0
+template<int wordsize>
+struct WordTraits;
+
+template<>
+struct WordTraits<4> {
+    typedef uint32_t WORD;
+    typedef int32_t INTEGER;
+    typedef float REAL;
+};
+
+template<>
+struct WordTraits<8> {
+    typedef uint64_t WORD;
+    typedef int64_t INTEGER;
+    typedef double REAL;
+};
+
+class Dyna3DReaderBase {
+};
+
+template<int wordsize,
+         class INTEGER=typename WordTraits<wordsize>::INTEGER,
+         class REAL=typename WordTraits<wordsize>::REAL>
+class Dyna3DReader: public Dyna3DReaderBase
+{
+public:
+    typedef typename WordTraits<wordsize>::WORD WORD;
+
     enum // maximum part ID
     {
         MAXID = 200000,
@@ -84,22 +147,15 @@ public:
 private:
     struct
     {
-        int itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, irl, iwpr, adaptation;
-        float tau[512];
-        int taulength;
+        INTEGER itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, irl, iwpr, adaptation;
+        REAL tau[512];
+        INTEGER taulength;
         char adapt[3];
 
     } tauio_;
 
     //  member functions
-    void byteswap(unsigned int *buffer, int length);
-
-    bool prepareRead() override;
-    bool read(Token &token, int timestep=-1, int block=-1) override;
-    bool examine(const vistle::Parameter *param) override;
-#if 0
-    bool finishRead() override;
-#endif
+    void byteswap(WORD *buffer, size_t length);
 
 
     char ciform[9];
@@ -119,22 +175,22 @@ private:
     int State = 1;
 
     // More "old" global variables
-    int IDLISTE[MAXID];
-    int *numcoo=nullptr, *numcon=nullptr, *numelem=nullptr;
+    INTEGER IDLISTE[MAXID];
+    INTEGER *numcoo=nullptr, *numcon=nullptr, *numelem=nullptr;
 
     // Another block of "old" global variables
-    int *maxSolid = nullptr;
-    int *minSolid = nullptr;
-    int *maxTShell = nullptr;
-    int *minTShell = nullptr;
-    int *maxShell = nullptr;
-    int *minShell = nullptr;
-    int *maxBeam = nullptr;
-    int *minBeam = nullptr;
+    INTEGER *maxSolid = nullptr;
+    INTEGER *minSolid = nullptr;
+    INTEGER *maxTShell = nullptr;
+    INTEGER *minTShell = nullptr;
+    INTEGER *maxShell = nullptr;
+    INTEGER *minShell = nullptr;
+    INTEGER *maxBeam = nullptr;
+    INTEGER *minBeam = nullptr;
 
     // More and more blocks of "old" global variables to be initialised to 0
-    int *delElem = nullptr;
-    int *delCon = nullptr;
+    INTEGER *delElem = nullptr;
+    INTEGER *delCon = nullptr;
 
     Element **solidTab = nullptr;
     Element **tshellTab = nullptr;
@@ -142,14 +198,14 @@ private:
     Element **beamTab = nullptr;
 
     // storing coordinate positions for all time steps
-    int **coordLookup = nullptr;
+    INTEGER **coordLookup = nullptr;
 
     // element and connection list for time steps (considering the deletion table)
-    int **My_elemList = nullptr;
-    int **conList = nullptr;
+    INTEGER **My_elemList = nullptr;
+    INTEGER **conList = nullptr;
 
     // node/element deletion table
-    int *DelTab = nullptr;
+    INTEGER *DelTab = nullptr;
 
     vistle::UnstructuredGrid::const_ptr grid_out; //    = NULL;
     vistle::Vec<vistle::Scalar,3>::const_ptr Vertex_out; //  = NULL;
@@ -172,7 +228,7 @@ private:
 
     // Yes, certainly! More "old" global variables!
     int infile = -1;
-    int numcoord;
+    INTEGER numcoord;
     int *NodeIds; //=NULL;
     int *SolidNodes; //=NULL;
     int *SolidMatIds; //=NULL;
@@ -190,14 +246,14 @@ private:
 
     /* Common Block Declarations */
     // Coordinates
-    float *Coord; //= NULL;
+    REAL *Coord; //= NULL;
     // displaced coordinates
-    float *DisCo; //= NULL;
-    float *NodeData; //= NULL;
-    float *SolidData; //= NULL;
-    float *TShellData; //= NULL;
-    float *ShellData; //= NULL;
-    float *BeamData; //= NULL;
+    REAL *DisCo; //= NULL;
+    REAL *NodeData; //= NULL;
+    REAL *SolidData; //= NULL;
+    REAL *TShellData; //= NULL;
+    REAL *ShellData; //= NULL;
+    REAL *BeamData; //= NULL;
 
     // A gigantic block of "old" global variables
     char CTauin[300];
@@ -329,4 +385,5 @@ public:
     ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm);
     ~ReadDyna3D() override;
 };
+#endif
 #endif // _READDYNA3D_H

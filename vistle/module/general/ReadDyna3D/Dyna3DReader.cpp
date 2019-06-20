@@ -32,9 +32,23 @@
 #include <fcntl.h>
 #endif
 
-#include "ReadDyna3D.h"
-#include <util/coviseCompat.h>
+#include "Dyna3DReader.h"
+#include <util/byteswap.h>
+#include <core/unstr.h>
+#include <iostream>
+#include <util/filesystem.h>
 
+namespace fs = vistle::filesystem;
+using namespace vistle;
+
+#ifdef _WIN32
+const int OpenFlags = O_RDONLY | O_BINARY;
+#else
+const int OpenFlags = O_RDONLY;
+#endif
+
+
+#if 0
 #define tauio_1 tauio_
 
 //-------------------------------------------------------------------------
@@ -43,6 +57,7 @@ static const char *colornames[10] = {
     "violet", "chocolat", "linen", "white",
     "crimson", "LightGoldenrod"
 };
+#endif
 /*
 // GLOBAL VARIABLES
 char InfoBuf[1000];
@@ -58,15 +73,6 @@ int State    = 1;
 
 int IDLISTE[MAXID];
 int *numcoo, *numcon, *numelem;
-
-int *maxSolid  = NULL;
-int *minSolid  = NULL;
-int *maxTShell = NULL;
-int *minTShell = NULL;
-int *maxShell  = NULL;
-int *minShell  = NULL;
-int *maxBeam   = NULL;
-int *minBeam   = NULL;
 
 int *delElem = NULL;
 int *delCon  = NULL;
@@ -190,95 +196,46 @@ static int c__10 = 10;
 static int c__16 = 16;
 */
 
-//
-//
-//..........................................................................
-//
-
 // Constructor
-ReadDyna3D::ReadDyna3D(int argc, char *argv[])
-    : coModule(argc, argv, "Read LS-DYNA3D ptf files")
+template<int wordsize, class INTEGER, class REAL>
+Dyna3DReader<wordsize, INTEGER, REAL>::Dyna3DReader(vistle::Reader *module)
+: Dyna3DReaderBase(module)
 {
-
-    const char *nodalDataType_label[4] = {
-        "None", "Displacements", "Velocities",
-        "Accelerations"
-    };
-    const char *elementDataType_label[4] = { "None", "StressTensor", "PlasticStrain", "Thickness" };
-    const char *component_label[8] = {
-        "Sx", "Sy", "Sz", "Txy", "Tyz", "Txz",
-        "Pressure", "Von Mises"
-    };
-    const char *format_label[2] = { "cadfem", "original" };
-
-    const char *byteswap_label[3] = { "off", "on", "auto" };
-
-    // Output ports
-    p_grid = addOutputPort("out_grid", "UnstructuredGrid", "grid");
-    p_data_1 = addOutputPort("data_1", "Vec3", "output nodal vector data");
-    p_data_2 = addOutputPort("data_2", "Float", "output nodal scalar data");
-
-    // Parameters
-    p_data_path = addFileBrowserParam("data_path", "Geometry file path");
-    p_nodalDataType = addChoiceParam("nodalDataType", "Nodal results data to be read");
-    p_elementDataType = addChoiceParam("elementDataType", "Element results data to be read");
-    p_component = addChoiceParam("component", "stress tensor component");
-    p_Selection = addStringParam("Selection", "Number selection for parts");
-    // p_State = addIntSliderParam("State","Timestep");
-    p_Step = addInt32VectorParam("Min_Num_State", "Time step");
-    p_format = addChoiceParam("format", "Format of LS-DYNA3D ptf-File");
-
-    p_byteswap = addChoiceParam("byteswap", "Perform Byteswapping");
-    p_byteswap->setValue(3, byteswap_label, 2);
-    byteswapFlag = BYTESWAP_OFF;
-
-    p_only_geometry = addBooleanParam("OnlyGeometry", "Reading only Geometry? yes|no");
-
-    // Default setting
-    // p_data_path->setValue("/common/kaiper/d3plot","*");
-    p_data_path->setValue("/data/general/examples/Dyna3d/aplot", "*");
-    p_nodalDataType->setValue(4, nodalDataType_label, 0);
-    p_elementDataType->setValue(4, elementDataType_label, 0);
-    p_component->setValue(8, component_label, 7);
-    p_Selection->setValue("0-9999999");
-    // p_State->setValue(1,1,1);
-    // p_Step->setValue(1,1,1);
-    long init_Step[2] = { 1, 0 };
-    p_Step->setValue(2, init_Step);
-    p_format->setValue(2, format_label, 1);
-    p_only_geometry->setValue(0);
+    m_wordsize = wordsize;
+    postInst();
 }
 
-void ReadDyna3D::postInst()
+template<int wordsize, class INTEGER, class REAL>
+Dyna3DReader<wordsize, INTEGER, REAL>::~Dyna3DReader() {
+
+    if (infile >= 0)
+        close(infile);
+    infile = -1;
+
+    deleteStateData();
+
+    deleteElementLUT();
+}
+
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::postInst()
 {
-
-    p_nodalDataType->show();
-    p_elementDataType->show();
-    p_Step->show();
-
     ExistingStates = 0;
     MinState = 1;
-    MaxState = 1;
-    NumState = 0;
-    State = 1;
-
-    maxSolid = 0;
-    minSolid = 0;
-    maxTShell = 0;
-    minTShell = 0;
-    maxShell = 0;
-    minShell = 0;
-    maxBeam = 0;
-    minBeam = 0;
+    State = 100;
 
     delElem = delCon = 0;
-    solidTab = tshellTab = shellTab = beamTab = 0;
+    solidTab.clear();
+    tshellTab.clear();
+    shellTab.clear();
+    beamTab.clear();
 
     coordLookup = 0;
 
     My_elemList = conList = 0;
     DelTab = 0;
 
+#if 0
     grid_out = 0;
     Vertex_out = 0;
     Scalar_out = 0;
@@ -286,6 +243,7 @@ void ReadDyna3D::postInst()
     grids_out = 0;
     Vertexs_out = 0;
     Scalars_out = 0;
+#endif
 
     NodeIds = SolidNodes = SolidMatIds = BeamNodes = BeamMatIds = 0;
     ShellNodes = ShellMatIds = TShellNodes = TShellMatIds = 0;
@@ -340,7 +298,8 @@ void ReadDyna3D::postInst()
     numcoo = NULL;
 }
 
-int ReadDyna3D::compute(const char *)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
 {
     //
     // ...... do work here ........
@@ -352,27 +311,20 @@ int ReadDyna3D::compute(const char *)
 
     ExistingStates = 0;
     MinState = 1;
-    MaxState = 1;
-    NumState = 0;
-    State = 1;
-
-    maxSolid = 0;
-    minSolid = 0;
-    maxTShell = 0;
-    minTShell = 0;
-    maxShell = 0;
-    minShell = 0;
-    maxBeam = 0;
-    minBeam = 0;
+    State = 100;
 
     delElem = delCon = 0;
-    solidTab = tshellTab = shellTab = beamTab = 0;
+    solidTab.clear();
+    tshellTab.clear();
+    shellTab.clear();
+    beamTab.clear();
 
     coordLookup = 0;
 
     My_elemList = conList = 0;
     DelTab = 0;
 
+#if 0
     grid_out = 0;
     Vertex_out = 0;
     Scalar_out = 0;
@@ -380,6 +332,7 @@ int ReadDyna3D::compute(const char *)
     grids_out = 0;
     Vertexs_out = 0;
     Scalars_out = 0;
+#endif
 
     NodeIds = SolidNodes = SolidMatIds = BeamNodes = BeamMatIds = 0;
     ShellNodes = ShellMatIds = TShellNodes = TShellMatIds = 0;
@@ -429,9 +382,24 @@ int ReadDyna3D::compute(const char *)
     c__10 = 10;
     c__16 = 16;
 
-    int i;
-    coRestraint sel;
+    if (byteswapFlag == BYTESWAP_OFF)
+    {
+        std::cerr << "Dyna3DReader::readDyna3D info: byteswap off" << std::endl;
+    }
+    else if (byteswapFlag == BYTESWAP_ON)
+    {
+        std::cerr << "Dyna3DReader::readDyna3D info: byteswap on" << std::endl;
+    }
+    else if (byteswapFlag == BYTESWAP_AUTO)
+    {
+        std::cerr << "Dyna3DReader::readDyna3D info: byteswap auto" << std::endl;
+    }
+    else
+    {
+        std::cerr << "Dyna3DReader::readDyna3D info: byteswap unknown error" << std::endl;
+    }
 
+#if 0
     //=======================================================================
     // get input parameters and data object name
 
@@ -448,28 +416,15 @@ int ReadDyna3D::compute(const char *)
     // Covise::get_choice_param("component",&component);
     component = p_component->getValue();
 
-    byteswapFlag = p_byteswap->getValue();
-    if (byteswapFlag == BYTESWAP_OFF)
-    {
-        cerr << "ReadDyna3D::readDyna3D info: byteswap off" << endl;
-    }
-    else if (byteswapFlag == BYTESWAP_ON)
-    {
-        cerr << "ReadDyna3D::readDyna3D info: byteswap on" << endl;
-    }
-    else if (byteswapFlag == BYTESWAP_AUTO)
-    {
-        cerr << "ReadDyna3D::readDyna3D info: byteswap auto" << endl;
-    }
-    else
-    {
-        cerr << "ReadDyna3D::readDyna3D info: byteswap unknown error" << endl;
-    }
-
     // Get the selection
     const char *selection;
     // Covise::get_string_param("Selection",&selection);
     selection = p_Selection->getValue();
+    sel.add(selection);
+#endif
+
+    int i;
+    coRestraint sel;
     sel.add(selection);
 
     // Initilize list of part IDs
@@ -487,17 +442,22 @@ int ReadDyna3D::compute(const char *)
     }
     if (numParts == 0)
     {
-        sendError("No parts with selected IDs");
-        return STOP_PIPELINE;
+#ifdef SENDINFO
+        m_module->sendError("No parts with selected IDs");
+#endif
+        return false;
     }
 
+#if 0
     // Get timesteps
     // Covise::get_slider_param("State", &MinState, &MaxState, &State);
     //p_Step->getValue(MinState,MaxState,State);
     MinState = p_Step->getValue(0);
     if (MinState <= 0)
     {
-        sendWarning("Minimum time step must be positive!!");
+#ifdef SENDINFO
+        m_module->sendWarning("Minimum time step must be positive!!");
+#endif
         p_Step->setValue(0, 1);
         MinState = 1;
     }
@@ -543,37 +503,19 @@ int ReadDyna3D::compute(const char *)
     }
 
     //=======================================================================
-
-    readDyna3D();
-
-    return CONTINUE_PIPELINE;
-}
-
-int nrelem; // number of rigid body shell elements
-int nmmat; // number of materials in the database
-int *matTyp = NULL;
-int *MaterialTables = NULL;
-
-int ReadDyna3D::readDyna3D()
-{
+#endif
 
     /* Local variables */
     char buf[256];
-    enum // format of cadfem
-    {
-        GERMAN = 0,
-        US // format used by ARUP
-    };
-    int format;
-    static int istate;
-    int i;
 
-    for (i = 0; i < MAXTIMESTEPS; i++)
+#if 0
+    for (INTEGER i = 0; i < MAXTIMESTEPS; i++)
     {
         grid_sets_out[i] = NULL;
         Vertex_sets_out[i] = NULL;
         Scalar_sets_out[i] = NULL;
     }
+#endif
     NodeIds = NULL;
     SolidNodes = NULL;
     SolidMatIds = NULL;
@@ -588,52 +530,30 @@ int ReadDyna3D::readDyna3D()
     ShellElemNumbers = NULL;
     TShellElemNumbers = NULL;
     Materials = NULL;
+#if 0
     Vertex_timesteps = NULL;
     Scalar_timesteps = NULL;
+#endif
 
     /* initialize TAURUS access */
     taurusinit_();
 
+#if 0
     // Covise::get_choice_param("format", &format);
     format = p_format->getValue();
-
-    switch (format)
-    {
-
-    case GERMAN:
-        strncpy(ciform, "cadfem  ", 9L);
-        cerr << "ReadDyna3D::readDyna3D info: selecting format " << ciform
-             << endl;
-        break;
-
-    case US:
-        strncpy(ciform, "original", 9L);
-        cerr << "ReadDyna3D::readDyna3D info: selecting format " << ciform
-             << endl;
-        break;
-
-    default:
-        sprintf(buf, "ERROR: Incorrect file format selected");
-        sendError("%s", buf);
-        cerr << "ReadDyna3D::readDyna3D " << buf << endl;
-        break;
-    };
+#endif
 
     /* read TAURUS control data */
-    rdtaucntrl_(ciform);
+    rdtaucntrl_(format);
 
     /* read TAURUS node coordinates */
     rdtaucoor_();
 
     /* read TAURUS elements */
-    rdtauelem_(ciform);
+    rdtauelem_(format);
 
     /* read user node and element numbers */
-    rdtaunum_(ciform);
-    /* TAURUS geometry length (number of words) */
-    taugeoml_();
-    /* TAURUS state length (number of words) */
-    taustatl_();
+    rdtaunum_(format);
 
     // initialize
     ExistingStates = 0;
@@ -641,118 +561,171 @@ int ReadDyna3D::readDyna3D()
     createElementLUT();
     createGeometryList();
 
-    // Only geometry?
-    if (!key)
+    return 0;
+}
+
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::readState(vistle::Reader::Token &token, int istate, int block)
+{
+    if (CTrace == 'Y')
     {
+        fprintf(stderr, "* test existence of state: %6d\n", istate);
+    }
 
-        /******************/
-        /* Read Timesteps */
-        /******************/
-        for (istate = 1; istate < MAXTIMESTEPS; ++istate)
-        {
-            int flag;
-            if (CTrace == 'Y')
-            {
-                fprintf(stderr, "* test existence of state: %6d\n", istate);
-            }
+#if 0
+    // only reading when lying in timestep interval
+    if ((istate >= MinState) && (istate <= State))
+    {
+#endif
+        int flag = rdstate_(token, istate, block);
+        //	  std::cerr << "Dyna3DReader::readDyna3D() istate : " << istate << " flag: " << flag <<  std::endl;
+        if (flag == -1)
+            return (-1);
 
-            // only reading when lying in timestep interval
-            if ((istate >= MinState) && (istate <= State))
-            {
-                flag = rdstate_(&istate);
-                //	  cerr << "ReadDyna3D::readDyna3D() istate : " << istate << " flag: " << flag <<  endl;
-                if (flag == -1)
-                    return (-1);
-
-                if (CEndin == 'N')
-                {
-                    ExistingStates++;
-                    fprintf(stderr, "* read state: %2d   time: %12.6f\n", istate, TimestepTime);
-                }
-            }
-            else
-            {
-                // open next file (!! Assume: number of files and time steps correspond !!)
-                otaurusr_();
-                if (CEndin == 'N')
-                    ExistingStates++;
-                else
-                    break;
-            }
-        }
-        // mark end of set array
-        grid_sets_out[(State - MinState) + 1] = NULL;
-        Vertex_sets_out[(State - MinState) + 1] = NULL;
-        Scalar_sets_out[(State - MinState) + 1] = NULL;
-
-        grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
-        sprintf(buf, "%d %d", MinState, State);
-        grid_timesteps->addAttribute("TIMESTEP", buf);
-        p_grid->setCurrentObject(grid_timesteps);
-
-        if (nodalDataType > 0)
-        {
-            Vertex_timesteps = new coDoSet(Vertex, (coDistributedObject **)(void *)Vertex_sets_out);
-            Vertex_timesteps->addAttribute("TIMESTEP", buf);
-            p_data_1->setCurrentObject(Vertex_timesteps);
-        }
-
-        if (elementDataType > 0)
-        {
-            Scalar_timesteps = new coDoSet(Scalar, (coDistributedObject **)(void *)Scalar_sets_out);
-            Scalar_timesteps->addAttribute("TIMESTEP", buf);
-            p_data_2->setCurrentObject(Scalar_timesteps);
-        }
-
-        // update timestep slider
-        if (MaxState > (ExistingStates + 1))
-        {
-            MaxState = ExistingStates + 1;
-            // Covise::update_slider_param("State",1,State,MaxState);
-            // p_State->setValue(1,State,MaxState);
-            // p_Step->setValue(MinState,State,MaxState);
-            p_Step->setValue(0, MinState);
-            p_Step->setValue(1, State - MinState);
-            MaxState = State;
-            NumState = State - MinState;
-        }
-        if (State > MaxState)
-        {
-            State = MaxState;
-            // Covise::update_slider_param("State",1,State,MaxState);
-            // p_State->setValue(1,State,MaxState);
-            // p_Step->setValue(MinState,State,MaxState);
-            p_Step->setValue(0, MinState);
-            p_Step->setValue(1, State - MinState);
-            MaxState = State - MinState;
-        }
-
-        // free
-        for (i = 0; i < State - MinState + 1; i++)
-        {
-            delete grid_sets_out[i];
-            delete Vertex_sets_out[i];
-            delete Scalar_sets_out[i];
-
-            grid_sets_out[i] = NULL;
-            Vertex_sets_out[i] = NULL;
-            Scalar_sets_out[i] = NULL;
-        }
+#if 0
     }
     else
     {
-        createGeometry();
-        grid_sets_out[0] = grid_set_out;
-        grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
+        // open next file (!! Assume: number of files and time steps correspond !!)
+        if (otaurusr_() < 0)
+            return -1;
+        if (CEndin == 'N')
+            ExistingStates++;
+        else
+            return 0;
+    }
+#endif
+#if 0
+    // mark end of set array
+    grid_sets_out[(State - MinState) + 1] = NULL;
+    Vertex_sets_out[(State - MinState) + 1] = NULL;
+    Scalar_sets_out[(State - MinState) + 1] = NULL;
 
-        // free
-        delete grid_sets_out[0];
-        grid_sets_out[0] = NULL;
+    grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
+    sprintf(buf, "%d %d", MinState, State);
+    grid_timesteps->addAttribute("TIMESTEP", buf);
+    p_grid->setCurrentObject(grid_timesteps);
+
+    if (nodalDataType > 0)
+    {
+        Vertex_timesteps = new coDoSet(Vertex, (coDistributedObject **)(void *)Vertex_sets_out);
+        Vertex_timesteps->addAttribute("TIMESTEP", buf);
+        p_data_1->setCurrentObject(Vertex_timesteps);
     }
 
+    if (elementDataType > 0)
+    {
+        Scalar_timesteps = new coDoSet(Scalar, (coDistributedObject **)(void *)Scalar_sets_out);
+        Scalar_timesteps->addAttribute("TIMESTEP", buf);
+        p_data_2->setCurrentObject(Scalar_timesteps);
+    }
+
+    // update timestep slider
+    if (MaxState > (ExistingStates + 1))
+    {
+        MaxState = ExistingStates + 1;
+        // Covise::update_slider_param("State",1,State,MaxState);
+        // p_State->setValue(1,State,MaxState);
+        // p_Step->setValue(MinState,State,MaxState);
+        p_Step->setValue(0, MinState);
+        p_Step->setValue(1, State - MinState);
+        MaxState = State;
+        NumState = State - MinState;
+    }
+    if (State > MaxState)
+    {
+        State = MaxState;
+        // Covise::update_slider_param("State",1,State,MaxState);
+        // p_State->setValue(1,State,MaxState);
+        // p_Step->setValue(MinState,State,MaxState);
+        p_Step->setValue(0, MinState);
+        p_Step->setValue(1, State - MinState);
+        MaxState = State - MinState;
+    }
+
+    // free
+    for (i = 0; i < State - MinState + 1; i++)
+    {
+        delete grid_sets_out[i];
+        delete Vertex_sets_out[i];
+        delete Scalar_sets_out[i];
+
+        grid_sets_out[i] = NULL;
+        Vertex_sets_out[i] = NULL;
+        Scalar_sets_out[i] = NULL;
+    }
+#endif
+
+    return 0;
+}
+
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::readOnlyGeo(Reader::Token &token, int blockToRead)
+{
+    std::cerr  << "Dyna3DReader::readOnlyGeo(block=" << blockToRead << ")" << std::endl;
+    createGeometry(token, blockToRead);
+#if 0
+    grid_sets_out[0] = grid_set_out;
+    grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
+
+    // free
+    delete grid_sets_out[0];
+    grid_sets_out[0] = NULL;
+#endif
+
+    return 0;
+}
+
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::readFinish()
+{
+    m_currentTimestep = -1;
+
+    deleteElementLUT();
+
+    deleteStateData();
+
+    delete[] Coord;
+    Coord = nullptr;
+    delete[] NodeIds;
+    NodeIds = nullptr;
+    delete[] SolidNodes;
+    SolidNodes = nullptr;
+    delete[] SolidMatIds;
+    SolidMatIds = nullptr;
+    delete[] BeamNodes;
+    BeamNodes = nullptr;
+    delete[] BeamMatIds;
+    BeamMatIds = nullptr;
+    delete[] ShellNodes;
+    ShellNodes = nullptr;
+    delete[] ShellMatIds;
+    ShellMatIds = nullptr;
+    delete[] TShellNodes;
+    TShellNodes = nullptr;
+    delete[] TShellMatIds;
+    TShellMatIds = nullptr;
+    delete[] Materials;
+    Materials = nullptr;
+
+    delete[] SolidElemNumbers;
+    SolidElemNumbers = nullptr;
+    delete[] BeamElemNumbers;
+    BeamElemNumbers = nullptr;
+    delete[] ShellElemNumbers;
+    ShellElemNumbers = nullptr;
+    delete[] TShellElemNumbers;
+    TShellElemNumbers = nullptr;
+
+    delete[] matTyp;
+    matTyp = nullptr;
+    delete[] MaterialTables;
+    MaterialTables = nullptr;
+
+#if 0
     //free
     //
-    for (i = 0; i < NumIDs; i++)
+    for (INTEGER i = 0; i < NumIDs; i++)
     {
         delete[] My_elemList[i];
         delete[] conList[i];
@@ -766,27 +739,25 @@ int ReadDyna3D::readDyna3D()
     delete[] numelem;
     delete[] numcoo;
 
-    for (i = 0; i < NumSolidElements; i++)
+    for (INTEGER i = 0; i < NumSolidElements; i++)
         delete solidTab[i];
     delete[] solidTab;
-    for (i = 0; i < NumTShellElements; i++)
+    solidTab = nullptr;
+
+    for (INTEGER i = 0; i < NumTShellElements; i++)
         delete tshellTab[i];
     delete[] tshellTab;
-    for (i = 0; i < NumShellElements; i++)
+    tshellTab = nullptr;
+
+    for (INTEGER i = 0; i < NumShellElements; i++)
         delete shellTab[i];
     delete[] shellTab;
-    for (i = 0; i < NumBeamElements; i++)
+    shellTab = nullptr;
+
+    for (INTEGER i = 0; i < NumBeamElements; i++)
         delete beamTab[i];
     delete[] beamTab;
-
-    delete[] maxSolid;
-    delete[] minSolid;
-    delete[] maxTShell;
-    delete[] minTShell;
-    delete[] maxShell;
-    delete[] minShell;
-    delete[] maxBeam;
-    delete[] minBeam;
+    beamTab = nullptr;
 
     delete[] delElem;
     delete[] delCon;
@@ -816,13 +787,15 @@ int ReadDyna3D::readDyna3D()
     delete[] MaterialTables;
     matTyp = NULL;
     MaterialTables = NULL;
+#endif
 
     return (0);
 
 } /* readDyna3D() */
 
 /* Subroutine */
-int ReadDyna3D::taurusinit_()
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::taurusinit_()
 {
     /* Local variables */
 
@@ -847,11 +820,11 @@ int ReadDyna3D::taurusinit_()
     //CTrace = 'Y';
     CTrace = 'N';
 
-    tauio_1.irl = 512;
+    //tauio_1.irl = 512;
     /* g77 IRL     = 128 */
     /* iris IRL     = 512 */
 
-    tauio_1.iwpr = tauio_1.irl;
+    //tauio_1.iwpr = tauio_1.irl;
     /* g77 IWPR    = IRL * 4 */
     /* iris IWPR    = IRL */
 
@@ -859,12 +832,13 @@ int ReadDyna3D::taurusinit_()
 } /* taurusinit_ */
 
 /* Subroutine */
-int ReadDyna3D::rdtaucntrl_(char *ciform)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(FORMAT format)
 {
     /* Local variables */
-    static int izioshl1, izioshl2, izioshl3, izioshl4, idum[20], iznumelb,
+    int izioshl1, izioshl2, izioshl3, izioshl4, idum[20], iznumelb,
         iznumelh, izmaxint, iznumels, iznumelt;
-    static int izndim, iziaflg, iznmatb, izneiph, izitflg, iziuflg,
+    int izndim, iziaflg, iznmatb, izneiph, izitflg, iziuflg,
         izivflg, iznglbv, iznmath, iznvarb, iznarbs, iznvarh, izneips,
         iznmats, iznmatt, iznvars, iznvart;
 
@@ -873,7 +847,8 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----*/
 
     int iznver = 15;
-    rdrecr_(&version, &iznver, &c__1);
+    if (rdrecr_(&version, &iznver, 1) < 0)
+        return -1;
 
     // Dumb auto detection. Checks if the version number of LSDYNA
     // has a sensible value. CAN FAIL!
@@ -881,99 +856,106 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     if ((byteswapFlag == BYTESWAP_AUTO) && ((version < 1) || (version > 10000)))
     {
 
-        cerr << "ReadDyna3D::rdtaucntrl_ info: autobyteswap: "
+        std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: "
              << "asuming byteswap on (" << version << ")"
-             << endl;
+             << std::endl;
 
         byteswapFlag = BYTESWAP_ON;
         unsigned int *buffer = (unsigned int *)(void *)(tauio_1.tau);
         byteswap(buffer, tauio_1.taulength);
 
-        rdrecr_(&version, &iznver, &c__1);
+        if (rdrecr_(&version, &iznver, 1) < 0)
+            return -1;
     }
     else if (byteswapFlag == BYTESWAP_AUTO)
     {
-        cerr << "ReadDyna3D::rdtaucntrl_ info: autobyteswap: asuming byteswap off"
-             << endl;
+        std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: asuming byteswap off"
+             << std::endl;
         byteswapFlag = BYTESWAP_OFF;
     }
 
     /* number of dimensions */
     izndim = 16;
-    rdreci_(&NumDim, &izndim, &c__1, ciform);
+    if (rdreci_(&NumDim, &izndim, &c__1, format) < -1)
+        return -1;
     if (NumDim == 4)
     {
         NumDim = 3;
     }
+    else if (NumDim > 4)
+    {
+        std::cerr << "Dyna3DReader::rdtaucntrl_ info: unhandled NumDim=" << NumDim
+             << std::endl;
+    }
 
     /* number of nodal points */
     NumNodalPoints = 17;
-    rdreci_(&numcoord, &NumNodalPoints, &c__1, ciform);
+    rdreci_(&numcoord, &NumNodalPoints, &c__1, format);
     /* number of global variable */
     iznglbv = 19;
-    rdreci_(&NumGlobVar, &iznglbv, &c__1, ciform);
+    rdreci_(&NumGlobVar, &iznglbv, &c__1, format);
     /* flags */
     /*   flag for temp./node varb */
     izitflg = 20;
-    rdreci_(&ITFlag, &izitflg, &c__1, ciform);
+    rdreci_(&ITFlag, &izitflg, &c__1, format);
     /*   flag for geometry */
     iziuflg = 21;
-    rdreci_(&IUFlag, &iziuflg, &c__1, ciform);
+    rdreci_(&IUFlag, &iziuflg, &c__1, format);
     /*   flag for velocities */
     izivflg = 22;
-    rdreci_(&IVFlag, &izivflg, &c__1, ciform);
+    rdreci_(&IVFlag, &izivflg, &c__1, format);
     /*   flag for accelerations */
     iziaflg = 23;
-    rdreci_(&IAFlag, &iziaflg, &c__1, ciform);
+    rdreci_(&IAFlag, &iziaflg, &c__1, format);
 
     /* solid elements */
     /*   number of solid elements */
     iznumelh = 24;
-    rdreci_(&NumSolidElements, &iznumelh, &c__1, ciform);
+    rdreci_(&NumSolidElements, &iznumelh, &c__1, format);
     /*   number of solid element materials */
     iznmath = 25;
-    rdreci_(&NumSolidMat, &iznmath, &c__1, ciform);
+    rdreci_(&NumSolidMat, &iznmath, &c__1, format);
 
     /*   number of variables in database for each brick element */
     iznvarh = 28;
-    rdreci_(&NumSolidVar, &iznvarh, &c__1, ciform);
-    //cerr << "NVARH: " << NumSolidVar << endl;
+    rdreci_(&NumSolidVar, &iznvarh, &c__1, format);
+    //std::cerr << "NVARH: " << NumSolidVar << std::endl;
 
     /* beam elements */
     /*   number of beam elements */
     iznumelb = 29;
-    rdreci_(&NumBeamElements, &iznumelb, &c__1, ciform);
+    rdreci_(&NumBeamElements, &iznumelb, &c__1, format);
     /*   number of beam element materials */
     iznmatb = 30;
-    rdreci_(&NumBeamMat, &iznmatb, &c__1, ciform);
+    rdreci_(&NumBeamMat, &iznmatb, &c__1, format);
 
     /*   number of variables in database for each 1D element */
     iznvarb = 31;
-    rdreci_(&NumBeamVar, &iznvarb, &c__1, ciform);
-    //cerr << "NVARB: " << NumBeamVar << endl;
+    rdreci_(&NumBeamVar, &iznvarb, &c__1, format);
+    //std::cerr << "NVARB: " << NumBeamVar << std::endl;
 
     /* shell elements */
     /*   number of shell elements */
     iznumels = 32;
-    rdreci_(&NumShellElements, &iznumels, &c__1, ciform);
+    rdreci_(&NumShellElements, &iznumels, &c__1, format);
     /*   number of shell element materials */
     iznmats = 33;
-    rdreci_(&NumShellMat, &iznmats, &c__1, ciform);
+    rdreci_(&NumShellMat, &iznmats, &c__1, format);
 
     /*   number of variables in database for each 4 node shells */
     iznvars = 34;
-    rdreci_(&NumShellVar, &iznvars, &c__1, ciform);
-    //cerr << "NVARS: " << NumShellVar << endl;
+    rdreci_(&NumShellVar, &iznvars, &c__1, format);
+    //std::cerr << "NVARS: " << NumShellVar << std::endl;
     /*   number of additional variables per brick element */
     izneiph = 35;
-    rdreci_(&NumAddSolidVar, &izneiph, &c__1, ciform);
+    rdreci_(&NumAddSolidVar, &izneiph, &c__1, format);
     /*   number of additional variables at shell integration points */
     izneips = 36;
-    rdreci_(&NumAddShellVar, &izneips, &c__1, ciform);
+    rdreci_(&NumAddShellVar, &izneips, &c__1, format);
     /*   number of integration points dumped for each shell */
     izmaxint = 37;
-    rdreci_(&NumShellInterpol, &izmaxint, &c__1, ciform);
-    //    cerr << "MAXINT: " << NumShellInterpol << endl;
+    rdreci_(&NumShellInterpol, &izmaxint, &c__1, format);
+    //    std::cerr << "MAXINT: " << NumShellInterpol << std::endl;
     if (NumShellInterpol >= 0)
     {
         MDLOpt = 0;
@@ -999,7 +981,7 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     /* node and element numbering */
     /*     NARBS = 10 + NUMNP + NUMELH + NUMELS + NUMELT */
     iznarbs = 40;
-    rdreci_(&NodeAndElementNumbering, &iznarbs, &c__1, ciform);
+    rdreci_(&NodeAndElementNumbering, &iznarbs, &c__1, format);
 
     //For Dyna3D we have an additional offset
     int offset = 0;
@@ -1013,26 +995,26 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     /* thick shell elements */
     /*   number of thick shell elements */
     iznumelt = 41 + offset;
-    rdreci_(&NumTShellElements, &iznumelt, &c__1, ciform);
+    rdreci_(&NumTShellElements, &iznumelt, &c__1, format);
     /*   number of thick shell thick shell materials */
     iznmatt = 42 + offset;
-    rdreci_(&NumTShellMat, &iznmatt, &c__1, ciform);
+    rdreci_(&NumTShellMat, &iznmatt, &c__1, format);
     /*   number of variables in database for each thick shell element */
     iznvart = 43 + offset;
-    rdreci_(&NumTShellVar, &iznvart, &c__1, ciform);
-    //cerr << "NVART: " << NumTShellVar << endl;
+    rdreci_(&NumTShellVar, &iznvart, &c__1, format);
+    //std::cerr << "NVART: " << NumTShellVar << std::endl;
     /*   Symmetric stress tensor written flag (1000 = yes) */
     izioshl1 = 44 + offset;
-    rdreci_(SomeFlags, &izioshl1, &c__1, ciform);
+    rdreci_(SomeFlags, &izioshl1, &c__1, format);
     /*   Plastic strain written flag          (1000 = yes) */
     izioshl2 = 45 + offset;
-    rdreci_(&SomeFlags[1], &izioshl2, &c__1, ciform);
+    rdreci_(&SomeFlags[1], &izioshl2, &c__1, format);
     /*   Shell force resultants written flag  (1000 = yes) */
     izioshl3 = 46 + offset;
-    rdreci_(&SomeFlags[2], &izioshl3, &c__1, ciform);
+    rdreci_(&SomeFlags[2], &izioshl3, &c__1, format);
     /*   Shell thickness, energy + 2 others   (1000 = yes) */
     izioshl4 = 47 + offset;
-    rdreci_(&SomeFlags[3], &izioshl4, &c__1, ciform);
+    rdreci_(&SomeFlags[3], &izioshl4, &c__1, format);
     if (SomeFlags[0] > 0)
     {
         SomeFlags[0] = 1;
@@ -1051,21 +1033,21 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     }
     int position;
     position = 48 + offset;
-    rdreci_(&NumFluidMat, &position, &c__1, ciform);
+    rdreci_(&NumFluidMat, &position, &c__1, format);
     position = 49 + offset;
-    rdreci_(&NCFDV1, &position, &c__1, ciform);
+    rdreci_(&NCFDV1, &position, &c__1, format);
     position = 50 + offset;
-    rdreci_(&NCFDV2, &position, &c__1, ciform);
+    rdreci_(&NCFDV2, &position, &c__1, format);
     position = 51 + offset;
-    rdreci_(&NADAPT, &position, &c__1, ciform);
+    rdreci_(&NADAPT, &position, &c__1, format);
     position = 57 + offset;
-    rdreci_(&IDTDTFlag, &position, &c__1, ciform);
+    rdreci_(&IDTDTFlag, &position, &c__1, format);
 
     /*
-   cerr << "IOSHL(1): " << SomeFlags[0] << endl;
-   cerr << "IOSHL(2): " << SomeFlags[1] << endl;
-   cerr << "IOSHL(3): " << SomeFlags[2] << endl;
-   cerr << "IOSHL(4): " << SomeFlags[3] << endl;
+   std::cerr << "IOSHL(1): " << SomeFlags[0] << std::endl;
+   std::cerr << "IOSHL(2): " << SomeFlags[1] << std::endl;
+   std::cerr << "IOSHL(3): " << SomeFlags[2] << std::endl;
+   std::cerr << "IOSHL(4): " << SomeFlags[3] << std::endl;
    */
 
     ctrlLen_ = 64;
@@ -1074,12 +1056,12 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
         ctrlLen_ += 2;
         int off_nrlelem = 65;
         int off_nmmat = off_nrlelem + 1;
-        rdreci_(&nrelem, &off_nrlelem, &c__1, ciform);
-        rdreci_(&nmmat, &off_nmmat, &c__1, ciform);
+        rdreci_(&nrelem, &off_nrlelem, &c__1, format);
+        rdreci_(&nmmat, &off_nmmat, &c__1, format);
         ctrlLen_ += nmmat;
         matTyp = new int[nmmat];
         int off_listMatTyp = off_nmmat + 1;
-        rdreci_(matTyp, &off_listMatTyp, &nmmat, ciform);
+        rdreci_(matTyp, &off_listMatTyp, &nmmat, format);
     }
 
     if (NumInterpol > 3)
@@ -1113,23 +1095,23 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     NumMaterials = 0;
     if (NodeAndElementNumbering > 0)
     {
-        rdreci_(&NodeSort, &IZArb, &c__1, ciform);
+        rdreci_(&NodeSort, &IZArb, &c__1, format);
         if (NodeSort >= 0)
         {
             IZStat0 = IZArb + 10 + numcoord + NumSolidElements + NumBeamElements + NumShellElements + NumTShellElements;
         }
         else
         {
-            rdreci_(idum, &c__0, &c__13, ciform);
-            rdreci_(&NumBRS, &c__0, &c__1, ciform);
-            rdreci_(&NumMaterials, &c__0, &c__1, ciform);
+            rdreci_(idum, &c__0, &c__13, format);
+            rdreci_(&NumBRS, &c__0, &c__1, format);
+            rdreci_(&NumMaterials, &c__0, &c__1, format);
             IZStat0 = IZArb + 16 + numcoord + NumSolidElements + NumBeamElements + NumShellElements + NumTShellElements + NumMaterials * 3;
             // @@@ take a look at material tables
             /*
                      int matLength = NumMaterials * 3;
                      MaterialTables = new int[matLength];
                      int IZ_MatTables = IZStat0 - matLength;
-                     rdreci_(MaterialTables,&IZ_MatTables,&matLength,ciform);
+                     rdreci_(MaterialTables,&IZ_MatTables,&matLength,format);
                      delete [] MaterialTables;
          */
         }
@@ -1138,13 +1120,21 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     {
         IZStat0 = IZArb;
     }
+    m_numBlocks = NumMaterials;
 
     /* write control data to output file */
     // not implemented
 
     // Info into mapeditor
-    sendInfo("File '%s': %i nodal points, %i solid elements, %i thick shell elements, %i shell elements, %i beam elements",
-             data_Path, numcoord, NumSolidElements, NumTShellElements, NumShellElements, NumBeamElements);
+#ifdef SENDINFO
+    m_module->sendInfo("File '%s': %i nodal points, %i solid elements, %i thick shell elements, %i shell elements, %i beam elements",
+             m_filename.c_str(), numcoord, NumSolidElements, NumTShellElements, NumShellElements, NumBeamElements);
+#endif
+
+    /* TAURUS geometry length (number of words) */
+    taugeoml_();
+    /* TAURUS state length (number of words) */
+    taustatl_();
 
     fprintf(stderr, "* LSDYNA version                   %g\n", version);
     fprintf(stderr, "* number of dimensions             %d\n", NumDim);
@@ -1183,12 +1173,16 @@ int ReadDyna3D::rdtaucntrl_(char *ciform)
     fprintf(stderr, "* NUMRBE                           %d\n", nrelem);
     fprintf(stderr, "* NUMMAT                           %d\n", nmmat);
 
+    fprintf(stderr, "* number of geometry words         %d\n", NumberOfWords);
+    fprintf(stderr, "* number of state words            %d\n", NumWords);
+
     return 0;
 
 } /* rdtaucntrl_ */
 
 /* Subroutine */
-int ReadDyna3D::taugeoml_()
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::taugeoml_()
 {
     /*------------------------------------------------------------------------------*/
     /*     TAURUS geometry length (number of words) */
@@ -1219,21 +1213,22 @@ int ReadDyna3D::taugeoml_()
 } /* taugeoml_ */
 
 /* Subroutine */
-int ReadDyna3D::taustatl_()
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::taustatl_()
 {
     /* Local variables */
-    static int nwordbe, nwordhe, nwordse, nwordte;
+    int nwordbe, nwordhe, nwordse, nwordte;
 
     /*------------------------------------------------------------------------------*/
     /*     TAURUS state length (number of words) */
     /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----*/
 
-    NumWords = 0;
-
     if (CTrace == 'Y')
     {
         fprintf(stderr, "* INTPNTS = %d\n", NumInterpol);
     }
+
+    NumWords = 0;
     ++NumWords;
     NumWords += NumGlobVar;
     NumWords += numcoord * NumTemperature;
@@ -1288,7 +1283,8 @@ int ReadDyna3D::taustatl_()
 } /* taustatl_ */
 
 /* Subroutine */
-int ReadDyna3D::rdtaucoor_()
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucoor_()
 {
 
     /* Local variables */
@@ -1307,20 +1303,20 @@ int ReadDyna3D::rdtaucoor_()
     Coord = new float[nxcoor];
 
 #ifndef _AIRBUS
-    rdrecr_(Coord, &NumNodalPoints, &nxcoor);
+    rdrecr_(Coord, &NumNodalPoints, nxcoor);
 #else
     if (version != 0.0)
     {
-        rdrecr_(Coord, &NumNodalPoints, &nxcoor);
+        rdrecr_(Coord, &NumNodalPoints, nxcoor);
     }
     else
     {
         NumNodalPoints += 3;
 
-        //rdrecr_(Coord, &NumNodalPoints, &nxcoor);
+        //rdrecr_(Coord, &NumNodalPoints, nxcoor);
         int ic = 78;
 
-        rdrecr_(Coord, &NumNodalPoints, &ic);
+        rdrecr_(Coord, &NumNodalPoints, ic);
 
         float dummy;
         int i;
@@ -1331,7 +1327,7 @@ int ReadDyna3D::rdtaucoor_()
         while (cr < numcoord)
         {
             tauio_1.nrin++;
-            rdrecr_(Coord + cr * 3, &NumNodalPoints, &ic);
+            rdrecr_(Coord + cr * 3, &NumNodalPoints, ic);
             cr += 204;
         }
     }
@@ -1341,7 +1337,8 @@ int ReadDyna3D::rdtaucoor_()
 } /* rdtaucoor_ */
 
 /* Subroutine */
-int ReadDyna3D::rdtauelem_(char *ciform)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtauelem_(FORMAT format)
 {
 
     /* Local variables */
@@ -1365,8 +1362,8 @@ int ReadDyna3D::rdtauelem_(char *ciform)
         SolidMatIds = new int[NumSolidElements];
         for (i = 0; i < NumSolidElements; i++)
         {
-            rdreci_(SolidNodes + (i << 3), &c__0, &c__8, ciform);
-            rdreci_(SolidMatIds + i, &c__0, &c__1, ciform);
+            rdreci_(SolidNodes + (i << 3), &c__0, &c__8, format);
+            rdreci_(SolidMatIds + i, &c__0, &c__1, format);
         }
     }
     /* read thick shell elements */
@@ -1376,8 +1373,8 @@ int ReadDyna3D::rdtauelem_(char *ciform)
         TShellMatIds = new int[NumTShellElements];
         for (i = 0; i < NumTShellElements; i++)
         {
-            rdreci_(TShellNodes + (i << 3), &c__0, &c__8, ciform);
-            rdreci_(TShellMatIds + i, &c__0, &c__1, ciform);
+            rdreci_(TShellNodes + (i << 3), &c__0, &c__8, format);
+            rdreci_(TShellMatIds + i, &c__0, &c__1, format);
         }
     }
     /* read beam elements */
@@ -1387,8 +1384,8 @@ int ReadDyna3D::rdtauelem_(char *ciform)
         BeamMatIds = new int[NumBeamElements];
         for (i = 0; i < NumBeamElements; i++)
         {
-            rdreci_(BeamNodes + (i * 5), &c__0, &c__5, ciform);
-            rdreci_(BeamMatIds + i, &c__0, &c__1, ciform);
+            rdreci_(BeamNodes + (i * 5), &c__0, &c__5, format);
+            rdreci_(BeamMatIds + i, &c__0, &c__1, format);
         }
     }
     /* read shell elements */
@@ -1398,8 +1395,8 @@ int ReadDyna3D::rdtauelem_(char *ciform)
         ShellMatIds = new int[NumShellElements];
         for (i = 0; i < NumShellElements; i++)
         {
-            rdreci_(ShellNodes + (i << 2), &c__0, &c__4, ciform);
-            rdreci_(ShellMatIds + i, &c__0, &c__1, ciform);
+            rdreci_(ShellNodes + (i << 2), &c__0, &c__4, format);
+            rdreci_(ShellMatIds + i, &c__0, &c__1, format);
         }
     }
 
@@ -1410,11 +1407,12 @@ int ReadDyna3D::rdtauelem_(char *ciform)
 } /* rdtauelem_ */
 
 /* Subroutine */
-int ReadDyna3D::rdtaunum_(char *ciform)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(FORMAT format)
 {
     /* Local variables */
-    static float rdum[20];
-    /*static int i,j,ie;*/
+    float rdum[20];
+    /*int i,j,ie;*/
 
     /*------------------------------------------------------------------------------*/
     /*     read user node and element numbers */
@@ -1439,23 +1437,23 @@ int ReadDyna3D::rdtaunum_(char *ciform)
         NodeIds = new int[numcoord];
         if (NodeSort > 0)
         {
-            rdrecr_(rdum, &c__0, &c__10);
-            rdreci_(NodeIds, &c__0, &numcoord, ciform);
-            rdreci_(SolidElemNumbers, &c__0, &NumSolidElements, ciform);
-            rdreci_(BeamElemNumbers, &c__0, &NumBeamElements, ciform);
-            rdreci_(ShellElemNumbers, &c__0, &NumShellElements, ciform);
-            rdreci_(TShellElemNumbers, &c__0, &NumTShellElements, ciform);
+            rdrecr_(rdum, &c__0, 10);
+            rdreci_(NodeIds, &c__0, &numcoord, format);
+            rdreci_(SolidElemNumbers, &c__0, &NumSolidElements, format);
+            rdreci_(BeamElemNumbers, &c__0, &NumBeamElements, format);
+            rdreci_(ShellElemNumbers, &c__0, &NumShellElements, format);
+            rdreci_(TShellElemNumbers, &c__0, &NumTShellElements, format);
         }
         else
         {
             Materials = new int[NumMaterials];
-            rdrecr_(rdum, &c__0, &c__16);
-            rdreci_(NodeIds, &c__0, &numcoord, ciform);
-            rdreci_(SolidElemNumbers, &c__0, &NumSolidElements, ciform);
-            rdreci_(BeamElemNumbers, &c__0, &NumBeamElements, ciform);
-            rdreci_(ShellElemNumbers, &c__0, &NumShellElements, ciform);
-            rdreci_(TShellElemNumbers, &c__0, &NumTShellElements, ciform);
-            rdreci_(Materials, &c__0, &NumMaterials, ciform);
+            rdrecr_(rdum, &c__0, 16);
+            rdreci_(NodeIds, &c__0, &numcoord, format);
+            rdreci_(SolidElemNumbers, &c__0, &NumSolidElements, format);
+            rdreci_(BeamElemNumbers, &c__0, &NumBeamElements, format);
+            rdreci_(ShellElemNumbers, &c__0, &NumShellElements, format);
+            rdreci_(TShellElemNumbers, &c__0, &NumTShellElements, format);
+            rdreci_(Materials, &c__0, &NumMaterials, format);
         }
 
         /*ie = 0;*/
@@ -1525,13 +1523,9 @@ int ReadDyna3D::rdtaunum_(char *ciform)
 } /* rdtaunum_ */
 
 /* Subroutine */
-int ReadDyna3D::rdstate_(int *istate)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::readTimestep()
 {
-    /* Local variables */
-    static int n;
-    static int iad;
-    static int iaddress;
-    static float val;
 
     /*------------------------------------------------------------------------------*/
     /*     read state */
@@ -1545,8 +1539,13 @@ int ReadDyna3D::rdstate_(int *istate)
 
     if (CEndin == 'N')
     {
+        int n;
+        int iad;
+        float val;
+
+#if 0
         /* shift state pointer of opened data base file */
-        if (*istate == 1)
+        if (istate == 1)
         {
             tauio_1.nrzin += NumberOfWords;
         }
@@ -1554,192 +1553,306 @@ int ReadDyna3D::rdstate_(int *istate)
         {
             tauio_1.nrzin += NumWords;
         }
+#endif
 
         /* test if the last record of the state exists. If file is too short,  */
         /* try to open next file. Max file id is 99. When file id 99 i reached */
         /* CENDIN --> Y */
-        rdrecr_(&val, &NumWords, &c__1);
+        if (rdrecr_(&val, &NumWords, 1) < 0)
+            return -1;
 
-        //      cerr << "ReadDyna3D::rdstate_(..) CEndin: " << CEndin << endl;
+        //      std::cerr << "Dyna3DReader::rdstate_(..) CEndin: " << CEndin << std::endl;
 
         if (CEndin == 'N')
         {
             /*         time address = 1 */
-            rdrecr_(&TimestepTime, &c__1, &c__1);
+            float TimestepTime = -1.;
+            if (rdrecr_(&TimestepTime, &c__1, 1) < 0)
+                return -1;
+            std::cerr << "timestep time" << TimestepTime << std::endl;
+        }
+    }
 
-            /*         NGLBV (global variables for this state) */
-            /*         6 Model data : */
-            /*             total kinetic energy */
-            /*             internal energy */
-            /*             total energy */
-            /*             vx vy vz */
-            /*         6 data blocks for each material */
-            /*             ie */
-            /*             ke */
-            /*             vx vy vz */
-            /*             m */
-            /*         for all stonewalls */
-            /*             Fn */
-            /*         if IAFLG = 1: accelerations */
-            /*         if IVFLG = 1: velocities */
-            /*         matn: vx vy vz */
-            /*         mass of each material */
-            /*         internal energy by material */
-            /*         kinetic energy by material */
-            /*         ? */
-            /*         vx vy vz rigid body velocities for each material */
-            /*         mass of each material */
+    return 0;
+}
 
-            iad = NumGlobVar + 2; // ! skipping current analysis time + global variables
-            n = numcoord * 3;
+/* Subroutine */
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, int istate, int block)
+{
+    int ts = istate - 1;
+    bool needToRead = false;
+    /* Local variables */
+    std::shared_lock<std::shared_timed_mutex> shlock(m_timestepMutex);
+    if (ts != m_currentTimestep) {
+        needToRead = true;
+        shlock.unlock();
+    }
 
-            if (IUFlag == 1)
-            {
-                DisCo = new float[numcoord * 3];
-                rdrecr_(DisCo, &iad, &n);
-            }
-            else
-            {
-                sendError("Dyna3D Plotfile doesn't contain nodal coordinate data.");
-                return (-1);
-            }
-
-            // nodal data stored as followed (at least I think it is, I found no information about this):
-            // ( posX posY posZ ) ( temp1 ( temp2 temp3 ) ( tempChange ) ( flux1 flux2 flux3 )) ( massScaling ) ( velX velY velZ ) ( accelX accelY accelZ )
-            //       IUFlag      |                              ITFlag and IDTDT                               |     IVFlag       |         IAFlag
-            switch (nodalDataType)
-            {
-            case 0:
+    if (needToRead) {
+        std::unique_lock<std::shared_timed_mutex> ulock(m_timestepMutex, 10*std::chrono::milliseconds());
+        while (!ulock.owns_lock()) {
+            shlock.lock();
+            needToRead = ts != m_currentTimestep;
+            shlock.unlock();
+            if (!needToRead)
                 break;
+            ulock.try_lock_for(10*std::chrono::milliseconds());
+        }
 
-            case 2:
-                if (IVFlag == 1)
+        if (ulock.owns_lock()) {
+            assert(m_currentTimestep < ts);
+
+            deleteStateData();
+
+            do {
+                ++m_currentTimestep;
+
+                /*------------------------------------------------------------------------------*/
+                /*     read state */
+                /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----*/
+
+                /* g77  INTEGER ITAU(128) */
+                /* iris INTEGER ITAU(512) */
+
+                /* g77 4 TAU(128) */
+                /* iris4 TAU(512) */
+
+                if (CEndin == 'N')
                 {
-                    NodeData = new float[numcoord * 3];
-                    iaddress = iad + n * IUFlag + numcoord * NumTemperature;
-                    rdrecr_(NodeData, &iaddress, &n);
+                    float val;
+
+                    /* shift state pointer of opened data base file */
+                    if (istate == 1)
+                    {
+                        tauio_1.nrzin += NumberOfWords;
+                    }
+                    else
+                    {
+                        tauio_1.nrzin += NumWords;
+                    }
+
+                    /* test if the last record of the state exists. If file is too short,  */
+                    /* try to open next file. Max file id is 99. When file id 99 i reached */
+                    /* CENDIN --> Y */
+                    rdrecr_(&val, &NumWords, 1);
+                }
+
+                if (CEndin != 'N') {
+                    return -1;
+                }
+            } while (m_currentTimestep < ts);
+
+            //      std::cerr << "Dyna3DReader::rdstate_(..) CEndin: " << CEndin << std::endl;
+
+            if (CEndin == 'N')
+            {
+                int n;
+                int iad;
+                /*         time address = 1 */
+                rdrecr_(&TimestepTime, &c__1, 1);
+                m_currentTime = TimestepTime;
+
+                /*         NGLBV (global variables for this state) */
+                /*         6 Model data : */
+                /*             total kinetic energy */
+                /*             internal energy */
+                /*             total energy */
+                /*             vx vy vz */
+                /*         6 data blocks for each material */
+                /*             ie */
+                /*             ke */
+                /*             vx vy vz */
+                /*             m */
+                /*         for all stonewalls */
+                /*             Fn */
+                /*         if IAFLG = 1: accelerations */
+                /*         if IVFLG = 1: velocities */
+                /*         matn: vx vy vz */
+                /*         mass of each material */
+                /*         internal energy by material */
+                /*         kinetic energy by material */
+                /*         ? */
+                /*         vx vy vz rigid body velocities for each material */
+                /*         mass of each material */
+
+                iad = NumGlobVar + 2; // ! skipping current analysis time + global variables
+                n = numcoord * 3;
+
+                if (IUFlag == 1)
+                {
+                    DisCo = new float[numcoord * 3];
+                    rdrecr_(DisCo, &iad, n);
                 }
                 else
                 {
-                    sendError("Dyna3D Plotfile doesn't contain nodal velocity data.");
+#ifdef SENDINFO
+                    m_module->sendError("Dyna3D Plotfile doesn't contain nodal coordinate data.");
+#endif
+                    m_currentTimestep = -1;
                     return (-1);
                 }
-                break;
 
-            case 3:
-                if (IAFlag == 1)
+                // nodal data stored as followed (at least I think it is, I found no information about this):
+                // ( posX posY posZ ) ( temp1 ( temp2 temp3 ) ( tempChange ) ( flux1 flux2 flux3 )) ( massScaling ) ( velX velY velZ ) ( accelX accelY accelZ )
+                //       IUFlag      |                              ITFlag and IDTDT                               |     IVFlag       |         IAFlag
+                switch (nodalDataType)
                 {
-                    NodeData = new float[numcoord * 3];
-                    iaddress = iad + n * IUFlag + numcoord * NumTemperature + n * IVFlag;
-                    rdrecr_(NodeData, &iaddress, &n);
+                case 0:
+                    break;
+
+                case 2:
+                    if (IVFlag == 1)
+                    {
+                        NodeData = new float[numcoord * 3];
+                        INTEGER iaddress = iad + n * IUFlag + numcoord * NumTemperature;
+                        rdrecr_(NodeData, &iaddress, n);
+                    }
+                    else
+                    {
+#ifdef SENDINFO
+                        m_module->sendError("Dyna3D Plotfile doesn't contain nodal velocity data.");
+#endif
+                        m_currentTimestep = -1;
+                        return (-1);
+                    }
+                    break;
+
+                case 3:
+                    if (IAFlag == 1)
+                    {
+                        NodeData = new float[numcoord * 3];
+                        INTEGER iaddress = iad + n * IUFlag + numcoord * NumTemperature + n * IVFlag;
+                        rdrecr_(NodeData, &iaddress, n);
+                    }
+                    else
+                    {
+#ifdef SENDINFO
+                        m_module->sendError("Dyna3D Plotfile doesn't contain nodal acceleration data.");
+#endif
+                        m_currentTimestep = -1;
+                        return (-1);
+                    }
+                    break;
                 }
-                else
+
+                if (elementDataType > 0)
                 {
-                    sendError("Dyna3D Plotfile doesn't contain nodal acceleration data.");
-                    return (-1);
-                }
-                break;
-            }
-
-            if (elementDataType > 0)
-            {
-                int numResults = NumSolidVar * NumSolidElements + NumBeamVar * NumBeamElements
-                                 + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
-                if (numResults != 0)
-                {
-                    int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
-
-                    /* solid elements */
-                    int solidLength = NumSolidElements * NumSolidVar;
-                    SolidData = new float[solidLength];
-                    iaddress = 2 + NumGlobVar + nodeLength;
-                    rdrecr_(SolidData, &iaddress, &solidLength);
-
-                    /* thick shell elements */
-                    int tshellLength;
-                    tshellLength = NumTShellElements * NumTShellVar;
-                    TShellData = new float[tshellLength];
-                    iaddress = 2 + NumGlobVar + nodeLength + solidLength;
-                    rdrecr_(TShellData, &iaddress, &tshellLength);
-
-                    /* beam elements */
-                    int beamLength = NumBeamElements * NumBeamVar;
-                    BeamData = new float[beamLength];
-                    iaddress = 2 + NumGlobVar + nodeLength + solidLength + tshellLength;
-                    rdrecr_(BeamData, &iaddress, &beamLength);
-
-                    /* shell elements */
-                    int shellLength = (NumShellElements - nrelem) * NumShellVar;
-                    ShellData = new float[shellLength];
-                    iaddress = 2 + NumGlobVar + nodeLength + solidLength + tshellLength + beamLength;
-                    rdrecr_(ShellData, &iaddress, &shellLength);
-                }
-                else
-                {
-                    sendError("Dyna3D Plotfile doesn't contain element results data.");
-                    return (-1);
-                }
-            }
-
-            // lists of deleted nodes/elements ?
-            if (NumShellInterpol < 0)
-            {
-                // read element deletion table
-                if (MDLOpt == 1) // old VEC_DYN
-                {
-                    // not yet supported
-                }
-                if (MDLOpt == 2) // LS_930
-                {
-                    int NumElements = NumSolidElements + NumTShellElements + NumShellElements
-                                      + NumBeamElements;
-                    DelTab = new int[NumElements];
-                    // total length of node data
-                    int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
-                    // total number of element results
                     int numResults = NumSolidVar * NumSolidElements + NumBeamVar * NumBeamElements
                                      + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
-                    iaddress = 2 + NumGlobVar + nodeLength + numResults;
-                    float *tmpTab = new float[NumElements];
-                    rdrecr_(tmpTab, &iaddress, &NumElements);
-                    for (int i = 0; i < NumElements; ++i)
+                    if (numResults != 0)
                     {
-                        DelTab[i] = (int)(tmpTab[i]);
+                        int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
+
+                        /* solid elements */
+                        int solidLength = NumSolidElements * NumSolidVar;
+                        SolidData = new float[solidLength];
+                        INTEGER iaddress = 2 + NumGlobVar + nodeLength;
+                        rdrecr_(SolidData, &iaddress, solidLength);
+
+                        /* thick shell elements */
+                        int tshellLength;
+                        tshellLength = NumTShellElements * NumTShellVar;
+                        TShellData = new float[tshellLength];
+                        iaddress = 2 + NumGlobVar + nodeLength + solidLength;
+                        rdrecr_(TShellData, &iaddress, tshellLength);
+
+                        /* beam elements */
+                        int beamLength = NumBeamElements * NumBeamVar;
+                        BeamData = new float[beamLength];
+                        iaddress = 2 + NumGlobVar + nodeLength + solidLength + tshellLength;
+                        rdrecr_(BeamData, &iaddress, beamLength);
+
+                        /* shell elements */
+                        int shellLength = (NumShellElements - nrelem) * NumShellVar;
+                        ShellData = new float[shellLength];
+                        iaddress = 2 + NumGlobVar + nodeLength + solidLength + tshellLength + beamLength;
+                        rdrecr_(ShellData, &iaddress, shellLength);
                     }
-                    delete[] tmpTab;
-                    // Notice: The Flags of the deletion table are written in the order:
-                    //                Solids, Thick shells, Thin shells, Beams
+                    else
+                    {
+#ifdef SENDINFO
+                        m_module->sendError("Dyna3D Plotfile doesn't contain element results data.");
+#endif
+                        m_currentTimestep = -1;
+                        return (-1);
+                    }
+                }
+
+                // lists of deleted nodes/elements ?
+                if (NumShellInterpol < 0)
+                {
+                    // read element deletion table
+                    if (MDLOpt == 1) // old VEC_DYN
+                    {
+                        // not yet supported
+                    }
+                    if (MDLOpt == 2) // LS_930
+                    {
+                        int NumElements = NumSolidElements + NumTShellElements + NumShellElements
+                                          + NumBeamElements;
+                        DelTab = new int[NumElements];
+                        // total length of node data
+                        int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
+                        // total number of element results
+                        int numResults = NumSolidVar * NumSolidElements + NumBeamVar * NumBeamElements
+                                         + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
+                        INTEGER iaddress = 2 + NumGlobVar + nodeLength + numResults;
+                        float *tmpTab = new float[NumElements];
+                        rdrecr_(tmpTab, &iaddress, NumElements);
+                        for (int i = 0; i < NumElements; ++i)
+                        {
+                            DelTab[i] = (int)(tmpTab[i]);
+                        }
+                        delete[] tmpTab;
+                        // Notice: The Flags of the deletion table are written in the order:
+                        //                Solids, Thick shells, Thin shells, Beams
+                    }
+
+                    visibility();
                 }
             }
+            assert(ts == m_currentTimestep);
+            ulock.unlock();
+        }
+        shlock.lock();
 
-            if ((*istate >= MinState) && (*istate <= State))
+        if (CEndin == 'N')
+        {
+            ExistingStates++;
+            fprintf(stderr, "* read state: %2d   time: %12.6f\n", istate, TimestepTime);
+        }
+    }
+
+    {
+        {
+#if 0
+            if ((istate >= MinState) && (istate <= State))
+#endif
             {
                 // This line has been commented out and modified because in case that
                 // the files contain more than 1 time step, it may produce wrong
                 // informations.
-                // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", *istate, TimestepTime);
-                sendInfo("Timestep with time = %6.3f \n", TimestepTime);
+                // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
+#ifdef SENDINFO
+                m_module->sendInfo("Timestep with time = %6.3f \n", TimestepTime);
+#endif
 
+#if 0
                 if (NumShellInterpol < 0)
                 {
                     // consider visibility (using the actual deletion table)
                     visibility();
                 }
-                createStateObjects(*istate);
+#endif
+                createStateObjects(token, istate-1, block);
 
-                grid_sets_out[(*istate) - MinState] = grid_set_out;
-                Vertex_sets_out[(*istate) - MinState] = Vertex_set_out;
-                Scalar_sets_out[(*istate) - MinState] = Scalar_set_out;
+#if 0
+                grid_sets_out[(istate) - MinState] = grid_set_out;
+                Vertex_sets_out[(istate) - MinState] = Vertex_set_out;
+                Scalar_sets_out[(istate) - MinState] = Scalar_set_out;
+#endif
             }
-
-            // free
-            delete[] DisCo;
-            delete[] NodeData;
-            delete[] SolidData;
-            delete[] TShellData;
-            delete[] BeamData;
-            delete[] ShellData;
-            delete[] DelTab;
         } // end of if (CEndin == 'N')
 
     } // end of if (CEndin == 'N') ???
@@ -1749,13 +1862,11 @@ int ReadDyna3D::rdstate_(int *istate)
 
 /*==============================================================================*/
 /* Subroutine */
-int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdrecr_(float *val, const int *istart, int n)
 {
-    /* System generated locals */
-    int i__1;
-
     /* Local variables */
-    static int i, irdst, iz;
+    int i, irdst, iz;
 
     /*------------------------------------------------------------------------------*/
     /*     read taurus record for floats */
@@ -1771,19 +1882,19 @@ int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
     --val;
 
     /* Function Body */
-    if (*n > 0)
+    if (n > 0)
     {
         /* open TAURUS database for reading (control data and geometry) */
         if (COpenin == 'N' && CEndin == 'N')
         {
-            otaurusr_();
+            if (otaurusr_() < 0)
+                return -1;
         }
         /* read n values starting at current position */
-        i__1 = *n;
-        for (i = 1; i <= i__1; ++i)
+        for (i = 1; i <= n; ++i)
         {
             /*         get record address */
-            grecaddr_(&i, istart, &iz, &irdst);
+            grecaddr_(i, *istart, &iz, &irdst);
             if (irdst == 0)
             {
                 /*           required word found in this file */
@@ -1793,7 +1904,8 @@ int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
             {
                 /*           required word not found in this file. */
                 /*           search and open next file. */
-                otaurusr_();
+                if (otaurusr_() < 0)
+                    return -1;
                 if (CEndin == 'N')
                 {
                     if (*istart > 0)
@@ -1801,7 +1913,7 @@ int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
                         tauio_1.nrin = tauio_1.nrzin + *istart - 1;
                     }
                     /*             get record address */
-                    grecaddr_(&i, istart, &iz, &irdst);
+                    grecaddr_(i, *istart, &iz, &irdst);
                     if (irdst == 0) // !@@@
                     {
                         /*               required word found in this file */
@@ -1810,7 +1922,9 @@ int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
                     else
                     {
                         /*               error ! */
-                        sendError("*E* Opened file is too short! (RDRECI)");
+#ifdef SENDINFO
+                        m_module->sendError("*E* Opened file is too short! (RDRECI)");
+#endif
                     }
                 }
                 else
@@ -1826,13 +1940,13 @@ int ReadDyna3D::rdrecr_(float *val, int *istart, int *n)
 } /* rdrecr_ */
 
 /* Subroutine */
-int ReadDyna3D::rdreci_(int *ival, int *istart, int *n, char *ciform)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, const int *n, FORMAT format)
 {
     /* System generated locals */
     int i__1;
 
     /* Local variables */
-    static int i, irdst, iz;
 
     /*------------------------------------------------------------------------------*/
     /*     read taurus record for ints */
@@ -1853,38 +1967,37 @@ int ReadDyna3D::rdreci_(int *ival, int *istart, int *n, char *ciform)
         /* open TAURUS database for reading (control data and geometry) */
         if (COpenin == 'N' && CEndin == 'N')
         {
-            otaurusr_();
+            if (otaurusr_() < 0)
+                return -1;
         }
         /*       read n values starting at current position */
         i__1 = *n;
-        for (i = 1; i <= i__1; ++i)
+        for (INTEGER i = 1; i <= i__1; ++i)
         {
             /*         get record address */
-            grecaddr_(&i, istart, &iz, &irdst);
+            INTEGER irdst, iz;
+            grecaddr_(i, *istart, &iz, &irdst);
             if (irdst == 0)
             {
                 /*           required word found in this file */
-                if (strncmp(ciform, "cadfem  ", 8L) == 0)
-                {
-                    ival[i] = (int)(tauio_1.tau[iz - 1]);
-                }
-                else if (strncmp(ciform, "original", 8L) == 0)
-                {
-                    // ???
-                    ival[i] = ((int *)(void *)(tauio_1.tau))[iz - 1];
-                }
-                else
-                {
-                    cerr << "ReadDyna3D::rdreci_ info: Unknown format '"
-                         << ciform << "' selected"
-                         << endl;
+                switch(format) {
+                case CADFEM:
+                    ival[i] = (INTEGER)(tauio_1.tau[iz - 1]);
+                    break;
+                case ORIGINAL:
+                    ival[i] = ((INTEGER *)(void *)(tauio_1.tau))[iz - 1];
+                    break;
+                default:
+                    std::cerr << "Dyna3DReader::rdreci_ info: Unknown format '" << format << "' selected" << std::endl;
+                    break;
                 }
             }
             else
             {
                 /*           required word not found in this file. */
                 /*           search and open next file. */
-                otaurusr_();
+                if (otaurusr_() < 0)
+                    return -1;
                 if (CEndin == 'N')
                 {
                     if (*istart > 0)
@@ -1892,23 +2005,20 @@ int ReadDyna3D::rdreci_(int *ival, int *istart, int *n, char *ciform)
                         tauio_1.nrin = tauio_1.nrzin + *istart - 1;
                     }
                     /*             get record address */
-                    grecaddr_(&i, istart, &iz, &irdst);
+                    grecaddr_(i, *istart, &iz, &irdst);
                     if (irdst == 0)
                     {
                         /*               required word found in this file */
-                        if (strncmp(ciform, "cadfem  ", 8L) == 0)
-                        {
-                            ival[i] = (int)(tauio_1.tau[iz - 1]);
-                        }
-                        else if (strncmp(ciform, "original", 8L) == 0)
-                        {
-                            ival[i] = ((int *)(void *)tauio_1.tau)[iz - 1];
-                        }
-                        else
-                        {
-                            cerr << "ReadDyna3D::rdreci_ info: Unknown format '"
-                                 << ciform << "' selected"
-                                 << endl;
+                        switch(format) {
+                        case CADFEM:
+                            ival[i] = static_cast<INTEGER>(tauio_1.tau[iz - 1]);
+                            break;
+                        case ORIGINAL:
+                            ival[i] = *reinterpret_cast<INTEGER *>(&tauio_1.tau[iz-1]);
+                            break;
+                        default:
+                            std::cerr << "Dyna3DReader::rdreci_ info: Unknown format '" << format << "' selected" << std::endl;
+                            break;
                         }
                     }
                     else
@@ -1916,7 +2026,9 @@ int ReadDyna3D::rdreci_(int *ival, int *istart, int *n, char *ciform)
                         /*               error ! */
                         if (CTrace == 'Y')
                         {
-                            sendError("*E* Opened file is too short! (RDRECI)");
+#ifdef SENDINFO
+                            m_module->sendError("*E* Opened file is too short! (RDRECI)");
+#endif
                         }
                     }
                 }
@@ -1933,10 +2045,11 @@ int ReadDyna3D::rdreci_(int *ival, int *istart, int *n, char *ciform)
 } /* rdreci_ */
 
 /* Subroutine */
-int ReadDyna3D::grecaddr_(int *i, int *istart, int *iz, int *irdst)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::grecaddr_(INTEGER i, INTEGER istart, INTEGER *iz, INTEGER *irdst)
 {
     /* Local variables */
-    static int itrecn;
+    int itrecn;
 
     /*------------------------------------------------------------------------------*/
     /*     get record address for reading */
@@ -1949,19 +2062,19 @@ int ReadDyna3D::grecaddr_(int *i, int *istart, int *iz, int *irdst)
     /* iris4                TAU(512) */
 
     *irdst = 0;
-    if (*istart > 0)
+    if (istart > 0)
     {
-        tauio_1.nrin = tauio_1.nrzin + *istart + *i - 1;
+        tauio_1.nrin = tauio_1.nrzin + istart + i - 1;
     }
     else
     {
         ++tauio_1.nrin;
     }
-    if (*i == 1 && CTrace == 'Y')
+    if (i == 1 && CTrace == 'Y')
     {
         fprintf(stderr, "* NRIN = %d\n", tauio_1.nrin);
     }
-    if (*i > 0)
+    if (i > 0)
     {
         itrecn = (tauio_1.nrin - 1) / tauio_1.irl + 1;
         *iz = tauio_1.nrin - (itrecn - 1) * tauio_1.irl;
@@ -1970,13 +2083,13 @@ int ReadDyna3D::grecaddr_(int *i, int *istart, int *iz, int *irdst)
             tauio_1.itrecin = itrecn;
             if (lseek(infile, (itrecn - 1) * sizeof(tauio_1.tau), SEEK_SET) >= 0)
             {
-                *irdst = read(infile, (char *)&tauio_1.tau[0], sizeof(tauio_1.tau))
+                *irdst = ::read(infile, tauio_1.tau, sizeof(tauio_1.tau))
                          - sizeof(tauio_1.tau);
 
-                tauio_1.taulength = *irdst + sizeof(tauio_1.tau) / sizeof(float);
+                tauio_1.taulength = *irdst + sizeof(tauio_1.tau) / sizeof(WORD);
                 if (byteswapFlag == BYTESWAP_ON)
                 {
-                    unsigned int *buffer = (unsigned int *)(void *)(tauio_1.tau);
+                    WORD *buffer = (WORD *)(void *)(tauio_1.tau);
                     byteswap(buffer, tauio_1.taulength);
                 }
             }
@@ -1991,7 +2104,8 @@ int ReadDyna3D::grecaddr_(int *i, int *istart, int *iz, int *irdst)
 } /* grecaddr_ */
 
 /* Subroutine */
-int ReadDyna3D::placpnt_(int *istart)
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::placpnt_(int *istart)
 {
     /* Local variables */
 
@@ -2014,10 +2128,12 @@ int ReadDyna3D::placpnt_(int *istart)
 } /* placpnt_ */
 
 /* Subroutine */
-int ReadDyna3D::otaurusr_()
+template<int wordsize, class INTEGER, class REAL>
+int Dyna3DReader<wordsize,INTEGER,REAL>::otaurusr_()
 {
+    std::cerr << "otaurusr_" << std::endl;
     /* Local variables */
-    static char ctaun[2000];
+    char ctaun[2000];
 
     /*------------------------------------------------------------------------------*/
     /*     open a TAURUS database for reading */
@@ -2039,21 +2155,20 @@ int ReadDyna3D::otaurusr_()
         tauio_1.adapt[0] = '\0';
         tauio_1.taulength = 0;
         COpenin = 'Y';
-        fprintf(stderr, " TAURUS input file : %s\n", data_Path);
-        strcpy(CTauin, data_Path);
-// infile=Covise::open(CTauin,O_RDONLY);
-#ifdef WIN32
-        infile = open(CTauin, O_RDONLY | O_BINARY);
-#else
-        infile = open(CTauin, O_RDONLY);
-#endif
-        if (infile < 0)
+        fprintf(stderr, " TAURUS input file : %s\n", m_filename.c_str());
+        strcpy(CTauin, m_filename.c_str());
+        infile = ::open(CTauin, OpenFlags);
+        if (infile < 0) {
             fprintf(stderr, "could not open %s\n", CTauin);
+            return -1;
+        }
     }
     else
     {
-        if (infile > 0)
+        if (infile >= 0) {
             close(infile);
+            infile = -1;
+        }
 
         int numtries = 0;
         while ((tauio_1.ifilin < MAXTIMESTEPS) && (numtries < 10))
@@ -2066,12 +2181,8 @@ int ReadDyna3D::otaurusr_()
             sprintf(ctaun, "%s%s%02d", CTauin, tauio_1.adapt, tauio_1.ifilin);
 // infile=Covise::open(ctaun,O_RDONLY);
 #ifndef _AIRBUS
-#ifdef WIN32
-            infile = open(ctaun, O_RDONLY | O_BINARY);
-#else
-            infile = open(ctaun, O_RDONLY);
-#endif
-            if (infile > 0)
+            infile = ::open(ctaun, OpenFlags);
+            if (infile >= 0)
             {
                 fprintf(stderr, "opened %s\n", ctaun);
                 return (0);
@@ -2079,12 +2190,8 @@ int ReadDyna3D::otaurusr_()
 #else
             if ((version == 0.0 && tauio_1.ifilin % 2 == 1) || version != 0.0)
             {
-#ifdef WIN32
-                infile = open(ctaun, O_RDONLY | O_BINARY);
-#else
-                infile = open(ctaun, O_RDONLY);
-#endif
-                if (infile > 0)
+                infile = ::open(ctaun, OpenFlags);
+                if (infile >= 0)
                 {
                     fprintf(stderr, "opened %s\n", ctaun);
                     return (0);
@@ -2104,30 +2211,22 @@ int ReadDyna3D::otaurusr_()
         tauio_1.itrecin = 0;
         sprintf(ctaun, "%s%s", CTauin, tauio_1.adapt);
 // infile=Covise::open(ctaun,O_RDONLY);
-#ifdef WIN32
-        infile = open(ctaun, O_RDONLY | O_BINARY);
-#else
-        infile = open(ctaun, O_RDONLY);
-#endif
-        if (infile > 0)
+        infile = ::open(ctaun, OpenFlags);
+        if (infile >= 0)
         {
             fprintf(stderr, "opened %s\n", ctaun);
 
             deleteElementLUT();
             /* read TAURUS control data */
-            rdtaucntrl_(ciform);
+            rdtaucntrl_(format);
 
             /* read TAURUS node coordinates */
             rdtaucoor_();
             /* read TAURUS elements */
-            rdtauelem_(ciform);
+            rdtauelem_(format);
 
             /* read user node and element numbers */
-            rdtaunum_(ciform);
-            /* TAURUS geometry length (number of words) */
-            taugeoml_();
-            /* TAURUS state length (number of words) */
-            taustatl_();
+            rdtaunum_(format);
 
             // initialize
 
@@ -2138,7 +2237,13 @@ int ReadDyna3D::otaurusr_()
 
             return (0);
         }
+        else
+        {
+            fprintf(stderr, "could not open %s\n", ctaun);
+        }
         CEndin = 'Y';
+
+        return -1;
     }
 
     return 0;
@@ -2146,7 +2251,8 @@ int ReadDyna3D::otaurusr_()
 
 //---------------------------------------------------------------------
 
-void ReadDyna3D::visibility()
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::visibility()
 {
     /*                                                        */
     /* decrease the grids in case of invisible nodes/elements */
@@ -2175,19 +2281,19 @@ void ReadDyna3D::visibility()
             if (DelTab[i] == 0)
             {
                 delElem[SolidMatIds[i]]++;
-                solidTab[i]->set_visible(INVIS);
+                solidTab[i].visible = false;
 
-                switch (solidTab[i]->get_coType())
+                switch (solidTab[i].coType)
                 {
-                case TYPE_TETRAHEDER:
+                case UnstructuredGrid::TETRAHEDRON:
                     delCon[SolidMatIds[i]] += 4;
                     break;
 
-                case TYPE_PRISM:
+                case UnstructuredGrid::PRISM:
                     delCon[SolidMatIds[i]] += 6;
                     break;
 
-                case TYPE_HEXAGON:
+                case UnstructuredGrid::HEXAHEDRON:
                     delCon[SolidMatIds[i]] += 8;
                     break;
                 }
@@ -2202,16 +2308,16 @@ void ReadDyna3D::visibility()
             if (DelTab[elemNo] == 0)
             {
                 delElem[ShellMatIds[i]]++;
-                shellTab[i]->set_visible(INVIS);
+                shellTab[i].visible = false;
 
-                switch (shellTab[i]->get_coType())
+                switch (shellTab[i].coType)
                 {
 
-                case TYPE_TRIANGLE:
+                case UnstructuredGrid::TRIANGLE:
                     delCon[ShellMatIds[i]] += 3;
                     break;
 
-                case TYPE_QUAD:
+                case UnstructuredGrid::QUAD:
                     delCon[ShellMatIds[i]] += 4;
                     break;
                 }
@@ -2225,7 +2331,7 @@ void ReadDyna3D::visibility()
             {
                 delElem[BeamMatIds[i]]++;
                 delCon[BeamMatIds[i]] += 2;
-                beamTab[i]->set_visible(INVIS);
+                beamTab[i].visible = false;
             }
         }
     }
@@ -2235,29 +2341,20 @@ void ReadDyna3D::visibility()
     }
 }
 
-void ReadDyna3D::createElementLUT()
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
 {
     int i;
-    int count;
-    int ID;
 
     // allocate data objects for element lookup tables
     //solids
-    solidTab = new Element *[NumSolidElements];
-    for (i = 0; i < NumSolidElements; i++)
-        solidTab[i] = new Element;
+    solidTab.resize(NumSolidElements);
     // thick shells
-    tshellTab = new Element *[NumTShellElements];
-    for (i = 0; i < NumTShellElements; i++)
-        tshellTab[i] = new Element;
+    tshellTab.resize(NumTShellElements);
     // shells
-    shellTab = new Element *[NumShellElements];
-    for (i = 0; i < NumShellElements; i++)
-        shellTab[i] = new Element;
+    shellTab.resize(NumShellElements);
     // beams
-    beamTab = new Element *[NumBeamElements];
-    for (i = 0; i < NumBeamElements; i++)
-        beamTab[i] = new Element;
+    beamTab.resize(NumBeamElements);
 
     // init material ID counter
     NumIDs = 0;
@@ -2293,15 +2390,6 @@ void ReadDyna3D::createElementLUT()
     numelem = new int[NumIDs];
     numcoo = new int[NumIDs];
 
-    maxSolid = new int[NumIDs];
-    minSolid = new int[NumIDs];
-    maxTShell = new int[NumIDs];
-    minTShell = new int[NumIDs];
-    maxShell = new int[NumIDs];
-    minShell = new int[NumIDs];
-    maxBeam = new int[NumIDs];
-    minBeam = new int[NumIDs];
-
     coordLookup = new int *[NumIDs];
 
     My_elemList = new int *[NumIDs];
@@ -2316,15 +2404,6 @@ void ReadDyna3D::createElementLUT()
         numcon[i] = 0;
         numelem[i] = 0;
         numcoo[i] = 0;
-
-        maxSolid[i] = -1;
-        minSolid[i] = NumSolidElements;
-        maxTShell[i] = -1;
-        minTShell[i] = NumTShellElements;
-        maxShell[i] = -1;
-        minShell[i] = NumShellElements;
-        maxBeam[i] = -1;
-        minBeam[i] = NumBeamElements;
 
         coordLookup[i] = NULL;
 
@@ -2346,36 +2425,36 @@ void ReadDyna3D::createElementLUT()
             {
                 numelem[SolidMatIds[i]]++;
                 numcon[SolidMatIds[i]] += 4;
-                solidTab[i]->set_coType(TYPE_TETRAHEDER);
+                solidTab[i].coType = UnstructuredGrid::TETRAHEDRON;
             }
             else
             {
                 numelem[SolidMatIds[i]]++;
                 numcon[SolidMatIds[i]] += 6;
-                solidTab[i]->set_coType(TYPE_PRISM);
+                solidTab[i].coType = UnstructuredGrid::PRISM;
             }
         }
         else
         {
             numelem[SolidMatIds[i]]++;
             numcon[SolidMatIds[i]] += 8;
-            solidTab[i]->set_coType(TYPE_HEXAGON);
+            solidTab[i].coType = UnstructuredGrid::HEXAHEDRON;
         }
 
         /*
-      switch ( solidTab[i]->get_coType() ){
+      switch ( solidTab[i]->coType ){
 
-        case TYPE_TETRAHEDER:
+        case UnstructuredGrid::TETRAHEDRON:
       for (nn=0; nn<4; nn++)
        solidTab[i]->set_node(nn, SolidNodes[i*8+nn]);
         break;
 
-        case TYPE_PRISM:
+        case UnstructuredGrid::PRISM:
       for (nn=0; nn<6; nn++)
        solidTab[i]->set_node(nn, SolidNodes[i*8+nn]);
       break;
 
-      case TYPE_HEXAGON:
+      case UnstructuredGrid::HEXAHEDRON:
       for (nn=0; nn<8; nn++)
       solidTab[i]->set_node(nn, SolidNodes[i*8+nn]);
       break;
@@ -2392,24 +2471,24 @@ void ReadDyna3D::createElementLUT()
         {
             numelem[ShellMatIds[i]]++;
             numcon[ShellMatIds[i]] += 3;
-            shellTab[i]->set_coType(TYPE_TRIANGLE);
+            shellTab[i].coType = UnstructuredGrid::TRIANGLE;
         }
         else
         {
             numelem[ShellMatIds[i]]++;
             numcon[ShellMatIds[i]] += 4;
-            shellTab[i]->set_coType(TYPE_QUAD);
+            shellTab[i].coType = UnstructuredGrid::QUAD;
         }
 
         /*
-      switch ( shellTab[i]->get_coType() ){
+      switch ( shellTab[i]->coType ){
 
-        case TYPE_TRIANGLE:
+        case UnstructuredGrid::TRIANGLE:
       for (nn=0; nn<3; nn++)
        shellTab[i]->set_node(nn, ShellNodes[i*4+nn]);
         break;
 
-        case TYPE_QUAD:
+        case UnstructuredGrid::QUAD:
       for (nn=0; nn<4; nn++)
        shellTab[i]->set_node(nn, ShellNodes[i*4+nn]);
       break;
@@ -2422,7 +2501,7 @@ void ReadDyna3D::createElementLUT()
     {
         numelem[BeamMatIds[i]]++;
         numcon[BeamMatIds[i]] += 2;
-        beamTab[i]->set_coType(TYPE_BAR);
+        beamTab[i].coType = UnstructuredGrid::BAR;
         /*
       for (nn=0; nn<2; nn++)
         beamTab[i]->set_node(nn, BeamNodes[i*5+nn]);
@@ -2430,130 +2509,80 @@ void ReadDyna3D::createElementLUT()
     }
 
     // SETTING MATERIAL NUMBER
+    materials.clear();
+    materials.resize(NumIDs);
+    for (auto i=0; i<NumSolidElements; ++i) {
+        auto id = SolidMatIds[i];
+        materials[id].solid.push_back(i);
+    }
+    for (auto i=0; i<NumTShellElements; ++i) {
+        auto id = TShellMatIds[i];
+        materials[id].tshell.push_back(i);
+    }
+    for (auto i=0; i<NumShellElements; ++i) {
+        auto id = ShellMatIds[i];
+        materials[id].shell.push_back(i);
+    }
+    for (auto i=0; i<NumBeamElements; ++i) {
+        auto id = BeamMatIds[i];
+        materials[id].beam.push_back(i);
+    }
+
+#if 0
     for (ID = 0; ID < NumIDs; ID++)
     {
-        if (numelem[ID] > 0)
-        {
-            // solids
-            count = -1;
-            for (i = 0; i < NumSolidElements; i++)
-            {
-                if (SolidMatIds[i] == ID)
-                {
-                    solidTab[i]->set_matNo(ID);
-                    maxSolid[ID] = i;
-                    if (count == -1)
-                    {
-                        minSolid[ID] = i;
-                        count++;
-                    }
-                }
-            }
-            count = -1;
-            // thick shells
-            for (i = 0; i < NumTShellElements; i++)
-            {
-                if (TShellMatIds[i] == ID)
-                {
-                    tshellTab[i]->set_matNo(ID);
-                    maxTShell[ID] = i;
-                    if (count == -1)
-                    {
-                        minTShell[ID] = i;
-                        count++;
-                    }
-                }
-            }
-            count = -1;
-            // thin shells
-            for (i = 0; i < NumShellElements; i++)
-            {
-                if (ShellMatIds[i] == ID)
-                {
-                    shellTab[i]->set_matNo(ID);
-                    maxShell[ID] = i;
-                    if (count == -1)
-                    {
-                        minShell[ID] = i;
-                        count++;
-                    }
-                }
-            }
-            // beams
-            count = -1;
-            for (i = 0; i < NumBeamElements; i++)
-            {
-                if (BeamMatIds[i] == ID)
-                {
-                    beamTab[i]->set_matNo(ID);
-                    maxBeam[ID] = i;
-                    if (count == -1)
-                    {
-                        minBeam[ID] = i;
-                        count++;
-                    }
-                }
-            }
-        }
+        std::sort(materials[ID].solid.begin(), materials[ID].solid.end());
+        std::sort(materials[ID].tshell.begin(), materials[ID].tshell.end());
+        std::sort(materials[ID].shell.begin(), materials[ID].shell.end());
+        std::sort(materials[ID].beam.begin(), materials[ID].beam.end());
     }
+#endif
 }
 
-void ReadDyna3D::deleteElementLUT()
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::deleteElementLUT()
 {
-    int i;
-    if (solidTab)
-    {
-        // free tables of old refinement
-        for (i = 0; i < NumSolidElements; i++)
-            delete solidTab[i];
-    }
-    delete[] solidTab;
-    if (tshellTab)
-    {
-        for (i = 0; i < NumTShellElements; i++)
-            delete tshellTab[i];
-    }
-    delete[] tshellTab;
-    if (shellTab)
-    {
-        for (i = 0; i < NumShellElements; i++)
-            delete shellTab[i];
-    }
-    delete[] shellTab;
-    if (beamTab)
-    {
-        for (i = 0; i < NumBeamElements; i++)
-            delete beamTab[i];
-    }
-    delete[] beamTab;
+    materials.clear();
+
+    solidTab.clear();
+    tshellTab.clear();
+    shellTab.clear();
+    beamTab.clear();
+
     delete[] numcon;
+    numcon = nullptr;
+
     delete[] numelem;
+    numelem = nullptr;
+
     delete[] numcoo;
-    delete[] maxSolid;
-    delete[] minSolid;
-    delete[] maxTShell;
-    delete[] minTShell;
-    delete[] maxShell;
-    delete[] minShell;
-    delete[] maxBeam;
-    delete[] minBeam;
+    numcoo = nullptr;
+
     if (My_elemList)
     {
-        for (i = 0; i < NumIDs; i++)
+        for (INTEGER i = 0; i < NumIDs; i++)
         {
             delete[] My_elemList[i];
             delete[] conList[i];
             delete[] coordLookup[i];
         }
     }
-    delete[] coordLookup;
     delete[] My_elemList;
+    My_elemList = nullptr;
+    delete[] coordLookup;
+    coordLookup = nullptr;
     delete[] conList;
+    conList = nullptr;
+
     delete[] delElem;
+    delElem = nullptr;
+
     delete[] delCon;
+    delCon = nullptr;
 }
 
-void ReadDyna3D::createGeometryList()
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
 {
     int i, j;
     int ID;
@@ -2568,7 +2597,7 @@ void ReadDyna3D::createGeometryList()
         if (IDLISTE[ID] && numelem[ID] > 0)
 
         {
-            int *lookupTab = new int[numcoord + 1];
+            auto lookupTab = new int[numcoord+1];
             createNodeLUT(ID, lookupTab);
 
             // allocate element list
@@ -2589,14 +2618,14 @@ void ReadDyna3D::createGeometryList()
             {
 
                 // solids
-                for (i = minSolid[ID]; i <= maxSolid[ID]; i++)
+                for (auto i: materials[ID].solid)
                 {
-                    if (SolidMatIds[i] == ID)
+                    assert(SolidMatIds[i] == ID);
                     {
-                        switch (solidTab[i]->get_coType())
+                        switch (solidTab[i].coType)
                         {
 
-                        case TYPE_TETRAHEDER:
+                        case UnstructuredGrid::TETRAHEDRON:
                             My_elemList[ID][coElem] = elemNo;
                             for (j = 0; j < 4; j++)
                             {
@@ -2604,11 +2633,11 @@ void ReadDyna3D::createGeometryList()
                                 coCon++;
                             }
                             elemNo += 4;
-                            solidTab[i]->set_coElem(coElem);
+                            solidTab[i].coElem = coElem;
                             coElem++;
                             break;
 
-                        case TYPE_PRISM:
+                        case UnstructuredGrid::PRISM:
                             My_elemList[ID][coElem] = elemNo;
                             conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 4]];
                             coCon++;
@@ -2623,11 +2652,11 @@ void ReadDyna3D::createGeometryList()
                             conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 3]];
                             coCon++;
                             elemNo += 6;
-                            solidTab[i]->set_coElem(coElem);
+                            solidTab[i].coElem = coElem;
                             coElem++;
                             break;
 
-                        case TYPE_HEXAGON:
+                        case UnstructuredGrid::HEXAHEDRON:
                             My_elemList[ID][coElem] = elemNo;
                             for (j = 0; j < 8; j++)
                             {
@@ -2635,7 +2664,7 @@ void ReadDyna3D::createGeometryList()
                                 coCon++;
                             }
                             elemNo += 8;
-                            solidTab[i]->set_coElem(coElem);
+                            solidTab[i].coElem = coElem;
                             coElem++;
                             break;
                         }
@@ -2643,14 +2672,14 @@ void ReadDyna3D::createGeometryList()
                 }
 
                 // Shells
-                for (i = minShell[ID]; i <= maxShell[ID]; i++)
+                for (auto i: materials[ID].shell)
                 {
-                    if (ShellMatIds[i] == ID)
+                    assert(ShellMatIds[i] == ID);
                     {
-                        switch (shellTab[i]->get_coType())
+                        switch (shellTab[i].coType)
                         {
 
-                        case TYPE_TRIANGLE:
+                        case UnstructuredGrid::TRIANGLE:
                             My_elemList[ID][coElem] = elemNo;
                             for (j = 0; j < 3; j++)
                             {
@@ -2658,11 +2687,11 @@ void ReadDyna3D::createGeometryList()
                                 coCon++;
                             }
                             elemNo += 3;
-                            shellTab[i]->set_coElem(coElem);
+                            shellTab[i].coElem = coElem;
                             coElem++;
                             break;
 
-                        case TYPE_QUAD:
+                        case UnstructuredGrid::QUAD:
                             My_elemList[ID][coElem] = elemNo;
                             for (j = 0; j < 4; j++)
                             {
@@ -2670,7 +2699,7 @@ void ReadDyna3D::createGeometryList()
                                 coCon++;
                             }
                             elemNo += 4;
-                            shellTab[i]->set_coElem(coElem);
+                            shellTab[i].coElem = coElem;
                             coElem++;
                             break;
                         }
@@ -2678,9 +2707,9 @@ void ReadDyna3D::createGeometryList()
                 }
 
                 // Beams
-                for (i = minBeam[ID]; i <= maxBeam[ID]; i++)
+                for (auto i: materials[ID].beam)
                 {
-                    if (BeamMatIds[i] == ID)
+                    assert(BeamMatIds[i] == ID);
                     {
                         My_elemList[ID][coElem] = elemNo;
                         for (j = 0; j < 2; j++)
@@ -2689,7 +2718,7 @@ void ReadDyna3D::createGeometryList()
                             coCon++;
                         }
                         elemNo += 2;
-                        beamTab[i]->set_coElem(coElem);
+                        beamTab[i].coElem = coElem;
                         coElem++;
                     }
                 }
@@ -2708,7 +2737,9 @@ void ReadDyna3D::createGeometryList()
             } // end of if (MDLOpt ...)
             else
             {
-                sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#ifdef SENDINFO
+                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
                 //exit(-1);
             }
             IDcount++;
@@ -2720,31 +2751,36 @@ void ReadDyna3D::createGeometryList()
     } // end of for (ID=0 ...)
 }
 
-void ReadDyna3D::createGeometry()
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, int blockToRead) const
 {
     char name[256];
     char part_buf[256];
 
     int i, j;
-    int ID;
 
     int IDcount = 0; // part ID counter
     int conNo; // COVISE connection list entry
     int elemNo; // COVISE element list entry
 
+#if 0
     // allocate
     grids_out = new coDoUnstructuredGrid *[NumIDs + 1];
     grids_out[NumIDs] = NULL; // mark end of set array
+#endif
 
-    for (ID = 0; ID < NumIDs; ID++)
+    for (INTEGER ID = 0; ID < NumIDs; ID++)
     {
-
+        if (blockToRead >= 0 && blockToRead != ID)
+            continue;
+#if 0
         // initialize
         grids_out[ID] = NULL;
+#endif
 
         if (IDLISTE[ID] && numelem[ID] > 0)
-
         {
+#if 0
             int *el, *cl, *tl;
             float *x_c, *y_c, *z_c;
 
@@ -2762,6 +2798,16 @@ void ReadDyna3D::createGeometry()
             // PART attribute
             sprintf(part_buf, "%d", ID + 1);
             grid_out->addAttribute("PART", part_buf);
+#else
+            UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
+            grid_out->addAttribute("_part", std::to_string(ID+1));
+            auto el = &grid_out->el()[0];
+            auto cl = &grid_out->cl()[0];
+            auto tl = &grid_out->tl()[0];
+            auto x_c = &grid_out->x()[0];
+            auto y_c = &grid_out->y()[0];
+            auto z_c = &grid_out->z()[0];
+#endif
 
             // initialize element numbering
             elemNo = 0;
@@ -2774,18 +2820,17 @@ void ReadDyna3D::createGeometry()
             {
 
                 // solids
-                for (i = minSolid[ID]; i <= maxSolid[ID]; i++)
+                for (auto i: materials[ID].solid)
                 {
-                    if (SolidMatIds[i] == ID)
-                    {
+                    assert(SolidMatIds[i] == ID);
 
-                        switch (solidTab[i]->get_coType())
+                        switch (solidTab[i].coType)
                         {
 
-                        case TYPE_TETRAHEDER:
-                            *tl++ = TYPE_TETRAHEDER;
+                        case UnstructuredGrid::TETRAHEDRON:
+                            *tl++ = UnstructuredGrid::TETRAHEDRON;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 4; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -2793,10 +2838,10 @@ void ReadDyna3D::createGeometry()
                             elemNo += 4;
                             break;
 
-                        case TYPE_PRISM:
-                            *tl++ = TYPE_PRISM;
+                        case UnstructuredGrid::PRISM:
+                            *tl++ = UnstructuredGrid::PRISM;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 6; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -2804,10 +2849,10 @@ void ReadDyna3D::createGeometry()
                             elemNo += 6;
                             break;
 
-                        case TYPE_HEXAGON:
-                            *tl++ = TYPE_HEXAGON;
+                        case UnstructuredGrid::HEXAHEDRON:
+                            *tl++ = UnstructuredGrid::HEXAHEDRON;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 8; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -2815,21 +2860,18 @@ void ReadDyna3D::createGeometry()
                             elemNo += 8;
                             break;
                         }
-                    }
                 }
                 // Shells
-                for (i = minShell[ID]; i <= maxShell[ID]; i++)
+                for (auto i: materials[ID].shell)
                 {
-                    if (ShellMatIds[i] == ID)
-                    {
-
-                        switch (shellTab[i]->get_coType())
+                    assert(ShellMatIds[i] == ID);
+                        switch (shellTab[i].coType)
                         {
 
-                        case TYPE_TRIANGLE:
-                            *tl++ = TYPE_TRIANGLE;
+                        case UnstructuredGrid::TRIANGLE:
+                            *tl++ = UnstructuredGrid::TRIANGLE;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][shellTab[i].coElem];
                             for (j = 0; j < 3; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -2837,10 +2879,10 @@ void ReadDyna3D::createGeometry()
                             elemNo += 3;
                             break;
 
-                        case TYPE_QUAD:
-                            *tl++ = TYPE_QUAD;
+                        case UnstructuredGrid::QUAD:
+                            *tl++ = UnstructuredGrid::QUAD;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][shellTab[i].coElem];
                             for (j = 0; j < 4; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -2848,24 +2890,20 @@ void ReadDyna3D::createGeometry()
                             elemNo += 4;
                             break;
                         }
-                    }
                 }
 
                 // Beams
-                for (i = minBeam[ID]; i <= maxBeam[ID]; i++)
+                for (auto i: materials[ID].beam)
                 {
-                    if (BeamMatIds[i] == ID)
-                    {
-
-                        *tl++ = TYPE_BAR;
+                    assert(BeamMatIds[i] == ID);
+                        *tl++ = UnstructuredGrid::BAR;
                         *el++ = elemNo;
-                        conNo = My_elemList[ID][beamTab[i]->get_coElem()];
+                        conNo = My_elemList[ID][beamTab[i].coElem];
                         for (j = 0; j < 2; j++)
                         {
                             *cl++ = conList[ID][conNo + j];
                         }
                         elemNo += 2;
-                    }
                 }
 
                 // nodal data
@@ -2879,16 +2917,25 @@ void ReadDyna3D::createGeometry()
             } // end of if (MDLOpt ...)
             else
             {
-                sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#ifdef SENDINFO
+                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
                 exit(-1);
             }
+#if 0
             grids_out[IDcount] = grid_out;
+#endif
+            *el++ = elemNo;
+            grid_out->setBlock(ID);
+            std::cerr << "adding " << grid_out->getName() << " to " << gridPort->getName() << " Token: " << token << std::endl;
+            token.addObject(gridPort, grid_out);
             IDcount++;
 
         } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
     } // end of for (ID=0 ...)
 
     // mark end of set array
+#if 0
     grids_out[IDcount] = NULL;
 
     sprintf(name, "%s_%d", Grid, 0);
@@ -2900,21 +2947,22 @@ void ReadDyna3D::createGeometry()
         delete grids_out[i];
     }
     delete[] grids_out;
+#endif
 }
 
-void ReadDyna3D::createNodeLUT(int id, int *lut)
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
 {
-    int i;
     int nn;
 
     // init node lookup table
-    for (i = 0; i <= numcoord; i++)
+    for (int i = 0; i <= numcoord; i++)
         lut[i] = -1;
 
     // solids
-    for (i = minSolid[id]; i <= maxSolid[id]; i++)
+    for (auto i: materials[id].solid)
     {
-        if (SolidMatIds[i] == id)
+        assert(SolidMatIds[i] == id);
         {
             for (nn = 0; nn < 8; nn++)
             {
@@ -2926,9 +2974,9 @@ void ReadDyna3D::createNodeLUT(int id, int *lut)
         }
     }
     // thick shells
-    for (i = minTShell[id]; i <= maxTShell[id]; i++)
+    for (auto i: materials[id].tshell)
     {
-        if (TShellMatIds[i] == id)
+        assert(TShellMatIds[i] == id);
         {
             for (nn = 0; nn < 8; nn++)
             {
@@ -2940,9 +2988,9 @@ void ReadDyna3D::createNodeLUT(int id, int *lut)
         }
     }
     // shells
-    for (i = minShell[id]; i <= maxShell[id]; i++)
+    for (auto i: materials[id].shell)
     {
-        if (ShellMatIds[i] == id)
+        assert(ShellMatIds[i] == id);
         {
             for (nn = 0; nn < 4; nn++)
             {
@@ -2954,9 +3002,9 @@ void ReadDyna3D::createNodeLUT(int id, int *lut)
         }
     }
     // beams
-    for (i = minBeam[id]; i <= maxBeam[id]; i++)
+    for (auto i: materials[id].beam)
     {
-        if (BeamMatIds[i] == id)
+        assert(BeamMatIds[i] == id);
         {
             for (nn = 0; nn < 2; nn++)
             {
@@ -2969,20 +3017,21 @@ void ReadDyna3D::createNodeLUT(int id, int *lut)
     }
 }
 
-void ReadDyna3D::createStateObjects(int timestep)
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Token &token, int timestep, int blockToRead) const
 {
     char name[256];
     char part_buf[256];
     float druck, vmises;
 
     int i, j;
-    int ID;
 
     int IDcount = 0; // part ID counter
     int conNo; // COVISE connection list entry
     int elemNo; // COVISE element list entry
 
     // allocate
+#if 0
     grids_out = new coDoUnstructuredGrid *[NumIDs + 1];
     grids_out[NumIDs] = NULL; // mark end of set array
 
@@ -2990,16 +3039,23 @@ void ReadDyna3D::createStateObjects(int timestep)
     Vertexs_out[NumIDs] = NULL;
     Scalars_out = new coDoFloat *[NumIDs + 1];
     Scalars_out[NumIDs] = NULL;
+#endif
 
-    for (ID = 0; ID < NumIDs; ID++)
+    for (INTEGER ID = 0; ID < NumIDs; ID++)
     {
+#if 0
         // initialize
         grids_out[ID] = NULL;
         Vertexs_out[ID] = NULL;
         Scalars_out[ID] = NULL;
+#endif
+
+        if (blockToRead >= 0 && blockToRead != ID)
+            continue;
 
         if (IDLISTE[ID] && numelem[ID] > 0)
         {
+#if 0
             int *el, *cl, *tl;
             float *x_c, *y_c, *z_c;
             float *vx_out = NULL, *vy_out = NULL, *vz_out = NULL;
@@ -3057,6 +3113,40 @@ void ReadDyna3D::createStateObjects(int timestep)
             {
                 Scalar_out = NULL;
             }
+#else
+            UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID]-delElem[ID],
+                                                                numcon[ID]-delCon[ID],
+                                                                numcoo[ID]));
+            auto el = &grid_out->el()[0];
+            auto cl = &grid_out->cl()[0];
+            auto tl = &grid_out->tl()[0];
+            auto x_c = &grid_out->x()[0];
+            auto y_c = &grid_out->y()[0];
+            auto z_c = &grid_out->z()[0];
+
+            Vec<Scalar,3>::ptr Vertex_out;
+            Scalar *vx_out=nullptr, *vy_out=nullptr, *vz_out=nullptr;
+            if (nodalDataType > 0) {
+                Vertex_out.reset(new Vec<Scalar,3>(numcoo[ID]));
+                vx_out = &Vertex_out->x()[0];
+                vy_out = &Vertex_out->y()[0];
+                vz_out = &Vertex_out->z()[0];
+            }
+
+            Vec<Scalar>::ptr Scalar_out;
+            Scalar *s_el = nullptr;
+            if (elementDataType > 0) {
+                if (NumDim == 5 && !materials[ID].shell.empty())
+                {
+                    Scalar_out.reset(new Vec<Scalar>(matTyp[ID] != 20 ? numelem[ID] - delElem[ID] : 0));
+                }
+                else
+                {
+                    Scalar_out.reset(new Vec<Scalar>(numelem[ID] - delElem[ID]));
+                }
+                s_el = &Scalar_out->x()[0];
+            }
+#endif
 
             // initialize element numbering
             elemNo = 0;
@@ -3069,18 +3159,19 @@ void ReadDyna3D::createStateObjects(int timestep)
             {
 
                 // solids
-                for (i = minSolid[ID]; i <= maxSolid[ID]; i++)
+                for (auto i: materials[ID].solid)
                 {
-                    if (SolidMatIds[i] == ID && solidTab[i]->get_visible() == VIS)
+                    assert(SolidMatIds[i] == ID);
+                    if (solidTab[i].visible)
                     {
 
-                        switch (solidTab[i]->get_coType())
+                        switch (solidTab[i].coType)
                         {
 
-                        case TYPE_TETRAHEDER:
-                            *tl++ = TYPE_TETRAHEDER;
+                        case UnstructuredGrid::TETRAHEDRON:
+                            *tl++ = UnstructuredGrid::TETRAHEDRON;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 4; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -3088,10 +3179,10 @@ void ReadDyna3D::createStateObjects(int timestep)
                             elemNo += 4;
                             break;
 
-                        case TYPE_PRISM:
-                            *tl++ = TYPE_PRISM;
+                        case UnstructuredGrid::PRISM:
+                            *tl++ = UnstructuredGrid::PRISM;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 6; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -3099,10 +3190,10 @@ void ReadDyna3D::createStateObjects(int timestep)
                             elemNo += 6;
                             break;
 
-                        case TYPE_HEXAGON:
-                            *tl++ = TYPE_HEXAGON;
+                        case UnstructuredGrid::HEXAHEDRON:
+                            *tl++ = UnstructuredGrid::HEXAHEDRON;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][solidTab[i].coElem];
                             for (j = 0; j < 8; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -3178,18 +3269,19 @@ void ReadDyna3D::createStateObjects(int timestep)
 
                 // Shells
                 int CoviseElement = -1;
-                for (i = minShell[ID]; i <= maxShell[ID]; i++)
+                for (auto i: materials[ID].shell)
                 {
-                    if (ShellMatIds[i] == ID && shellTab[i]->get_visible() == VIS)
+                    assert(ShellMatIds[i] == ID);
+                    if (shellTab[i].visible)
                     {
                         ++CoviseElement;
-                        switch (shellTab[i]->get_coType())
+                        switch (shellTab[i].coType)
                         {
 
-                        case TYPE_TRIANGLE:
-                            *tl++ = TYPE_TRIANGLE;
+                        case UnstructuredGrid::TRIANGLE:
+                            *tl++ = UnstructuredGrid::TRIANGLE;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][shellTab[i].coElem];
                             for (j = 0; j < 3; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -3197,10 +3289,10 @@ void ReadDyna3D::createStateObjects(int timestep)
                             elemNo += 3;
                             break;
 
-                        case TYPE_QUAD:
-                            *tl++ = TYPE_QUAD;
+                        case UnstructuredGrid::QUAD:
+                            *tl++ = UnstructuredGrid::QUAD;
                             *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i]->get_coElem()];
+                            conNo = My_elemList[ID][shellTab[i].coElem];
                             for (j = 0; j < 4; j++)
                             {
                                 *cl++ = conList[ID][conNo + j];
@@ -3298,14 +3390,15 @@ void ReadDyna3D::createStateObjects(int timestep)
                 }
 
                 // Beams
-                for (i = minBeam[ID]; i <= maxBeam[ID]; i++)
+                for (auto i: materials[ID].beam)
                 {
-                    if (BeamMatIds[i] == ID && beamTab[i]->get_visible() == VIS)
+                    assert(BeamMatIds[i] == ID);
+                    if (beamTab[i].visible)
                     {
 
-                        *tl++ = TYPE_BAR;
+                        *tl++ = UnstructuredGrid::BAR;
                         *el++ = elemNo;
-                        conNo = My_elemList[ID][beamTab[i]->get_coElem()];
+                        conNo = My_elemList[ID][beamTab[i].coElem];
                         for (j = 0; j < 2; j++)
                         {
                             *cl++ = conList[ID][conNo + j];
@@ -3361,21 +3454,44 @@ void ReadDyna3D::createStateObjects(int timestep)
                         break;
                     }
                 }
+                *el++ = elemNo;
 
             } // end of if (MDLOpt ...)
             else
             {
-                sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#ifdef SENDINFO
+                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
                 //exit(-1);
             }
+#if 0
             grids_out[IDcount] = grid_out;
             Vertexs_out[IDcount] = Vertex_out;
             Scalars_out[IDcount] = Scalar_out;
+#else
+            grid_out->setBlock(ID);
+            grid_out->setTimestep(timestep);
+            grid_out->setRealTime(m_currentTime);
+            token.addObject(gridPort, grid_out);
+            if (Vertex_out) {
+                Vertex_out->setBlock(ID);
+                Vertex_out->setTimestep(timestep);
+                Vertex_out->setRealTime(m_currentTime);
+                token.addObject(vectorPort, Vertex_out);
+            }
+            if (Scalar_out) {
+                Scalar_out->setBlock(ID);
+                Scalar_out->setTimestep(timestep);
+                Vertex_out->setRealTime(m_currentTime);
+                token.addObject(scalarPort, Scalar_out);
+            }
+#endif
             IDcount++;
 
         } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
     } // end of for (ID=0 ...)
 
+#if 0
     // mark end of set array
     grids_out[IDcount] = NULL;
     Vertexs_out[IDcount] = NULL;
@@ -3411,16 +3527,241 @@ void ReadDyna3D::createStateObjects(int timestep)
     delete[] grids_out;
     delete[] Vertexs_out;
     delete[] Scalars_out;
+#endif
 }
 
-void ReadDyna3D::byteswap(unsigned int *buffer, int length)
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::deleteStateData()
+{
+    // free
+    delete[] DisCo;
+    DisCo = nullptr;
+    delete[] NodeData;
+    NodeData = nullptr;
+    delete[] SolidData;
+    SolidData = nullptr;
+    delete[] TShellData;
+    TShellData = nullptr;
+    delete[] BeamData;
+    BeamData = nullptr;
+    delete[] ShellData;
+    ShellData = nullptr;
+    delete[] DelTab;
+    DelTab = nullptr;
+}
+
+template<int wordsize, class INTEGER, class REAL>
+void Dyna3DReader<wordsize,INTEGER,REAL>::byteswap(WORD *buffer, INTEGER length)
 {
 
-    for (int ctr = 0; ctr < length; ctr++)
+    for (INTEGER ctr = 0; ctr < length; ctr++)
     {
-        unsigned int &val = buffer[ctr];
-        val = ((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >> 8) | ((val & 0x0000ff00) << 8) | ((val & 0x000000ff) << 24);
+        buffer[ctr] = vistle::byte_swap<vistle::little_endian, vistle::big_endian>(buffer[ctr]);
     }
 }
 
-MODULE_MAIN(IO, ReadDyna3D)
+Dyna3DReaderBase::Dyna3DReaderBase(Reader *module)
+: m_module(module)
+{
+}
+
+Dyna3DReaderBase::~Dyna3DReaderBase()
+{
+}
+
+void Dyna3DReaderBase::setPorts(Port *grid, Port *scalar, Port *vector)
+{
+    gridPort = grid;
+    scalarPort = scalar;
+    vectorPort = vector;
+}
+
+void Dyna3DReaderBase::setFilename(const std::string &d3plot) {
+
+    m_filename = d3plot;
+}
+
+void Dyna3DReaderBase::setByteswap(Dyna3DReaderBase::BYTESWAP bs) {
+
+    byteswapFlag = bs;
+}
+
+void Dyna3DReaderBase::setFormat(Dyna3DReaderBase::FORMAT f) {
+
+    format = f;
+
+    std::string ciform;
+    switch (format)
+    {
+    case GERMAN:
+        ciform = "cadfem";
+        break;
+
+    case US:
+        ciform = "original";
+        break;
+
+    default:
+#ifdef SENDINFO
+        m_module->sendError("ERROR: Incorrect file format selected");
+#endif
+        break;
+    };
+
+    std::cerr << "Dyna3DReader::readDyna3D info: selecting format " << ciform << std::endl;
+}
+
+void Dyna3DReaderBase::setOnlyGeometry(bool onlygeo) {
+
+    only_geometry = onlygeo;
+}
+
+void Dyna3DReaderBase::setPartSelection(const std::string &parts)
+{
+    selection = parts;
+}
+
+std::string nextAdapt(const std::string &cur) {
+
+    if (cur.empty())
+        return "aa";
+
+    assert(cur.length() == 2);
+    if (cur == "zz")
+        return "end";
+
+    std::string next = cur;
+    if (next[1] == 'z') {
+        next[1] = 'a';
+        ++next[0];
+    } else {
+        ++next[1];
+    }
+
+    return next;
+}
+
+std::string suffixForCount(int count) {
+
+    if (count <= 0)
+        return "";
+
+    if (count >= 1000)
+        return "XXX";
+
+    char buf[100];
+    if (count < 100)
+        snprintf(buf, sizeof(buf), "%02d", count);
+    else
+        snprintf(buf, sizeof(buf), "%03d", count);
+
+    return buf;
+}
+
+bool Dyna3DReaderBase::examine()
+{
+    m_numBlocks = -1;
+    m_numTimesteps = -1;
+
+    fs::path rootfile(m_filename);
+    auto dir = rootfile.parent_path();
+    auto name = rootfile.filename();
+
+    struct Adaptation {
+        std::string name;
+        int numfiles = 0;
+        size_t firstlen = 0;
+        size_t len = 0;
+        size_t lastlen = 0;
+
+        size_t geomlen = 0;
+        size_t statelen = 0;
+    };
+    std::map<std::string, Adaptation> adaptations;
+    for (std::string adapt=""; adapt != "end"; adapt = nextAdapt(adapt)) {
+        bool found = false;
+        for (int count=0; count<1000; ++count) {
+            fs::path curfile = rootfile;
+            curfile += adapt + suffixForCount(count);
+            boost::system::error_code ec;
+            if (!exists(curfile, ec) || ec) {
+                std::cerr << "filesystem error while checking for existance of " << curfile.string() << ":" << ec << std::endl;
+                break;
+            }
+            size_t size = file_size(curfile, ec);
+            if (ec) {
+                std::cerr << "filesystem error while checking length of " << curfile.string() << ":" << ec << std::endl;
+                break;
+            } else if (size == 0) {
+                std::cerr << "length of " << curfile.string() << " is zero" << std::endl;
+                break;
+            }
+            found = true;
+            if (count == 0) {
+                adaptations[adapt].firstlen = size;
+            } else if (count == 1) {
+                adaptations[adapt].len = size;
+            }
+            adaptations[adapt].lastlen = size;
+            adaptations[adapt].numfiles = count;
+            adaptations[adapt].name = adapt;
+        }
+        if (!found)
+            break;
+    }
+
+    m_numTimesteps = 0;
+    std::string filename = m_filename;
+    for (auto &a: adaptations) {
+        int numtime = 0;
+        auto &adapt = a.second;
+        if (taurusinit_() != 0)
+            return false;
+
+        m_filename = filename + a.first;
+        if (rdtaucntrl_(format) != 0)
+            return false;
+
+        adapt.geomlen = NumberOfWords * m_wordsize;
+        adapt.statelen = NumWords * m_wordsize;
+
+        // count initial state as one step
+        if (adapt.firstlen >=  adapt.geomlen)
+            ++numtime;
+        // steps contained in first file after geometry
+        numtime += (adapt.firstlen-adapt.geomlen)/adapt.statelen;
+        // last file
+        if (adapt.numfiles > 0) {
+            numtime += adapt.lastlen/adapt.statelen;
+        }
+        // other files
+        if (adapt.numfiles > 1) {
+            numtime += (adapt.len/adapt.statelen) * (adapt.numfiles-2);
+        }
+
+        //std::cerr << "found " << numtime << " steps in adaptation '" << adapt.name  << "' contained in " << adapt.numfiles << " files" << std::endl;
+        m_numTimesteps += numtime;
+    }
+
+    m_filename = filename;
+
+    if (taurusinit_() != 0)
+        return false;
+    if (rdtaucntrl_(format) != 0)
+        return false;
+
+    return true;
+}
+
+Index Dyna3DReaderBase::numBlocks() const
+{
+    return m_numBlocks;
+}
+
+int Dyna3DReaderBase::numTimesteps() const
+{
+    return m_numTimesteps;
+}
+
+template class Dyna3DReader<4>;
+//template class Dyna3DReader<8>;

@@ -5,8 +5,8 @@
 
  * License: LGPL 2+ */
 
-#ifndef _READDYNA3D_H
-#define _READDYNA3D_H
+#ifndef DYNA3DREADER_H
+#define DYNA3DREADER_H
 /**************************************************************************\ 
  **                                                           (C)1995 RUS  **
  **                                                                        **
@@ -26,6 +26,7 @@
  ** Date:  17.03.95  V1.0                                                  **
  ** Revision R. Beller 08.97 & 02.99                                       **
 \**************************************************************************/
+
 /////////////////////////////////////////////////////////
 //                I M P O R T A N T
 /////////////////////////////////////////////////////////
@@ -55,99 +56,169 @@
 // a frequency greater than 1.
 /////////////////////////////////////////////////////////
 
-//#include <appl/ApplInterface.h>
-
-#include <api/coModule.h>
-using namespace covise;
-
 #include <util/coRestraint.h>
-#include <util/coviseCompat.h>
-#include <do/coDoData.h>
-#include <do/coDoSet.h>
-#include <do/coDoUnstructuredGrid.h>
+
+#include <module/reader.h>
 
 #include "Element.h"
 
-class ReadDyna3D : public coModule
-{
-public:
-    enum // maximum part ID
-    {
-        MAXID = 200000,
-        MAXTIMESTEPS = 1000
-    };
+#include <vector>
+#include <shared_mutex>
 
-    enum
+template<int wordsize>
+struct WordTraits;
+
+template<>
+struct WordTraits<4> {
+    typedef uint32_t WORD;
+    typedef int32_t INTEGER;
+    typedef float REAL;
+};
+
+template<>
+struct WordTraits<8> {
+    typedef uint64_t WORD;
+    typedef int64_t INTEGER;
+    typedef double REAL;
+};
+
+class Dyna3DReaderBase {
+public:
+    enum BYTESWAP
     {
         BYTESWAP_OFF = 0x00,
         BYTESWAP_ON = 0x01,
         BYTESWAP_AUTO = 0x02
     };
 
-private:
-    struct
+    enum FORMAT // format of cadfem
     {
-        int itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, irl, iwpr, adaptation;
-        float tau[512];
-        int taulength;
+        GERMAN = 0,
+        CADFEM = GERMAN,
+        US, // format used by ARUP
+        ORIGINAL = US
+    };
+
+    explicit Dyna3DReaderBase(vistle::Reader *module);
+    virtual ~Dyna3DReaderBase();
+
+    void setPorts(vistle::Port *grid, vistle::Port *scalar, vistle::Port *vector);
+
+    void setFilename(const std::string &d3plot);
+    void setByteswap(BYTESWAP bs);
+    void setFormat(FORMAT format);
+    void setOnlyGeometry(bool onlygeo);
+    void setPartSelection(const std::string &parts);
+
+    bool examine();
+
+    virtual int readStart() = 0;
+    virtual int readOnlyGeo(vistle::Reader::Token &token, int blockToRead) = 0;
+    virtual int readState(vistle::Reader::Token &token, int timestep, int blockToRead) = 0;
+    virtual int readFinish() = 0;
+
+    vistle::Index numBlocks() const;
+    int numTimesteps() const;
+
+protected:
+    virtual int taurusinit_() = 0;
+    virtual int rdtaucntrl_(FORMAT format) = 0;
+    virtual int readTimestep() = 0;
+
+    vistle::Port *gridPort = nullptr;
+    vistle::Port *scalarPort = nullptr;
+    vistle::Port *vectorPort = nullptr;
+
+    vistle::Reader *m_module = nullptr;
+    std::string m_filename;
+    BYTESWAP byteswapFlag = BYTESWAP_AUTO;
+    FORMAT format = US;
+    bool only_geometry = false;
+    std::string selection;
+
+    vistle::Index m_numBlocks = 0;
+    int m_numTimesteps = 0;
+
+    // protect data of currently read timestep
+    std::shared_timed_mutex m_timestepMutex;
+    int m_timestepUseCount = 0;
+    int m_currentTimestep = -1;
+    double m_currentTime = 0.;
+
+    int NumWords; //=0;
+    int NumberOfWords; //=0;
+    size_t m_wordsize = 0;
+};
+
+template<int wordsize,
+         class INTEGER=typename WordTraits<wordsize>::INTEGER,
+         class REAL=typename WordTraits<wordsize>::REAL>
+class Dyna3DReader: public Dyna3DReaderBase
+{
+public:
+    typedef typename WordTraits<wordsize>::WORD WORD;
+
+    enum // maximum part ID
+    {
+        MAXID = 200000,
+        MAXTIMESTEPS = 1000
+    };
+
+private:
+    struct tauio_
+    {
+        REAL tau[512];
+        INTEGER itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, adaptation;
+        const INTEGER irl = 512;
+        INTEGER taulength;
         char adapt[3];
 
-    } tauio_;
+    } tauio_1;
 
     //  member functions
-    virtual int compute(const char *port);
     virtual void postInst();
-    void byteswap(unsigned int *buffer, int length);
+    void byteswap(WORD *buffer, INTEGER length);
 
-    char ciform[9];
     char InfoBuf[1000];
 
-    int byteswapFlag;
-
     // Some old global variables have been hidden hier:
-    int NumIDs;
-    int nodalDataType;
-    int elementDataType;
-    int component;
-    int ExistingStates; // initially = 0;
-    int MinState; // initially = 1;
-    int MaxState; // initially = 1;
-    int NumState; // initially = 1;
-    int State; // initially = 1;
+    int NumIDs = 0;
+    int nodalDataType = 0;
+    int elementDataType = 0;
+    int component = 0;
+    int ExistingStates = 0; // initially = 0;
+    int MinState = 1; // initially = 1;
+    int State = 1; // initially = 1;
 
     // More "old" global variables
     int IDLISTE[MAXID];
-    int *numcoo, *numcon, *numelem;
+    int *numcoo = nullptr, *numcon = nullptr, *numelem = nullptr;
 
-    // Another block of "old" global variables
-    int *maxSolid; // initially = NULL;
-    int *minSolid; // initially = NULL;
-    int *maxTShell; // initially = NULL;
-    int *minTShell; // initially = NULL;
-    int *maxShell; // initially = NULL;
-    int *minShell; // initially = NULL;
-    int *maxBeam; // initially = NULL;
-    int *minBeam; // initially = NULL;
+    struct Material {
+        std::vector<INTEGER> solid, tshell, shell, beam;
+    };
+    std::vector<Material> materials;
 
     // More and more blocks of "old" global variables to be initialised to 0
-    int *delElem; // = NULL;
-    int *delCon; //  = NULL;
+    int *delElem = nullptr; // = NULL;
+    int *delCon = nullptr; //  = NULL;
 
-    Element **solidTab; //  = NULL;
-    Element **tshellTab; // = NULL;
-    Element **shellTab; //  = NULL;
-    Element **beamTab; //   = NULL;
+    std::vector<Element> solidTab;
+    std::vector<Element> tshellTab;
+    std::vector<Element> shellTab;
+    std::vector<Element> beamTab;
 
     // storing coordinate positions for all time steps
-    int **coordLookup; // = NULL;
+    int **coordLookup = nullptr; // = NULL;
 
     // element and connection list for time steps (considering the deletion table)
-    int **My_elemList; // = NULL;
-    int **conList; //  = NULL;
+    int **My_elemList = nullptr; // = NULL;
+    int **conList = nullptr; //  = NULL;
 
     // node/element deletion table
-    int *DelTab; // = NULL;
+    int *DelTab = nullptr; // = NULL;
 
+#if 0
     coDoUnstructuredGrid *grid_out; //    = NULL;
     coDoVec3 *Vertex_out; //  = NULL;
     coDoFloat *Scalar_out; // = NULL;
@@ -164,35 +235,36 @@ private:
     coDoSet *grid_sets_out[MAXTIMESTEPS];
     coDoSet *Vertex_sets_out[MAXTIMESTEPS];
     coDoSet *Scalar_sets_out[MAXTIMESTEPS];
+#endif
 
     // Yes, certainly! More "old" global variables!
-    int infile;
-    int numcoord;
-    int *NodeIds; //=NULL;
-    int *SolidNodes; //=NULL;
-    int *SolidMatIds; //=NULL;
-    int *BeamNodes; //=NULL;
-    int *BeamMatIds; //=NULL;
-    int *ShellNodes; //=NULL;
-    int *ShellMatIds; //=NULL;
-    int *TShellNodes; //=NULL;
-    int *TShellMatIds; //=NULL;
-    int *SolidElemNumbers; //=NULL;
-    int *BeamElemNumbers; //=NULL;
-    int *ShellElemNumbers; //=NULL;
-    int *TShellElemNumbers; //=NULL;
-    int *Materials; //=NULL;
+    int infile = -1;
+    int numcoord = 0;
+    int *NodeIds = nullptr; //=NULL;
+    int *SolidNodes = nullptr; //=NULL;
+    int *SolidMatIds = nullptr; //=NULL;
+    int *BeamNodes = nullptr; //=NULL;
+    int *BeamMatIds = nullptr; //=NULL;
+    int *ShellNodes = nullptr; //=NULL;
+    int *ShellMatIds = nullptr; //=NULL;
+    int *TShellNodes = nullptr; //=NULL;
+    int *TShellMatIds = nullptr; //=NULL;
+    int *SolidElemNumbers = nullptr; //=NULL;
+    int *BeamElemNumbers = nullptr; //=NULL;
+    int *ShellElemNumbers = nullptr; //=NULL;
+    int *TShellElemNumbers = nullptr; //=NULL;
+    int *Materials = nullptr; //=NULL;
 
     /* Common Block Declarations */
     // Coordinates
-    float *Coord; //= NULL;
+    float *Coord = nullptr; //= NULL;
     // displaced coordinates
-    float *DisCo; //= NULL;
-    float *NodeData; //= NULL;
-    float *SolidData; //= NULL;
-    float *TShellData; //= NULL;
-    float *ShellData; //= NULL;
-    float *BeamData; //= NULL;
+    float *DisCo = nullptr; //= NULL;
+    float *NodeData = nullptr; //= NULL;
+    float *SolidData = nullptr; //= NULL;
+    float *TShellData = nullptr; //= NULL;
+    float *ShellData = nullptr; //= NULL;
+    float *BeamData = nullptr; //= NULL;
 
     // A gigantic block of "old" global variables
     char CTauin[300];
@@ -206,7 +278,6 @@ private:
     int NumMaterials; //=0;
     int NumDim; //=0;
     int NumGlobVar; //=0;
-    int NumWords; //=0;
     int ITFlag; //=0;
     int IUFlag; //=0;
     int IVFlag; //=0;
@@ -236,7 +307,6 @@ private:
     int NADAPT;
     int NumBRS; //=0;
     int NodeSort; //=0;
-    int NumberOfWords; //=0;
     int NumNodalPoints; //=0;
     int IZControll; //=0;
     int IZElements; //=0;
@@ -255,13 +325,13 @@ private:
     int c__16; //= 16;
 
     //  Parameter names
-    const char *data_Path;
-    int key;
 
+#if 0
     //  object names
-    const char *Grid;
-    const char *Scalar;
-    const char *Vertex;
+    const char *Grid = nullptr;
+    const char *Scalar = nullptr;
+    const char *Vertex = nullptr;
+#endif
 
     //  Local data
 
@@ -269,32 +339,43 @@ private:
 
     //  LS-DYNA3D specific member functions
 
-    int readDyna3D();
+    int readStart() override;
+    int readOnlyGeo(vistle::Reader::Token &token, int blockToRead) override;
+    int readState(vistle::Reader::Token &token, int state, int block) override;
+    int readFinish() override;
     void visibility();
 
     void createElementLUT();
     void deleteElementLUT();
     void createGeometryList();
-    void createGeometry();
+    void createGeometry(vistle::Reader::Token &token, int blockToRead = -1) const;
     void createNodeLUT(int id, int *lut);
 
-    void createStateObjects(int timestep);
+    void createStateObjects(vistle::Reader::Token &token, int timestep, int block=-1) const;
+    void deleteStateData();
 
     /* Subroutines */
-    int taurusinit_();
-    int rdtaucntrl_(char *);
+    int taurusinit_() override;
+    int rdtaucntrl_(FORMAT format) override;
     int taugeoml_();
     int taustatl_();
     int rdtaucoor_();
-    int rdtauelem_(char *);
-    int rdtaunum_(char *);
-    int rdstate_(int *istate);
-    int rdrecr_(float *val, int *istart, int *n);
-    int rdreci_(int *ival, int *istart, int *n, char *ciform);
-    int grecaddr_(int *i, int *istart, int *iz, int *irdst);
+    int rdtauelem_(FORMAT format);
+    int rdtaunum_(FORMAT format);
+    int rdstate_(vistle::Reader::Token &token, int istate, int block);
+    int readTimestep() override;
+    int rdrecr_(float *val, const int *istart, int n);
+    int rdreci_(int *ival, const int *istart, const int *n, FORMAT format);
+    int grecaddr_(INTEGER i, INTEGER istart, INTEGER *iz, INTEGER *irdst);
     int placpnt_(int *istart);
     int otaurusr_();
 
+    int nrelem = 0; // number of rigid body shell elements
+    int nmmat = 0; // number of materials in the database
+    int *matTyp = NULL;
+    int *MaterialTables = NULL;
+
+#if 0
     // Ports
     coOutputPort *p_grid;
     coOutputPort *p_data_1;
@@ -311,13 +392,18 @@ private:
     coChoiceParam *p_format;
     coBooleanParam *p_only_geometry;
     coChoiceParam *p_byteswap;
+#endif
 
 public:
     /* Constructor */
-    ReadDyna3D(int argc, char *argv[]);
+    Dyna3DReader(vistle::Reader *module);
 
-    virtual ~ReadDyna3D()
-    {
-    }
+     ~Dyna3DReader() override;
 };
-#endif // _READDYNA3D_H
+
+extern template class Dyna3DReader<4>;
+extern template class Dyna3DReader<8>;
+
+//typedef Dyna3DReader<4> Dyna3DReader32;
+//typedef Dyna3DReader<8> Dyna3DReader64;
+#endif
