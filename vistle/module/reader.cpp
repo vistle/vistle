@@ -311,7 +311,7 @@ bool Reader::changeParameter(const Parameter *param)
     return ret;
 }
 
-const Meta &Reader::Token::meta() {
+const Meta &Reader::Token::meta() const {
 
     return m_meta;
 }
@@ -460,6 +460,11 @@ Reader::Token::Token(Reader *reader, std::shared_ptr<Token> previous)
 : m_reader(reader)
 , m_previous(previous)
 {
+}
+
+Reader *Reader::Token::reader() const {
+
+    return m_reader;
 }
 
 }

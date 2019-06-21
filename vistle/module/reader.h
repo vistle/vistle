@@ -17,7 +17,8 @@ public:
 
    public:
        Token(Reader *reader, std::shared_ptr<Token> previous);
-       const Meta &meta();
+       Reader *reader() const;
+       const Meta &meta() const;
        bool wait(const std::string &port = std::string());
        bool addObject(const std::string &port, Object::ptr obj);
        bool addObject(Port *port, Object::ptr obj);
