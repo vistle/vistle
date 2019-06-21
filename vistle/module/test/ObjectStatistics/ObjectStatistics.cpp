@@ -179,9 +179,11 @@ bool ObjectStatistics::compute() {
    if (auto i = Indexed::as(obj)) {
       s.elements = i->getNumElements();
       s.vertices = i->getNumCorners();
+      ++s.grids;
    } else if (auto t = Triangles::as(obj)) {
       s.elements = t->getNumElements();
       s.vertices = t->getNumCorners();
+      ++s.grids;
    }
    if (auto c = Coords::as(obj)) {
       s.coords = c->getNumCoords();
