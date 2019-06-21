@@ -329,11 +329,16 @@ bool Reader::Token::wait(const std::string &port)
 }
 
 bool Reader::Token::addObject(Port *port, Object::ptr obj) {
+    if (!port)
+        return false;
     std::string name = port->getName();
     return addObject(name, obj);
 }
 
 bool Reader::Token::addObject(const std::string &port, Object::ptr obj) {
+    if (!obj)
+        return false;
+
     applyMeta(obj);
 #ifdef DEBUG
     if (obj)
