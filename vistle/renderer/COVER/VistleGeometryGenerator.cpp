@@ -270,6 +270,34 @@ struct DataAdapter<Geometry, osg::Vec3Array, Mapped, normalize> {
     vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
 };
 
+template<class Geometry, bool normalize>
+struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Scalar,3>::const_ptr, normalize> {
+    DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Scalar,3>::const_ptr mapped)
+        : x(&mapped->x()[0])
+        , y(&mapped->y()[0])
+        , z(&mapped->z()[0])
+        , mapping(mapped->guessMapping(tri))
+    {}
+    float getValue(Index idx) {
+        return sqrt(x[idx]*x[idx]+y[idx]*y[idx]+z[idx]*z[idx]);
+    }
+    const Scalar *x, *y, *z;
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+};
+
+template<class Geometry, bool normalize>
+struct DataAdapter<Geometry, osg::FloatArray, typename vistle::Vec<Index>::const_ptr, normalize> {
+    DataAdapter(typename Geometry::const_ptr tri, typename vistle::Vec<Index>::const_ptr mapped)
+        : x(&mapped->x()[0])
+        , mapping(mapped->guessMapping(tri))
+    {}
+    float getValue(Index idx) {
+        return x[idx];
+    }
+    const Index *x;
+    vistle::DataBase::Mapping mapping = vistle::DataBase::Unspecified;
+};
+
 template<class Geometry, class Mapped, bool normalize>
 struct DataAdapter<Geometry, osg::FloatArray, Mapped, normalize> {
     DataAdapter(typename Geometry::const_ptr tri, typename Mapped::const_ptr mapped)
@@ -603,7 +631,10 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
    vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex);
    const OsgColorMap *colormap = nullptr;
+   vistle::DataBase::const_ptr database = vistle::DataBase::as(m_tex);
    vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_tex);
+   vistle::Vec<Scalar,3>::const_ptr vdata = vistle::Vec<Scalar,3>::as(m_tex);
+   vistle::Vec<Index>::const_ptr idata = vistle::Vec<Index>::as(m_tex);
    if (tex) {
        auto m = tex->guessMapping();
        if (m != vistle::DataBase::Vertex)
@@ -612,8 +643,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            debug << "NoIndex: tex ";
        }
        data.reset();
-   } else if (data) {
-       auto m = data->guessMapping();
+   } else if (data || vdata || idata) {
+       auto m = database->guessMapping();
        if (m != vistle::DataBase::Vertex)
        {
            indexGeom = false;
@@ -732,14 +763,19 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                  norm = applyTriangle<Triangles, osg::Vec3Array*, osg::Vec3Array, false>(triangles, gnormals.get(), indexGeom, bin);
              geom->setNormalArray(norm.get());
 
+             osg::ref_ptr<osg::FloatArray> fl;
              auto tc = applyTriangle<Triangles, vistle::Texture1D::const_ptr, osg::FloatArray, false>(triangles, tex, indexGeom, bin);
              if (tc) {
                  geom->setTexCoordArray(0, tc);
-             } else {
-                 auto fl = applyTriangle<Triangles, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(triangles, data, indexGeom, bin);
-                 if (fl)
-                     geom->setVertexAttribArray(DataAttrib, fl);
+             } else if (data) {
+                 fl = applyTriangle<Triangles, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(triangles, data, indexGeom, bin);
+             } else if (vdata) {
+                 fl = applyTriangle<Triangles, vistle::Vec<Scalar,3>::const_ptr, osg::FloatArray, false>(triangles, vdata, indexGeom, bin);
+             } else if (idata) {
+                 fl = applyTriangle<Triangles, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(triangles, idata, indexGeom, bin);
              }
+             if (fl)
+                 geom->setVertexAttribArray(DataAttrib, fl);
 
              bin.clear();
          }
@@ -784,14 +820,19 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                  norm = applyTriangle<Indexed, osg::Vec3Array*, osg::Vec3Array, false>(polygons, gnormals.get(), indexGeom, bin);
              geom->setNormalArray(norm.get());
 
+             osg::ref_ptr<osg::FloatArray> fl;
              auto tc = applyTriangle<Indexed, vistle::Texture1D::const_ptr, osg::FloatArray, false>(polygons, tex, indexGeom, bin);
              if (tc) {
                  geom->setTexCoordArray(0, tc);
-             } else {
-                 auto fl = applyTriangle<Indexed, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(polygons, data, indexGeom, bin);
-                 if (fl)
-                     geom->setVertexAttribArray(DataAttrib, fl);
+             } else if (data) {
+                 fl = applyTriangle<Indexed, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(polygons, data, indexGeom, bin);
+             } else if (vdata) {
+                 fl = applyTriangle<Indexed, vistle::Vec<Scalar,3>::const_ptr, osg::FloatArray, false>(polygons, vdata, indexGeom, bin);
+             } else if (idata) {
+                 fl = applyTriangle<Indexed, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(polygons, idata, indexGeom, bin);
              }
+             if (fl)
+                 geom->setVertexAttribArray(DataAttrib, fl);
 
              bin.clear();
          }
