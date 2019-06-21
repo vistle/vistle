@@ -41,7 +41,9 @@ bool MetaData::compute() {
    auto obj = expect<Object>("grid_in");
    if (!obj)
        return true;
-   auto grid = obj->getInterface<GeometryInterface>();
+   Object::const_ptr grid;
+   if (obj->getInterface<GeometryInterface>())
+       grid = obj;
    DataBase::const_ptr data;
    if (grid) {
        data = DataBase::as(obj);
@@ -52,8 +54,8 @@ bool MetaData::compute() {
       if (!data) {
          return true;
       }
-      if (data->grid())
-          grid = data->grid()->getInterface<GeometryInterface>();
+      if (data->grid() && data->grid()->getInterface<GeometryInterface>())
+          grid = data->grid();
       if (!grid) {
          return true;
       }
@@ -83,8 +85,18 @@ bool MetaData::compute() {
       val[i] = clamp(val[i], min, max);
    }
 
+   std::string species;
+   switch(kind) {
+   case MpiRank: species = "rank"; break;
+   case BlockNumber: species = "block"; break;
+   case TimestepNumber: species = "timestep"; break;
+   case VertexIndex: species = "vertex"; break;
+   default: species = "zero"; break;
+   }
+
+   out->addAttribute("_species", species);
    out->setMeta(data->meta());
-   out->setGrid(obj);
+   out->setGrid(grid);
    addObject("data_out", out);
 
    return true;
