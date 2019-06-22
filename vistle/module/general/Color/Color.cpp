@@ -13,6 +13,8 @@
 
 MODULE_MAIN(Color)
 
+//#define USE_OPENMP
+
 using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
@@ -216,18 +218,24 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
 
    if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
       const vistle::Index *x = &scal->x()[0];
+#ifdef USE_OPENMP
 #pragma omp parallel
+#endif
       {
          Index tmin = std::numeric_limits<Index>::max();
          Index tmax = std::numeric_limits<Index>::min();
+#ifdef USE_OPENMP
 #pragma omp for
+#endif
          for (ssize_t index = 0; index < numElements; index ++) {
             if (x[index] < tmin)
                tmin = x[index];
             if (x[index] > tmax)
                tmax = x[index];
          }
+#ifdef USE_OPENMP
 #pragma omp critical
+#endif
          {
             if (tmin < min)
                min = tmin;
@@ -237,18 +245,24 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
       }
    } else  if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
       const vistle::Scalar *x = &scal->x()[0];
+#ifdef USE_OPENMP
 #pragma omp parallel
+#endif
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
+#ifdef USE_OPENMP
 #pragma omp for
+#endif
          for (ssize_t index = 0; index < numElements; index ++) {
             if (x[index] < tmin)
                tmin = x[index];
             if (x[index] > tmax)
                tmax = x[index];
          }
+#ifdef USE_OPENMP
 #pragma omp critical
+#endif
          {
             if (tmin < min)
                min = tmin;
@@ -260,11 +274,15 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
       const vistle::Scalar *x = &vec->x()[0];
       const vistle::Scalar *y = &vec->y()[0];
       const vistle::Scalar *z = &vec->z()[0];
+#ifdef USE_OPENMP
 #pragma omp parallel
+#endif
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
+#ifdef USE_OPENMP
 #pragma omp for
+#endif
          for (ssize_t index = 0; index < numElements; index ++) {
             Scalar v = Vector(x[index], y[index], z[index]).norm();
             if (v < tmin)
@@ -272,7 +290,9 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
             if (v > tmax)
                tmax = v;
          }
+#ifdef USE_OPENMP
 #pragma omp critical
+#endif
          {
             if (tmin < min)
                min = tmin;
@@ -377,14 +397,18 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
 
       const vistle::Scalar *x = &f->x()[0];
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
       for (ssize_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) * invRange;
    } else if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
 
       const vistle::Index *x = &f->x()[0];
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
       for (ssize_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) * invRange;
    } else  if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
@@ -393,7 +417,9 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
       const vistle::Scalar *y = &f->y()[0];
       const vistle::Scalar *z = &f->z()[0];
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
       for (ssize_t index = 0; index < numElem; index ++) {
          const Scalar v = Vector(x[index], y[index], z[index]).norm();
          tc[index] = (v - min) * invRange;
@@ -401,7 +427,9 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    } else {
        std::cerr << "Color: cannot handle input of type " << object->getType() << std::endl;
 
+#ifdef USE_OPENMP
 #pragma omp parallel for
+#endif
       for (ssize_t index = 0; index < numElem; index ++) {
          tc[index] = index%2 ? 0. : 1.;
       }
