@@ -14,6 +14,7 @@ public:
 
    class V_MODULEEXPORT Token {
        friend class vistle::Reader;
+       friend std::ostream &operator<<(std::ostream &os, const Token &tok);
 
    public:
        Token(Reader *reader, std::shared_ptr<Token> previous);
@@ -23,7 +24,7 @@ public:
        bool addObject(const std::string &port, Object::ptr obj);
        bool addObject(Port *port, Object::ptr obj);
        void applyMeta(vistle::Object::ptr obj) const;
-
+       unsigned long id() const;
 
    private:
        bool result();
@@ -38,6 +39,7 @@ public:
        bool m_result = false;
        std::shared_ptr<Token> m_previous;
        std::shared_future<bool> m_future;
+       unsigned long m_id = 0;
 
        struct PortState {
            PortState()
@@ -110,6 +112,8 @@ private:
    bool m_handlePartitions = true;
    bool m_allowTimestepDistribution = false;
 
+   unsigned long m_tokenCount = 0;
+
    /*
     * # files (api)
     * file selection (ui)
@@ -125,5 +129,6 @@ private:
     */
 };
 
+V_MODULEEXPORT std::ostream &operator<<(std::ostream &os, const Reader::Token &tok);
 }
 #endif

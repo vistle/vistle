@@ -122,6 +122,8 @@ bool Reader::prepare()
             m_tokens.emplace_back(std::make_shared<Token>(this, prev));
             prev = m_tokens.back();
             auto &token = *prev;
+            ++m_tokenCount;
+            token.m_id = m_tokenCount;
             token.m_meta = meta;
             token.m_future = std::async(std::launch::async, [this, &token, p](){
                 if (!read(token, -1, p)) {
@@ -445,6 +447,9 @@ void Reader::Token::setPortReady(const std::string &port, bool ready) {
     if (!p) {
         p.reset(new PortState);
     }
+    if (p->valid) {
+        std::cerr << "setting port ready but already valid: " << port << "=" << ready << std::endl;
+    }
     assert(!p->valid);
     p->valid = true;
     p->promise.set_value(ready);
@@ -459,6 +464,20 @@ void Reader::Token::applyMeta(Object::ptr obj) const {
     obj->setNumTimesteps(m_meta.numTimesteps());
     obj->setBlock(m_meta.block());
     obj->setNumBlocks(m_meta.numBlocks());
+}
+
+unsigned long Reader::Token::id() const {
+
+    return m_id;
+}
+
+std::ostream &operator<<(std::ostream &os, const Reader::Token &tok) {
+
+    os << "id: " << tok.id() << ", ports:";
+    for (const auto &p: tok.m_ports) {
+        os << " " << p.first;
+    }
+    return os;
 }
 
 Reader::Token::Token(Reader *reader, std::shared_ptr<Token> previous)
