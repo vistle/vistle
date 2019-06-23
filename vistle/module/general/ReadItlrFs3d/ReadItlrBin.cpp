@@ -19,8 +19,7 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <util/filesystem.h>
-
-#include "byteswap.h"
+#include <util/byteswap.h>
 
 
 #include "ReadItlrBin.h"

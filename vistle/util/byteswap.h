@@ -12,6 +12,8 @@
 #include <boost/detail/endian.hpp>
 #include <stdexcept>
 
+namespace vistle {
+
 // Little-endian operating systems:
 //---------------------------------
 // Linux on x86, x64, Alpha and Itanium
@@ -51,7 +53,7 @@ struct swap_bytes
 {
     inline T operator()(T val)
     {
-        VV_UNUSED(val);
+        (void)val;
         throw std::out_of_range("data size");
     }
 };
@@ -70,11 +72,7 @@ struct swap_bytes<T, 2> // for 16 bit
 {
     inline T operator()(T val)
     {
-        #if defined(_USE_BUILTIN_BSWAPS) && defined(__GNUC__) && ((__GNUC__ == 4 && __GNUC_MINOR__ >= 3) || __GNUC__ > 4)
-            return __builtin_bswap16(val);
-        #else
-            return ((((val) >> 8) & 0xff) | (((val) & 0xff) << 8));
-        #endif
+        return ((((val) >> 8) & 0xff) | (((val) & 0xff) << 8));
     }
 };
 
@@ -157,5 +155,7 @@ inline T byte_swap(T value)
     BOOST_STATIC_ASSERT(boost::is_arithmetic<T>::value);
 
     return detail::do_byte_swap<from, to, T>()(value);
+}
+
 }
 #endif
