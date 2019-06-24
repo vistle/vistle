@@ -114,6 +114,8 @@ bool Reader::prepare()
         concurrency = m_concurrency->getValue();
         if (concurrency <= 0)
             concurrency = std::thread::hardware_concurrency()/2;
+        if (concurrency <= 0)
+            concurrency = 1;
     }
 
     if (m_parallel == Serial) {
@@ -131,24 +133,26 @@ bool Reader::prepare()
     for (int p=-1; p<numpart; ++p) {
         if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
             meta.setBlock(p);
-            m_tokens.emplace_back(std::make_shared<Token>(this, prev));
-            prev = m_tokens.back();
-            auto &token = *prev;
+            auto token = std::make_shared<Token>(this, prev);
             ++m_tokenCount;
-            token.m_id = m_tokenCount;
-            token.m_meta = meta;
-            token.m_future = std::async(std::launch::async, [this, &token, p](){
-                if (!read(token, -1, p)) {
+            token->m_id = m_tokenCount;
+            token->m_meta = meta;
+            if (waitForReaders(concurrency-1, result) == 0) {
+                prev.reset();
+            }
+            m_tokens.emplace_back(token);
+            prev = token;
+            token->m_future = std::async(std::launch::async, [this, token, p](){
+                if (!read(*token, -1, p)) {
                     sendInfo("error reading constant data on partition %d", p);
                     return false;
                 }
                 return true;
             });
-            if (waitForReaders(concurrency, result) == 0) {
-                prev.reset();
-            }
         }
         if (cancelRequested()) {
+            waitForReaders(0, result);
+            prev.reset();
             result = false;
             break;
         }
@@ -166,39 +170,42 @@ bool Reader::prepare()
             for (int p=-1; p<numpart; ++p) {
                 if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
                     meta.setBlock(p);
-                    m_tokens.emplace_back(std::make_shared<Token>(this, prev));
-                    prev = m_tokens.back();
-                    auto &token = *prev;
+                    auto token = std::make_shared<Token>(this, prev);
                     ++m_tokenCount;
-                    token.m_id = m_tokenCount;
-                    token.m_meta = meta;
-                    token.m_future = std::async(std::launch::async, [this, &token, t, p](){
-                        if (!read(token, t, p)) {
+                    token->m_id = m_tokenCount;
+                    token->m_meta = meta;
+                    if (waitForReaders(concurrency-1, result) == 0) {
+                        prev.reset();
+                    }
+                    m_tokens.emplace_back(token);
+                    prev = token;
+                    token->m_future = std::async(std::launch::async, [this, token, t, p](){
+                        if (!read(*token, t, p)) {
                             sendInfo("error reading time data %d on partition %d", t, p);
                             return false;
                         }
                         return true;
                     });
-                    if (waitForReaders(concurrency, result) == 0) {
-                        prev.reset();
-                    }
                 }
                 if (cancelRequested()) {
+                    waitForReaders(0, result);
+                    prev.reset();
                     result = false;
                     break;
                 }
             }
-            ++step;
-            if (!result)
-                break;
             if (m_parallel == ParallelizeBlocks) {
                 waitForReaders(0, result);
                 prev.reset();
             }
+            ++step;
+            if (!result)
+                break;
         }
     }
 
     waitForReaders(0, result);
+    prev.reset();
 
     if (!finishRead()) {
         sendInfo("error finishing read");
@@ -381,25 +388,36 @@ bool Reader::Token::result()
 
 bool Reader::Token::waitDone()
 {
-#ifdef DEBUG
-    std::cerr << "finishing..." << std::endl;
-#endif
+//#ifdef DEBUG
+    std::cerr << "Reader::Token: finishing " << id() << "..." << std::endl;
+//#endif
     {
         std::lock_guard<std::mutex> locker(m_mutex);
         if (m_finished)
             return m_result;
 
-        if (!m_future.valid())
+        if (!m_future.valid()) {
+            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 1" << std::endl;
             return false;
+        }
     }
 
-    m_future.wait();
+    {
+        std::lock_guard<std::mutex> locker(m_mutex);
+        if (m_future.valid()) {
+            m_future.wait();
+        } else {
+            std::cerr << "Reader::Token: finishing" << id() << ", but future not valid 2" << std::endl;
+        }
+    }
 
     std::lock_guard<std::mutex> locker(m_mutex);
     if (m_finished)
         return m_result;
-    if (!m_future.valid())
+    if (!m_future.valid()) {
+        std::cerr << "Reader::Token: finishing" << id() << ", but future not valid 3" << std::endl;
         return false;
+    }
 
     m_result = m_future.get();
     for (auto p: m_ports) {
