@@ -24,18 +24,13 @@ Build Requirements
 ------------------
 
 - **C++ compiler**:
-  support for C++11 (ISO/IEC 14882:2011) is required
+  support for C++14 (ISO/IEC 14882:2014) is required
 
   Known good compilers:
-  - GCC (4.8, 4.9, 5, 6, 7)
-  - Clang (Xcode 5.0–8.3)
-  - Microsoft Visual Studio 2015 (14.0)
+  - GCC (5.3, 8, 9)
+  - Clang (Xcode 11)
+  - Microsoft Visual Studio 2017 (15.1)
   
-  Known bad compilers:
-  - GCC 4.4 (not enough C++11)
-  - PGI 13.10 (no atomics for boost:interprocess)
-  - Cray CC 8.2.3 (crashes on IceT, not enough C++11)
-
 - **CMake**:
   at least 3.0
 
