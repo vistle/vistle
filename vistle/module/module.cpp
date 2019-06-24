@@ -252,6 +252,9 @@ Module::Module(const std::string &desc,
    auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
    setParameterRange<Integer>(openmp_threads, 0, 4096);
    addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
+
+   m_concurrency = addIntParameter("_concurrency", "number of tasks to keep in flight per MPI rank (-1: #cores/2)", -1);
+   setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()));
 }
 
 void Module::prepareQuit() {
@@ -650,6 +653,18 @@ void Module::updateOutputMode() {
       sbuf->set_gui_output(false);
    }
 #endif
+}
+
+void Module::waitAllTasks() {
+
+    while (!m_tasks.empty()) {
+        m_tasks.front()->wait();
+        m_tasks.pop_front();
+    }
+    if (m_lastTask) {
+        m_lastTask->wait();
+        m_lastTask.reset();
+    }
 }
 
 void Module::updateMeta(vistle::Object::ptr obj) const {
@@ -1416,8 +1431,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             || exec->what() == Execute::Prepare ) {
 
         if (m_lastTask) {
-            m_lastTask->wait();
-            m_lastTask.reset();
+            CERR << "prepare: waiting for previous tasks..." << std::endl;
+            waitAllTasks();
         }
 
         ret &= prepareWrapper(exec);
@@ -1690,11 +1705,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 }
 
                 if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-                    if (m_lastTask) {
-                        // FIXME do not wait for tasks
-                        m_lastTask->wait();
-                        m_lastTask.reset();
-                    }
+                    // FIXME do not wait for tasks
+                    waitAllTasks();
                     // if processing for another timestep starts, run reduction for previous timesteps
                     if (startWithZero && waitForZero) {
                         if (timestep > 0) {
@@ -1767,10 +1779,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         }
 
         if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-            if (m_lastTask) {
-                m_lastTask->wait();
-                m_lastTask.reset();
-            }
+            waitAllTasks();
             // run reduction for remaining (most often just the last) timesteps
             int t = prevTimestep;
             while (numReductions < m_numTimesteps && !cancelRequested(true)) {
@@ -1786,10 +1795,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::Reduce) {
-        if (m_lastTask) {
-            m_lastTask->wait();
-            m_lastTask.reset();
-        }
+        waitAllTasks();
         ret &= reduceWrapper(exec, reordered);
         m_cache.clearOld();
     }
@@ -2056,6 +2062,18 @@ bool Module::compute() {
         task->addDependency(m_lastTask);
     }
     m_lastTask = task;
+
+    int concurrency = m_concurrency->getValue();
+    if (concurrency <= 0)
+        concurrency = std::thread::hardware_concurrency()/2;
+    if (concurrency <= 1)
+        concurrency = 1;
+
+    while (m_tasks.size() >= concurrency) {
+        m_tasks.front()->wait();
+        m_tasks.pop_front();
+    }
+    m_tasks.push_back(task);
 
     task->m_future = std::async(std::launch::async, [this, task]{ return compute(task); });
     return true;

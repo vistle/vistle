@@ -114,6 +114,7 @@ protected:
 };
 
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
+   friend class Reader;
    friend class Renderer;
    friend class PortTask;
 
@@ -338,7 +339,10 @@ protected:
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 
+   IntParameter *m_concurrency = nullptr;
+   void waitAllTasks();
    std::shared_ptr<PortTask> m_lastTask;
+   std::deque<std::shared_ptr<PortTask>> m_tasks;
 };
 
 template<>

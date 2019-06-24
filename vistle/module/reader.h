@@ -95,7 +95,6 @@ protected:
    IntParameter *m_last = nullptr;
    IntParameter *m_increment = nullptr;
    IntParameter *m_distributeTime = nullptr;
-   IntParameter *m_concurrency = nullptr;
    IntParameter *m_firstRank = nullptr;
    IntParameter *m_checkConvexity = nullptr;
 

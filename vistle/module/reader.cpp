@@ -21,6 +21,9 @@ Reader::Reader(const std::string &description, const std::string &name, const in
     m_checkConvexity = addIntParameter("check_convexity", "whether to check convexity of grid cells", 0, Parameter::Boolean);
 
     setCurrentParameterGroup();
+
+    assert(m_concurrency);
+    setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()*5));
 }
 
 Reader::~Reader() {
@@ -109,17 +112,13 @@ bool Reader::prepare()
     }
     meta.setNumTimesteps(numtime);
 
-    int concurrency = 1;
-    if (m_concurrency) {
-        concurrency = m_concurrency->getValue();
-        if (concurrency <= 0)
-            concurrency = std::thread::hardware_concurrency()/2;
-        if (concurrency <= 0)
-            concurrency = 1;
-    }
+    int concurrency = m_concurrency->getValue();
+    if (concurrency <= 0)
+        concurrency = std::thread::hardware_concurrency()/2;
+    if (concurrency <= 0)
+        concurrency = 1;
 
     if (m_parallel == Serial) {
-        assert(concurrency == 1);
         concurrency = 1;
     }
     assert(concurrency >= 1);
@@ -244,18 +243,6 @@ int Reader::timeIncrement() const
 void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
 
     m_parallel = mode;
-
-    if (mode == Serial) {
-        if (m_concurrency)
-            removeParameter(m_concurrency);
-    } else {
-        if (!m_concurrency) {
-            setCurrentParameterGroup("Reader");
-            m_concurrency = addIntParameter("concurrency", "number of read operations to keep in flight per MPI rank (-1: #cores/2)", -1);
-            setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()*5));
-            setCurrentParameterGroup();
-        }
-    }
 
     if (m_parallel == ParallelizeTimesteps) {
         setAllowTimestepDistribution(true);
