@@ -61,6 +61,18 @@ int Reader::rankForTimestepAndPartition(int t, int p) const {
     return (t*np+p+baseRank) % comm().size();
 }
 
+size_t Reader::waitForReaders(size_t maxRunning, bool &result) {
+
+    while (m_tokens.size() > maxRunning) {
+        auto token = m_tokens.front();
+        if (!token->result())
+            result = false;
+        m_tokens.pop_front();
+    }
+
+    return m_tokens.size();
+}
+
 bool Reader::prepare()
 {
     if (!m_readyForRead) {
@@ -101,7 +113,7 @@ bool Reader::prepare()
     if (m_concurrency) {
         concurrency = m_concurrency->getValue();
         if (concurrency <= 0)
-            concurrency = std::thread::hardware_concurrency();
+            concurrency = std::thread::hardware_concurrency()/2;
     }
 
     if (m_parallel == Serial) {
@@ -132,18 +144,18 @@ bool Reader::prepare()
                 }
                 return true;
             });
-            while (m_tokens.size() >= concurrency) {
-                auto &token = *m_tokens.front();
-                result = token.result();
-                m_tokens.pop_front();
-                if (m_tokens.empty())
-                    prev.reset();
+            if (waitForReaders(concurrency, result) == 0) {
+                prev.reset();
             }
         }
         if (cancelRequested()) {
             result = false;
             break;
         }
+    }
+    if (m_parallel == ParallelizeBlocks) {
+        waitForReaders(0, result);
+        prev.reset();
     }
 
     // read timesteps
@@ -157,6 +169,8 @@ bool Reader::prepare()
                     m_tokens.emplace_back(std::make_shared<Token>(this, prev));
                     prev = m_tokens.back();
                     auto &token = *prev;
+                    ++m_tokenCount;
+                    token.m_id = m_tokenCount;
                     token.m_meta = meta;
                     token.m_future = std::async(std::launch::async, [this, &token, t, p](){
                         if (!read(token, t, p)) {
@@ -165,12 +179,8 @@ bool Reader::prepare()
                         }
                         return true;
                     });
-                    while (m_tokens.size() >= concurrency) {
-                        auto &token = *m_tokens.front();
-                        result = token.result();
-                        m_tokens.pop_front();
-                        if (m_tokens.empty())
-                            prev.reset();
+                    if (waitForReaders(concurrency, result) == 0) {
+                        prev.reset();
                     }
                 }
                 if (cancelRequested()) {
@@ -181,14 +191,14 @@ bool Reader::prepare()
             ++step;
             if (!result)
                 break;
+            if (m_parallel == ParallelizeBlocks) {
+                waitForReaders(0, result);
+                prev.reset();
+            }
         }
     }
 
-    while (!m_tokens.empty()) {
-        auto &token = m_tokens.front();
-        result &= token->result();
-        m_tokens.pop_front();
-    }
+    waitForReaders(0, result);
 
     if (!finishRead()) {
         sendInfo("error finishing read");
@@ -234,7 +244,7 @@ void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
     } else {
         if (!m_concurrency) {
             setCurrentParameterGroup("Reader");
-            m_concurrency = addIntParameter("concurrency", "number of read operations to keep in flight per MPI rank", 1);
+            m_concurrency = addIntParameter("concurrency", "number of read operations to keep in flight per MPI rank (-1: #cores/2)", -1);
             setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()*5));
             setCurrentParameterGroup();
         }

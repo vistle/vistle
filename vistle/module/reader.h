@@ -69,9 +69,10 @@ public:
 protected:
    protected:
    enum ParallelizationMode {
-       Serial,
-       ParallelizeTimesteps,
-       ParallelizeTimeAndBlocks,
+       Serial, //< only one operation at a time, all blocks of a timestep first, then other timesteps
+       ParallelizeTimesteps, //< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
+       ParallelizeTimeAndBlocks, //< up to 'concurrency' operations at a time
+       ParallelizeBlocks, //< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
    };
 
    void setParallelizationMode(ParallelizationMode mode);
@@ -102,6 +103,7 @@ private:
    ParallelizationMode m_parallel = Serial;
    std::mutex m_mutex; // protect ports and message queues
    std::deque<std::shared_ptr<Token>> m_tokens;
+   size_t waitForReaders(size_t maxRunning, bool &result);
 
    std::set<const Parameter *> m_observedParameters;
 
