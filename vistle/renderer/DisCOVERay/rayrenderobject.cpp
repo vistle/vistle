@@ -77,6 +77,32 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       data->cmap->max = 1.;
 
        std::cerr << "texcoords from texture" << std::endl;
+   } else if (auto vec = Vec<Scalar,3>::as(texture)) {
+       if (vec->guessMapping(geometry) == DataBase::Element)
+         data->perPrimitiveMapping = 1;
+
+       tcoord.resize(vec->getSize());
+       data->texCoords = tcoord.data();
+       const Scalar *x = &vec->x()[0];
+       const Scalar *y = &vec->y()[0];
+       const Scalar *z = &vec->z()[0];
+       float *d = tcoord.data();
+       for (auto it = tcoord.begin(); it != tcoord.end(); ++it) {
+           *it = sqrtf(*x * *x + *y * *y + *z * *z);
+           ++x;
+           ++y;
+           ++z;
+       }
+   } else if (auto iscal = Vec<Index>::as(texture)) {
+       if (iscal->guessMapping(geometry) == DataBase::Element)
+         data->perPrimitiveMapping = 1;
+
+       tcoord.resize(iscal->getSize());
+       data->texCoords = tcoord.data();
+       float *d = tcoord.data();
+       for (const Index *i = &iscal->x()[0], *end = i+iscal->getSize(); i<end; ++i) {
+           *d++ = *i;
+       }
    }
 
    if (geometry->isEmpty()) {

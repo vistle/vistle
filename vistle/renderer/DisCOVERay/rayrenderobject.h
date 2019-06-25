@@ -37,5 +37,6 @@ struct RayRenderObject: public vistle::RenderObject {
 
    std::unique_ptr<ispc::RenderObjectData> data;
    std::unique_ptr<ispc::ColorMapData> cmap;
+   std::vector<float> tcoord;
 };
 #endif
