@@ -26,14 +26,18 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
 DomainSurface::~DomainSurface() {
 }
 
-bool DomainSurface::compute() {
+bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    //DomainSurface Polygon
    DataBase::const_ptr data;
-   m_grid_in = accept<UnstructuredGrid>("data_in");
+   auto m_grid_in = task->accept<UnstructuredGrid>("data_in");
    if (!m_grid_in) {
-      data = expect<DataBase>("data_in");
+       data = task->expect<DataBase>("data_in");
       if (!data) {
           sendError("no grid and no data received");
+          return true;
+      }
+      if (!data->grid()) {
+          sendError("no grid attached to data");
           return true;
       }
       m_grid_in = UnstructuredGrid::as(data->grid());
@@ -43,13 +47,15 @@ bool DomainSurface::compute() {
       }
    }
 
-   if (!createSurface())
+   VerticesMapping vm;
+   auto m_grid_out = createSurface(m_grid_in, vm);
+   if (!m_grid_out)
       return true;
 
    m_grid_out->setMeta(m_grid_in->meta());
    m_grid_out->copyAttributes(m_grid_in);
    if (!data) {
-       addObject("data_out", m_grid_out);
+       task->addObject("data_out", m_grid_out);
        return true;
    }
 
@@ -62,7 +68,7 @@ bool DomainSurface::compute() {
    if (reuseCoord) {
        DataBase::ptr dout = data->clone();
        dout->setGrid(m_grid_out);
-       addObject("data_out", dout);
+       task->addObject("data_out", dout);
        return true;
    }
 
@@ -70,11 +76,11 @@ bool DomainSurface::compute() {
        const Scalar *data_in_x = &data_in->x()[0];
        const Scalar *data_in_y = &data_in->y()[0];
        const Scalar *data_in_z = &data_in->z()[0];
-       Vec<Scalar,3>::ptr data_obj_out(new Vec<Scalar,3>(m_verticesMapping.size()));
+       Vec<Scalar,3>::ptr data_obj_out(new Vec<Scalar,3>(vm.size()));
        Scalar *data_out_x = data_obj_out->x().data();
        Scalar *data_out_y = data_obj_out->y().data();
        Scalar *data_out_z = data_obj_out->z().data();
-       for (auto &v: m_verticesMapping) {
+       for (auto &v: vm) {
            Index f=v.first;
            Index s=v.second;
            data_out_x[s] = data_in_x[f];
@@ -84,12 +90,12 @@ bool DomainSurface::compute() {
        data_obj_out->setGrid(m_grid_out);
        data_obj_out->setMeta(data->meta());
        data_obj_out->copyAttributes(data);
-       addObject("data_out", data_obj_out);
+       task->addObject("data_out", data_obj_out);
    } else if(auto data_in = Vec<Scalar, 1>::as(data)) {
        const Scalar *data_in_x = &data_in->x()[0];
-       Vec<Scalar,1>::ptr data_obj_out(new Vec<Scalar,1>(m_verticesMapping.size()));
+       Vec<Scalar,1>::ptr data_obj_out(new Vec<Scalar,1>(vm.size()));
        Scalar *data_out_x = data_obj_out->x().data();
-       for (auto &v: m_verticesMapping) {
+       for (auto &v: vm) {
            Index f=v.first;
            Index s=v.second;
            data_out_x[s] = data_in_x[f];
@@ -97,7 +103,7 @@ bool DomainSurface::compute() {
        data_obj_out->setGrid(m_grid_out);
        data_obj_out->copyAttributes(data);
        data_obj_out->setMeta(data->meta());
-       addObject("data_out", data_obj_out);
+       task->addObject("data_out", data_obj_out);
    } else {
          std::cerr << "WARNING: No valid 1D or 3D data on input Port" << std::endl;
    }
@@ -105,7 +111,7 @@ bool DomainSurface::compute() {
    return true;
 }
 
-bool DomainSurface::createSurface() {
+Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in, VerticesMapping &vm) const {
 
    const bool showtet = getIntParameter("tetrahedron");
    const bool showpyr = getIntParameter("pyramid");
@@ -120,17 +126,18 @@ bool DomainSurface::createSurface() {
    const unsigned char *tl = &m_grid_in->tl()[0];
    UnstructuredGrid::VertexOwnerList::const_ptr vol=m_grid_in->getVertexOwnerList();
 
-   m_grid_out.reset(new Polygons(0, 0, 0));
+   Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
    auto &pl = m_grid_out->el();
    auto &pcl = m_grid_out->cl();
 
    auto nf = m_grid_in->getNeighborFinder();
    for (Index i=0; i<num_elem; ++i) {
+      const Index elStart = el[i], elEnd = el[i+1];
       unsigned char t = tl[i] & UnstructuredGrid::TYPE_MASK;
       if (t == UnstructuredGrid::POLYHEDRON) {
           if (showpol) {
-              Index j=el[i];
-              while (j<el[i+1]) {
+              Index j=elStart;
+              while (j<elEnd) {
                   Index numVert = cl[j];
                   if (numVert >= 3) {
                       auto face = &cl[j+1];
@@ -144,7 +151,7 @@ bool DomainSurface::createSurface() {
                   }
                   j += numVert+1;
               }
-              if (j != el[i+1]) {
+              if (j != elEnd) {
                   std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
               }
           }
@@ -172,11 +179,10 @@ bool DomainSurface::createSurface() {
             const auto &faces = UnstructuredGrid::FaceVertices[t];
             for (int f=0; f<numFaces; ++f) {
                const auto &face = faces[f];
-               Index elStart = el[i];
-               const auto facesize = UnstructuredGrid::FaceSizes[t][f];
                Index neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
                if (neighbour == InvalidIndex) {
-                  for (int j=0;j<facesize;++j) {
+                  const auto facesize = UnstructuredGrid::FaceSizes[t][f];
+                  for (unsigned j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);
                   }
                   pl.push_back(pcl.size());
@@ -187,7 +193,7 @@ bool DomainSurface::createSurface() {
    }
 
    if (m_grid_out->getNumElements() == 0) {
-      return false;
+      return Polygons::ptr();
    }
 
    if (reuseCoord) {
@@ -195,14 +201,14 @@ bool DomainSurface::createSurface() {
       m_grid_out->d()->x[1] = m_grid_in->d()->x[1];
       m_grid_out->d()->x[2] = m_grid_in->d()->x[2];
    } else {
-      m_verticesMapping.clear();
+      vm.clear();
       Index c=0;
       for (Index &v : m_grid_out->cl()) {
-         if (m_verticesMapping.emplace(v,c).second) {
+         if (vm.emplace(v,c).second) {
             v=c;
             ++c;
          } else {
-            v=m_verticesMapping[v];
+            v=vm[v];
          }
       }
 
@@ -216,7 +222,7 @@ bool DomainSurface::createSurface() {
       py.resize(c);
       pz.resize(c);
 
-      for (auto &v: m_verticesMapping) {
+      for (auto &v: vm) {
          Index f=v.first;
          Index s=v.second;
          px[s] = xcoord[f];
@@ -225,7 +231,7 @@ bool DomainSurface::createSurface() {
       }
    }
 
-   return true;
+   return m_grid_out;
 }
 
 //bool DomainSurface::checkNormal(Index v1, Index v2, Index v3, Scalar x_center, Scalar y_center, Scalar z_center) {
