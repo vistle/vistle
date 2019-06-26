@@ -65,6 +65,33 @@
 #include <vector>
 #include <shared_mutex>
 
+#include <util/enum.h>
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(NodalDataType,
+                                    (No_Node_Data)
+                                    (Displacements)
+                                    (Velocities)
+                                    (Accelerations)
+                                    )
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ElementDataType,
+                                    (No_Element_Data)
+                                    (Stress_Tensor)
+                                    (Plastic_Strain)
+                                    (Thickness)
+                                    )
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Component,
+                                    (Sx)(Sy)(Sz)(Txy)(Tyz)(Txz)(Pressure)(Von_Mises)
+                                    )
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (CADFEM)(Original))
+// format of cadfem
+//DEFINE_ENUM_WITH_STRING_CONVERSIONS(CadfemFormat, (GERMAN)(US))
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ByteSwap, (Off)(On)(Auto))
+
+
 template<int wordsize>
 struct WordTraits;
 
@@ -84,31 +111,26 @@ struct WordTraits<8> {
 
 class Dyna3DReaderBase {
 public:
-    enum BYTESWAP
-    {
-        BYTESWAP_OFF = 0x00,
-        BYTESWAP_ON = 0x01,
-        BYTESWAP_AUTO = 0x02
-    };
 
-    enum FORMAT // format of cadfem
-    {
-        GERMAN = 0,
-        CADFEM = GERMAN,
-        US, // format used by ARUP
-        ORIGINAL = US
-    };
+    using NodalDataType = ::NodalDataType;
+    using ElementDataType = ::ElementDataType;
+    using Format = ::Format;
+    using ByteSwap = ::ByteSwap;
+    using Component = ::Component;
 
     explicit Dyna3DReaderBase(vistle::Reader *module);
     virtual ~Dyna3DReaderBase();
 
-    void setPorts(vistle::Port *grid, vistle::Port *scalar, vistle::Port *vector);
+    void setPorts(vistle::Port *grid, vistle::Port *vector, vistle::Port *scalar);
 
     void setFilename(const std::string &d3plot);
-    void setByteswap(BYTESWAP bs);
-    void setFormat(FORMAT format);
+    void setByteswap(ByteSwap bs);
+    void setFormat(Format format);
     void setOnlyGeometry(bool onlygeo);
     void setPartSelection(const std::string &parts);
+    void setNodalDataType(NodalDataType type);
+    void setElementDataType(ElementDataType type);
+    void setComponent(Component type);
 
     bool examine();
 
@@ -122,7 +144,7 @@ public:
 
 protected:
     virtual int taurusinit_() = 0;
-    virtual int rdtaucntrl_(FORMAT format) = 0;
+    virtual int rdtaucntrl_(Format format) = 0;
     virtual int readTimestep() = 0;
 
     vistle::Port *gridPort = nullptr;
@@ -131,8 +153,8 @@ protected:
 
     vistle::Reader *m_module = nullptr;
     std::string m_filename;
-    BYTESWAP byteswapFlag = BYTESWAP_AUTO;
-    FORMAT format = US;
+    ByteSwap byteswapFlag = Auto;
+    Format format = Original;
     bool only_geometry = false;
     std::string selection;
 
@@ -148,6 +170,10 @@ protected:
     int NumWords; //=0;
     int NumberOfWords; //=0;
     size_t m_wordsize = 0;
+
+    NodalDataType nodalDataType = No_Node_Data;
+    ElementDataType elementDataType = No_Element_Data;
+    Component component = Von_Mises;
 };
 
 template<int wordsize,
@@ -183,9 +209,6 @@ private:
 
     // Some old global variables have been hidden hier:
     int NumIDs = 0;
-    int nodalDataType = 0;
-    int elementDataType = 0;
-    int component = 0;
     int ExistingStates = 0; // initially = 0;
     int MinState = 1; // initially = 1;
     int State = 1; // initially = 1;
@@ -356,16 +379,16 @@ private:
 
     /* Subroutines */
     int taurusinit_() override;
-    int rdtaucntrl_(FORMAT format) override;
+    int rdtaucntrl_(Format format) override;
     int taugeoml_();
     int taustatl_();
     int rdtaucoor_();
-    int rdtauelem_(FORMAT format);
-    int rdtaunum_(FORMAT format);
+    int rdtauelem_(Format format);
+    int rdtaunum_(Format format);
     int rdstate_(vistle::Reader::Token &token, int istate, int block);
     int readTimestep() override;
     int rdrecr_(float *val, const int *istart, int n);
-    int rdreci_(int *ival, const int *istart, const int *n, FORMAT format);
+    int rdreci_(int *ival, const int *istart, const int *n, Format format);
     int grecaddr_(INTEGER i, INTEGER istart, INTEGER *iz, INTEGER *irdst);
     int placpnt_(int *istart);
     int otaurusr_();

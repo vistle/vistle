@@ -37,57 +37,11 @@
 
 using namespace vistle;
 
-#define tauio_1 tauio_
-
-//-------------------------------------------------------------------------
-static const char *colornames[10] = {
-    "yellow", "red", "blue", "green",
-    "violet", "chocolat", "linen", "white",
-    "crimson", "LightGoldenrod"
-};
-
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(NodalDataType,
-                                    (No_Node_Data)
-                                    (Displacements)
-                                    (Velocities)
-                                    (Accelerations)
-                                    )
-
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ElementDataType,
-                                    (No_Element_Data)
-                                    (Stress_Tensor)
-                                    (Plastic_Strain)
-                                    (Thickness)
-                                    )
-
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Component,
-                                    (Sx)(Sy)(Sz)(Txy)(Tyz)(Txz)(Pressure)(Von_Mises)
-                                    )
-
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (cadfem)(original))
-// format of cadfem
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(CadfemFormat, (GERMAN)(US))
-
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ByteSwap, (Off)(On)(Auto))
-
 
 // Constructor
 ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read LS-Dyna3D ptf files", name, moduleID, comm)
 {
-
-    const char *nodalDataType_label[4] = {
-        "None", "Displacements", "Velocities",
-        "Accelerations"
-    };
-    const char *elementDataType_label[4] = { "None", "StressTensor", "PlasticStrain", "Thickness" };
-    const char *component_label[8] = {
-        "Sx", "Sy", "Sz", "Txy", "Tyz", "Txz",
-        "Pressure", "Von Mises"
-    };
-    const char *format_label[2] = { "cadfem", "original" };
-
-    const char *byteswap_label[3] = { "off", "on", "auto" };
 
     // Output ports
     p_grid = createOutputPort("grid_out", "grid");
@@ -104,7 +58,7 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(p_component, Component);
     p_Selection = addStringParameter("Selection", "Number selection for parts", "all");
     // p_State = addIntSliderParam("State","Timestep");
-    p_format = addIntParameter("format", "Format of LS-DYNA3D ptf-File", original, Parameter::Choice);
+    p_format = addIntParameter("format", "Format of LS-DYNA3D ptf-File", Original, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_format, Format);
 
     p_byteswap = addIntParameter("byteswap", "Perform Byteswapping", Auto, Parameter::Choice);
@@ -142,13 +96,17 @@ bool ReadDyna3D::prepareRead() {
         dyna3dReader.reset(newReader());
     }
 
+    dyna3dReader->setNodalDataType(NodalDataType(p_nodalDataType->getValue()));
+    dyna3dReader->setElementDataType(ElementDataType(p_elementDataType->getValue()));
+    dyna3dReader->setComponent(Component(p_component->getValue()));
+
     return dyna3dReader->readStart() == 0;
 }
 
 bool ReadDyna3D::read(Reader::Token &token, int timestep, int block) {
 
     auto &reader = dyna3dReader;
-    std::cerr << "reading: token: " << token << ", time=" << timestep << ", block=" << block << std::endl;
+    //std::cerr << "reading: token: " << token << ", time=" << timestep << ", block=" << block << std::endl;
 
     if (p_only_geometry->getValue()) {
         return reader->readOnlyGeo(token, block) == 0;
@@ -163,7 +121,7 @@ bool ReadDyna3D::read(Reader::Token &token, int timestep, int block) {
 
 bool ReadDyna3D::examine(const Parameter *param) {
 
-    std::cerr << "ReadDyna3D::examine(param=" << param->getName() << ")" << std::endl;
+    //std::cerr << "ReadDyna3D::examine(param=" << param->getName() << ")" << std::endl;
 
     dyna3dReader.reset(newReader());
     assert(dyna3dReader);
@@ -197,26 +155,8 @@ Dyna3DReaderBase *ReadDyna3D::newReader() {
 
     reader->setFilename(p_data_path->getValue());
 
-    switch (p_byteswap->getValue()) {
-    case Off:
-        reader->setByteswap(Dyna3DReaderBase::BYTESWAP_OFF);
-        break;
-    case On:
-        reader->setByteswap(Dyna3DReaderBase::BYTESWAP_ON);
-        break;
-    case Auto:
-        reader->setByteswap(Dyna3DReaderBase::BYTESWAP_AUTO);
-        break;
-    }
-
-    switch (p_format->getValue()) {
-    case cadfem:
-        reader->setFormat(Dyna3DReaderBase::GERMAN);
-        break;
-    case original:
-        reader->setFormat(Dyna3DReaderBase::US);
-        break;
-    }
+    reader->setByteswap(ByteSwap(p_byteswap->getValue()));
+    reader->setFormat(Format(p_format->getValue()));
 
     reader->setPorts(p_grid, p_data_1, p_data_2);
 

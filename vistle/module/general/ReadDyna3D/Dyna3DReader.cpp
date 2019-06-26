@@ -25,7 +25,7 @@
  ** Revision R. Beller 08.97 & 02.99                                       **
 \**************************************************************************/
 
-//#include <appl/ApplInterface.h>
+#define SENDINFO
 
 #ifdef _WIN32
 #include <io.h>
@@ -48,155 +48,7 @@ const int OpenFlags = O_RDONLY;
 #endif
 
 
-#if 0
-#define tauio_1 tauio_
 
-//-------------------------------------------------------------------------
-static const char *colornames[10] = {
-    "yellow", "red", "blue", "green",
-    "violet", "chocolat", "linen", "white",
-    "crimson", "LightGoldenrod"
-};
-#endif
-/*
-// GLOBAL VARIABLES
-char InfoBuf[1000];
-
-int NumIDs;
-int nodalDataType;
-int elementDataType;
-int component;
-int ExistingStates = 0;
-int MinState = 1;
-int MaxState = 1;
-int State    = 1;
-
-int IDLISTE[MAXID];
-int *numcoo, *numcon, *numelem;
-
-int *delElem = NULL;
-int *delCon  = NULL;
-
-Element** solidTab  = NULL;
-Element** tshellTab = NULL;
-Element** shellTab  = NULL;
-Element** beamTab   = NULL;
-
-// storing coordinate positions for all time steps
-int **coordLookup = NULL;
-
-// element and connection list for time steps (considering the deletion table)
-int **My_elemList = NULL;
-int **conList  = NULL;
-
-int *DelTab = NULL;  // node/element deletion table
-
-coDoUnstructuredGrid*	  grid_out    = NULL;
-coDoVec3* Vertex_out  = NULL;
-coDoFloat* Scalar_out = NULL;
-
-coDoUnstructuredGrid**  grids_out        = NULL;
-coDoVec3** Vertexs_out  = NULL;
-coDoFloat** Scalars_out = NULL;
-
-coDoSet* grid_set_out,    *grid_timesteps;
-coDoSet*	Vertex_set_out,  *Vertex_timesteps;
-coDoSet*	Scalar_set_out, *Scalar_timesteps;
-
-coDoSet*	grid_sets_out[MAXTIMESTEPS];
-coDoSet*	Vertex_sets_out[MAXTIMESTEPS];
-coDoSet*	Scalar_sets_out[MAXTIMESTEPS];
-*/
-
-/* kern.f -- translated by f2c (version 19950110).*/
-
-/*
-struct {
-  int itrecin, nrin, nrzin, ifilin, itrecout, nrout, nrzout, ifilout, irl, iwpr;
-  float tau[512];
-} tauio_;
-
-int infile;
-int numcoord;
-int *NodeIds=NULL;
-int *SolidNodes=NULL;
-int *SolidMatIds=NULL;
-int *BeamNodes=NULL;
-int *BeamMatIds=NULL;
-int *ShellNodes=NULL;
-int *ShellMatIds=NULL;
-int *TShellNodes=NULL;
-int *TShellMatIds=NULL;
-int *SolidElemNumbers=NULL;
-int *BeamElemNumbers=NULL;
-int *ShellElemNumbers=NULL;
-int *TShellElemNumbers=NULL;
-int *Materials=NULL;
-
-// Common Block Declarations
-// global scope !!! attention to side-effects !!!
-float *Coord      = NULL;           // Coordinates
-float *DisCo      = NULL;           // displaced coordinates
-float *NodeData   = NULL;
-float *SolidData    = NULL;
-float *TShellData = NULL;
-float *ShellData  = NULL;
-float *BeamData   = NULL;
-
-char CTauin[300];
-char CTrace, CEndin, COpenin;
-float TimestepTime    = 0.0;
-int NumSolidElements  = 0;
-int NumBeamElements   = 0;
-int NumShellElements  = 0;
-int NumTShellElements = 0;
-int NumMaterials=0;
-int NumDim=0;
-int NumGlobVar=0;
-int NumWords=0;
-int ITFlag=0;
-int IUFlag=0;
-int IVFlag=0;
-int IAFlag=0;
-int MDLOpt=0;
-int IStrn=0;
-int NumSolidMat=0;
-int NumSolidVar=0;
-int NumAddSolidVar=0;
-int NumBeamMat=0;
-int NumBeamVar=0;
-int NumAddBeamVar=0;
-int NumShellMat=0;
-int NumShellVar=0;
-int NumAddShellVar=0;
-int NumTShellMat=0;
-int NumTShellVar=0;
-int NumShellInterpol=0;
-int NumInterpol=0;
-int NodeAndElementNumbering=0;
-int SomeFlags[5];
-int NumBRS=0;
-int NodeSort=0;
-int NumberOfWords=0;
-int NumNodalPoints=0;
-int IZControll=0;
-int IZElements=0;
-int IZArb=0;
-int IZStat0=0;
-
-// GLOBAL STATIC VARIABLES
-// Table of "constant" values
-static int c__1 = 1;
-static int c__0 = 0;
-static int c__13 = 13;
-static int c__8 = 8;
-static int c__5 = 5;
-static int c__4 = 4;
-static int c__10 = 10;
-static int c__16 = 16;
-*/
-
-// Constructor
 template<int wordsize, class INTEGER, class REAL>
 Dyna3DReader<wordsize, INTEGER, REAL>::Dyna3DReader(vistle::Reader *module)
 : Dyna3DReaderBase(module)
@@ -234,16 +86,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::postInst()
 
     My_elemList = conList = 0;
     DelTab = 0;
-
-#if 0
-    grid_out = 0;
-    Vertex_out = 0;
-    Scalar_out = 0;
-
-    grids_out = 0;
-    Vertexs_out = 0;
-    Scalars_out = 0;
-#endif
 
     NodeIds = SolidNodes = SolidMatIds = BeamNodes = BeamMatIds = 0;
     ShellNodes = ShellMatIds = TShellNodes = TShellMatIds = 0;
@@ -324,16 +166,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     My_elemList = conList = 0;
     DelTab = 0;
 
-#if 0
-    grid_out = 0;
-    Vertex_out = 0;
-    Scalar_out = 0;
-
-    grids_out = 0;
-    Vertexs_out = 0;
-    Scalars_out = 0;
-#endif
-
     NodeIds = SolidNodes = SolidMatIds = BeamNodes = BeamMatIds = 0;
     ShellNodes = ShellMatIds = TShellNodes = TShellMatIds = 0;
     SolidElemNumbers = BeamElemNumbers = ShellElemNumbers = 0;
@@ -382,15 +214,15 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     c__10 = 10;
     c__16 = 16;
 
-    if (byteswapFlag == BYTESWAP_OFF)
+    if (byteswapFlag == Off)
     {
         std::cerr << "Dyna3DReader::readDyna3D info: byteswap off" << std::endl;
     }
-    else if (byteswapFlag == BYTESWAP_ON)
+    else if (byteswapFlag == On)
     {
         std::cerr << "Dyna3DReader::readDyna3D info: byteswap on" << std::endl;
     }
-    else if (byteswapFlag == BYTESWAP_AUTO)
+    else if (byteswapFlag == Auto)
     {
         std::cerr << "Dyna3DReader::readDyna3D info: byteswap auto" << std::endl;
     }
@@ -398,30 +230,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     {
         std::cerr << "Dyna3DReader::readDyna3D info: byteswap unknown error" << std::endl;
     }
-
-#if 0
-    //=======================================================================
-    // get input parameters and data object name
-
-    // Get file path
-    // Covise::get_browser_param("data_path", &data_Path);
-    data_Path = p_data_path->getValue();
-    // Get nodal output data type
-    // Covise::get_choice_param("nodalDataType",&nodalDataType);
-    nodalDataType = p_nodalDataType->getValue();
-    // Get element output data type
-    // Covise::get_choice_param("elementDataType",&elementDataType);
-    elementDataType = p_elementDataType->getValue();
-    // Get component of stress tensor
-    // Covise::get_choice_param("component",&component);
-    component = p_component->getValue();
-
-    // Get the selection
-    const char *selection;
-    // Covise::get_string_param("Selection",&selection);
-    selection = p_Selection->getValue();
-    sel.add(selection);
-#endif
 
     int i;
     coRestraint sel;
@@ -443,79 +251,16 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     if (numParts == 0)
     {
 #ifdef SENDINFO
-        m_module->sendError("No parts with selected IDs");
+        if (m_module->rank() == 0)
+            m_module->sendError("No parts with selected IDs");
 #endif
         return false;
     }
 
-#if 0
-    // Get timesteps
-    // Covise::get_slider_param("State", &MinState, &MaxState, &State);
-    //p_Step->getValue(MinState,MaxState,State);
-    MinState = p_Step->getValue(0);
-    if (MinState <= 0)
-    {
-#ifdef SENDINFO
-        m_module->sendWarning("Minimum time step must be positive!!");
-#endif
-        p_Step->setValue(0, 1);
-        MinState = 1;
-    }
-    NumState = p_Step->getValue(1);
-    MaxState = MinState + NumState;
-    if (MinState > MaxState)
-    {
-        int temp_swap;
-        temp_swap = MaxState;
-        MaxState = MinState;
-        MinState = temp_swap;
-    }
-    NumState = MaxState - MinState;
-    State = MaxState;
-    // if(MinState>State || MaxState<State) State=MaxState;
-
-    // p_Step->setValue(MinState,MaxState,State);
-    p_Step->setValue(0, MinState);
-    p_Step->setValue(1, MaxState - MinState);
-
-    // Get geometry key
-    // Covise::get_boolean_param("only geometry",&key);
-    key = p_only_geometry->getValue();
-
-    // Get output object names
-    // Grid = Covise::get_object_name("grid");
-    Grid = p_grid->getObjName();
-
-    if (nodalDataType > 0)
-    {
-        // displacements
-        // velocities
-        // accelerations
-        // Vertex = Covise::get_object_name("data_1");
-        Vertex = p_data_1->getObjName();
-    }
-    if (elementDataType > 0)
-    {
-        // stress tensor
-        // plastic strain
-        // Scalar = Covise::get_object_name("data_2");
-        Scalar = p_data_2->getObjName();
-    }
-
-    //=======================================================================
-#endif
 
     /* Local variables */
     char buf[256];
 
-#if 0
-    for (INTEGER i = 0; i < MAXTIMESTEPS; i++)
-    {
-        grid_sets_out[i] = NULL;
-        Vertex_sets_out[i] = NULL;
-        Scalar_sets_out[i] = NULL;
-    }
-#endif
     NodeIds = NULL;
     SolidNodes = NULL;
     SolidMatIds = NULL;
@@ -530,18 +275,9 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     ShellElemNumbers = NULL;
     TShellElemNumbers = NULL;
     Materials = NULL;
-#if 0
-    Vertex_timesteps = NULL;
-    Scalar_timesteps = NULL;
-#endif
 
     /* initialize TAURUS access */
     taurusinit_();
-
-#if 0
-    // Covise::get_choice_param("format", &format);
-    format = p_format->getValue();
-#endif
 
     /* read TAURUS control data */
     rdtaucntrl_(format);
@@ -572,89 +308,11 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readState(vistle::Reader::Token &token,
         fprintf(stderr, "* test existence of state: %6d\n", istate);
     }
 
-#if 0
-    // only reading when lying in timestep interval
-    if ((istate >= MinState) && (istate <= State))
-    {
-#endif
         int flag = rdstate_(token, istate, block);
         //	  std::cerr << "Dyna3DReader::readDyna3D() istate : " << istate << " flag: " << flag <<  std::endl;
         if (flag == -1)
             return (-1);
 
-#if 0
-    }
-    else
-    {
-        // open next file (!! Assume: number of files and time steps correspond !!)
-        if (otaurusr_() < 0)
-            return -1;
-        if (CEndin == 'N')
-            ExistingStates++;
-        else
-            return 0;
-    }
-#endif
-#if 0
-    // mark end of set array
-    grid_sets_out[(State - MinState) + 1] = NULL;
-    Vertex_sets_out[(State - MinState) + 1] = NULL;
-    Scalar_sets_out[(State - MinState) + 1] = NULL;
-
-    grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
-    sprintf(buf, "%d %d", MinState, State);
-    grid_timesteps->addAttribute("TIMESTEP", buf);
-    p_grid->setCurrentObject(grid_timesteps);
-
-    if (nodalDataType > 0)
-    {
-        Vertex_timesteps = new coDoSet(Vertex, (coDistributedObject **)(void *)Vertex_sets_out);
-        Vertex_timesteps->addAttribute("TIMESTEP", buf);
-        p_data_1->setCurrentObject(Vertex_timesteps);
-    }
-
-    if (elementDataType > 0)
-    {
-        Scalar_timesteps = new coDoSet(Scalar, (coDistributedObject **)(void *)Scalar_sets_out);
-        Scalar_timesteps->addAttribute("TIMESTEP", buf);
-        p_data_2->setCurrentObject(Scalar_timesteps);
-    }
-
-    // update timestep slider
-    if (MaxState > (ExistingStates + 1))
-    {
-        MaxState = ExistingStates + 1;
-        // Covise::update_slider_param("State",1,State,MaxState);
-        // p_State->setValue(1,State,MaxState);
-        // p_Step->setValue(MinState,State,MaxState);
-        p_Step->setValue(0, MinState);
-        p_Step->setValue(1, State - MinState);
-        MaxState = State;
-        NumState = State - MinState;
-    }
-    if (State > MaxState)
-    {
-        State = MaxState;
-        // Covise::update_slider_param("State",1,State,MaxState);
-        // p_State->setValue(1,State,MaxState);
-        // p_Step->setValue(MinState,State,MaxState);
-        p_Step->setValue(0, MinState);
-        p_Step->setValue(1, State - MinState);
-        MaxState = State - MinState;
-    }
-
-    // free
-    for (i = 0; i < State - MinState + 1; i++)
-    {
-        delete grid_sets_out[i];
-        delete Vertex_sets_out[i];
-        delete Scalar_sets_out[i];
-
-        grid_sets_out[i] = NULL;
-        Vertex_sets_out[i] = NULL;
-        Scalar_sets_out[i] = NULL;
-    }
-#endif
 
     return 0;
 }
@@ -664,14 +322,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readOnlyGeo(Reader::Token &token, int b
 {
     std::cerr  << "Dyna3DReader::readOnlyGeo(block=" << blockToRead << ")" << std::endl;
     createGeometry(token, blockToRead);
-#if 0
-    grid_sets_out[0] = grid_set_out;
-    grid_timesteps = new coDoSet(Grid, (coDistributedObject **)(void *)grid_sets_out);
-
-    // free
-    delete grid_sets_out[0];
-    grid_sets_out[0] = NULL;
-#endif
 
     return 0;
 }
@@ -722,73 +372,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readFinish()
     delete[] MaterialTables;
     MaterialTables = nullptr;
 
-#if 0
-    //free
-    //
-    for (INTEGER i = 0; i < NumIDs; i++)
-    {
-        delete[] My_elemList[i];
-        delete[] conList[i];
-        delete[] coordLookup[i];
-    }
-    delete[] My_elemList;
-    delete[] conList;
-    delete[] coordLookup;
-
-    delete[] numcon;
-    delete[] numelem;
-    delete[] numcoo;
-
-    for (INTEGER i = 0; i < NumSolidElements; i++)
-        delete solidTab[i];
-    delete[] solidTab;
-    solidTab = nullptr;
-
-    for (INTEGER i = 0; i < NumTShellElements; i++)
-        delete tshellTab[i];
-    delete[] tshellTab;
-    tshellTab = nullptr;
-
-    for (INTEGER i = 0; i < NumShellElements; i++)
-        delete shellTab[i];
-    delete[] shellTab;
-    shellTab = nullptr;
-
-    for (INTEGER i = 0; i < NumBeamElements; i++)
-        delete beamTab[i];
-    delete[] beamTab;
-    beamTab = nullptr;
-
-    delete[] delElem;
-    delete[] delCon;
-
-    //  delete grid_timesteps;
-    //  delete Vertex_timesteps;
-    //  delete Scalar_timesteps;
-
-    delete[] Coord;
-    delete[] NodeIds;
-    delete[] SolidNodes;
-    delete[] SolidMatIds;
-    delete[] BeamNodes;
-    delete[] BeamMatIds;
-    delete[] ShellNodes;
-    delete[] ShellMatIds;
-    delete[] TShellNodes;
-    delete[] TShellMatIds;
-    delete[] Materials;
-
-    delete[] SolidElemNumbers;
-    delete[] BeamElemNumbers;
-    delete[] ShellElemNumbers;
-    delete[] TShellElemNumbers;
-
-    delete[] matTyp;
-    delete[] MaterialTables;
-    matTyp = NULL;
-    MaterialTables = NULL;
-#endif
-
     return (0);
 
 } /* readDyna3D() */
@@ -833,7 +416,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::taurusinit_()
 
 /* Subroutine */
 template<int wordsize, class INTEGER, class REAL>
-int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(FORMAT format)
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
 {
     /* Local variables */
     int izioshl1, izioshl2, izioshl3, izioshl4, idum[20], iznumelb,
@@ -853,25 +436,25 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(FORMAT format)
     // Dumb auto detection. Checks if the version number of LSDYNA
     // has a sensible value. CAN FAIL!
 
-    if ((byteswapFlag == BYTESWAP_AUTO) && ((version < 1) || (version > 10000)))
+    if ((byteswapFlag == Auto) && ((version < 1) || (version > 10000)))
     {
 
         std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: "
              << "asuming byteswap on (" << version << ")"
              << std::endl;
 
-        byteswapFlag = BYTESWAP_ON;
-        unsigned int *buffer = (unsigned int *)(void *)(tauio_1.tau);
+        byteswapFlag = On;
+        unsigned int *buffer = (WORD *)(void *)(tauio_1.tau);
         byteswap(buffer, tauio_1.taulength);
 
         if (rdrecr_(&version, &iznver, 1) < 0)
             return -1;
     }
-    else if (byteswapFlag == BYTESWAP_AUTO)
+    else if (byteswapFlag == Auto)
     {
         std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: asuming byteswap off"
              << std::endl;
-        byteswapFlag = BYTESWAP_OFF;
+        byteswapFlag = Off;
     }
 
     /* number of dimensions */
@@ -1127,7 +710,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(FORMAT format)
 
     // Info into mapeditor
 #ifdef SENDINFO
-    m_module->sendInfo("File '%s': %i nodal points, %i solid elements, %i thick shell elements, %i shell elements, %i beam elements",
+    if (m_module->rank() == 0)
+        m_module->sendInfo("File '%s': %i nodal points, %i solid elements, %i thick shell elements, %i shell elements, %i beam elements",
              m_filename.c_str(), numcoord, NumSolidElements, NumTShellElements, NumShellElements, NumBeamElements);
 #endif
 
@@ -1338,7 +922,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucoor_()
 
 /* Subroutine */
 template<int wordsize, class INTEGER, class REAL>
-int Dyna3DReader<wordsize,INTEGER,REAL>::rdtauelem_(FORMAT format)
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtauelem_(Format format)
 {
 
     /* Local variables */
@@ -1408,7 +992,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtauelem_(FORMAT format)
 
 /* Subroutine */
 template<int wordsize, class INTEGER, class REAL>
-int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(FORMAT format)
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(Format format)
 {
     /* Local variables */
     float rdum[20];
@@ -1543,18 +1127,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readTimestep()
         int iad;
         float val;
 
-#if 0
-        /* shift state pointer of opened data base file */
-        if (istate == 1)
-        {
-            tauio_1.nrzin += NumberOfWords;
-        }
-        else
-        {
-            tauio_1.nrzin += NumWords;
-        }
-#endif
-
         /* test if the last record of the state exists. If file is too short,  */
         /* try to open next file. Max file id is 99. When file id 99 i reached */
         /* CENDIN --> Y */
@@ -1687,7 +1259,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                 else
                 {
 #ifdef SENDINFO
-                    m_module->sendError("Dyna3D Plotfile doesn't contain nodal coordinate data.");
+                    if (m_module->rank() == 0)
+                        m_module->sendError("Dyna3D Plotfile doesn't contain nodal coordinate data.");
 #endif
                     m_currentTimestep = -1;
                     return (-1);
@@ -1698,10 +1271,11 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                 //       IUFlag      |                              ITFlag and IDTDT                               |     IVFlag       |         IAFlag
                 switch (nodalDataType)
                 {
-                case 0:
+                case No_Node_Data:
+                case Displacements:
                     break;
 
-                case 2:
+                case Velocities:
                     if (IVFlag == 1)
                     {
                         NodeData = new float[numcoord * 3];
@@ -1711,14 +1285,15 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                     else
                     {
 #ifdef SENDINFO
-                        m_module->sendError("Dyna3D Plotfile doesn't contain nodal velocity data.");
+                        if (m_module->rank() == 0)
+                            m_module->sendError("Dyna3D Plotfile doesn't contain nodal velocity data.");
 #endif
                         m_currentTimestep = -1;
                         return (-1);
                     }
                     break;
 
-                case 3:
+                case Accelerations:
                     if (IAFlag == 1)
                     {
                         NodeData = new float[numcoord * 3];
@@ -1728,7 +1303,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                     else
                     {
 #ifdef SENDINFO
-                        m_module->sendError("Dyna3D Plotfile doesn't contain nodal acceleration data.");
+                        if (m_module->rank() == 0)
+                            m_module->sendError("Dyna3D Plotfile doesn't contain nodal acceleration data.");
 #endif
                         m_currentTimestep = -1;
                         return (-1);
@@ -1736,10 +1312,10 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                     break;
                 }
 
-                if (elementDataType > 0)
+                if (elementDataType != No_Element_Data)
                 {
                     int numResults = NumSolidVar * NumSolidElements + NumBeamVar * NumBeamElements
-                                     + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
+                        + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
                     if (numResults != 0)
                     {
                         int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
@@ -1772,7 +1348,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                     else
                     {
 #ifdef SENDINFO
-                        m_module->sendError("Dyna3D Plotfile doesn't contain element results data.");
+                        if (m_module->rank() == 0)
+                            m_module->sendError("Dyna3D Plotfile doesn't contain element results data.");
 #endif
                         m_currentTimestep = -1;
                         return (-1);
@@ -1790,13 +1367,13 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
                     if (MDLOpt == 2) // LS_930
                     {
                         int NumElements = NumSolidElements + NumTShellElements + NumShellElements
-                                          + NumBeamElements;
+                            + NumBeamElements;
                         DelTab = new int[NumElements];
                         // total length of node data
                         int nodeLength = numcoord * NumTemperature + n * IUFlag + n * IVFlag + n * IAFlag;
                         // total number of element results
                         int numResults = NumSolidVar * NumSolidElements + NumBeamVar * NumBeamElements
-                                         + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
+                            + NumShellVar * (NumShellElements - nrelem) + NumTShellVar * NumTShellElements;
                         INTEGER iaddress = 2 + NumGlobVar + nodeLength + numResults;
                         float *tmpTab = new float[NumElements];
                         rdrecr_(tmpTab, &iaddress, NumElements);
@@ -1825,35 +1402,17 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
     }
 
     {
-        {
-#if 0
-            if ((istate >= MinState) && (istate <= State))
-#endif
-            {
-                // This line has been commented out and modified because in case that
-                // the files contain more than 1 time step, it may produce wrong
-                // informations.
-                // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
+        // This line has been commented out and modified because in case that
+        // the files contain more than 1 time step, it may produce wrong
+        // informations.
+        // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
 #ifdef SENDINFO
-                m_module->sendInfo("Timestep with time = %6.3f \n", TimestepTime);
+        if (m_module->rank() == 0)
+            m_module->sendInfo("Timestep with time = %6.3f \n", TimestepTime);
 #endif
 
-#if 0
-                if (NumShellInterpol < 0)
-                {
-                    // consider visibility (using the actual deletion table)
-                    visibility();
-                }
-#endif
-                createStateObjects(token, istate-1, block);
+        createStateObjects(token, istate-1, block);
 
-#if 0
-                grid_sets_out[(istate) - MinState] = grid_set_out;
-                Vertex_sets_out[(istate) - MinState] = Vertex_set_out;
-                Scalar_sets_out[(istate) - MinState] = Scalar_set_out;
-#endif
-            }
-        } // end of if (CEndin == 'N')
 
     } // end of if (CEndin == 'N') ???
 
@@ -1923,7 +1482,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdrecr_(float *val, const int *istart, 
                     {
                         /*               error ! */
 #ifdef SENDINFO
-                        m_module->sendError("*E* Opened file is too short! (RDRECI)");
+                        if (m_module->rank() == 0)
+                            m_module->sendError("*E* Opened file is too short! (RDRECI)");
 #endif
                     }
                 }
@@ -1941,7 +1501,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdrecr_(float *val, const int *istart, 
 
 /* Subroutine */
 template<int wordsize, class INTEGER, class REAL>
-int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, const int *n, FORMAT format)
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, const int *n, Format format)
 {
     /* System generated locals */
     int i__1;
@@ -1984,7 +1544,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, c
                 case CADFEM:
                     ival[i] = (INTEGER)(tauio_1.tau[iz - 1]);
                     break;
-                case ORIGINAL:
+                case Original:
                     ival[i] = ((INTEGER *)(void *)(tauio_1.tau))[iz - 1];
                     break;
                 default:
@@ -2013,7 +1573,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, c
                         case CADFEM:
                             ival[i] = static_cast<INTEGER>(tauio_1.tau[iz - 1]);
                             break;
-                        case ORIGINAL:
+                        case Original:
                             ival[i] = *reinterpret_cast<INTEGER *>(&tauio_1.tau[iz-1]);
                             break;
                         default:
@@ -2027,7 +1587,8 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, c
                         if (CTrace == 'Y')
                         {
 #ifdef SENDINFO
-                            m_module->sendError("*E* Opened file is too short! (RDRECI)");
+                            if (m_module->rank() == 0)
+                                m_module->sendError("*E* Opened file is too short! (RDRECI)");
 #endif
                         }
                     }
@@ -2087,7 +1648,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::grecaddr_(INTEGER i, INTEGER istart, IN
                          - sizeof(tauio_1.tau);
 
                 tauio_1.taulength = *irdst + sizeof(tauio_1.tau) / sizeof(WORD);
-                if (byteswapFlag == BYTESWAP_ON)
+                if (byteswapFlag == On)
                 {
                     WORD *buffer = (WORD *)(void *)(tauio_1.tau);
                     byteswap(buffer, tauio_1.taulength);
@@ -2511,32 +2072,22 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
     // SETTING MATERIAL NUMBER
     materials.clear();
     materials.resize(NumIDs);
-    for (auto i=0; i<NumSolidElements; ++i) {
+    for (i=0; i<NumSolidElements; ++i) {
         auto id = SolidMatIds[i];
         materials[id].solid.push_back(i);
     }
-    for (auto i=0; i<NumTShellElements; ++i) {
+    for (i=0; i<NumTShellElements; ++i) {
         auto id = TShellMatIds[i];
         materials[id].tshell.push_back(i);
     }
-    for (auto i=0; i<NumShellElements; ++i) {
+    for (i=0; i<NumShellElements; ++i) {
         auto id = ShellMatIds[i];
         materials[id].shell.push_back(i);
     }
-    for (auto i=0; i<NumBeamElements; ++i) {
+    for (i=0; i<NumBeamElements; ++i) {
         auto id = BeamMatIds[i];
         materials[id].beam.push_back(i);
     }
-
-#if 0
-    for (ID = 0; ID < NumIDs; ID++)
-    {
-        std::sort(materials[ID].solid.begin(), materials[ID].solid.end());
-        std::sort(materials[ID].tshell.begin(), materials[ID].tshell.end());
-        std::sort(materials[ID].shell.begin(), materials[ID].shell.end());
-        std::sort(materials[ID].beam.begin(), materials[ID].beam.end());
-    }
-#endif
 }
 
 template<int wordsize, class INTEGER, class REAL>
@@ -2738,7 +2289,8 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
             else
             {
 #ifdef SENDINFO
-                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+                if (m_module->rank() == 0)
+                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
 #endif
                 //exit(-1);
             }
@@ -2763,42 +2315,13 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
     int conNo; // COVISE connection list entry
     int elemNo; // COVISE element list entry
 
-#if 0
-    // allocate
-    grids_out = new coDoUnstructuredGrid *[NumIDs + 1];
-    grids_out[NumIDs] = NULL; // mark end of set array
-#endif
-
     for (INTEGER ID = 0; ID < NumIDs; ID++)
     {
         if (blockToRead >= 0 && blockToRead != ID)
             continue;
-#if 0
-        // initialize
-        grids_out[ID] = NULL;
-#endif
 
         if (IDLISTE[ID] && numelem[ID] > 0)
         {
-#if 0
-            int *el, *cl, *tl;
-            float *x_c, *y_c, *z_c;
-
-            // mesh
-            sprintf(name, "%s_%d_ID%d", Grid, 0, ID);
-            grid_out = new coDoUnstructuredGrid(name,
-                                                numelem[ID],
-                                                numcon[ID],
-                                                numcoo[ID],
-                                                1);
-            grid_out->getAddresses(&el, &cl, &x_c, &y_c, &z_c);
-            grid_out->getTypeList(&tl);
-            // COLOR attribute
-            grid_out->addAttribute("COLOR", colornames[ID % 10]);
-            // PART attribute
-            sprintf(part_buf, "%d", ID + 1);
-            grid_out->addAttribute("PART", part_buf);
-#else
             UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
             grid_out->addAttribute("_part", std::to_string(ID+1));
             auto el = &grid_out->el()[0];
@@ -2807,7 +2330,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
             auto x_c = &grid_out->x()[0];
             auto y_c = &grid_out->y()[0];
             auto z_c = &grid_out->z()[0];
-#endif
 
             // initialize element numbering
             elemNo = 0;
@@ -2918,16 +2440,13 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
             else
             {
 #ifdef SENDINFO
-                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+                if (m_module->rank() == 0)
+                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
 #endif
                 exit(-1);
             }
-#if 0
-            grids_out[IDcount] = grid_out;
-#endif
             *el++ = elemNo;
             grid_out->setBlock(ID);
-            std::cerr << "adding " << grid_out->getName() << " to " << gridPort->getName() << " Token: " << token << std::endl;
             token.addObject(gridPort, grid_out);
             IDcount++;
 
@@ -2935,19 +2454,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
     } // end of for (ID=0 ...)
 
     // mark end of set array
-#if 0
-    grids_out[IDcount] = NULL;
-
-    sprintf(name, "%s_%d", Grid, 0);
-    grid_set_out = new coDoSet(name, (coDistributedObject **)grids_out);
-
-    // free
-    for (i = 0; i <= IDcount; i++)
-    {
-        delete grids_out[i];
-    }
-    delete[] grids_out;
-#endif
 }
 
 template<int wordsize, class INTEGER, class REAL>
@@ -3031,89 +2537,13 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
     int elemNo; // COVISE element list entry
 
     // allocate
-#if 0
-    grids_out = new coDoUnstructuredGrid *[NumIDs + 1];
-    grids_out[NumIDs] = NULL; // mark end of set array
-
-    Vertexs_out = new coDoVec3 *[NumIDs + 1];
-    Vertexs_out[NumIDs] = NULL;
-    Scalars_out = new coDoFloat *[NumIDs + 1];
-    Scalars_out[NumIDs] = NULL;
-#endif
-
     for (INTEGER ID = 0; ID < NumIDs; ID++)
     {
-#if 0
-        // initialize
-        grids_out[ID] = NULL;
-        Vertexs_out[ID] = NULL;
-        Scalars_out[ID] = NULL;
-#endif
-
         if (blockToRead >= 0 && blockToRead != ID)
             continue;
 
         if (IDLISTE[ID] && numelem[ID] > 0)
         {
-#if 0
-            int *el, *cl, *tl;
-            float *x_c, *y_c, *z_c;
-            float *vx_out = NULL, *vy_out = NULL, *vz_out = NULL;
-            float *s_el = NULL;
-
-            // mesh
-            sprintf(name, "%s_%d_ID%d", Grid, timestep, ID);
-            grid_out = new coDoUnstructuredGrid(name,
-                                                numelem[ID] - delElem[ID],
-                                                numcon[ID] - delCon[ID],
-                                                numcoo[ID],
-                                                1);
-            grid_out->getAddresses(&el, &cl, &x_c, &y_c, &z_c);
-            grid_out->getTypeList(&tl);
-            // COLOR attribute
-            grid_out->addAttribute("COLOR", colornames[ID % 10]);
-            // PART attribute
-            sprintf(part_buf, "%d", ID + 1);
-            grid_out->addAttribute("PART", part_buf);
-
-            // nodal vector data
-            if (nodalDataType > 0)
-            {
-
-                sprintf(name, "%s_%d_ID%d", Vertex, timestep, ID);
-                Vertex_out = new coDoVec3(name, numcoo[ID]);
-                Vertex_out->addAttribute("PART", part_buf);
-                Vertex_out->getAddresses(&vx_out, &vy_out, &vz_out);
-            }
-            else
-            {
-                Vertex_out = NULL;
-            }
-            // element scalar data
-            if (elementDataType > 0)
-            {
-                sprintf(name, "%s_%d_ID%d", Scalar, timestep, ID);
-                // @@@ This only works if rigid shells are not mixed
-                //     in a "part" with other element types!!!!!!
-                if (NumDim == 5
-                    && minShell[ID] >= 0
-                    && minShell[ID] < NumShellElements
-                    && ShellMatIds[minShell[ID]] == ID)
-                {
-                    Scalar_out = new coDoFloat(name, matTyp[ID] != 20 ? numelem[ID] - delElem[ID] : 0);
-                }
-                else
-                {
-                    Scalar_out = new coDoFloat(name, numelem[ID] - delElem[ID]);
-                }
-                Scalar_out->addAttribute("PART", part_buf);
-                Scalar_out->getAddress(&s_el);
-            }
-            else
-            {
-                Scalar_out = NULL;
-            }
-#else
             UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID]-delElem[ID],
                                                                 numcon[ID]-delCon[ID],
                                                                 numcoo[ID]));
@@ -3126,7 +2556,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
 
             Vec<Scalar,3>::ptr Vertex_out;
             Scalar *vx_out=nullptr, *vy_out=nullptr, *vz_out=nullptr;
-            if (nodalDataType > 0) {
+            if (nodalDataType != No_Node_Data) {
                 Vertex_out.reset(new Vec<Scalar,3>(numcoo[ID]));
                 vx_out = &Vertex_out->x()[0];
                 vy_out = &Vertex_out->y()[0];
@@ -3135,7 +2565,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
 
             Vec<Scalar>::ptr Scalar_out;
             Scalar *s_el = nullptr;
-            if (elementDataType > 0) {
+            if (elementDataType != No_Element_Data) {
                 if (NumDim == 5 && !materials[ID].shell.empty())
                 {
                     Scalar_out.reset(new Vec<Scalar>(matTyp[ID] != 20 ? numelem[ID] - delElem[ID] : 0));
@@ -3146,7 +2576,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                 }
                 s_el = &Scalar_out->x()[0];
             }
-#endif
 
             // initialize element numbering
             elemNo = 0;
@@ -3206,43 +2635,43 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                         switch (elementDataType)
                         {
 
-                        case 1: // element stress (tensor component)
+                        case Stress_Tensor: // element stress (tensor component)
 
                             switch (component)
                             {
 
-                            case 0:
+                            case Sx:
                                 *s_el++ = SolidData[i * NumSolidVar];
                                 break;
 
-                            case 1:
+                            case Sy:
                                 *s_el++ = SolidData[i * NumSolidVar + 1];
                                 break;
 
-                            case 2:
+                            case Sz:
                                 *s_el++ = SolidData[i * NumSolidVar + 2];
                                 break;
 
-                            case 3:
+                            case Txy:
                                 *s_el++ = SolidData[i * NumSolidVar + 3];
                                 break;
 
-                            case 4:
+                            case Tyz:
                                 *s_el++ = SolidData[i * NumSolidVar + 4];
                                 break;
 
-                            case 5:
+                            case Txz:
                                 *s_el++ = SolidData[i * NumSolidVar + 5];
                                 break;
 
-                            case 6:
+                            case Pressure:
                                 druck = SolidData[i * NumSolidVar];
                                 druck += SolidData[i * NumSolidVar + 1];
                                 druck += SolidData[i * NumSolidVar + 2];
                                 druck /= -3.0;
                                 *s_el++ = druck;
                                 break;
-                            case 7:
+                            case Von_Mises:
                                 druck = SolidData[i * NumSolidVar];
                                 druck += SolidData[i * NumSolidVar + 1];
                                 druck += SolidData[i * NumSolidVar + 2];
@@ -3260,7 +2689,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
 
                             break;
 
-                        case 2: // plastic strain
+                        case Plastic_Strain: // plastic strain
                             *s_el++ = SolidData[i * NumSolidVar + 6 * SomeFlags[0]];
                             break;
                         }
@@ -3312,7 +2741,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                         switch (elementDataType)
                         {
 
-                        case 1: // element stress (tensor component)
+                        case Stress_Tensor: // element stress (tensor component)
                             float Sav[6];
                             int comp;
                             for (comp = 0; comp < 6; ++comp)
@@ -3328,12 +2757,12 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                             }
                             switch (component)
                             {
-                            case 0:
-                            case 1:
-                            case 2:
-                            case 3:
-                            case 4:
-                            case 5:
+                            case Sx:
+                            case Sy:
+                            case Sz:
+                            case Txy:
+                            case Tyz:
+                            case Txz:
                                 *s_el++ = Sav[component - 1];
                                 break;
                             /*
@@ -3353,14 +2782,14 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                               *s_el++ = ShellData[CoviseElement*NumShellVar+5];
                               break;
                               */
-                            case 6:
+                            case Pressure:
                                 druck = Sav[0];
                                 druck += Sav[1];
                                 druck += Sav[2];
                                 druck /= -3.0;
                                 *s_el++ = druck;
                                 break;
-                            case 7:
+                            case Von_Mises:
                                 druck = Sav[0];
                                 druck += Sav[1];
                                 druck += Sav[2];
@@ -3378,11 +2807,11 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
 
                             break;
 
-                        case 2: // plastic strain
+                        case Plastic_Strain: // plastic strain
                             *s_el++ = (ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0]] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints * 2]) / 3;
                             break;
 
-                        case 3: // Thickness: NEIPS is 0!!!!!!
+                        case Thickness: // Thickness: NEIPS is 0!!!!!!
                             *s_el++ = ShellData[CoviseElement * NumShellVar + NumInterpol * (6 * SomeFlags[0] + SomeFlags[1]) + 8 * SomeFlags[2]];
                             break;
                         }
@@ -3409,12 +2838,12 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                         switch (elementDataType)
                         {
 
-                        case 1: // element stress (tensor component)
+                        case Stress_Tensor: // element stress (tensor component)
                             // For beams no stress available.
                             *s_el++ = 0.0;
                             break;
 
-                        case 2: // plastic strain
+                        case Plastic_Strain: // plastic strain
                             // For beams no plastic strain available.
                             *s_el++ = 0.0;
                             ;
@@ -3433,21 +2862,21 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                     switch (nodalDataType)
                     {
 
-                    case 0:
+                    case No_Node_Data:
                         break;
 
-                    case 1: // displacements
+                    case Displacements: // displacements
                         vx_out[i] = x_c[i] - Coord[(coordLookup[ID][i] - 1) * 3];
                         vy_out[i] = y_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 1];
                         vz_out[i] = z_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 2];
                         break;
 
-                    case 2: // nodal velocity
+                    case Velocities: // nodal velocity
                         vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
                         vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
                         vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
                         break;
-                    case 3: // nodal acceleration
+                    case Accelerations: // nodal acceleration
                         vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
                         vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
                         vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
@@ -3460,15 +2889,11 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
             else
             {
 #ifdef SENDINFO
-                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+                if (m_module->rank() == 0)
+                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
 #endif
                 //exit(-1);
             }
-#if 0
-            grids_out[IDcount] = grid_out;
-            Vertexs_out[IDcount] = Vertex_out;
-            Scalars_out[IDcount] = Scalar_out;
-#else
             grid_out->setBlock(ID);
             grid_out->setTimestep(timestep);
             grid_out->setRealTime(m_currentTime);
@@ -3477,57 +2902,25 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                 Vertex_out->setBlock(ID);
                 Vertex_out->setTimestep(timestep);
                 Vertex_out->setRealTime(m_currentTime);
+                Vertex_out->setGrid(grid_out);
+                Vertex_out->setMapping(DataBase::Vertex);
+                Vertex_out->addAttribute("_species", toString(nodalDataType));
                 token.addObject(vectorPort, Vertex_out);
             }
             if (Scalar_out) {
                 Scalar_out->setBlock(ID);
                 Scalar_out->setTimestep(timestep);
-                Vertex_out->setRealTime(m_currentTime);
+                Scalar_out->setRealTime(m_currentTime);
+                Scalar_out->setGrid(grid_out);
+                Vertex_out->setMapping(DataBase::Element);
+                Scalar_out->addAttribute("_species", toString(elementDataType));
                 token.addObject(scalarPort, Scalar_out);
             }
-#endif
             IDcount++;
 
         } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
     } // end of for (ID=0 ...)
 
-#if 0
-    // mark end of set array
-    grids_out[IDcount] = NULL;
-    Vertexs_out[IDcount] = NULL;
-    Scalars_out[IDcount] = NULL;
-
-    sprintf(name, "%s_%d", Grid, timestep);
-    grid_set_out = new coDoSet(name, (coDistributedObject **)grids_out);
-
-    // aw: only creates sets when creating data at the port at all
-    if (nodalDataType > 0)
-    {
-        sprintf(name, "%s_%d", Vertex, timestep);
-        Vertex_set_out = new coDoSet(name, (coDistributedObject **)Vertexs_out);
-    }
-    else
-        Vertex_set_out = NULL;
-
-    if (elementDataType > 0)
-    {
-        sprintf(name, "%s_%d", Scalar, timestep);
-        Scalar_set_out = new coDoSet(name, (coDistributedObject **)Scalars_out);
-    }
-    else
-        Scalar_set_out = NULL;
-
-    // free
-    for (i = 0; i <= IDcount; i++)
-    {
-        delete grids_out[i];
-        delete Vertexs_out[i];
-        delete Scalars_out[i];
-    }
-    delete[] grids_out;
-    delete[] Vertexs_out;
-    delete[] Scalars_out;
-#endif
 }
 
 template<int wordsize, class INTEGER, class REAL>
@@ -3569,7 +2962,7 @@ Dyna3DReaderBase::~Dyna3DReaderBase()
 {
 }
 
-void Dyna3DReaderBase::setPorts(Port *grid, Port *scalar, Port *vector)
+void Dyna3DReaderBase::setPorts(Port *grid, Port *vector, Port *scalar)
 {
     gridPort = grid;
     scalarPort = scalar;
@@ -3581,34 +2974,31 @@ void Dyna3DReaderBase::setFilename(const std::string &d3plot) {
     m_filename = d3plot;
 }
 
-void Dyna3DReaderBase::setByteswap(Dyna3DReaderBase::BYTESWAP bs) {
+void Dyna3DReaderBase::setByteswap(Dyna3DReaderBase::ByteSwap bs) {
 
     byteswapFlag = bs;
 }
 
-void Dyna3DReaderBase::setFormat(Dyna3DReaderBase::FORMAT f) {
+void Dyna3DReaderBase::setFormat(Dyna3DReaderBase::Format f) {
 
     format = f;
 
     std::string ciform;
     switch (format)
     {
-    case GERMAN:
-        ciform = "cadfem";
+    case CADFEM:
+    case Original:
+        ciform = toString(format);
         break;
-
-    case US:
-        ciform = "original";
-        break;
-
     default:
 #ifdef SENDINFO
-        m_module->sendError("ERROR: Incorrect file format selected");
+        if (m_module->rank() == 0)
+            m_module->sendError("ERROR: Incorrect file format selected");
 #endif
         break;
     };
 
-    std::cerr << "Dyna3DReader::readDyna3D info: selecting format " << ciform << std::endl;
+    //std::cerr << "Dyna3DReader::readDyna3D info: selecting format " << ciform << std::endl;
 }
 
 void Dyna3DReaderBase::setOnlyGeometry(bool onlygeo) {
@@ -3619,6 +3009,21 @@ void Dyna3DReaderBase::setOnlyGeometry(bool onlygeo) {
 void Dyna3DReaderBase::setPartSelection(const std::string &parts)
 {
     selection = parts;
+}
+
+void Dyna3DReaderBase::setNodalDataType(NodalDataType type)
+{
+    nodalDataType = type;
+}
+
+void Dyna3DReaderBase::setElementDataType(ElementDataType type)
+{
+    elementDataType = type;
+}
+
+void Dyna3DReaderBase::setComponent(Component type)
+{
+    component = type;
 }
 
 std::string nextAdapt(const std::string &cur) {
