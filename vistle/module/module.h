@@ -24,6 +24,9 @@
 #include <list>
 #include <map>
 #include <exception>
+#include <deque>
+#include <mutex>
+#include <future>
 
 #include <core/paramvector.h>
 #include <core/object.h>
@@ -51,6 +54,7 @@ namespace vistle {
 
 class StateTracker;
 struct HubData;
+class Module;
 class Renderer;
 
 namespace message {
@@ -63,8 +67,55 @@ class RemoveParameter;
 class MessageQueue;
 }
 
+class V_MODULEEXPORT PortTask {
+
+    friend class Module;
+
+public:
+    explicit PortTask(Module *module);
+    virtual ~PortTask();
+
+    bool hasObject(const Port *p);
+    Object::const_ptr takeObject(const Port *p);
+    template<class Type>
+    typename Type::const_ptr accept(const Port *port);
+    template<class Type>
+    typename Type::const_ptr accept(const std::string &port);
+    template<class Type>
+    typename Type::const_ptr expect(const Port *port);
+    template<class Type>
+    typename Type::const_ptr expect(const std::string &port);
+
+    void addDependency(std::shared_ptr<PortTask> dep);
+    void addObject(Port *port, Object::ptr obj);
+    void addObject(const std::string &port, Object::ptr obj);
+    void passThroughObject(Port *port, Object::const_ptr obj);
+    void passThroughObject(const std::string &port, Object::const_ptr obj);
+
+    void addAllObjects();
+
+    bool isDone();
+    bool dependenciesDone();
+
+    bool wait();
+    bool waitDependencies();
+
+protected:
+    Module *m_module = nullptr;
+    std::map<const Port *, Object::const_ptr> m_input;
+    std::set<Port *> m_ports;
+    std::map<std::string, Port *> m_portsByString;
+    std::set<std::shared_ptr<PortTask>> m_dependencies;
+    std::map<Port *, std::deque<Object::ptr>> m_objects;
+    std::map<Port *, std::deque<bool>> m_passThrough;
+
+    std::mutex m_mutex;
+    std::shared_future<bool> m_future;
+};
+
 class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    friend class Renderer;
+   friend class PortTask;
 
  public:
    static bool setup(const std::string &shmname, int moduleID, int rank);
@@ -262,6 +313,7 @@ protected:
    virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
    virtual bool compute(); //< do processing - called on each rank individually
+   virtual bool compute(std::shared_ptr<PortTask> task) const;
 
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;
@@ -285,6 +337,8 @@ protected:
    bool m_cancelRequested=false, m_cancelExecuteCalled=false, m_executeAfterCancelFound=false;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
+
+   std::shared_ptr<PortTask> m_lastTask;
 };
 
 template<>

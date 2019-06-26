@@ -8,6 +8,62 @@
 namespace vistle {
 
 template<class Type>
+typename Type::const_ptr PortTask::accept(const Port *port) {
+    auto it = m_input.find(port);
+    if (it == m_input.end())
+        return nullptr;
+    auto obj = it->second;
+   if (!obj) {
+      std::stringstream str;
+      str << "did not receive valid object at " << port->getName() << std::endl;
+      m_module->sendWarning(str.str());
+      return nullptr;
+   }
+   vassert(obj->check());
+   auto ret = Type::as(obj);
+   if (ret)
+       m_input.erase(it);
+   return ret;
+}
+template<class Type>
+typename Type::const_ptr PortTask::accept(const std::string &port) {
+    auto it = m_portsByString.find(port);
+    if (it == m_portsByString.end())
+        return nullptr;
+    return accept<Type>(it->second);
+}
+
+template<class Type>
+typename Type::const_ptr PortTask::expect(const Port *port) {
+    auto it = m_input.find(port);
+    assert(it != m_input.end());
+    if (it == m_input.end()) {
+        if (m_module->schedulingPolicy() == message::SchedulingPolicy::Single) {
+            std::stringstream str;
+            str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+            m_module->sendError(str.str());
+        }
+        return nullptr;
+    }
+    auto obj = it->second;
+    m_input.erase(it);
+    if (!obj) {
+        std::stringstream str;
+        str << "did not receive valid object at " << port->getName() << std::endl;
+        m_module->sendWarning(str.str());
+        return nullptr;
+    }
+    vassert(obj->check());
+    return Type::as(obj);
+}
+template<class Type>
+typename Type::const_ptr PortTask::expect(const std::string &port) {
+    auto it = m_portsByString.find(port);
+    assert(it != m_portsByString.end());
+    return expect<Type>(it->second);
+}
+
+template<class Type>
 typename Type::const_ptr Module::accept(Port *port) {
    Object::const_ptr obj;
    if (port->objects().empty()) {

@@ -1414,6 +1414,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 #endif
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::Prepare ) {
+
+        if (m_lastTask) {
+            m_lastTask->wait();
+            m_lastTask.reset();
+        }
+
         ret &= prepareWrapper(exec);
     }
 
@@ -1684,6 +1690,11 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 }
 
                 if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+                    if (m_lastTask) {
+                        // FIXME do not wait for tasks
+                        m_lastTask->wait();
+                        m_lastTask.reset();
+                    }
                     // if processing for another timestep starts, run reduction for previous timesteps
                     if (startWithZero && waitForZero) {
                         if (timestep > 0) {
@@ -1756,6 +1767,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         }
 
         if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+            if (m_lastTask) {
+                m_lastTask->wait();
+                m_lastTask.reset();
+            }
             // run reduction for remaining (most often just the last) timesteps
             int t = prevTimestep;
             while (numReductions < m_numTimesteps && !cancelRequested(true)) {
@@ -1771,6 +1786,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::Reduce) {
+        if (m_lastTask) {
+            m_lastTask->wait();
+            m_lastTask.reset();
+        }
         ret &= reduceWrapper(exec, reordered);
         m_cache.clearOld();
     }
@@ -2031,7 +2050,21 @@ bool Module::prepare() {
 }
 
 bool Module::compute() {
-    std::cerr << "compute() should not be called unless overridden" << std::endl;
+
+    auto task = std::make_shared<PortTask>(this);
+    if (m_lastTask) {
+        task->addDependency(m_lastTask);
+    }
+    m_lastTask = task;
+
+    task->m_future = std::async(std::launch::async, [this, task]{ return compute(task); });
+    return true;
+}
+
+bool Module::compute(std::shared_ptr<PortTask> task) const {
+
+    (void)task;
+    std::cerr << "compute() or compute(std::shared_ptr<PortTask>) should be reimplemented from vistle::Module" << std::endl;
     return false;
 }
 
@@ -2210,6 +2243,171 @@ bool Module::cancelRequested(bool collective) {
     }
 
     return m_cancelRequested;
+}
+
+PortTask::PortTask(Module *module)
+: m_module(module)
+{
+    for (auto &p: module->inputPorts) {
+        m_portsByString[p.first] = p.second;
+        if (module->hasObject(p.second)) {
+            m_input[p.second] = module->takeFirstObject(p.second);
+        }
+    }
+    for (auto &p: module->outputPorts) {
+        m_portsByString[p.first] = p.second;
+        m_ports.insert(p.second);
+    }
+}
+
+PortTask::~PortTask()
+{
+    waitDependencies();
+    addAllObjects();
+}
+
+bool PortTask::hasObject(const Port *p) {
+
+    auto it = m_input.find(p);
+    return it != m_input.end();
+}
+
+Object::const_ptr PortTask::takeObject(const Port *p) {
+
+    auto it = m_input.find(p);
+    if (it == m_input.end())
+        return Object::const_ptr();
+
+    auto ret = it->second;
+    m_input.erase(it);
+    return ret;
+}
+
+void PortTask::addDependency(std::shared_ptr<PortTask> dep)
+{
+    m_dependencies.insert(dep);
+}
+
+void PortTask::addObject(Port *port, Object::ptr obj) {
+
+    assert(m_ports.find(port) != m_ports.end());
+
+    if (!dependenciesDone()) {
+        m_objects[port].emplace_back(obj);
+        m_passThrough[port].emplace_back(false);
+        return;
+    }
+
+    addAllObjects();
+    m_module->addObject(port, obj);
+}
+
+void PortTask::addObject(const std::string &port, Object::ptr obj) {
+
+    auto it = m_portsByString.find(port);
+    assert(it != m_portsByString.end());
+    if (it == m_portsByString.end()) {
+        std::cerr << "PortTask: port '" << port << "' not found" << std::endl;
+        return;
+    }
+    addObject(it->second, obj);
+}
+
+void PortTask::passThroughObject(Port *port, Object::const_ptr obj)
+{
+    assert(m_ports.find(port) != m_ports.end());
+
+    if (!dependenciesDone()) {
+        m_objects[port].emplace_back(std::const_pointer_cast<Object>(obj));
+        m_passThrough[port].emplace_back(true);
+        return;
+    }
+
+    addAllObjects();
+    m_module->passThroughObject(port, obj);
+}
+
+void PortTask::passThroughObject(const std::string &port, Object::const_ptr obj) {
+
+    auto it = m_portsByString.find(port);
+    assert(it != m_portsByString.end());
+    if (it == m_portsByString.end()) {
+        std::cerr << "PortTask: port '" << port << "' not found" << std::endl;
+        return;
+    }
+    passThroughObject(it->second, obj);
+}
+
+void PortTask::addAllObjects() {
+
+    assert(dependenciesDone());
+
+    while (!m_objects.empty()) {
+        for (auto it = m_objects.begin(); it != m_objects.end(); ++it) {
+
+            auto &p = it->first;
+            auto &q = it->second;
+            auto &passQueue = m_passThrough[p];
+            assert(q.size() == passQueue.size());
+            if (!q.empty()) {
+                if (passQueue.front())
+                    m_module->passThroughObject(p, q.front());
+                else
+                    m_module->addObject(p, q.front());
+                q.pop_front();
+                passQueue.pop_front();
+            }
+
+            if (q.empty()) {
+                assert(passQueue.empty());
+                m_passThrough.erase(p);
+                m_objects.erase(it);
+                break;
+            }
+        }
+    }
+}
+
+bool PortTask::isDone() {
+
+    if (!m_future.valid())
+        return false;
+
+    return dependenciesDone();
+}
+
+bool PortTask::dependenciesDone() {
+
+    std::unique_lock<std::mutex> guard(m_mutex);
+    for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
+        auto &d = *it;
+        if (!d->isDone())
+            return false;
+    }
+    return true;
+}
+
+bool PortTask::wait() {
+
+    waitDependencies();
+    return m_future.get();
+}
+
+bool PortTask::waitDependencies() {
+
+    std::unique_lock<std::mutex> guard(m_mutex);
+    for (auto it = m_dependencies.begin(); it != m_dependencies.end(); ++it) {
+        auto &d = *it;
+        if (!d->isDone()) {
+            guard.unlock();
+            d->wait();
+            guard.lock();
+        }
+    }
+
+    m_dependencies.clear();
+
+    return true;
 }
 
 } // namespace vistle
