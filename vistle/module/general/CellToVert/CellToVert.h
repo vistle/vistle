@@ -12,7 +12,7 @@ class CellToVert: public vistle::Module {
 
  private:
 
-   virtual bool compute();
+     bool compute(std::shared_ptr<vistle::PortTask> task) const override;
 };
 
 #endif

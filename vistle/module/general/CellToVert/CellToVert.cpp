@@ -26,11 +26,11 @@ CellToVert::CellToVert(const std::string &name, int moduleID, mpi::communicator 
 CellToVert::~CellToVert() {
 }
 
-bool CellToVert::compute() {
+bool CellToVert::compute(std::shared_ptr<PortTask> task) const {
 
    coCellToVert algo;
 
-   auto data = expect<DataBase>("data_in");
+   auto data = task->expect<DataBase>("data_in");
    if (!data)
       return true;
 
@@ -40,11 +40,12 @@ bool CellToVert::compute() {
       return true;
    }
 
-   if (data->mapping() == DataBase::Vertex) {
-       passThroughObject("data_out", data);
-   } else if (data->mapping() != DataBase::Element) {
+   auto mapping = data->guessMapping();
+   if (mapping == DataBase::Vertex) {
+       task->passThroughObject("data_out", data);
+   } else if (mapping != DataBase::Element) {
       std::stringstream str;
-      str << "unsupported data mapping " << data->mapping() << " on " << data->getName();
+      str << "unsupported data mapping " << data->mapping() << ", guessed=" << mapping << " on " << data->getName();
       std::string s = str.str();
       sendError("%s", s.c_str());
       return true;
@@ -55,7 +56,7 @@ bool CellToVert::compute() {
       out->copyAttributes(data);
       out->setGrid(grid);
       out->setMapping(DataBase::Vertex);
-      addObject("data_out", out);
+      task->addObject("data_out", out);
    }
 
    return true;
