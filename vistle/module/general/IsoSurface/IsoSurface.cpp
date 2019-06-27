@@ -154,6 +154,7 @@ bool IsoSurface::reduce(int timestep) {
    }
 
    if (m_foundPoint) {
+       auto task = std::make_shared<PortTask>(const_cast<IsoSurface *>(this));
        for (size_t i=0; i<m_grids.size(); ++i) {
            int t = m_grids[i] ? m_grids[i]->getTimestep() : -1;
            if (m_datas[i])
@@ -161,7 +162,7 @@ bool IsoSurface::reduce(int timestep) {
            if (m_mapdatas[i])
                t = std::max(t, m_mapdatas[i]->getTimestep());
            if (t == timestep)
-               work(m_grids[i], m_datas[i], m_mapdatas[i]);
+               work(task, m_grids[i], m_datas[i], m_mapdatas[i]);
        }
    }
 
@@ -185,9 +186,10 @@ bool IsoSurface::reduce(int timestep) {
    return Module::reduce(timestep);
 }
 
-bool IsoSurface::work(vistle::Object::const_ptr grid,
+bool IsoSurface::work(std::shared_ptr<PortTask> task,
+             vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr dataS,
-             vistle::DataBase::const_ptr mapdata) {
+             vistle::DataBase::const_ptr mapdata) const {
 
    const int processorType = getIntParameter("processortype");
 #ifdef CUTTINGSURFACE
@@ -209,10 +211,13 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
 
 #ifndef CUTTINGSURFACE
    auto minmax = dataS->getMinMax();
-   if (minmax.first[0] < m_min)
-      m_min = minmax.first[0];
-   if (minmax.second[0] > m_max)
-      m_max = minmax.second[0];
+   {
+       std::lock_guard<std::mutex> guard(m_mutex);
+       if (minmax.first[0] < m_min)
+           m_min = minmax.first[0];
+       if (minmax.second[0] > m_max)
+           m_max = minmax.second[0];
+   }
 #endif
 
    Object::ptr result = l.result();
@@ -236,17 +241,18 @@ bool IsoSurface::work(vistle::Object::const_ptr grid,
          mapresult->updateInternals();
          mapresult->copyAttributes(mapdata);
          mapresult->setGrid(result);
-         addObject(m_dataOut, mapresult);
+         task->addObject(m_dataOut, mapresult);
       }
 #ifndef CUTTINGSURFACE
       else {
-          addObject(m_dataOut, result);
+          task->addObject(m_dataOut, result);
       }
 #endif
    }
    return true;
 }
 
+#if 0
 bool IsoSurface::compute() {
 
 #ifdef CUTTINGSURFACE
@@ -287,6 +293,60 @@ bool IsoSurface::compute() {
         //unstr->getCelltree();
         if (grid)
             t = grid->getTimestep();
+        m_grids.push_back(grid);
+        m_datas.push_back(dataS);
+        if (t < 0)
+            t = dataS->getTimestep();
+        m_mapdatas.push_back(mapdata);
+        //std::cerr << "compute with t=" << t << std::endl;
+        return true;
+    }
+#endif
+}
+#endif
+
+
+bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
+
+#ifdef CUTTINGSURFACE
+    auto mapdata = task->expect<DataBase>(m_mapDataIn);
+   if (!mapdata)
+       return true;
+   auto grid = mapdata->grid();
+#else
+    auto mapdata = task->accept<DataBase>(m_mapDataIn);
+    auto dataS = task->expect<Vec<Scalar>>("data_in");
+   if (!dataS)
+      return true;
+   if (dataS->guessMapping() != DataBase::Vertex) {
+       sendError("need per-vertex mapping on data_in");
+      return true;
+   }
+   auto grid = dataS->grid();
+#endif
+   auto uni = UniformGrid::as(grid);
+   auto rect = RectilinearGrid::as(grid);
+   auto str = StructuredGrid::as(grid);
+   auto unstr = UnstructuredGrid::as(grid);
+   if (!uni && !rect && !str && !unstr) {
+       if (grid)
+           sendError("grid required on input data: invalid type");
+       else
+           sendError("grid required on input data: none present");
+       return true;
+   }
+
+#ifdef CUTTINGSURFACE
+    return work(task, grid, nullptr, mapdata);
+#else
+    if (m_pointOrValue->getValue() == Value) {
+        return work(task, grid, dataS, mapdata);
+    } else {
+        int t = -1;
+        //unstr->getCelltree();
+        if (grid)
+            t = grid->getTimestep();
+        std::lock_guard<std::mutex> guard(m_mutex);
         m_grids.push_back(grid);
         m_datas.push_back(dataS);
         if (t < 0)

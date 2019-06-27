@@ -21,16 +21,17 @@ class IsoSurface: public vistle::Module {
                                        int processorType
                                         );
 
-   std::vector<vistle::Object::const_ptr> m_grids;
-   std::vector<vistle::Vec<vistle::Scalar>::const_ptr> m_datas;
-   std::vector<vistle::DataBase::const_ptr> m_mapdatas;
+   mutable std::vector<vistle::Object::const_ptr> m_grids;
+   mutable std::vector<vistle::Vec<vistle::Scalar>::const_ptr> m_datas;
+   mutable std::vector<vistle::DataBase::const_ptr> m_mapdatas;
 
-   bool work(vistle::Object::const_ptr grid,
+   bool work(std::shared_ptr<vistle::PortTask> task, vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr data,
-             vistle::DataBase::const_ptr mapdata);
-   virtual bool compute() override;
-   virtual bool prepare() override;
-   virtual bool reduce(int timestep) override;
+             vistle::DataBase::const_ptr mapdata) const;
+   bool compute(std::shared_ptr<vistle::PortTask> task) const override;
+   //bool compute() override;
+   bool prepare() override;
+   bool reduce(int timestep) override;
    bool changeParameter(const vistle::Parameter *param) override;
 
    vistle::FloatParameter *m_isovalue;
@@ -40,7 +41,8 @@ class IsoSurface: public vistle::Module {
    vistle::IntParameter *m_computeNormals;
    vistle::Port *m_mapDataIn, *m_dataOut;
 
-   vistle::Scalar m_min, m_max;
+   mutable std::mutex m_mutex;
+   mutable vistle::Scalar m_min, m_max;
    vistle::Float m_paraMin, m_paraMax;
    bool m_performedPointSearch = false;
    bool m_foundPoint = false;
