@@ -79,22 +79,33 @@ const std::string & MessageQueue::getName() const {
 
 bool MessageQueue::progress() {
 
-   while (!m_queue.empty()) {
-      if (m_blocking) {
-         m_mq.send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0);
-      } else {
-         if (!m_mq.try_send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0)) {
-            return m_queue.empty();
-         }
-      }
-      m_queue.pop_front();
-   }
-   return m_queue.empty();
+    std::unique_lock<std::mutex> guard(m_mutex);
+    while (!m_queue.empty()) {
+        guard.unlock();
+        if (m_blocking) {
+            guard.lock();
+            if (!m_queue.empty()) {
+                m_mq.send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0);
+                m_queue.pop_front();
+            }
+        } else {
+            guard.lock();
+            if (!m_queue.empty()) {
+                if (!m_mq.try_send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0)) {
+                    return m_queue.empty();
+                }
+                m_queue.pop_front();
+            }
+        }
+    }
+    return m_queue.empty();
 }
 
 bool MessageQueue::send(const Message &msg) {
 
+   std::unique_lock<std::mutex> guard(m_mutex);
    m_queue.emplace_back(msg);
+   guard.unlock();
    return progress();
 }
 

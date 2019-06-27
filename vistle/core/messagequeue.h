@@ -2,6 +2,7 @@
 #define MESSAGEQUEUE_H
 
 #include <deque>
+#include <mutex>
 #define BOOST_INTERPROCESS_MSG_QUEUE_CIRCULAR_INDEX
 #include <boost/interprocess/ipc/message_queue.hpp>
 
@@ -45,6 +46,7 @@ class V_COREEXPORT MessageQueue {
    const std::string m_name;
    message_queue m_mq;
    std::deque<message::Buffer> m_queue;
+   std::mutex m_mutex;
 };
 
 } // namespace message
