@@ -14,7 +14,7 @@ class CutGeometry: public vistle::Module {
    vistle::Object::ptr cutGeometry(vistle::Object::const_ptr object) const;
 
  private:
-   virtual bool compute() override;
+   bool compute(std::shared_ptr<vistle::PortTask> task) const override;
    virtual bool changeParameter(const vistle::Parameter *param) override;
    IsoController isocontrol;
 };
