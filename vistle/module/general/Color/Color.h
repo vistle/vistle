@@ -49,6 +49,8 @@ class Color: public vistle::Module {
    bool m_autoRange = true, m_autoInsetCenter = true, m_nest = false;
    vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
    vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
+   vistle::IntParameter *m_insetRelPara = nullptr;
+   vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
    vistle::Scalar m_min, m_max;

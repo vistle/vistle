@@ -99,15 +99,17 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    setCurrentParameterGroup("Nested Color Map");
    m_nestPara = addIntParameter("nest", "inset another color map", m_nest, Parameter::Boolean);
    m_autoInsetCenterPara = addIntParameter("auto_center", "compute center of nested color map", m_autoInsetCenter, Parameter::Boolean);
-   addIntParameter("inset_relative", "width and center of inset are relative to range", true, Parameter::Boolean);
-   addFloatParameter("inset_center", "where to inset other color map (auto range: 0.5=middle)", 0.5);
-   addFloatParameter("inset_width", "range covered by inseted color map (auto range: relative)", 0.1);
+   m_insetRelPara = addIntParameter("inset_relative", "width and center of inset are relative to range", true, Parameter::Boolean);
+   m_insetCenterPara = addFloatParameter("inset_center", "where to inset other color map (auto range: 0.5=middle)", 0.5);
+   m_insetWidthPara = addFloatParameter("inset_width", "range covered by inseted color map (auto range: relative)", 0.1);
    auto inset_map = addIntParameter("inset_map", "transfer function to inset", COVISE, Parameter::Choice);
    V_ENUM_SET_CHOICES(inset_map, TransferFunction);
    auto inset_steps = addIntParameter("inset_steps", "number of color map steps for inset (0: as outer map)", 0);
    setParameterRange(inset_steps, (Integer)0, (Integer)1024);
    auto res = addIntParameter("resolution", "number of steps to compute", 1024);
    setParameterRange(res, (Integer)1, (Integer)1024);
+   setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
+   setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
 
    TF pins;
 
@@ -359,6 +361,14 @@ bool Color::changeParameter(const Parameter *p) {
     } else if (p == m_maxPara) {
         m_max = m_maxPara->getValue();
         newMap = true;
+    } else if (p == m_insetRelPara) {
+        if (m_insetRelPara) {
+            setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
+            setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
+        } else {
+            setParameterRange(m_insetCenterPara, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
+            setParameterRange(m_insetWidthPara, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
+        }
     }
 
     if (changeReduce) {
