@@ -92,6 +92,8 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
    m_steps = addIntParameter("timesteps", "number of timesteps", 0);
    setParameterRange(m_steps, Integer(0), Integer(999999));
 
+   m_elementData = addIntParameter("element_data", "generate data per element/cell", false, Parameter::Boolean);
+
    m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
 
@@ -128,6 +130,16 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
     }
 
     return 0.;
+}
+
+void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
+
+    ssize_t numElem = grid->getNumElements();
+//#pragma omp parallel for
+    for (ssize_t idx=0; idx<numElem; ++idx) {
+        auto c = grid->cellCenter(idx);
+        d[idx] = computeData(c[0], c[1], c[2], mode, scale, anim, time);
+    }
 }
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
@@ -371,7 +383,14 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         vector->setTimestep(time);
 
     const int dtime = time<0 ? 0 : time;
-    if (auto coord = Coords::as(geoOut)) {
+    if (m_elementData->getValue()) {
+
+        const GridInterface *grid = geoOut->getInterface<GridInterface>();
+        setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCells(vector->x().data(), grid, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCells(vector->y().data(), grid, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        setDataCells(vector->z().data(), grid, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+    } else if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
         const Scalar *yy = coord->y().data();
         const Scalar *zz = coord->z().data();
@@ -393,7 +412,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         if (time >= 0)
             geoOut->setTimestep(time);
         addObject("grid_out", geoOut);
+        scalar->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
         scalar->setGrid(geoOut);
+        vector->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
         vector->setGrid(geoOut);
     }
 

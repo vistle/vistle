@@ -25,6 +25,7 @@ class Gendat: public vistle::Module {
    vistle::VectorParameter *m_min, *m_max;
    vistle::IntParameter *m_steps;
    vistle::IntParameter *m_animData;
+   vistle::IntParameter *m_elementData = nullptr;
 };
 
 #endif
