@@ -301,6 +301,22 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       typedef vistle::FloatParameter::ValueType F;
       m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
       m_floatManager->setDecimals(prop, NumDec);
+      double range = fp->maximum()-fp->minimum();
+      double step = 1.;
+      if (range > 0. && !isinf(range)) {
+          if (range > 300.) {
+              while (step * 300. < range) {
+                  step *= 10.;
+              }
+          } else {
+              while (step * 300. > range) {
+                  step /= 10.;
+              }
+          }
+          m_floatManager->setSingleStep(prop, step);
+      } else {
+          m_floatManager->setSingleStep(prop, 1.);
+      }
 
       QString tip = QString("%1 (%2 – %3)").arg(
                QString::fromStdString(p->description()),
