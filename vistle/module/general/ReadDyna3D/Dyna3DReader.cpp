@@ -2912,7 +2912,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                 Scalar_out->setTimestep(timestep);
                 Scalar_out->setRealTime(m_currentTime);
                 Scalar_out->setGrid(grid_out);
-                Vertex_out->setMapping(DataBase::Element);
+                Scalar_out->setMapping(DataBase::Element);
                 Scalar_out->addAttribute("_species", toString(elementDataType));
                 token.addObject(scalarPort, Scalar_out);
             }
