@@ -46,7 +46,7 @@ class Color: public vistle::Module {
 
    std::shared_ptr<ColorMap> m_colors;
 
-   bool m_autoRange = false, m_autoInsetCenter = true, m_nest = false;
+   bool m_autoRange = true, m_autoInsetCenter = true, m_nest = false;
    vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
    vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
