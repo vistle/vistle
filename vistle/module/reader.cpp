@@ -403,7 +403,6 @@ bool Reader::Token::waitDone()
     }
 
     {
-        std::lock_guard<std::mutex> locker(m_mutex);
         if (m_future.valid()) {
             m_future.wait();
         } else {
