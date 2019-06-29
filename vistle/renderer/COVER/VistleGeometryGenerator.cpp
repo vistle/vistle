@@ -48,7 +48,11 @@ const int DataAttrib = 10;
 using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
-osg::ref_ptr<osg::KdTreeBuilder> VistleGeometryGenerator::s_kdtree;
+
+namespace {
+std::mutex kdTreeMutex;
+std::vector<osg::ref_ptr<osg::KdTreeBuilder>> kdTreeBuilders;
+}
 
 template<class Geo>
 struct PrimitiveAdapter {
@@ -210,13 +214,6 @@ VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderO
 , m_normal(normal)
 , m_tex(tex)
 {
-#ifdef COVER_PLUGIN
-    s_coverMutex.lock();
-    if (!s_kdtree)
-        s_kdtree = new osg::KdTreeBuilder;
-    s_coverMutex.unlock();
-#endif
-
    if (m_tex) {
        m_species = m_tex->getAttribute("_species");
    }
@@ -965,9 +962,19 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 #ifdef COVER_PLUGIN
        opencover::cover->setRenderStrategy(d.get());
        if (auto geom = d->asGeometry()) {
-           s_coverMutex.lock();
-           s_kdtree->apply(*geom);
-           s_coverMutex.unlock();
+           osg::ref_ptr<osg::KdTreeBuilder> builder;
+           std::unique_lock<std::mutex> guard(kdTreeMutex);
+           if (kdTreeBuilders.empty()) {
+               guard.unlock();
+               builder = new osg::KdTreeBuilder;
+           } else {
+               builder = kdTreeBuilders.back();
+               kdTreeBuilders.pop_back();
+               guard.unlock();
+           }
+           builder->apply(*geom);
+           guard.lock();
+           kdTreeBuilders.push_back(builder);
        }
 #endif
 

@@ -60,7 +60,6 @@ class VistleGeometryGenerator {
       const OsgColorMapMap *m_colormaps = nullptr;
 
       static std::mutex s_coverMutex;
-      static osg::ref_ptr<osg::KdTreeBuilder> s_kdtree;
 };
 
 #endif
