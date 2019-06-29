@@ -10,7 +10,7 @@ Reader::Reader(const std::string &description, const std::string &name, const in
     m_first = addIntParameter("first_step", "first timestep to read", 0);
     setParameterRange(m_first, Integer(0), std::numeric_limits<Integer>::max());
 
-    m_last = addIntParameter("last_step", "last timestep to read", -1);
+    m_last = addIntParameter("last_step", "last timestep to read (-1: last)", -1);
     setParameterRange(m_last, Integer(-1), std::numeric_limits<Integer>::max());
 
     m_increment = addIntParameter("step_increment", "number of steps to increment", 1);
@@ -278,23 +278,28 @@ void Reader::observeParameter(const Parameter *param) {
 
 void Reader::setTimesteps(int number) {
 
-    if (number < 0)
+    Integer max(std::numeric_limits<Integer>::max());
+    if (number < 0) {
         number = 0;
+    }
 
     m_numTimesteps = number;
 
-    if (number == 0)
+    if (number == 0) {
         number = 1;
-
-    if (m_first->getValue() >= number) {
-        m_first->setValue(number-1);
+    } else {
+        max = number - 1;
     }
-    setParameterRange(m_first, Integer(0), Integer(number-1));
 
-    if (m_last->getValue() >= number) {
-        m_last->setValue(number-1);
+    if (m_first->getValue() >=max) {
+        setParameter(m_first, max);
     }
-    setParameterRange(m_last, Integer(-1), Integer(number-1));
+    setParameterRange(m_first, Integer(0), max);
+
+    if (m_last->getValue() >= max) {
+        setParameter(m_last, max);
+    }
+    setParameterRange(m_last, Integer(-1), max);
 }
 
 void Reader::setPartitions(int number)

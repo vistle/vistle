@@ -134,7 +134,7 @@ bool ReadDyna3D::examine(const Parameter *param) {
 
     if (p_only_geometry->getValue()) {
         setTimesteps(0);
-    } else {
+    } else if (dyna3dReader->numTimesteps() >= 0) {
         setTimesteps(dyna3dReader->numTimesteps());
     }
     setPartitions(dyna3dReader->numBlocks());
