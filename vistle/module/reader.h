@@ -14,7 +14,7 @@ public:
 
    class V_MODULEEXPORT Token {
        friend class vistle::Reader;
-       friend std::ostream &operator<<(std::ostream &os, const Token &tok);
+       friend V_MODULEEXPORT std::ostream &operator<<(std::ostream &os, const Token &tok);
 
    public:
        Token(Reader *reader, std::shared_ptr<Token> previous);

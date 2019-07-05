@@ -91,7 +91,11 @@ struct SendRequest {
 
 void submitSendRequest(std::shared_ptr<SendRequest> req) {
     //std::cerr << "submitSendRequest: " << sendQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-    req->sock.get_executor().post(*req, std::allocator<char>());
+#if BOOST_VERSION >= 107000
+	req->sock.get_executor().post(*req, std::allocator<char>());
+#else
+	req->sock.get_io_service().post(*req);
+#endif
 }
 
 }
@@ -139,7 +143,11 @@ struct RecvRequest {
 
 void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
     //std::cerr << "submitRecvRequest: " << recvQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-    req->sock.get_executor().post(*req, std::allocator<char>());
+#if BOOST_VERSION >= 107000
+	req->sock.get_executor().post(*req, std::allocator<char>());
+#else
+	req->sock.get_io_service().post(*req);
+#endif
 }
 
 }
