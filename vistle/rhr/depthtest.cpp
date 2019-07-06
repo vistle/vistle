@@ -10,6 +10,7 @@
 #include <random>
 
 using vistle::Clock;
+using vistle::DepthFloat;
 
 void measure(const std::string &name, const float *depth, size_t sz, int precision, int num_runs) {
 

@@ -16,7 +16,10 @@
 #include <cover/coVRPlugin.h>
 #include <PluginUtil/MultiChannelDrawer.h>
 
+namespace vistle {
 class ReadBackCuda;
+}
+
 struct CompositeCallback;
 
 //! Implement depth compositor for sort-last parallel rendering based on IceT
@@ -66,7 +69,7 @@ class CompositorIceT : public opencover::coVRPlugin
 
       IceTContext icetCtx; //!< compositing context
       IceTImage image;
-      ReadBackCuda *cudaColor, *cudaDepth; //!< helpers for CUDA read-back
+      vistle::ReadBackCuda *cudaColor, *cudaDepth; //!< helpers for CUDA read-back
       GLenum buffer;
       osg::ref_ptr<osg::Camera> camera;
       int width, height;
@@ -100,7 +103,7 @@ class CompositorIceT : public opencover::coVRPlugin
    //! check whether the window with index 'win' has been resized since last frame
    void checkResize(int win);
    //! wrapper for pixel read-back (either pure OpenGL or CUDA)
-   static bool readpixels(ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h,
+   static bool readpixels(vistle::ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h,
          GLenum format, int ps, GLubyte *bits, GLenum buf, GLenum type);
 };
 #endif

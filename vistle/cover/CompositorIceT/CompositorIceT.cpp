@@ -467,13 +467,13 @@ void CompositorIceT::checkResize(int view)
            icetDestroyContext(cd.icetCtx);
        } else {
            if (m_useCuda) {
-               cd.cudaColor = new ReadBackCuda();
+               cd.cudaColor = new vistle::ReadBackCuda();
                if (!cd.cudaColor->init()) {
                    delete cd.cudaColor;
                    cd.cudaColor = NULL;
                }
 
-               cd.cudaDepth = new ReadBackCuda();
+               cd.cudaDepth = new vistle::ReadBackCuda();
                if (!cd.cudaDepth->init()) {
                    delete cd.cudaDepth;
                    cd.cudaDepth = NULL;
@@ -550,7 +550,7 @@ void CompositorIceT::clusterSyncDraw()
 }
 
 //! OpenGL framebuffer read-back
-bool CompositorIceT::readpixels(ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h,
+bool CompositorIceT::readpixels(vistle::ReadBackCuda *cuda, GLint x, GLint y, GLint w, GLint pitch, GLint h,
       GLenum format, int ps, GLubyte *bits, GLenum buf, GLenum type)
 {
    checkGL("readpixels pre");

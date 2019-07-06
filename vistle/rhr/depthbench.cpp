@@ -15,6 +15,7 @@
 #include <util/netpbmimage.h>
 
 using vistle::Clock;
+using vistle::DepthFloat;
 
 void measure(vistle::DepthCompressionParameters depthParam, const std::string &name, const float *depth, size_t w, size_t h, int precision, int num_runs) {
 

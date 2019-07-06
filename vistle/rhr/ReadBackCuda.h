@@ -22,6 +22,8 @@
 struct cudaGraphicsResource;
 typedef unsigned char uchar;
 
+namespace vistle {
+
 //! fast framebuffer read-back using CUDA
 class V_RHREXPORT ReadBackCuda
 {
@@ -68,4 +70,5 @@ bool ReadBackCuda::readdepthquant(GLint x, GLint y, GLint w, GLint pitch, GLint 
 { return false; }
 #endif
 
+} // namespace vistle
 #endif

@@ -13,6 +13,8 @@
 
 typedef unsigned char uchar;
 
+namespace vistle {
+
 template<>
 #ifdef __CUDACC__
 __device__ __host__
@@ -603,3 +605,4 @@ void depthquant(char *quantbufS, const char *zbufS, DepthFormat format, int dept
 #endif
 }
 
+} // namespace vistle

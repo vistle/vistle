@@ -15,6 +15,8 @@
 #include <stdint.h>
 #include <cstdlib>
 
+namespace vistle {
+
 enum DepthFormat {
    DepthInteger,
    DepthFloat,
@@ -235,4 +237,6 @@ size_t V_RHREXPORT depthquant_size(DepthFormat format, int depthps, int width, i
 
 //! reverse transformation done by depthquant
 void V_RHREXPORT depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
+
+} // namespace vistle
 #endif

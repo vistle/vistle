@@ -19,6 +19,9 @@
 
 //#define ERRORPIC
 
+
+namespace vistle {
+
 template<typename T>
 static int clz (T xx)                                                                                                           
 {
@@ -268,4 +271,6 @@ double depthcompare(const char *ref, const char *check, DepthFormat format, int 
    }
 
    return -1.;
+}
+
 }
