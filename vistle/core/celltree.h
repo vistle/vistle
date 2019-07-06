@@ -162,7 +162,11 @@ extern template class V_COREEXPORT Celltree<Scalar, Index, 2>;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 extern template class V_COREEXPORT Celltree<Scalar, Index, 3>;
 
+} // namespace vistle
+
 #include "celltreenode.h"
+
+namespace vistle {
 
 template<int Dim>
 class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
