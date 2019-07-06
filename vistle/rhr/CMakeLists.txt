@@ -1,5 +1,4 @@
 vistle_find_package(OpenGL)
-vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
@@ -40,14 +39,6 @@ if(TBB_FOUND)
    set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
    include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
-   )
-endif()
-
-if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
-   set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
-   set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
-   include_directories(SYSTEM
-        ${LIBVNCSERVER_INCLUDE_DIR}
    )
 endif()
 
@@ -97,10 +88,6 @@ endif()
 
 if (ZFP_FOUND)
    target_link_libraries(vistle_rhr ${ZFP_LIBRARIES})
-endif()
-
-if(LIBVNCSERVER_FOUND)
-   target_link_libraries(vistle_rhr ${LIBVNCSERVER_SERVER_LIBRARY})
 endif()
 
 add_executable(depthtest depthtest.cpp depthcompare.cpp)
