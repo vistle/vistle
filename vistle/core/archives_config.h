@@ -33,6 +33,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(FieldCompressionMode,
                                     (ZfpAccuracy)
                                     (ZfpPrecision))
 
+namespace detail {
+
 template<class Archive>
 struct archive_tag;
 
@@ -72,7 +74,9 @@ typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrap
     return archive_helper<typename archive_tag<Archive>::type>::wrap_array(t, exact, nx, ny, nz);
 }
 
-}
+} // namespace detail
+} // namespace vistle
+
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/array.hpp>
@@ -84,6 +88,9 @@ typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrap
 namespace vistle {
 class boost_oarchive;
 class boost_iarchive;
+
+namespace detail {
+
 struct boost_tag {};
 template<>
 struct archive_tag<boost_oarchive> {
@@ -122,7 +129,8 @@ struct archive_helper<boost_tag> {
         return boost::serialization::make_array(t, nx*ny*nz);
     }
 };
-}
+} // namespace detail
+} // namespace vistle
 #endif
 #ifdef USE_YAS
 #include <yas/binary_iarchive.hpp>
@@ -132,10 +140,13 @@ struct archive_helper<boost_tag> {
 #include <yas/types/concepts/array.hpp>
 
 namespace vistle {
-const std::size_t yas_flags = yas::binary | yas::ehost;
 
 class yas_oarchive;
 class yas_iarchive;
+
+namespace detail {
+const std::size_t yas_flags = yas::binary | yas::ehost;
+
 struct yas_tag {};
 template<>
 struct archive_tag<yas_oarchive> {
@@ -408,7 +419,13 @@ bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim
 #endif
 }
 #endif
-}
+} // namespace detail
+
+using detail::ZfpParameters;
+using detail::compressZfp;
+using detail::decompressZfp;
+
+} // namespace vistle
 #endif
 
 namespace vistle {
@@ -423,6 +440,8 @@ typedef yas_iarchive iarchive;
 typedef boost_oarchive oarchive;
 typedef boost_iarchive iarchive;
 #endif
+
+using detail::serialize_base;
 }
 
 #ifdef USE_BOOST_ARCHIVE

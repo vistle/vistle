@@ -232,9 +232,9 @@ void shm_array<T, allocator>::save(Archive &ar) const {
     //std::cerr << "saving array: exact=" << m_exact << ", size=" << m_size << std::endl;
     if (m_size > 0) {
         if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
+            ar & V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
         else
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_size));
+            ar & V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
 }
 
@@ -250,9 +250,9 @@ void shm_array<T, allocator>::load(Archive &ar) {
     ar & V_NAME(ar, "exact", m_exact);
     if (m_size > 0) {
         if (m_dim[0]*m_dim[1]*m_dim[2] == m_size)
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
+            ar & V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_dim[0], m_dim[1], m_dim[2]));
         else
-            ar & V_NAME(ar, "elements", wrap_array<Archive>(&m_data[0], m_exact, m_size));
+            ar & V_NAME(ar, "elements", detail::wrap_array<Archive>(&m_data[0], m_exact, m_size));
     }
 }
 

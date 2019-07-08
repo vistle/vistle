@@ -17,12 +17,16 @@ class Object;
 typedef std::shared_ptr<const Object> obj_const_ptr;
 typedef std::deque<obj_const_ptr> ObjectList;
 
+namespace detail {
+
 template <class T>
 struct deref_compare: std::binary_function<T*, T*, bool> {
    bool operator() (const T *x, const T *y) const {
       return *x < *y;
    }
 };
+
+}
 
 class V_COREEXPORT Port {
 
@@ -47,8 +51,8 @@ class V_COREEXPORT Port {
    ObjectList &objects();
    const ObjectList &objects() const;
 
-   typedef std::set<Port *, deref_compare<Port>> PortSet;
-   typedef std::set<const Port *, deref_compare<Port>> ConstPortSet;
+   typedef std::set<Port *, detail::deref_compare<Port>> PortSet;
+   typedef std::set<const Port *, detail::deref_compare<Port>> ConstPortSet;
    const ConstPortSet &connections() const;
    void setConnections(const ConstPortSet &conn);
    bool addConnection(Port *other);

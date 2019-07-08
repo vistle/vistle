@@ -144,7 +144,7 @@ public:
 #endif
 
 #ifdef USE_YAS
-template<class Archive, typename OS, std::size_t F = yas_flags>
+template<class Archive, typename OS, std::size_t F = detail::yas_flags>
 struct yas_binary_oarchive
     :yas::detail::binary_ostream<OS, F>
     ,yas::detail::oarchive_header<F>
@@ -272,7 +272,7 @@ private:
 #endif
 
 #ifdef USE_YAS
-template<class Archive, typename IS, std::size_t F = yas_flags>
+template<class Archive, typename IS, std::size_t F = detail::yas_flags>
 struct yas_binary_iarchive
     :yas::detail::binary_istream<IS, F>
     ,yas::detail::iarchive_header<F>

@@ -236,6 +236,8 @@ const std::function<void()> &boost_iarchive::objectCompletionHandler() const {
 
 #ifdef USE_YAS
 #ifdef HAVE_ZFP
+namespace detail {
+
 template<>
 bool decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const Index dim[3]) {
     return false;
@@ -245,6 +247,8 @@ template<>
 bool compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
    return false;
 }
+
+} // namespace detail
 #endif
 #endif
 } // namespace vistle
