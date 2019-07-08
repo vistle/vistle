@@ -12,7 +12,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
                                     (LocalOnly)
                                     (MasterOnly)
                                     (AllNodes)
-)
+);
 
 class V_RENDEREREXPORT Renderer: public Module {
 

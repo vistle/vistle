@@ -7,34 +7,6 @@
  * \copyright GPL2+
  */
 
-/** \mainpage Remote Hybrid Rendering (RHR)
- *
- * Remote Hybrid Rendering (RHR) can composite 2.5D imagery rendered remotely
- * with locally rendered data. This is useful to
- * - avoid transfer of large dynamic data sets,
- * - decouple interaction from the slow rendering of large data.
- *
- * This implementation is based on the RFB protocol, the protocol used by VNC.
- * The generic parts of the RFB protocol are handled by LibVNCServer/LibVNCClient [http://libvncserver.sourceforge.net].
- * The data structures for the RFB protocol extensions are defined in <RHR/rfbext.h>.
- *
- * Its implementation consists of two parts, a server-side (remote) plug-in (VncServer) and a
- * client-side (local) plug-in (VncClient) for COVER, the VR renderer of the
- * visualization system COVISE [http://www.hlrs.de/organization/av/vis/covise/]
- * and Vistle [http://www.hlrs.de/organization/av/vis/vistle/].
- * For sort-last parallel rendering, VncServer can be combined with
- * CompositorIceT.
- *
- * Regular VNC clients are capable of interfacing with VncServer, but
- * VncClient requires a matching VncServer plug-in.
- * It is also compatible with Vistle's ray caster render module.
- *
- * Depth images can be optionally compressed with a lossy algorithm similiar to Direct3D texture compression
- * (cf. DepthQuantize), also on the GPU before read-back.
- *
- * This work was funded by the EU within the project CRESTA [http://cresta-project.eu].
- */
-
 
 #ifndef PROTOCOL_EXTENSIONS_H
 #define PROTOCOL_EXTENSIONS_H

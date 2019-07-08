@@ -193,3 +193,9 @@ Source Code Organization
         - `vistle/renderer/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
     - `vistle/cover`: plugins for OpenCOVER, e.g. for connecting to Vistle
         - `vistle/cover/RhrClient`: OpenCOVER remote hybrid rendering client plugin
+
+Documentation
+-------------
+
+Some documentation on Vistle is posted to
+[vistle.github.io](https://vistle.github.io).
