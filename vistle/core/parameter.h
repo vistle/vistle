@@ -13,6 +13,12 @@
 #include "paramvector.h"
 #include "export.h"
 
+class VistleInteractor;
+
+namespace gui {
+class Parameters;
+}
+
 namespace vistle {
 
 typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
@@ -94,8 +100,35 @@ struct ParameterCheck {
    static bool check(const std::vector<std::string> &, const T &) { return true; }
 };
 
+namespace message {
+class SetParameter;
+}
+
 template<typename T>
 class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
+
+   friend class ParameterManager;
+   friend class Module;
+   friend class Renderer;
+   friend class message::SetParameter;
+   friend class VistleConnection;
+   friend class gui::Parameters;
+   friend class ::VistleInteractor;
+
+   virtual bool setValue(T value, bool init=false) {
+      if (init)
+         m_defaultValue=value;
+      else if (!checkValue(value))
+         return false;
+      this->m_value = value;
+      return true;
+   }
+   virtual void setMinimum(const T &value) {
+      m_minimum = value;
+   }
+   virtual void setMaximum(const T &value) {
+      m_maximum = value;
+   }
 
  public:
    typedef T ValueType;
@@ -129,14 +162,6 @@ class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
       case Value: ;
       }
       return m_value; }
-   virtual bool setValue(T value, bool init=false) {
-      if (init)
-         m_defaultValue=value;
-      else if (!checkValue(value))
-         return false;
-      this->m_value = value;
-      return true;
-   }
    virtual bool checkValue(const T &value) const {
       if (ParameterType<T>::isNumber) {
          if (value < m_minimum)
@@ -154,16 +179,9 @@ class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
    virtual T minimum() const {
       return m_minimum;
    }
-   virtual void setMinimum(const T &value) {
-      m_minimum = value;
-   }
    virtual T maximum() const {
       return m_maximum;
    }
-   virtual void setMaximum(const T &value) {
-      m_maximum = value;
-   }
-
    operator std::string() const { return boost::lexical_cast<std::string>(m_value); }
  private:
    T m_value;
