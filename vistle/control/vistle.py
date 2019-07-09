@@ -172,9 +172,13 @@ def hubVarForModule(id, numSlaves):
 
 def saveParameters(f, mod):
       params = getParameters(mod)
+      paramChanges = False
       for p in params:
          if not isParameterDefault(mod, p):
-            f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+")\n")
+            f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+", True)\n")
+            paramChanges = True
+      if paramChanges:
+         f.write("applyParameters("+modvar(mod)+")\n")
       f.write("\n")
 
 def saveWorkflow(f, mods, numSlaves, remote):

@@ -59,7 +59,7 @@ public:
    bool prepare() override;
    bool compute() override;
 
-   virtual bool examine(const Parameter *param);
+   virtual bool examine(const Parameter *param = nullptr);
    virtual bool read(Token &token, int timestep=-1, int block=-1) = 0;
    virtual bool prepareRead();
    virtual bool finishRead();
@@ -84,6 +84,7 @@ protected:
    void setTimesteps(int number);
    void setPartitions(int number);
 
+   bool changeParameters(std::set<const Parameter *> params) override;
    bool changeParameter(const Parameter *param) override;
    void prepareQuit() override;
 

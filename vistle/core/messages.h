@@ -494,6 +494,7 @@ static_assert(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE, "message too lar
 //! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public MessageBase<SetParameter, SETPARAMETER> {
    public:
+      explicit SetParameter(int module); //<! apply delayed parameter changes
       SetParameter(int module, const std::string & name, const std::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(int module, const std::string & name, const Integer value);
       SetParameter(int module, const std::string & name, const Float value);
@@ -503,6 +504,8 @@ class V_COREEXPORT SetParameter: public MessageBase<SetParameter, SETPARAMETER> 
 
       void setInit();
       bool isInitialization() const;
+      void setDelayed();
+      bool isDelayed() const;
       void setModule(int );
       int getModule() const;
       bool setType(int type);
@@ -523,12 +526,13 @@ class V_COREEXPORT SetParameter: public MessageBase<SetParameter, SETPARAMETER> 
 
    private:
       int m_module; //!< destination module
-      param_name_t name;
-      int paramtype;
-      int dim;
-      bool initialize;
-      bool reply;
-      int rangetype;
+      param_name_t name; //!< parameter name
+      int paramtype; //!< parameter type
+      int dim; //!< dimensionality for vector parameters
+      bool initialize; //!< called for setting parameter default value
+      bool delayed; //!< true: wait until parameterChanged should be called
+      bool reply; //!< this messaege is in reply to a request to change a parameter and contains the value actually used
+      int rangetype; //!< set parameter bounds instead of parameter value
       union {
          Integer v_int;
          Float v_scalar;

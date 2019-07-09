@@ -832,10 +832,21 @@ std::shared_ptr<Parameter> RemoveParameter::getParameter() const {
 }
 
 
+SetParameter::SetParameter(int module)
+: m_module(module)
+, paramtype(Parameter::Invalid)
+, initialize(false)
+, delayed(false)
+, reply(false)
+, rangetype(Parameter::Value)
+{
+}
+
 SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p, Parameter::RangeType rt)
 : m_module(module)
 , paramtype(p->type())
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(rt)
 {
@@ -868,6 +879,7 @@ SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 : m_module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(Parameter::Value)
 {
@@ -880,6 +892,7 @@ SetParameter::SetParameter(int module, const std::string &n, const Float v)
 : m_module(module)
 , paramtype(Parameter::Float)
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(Parameter::Value)
 {
@@ -892,6 +905,7 @@ SetParameter::SetParameter(int module, const std::string &n, const ParamVector &
 : m_module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(Parameter::Value)
 {
@@ -906,6 +920,7 @@ SetParameter::SetParameter(int module, const std::string &n, const IntParamVecto
 : m_module(module)
 , paramtype(Parameter::IntVector)
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(Parameter::Value)
 {
@@ -920,6 +935,7 @@ SetParameter::SetParameter(int module, const std::string &n, const std::string &
 : m_module(module)
 , paramtype(Parameter::String)
 , initialize(false)
+, delayed(false)
 , reply(false)
 , rangetype(Parameter::Value)
 {
@@ -935,7 +951,17 @@ void SetParameter::setInit() {
 
 bool SetParameter::isInitialization() const {
 
-   return initialize;
+    return initialize;
+}
+
+void SetParameter::setDelayed() {
+
+    delayed = true;
+}
+
+bool SetParameter::isDelayed() const {
+
+    return delayed;
 }
 
 void SetParameter::setModule(int m) {

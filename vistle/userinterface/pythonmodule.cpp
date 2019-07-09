@@ -373,88 +373,120 @@ static void disconnect(int sid, const char *sport, int did, const char *dport) {
    sendMessage(m);
 }
 
-static void setIntParam(int id, const char *name, Integer value) {
+static void setIntParam(int id, const char *name, Integer value, bool delayed) {
 
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
    message::SetParameter m(id, name, value);
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setFloatParam(int id, const char *name, Float value) {
+static void setFloatParam(int id, const char *name, Float value, bool delayed) {
 
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
    message::SetParameter m(id, name, value);
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setVectorParam4(int id, const char *name, Float v1, Float v2, Float v3, Float v4) {
+static void setVectorParam4(int id, const char *name, Float v1, Float v2, Float v3, Float v4, bool delayed) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2, v3, v4));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setVectorParam3(int id, const char *name, Float v1, Float v2, Float v3) {
+static void setVectorParam3(int id, const char *name, Float v1, Float v2, Float v3, bool delayed) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2, v3));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setVectorParam2(int id, const char *name, Float v1, Float v2) {
+static void setVectorParam2(int id, const char *name, Float v1, Float v2, bool delayed) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setVectorParam1(int id, const char *name, Float v1) {
+static void setVectorParam1(int id, const char *name, Float v1, bool delayed) {
 
    message::SetParameter m(id, name, ParamVector(v1));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setIntVectorParam4(int id, const char *name, Integer v1, Integer v2, Integer v3, Integer v4) {
+static void setIntVectorParam4(int id, const char *name, Integer v1, Integer v2, Integer v3, Integer v4, bool delayed) {
 
    message::SetParameter m(id, name, IntParamVector(v1, v2, v3, v4));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setIntVectorParam3(int id, const char *name, Integer v1, Integer v2, Integer v3) {
+static void setIntVectorParam3(int id, const char *name, Integer v1, Integer v2, Integer v3, bool delayed) {
 
    message::SetParameter m(id, name, IntParamVector(v1, v2, v3));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setIntVectorParam2(int id, const char *name, Integer v1, Integer v2) {
+static void setIntVectorParam2(int id, const char *name, Integer v1, Integer v2, bool delayed) {
 
    message::SetParameter m(id, name, IntParamVector(v1, v2));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setIntVectorParam1(int id, const char *name, Integer v1) {
+static void setIntVectorParam1(int id, const char *name, Integer v1, bool delayed) {
 
    message::SetParameter m(id, name, IntParamVector(v1));
    m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
    sendMessage(m);
 }
 
-static void setStringParam(int id, const char *name, const std::string &value) {
+static void setStringParam(int id, const char *name, const std::string &value, bool delayed) {
 
 #ifdef DEBUG
    std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
    message::SetParameter m(id, name, value);
+   m.setDestId(id);
+   if (delayed)
+       m.setDelayed();
+   sendMessage(m);
+}
+
+static void applyParameters(int id) {
+
+#ifdef DEBUG
+   std::cerr << "Python: applyParameters " << id << std::endl;
+#endif
+   message::SetParameter m(id);
    m.setDestId(id);
    sendMessage(m);
 }
@@ -557,20 +589,20 @@ static void clearStatus() {
 
 
 #define param1(T, f) \
-   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a); \
-   m.def("setParam", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a);
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a, "delayed"_a=false); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a, "delayed"_a=false);
 
 #define param2(T, f) \
-   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`)", "id"_a, "name"_a, "value1"_a, "value2"_a); \
-   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2)`", "id"_a, "name"_a, "value1"_a, "value2"_a);
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "delayed"_a=false); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2)`", "id"_a, "name"_a, "value1"_a, "value2"_a, "delayed"_a=false);
 
 #define param3(T, f) \
-   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a); \
-   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a);
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "delayed"_a=false); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "delayed"_a=false);
 
 #define param4(T, f) \
-   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a); \
-   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a);
+   m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a, "delayed"_a=false); \
+   m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a, "delayed"_a=false);
 
 PYBIND11_EMBEDDED_MODULE(_vistle, m) {
 
@@ -637,6 +669,7 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     param3(IntVector, setIntVectorParam3);
     param4(IntVector, setIntVectorParam4);
 
+    m.def("applyParameters", applyParameters, "apply delayed parameter changes");
     m.def("getAvailable", getAvailable, "get list of names of available modules");
     m.def("getRunning", getRunning, "get list of IDs of running modules");
     m.def("getBusy", getBusy, "get list of IDs of busy modules");

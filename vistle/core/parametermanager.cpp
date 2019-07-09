@@ -26,7 +26,11 @@ void ParameterManager::setCurrentParameterGroup(const std::string &group) {
 void ParameterManager::init() {
 
    for (auto &pair: parameters) {
+#if 0
       parameterChangedWrapper(pair.second.get());
+#else
+      m_delayedChanges.push_back(pair.second.get());
+#endif
    }
 }
 
@@ -45,6 +49,9 @@ bool ParameterManager::handleMessage(const message::SetParameter &param) {
 
     // sent by controller
     switch (param.getParameterType()) {
+    case Parameter::Invalid:
+        applyDelayedChanges();
+        break;
     case Parameter::Integer:
         setIntParameter(param.getName(), param.getInteger(), &param);
         break;
@@ -69,6 +76,13 @@ bool ParameterManager::handleMessage(const message::SetParameter &param) {
     return true;
 }
 
+bool ParameterManager::changeParameters(std::set<const Parameter *> params) {
+    bool ret = true;
+    for (auto p: params)
+        ret &= changeParameter(p);
+    return ret;
+}
+
 const std::string &ParameterManager::currentParameterGroup() const {
 
    return m_currentParameterGroup;
@@ -84,6 +98,17 @@ int ParameterManager::id() const {
 
 void ParameterManager::setName(const std::string &name) {
     m_name = name;
+}
+
+void ParameterManager::applyDelayedChanges() {
+
+    std::set<const Parameter *> params;
+    for (auto p: m_delayedChanges) {
+        params.emplace(p);
+    }
+    m_delayedChanges.clear();
+
+    changeParameters(params);
 }
 
 Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param) {
@@ -300,6 +325,8 @@ bool ParameterManager::parameterChangedWrapper(const Parameter *p) {
       return true;
    }
    m_inParameterChanged = true;
+
+   applyDelayedChanges();
 
    bool ret = changeParameter(p);
    m_inParameterChanged = false;

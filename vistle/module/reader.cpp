@@ -291,7 +291,7 @@ void Reader::setTimesteps(int number) {
         max = number - 1;
     }
 
-    if (m_first->getValue() >=max) {
+    if (m_first->getValue() >= max) {
         setParameter(m_first, max);
     }
     setParameterRange(m_first, Integer(0), max);
@@ -307,6 +307,26 @@ void Reader::setPartitions(int number)
     if (number < 0)
         number = 0;
     m_numPartitions = number;
+}
+
+bool Reader::changeParameters(std::set<const Parameter *> params)
+{
+    bool ret = true;
+    for (auto &p: params) {
+        ret &= Module::changeParameter(p);
+    }
+
+    bool ex = false;
+    for (auto &p: params) {
+        auto it = m_observedParameters.find(p);
+        if (it != m_observedParameters.end()) {
+            m_readyForRead = examine();
+            ret &= m_readyForRead;
+            break;
+        }
+    }
+
+    return ret;
 }
 
 bool Reader::changeParameter(const Parameter *param)

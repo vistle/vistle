@@ -76,10 +76,13 @@ public:
    void quit();
    bool handleMessage(const message::SetParameter &message);
    virtual void sendParameterMessage(const message::Message &message) const = 0;
+   virtual bool changeParameters(std::set<const Parameter *> params); //< notify that some parameters have been changed
    virtual bool changeParameter(const Parameter *p); //< notify that a parameter has been changed
    void setId(int id);
    int id() const;
    void setName(const std::string &name);
+
+   void applyDelayedChanges();
 
 private:
    bool parameterChangedWrapper(const Parameter *p); //< wrapper to prevent recursive calls to parameterChanged
@@ -89,6 +92,7 @@ private:
    std::string m_currentParameterGroup;
    std::map<std::string, std::shared_ptr<Parameter>> parameters;
    bool m_inParameterChanged = false;
+   std::vector<const Parameter *> m_delayedChanges;
 };
 
 }

@@ -1435,6 +1435,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             waitAllTasks();
         }
 
+        applyDelayedChanges();
+
         ret &= prepareWrapper(exec);
     }
 

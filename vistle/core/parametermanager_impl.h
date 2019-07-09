@@ -26,7 +26,10 @@ template<class T>
 bool ParameterManager::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
 
    param->setValue(value);
-   parameterChangedWrapper(param);
+   if (!inResponseTo || !inResponseTo->isDelayed())
+       parameterChangedWrapper(param);
+   else
+       m_delayedChanges.push_back(param);
    return updateParameter(param->getName(), param, inResponseTo);
 }
 
