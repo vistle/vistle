@@ -10,7 +10,7 @@ The data structures for the RHR protocol are defined in <rhr/rfbext.h>.
 Its implementation consists of two parts, a server-side (remote) plug-in (VncServer) and a
 client-side (local) plug-in (RhrClient) for COVER, the VR renderer of the
 visualization system COVISE [http://www.hlrs.de/covise]
-and Vistle [https://vistle.github.io].
+and Vistle [https://vistle.io].
 For sort-last parallel rendering, VncServer can be combined with
 CompositorIceT.
 

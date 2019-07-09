@@ -198,4 +198,4 @@ Documentation
 -------------
 
 Some documentation on Vistle is posted to
-[vistle.github.io](https://vistle.github.io).
+[vistle.io](https://vistle.io).
