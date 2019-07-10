@@ -132,7 +132,7 @@ public:
     void setElementDataType(ElementDataType type);
     void setComponent(Component type);
 
-    bool examine();
+    bool examine(bool rescan = true);
 
     virtual int readStart() = 0;
     virtual int readOnlyGeo(vistle::Reader::Token &token, int blockToRead) = 0;

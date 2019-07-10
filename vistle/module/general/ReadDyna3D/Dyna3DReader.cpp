@@ -3068,92 +3068,94 @@ std::string suffixForCount(int count) {
     return buf;
 }
 
-bool Dyna3DReaderBase::examine()
+bool Dyna3DReaderBase::examine(bool rescan)
 {
     m_numBlocks = -1;
     m_numTimesteps = -1;
 
-    fs::path rootfile(m_filename);
-    auto dir = rootfile.parent_path();
-    auto name = rootfile.filename();
+    if (rescan) {
+        fs::path rootfile(m_filename);
+        auto dir = rootfile.parent_path();
+        auto name = rootfile.filename();
 
-    struct Adaptation {
-        std::string name;
-        int numfiles = 0;
-        size_t firstlen = 0;
-        size_t len = 0;
-        size_t lastlen = 0;
+        struct Adaptation {
+            std::string name;
+            int numfiles = 0;
+            size_t firstlen = 0;
+            size_t len = 0;
+            size_t lastlen = 0;
 
-        size_t geomlen = 0;
-        size_t statelen = 0;
-    };
-    std::map<std::string, Adaptation> adaptations;
-    for (std::string adapt=""; adapt != "end"; adapt = nextAdapt(adapt)) {
-        bool found = false;
-        for (int count=0; count<1000; ++count) {
-            fs::path curfile = rootfile;
-            curfile += adapt + suffixForCount(count);
-            boost::system::error_code ec;
-            if (!exists(curfile, ec) || ec) {
-                std::cerr << "filesystem error while checking for existance of " << curfile.string() << ":" << ec << std::endl;
-                break;
+            size_t geomlen = 0;
+            size_t statelen = 0;
+        };
+        std::map<std::string, Adaptation> adaptations;
+        for (std::string adapt=""; adapt != "end"; adapt = nextAdapt(adapt)) {
+            bool found = false;
+            for (int count=0; count<1000; ++count) {
+                fs::path curfile = rootfile;
+                curfile += adapt + suffixForCount(count);
+                boost::system::error_code ec;
+                if (!exists(curfile, ec) || ec) {
+                    //std::cerr << "filesystem error while checking for existance of " << curfile.string() << ":" << ec << std::endl;
+                    break;
+                }
+                size_t size = file_size(curfile, ec);
+                if (ec) {
+                    std::cerr << "filesystem error while checking length of " << curfile.string() << ":" << ec << std::endl;
+                    break;
+                } else if (size == 0) {
+                    std::cerr << "length of " << curfile.string() << " is zero" << std::endl;
+                    break;
+                }
+                found = true;
+                if (count == 0) {
+                    adaptations[adapt].firstlen = size;
+                } else if (count == 1) {
+                    adaptations[adapt].len = size;
+                }
+                adaptations[adapt].lastlen = size;
+                adaptations[adapt].numfiles = count;
+                adaptations[adapt].name = adapt;
             }
-            size_t size = file_size(curfile, ec);
-            if (ec) {
-                std::cerr << "filesystem error while checking length of " << curfile.string() << ":" << ec << std::endl;
+            if (!found)
                 break;
-            } else if (size == 0) {
-                std::cerr << "length of " << curfile.string() << " is zero" << std::endl;
-                break;
-            }
-            found = true;
-            if (count == 0) {
-                adaptations[adapt].firstlen = size;
-            } else if (count == 1) {
-                adaptations[adapt].len = size;
-            }
-            adaptations[adapt].lastlen = size;
-            adaptations[adapt].numfiles = count;
-            adaptations[adapt].name = adapt;
         }
-        if (!found)
-            break;
+
+        m_numTimesteps = 0;
+        std::string filename = m_filename;
+        for (auto &a: adaptations) {
+            int numtime = 0;
+            auto &adapt = a.second;
+            if (taurusinit_() != 0)
+                return false;
+
+            m_filename = filename + a.first;
+            if (rdtaucntrl_(format) != 0)
+                return false;
+
+            adapt.geomlen = NumberOfWords * m_wordsize;
+            adapt.statelen = NumWords * m_wordsize;
+
+            // count initial state as one step
+            if (adapt.firstlen >=  adapt.geomlen)
+                ++numtime;
+            // steps contained in first file after geometry
+            numtime += (adapt.firstlen-adapt.geomlen)/adapt.statelen;
+            // last file
+            if (adapt.numfiles > 0) {
+                numtime += adapt.lastlen/adapt.statelen;
+            }
+            // other files
+            if (adapt.numfiles > 1) {
+                numtime += (adapt.len/adapt.statelen) * (adapt.numfiles-2);
+            }
+
+            //std::cerr << "found " << numtime << " steps in adaptation '" << adapt.name  << "' contained in " << adapt.numfiles << " files" << std::endl;
+            m_numTimesteps += numtime;
+        }
+
+        m_filename = filename;
     }
-
-    m_numTimesteps = 0;
-    std::string filename = m_filename;
-    for (auto &a: adaptations) {
-        int numtime = 0;
-        auto &adapt = a.second;
-        if (taurusinit_() != 0)
-            return false;
-
-        m_filename = filename + a.first;
-        if (rdtaucntrl_(format) != 0)
-            return false;
-
-        adapt.geomlen = NumberOfWords * m_wordsize;
-        adapt.statelen = NumWords * m_wordsize;
-
-        // count initial state as one step
-        if (adapt.firstlen >=  adapt.geomlen)
-            ++numtime;
-        // steps contained in first file after geometry
-        numtime += (adapt.firstlen-adapt.geomlen)/adapt.statelen;
-        // last file
-        if (adapt.numfiles > 0) {
-            numtime += adapt.lastlen/adapt.statelen;
-        }
-        // other files
-        if (adapt.numfiles > 1) {
-            numtime += (adapt.len/adapt.statelen) * (adapt.numfiles-2);
-        }
-
-        //std::cerr << "found " << numtime << " steps in adaptation '" << adapt.name  << "' contained in " << adapt.numfiles << " files" << std::endl;
-        m_numTimesteps += numtime;
-    }
-
-    m_filename = filename;
 
     if (taurusinit_() != 0)
         return false;

@@ -121,14 +121,30 @@ bool ReadDyna3D::read(Reader::Token &token, int timestep, int block) {
 
 bool ReadDyna3D::examine(const Parameter *param) {
 
-    //std::cerr << "ReadDyna3D::examine(param=" << param->getName() << ")" << std::endl;
+    //std::cerr << "ReadDyna3D::examine(param=" << (param ? param->getName() : "(null)") << ")" << std::endl;
 
-    dyna3dReader.reset(newReader());
+    bool rescan = false;
+    if (!param)
+        rescan = true;
+    if (!dyna3dReader) {
+        dyna3dReader.reset(newReader());
+        rescan = true;
+    }
     assert(dyna3dReader);
 
+    dyna3dReader->setFilename(p_data_path->getValue());
+    if (param == p_data_path) {
+        rescan = true;
+    }
+
+    dyna3dReader->setByteswap(ByteSwap(p_byteswap->getValue()));
+    if (param == p_byteswap) {
+        rescan = true;
+    }
+    dyna3dReader->setFormat(Format(p_format->getValue()));
     dyna3dReader->setPartSelection(p_Selection->getValue());
 
-    if (!dyna3dReader->examine()) {
+    if (!dyna3dReader->examine(rescan)) {
         return false;
     }
 
@@ -157,6 +173,8 @@ Dyna3DReaderBase *ReadDyna3D::newReader() {
 
     reader->setByteswap(ByteSwap(p_byteswap->getValue()));
     reader->setFormat(Format(p_format->getValue()));
+
+    reader->setPartSelection(p_Selection->getValue());
 
     reader->setPorts(p_grid, p_data_1, p_data_2);
 
