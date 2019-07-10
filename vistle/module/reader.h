@@ -65,6 +65,7 @@ public:
    virtual bool finishRead();
 
    int timeIncrement() const;
+   virtual int rankForTimestepAndPartition(int t, int p) const;
 
 protected:
    protected:
@@ -89,8 +90,6 @@ protected:
    void prepareQuit() override;
 
    bool checkConvexity() const;
-
-   virtual int rankForTimestepAndPartition(int t, int p) const;
 
    IntParameter *m_first = nullptr;
    IntParameter *m_last = nullptr;

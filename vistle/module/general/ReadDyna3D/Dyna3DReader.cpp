@@ -243,11 +243,16 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     int numParts = 0;
     for (i = 0; i < MAXID; i++)
     {
-        if ((IDLISTE[i] = sel(i + 1)) > 0) // Notice: offset for ID (= material number - 1)
+        if (m_module->rankForTimestepAndPartition(-1, i) != m_module->rank())
+            continue;
+
+        IDLISTE[i] = sel(i + 1); // Notice: offset for ID (= material number - 1)
+        if (IDLISTE[i] > 0)
         {
             numParts++;
         }
     }
+    numParts = mpi::all_reduce(m_module->comm(), numParts, std::plus<int>());
     if (numParts == 0)
     {
 #ifdef SENDINFO
