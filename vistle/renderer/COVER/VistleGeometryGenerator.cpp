@@ -1210,10 +1210,12 @@ OsgColorMap::OsgColorMap()
     shaderUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttribUnlit", &parammap));
     shaderUnlit->setFloatUniform("rangeMin", rangeMin);
     shaderUnlit->setFloatUniform("rangeMax", rangeMax);
+    shaderUnlit->setBoolUniform("blendWithMaterial", blendWithMaterial);
 
     shader.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttrib", &parammap));
     shader->setFloatUniform("rangeMin", rangeMin);
     shader->setFloatUniform("rangeMax", rangeMax);
+    shader->setBoolUniform("blendWithMaterial", blendWithMaterial);
     //s_coverMutex.unlock();
 #endif
 }
@@ -1236,6 +1238,18 @@ void OsgColorMap::setRange(float min, float max) {
     if (shaderUnlit) {
         shaderUnlit->setFloatUniform("rangeMin", min);
         shaderUnlit->setFloatUniform("rangeMax", max);
+    }
+#endif
+}
+
+void OsgColorMap::setBlendWithMaterial(bool enable) {
+    blendWithMaterial = enable;
+#ifdef COVER_PLUGIN
+    if (shader) {
+        shader->setBoolUniform("blendWithMaterial", enable);
+    }
+    if (shaderUnlit) {
+        shaderUnlit->setBoolUniform("blendWithMaterial", enable);
     }
 #endif
 }

@@ -24,10 +24,12 @@ struct OsgColorMap {
     OsgColorMap();
     void setName(const std::string &species);
     void setRange(float min, float max);
+    void setBlendWithMaterial(bool enable);
 #ifdef COVER_PLUGIN
     std::shared_ptr<opencover::coVRShader> shader;
     std::shared_ptr<opencover::coVRShader> shaderUnlit;
 #endif
+    bool blendWithMaterial = false;
     float rangeMin = 0.f, rangeMax = 1.f;
     osg::ref_ptr<osg::Texture1D> texture;
     osg::ref_ptr<osg::Image> image;
