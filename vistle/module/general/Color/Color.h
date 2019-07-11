@@ -13,8 +13,8 @@ public:
    ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins, const size_t steps, const size_t width);
    ~ColorMap();
 
-   unsigned char *data;
-   const size_t width;
+   std::vector<unsigned char> data;
+   size_t width = 0;
 };
 
 class Color: public vistle::Module {

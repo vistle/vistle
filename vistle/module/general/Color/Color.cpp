@@ -32,9 +32,11 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     )
 
 ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
-                   const size_t steps, const size_t w): width(w) {
+                   const size_t steps, const size_t w)
+: width(w)
+{
 
-   data = new unsigned char[width * 4];
+   data.resize(width*4);
 
    std::map<vistle::Scalar, vistle::Vector>::iterator current = pins.begin();
    std::map<vistle::Scalar, vistle::Vector>::iterator next = ++pins.begin();
@@ -75,8 +77,6 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
 }
 
 ColorMap::~ColorMap() {
-
-   delete[] data;
 }
 
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
@@ -397,7 +397,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
    unsigned char *pix = &tex->pixels()[0];
    for (size_t index = 0; index < cmap.width * 4; index ++)
-      pix[index] = cmap.data[index];
+       pix[index] = cmap.data[index];
 
    const ssize_t numElem = object->getSize();
    tex->coords().resize(numElem);
