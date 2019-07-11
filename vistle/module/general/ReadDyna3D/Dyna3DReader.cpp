@@ -1984,6 +1984,8 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
     // solids
     for (i = 0; i < NumSolidElements; i++)
     {
+        if (!IDLISTE[SolidMatIds[i]])
+            continue;
 
         if ((SolidNodes[i * 8 + 4] == SolidNodes[i * 8 + 5]) && (SolidNodes[i * 8 + 6] == SolidNodes[i * 8 + 7]))
         {
@@ -2032,6 +2034,8 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
     // thin shells
     for (i = 0; i < NumShellElements; i++)
     {
+        if (!IDLISTE[ShellMatIds[i]])
+            continue;
 
         if (ShellNodes[i * 4 + 2] == ShellNodes[i * 4 + 3])
         {
@@ -2065,6 +2069,9 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
     // beams
     for (i = 0; i < NumBeamElements; i++)
     {
+        if (!IDLISTE[BeamMatIds[i]])
+            continue;
+
         numelem[BeamMatIds[i]]++;
         numcon[BeamMatIds[i]] += 2;
         beamTab[i].coType = UnstructuredGrid::BAR;
@@ -2079,18 +2086,26 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
     materials.resize(NumIDs);
     for (i=0; i<NumSolidElements; ++i) {
         auto id = SolidMatIds[i];
+        if (!IDLISTE[id])
+            continue;
         materials[id].solid.push_back(i);
     }
     for (i=0; i<NumTShellElements; ++i) {
         auto id = TShellMatIds[i];
+        if (!IDLISTE[id])
+            continue;
         materials[id].tshell.push_back(i);
     }
     for (i=0; i<NumShellElements; ++i) {
         auto id = ShellMatIds[i];
+        if (!IDLISTE[id])
+            continue;
         materials[id].shell.push_back(i);
     }
     for (i=0; i<NumBeamElements; ++i) {
         auto id = BeamMatIds[i];
+        if (!IDLISTE[id])
+            continue;
         materials[id].beam.push_back(i);
     }
 }
@@ -2141,14 +2156,8 @@ template<int wordsize, class INTEGER, class REAL>
 void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
 {
     int i, j;
-    int ID;
 
-    int IDcount = 0; // part ID counter
-    int elemNo; // COVISE element list entry
-    int coElem; // COVISE element number counter
-    int coCon; // COVISE connectivity counter
-
-    for (ID = 0; ID < NumIDs; ID++)
+    for (int ID = 0; ID < NumIDs; ID++)
     {
         if (IDLISTE[ID] && numelem[ID] > 0)
 
@@ -2162,9 +2171,9 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
             conList[ID] = new int[numcon[ID]];
 
             // initialize element numbering
-            elemNo = 0;
-            coElem = 0;
-            coCon = 0;
+            int elemNo=0; // COVISE element list entry
+            int coElem=0; // COVISE element number counter
+            int coCon=0; // COVISE connectivity counter
 
 #ifndef _AIRBUS
             if (MDLOpt == 2) // LS_930
@@ -2299,7 +2308,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
 #endif
                 //exit(-1);
             }
-            IDcount++;
 
             //free
             delete[] lookupTab;
@@ -2316,7 +2324,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
 
     int i, j;
 
-    int IDcount = 0; // part ID counter
     int conNo; // COVISE connection list entry
     int elemNo; // COVISE element list entry
 
@@ -2453,7 +2460,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, i
             *el++ = elemNo;
             grid_out->setBlock(ID);
             token.addObject(gridPort, grid_out);
-            IDcount++;
 
         } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
     } // end of for (ID=0 ...)
@@ -2537,7 +2543,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
 
     int i, j;
 
-    int IDcount = 0; // part ID counter
     int conNo; // COVISE connection list entry
     int elemNo; // COVISE element list entry
 
@@ -2921,7 +2926,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                 Scalar_out->addAttribute("_species", toString(elementDataType));
                 token.addObject(scalarPort, Scalar_out);
             }
-            IDcount++;
 
         } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
     } // end of for (ID=0 ...)
