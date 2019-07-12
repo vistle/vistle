@@ -67,6 +67,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
        m_mainWindow->enableConnectButton(false);
    }
 
+   setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
+
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
    m_scene = new DataFlowNetwork(m_vistleConnection, m_mainWindow->dataFlowView());
    m_mainWindow->dataFlowView()->setScene(m_scene);
@@ -83,6 +85,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
    connect(&m_observer, SIGNAL(quit_s()), qApp, SLOT(quit()));
+   connect(&m_observer, SIGNAL(loadedWorkflowChanged_s(QString)), SLOT(setCurrentFile(QString)));
    connect(&m_observer, SIGNAL(info_s(QString, int)),
       m_mainWindow->console(), SLOT(appendInfo(QString, int)));
    connect(&m_observer, SIGNAL(modified(bool)),

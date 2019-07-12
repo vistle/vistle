@@ -840,6 +840,7 @@ SetParameter::SetParameter(int module)
 , reply(false)
 , rangetype(Parameter::Value)
 {
+   name[0] = '\0';
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p, Parameter::RangeType rt)
@@ -1176,6 +1177,14 @@ bool SendText::truncated() const {
 
 UpdateStatus::UpdateStatus(const std::string &text, UpdateStatus::Importance prio)
 : m_importance(prio)
+, m_statusType(UpdateStatus::Text)
+{
+   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
+}
+
+UpdateStatus::UpdateStatus(UpdateStatus::Type type, const std::string &text)
+: m_importance(UpdateStatus::High)
+, m_statusType(type)
 {
    COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
 }
@@ -1188,6 +1197,11 @@ const char *UpdateStatus::text() const {
 UpdateStatus::Importance UpdateStatus::importance() const {
 
    return m_importance;
+}
+
+UpdateStatus::Type UpdateStatus::statusType() const {
+
+   return m_statusType;
 }
 
 ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)
@@ -1638,6 +1652,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case SETPARAMETER: {
          auto &mm = static_cast<const SetParameter &>(m);
          s << ", name: " << mm.getName();
+         if (mm.isInitialization())
+             s << " (INIT)";
          break;
       }
       case SETPARAMETERCHOICES: {

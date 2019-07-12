@@ -67,6 +67,8 @@ class V_COREEXPORT StateObserver {
    virtual void incModificationCount();
    long modificationCount() const;
 
+   virtual void loadedWorkflowChanged(const std::string &filename);
+
 private:
    long m_modificationCount;
 };
@@ -138,6 +140,8 @@ class V_COREEXPORT StateTracker {
    std::vector<int> waitForSlaveHubs(const std::vector<std::string> &names);
 
    int graphChangeCount() const;
+
+   std::string loadedWorkflowFile() const;
 
  protected:
    std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -251,6 +255,8 @@ class V_COREEXPORT StateTracker {
    size_t m_aggregatedPayload = 0;
 
    mutable mutex m_stateMutex;
+
+   std::string m_loadedWorkflowFile;
 };
 
 } // namespace vistle

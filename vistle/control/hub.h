@@ -139,6 +139,7 @@ private:
    std::vector<message::Buffer> m_queue;
    bool handleQueue();
 
+   void setLoadedFile(const std::string &file);
    void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
    void clearStatus();
 };

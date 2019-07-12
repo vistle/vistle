@@ -1394,6 +1394,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case message::REPLAYFINISHED:
       case message::ADDHUB:
       case message::REMOVESLAVE:
+      case message::UPDATESTATUS:
          break;
 
       default:

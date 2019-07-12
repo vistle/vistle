@@ -44,7 +44,7 @@ void Router::initRoutingTable() {
    rt[IDLE]                  = DestUi|DestMasterHub;
    rt[LOCKUI]                = DestUi;
    rt[SENDTEXT]              = DestUi|DestMasterHub;
-   rt[UPDATESTATUS]          = DestUi|DestMasterHub;
+   rt[UPDATESTATUS]          = Track|DestUi|DestMasterHub;
 
    rt[OBJECTRECEIVEPOLICY]   = DestLocalManager|Track;
    rt[SCHEDULINGPOLICY]      = DestLocalManager|Track;

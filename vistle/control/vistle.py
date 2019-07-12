@@ -4,8 +4,6 @@ from time import sleep
 import _vistle
 from _vistle import *
 
-_loaded_file = None
-
 # print to network clients
 class _stdout:
    def write(self, stuff):
@@ -184,12 +182,17 @@ def saveParameters(f, mod):
 def saveWorkflow(f, mods, numSlaves, remote):
    f.write("\n")
 
+   if remote:
+      f.write("# spawn all remote modules\n")
+   else:
+      f.write("# spawn all local modules\n")
    for m in mods:
       hub = _vistle.getHub(m)
       if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
             continue
       #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
       f.write("u"+modvar(m)+" = spawnAsync("+hubVarForModule(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
+   f.write("\n")
 
    for m in mods:
       hub = _vistle.getHub(m)
@@ -198,6 +201,10 @@ def saveWorkflow(f, mods, numSlaves, remote):
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
       saveParameters(f, m)
 
+   if remote:
+      f.write("# connections between local and remote\n")
+   else:
+      f.write("# all local connections\n")
    for m in mods:
       hub = _vistle.getHub(m)
       if (not remote and hub!=getMasterHub()):
@@ -213,12 +220,13 @@ def saveWorkflow(f, mods, numSlaves, remote):
 
 
 def save(filename = None):
-   global _loaded_file
    if filename == None:
-      filename = _loaded_file
-   if filename == None:
+      filename = getLoadedFile()
+   if filename == None or filename == "":
       print("No file loaded and no file specified")
       return
+
+   setLoadedFile(filename)
 
    f = open(filename, 'w')
    mods = _vistle.getRunning()
@@ -262,19 +270,18 @@ def save(filename = None):
    print("Data flow network saved to "+filename)
 
 def reset():
-   global _loaded_file
    mods = _vistle.getRunning()
    for m in mods:
       kill(m)
    barrier()
    #_vistle._resetModuleCounter()
-   _loaded_file = None
+   setLoadedFile("")
+   setStatus("Workflow cleared")
 
 def load(filename = None):
-   global _loaded_file
    if filename == None:
-      filename = _loaded_file
-   if filename == None:
+      filename = getLoadedFile()
+   if filename == None or filename == "":
       print("File name required")
       return
 
@@ -282,4 +289,5 @@ def load(filename = None):
 
    source(filename)
 
-   _loaded_file = filename
+   setLoadedFile(filename)
+   setStatus("Workflow loaded: "+filename)

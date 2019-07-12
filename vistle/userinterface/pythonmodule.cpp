@@ -576,7 +576,7 @@ static void printError(const std::string &message) {
    sendMessage(m);
 }
 
-static void setStatus(const std::string &text, message::UpdateStatus::Importance prio=message::UpdateStatus::Low) {
+static void setStatus(const std::string &text, message::UpdateStatus::Importance prio) {
 
    message::UpdateStatus m(text, prio);
    sendMessage(m);
@@ -585,6 +585,17 @@ static void setStatus(const std::string &text, message::UpdateStatus::Importance
 static void clearStatus() {
 
     setStatus(std::string(), message::UpdateStatus::Bulk);
+}
+
+static void setLoadedFile(const std::string &file) {
+
+   message::UpdateStatus m(message::UpdateStatus::LoadedFile, file);
+   sendMessage(m);
+}
+
+static std::string getLoadedFile() {
+
+   return MODULEMANAGER.loadedWorkflowFile();
 }
 
 
@@ -612,6 +623,10 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     // make values of vistle::message::Type enum known to Python as Message.xxx
     py::class_<message::Message> message(m, "Message");
     vistle::message::enumForPython_Type(message, "Message");
+
+    // make values of vistle::message::UpdateStatus::Importance enum known to Python as Importance.xxx
+    py::class_<message::UpdateStatus> us(m, "Status");
+    vistle::message::UpdateStatus::enumForPython_Importance(us, "Importance");
 
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
@@ -653,9 +668,11 @@ PYBIND11_EMBEDDED_MODULE(_vistle, m) {
     m.def("printInfo", printInfo, "show info message to user");
     m.def("printWarning", printWarning, "show warning message to user");
     m.def("printError", printError, "show error message to user");
-    //m.def("setStatus", setStatus, "update status information", "text"_a, "importance"_a=message::UpdateStatus::Low);
-    m.def("setStatus", setStatus, "update status information");
+    m.def("setStatus", setStatus, "update status information", "text"_a, "importance"_a=message::UpdateStatus::Low);
+    //m.def("setStatus", setStatus, "update status information");
     m.def("clearStatus", clearStatus, "clear status information");
+    m.def("setLoadedFile", setLoadedFile, "update name of currently loaded workflow description file");
+    m.def("getLoadedFile", getLoadedFile, "name of currently loaded workflow description file");
 
     param1(Int, setIntParam);
     param1(Float, setFloatParam);

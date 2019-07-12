@@ -117,7 +117,12 @@ void VistleObserver::resetModificationCount()
    bool mod = modificationCount() > 0;
    StateObserver::resetModificationCount();
    if (mod)
-      emit modified(false);
+       emit modified(false);
+}
+
+void VistleObserver::loadedWorkflowChanged(const std::string &filename)
+{
+    emit loadedWorkflowChanged_s(QString::fromStdString(filename));
 }
 
 void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Type refType, const vistle::message::uuid_t &refUuid) {

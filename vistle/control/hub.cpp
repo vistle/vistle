@@ -1284,6 +1284,13 @@ void Hub::sendError(const std::string &s) const {
     sendUi(t);
 }
 
+void Hub::setLoadedFile(const std::string &file) {
+   CERR << "Loaded file: " << file << std::endl;
+   auto t = make.message<message::UpdateStatus>(message::UpdateStatus::LoadedFile, file);
+   m_stateTracker.handle(t);
+   sendUi(t);
+}
+
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio) {
    CERR << "Status: " << s << std::endl;
    auto t = make.message<message::UpdateStatus>(s, prio);
@@ -1346,10 +1353,13 @@ bool Hub::processScript() {
    vassert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
+      setStatus("Loading "+m_scriptPath+"...");
+      setLoadedFile(m_scriptPath);
       PythonInterpreter inter(m_scriptPath, dir::share(m_prefix));
       while(inter.check()) {
          dispatch();
       }
+      setStatus("Loading "+m_scriptPath+ " done");
    }
    return true;
 #else

@@ -199,6 +199,9 @@ std::vector<message::Buffer> StateTracker::getState() const {
       appendMessage(state, ModuleAvailable(mod.hub, mod.name, mod.path));
    }
 
+   // loaded map
+   appendMessage(state, UpdateStatus(UpdateStatus::LoadedFile, m_loadedWorkflowFile));
+
    // modules with parameters and ports
    for (auto &it: runningMap) {
       const int id = it.first;
@@ -1072,6 +1075,15 @@ bool StateTracker::handlePriv(const message::SendText &info)
 
 bool StateTracker::handlePriv(const message::UpdateStatus &status) {
 
+    if (status.statusType() == message::UpdateStatus::LoadedFile) {
+        m_loadedWorkflowFile = status.text();
+        for (StateObserver *o: m_observers) {
+            o->loadedWorkflowChanged(m_loadedWorkflowFile);
+        }
+
+        return true;
+    }
+
     auto it = runningMap.find(status.senderId());
     if (it == runningMap.end())
         return false;
@@ -1405,6 +1417,11 @@ int StateTracker::graphChangeCount() const {
     return m_graphChangeCount;
 }
 
+std::string StateTracker::loadedWorkflowFile() const {
+
+    return m_loadedWorkflowFile;
+}
+
 std::string StateTracker::statusText() const {
 
     return m_currentStatus;
@@ -1451,7 +1468,11 @@ void StateObserver::incModificationCount() {
 }
 
 long StateObserver::modificationCount() const {
-   return m_modificationCount;
+    return m_modificationCount;
+}
+
+void StateObserver::loadedWorkflowChanged(const std::string &filename) {
+
 }
 
 void StateObserver::resetModificationCount() {

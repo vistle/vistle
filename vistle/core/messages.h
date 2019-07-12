@@ -642,16 +642,24 @@ public:
                                        (Medium)
                                        (High)
    )
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
+                                       (Text)
+                                       (LoadedFile)
+   )
 
    UpdateStatus(const std::string &text, Importance prio=Low);
+   UpdateStatus(Type type, const std::string &text);
    const char *text() const;
    Importance importance() const;
+   Type statusType() const;
 
 private:
    //! message text
    text_t m_text;
-   // message importance
+   //! message importance
    Importance m_importance;
+   //! status type
+   Type m_statusType;
 };
 static_assert(sizeof(UpdateStatus) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Importance, UpdateStatus)
