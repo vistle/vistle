@@ -3035,6 +3035,8 @@ void Dyna3DReaderBase::setComponent(Component type)
     component = type;
 }
 
+namespace  {
+
 std::string nextAdapt(const std::string &cur) {
 
     if (cur.empty())
@@ -3072,12 +3074,15 @@ std::string suffixForCount(int count) {
     return buf;
 }
 
+}
+
 bool Dyna3DReaderBase::examine(bool rescan)
 {
     m_numBlocks = -1;
-    m_numTimesteps = -1;
 
     if (rescan) {
+        m_numTimesteps = -1;
+
         fs::path rootfile(m_filename);
         auto dir = rootfile.parent_path();
         auto name = rootfile.filename();
