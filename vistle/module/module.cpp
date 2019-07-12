@@ -1156,7 +1156,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             return false;
          } else {
             std::cerr << "module [" << name() << "] [" << id() << "] ["
-               << rank() << "/" << size() << "]" << ": received invalid Kill message" << std::endl;
+               << rank() << "/" << size() << "]" << ": received invalid Kill message: " << *kill << std::endl;
          }
          break;
       }
