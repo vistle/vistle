@@ -296,8 +296,12 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
    vassert(m_barrierActive);
    size_t numLocal = 0;
    for (const auto &m: m_stateTracker.runningMap) {
-      if (m.second.hub == Communicator::the().hubId())
-         ++numLocal;
+       if (m.second.hub == Communicator::the().hubId() && Id::isModule(m.second.id)) {
+#ifdef BARRIER_DEBUG
+           CERR << "checkBarrier " << uuid << ": local: " << m.second.id << ":" << m.second.name << std::endl;
+#endif
+           ++numLocal;
+       }
    }
 #ifdef BARRIER_DEBUG
    CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
