@@ -37,6 +37,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     tabifyDockWidget(ui->modulesDock, ui->parameterDock);
 
+    setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
     m_console = ui->consoleWidget;
 
     //m_parameters = ui->parameterEditor;
