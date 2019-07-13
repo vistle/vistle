@@ -85,7 +85,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Component,
                                     (Sx)(Sy)(Sz)(Txy)(Tyz)(Txz)(Pressure)(Von_Mises)
                                     )
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (CADFEM)(Original))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Format, (CADFEM)(Original)(Guess))
 // format of cadfem
 //DEFINE_ENUM_WITH_STRING_CONVERSIONS(CadfemFormat, (GERMAN)(US))
 
@@ -144,7 +144,7 @@ public:
 
 protected:
     virtual int taurusinit_() = 0;
-    virtual int rdtaucntrl_(Format format) = 0;
+    virtual int rdtaucntrl_() = 0;
     virtual int readTimestep() = 0;
 
     vistle::Port *gridPort = nullptr;
@@ -379,7 +379,7 @@ private:
 
     /* Subroutines */
     int taurusinit_() override;
-    int rdtaucntrl_(Format format) override;
+    int rdtaucntrl_() override;
     int taugeoml_();
     int taustatl_();
     int rdtaucoor_();

@@ -58,7 +58,7 @@ ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator 
     V_ENUM_SET_CHOICES(p_component, Component);
     p_Selection = addStringParameter("Selection", "Number selection for parts", "all");
     // p_State = addIntSliderParam("State","Timestep");
-    p_format = addIntParameter("format", "Format of LS-DYNA3D ptf-File", Original, Parameter::Choice);
+    p_format = addIntParameter("format", "Format of LS-DYNA3D ptf-File", Guess, Parameter::Choice);
     V_ENUM_SET_CHOICES(p_format, Format);
 
     p_byteswap = addIntParameter("byteswap", "Perform Byteswapping", Auto, Parameter::Choice);

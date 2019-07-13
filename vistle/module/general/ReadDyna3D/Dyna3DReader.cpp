@@ -37,6 +37,7 @@
 #include <core/unstr.h>
 #include <iostream>
 #include <util/filesystem.h>
+#include <util/enum.h>
 
 namespace fs = vistle::filesystem;
 using namespace vistle;
@@ -47,7 +48,35 @@ const int OpenFlags = O_RDONLY | O_BINARY;
 const int OpenFlags = O_RDONLY;
 #endif
 
-
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(FileType,
+                                    (d3t0)
+                                    (d3plot)
+                                    (d3drlf)
+                                    (d3thdt)
+                                    (intfor)
+                                    (d3part)
+                                    (blstfor)
+                                    (d3cpm)
+                                    (d3ale)
+                                    (d3t9)
+                                    (d3t10)
+                                    (d3eigv)
+                                    (d3mode)
+                                    (d3iter)
+                                    (d3t14)
+                                    (d3t15)
+                                    (d3t16)
+                                    (d3t17)
+                                    (d3t18)
+                                    (d3t19)
+                                    (d3t20)
+                                    (d3ssd)
+                                    (d3spcm)
+                                    (d3psd)
+                                    (d3rms)
+                                    (d3ftg)
+                                    (d3acs)
+                                    )
 
 template<int wordsize, class INTEGER, class REAL>
 Dyna3DReader<wordsize, INTEGER, REAL>::Dyna3DReader(vistle::Reader *module)
@@ -285,7 +314,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
     taurusinit_();
 
     /* read TAURUS control data */
-    rdtaucntrl_(format);
+    rdtaucntrl_();
 
     /* read TAURUS node coordinates */
     rdtaucoor_();
@@ -421,12 +450,12 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::taurusinit_()
 
 /* Subroutine */
 template<int wordsize, class INTEGER, class REAL>
-int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
+int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_()
 {
     /* Local variables */
     int izioshl1, izioshl2, izioshl3, izioshl4, idum[20], iznumelb,
         iznumelh, izmaxint, iznumels, iznumelt;
-    int izndim, iziaflg, iznmatb, izneiph, izitflg, iziuflg,
+    int iziaflg, iznmatb, izneiph, izitflg, iziuflg,
         izivflg, iznglbv, iznmath, iznvarb, iznarbs, iznvarh, izneips,
         iznmats, iznmatt, iznvars, iznvart;
 
@@ -457,13 +486,33 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     }
     else if (byteswapFlag == Auto)
     {
-        std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: asuming byteswap off"
+        std::cerr << "Dyna3DReader::rdtaucntrl_ info: autobyteswap: assuming byteswap off"
              << std::endl;
         byteswapFlag = Off;
     }
 
+    int izndim = 16;
+
+    // guess format
+    if (format == Guess) {
+        /* number of dimensions */
+        INTEGER d_orig, d_cadfem;
+        if (rdreci_(&d_orig, &izndim, &c__1, Original) < -1)
+            return -1;
+        if (rdreci_(&d_cadfem, &izndim, &c__1, CADFEM) < -1)
+            return -1;
+        if (d_orig >= 0 && d_orig <= 4) {
+            format = Original;
+        } else if (d_cadfem >= 0 && d_cadfem <= 4) {
+            format = CADFEM;
+        } else {
+            std::cerr << "Dyna3DReader::rdtaucntrl_ info: format Guess: falling back to Original"
+                      << std::endl;
+            format = Original;
+        }
+    }
+
     /* number of dimensions */
-    izndim = 16;
     if (rdreci_(&NumDim, &izndim, &c__1, format) < -1)
         return -1;
     if (NumDim == 4)
@@ -474,7 +523,25 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     {
         std::cerr << "Dyna3DReader::rdtaucntrl_ info: unhandled NumDim=" << NumDim
              << std::endl;
+        return -1;
     }
+
+    int lsize = 4;
+    int iztype = 12;
+    INTEGER ftype = 0;
+    if (format == Original) {
+        if (rdreci_(&ftype, &iztype, &c__1, format) < -1)
+            return -1;
+        if (ftype > 1000) {
+            lsize = 8;
+            ftype -= 1000;
+        }
+    }
+
+    // model description
+    INTEGER title[10];
+    if (rdreci_(title, &c__1, &c__10, format) < 0)
+        return -1;
 
     /* number of nodal points */
     NumNodalPoints = 17;
@@ -593,7 +660,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     //std::cerr << "NVART: " << NumTShellVar << std::endl;
     /*   Symmetric stress tensor written flag (1000 = yes) */
     izioshl1 = 44 + offset;
-    rdreci_(SomeFlags, &izioshl1, &c__1, format);
+    rdreci_(&SomeFlags[0], &izioshl1, &c__1, format);
     /*   Plastic strain written flag          (1000 = yes) */
     izioshl2 = 45 + offset;
     rdreci_(&SomeFlags[1], &izioshl2, &c__1, format);
@@ -630,6 +697,13 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     rdreci_(&NADAPT, &position, &c__1, format);
     position = 57 + offset;
     rdreci_(&IDTDTFlag, &position, &c__1, format);
+
+    position = 58 + offset;
+    INTEGER extra;
+    rdreci_(&extra, &position, &c__1, format);
+    if (extra > 0) {
+        std::cerr << "Dyna3DReader: extra control words=" << extra << std::endl;
+    }
 
     /*
    std::cerr << "IOSHL(1): " << SomeFlags[0] << std::endl;
@@ -725,7 +799,12 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     /* TAURUS state length (number of words) */
     taustatl_();
 
+    std::vector<char> ident(sizeof(title)+1);
+    memcpy(ident.data(), title, sizeof(title));
+    ident.back() = '\0';
+    fprintf(stderr, "* Model identification (title)     %s\n", ident.data());
     fprintf(stderr, "* LSDYNA version                   %g\n", version);
+    fprintf(stderr, "* file type (BPW=%d)                %s\n", lsize, toString(FileType(ftype)));
     fprintf(stderr, "* number of dimensions             %d\n", NumDim);
     fprintf(stderr, "* number of nodes                  %d\n", numcoord);
     fprintf(stderr, "* NARBS                            %d\n", NodeAndElementNumbering);
@@ -761,6 +840,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_(Format format)
     fprintf(stderr, "* IDTDTFLG                         %d\n", IDTDTFlag);
     fprintf(stderr, "* NUMRBE                           %d\n", nrelem);
     fprintf(stderr, "* NUMMAT                           %d\n", nmmat);
+    fprintf(stderr, "* EXTRA                            %d\n", extra);
 
     fprintf(stderr, "* number of geometry words         %d\n", NumberOfWords);
     fprintf(stderr, "* number of state words            %d\n", NumWords);
@@ -1784,7 +1864,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::otaurusr_()
 
             deleteElementLUT();
             /* read TAURUS control data */
-            rdtaucntrl_(format);
+            rdtaucntrl_();
 
             /* read TAURUS node coordinates */
             rdtaucoor_();
@@ -2997,6 +3077,7 @@ void Dyna3DReaderBase::setFormat(Dyna3DReaderBase::Format f) {
     {
     case CADFEM:
     case Original:
+    case Guess:
         ciform = toString(format);
         break;
     default:
@@ -3139,7 +3220,7 @@ bool Dyna3DReaderBase::examine(bool rescan)
                 return false;
 
             m_filename = filename + a.first;
-            if (rdtaucntrl_(format) != 0)
+            if (rdtaucntrl_() != 0)
                 return false;
 
             adapt.geomlen = NumberOfWords * m_wordsize;
@@ -3168,7 +3249,7 @@ bool Dyna3DReaderBase::examine(bool rescan)
 
     if (taurusinit_() != 0)
         return false;
-    if (rdtaucntrl_(format) != 0)
+    if (rdtaucntrl_() != 0)
         return false;
 
     return true;
