@@ -127,6 +127,8 @@ void UiController::init() {
    m_python->init();
    m_mainWindow->m_console->init();
    m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
+
+   moduleSelectionChanged();
 }
 
 UiController::~UiController()
