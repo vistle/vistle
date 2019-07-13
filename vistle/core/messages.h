@@ -495,7 +495,7 @@ static_assert(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE, "message too lar
 class V_COREEXPORT SetParameter: public MessageBase<SetParameter, SETPARAMETER> {
    public:
       explicit SetParameter(int module); //<! apply delayed parameter changes
-      SetParameter(int module, const std::string & name, const std::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
+      SetParameter(int module, const std::string & name, const std::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value, bool defaultValue=false);
       SetParameter(int module, const std::string & name, const Integer value);
       SetParameter(int module, const std::string & name, const Float value);
       SetParameter(int module, const std::string & name, const ParamVector &value);

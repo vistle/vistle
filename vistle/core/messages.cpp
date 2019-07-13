@@ -843,33 +843,35 @@ SetParameter::SetParameter(int module)
    name[0] = '\0';
 }
 
-SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p, Parameter::RangeType rt)
+SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p, Parameter::RangeType rt, bool defaultValue)
 : m_module(module)
 , paramtype(p->type())
-, initialize(false)
+, initialize(defaultValue)
 , delayed(false)
 , reply(false)
 , rangetype(rt)
 {
    const Parameter *param = p.get();
 
+   assert(!initialize || rt==Parameter::Value);
+
    COPY_STRING(name, n);
    if (const auto pint = dynamic_cast<const IntParameter *>(param)) {
-      v_int = pint->getValue(rt);
+      v_int = initialize ? pint->getDefaultValue() : pint->getValue(rt);
    } else if (const auto pfloat = dynamic_cast<const FloatParameter *>(param)) {
-      v_scalar = pfloat->getValue(rt);
+      v_scalar = initialize ? pfloat->getDefaultValue() : pfloat->getValue(rt);
    } else if (const auto pvec = dynamic_cast<const VectorParameter *>(param)) {
-      ParamVector v = pvec->getValue(rt);
+      ParamVector v = initialize ? pvec->getDefaultValue() : pvec->getValue(rt);
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_vector[i] = v[i];
    } else if (const auto ipvec = dynamic_cast<const IntVectorParameter *>(param)) {
-      IntParamVector v = ipvec->getValue(rt);
+      IntParamVector v = initialize ? ipvec->getDefaultValue() : ipvec->getValue(rt);
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_ivector[i] = v[i];
    } else if (const auto pstring = dynamic_cast<const StringParameter *>(param)) {
-      COPY_STRING(v_string, pstring->getValue(rt));
+      COPY_STRING(v_string, (initialize ? pstring->getDefaultValue() : pstring->getValue(rt)));
    } else {
       std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
       vassert("invalid parameter type" == 0);

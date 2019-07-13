@@ -243,6 +243,10 @@ std::vector<message::Buffer> StateTracker::getState() const {
          add.setSenderId(id);
          appendMessage(state, add);
 
+         SetParameter setDef(id, name, param, Parameter::Value, true);
+         setDef.setSenderId(id);
+         appendMessage(state, setDef);
+
          if (param->presentation() == Parameter::Choice) {
             SetParameterChoices choices(name, param->choices());
             choices.setSenderId(id);

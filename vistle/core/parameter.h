@@ -154,6 +154,7 @@ class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
    }
 
    bool isDefault() const { return m_value == m_defaultValue; }
+   const T getDefaultValue() const { return m_defaultValue; }
    const T getValue() const { return m_value; }
    const T getValue(RangeType rt) const {
       switch(rt) {

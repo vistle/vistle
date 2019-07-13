@@ -118,9 +118,8 @@ Parameter *ParameterManager::addParameterGeneric(const std::string &name, std::s
    add.setDestId(message::Id::ForBroadcast);
    sendParameterMessage(add);
 
-   message::SetParameter set(m_id, name, param);
+   message::SetParameter set(m_id, name, param, Parameter::Value, true);
    set.setDestId(message::Id::ForBroadcast);
-   set.setInit();
    set.setReferrer(add.uuid());
    sendParameterMessage(set);
 

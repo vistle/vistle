@@ -31,6 +31,8 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
    if (observer)
       m_stateTracker.registerObserver(observer);
 
+   //m_stateTracker.handle(message::Trace(message::Id::Broadcast, message::ANY, true));
+
    std::cerr << "  userinterface ["  << id() << "] started as " << hostname() << ":"
              << get_process_handle() << std::endl;
 
