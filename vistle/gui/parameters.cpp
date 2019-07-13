@@ -290,8 +290,9 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
          m_intManager->setValue(prop, ip->getValue());
          m_intManager->setRange(prop, ip->minimum(), ip->maximum());
 
-         QString tip = QString("%1 (%2 – %3)").arg(
+         QString tip = QString("%1 (default: %2, %3 – %4)").arg(
                QString::fromStdString(p->description()),
+               QString::number(ip->getDefaultValue()),
                QString::number(ip->minimum()),
                QString::number(ip->maximum()));
             prop->setToolTip(tip);
@@ -318,8 +319,9 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
           m_floatManager->setSingleStep(prop, 1.);
       }
 
-      QString tip = QString("%1 (%2 – %3)").arg(
+      QString tip = QString("%1 (default: %2, %3 – %4)").arg(
                QString::fromStdString(p->description()),
+               QString::number(fp->getDefaultValue()),
                QString::number(fp->minimum()),
                QString::number(fp->maximum()));
             prop->setToolTip(tip);
