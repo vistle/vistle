@@ -68,6 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
 
+    setFocusProxy(ui->modulesDock);
     ui->modulesDock->setFocusProxy(ui->moduleBrowser);
     ui->modulesDock->show();
     ui->modulesDock->raise();
