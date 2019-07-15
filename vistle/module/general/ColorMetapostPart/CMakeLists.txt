@@ -1,0 +1,1 @@
+add_module(ColorMetapostPart ColorMetapostPart.cpp)
