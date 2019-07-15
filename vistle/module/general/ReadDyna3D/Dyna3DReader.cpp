@@ -83,24 +83,7 @@ Dyna3DReader<wordsize, INTEGER, REAL>::Dyna3DReader(vistle::Reader *module)
 : Dyna3DReaderBase(module)
 {
     m_wordsize = wordsize;
-    postInst();
-}
 
-template<int wordsize, class INTEGER, class REAL>
-Dyna3DReader<wordsize, INTEGER, REAL>::~Dyna3DReader() {
-
-    if (infile >= 0)
-        close(infile);
-    infile = -1;
-
-    deleteStateData();
-
-    deleteElementLUT();
-}
-
-template<int wordsize, class INTEGER, class REAL>
-void Dyna3DReader<wordsize,INTEGER,REAL>::postInst()
-{
     ExistingStates = 0;
     MinState = 1;
     State = 100;
@@ -167,6 +150,18 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::postInst()
     numcon = NULL;
     numelem = NULL;
     numcoo = NULL;
+}
+
+template<int wordsize, class INTEGER, class REAL>
+Dyna3DReader<wordsize, INTEGER, REAL>::~Dyna3DReader() {
+
+    if (infile >= 0)
+        close(infile);
+    infile = -1;
+
+    deleteStateData();
+
+    deleteElementLUT();
 }
 
 template<int wordsize, class INTEGER, class REAL>
@@ -260,41 +255,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readStart()
         std::cerr << "Dyna3DReader::readDyna3D info: byteswap unknown error" << std::endl;
     }
 
-    int i;
-    coRestraint sel;
-    sel.add(selection);
-
-    // Initilize list of part IDs
-    for (i = 0; i < MAXID; i++)
-        IDLISTE[i] = 0;
-
-    // Find selected parts per IDs
-    int numParts = 0;
-    for (i = 0; i < MAXID; i++)
-    {
-        if (m_module->rankForTimestepAndPartition(-1, i) != m_module->rank())
-            continue;
-
-        IDLISTE[i] = sel(i + 1); // Notice: offset for ID (= material number - 1)
-        if (IDLISTE[i] > 0)
-        {
-            numParts++;
-        }
-    }
-    numParts = mpi::all_reduce(m_module->comm(), numParts, std::plus<int>());
-    if (numParts == 0)
-    {
-#ifdef SENDINFO
-        if (m_module->rank() == 0)
-            m_module->sendError("No parts with selected IDs");
-#endif
-        return false;
-    }
-
-
     /* Local variables */
-    char buf[256];
-
     NodeIds = NULL;
     SolidNodes = NULL;
     SolidMatIds = NULL;
@@ -453,7 +414,7 @@ template<int wordsize, class INTEGER, class REAL>
 int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_()
 {
     /* Local variables */
-    int izioshl1, izioshl2, izioshl3, izioshl4, idum[20], iznumelb,
+    int izioshl1, izioshl2, izioshl3, izioshl4, iznumelb,
         iznumelh, izmaxint, iznumels, iznumelt;
     int iziaflg, iznmatb, izneiph, izitflg, iziuflg,
         izivflg, iznglbv, iznmath, iznvarb, iznarbs, iznvarh, izneips,
@@ -517,9 +478,10 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_()
         return -1;
     if (NumDim == 4)
     {
+        // unpacked element connectivities
         NumDim = 3;
     }
-    else if (NumDim > 4)
+    else if (NumDim > 9)
     {
         std::cerr << "Dyna3DReader::rdtaucntrl_ info: unhandled NumDim=" << NumDim
              << std::endl;
@@ -724,6 +686,9 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_()
         matTyp = new int[nmmat];
         int off_listMatTyp = off_nmmat + 1;
         rdreci_(matTyp, &off_listMatTyp, &nmmat, format);
+        for (int i=0; i<nmmat; ++i) {
+            std::cerr << "mat " << i << ": " << matTyp[i] << std::endl;
+        }
     }
 
     if (NumInterpol > 3)
@@ -764,18 +729,24 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaucntrl_()
         }
         else
         {
+            int idum[20];
             rdreci_(idum, &c__0, &c__13, format);
             rdreci_(&NumBRS, &c__0, &c__1, format);
             rdreci_(&NumMaterials, &c__0, &c__1, format);
             IZStat0 = IZArb + 16 + numcoord + NumSolidElements + NumBeamElements + NumShellElements + NumTShellElements + NumMaterials * 3;
+
+#if 0
             // @@@ take a look at material tables
-            /*
-                     int matLength = NumMaterials * 3;
-                     MaterialTables = new int[matLength];
-                     int IZ_MatTables = IZStat0 - matLength;
-                     rdreci_(MaterialTables,&IZ_MatTables,&matLength,format);
-                     delete [] MaterialTables;
-         */
+            int matLength = NumMaterials * 3;
+            MaterialTables = new int[matLength];
+            int IZ_MatTables = IZStat0 - matLength;
+            rdreci_(MaterialTables,&IZ_MatTables,&matLength,format);
+            for (int i=0; i<NumMaterials; ++i) {
+                std::cerr << "mat " << i << ": " << MaterialTables[i*3] << " " << MaterialTables[i*3+1] << " " << MaterialTables[i*3+2] << std::endl;
+            }
+            delete [] MaterialTables;
+            MaterialTables = nullptr;
+#endif
         }
     }
     else
@@ -1080,8 +1051,6 @@ template<int wordsize, class INTEGER, class REAL>
 int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(Format format)
 {
     /* Local variables */
-    float rdum[20];
-    /*int i,j,ie;*/
 
     /*------------------------------------------------------------------------------*/
     /*     read user node and element numbers */
@@ -1106,6 +1075,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(Format format)
         NodeIds = new int[numcoord];
         if (NodeSort > 0)
         {
+            float rdum[20];
             rdrecr_(rdum, &c__0, 10);
             rdreci_(NodeIds, &c__0, &numcoord, format);
             rdreci_(SolidElemNumbers, &c__0, &NumSolidElements, format);
@@ -1115,6 +1085,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(Format format)
         }
         else
         {
+            float rdum[20];
             Materials = new int[NumMaterials];
             rdrecr_(rdum, &c__0, 16);
             rdreci_(NodeIds, &c__0, &numcoord, format);
@@ -1123,6 +1094,9 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdtaunum_(Format format)
             rdreci_(ShellElemNumbers, &c__0, &NumShellElements, format);
             rdreci_(TShellElemNumbers, &c__0, &NumTShellElements, format);
             rdreci_(Materials, &c__0, &NumMaterials, format);
+            for (int i=0; i<NumMaterials; ++i) {
+                std::cerr << "MATERIAL " << i << ": " << Materials[i] << std::endl;
+            }
         }
 
         /*ie = 0;*/
@@ -1208,8 +1182,6 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::readTimestep()
 
     if (CEndin == 'N')
     {
-        int n;
-        int iad;
         float val;
 
         /* test if the last record of the state exists. If file is too short,  */
@@ -1510,7 +1482,7 @@ template<int wordsize, class INTEGER, class REAL>
 int Dyna3DReader<wordsize,INTEGER,REAL>::rdrecr_(float *val, const int *istart, int n)
 {
     /* Local variables */
-    int i, irdst, iz;
+    int irdst, iz;
 
     /*------------------------------------------------------------------------------*/
     /*     read taurus record for floats */
@@ -1535,7 +1507,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdrecr_(float *val, const int *istart, 
                 return -1;
         }
         /* read n values starting at current position */
-        for (i = 1; i <= n; ++i)
+        for (int i = 1; i <= n; ++i)
         {
             /*         get record address */
             grecaddr_(i, *istart, &iz, &irdst);
@@ -1589,7 +1561,6 @@ template<int wordsize, class INTEGER, class REAL>
 int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, const int *n, Format format)
 {
     /* System generated locals */
-    int i__1;
 
     /* Local variables */
 
@@ -1616,7 +1587,7 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdreci_(int *ival, const int *istart, c
                 return -1;
         }
         /*       read n values starting at current position */
-        i__1 = *n;
+        int i__1 = *n;
         for (INTEGER i = 1; i <= i__1; ++i)
         {
             /*         get record address */
@@ -1893,7 +1864,17 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::otaurusr_()
     }
 
     return 0;
-} /* otaurusr_ */
+}
+
+bool Dyna3DReaderBase::isPartEnabled(int part) const {
+
+    if (!selection)
+        return true;
+
+    return (*selection)(part);
+}
+
+/* otaurusr_ */
 
 //---------------------------------------------------------------------
 
@@ -1905,7 +1886,6 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::visibility()
     /*                                                        */
 
     int i;
-    int elemNo;
 
     // initialize
     for (i = 0; i < NumIDs; i++)
@@ -1950,7 +1930,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::visibility()
         // thin shells
         for (i = 0; i < NumShellElements; i++)
         {
-            elemNo = NumSolidElements + i;
+            auto elemNo = NumSolidElements + i;
             if (DelTab[elemNo] == 0)
             {
                 delElem[ShellMatIds[i]]++;
@@ -1972,7 +1952,7 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::visibility()
         // beams
         for (i = 0; i < NumBeamElements; i++)
         {
-            elemNo = NumSolidElements + NumShellElements + i;
+            auto elemNo = NumSolidElements + NumShellElements + i;
             if (DelTab[elemNo] == 0)
             {
                 delElem[BeamMatIds[i]]++;
@@ -2030,6 +2010,13 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createElementLUT()
             NumIDs = BeamMatIds[i];
     }
     NumIDs++;
+
+    // only handle enabled parts
+    IDLISTE.resize(NumIDs);
+    for (size_t i=0; i<IDLISTE.size(); ++i) {
+        if (m_module->rankForTimestepAndPartition(-1, i) == m_module->rank())
+            IDLISTE[i] = isPartEnabled(i+1);
+    }
 
     // allocate
     numcon = new int[NumIDs];
@@ -2235,337 +2222,326 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::deleteElementLUT()
 template<int wordsize, class INTEGER, class REAL>
 void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometryList()
 {
+#ifndef _AIRBUS
+    if (MDLOpt != 2) {
+        // LS_930
+#else
+    if (version != 0.0 && MDLOpt == 2) {
+#endif
+#ifdef SENDINFO
+        if (m_module->rank() == 0)
+            m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
+        return;
+    }
     int i, j;
 
+    auto lookupTab = new int[numcoord+1];
     for (int ID = 0; ID < NumIDs; ID++)
     {
-        if (IDLISTE[ID] && numelem[ID] > 0)
+        if (!IDLISTE[ID])
+            continue;
+        if (numelem[ID] <= 0)
+            continue;
 
+        numcoo[ID] = createNodeLUT(ID, lookupTab);
+
+        // allocate element list
+        My_elemList[ID] = new int[numelem[ID]];
+        // allocate connection list
+        conList[ID] = new int[numcon[ID]];
+
+        // initialize element numbering
+        int elemNo=0; // COVISE element list entry
+        int coElem=0; // COVISE element number counter
+        int coCon=0; // COVISE connectivity counter
+
+        // solids
+        for (auto i: materials[ID].solid)
         {
-            auto lookupTab = new int[numcoord+1];
-            createNodeLUT(ID, lookupTab);
-
-            // allocate element list
-            My_elemList[ID] = new int[numelem[ID]];
-            // allocate connection list
-            conList[ID] = new int[numcon[ID]];
-
-            // initialize element numbering
-            int elemNo=0; // COVISE element list entry
-            int coElem=0; // COVISE element number counter
-            int coCon=0; // COVISE connectivity counter
-
-#ifndef _AIRBUS
-            if (MDLOpt == 2) // LS_930
-#else
-            if (version == 0.0 || MDLOpt == 2)
-#endif
+            assert(SolidMatIds[i] == ID);
+            switch (solidTab[i].coType)
             {
 
-                // solids
-                for (auto i: materials[ID].solid)
+            case UnstructuredGrid::TETRAHEDRON:
+                My_elemList[ID][coElem] = elemNo;
+                for (j = 0; j < 4; j++)
                 {
-                    assert(SolidMatIds[i] == ID);
-                    {
-                        switch (solidTab[i].coType)
-                        {
-
-                        case UnstructuredGrid::TETRAHEDRON:
-                            My_elemList[ID][coElem] = elemNo;
-                            for (j = 0; j < 4; j++)
-                            {
-                                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + j]];
-                                coCon++;
-                            }
-                            elemNo += 4;
-                            solidTab[i].coElem = coElem;
-                            coElem++;
-                            break;
-
-                        case UnstructuredGrid::PRISM:
-                            My_elemList[ID][coElem] = elemNo;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 4]];
-                            coCon++;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 1]];
-                            coCon++;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8]];
-                            coCon++;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 6]];
-                            coCon++;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 2]];
-                            coCon++;
-                            conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 3]];
-                            coCon++;
-                            elemNo += 6;
-                            solidTab[i].coElem = coElem;
-                            coElem++;
-                            break;
-
-                        case UnstructuredGrid::HEXAHEDRON:
-                            My_elemList[ID][coElem] = elemNo;
-                            for (j = 0; j < 8; j++)
-                            {
-                                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + j]];
-                                coCon++;
-                            }
-                            elemNo += 8;
-                            solidTab[i].coElem = coElem;
-                            coElem++;
-                            break;
-                        }
-                    }
+                    conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + j]];
+                    coCon++;
                 }
+                elemNo += 4;
+                solidTab[i].coElem = coElem;
+                coElem++;
+                break;
 
-                // Shells
-                for (auto i: materials[ID].shell)
+            case UnstructuredGrid::PRISM:
+                My_elemList[ID][coElem] = elemNo;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 4]];
+                coCon++;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 1]];
+                coCon++;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8]];
+                coCon++;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 6]];
+                coCon++;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 2]];
+                coCon++;
+                conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + 3]];
+                coCon++;
+                elemNo += 6;
+                solidTab[i].coElem = coElem;
+                coElem++;
+                break;
+
+            case UnstructuredGrid::HEXAHEDRON:
+                My_elemList[ID][coElem] = elemNo;
+                for (j = 0; j < 8; j++)
                 {
-                    assert(ShellMatIds[i] == ID);
-                    {
-                        switch (shellTab[i].coType)
-                        {
-
-                        case UnstructuredGrid::TRIANGLE:
-                            My_elemList[ID][coElem] = elemNo;
-                            for (j = 0; j < 3; j++)
-                            {
-                                conList[ID][coCon] = lookupTab[ShellNodes[i * 4 + j]];
-                                coCon++;
-                            }
-                            elemNo += 3;
-                            shellTab[i].coElem = coElem;
-                            coElem++;
-                            break;
-
-                        case UnstructuredGrid::QUAD:
-                            My_elemList[ID][coElem] = elemNo;
-                            for (j = 0; j < 4; j++)
-                            {
-                                conList[ID][coCon] = lookupTab[ShellNodes[i * 4 + j]];
-                                coCon++;
-                            }
-                            elemNo += 4;
-                            shellTab[i].coElem = coElem;
-                            coElem++;
-                            break;
-                        }
-                    }
+                    conList[ID][coCon] = lookupTab[SolidNodes[i * 8 + j]];
+                    coCon++;
                 }
-
-                // Beams
-                for (auto i: materials[ID].beam)
-                {
-                    assert(BeamMatIds[i] == ID);
-                    {
-                        My_elemList[ID][coElem] = elemNo;
-                        for (j = 0; j < 2; j++)
-                        {
-                            conList[ID][coCon] = lookupTab[BeamNodes[i * 5 + j]];
-                            coCon++;
-                        }
-                        elemNo += 2;
-                        beamTab[i].coElem = coElem;
-                        coElem++;
-                    }
-                }
-
-                // nodal data
-                // initialize coordinate numbering
-                coordLookup[ID] = new int[numcoo[ID]];
-                for (i = 1; i <= numcoord; i++)
-                {
-                    if (lookupTab[i] >= 0)
-                    {
-                        coordLookup[ID][lookupTab[i]] = i;
-                    }
-                }
-
-            } // end of if (MDLOpt ...)
-            else
-            {
-#ifdef SENDINFO
-                if (m_module->rank() == 0)
-                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
-#endif
-                //exit(-1);
+                elemNo += 8;
+                solidTab[i].coElem = coElem;
+                coElem++;
+                break;
             }
+        }
 
-            //free
-            delete[] lookupTab;
+        // Shells
+        for (auto i: materials[ID].shell)
+        {
+            assert(ShellMatIds[i] == ID);
+            switch (shellTab[i].coType)
+            {
 
-        } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
+            case UnstructuredGrid::TRIANGLE:
+                My_elemList[ID][coElem] = elemNo;
+                for (j = 0; j < 3; j++)
+                {
+                    conList[ID][coCon] = lookupTab[ShellNodes[i * 4 + j]];
+                    coCon++;
+                }
+                elemNo += 3;
+                shellTab[i].coElem = coElem;
+                coElem++;
+                break;
+
+            case UnstructuredGrid::QUAD:
+                My_elemList[ID][coElem] = elemNo;
+                for (j = 0; j < 4; j++)
+                {
+                    conList[ID][coCon] = lookupTab[ShellNodes[i * 4 + j]];
+                    coCon++;
+                }
+                elemNo += 4;
+                shellTab[i].coElem = coElem;
+                coElem++;
+                break;
+            }
+        }
+
+        // Beams
+        for (auto i: materials[ID].beam)
+        {
+            assert(BeamMatIds[i] == ID);
+            My_elemList[ID][coElem] = elemNo;
+            for (j = 0; j < 2; j++)
+            {
+                conList[ID][coCon] = lookupTab[BeamNodes[i * 5 + j]];
+                coCon++;
+            }
+            elemNo += 2;
+            beamTab[i].coElem = coElem;
+            coElem++;
+        }
+
+        // nodal data
+        // initialize coordinate numbering
+        coordLookup[ID] = new int[numcoo[ID]];
+        for (i = 1; i <= numcoord; i++)
+        {
+            if (lookupTab[i] >= 0)
+            {
+                coordLookup[ID][lookupTab[i]] = i;
+            }
+        }
+
     } // end of for (ID=0 ...)
+
+    //free
+    delete[] lookupTab;
 }
 
 template<int wordsize, class INTEGER, class REAL>
 void Dyna3DReader<wordsize,INTEGER,REAL>::createGeometry(Reader::Token &token, int blockToRead) const
 {
-    char name[256];
-    char part_buf[256];
-
     int i, j;
 
     int conNo; // COVISE connection list entry
-    int elemNo; // COVISE element list entry
 
     for (INTEGER ID = 0; ID < NumIDs; ID++)
     {
         if (blockToRead >= 0 && blockToRead != ID)
             continue;
 
-        if (IDLISTE[ID] && numelem[ID] > 0)
-        {
-            UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
-            grid_out->addAttribute("_part", std::to_string(ID+1));
-            auto el = &grid_out->el()[0];
-            auto cl = &grid_out->cl()[0];
-            auto tl = &grid_out->tl()[0];
-            auto x_c = &grid_out->x()[0];
-            auto y_c = &grid_out->y()[0];
-            auto z_c = &grid_out->z()[0];
+        if (!IDLISTE[ID])
+            continue;
+        if (numelem[ID] <= 0)
+            continue;
 
-            // initialize element numbering
-            elemNo = 0;
+        UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID], numcon[ID], numcoo[ID]));
+        grid_out->addAttribute("_id", std::to_string(ID+1));
+        grid_out->addAttribute("_part", std::to_string(Materials[ID]));
+        auto el = &grid_out->el()[0];
+        auto cl = &grid_out->cl()[0];
+        auto tl = &grid_out->tl()[0];
+        auto x_c = &grid_out->x()[0];
+        auto y_c = &grid_out->y()[0];
+        auto z_c = &grid_out->z()[0];
+
+        // initialize element numbering
+        int elemNo = 0; // COVISE element list entry
 
 #ifndef _AIRBUS
-            if (MDLOpt == 2) // LS_930
+        if (MDLOpt == 2) // LS_930
 #else
-            if (version == 0.0 || MDLOpt == 2)
+        if (version == 0.0 || MDLOpt == 2)
 #endif
+        {
+
+            // solids
+            for (auto i: materials[ID].solid)
             {
+                assert(SolidMatIds[i] == ID);
 
-                // solids
-                for (auto i: materials[ID].solid)
+                switch (solidTab[i].coType)
                 {
-                    assert(SolidMatIds[i] == ID);
 
-                        switch (solidTab[i].coType)
-                        {
+                case UnstructuredGrid::TETRAHEDRON:
+                    *tl++ = UnstructuredGrid::TETRAHEDRON;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][solidTab[i].coElem];
+                    for (j = 0; j < 4; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 4;
+                    break;
 
-                        case UnstructuredGrid::TETRAHEDRON:
-                            *tl++ = UnstructuredGrid::TETRAHEDRON;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 4; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 4;
-                            break;
+                case UnstructuredGrid::PRISM:
+                    *tl++ = UnstructuredGrid::PRISM;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][solidTab[i].coElem];
+                    for (j = 0; j < 6; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 6;
+                    break;
 
-                        case UnstructuredGrid::PRISM:
-                            *tl++ = UnstructuredGrid::PRISM;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 6; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 6;
-                            break;
-
-                        case UnstructuredGrid::HEXAHEDRON:
-                            *tl++ = UnstructuredGrid::HEXAHEDRON;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 8; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 8;
-                            break;
-                        }
+                case UnstructuredGrid::HEXAHEDRON:
+                    *tl++ = UnstructuredGrid::HEXAHEDRON;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][solidTab[i].coElem];
+                    for (j = 0; j < 8; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 8;
+                    break;
                 }
-                // Shells
-                for (auto i: materials[ID].shell)
-                {
-                    assert(ShellMatIds[i] == ID);
-                        switch (shellTab[i].coType)
-                        {
-
-                        case UnstructuredGrid::TRIANGLE:
-                            *tl++ = UnstructuredGrid::TRIANGLE;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i].coElem];
-                            for (j = 0; j < 3; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 3;
-                            break;
-
-                        case UnstructuredGrid::QUAD:
-                            *tl++ = UnstructuredGrid::QUAD;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i].coElem];
-                            for (j = 0; j < 4; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 4;
-                            break;
-                        }
-                }
-
-                // Beams
-                for (auto i: materials[ID].beam)
-                {
-                    assert(BeamMatIds[i] == ID);
-                        *tl++ = UnstructuredGrid::BAR;
-                        *el++ = elemNo;
-                        conNo = My_elemList[ID][beamTab[i].coElem];
-                        for (j = 0; j < 2; j++)
-                        {
-                            *cl++ = conList[ID][conNo + j];
-                        }
-                        elemNo += 2;
-                }
-
-                // nodal data
-                for (i = 0; i < numcoo[ID]; i++)
-                {
-                    x_c[i] = Coord[(coordLookup[ID][i] - 1) * 3];
-                    y_c[i] = Coord[(coordLookup[ID][i] - 1) * 3 + 1];
-                    z_c[i] = Coord[(coordLookup[ID][i] - 1) * 3 + 2];
-                }
-
-            } // end of if (MDLOpt ...)
-            else
-            {
-#ifdef SENDINFO
-                if (m_module->rank() == 0)
-                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
-#endif
-                exit(-1);
             }
-            *el++ = elemNo;
-            grid_out->setBlock(ID);
-            token.addObject(gridPort, grid_out);
+            // Shells
+            for (auto i: materials[ID].shell)
+            {
+                assert(ShellMatIds[i] == ID);
+                switch (shellTab[i].coType)
+                {
 
-        } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
+                case UnstructuredGrid::TRIANGLE:
+                    *tl++ = UnstructuredGrid::TRIANGLE;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][shellTab[i].coElem];
+                    for (j = 0; j < 3; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 3;
+                    break;
+
+                case UnstructuredGrid::QUAD:
+                    *tl++ = UnstructuredGrid::QUAD;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][shellTab[i].coElem];
+                    for (j = 0; j < 4; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 4;
+                    break;
+                }
+            }
+
+            // Beams
+            for (auto i: materials[ID].beam)
+            {
+                assert(BeamMatIds[i] == ID);
+                *tl++ = UnstructuredGrid::BAR;
+                *el++ = elemNo;
+                conNo = My_elemList[ID][beamTab[i].coElem];
+                for (j = 0; j < 2; j++)
+                {
+                    *cl++ = conList[ID][conNo + j];
+                }
+                elemNo += 2;
+            }
+
+            // nodal data
+            for (i = 0; i < numcoo[ID]; i++)
+            {
+                x_c[i] = Coord[(coordLookup[ID][i] - 1) * 3];
+                y_c[i] = Coord[(coordLookup[ID][i] - 1) * 3 + 1];
+                z_c[i] = Coord[(coordLookup[ID][i] - 1) * 3 + 2];
+            }
+
+        } // end of if (MDLOpt ...)
+        else
+        {
+#ifdef SENDINFO
+            if (m_module->rank() == 0)
+                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
+            //exit(-1);
+        }
+        *el++ = elemNo;
+        grid_out->setBlock(ID);
+        token.addObject(gridPort, grid_out);
+
     } // end of for (ID=0 ...)
 
     // mark end of set array
 }
 
 template<int wordsize, class INTEGER, class REAL>
-void Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
+INTEGER Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
 {
-    int nn;
-
     // init node lookup table
     for (int i = 0; i <= numcoord; i++)
         lut[i] = -1;
+
+    INTEGER ncoord = 0;
 
     // solids
     for (auto i: materials[id].solid)
     {
         assert(SolidMatIds[i] == id);
         {
-            for (nn = 0; nn < 8; nn++)
+            for (int nn = 0; nn < 8; nn++)
             {
                 if (lut[SolidNodes[i * 8 + nn]] < 0)
                 {
-                    lut[SolidNodes[i * 8 + nn]] = numcoo[id]++;
+                    lut[SolidNodes[i * 8 + nn]] = ncoord++;
                 }
             }
         }
@@ -2575,11 +2551,11 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
     {
         assert(TShellMatIds[i] == id);
         {
-            for (nn = 0; nn < 8; nn++)
+            for (int nn = 0; nn < 8; nn++)
             {
                 if (lut[TShellNodes[i * 8 + nn]] < 0)
                 {
-                    lut[TShellNodes[i * 8 + nn]] = numcoo[id]++;
+                    lut[TShellNodes[i * 8 + nn]] = ncoord++;
                 }
             }
         }
@@ -2589,11 +2565,11 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
     {
         assert(ShellMatIds[i] == id);
         {
-            for (nn = 0; nn < 4; nn++)
+            for (int nn = 0; nn < 4; nn++)
             {
                 if (lut[ShellNodes[i * 4 + nn]] < 0)
                 {
-                    lut[ShellNodes[i * 4 + nn]] = numcoo[id]++;
+                    lut[ShellNodes[i * 4 + nn]] = ncoord++;
                 }
             }
         }
@@ -2603,22 +2579,23 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createNodeLUT(int id, int *lut)
     {
         assert(BeamMatIds[i] == id);
         {
-            for (nn = 0; nn < 2; nn++)
+            for (int nn = 0; nn < 2; nn++)
             {
+                // FIXME: really * 5?
                 if (lut[BeamNodes[i * 5 + nn]] < 0)
                 {
-                    lut[BeamNodes[i * 5 + nn]] = numcoo[id]++;
+                    lut[BeamNodes[i * 5 + nn]] = ncoord++;
                 }
             }
         }
     }
+
+    return ncoord;
 }
 
 template<int wordsize, class INTEGER, class REAL>
 void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Token &token, int timestep, int blockToRead) const
 {
-    char name[256];
-    char part_buf[256];
     float druck, vmises;
 
     int i, j;
@@ -2632,230 +2609,234 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
         if (blockToRead >= 0 && blockToRead != ID)
             continue;
 
-        if (IDLISTE[ID] && numelem[ID] > 0)
-        {
-            UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID]-delElem[ID],
-                                                                numcon[ID]-delCon[ID],
-                                                                numcoo[ID]));
-            auto el = &grid_out->el()[0];
-            auto cl = &grid_out->cl()[0];
-            auto tl = &grid_out->tl()[0];
-            auto x_c = &grid_out->x()[0];
-            auto y_c = &grid_out->y()[0];
-            auto z_c = &grid_out->z()[0];
+        if (!IDLISTE[ID] || numelem[ID] <= 0)
+            continue;
 
-            Vec<Scalar,3>::ptr Vertex_out;
-            Scalar *vx_out=nullptr, *vy_out=nullptr, *vz_out=nullptr;
-            if (nodalDataType != No_Node_Data) {
-                Vertex_out.reset(new Vec<Scalar,3>(numcoo[ID]));
-                vx_out = &Vertex_out->x()[0];
-                vy_out = &Vertex_out->y()[0];
-                vz_out = &Vertex_out->z()[0];
+        UnstructuredGrid::ptr grid_out(new UnstructuredGrid(numelem[ID]-delElem[ID],
+                                                            numcon[ID]-delCon[ID],
+                                                            numcoo[ID]));
+        auto el = &grid_out->el()[0];
+        auto cl = &grid_out->cl()[0];
+        auto tl = &grid_out->tl()[0];
+        auto x_c = &grid_out->x()[0];
+        auto y_c = &grid_out->y()[0];
+        auto z_c = &grid_out->z()[0];
+
+        grid_out->addAttribute("_id", std::to_string(ID+1));
+        grid_out->addAttribute("_part", std::to_string(Materials[ID]));
+
+        Vec<Scalar,3>::ptr Vertex_out;
+        Scalar *vx_out=nullptr, *vy_out=nullptr, *vz_out=nullptr;
+        if (nodalDataType != No_Node_Data) {
+            Vertex_out.reset(new Vec<Scalar,3>(numcoo[ID]));
+            vx_out = &Vertex_out->x()[0];
+            vy_out = &Vertex_out->y()[0];
+            vz_out = &Vertex_out->z()[0];
+        }
+
+        Vec<Scalar>::ptr Scalar_out;
+        Scalar *s_el = nullptr;
+        if (elementDataType != No_Element_Data) {
+            if (NumDim == 5 && !materials[ID].shell.empty())
+            {
+                Scalar_out.reset(new Vec<Scalar>(matTyp[ID] != 20 ? numelem[ID] - delElem[ID] : 0));
             }
-
-            Vec<Scalar>::ptr Scalar_out;
-            Scalar *s_el = nullptr;
-            if (elementDataType != No_Element_Data) {
-                if (NumDim == 5 && !materials[ID].shell.empty())
-                {
-                    Scalar_out.reset(new Vec<Scalar>(matTyp[ID] != 20 ? numelem[ID] - delElem[ID] : 0));
-                }
-                else
-                {
-                    Scalar_out.reset(new Vec<Scalar>(numelem[ID] - delElem[ID]));
-                }
-                s_el = &Scalar_out->x()[0];
+            else
+            {
+                Scalar_out.reset(new Vec<Scalar>(numelem[ID] - delElem[ID]));
             }
+            s_el = &Scalar_out->x()[0];
+        }
 
-            // initialize element numbering
-            elemNo = 0;
+        // initialize element numbering
+        elemNo = 0;
 
 #ifndef _AIRBUS
-            if (MDLOpt == 2) // LS_930
+        if (MDLOpt == 2) // LS_930
 #else
-            if (version == 0.0 || MDLOpt == 2)
+        if (version == 0.0 || MDLOpt == 2)
 #endif
-            {
+        {
 
-                // solids
-                for (auto i: materials[ID].solid)
+            // solids
+            for (auto i: materials[ID].solid)
+            {
+                assert(SolidMatIds[i] == ID);
+                if (solidTab[i].visible)
                 {
-                    assert(SolidMatIds[i] == ID);
-                    if (solidTab[i].visible)
+
+                    switch (solidTab[i].coType)
                     {
 
-                        switch (solidTab[i].coType)
+                    case UnstructuredGrid::TETRAHEDRON:
+                        *tl++ = UnstructuredGrid::TETRAHEDRON;
+                        *el++ = elemNo;
+                        conNo = My_elemList[ID][solidTab[i].coElem];
+                        for (j = 0; j < 4; j++)
+                        {
+                            *cl++ = conList[ID][conNo + j];
+                        }
+                        elemNo += 4;
+                        break;
+
+                    case UnstructuredGrid::PRISM:
+                        *tl++ = UnstructuredGrid::PRISM;
+                        *el++ = elemNo;
+                        conNo = My_elemList[ID][solidTab[i].coElem];
+                        for (j = 0; j < 6; j++)
+                        {
+                            *cl++ = conList[ID][conNo + j];
+                        }
+                        elemNo += 6;
+                        break;
+
+                    case UnstructuredGrid::HEXAHEDRON:
+                        *tl++ = UnstructuredGrid::HEXAHEDRON;
+                        *el++ = elemNo;
+                        conNo = My_elemList[ID][solidTab[i].coElem];
+                        for (j = 0; j < 8; j++)
+                        {
+                            *cl++ = conList[ID][conNo + j];
+                        }
+                        elemNo += 8;
+                        break;
+                    }
+
+                    // element data
+                    switch (elementDataType)
+                    {
+
+                    case Stress_Tensor: // element stress (tensor component)
+
+                        switch (component)
                         {
 
-                        case UnstructuredGrid::TETRAHEDRON:
-                            *tl++ = UnstructuredGrid::TETRAHEDRON;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 4; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 4;
+                        case Sx:
+                            *s_el++ = SolidData[i * NumSolidVar];
                             break;
 
-                        case UnstructuredGrid::PRISM:
-                            *tl++ = UnstructuredGrid::PRISM;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 6; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 6;
+                        case Sy:
+                            *s_el++ = SolidData[i * NumSolidVar + 1];
                             break;
 
-                        case UnstructuredGrid::HEXAHEDRON:
-                            *tl++ = UnstructuredGrid::HEXAHEDRON;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][solidTab[i].coElem];
-                            for (j = 0; j < 8; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 8;
+                        case Sz:
+                            *s_el++ = SolidData[i * NumSolidVar + 2];
+                            break;
+
+                        case Txy:
+                            *s_el++ = SolidData[i * NumSolidVar + 3];
+                            break;
+
+                        case Tyz:
+                            *s_el++ = SolidData[i * NumSolidVar + 4];
+                            break;
+
+                        case Txz:
+                            *s_el++ = SolidData[i * NumSolidVar + 5];
+                            break;
+
+                        case Pressure:
+                            druck = SolidData[i * NumSolidVar];
+                            druck += SolidData[i * NumSolidVar + 1];
+                            druck += SolidData[i * NumSolidVar + 2];
+                            druck /= -3.0;
+                            *s_el++ = druck;
+                            break;
+                        case Von_Mises:
+                            druck = SolidData[i * NumSolidVar];
+                            druck += SolidData[i * NumSolidVar + 1];
+                            druck += SolidData[i * NumSolidVar + 2];
+                            druck /= 3.0;
+                            vmises = (SolidData[i * NumSolidVar] - druck) * (SolidData[i * NumSolidVar] - druck);
+                            vmises += (SolidData[i * NumSolidVar + 1] - druck) * (SolidData[i * NumSolidVar + 1] - druck);
+                            vmises += (SolidData[i * NumSolidVar + 2] - druck) * (SolidData[i * NumSolidVar + 2] - druck);
+                            vmises += 2.0f * SolidData[i * NumSolidVar + 3] * SolidData[i * NumSolidVar + 3];
+                            vmises += 2.0f * SolidData[i * NumSolidVar + 4] * SolidData[i * NumSolidVar + 4];
+                            vmises += 2.0f * SolidData[i * NumSolidVar + 5] * SolidData[i * NumSolidVar + 5];
+                            vmises = (float)sqrt(1.5 * vmises);
+                            *s_el++ = vmises;
                             break;
                         }
 
-                        // element data
-                        switch (elementDataType)
-                        {
+                        break;
 
-                        case Stress_Tensor: // element stress (tensor component)
-
-                            switch (component)
-                            {
-
-                            case Sx:
-                                *s_el++ = SolidData[i * NumSolidVar];
-                                break;
-
-                            case Sy:
-                                *s_el++ = SolidData[i * NumSolidVar + 1];
-                                break;
-
-                            case Sz:
-                                *s_el++ = SolidData[i * NumSolidVar + 2];
-                                break;
-
-                            case Txy:
-                                *s_el++ = SolidData[i * NumSolidVar + 3];
-                                break;
-
-                            case Tyz:
-                                *s_el++ = SolidData[i * NumSolidVar + 4];
-                                break;
-
-                            case Txz:
-                                *s_el++ = SolidData[i * NumSolidVar + 5];
-                                break;
-
-                            case Pressure:
-                                druck = SolidData[i * NumSolidVar];
-                                druck += SolidData[i * NumSolidVar + 1];
-                                druck += SolidData[i * NumSolidVar + 2];
-                                druck /= -3.0;
-                                *s_el++ = druck;
-                                break;
-                            case Von_Mises:
-                                druck = SolidData[i * NumSolidVar];
-                                druck += SolidData[i * NumSolidVar + 1];
-                                druck += SolidData[i * NumSolidVar + 2];
-                                druck /= 3.0;
-                                vmises = (SolidData[i * NumSolidVar] - druck) * (SolidData[i * NumSolidVar] - druck);
-                                vmises += (SolidData[i * NumSolidVar + 1] - druck) * (SolidData[i * NumSolidVar + 1] - druck);
-                                vmises += (SolidData[i * NumSolidVar + 2] - druck) * (SolidData[i * NumSolidVar + 2] - druck);
-                                vmises += 2.0f * SolidData[i * NumSolidVar + 3] * SolidData[i * NumSolidVar + 3];
-                                vmises += 2.0f * SolidData[i * NumSolidVar + 4] * SolidData[i * NumSolidVar + 4];
-                                vmises += 2.0f * SolidData[i * NumSolidVar + 5] * SolidData[i * NumSolidVar + 5];
-                                vmises = (float)sqrt(1.5 * vmises);
-                                *s_el++ = vmises;
-                                break;
-                            }
-
-                            break;
-
-                        case Plastic_Strain: // plastic strain
-                            *s_el++ = SolidData[i * NumSolidVar + 6 * SomeFlags[0]];
-                            break;
-                        }
+                    case Plastic_Strain: // plastic strain
+                        *s_el++ = SolidData[i * NumSolidVar + 6 * SomeFlags[0]];
+                        break;
                     }
                 }
+            }
 
-                // Shells
-                int CoviseElement = -1;
-                for (auto i: materials[ID].shell)
+            // Shells
+            int CoviseElement = -1;
+            for (auto i: materials[ID].shell)
+            {
+                assert(ShellMatIds[i] == ID);
+                if (shellTab[i].visible)
                 {
-                    assert(ShellMatIds[i] == ID);
-                    if (shellTab[i].visible)
+                    ++CoviseElement;
+                    switch (shellTab[i].coType)
                     {
-                        ++CoviseElement;
-                        switch (shellTab[i].coType)
+
+                    case UnstructuredGrid::TRIANGLE:
+                        *tl++ = UnstructuredGrid::TRIANGLE;
+                        *el++ = elemNo;
+                        conNo = My_elemList[ID][shellTab[i].coElem];
+                        for (j = 0; j < 3; j++)
                         {
-
-                        case UnstructuredGrid::TRIANGLE:
-                            *tl++ = UnstructuredGrid::TRIANGLE;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i].coElem];
-                            for (j = 0; j < 3; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 3;
-                            break;
-
-                        case UnstructuredGrid::QUAD:
-                            *tl++ = UnstructuredGrid::QUAD;
-                            *el++ = elemNo;
-                            conNo = My_elemList[ID][shellTab[i].coElem];
-                            for (j = 0; j < 4; j++)
-                            {
-                                *cl++ = conList[ID][conNo + j];
-                            }
-                            elemNo += 4;
-                            break;
+                            *cl++ = conList[ID][conNo + j];
                         }
+                        elemNo += 3;
+                        break;
 
-                        // element data (NEIPS==0 !!!!!!)
-                        int jumpIntegPoints = SomeFlags[0] * 6 + SomeFlags[1];
-
-                        if (NumDim == 5
-                            && matTyp[ID] == 20)
+                    case UnstructuredGrid::QUAD:
+                        *tl++ = UnstructuredGrid::QUAD;
+                        *el++ = elemNo;
+                        conNo = My_elemList[ID][shellTab[i].coElem];
+                        for (j = 0; j < 4; j++)
                         {
-                            continue;
+                            *cl++ = conList[ID][conNo + j];
                         }
-                        switch (elementDataType)
-                        {
+                        elemNo += 4;
+                        break;
+                    }
 
-                        case Stress_Tensor: // element stress (tensor component)
-                            float Sav[6];
-                            int comp;
-                            for (comp = 0; comp < 6; ++comp)
+                    // element data (NEIPS==0 !!!!!!)
+                    int jumpIntegPoints = SomeFlags[0] * 6 + SomeFlags[1];
+
+                    if (NumDim == 5
+                        && matTyp[ID] == 20)
+                    {
+                        continue;
+                    }
+                    switch (elementDataType)
+                    {
+
+                    case Stress_Tensor: // element stress (tensor component)
+                        float Sav[6];
+                        int comp;
+                        for (comp = 0; comp < 6; ++comp)
+                        {
+                            // average stresses over integration points
+                            Sav[comp] = 0.0;
+                            int intPoint;
+                            for (intPoint = 0; intPoint < NumInterpol; ++intPoint)
                             {
-                                // average stresses over integration points
-                                Sav[comp] = 0.0;
-                                int intPoint;
-                                for (intPoint = 0; intPoint < NumInterpol; ++intPoint)
-                                {
-                                    Sav[comp] += ShellData[CoviseElement * NumShellVar + comp + jumpIntegPoints * intPoint];
-                                }
-                                Sav[component] /= NumInterpol;
+                                Sav[comp] += ShellData[CoviseElement * NumShellVar + comp + jumpIntegPoints * intPoint];
                             }
-                            switch (component)
-                            {
-                            case Sx:
-                            case Sy:
-                            case Sz:
-                            case Txy:
-                            case Tyz:
-                            case Txz:
-                                *s_el++ = Sav[component - 1];
-                                break;
-                            /*
+                            Sav[component] /= NumInterpol;
+                        }
+                        switch (component)
+                        {
+                        case Sx:
+                        case Sy:
+                        case Sz:
+                        case Txy:
+                        case Tyz:
+                        case Txz:
+                            *s_el++ = Sav[component - 1];
+                            break;
+                        /*
                                           case 2:
                                                             *s_el++ = ShellData[CoviseElement*NumShellVar+1];
                                                   break;
@@ -2872,142 +2853,141 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                               *s_el++ = ShellData[CoviseElement*NumShellVar+5];
                               break;
                               */
-                            case Pressure:
-                                druck = Sav[0];
-                                druck += Sav[1];
-                                druck += Sav[2];
-                                druck /= -3.0;
-                                *s_el++ = druck;
-                                break;
-                            case Von_Mises:
-                                druck = Sav[0];
-                                druck += Sav[1];
-                                druck += Sav[2];
-                                druck /= 3.0;
-                                vmises = (Sav[0] - druck) * (Sav[0] - druck);
-                                vmises += (Sav[1] - druck) * (Sav[1] - druck);
-                                vmises += (Sav[2] - druck) * (Sav[2] - druck);
-                                vmises += 2.0f * Sav[3] * Sav[3];
-                                vmises += 2.0f * Sav[4] * Sav[4];
-                                vmises += 2.0f * Sav[5] * Sav[5];
-                                vmises = (float)sqrt(1.5 * vmises);
-                                *s_el++ = vmises;
-                                break;
-                            }
-
+                        case Pressure:
+                            druck = Sav[0];
+                            druck += Sav[1];
+                            druck += Sav[2];
+                            druck /= -3.0;
+                            *s_el++ = druck;
                             break;
-
-                        case Plastic_Strain: // plastic strain
-                            *s_el++ = (ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0]] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints * 2]) / 3;
-                            break;
-
-                        case Thickness: // Thickness: NEIPS is 0!!!!!!
-                            *s_el++ = ShellData[CoviseElement * NumShellVar + NumInterpol * (6 * SomeFlags[0] + SomeFlags[1]) + 8 * SomeFlags[2]];
+                        case Von_Mises:
+                            druck = Sav[0];
+                            druck += Sav[1];
+                            druck += Sav[2];
+                            druck /= 3.0;
+                            vmises = (Sav[0] - druck) * (Sav[0] - druck);
+                            vmises += (Sav[1] - druck) * (Sav[1] - druck);
+                            vmises += (Sav[2] - druck) * (Sav[2] - druck);
+                            vmises += 2.0f * Sav[3] * Sav[3];
+                            vmises += 2.0f * Sav[4] * Sav[4];
+                            vmises += 2.0f * Sav[5] * Sav[5];
+                            vmises = (float)sqrt(1.5 * vmises);
+                            *s_el++ = vmises;
                             break;
                         }
-                    }
-                }
 
-                // Beams
-                for (auto i: materials[ID].beam)
-                {
-                    assert(BeamMatIds[i] == ID);
-                    if (beamTab[i].visible)
-                    {
-
-                        *tl++ = UnstructuredGrid::BAR;
-                        *el++ = elemNo;
-                        conNo = My_elemList[ID][beamTab[i].coElem];
-                        for (j = 0; j < 2; j++)
-                        {
-                            *cl++ = conList[ID][conNo + j];
-                        }
-                        elemNo += 2;
-
-                        // element data
-                        switch (elementDataType)
-                        {
-
-                        case Stress_Tensor: // element stress (tensor component)
-                            // For beams no stress available.
-                            *s_el++ = 0.0;
-                            break;
-
-                        case Plastic_Strain: // plastic strain
-                            // For beams no plastic strain available.
-                            *s_el++ = 0.0;
-                            ;
-                            break;
-                        }
-                    }
-                }
-
-                // nodal data
-                for (i = 0; i < numcoo[ID]; i++)
-                {
-                    x_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3];
-                    y_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3 + 1];
-                    z_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3 + 2];
-
-                    switch (nodalDataType)
-                    {
-
-                    case No_Node_Data:
                         break;
 
-                    case Displacements: // displacements
-                        vx_out[i] = x_c[i] - Coord[(coordLookup[ID][i] - 1) * 3];
-                        vy_out[i] = y_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 1];
-                        vz_out[i] = z_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 2];
+                    case Plastic_Strain: // plastic strain
+                        *s_el++ = (ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0]] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints] + ShellData[CoviseElement * NumShellVar + 6 * SomeFlags[0] + jumpIntegPoints * 2]) / 3;
                         break;
 
-                    case Velocities: // nodal velocity
-                        vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
-                        vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
-                        vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
-                        break;
-                    case Accelerations: // nodal acceleration
-                        vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
-                        vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
-                        vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
+                    case Thickness: // Thickness: NEIPS is 0!!!!!!
+                        *s_el++ = ShellData[CoviseElement * NumShellVar + NumInterpol * (6 * SomeFlags[0] + SomeFlags[1]) + 8 * SomeFlags[2]];
                         break;
                     }
                 }
-                *el++ = elemNo;
+            }
 
-            } // end of if (MDLOpt ...)
-            else
+            // Beams
+            for (auto i: materials[ID].beam)
             {
-#ifdef SENDINFO
-                if (m_module->rank() == 0)
-                    m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
-#endif
-                //exit(-1);
-            }
-            grid_out->setBlock(ID);
-            grid_out->setTimestep(timestep);
-            grid_out->setRealTime(m_currentTime);
-            token.addObject(gridPort, grid_out);
-            if (Vertex_out) {
-                Vertex_out->setBlock(ID);
-                Vertex_out->setTimestep(timestep);
-                Vertex_out->setRealTime(m_currentTime);
-                Vertex_out->setGrid(grid_out);
-                Vertex_out->setMapping(DataBase::Vertex);
-                Vertex_out->addAttribute("_species", toString(nodalDataType));
-                token.addObject(vectorPort, Vertex_out);
-            }
-            if (Scalar_out) {
-                Scalar_out->setBlock(ID);
-                Scalar_out->setTimestep(timestep);
-                Scalar_out->setRealTime(m_currentTime);
-                Scalar_out->setGrid(grid_out);
-                Scalar_out->setMapping(DataBase::Element);
-                Scalar_out->addAttribute("_species", toString(elementDataType));
-                token.addObject(scalarPort, Scalar_out);
+                assert(BeamMatIds[i] == ID);
+                if (beamTab[i].visible)
+                {
+
+                    *tl++ = UnstructuredGrid::BAR;
+                    *el++ = elemNo;
+                    conNo = My_elemList[ID][beamTab[i].coElem];
+                    for (j = 0; j < 2; j++)
+                    {
+                        *cl++ = conList[ID][conNo + j];
+                    }
+                    elemNo += 2;
+
+                    // element data
+                    switch (elementDataType)
+                    {
+
+                    case Stress_Tensor: // element stress (tensor component)
+                        // For beams no stress available.
+                        *s_el++ = 0.0;
+                        break;
+
+                    case Plastic_Strain: // plastic strain
+                        // For beams no plastic strain available.
+                        *s_el++ = 0.0;
+                        ;
+                        break;
+                    }
+                }
             }
 
-        } // end of if ( IDLISTE[ID] && numelem[ID] > 0)
+            // nodal data
+            for (i = 0; i < numcoo[ID]; i++)
+            {
+                x_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3];
+                y_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3 + 1];
+                z_c[i] = DisCo[(coordLookup[ID][i] - 1) * 3 + 2];
+
+                switch (nodalDataType)
+                {
+
+                case No_Node_Data:
+                    break;
+
+                case Displacements: // displacements
+                    vx_out[i] = x_c[i] - Coord[(coordLookup[ID][i] - 1) * 3];
+                    vy_out[i] = y_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 1];
+                    vz_out[i] = z_c[i] - Coord[(coordLookup[ID][i] - 1) * 3 + 2];
+                    break;
+
+                case Velocities: // nodal velocity
+                    vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
+                    vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
+                    vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
+                    break;
+                case Accelerations: // nodal acceleration
+                    vx_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3];
+                    vy_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 1];
+                    vz_out[i] = NodeData[(coordLookup[ID][i] - 1) * 3 + 2];
+                    break;
+                }
+            }
+            *el++ = elemNo;
+
+        } // end of if (MDLOpt ...)
+        else
+        {
+#ifdef SENDINFO
+            if (m_module->rank() == 0)
+                m_module->sendError("LS-DYNA Plotfile has wrong version. Only support for version LS-930 and higher.");
+#endif
+            //exit(-1);
+        }
+        grid_out->setBlock(ID);
+        grid_out->setTimestep(timestep);
+        grid_out->setRealTime(m_currentTime);
+        token.addObject(gridPort, grid_out);
+        if (Vertex_out) {
+            Vertex_out->setBlock(ID);
+            Vertex_out->setTimestep(timestep);
+            Vertex_out->setRealTime(m_currentTime);
+            Vertex_out->setGrid(grid_out);
+            Vertex_out->setMapping(DataBase::Vertex);
+            Vertex_out->addAttribute("_species", toString(nodalDataType));
+            token.addObject(vectorPort, Vertex_out);
+        }
+        if (Scalar_out) {
+            Scalar_out->setBlock(ID);
+            Scalar_out->setTimestep(timestep);
+            Scalar_out->setRealTime(m_currentTime);
+            Scalar_out->setGrid(grid_out);
+            Scalar_out->setMapping(DataBase::Element);
+            Scalar_out->addAttribute("_species", toString(elementDataType));
+            token.addObject(scalarPort, Scalar_out);
+        }
+
     } // end of for (ID=0 ...)
 
 }
@@ -3098,7 +3078,12 @@ void Dyna3DReaderBase::setOnlyGeometry(bool onlygeo) {
 
 void Dyna3DReaderBase::setPartSelection(const std::string &parts)
 {
-    selection = parts;
+    if (parts.empty() || parts == "ALL") {
+        selection.reset();
+    } else {
+        selection.reset(new coRestraint);
+        selection->add(parts);
+    }
 }
 
 void Dyna3DReaderBase::setNodalDataType(NodalDataType type)

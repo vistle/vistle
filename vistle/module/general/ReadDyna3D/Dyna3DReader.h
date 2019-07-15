@@ -156,7 +156,6 @@ protected:
     ByteSwap byteswapFlag = Auto;
     Format format = Original;
     bool only_geometry = false;
-    std::string selection;
 
     vistle::Index m_numBlocks = 0;
     int m_numTimesteps = 0;
@@ -174,6 +173,9 @@ protected:
     NodalDataType nodalDataType = No_Node_Data;
     ElementDataType elementDataType = No_Element_Data;
     Component component = Von_Mises;
+
+    bool isPartEnabled(int part) const;
+    std::unique_ptr<vistle::coRestraint> selection;
 };
 
 template<int wordsize,
@@ -186,7 +188,6 @@ public:
 
     enum // maximum part ID
     {
-        MAXID = 200000,
         MAXTIMESTEPS = 1000
     };
 
@@ -202,7 +203,6 @@ private:
     } tauio_1;
 
     //  member functions
-    virtual void postInst();
     void byteswap(WORD *buffer, INTEGER length);
 
     char InfoBuf[1000];
@@ -214,7 +214,7 @@ private:
     int State = 1; // initially = 1;
 
     // More "old" global variables
-    int IDLISTE[MAXID];
+    std::vector<bool> IDLISTE;
     int *numcoo = nullptr, *numcon = nullptr, *numelem = nullptr;
 
     struct Material {
@@ -240,25 +240,6 @@ private:
 
     // node/element deletion table
     int *DelTab = nullptr; // = NULL;
-
-#if 0
-    coDoUnstructuredGrid *grid_out; //    = NULL;
-    coDoVec3 *Vertex_out; //  = NULL;
-    coDoFloat *Scalar_out; // = NULL;
-
-    coDoUnstructuredGrid **grids_out; //        = NULL;
-    coDoVec3 **Vertexs_out; //  = NULL;
-    coDoFloat **Scalars_out; // = NULL;
-
-    // Even two additional blocks of "old" global variables
-    coDoSet *grid_set_out, *grid_timesteps;
-    coDoSet *Vertex_set_out, *Vertex_timesteps;
-    coDoSet *Scalar_set_out, *Scalar_timesteps;
-
-    coDoSet *grid_sets_out[MAXTIMESTEPS];
-    coDoSet *Vertex_sets_out[MAXTIMESTEPS];
-    coDoSet *Scalar_sets_out[MAXTIMESTEPS];
-#endif
 
     // Yes, certainly! More "old" global variables!
     int infile = -1;
@@ -372,7 +353,7 @@ private:
     void deleteElementLUT();
     void createGeometryList();
     void createGeometry(vistle::Reader::Token &token, int blockToRead = -1) const;
-    void createNodeLUT(int id, int *lut);
+    INTEGER createNodeLUT(int id, int *lut);
 
     void createStateObjects(vistle::Reader::Token &token, int timestep, int block=-1) const;
     void deleteStateData();
