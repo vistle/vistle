@@ -353,7 +353,8 @@ public:
     struct Fetching {
         QString dir;
         QString file;
-        const RemoteFileSystemNode *node;
+        QModelIndex nodeIndex;
+        //const RemoteFileSystemNode *node = nullptr;
     };
     QVector<Fetching> toFetch;
     bool fileinfoGathererInitialized = false;
