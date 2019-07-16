@@ -961,6 +961,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
 #ifdef COVER_PLUGIN
        opencover::cover->setRenderStrategy(d.get());
+
+#if (OSG_VERSION_GREATER_OR_EQUAL(3, 4, 0))
        if (auto geom = d->asGeometry()) {
            osg::ref_ptr<osg::KdTreeBuilder> builder;
            std::unique_lock<std::mutex> guard(kdTreeMutex);
@@ -976,6 +978,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            guard.lock();
            kdTreeBuilders.push_back(builder);
        }
+#endif
+
 #endif
 
        geode->setStateSet(state.get());
