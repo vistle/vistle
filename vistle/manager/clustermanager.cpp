@@ -1243,9 +1243,10 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
            vassert(!localAdd);
            auto it = runningMap.find(destId);
            if (it != runningMap.end()) {
-               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2, broadcast]() mutable {
+               Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2, broadcast](Object::const_ptr newobj) mutable {
                    auto obj = addObj.getObject();
                    assert(obj);
+                   assert(obj->getName() == newobj->getName());
                    addObj2.setObject(obj);
                    obj.reset();
                    // unblock receiving module

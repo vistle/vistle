@@ -11,21 +11,21 @@ namespace vistle {
 
 struct V_COREEXPORT ArrayLoader {
 
-    struct BaseUnreffer {
-        virtual ~BaseUnreffer() {}
+    struct ArrayOwner {
+        virtual ~ArrayOwner() {}
     };
 
     template<typename T>
-    struct Unreffer: public BaseUnreffer {
-        Unreffer(ShmVector<T> &ref): m_ref(ref) {}
+    struct Unreffer: public ArrayOwner {
+        explicit Unreffer(ShmVector<T> &ref): m_ref(ref) {}
         ShmVector<T> m_ref;
     };
 
-    ArrayLoader(const std::string &name, int type, const vistle::iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArrayLoader(const std::string &name, int type, const vistle::iarchive &ar);
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
 
-    std::shared_ptr<BaseUnreffer> m_unreffer;
+    std::shared_ptr<ArrayOwner> m_unreffer;
 
     template<typename T>
     void operator()(T) {
@@ -35,48 +35,72 @@ struct V_COREEXPORT ArrayLoader {
                 std::cerr << "ArrayLoader: multiple type matches for data array " << m_name << std::endl;
                 return;
             }
-            auto arr = Shm::the().getArrayFromName<T>(m_name);
+            ShmVector<T> arr;
+            if (!m_name.empty())
+                arr = Shm::the().getArrayFromName<T>(m_name);
             if (arr) {
                 std::cerr << "ArrayLoader: already have data array with name " << m_name << std::endl;
                 m_unreffer.reset(new Unreffer<T>(arr));
                 return;
             }
             auto &ar = const_cast<vistle::iarchive &>(m_ar);
-            std::string name;
-            ar & name;
-            vassert(name == m_name);
+            std::string arname;
+            ar & arname;
+            assert(arname == m_arname);
+            m_name = ar.translateArrayName(arname);
             arr = ShmVector<T>((shm_name_t)m_name);
-            arr.construct();
+            if (!arr.valid())
+                arr.construct();
+            std::cerr << "ArrayLoader: loading " << arname << " as " << m_name << ": arr=" << arr << std::endl;
+            m_name = arr.name().str();
+            ar.registerArrayNameTranslation(arname, arr.name());
+            //std::cerr << "ArrayLoader: constructed " << arname << " as " << arr.name() << std::endl;
             ar & *arr;
             m_unreffer.reset(new Unreffer<T>(arr));
             m_ok = true;
         }
     }
 
-    bool load() {
-       boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(*this));
-       if (!m_ok) {
-           std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive" << std::endl;
-       }
-       return m_ok;
-    }
+    bool load();
+    const std::string &name() const;
+    std::shared_ptr<ArrayOwner> owner() const;
 
     bool m_ok;
-    std::string m_name;
+    std::string m_arname; //<! name in archive
+    std::string m_name; //<! name in shmem
     int m_type;
     const vistle::iarchive &m_ar;
 };
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
 public:
-    DeepArchiveFetcher(std::map<std::string, std::vector<char>> &objects, std::map<std::string, std::vector<char>> &arrays);
+    DeepArchiveFetcher(const std::map<std::string, std::vector<char>> &objects, const std::map<std::string, std::vector<char>> &arrays);
 
     void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override;
-    void requestObject(const std::string &name, const std::function<void()> &completeCallback) override;
+    void requestObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) override;
+
+    bool renameObjects() const override;
+    std::string translateObjectName(const std::string &name) const override;
+    std::string translateArrayName(const std::string &name) const override;
+    void registerObjectNameTranslation(const std::string &arname, const std::string &name) override;
+    void registerArrayNameTranslation(const std::string &arname, const std::string &name) override;
+
+    void setRenameObjects(bool rename);
+    std::map<std::string, std::string> objectTranslations() const;
+    std::map<std::string, std::string> arrayTranslations() const;
+    void setObjectTranslations(const std::map<std::string, std::string> &objs);
+    void setArrayTranslations(const std::map<std::string, std::string> &arrs);
+
+    void releaseArrays();
 
 private:
-    std::map<std::string,std::vector<char>> m_objects;
-    std::map<std::string,std::vector<char>> m_arrays;
+    bool m_rename = false;
+    std::map<std::string, std::string> m_transObject, m_transArray;
+
+    const std::map<std::string,std::vector<char>> &m_objects;
+    const std::map<std::string,std::vector<char>> &m_arrays;
+
+    std::set<std::shared_ptr<ArrayLoader::ArrayOwner>> m_ownedArrays;
 };
 
 

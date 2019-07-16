@@ -6,7 +6,8 @@
 namespace vistle {
 
 void DeepArchiveSaver::saveArray(const std::string & name, int type, const void * array) {
-    if (m_arrays.find(name) != m_arrays.end())
+
+    if (isArraySaved(name))
         return;
 
     vecostreambuf<char> vb;
@@ -19,7 +20,8 @@ void DeepArchiveSaver::saveArray(const std::string & name, int type, const void 
 }
 
 void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::const_ptr obj) {
-    if (m_objects.find(name) != m_objects.end())
+
+    if (isObjectSaved(name))
         return;
 
     vecostreambuf<char> vb;
@@ -38,6 +40,63 @@ SubArchiveDirectory DeepArchiveSaver::getDirectory() {
         dir.emplace_back(arr.first, true, arr.second.size(), arr.second.data());
     }
     return dir;
+}
+
+void DeepArchiveSaver::flushDirectory() {
+    for (const auto &obj : m_objects) {
+        m_archivedObjects.emplace(obj.first);
+    }
+    m_objects.clear();
+    for (const auto &arr : m_arrays) {
+        m_archivedArrays.emplace(arr.first);
+    }
+    m_arrays.clear();
+}
+
+bool DeepArchiveSaver::isObjectSaved(const std::string &name) const {
+
+    if (m_objects.find(name) != m_objects.end())
+        return true;
+    if (m_archivedObjects.find(name) != m_archivedObjects.end())
+        return true;
+
+    return false;
+}
+
+bool DeepArchiveSaver::isArraySaved(const std::string &name) const {
+
+    if (m_arrays.find(name) != m_arrays.end())
+        return true;
+    if (m_archivedArrays.find(name) != m_archivedArrays.end())
+        return true;
+
+    return false;
+}
+
+std::set<std::string> DeepArchiveSaver::savedObjects() const {
+
+    auto objs = m_archivedObjects;
+    for (const auto &o: m_objects)
+        objs.emplace(o.first);
+    return objs;
+}
+
+std::set<std::string> DeepArchiveSaver::savedArrays() const {
+
+    auto arrs = m_archivedArrays;
+    for (const auto &a: m_arrays)
+        arrs.emplace(a.first);
+    return arrs;
+}
+
+void DeepArchiveSaver::setSavedObjects(const std::set<std::string> &objs) {
+
+    m_archivedObjects = objs;
+}
+
+void DeepArchiveSaver::setSavedArrays(const std::set<std::string> &arrs) {
+
+    m_archivedArrays = arrs;
 }
 
 }

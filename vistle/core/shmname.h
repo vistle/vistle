@@ -16,6 +16,7 @@ struct V_COREEXPORT shm_name_t {
    operator const char *() const;
    operator char *();
    operator std::string () const;
+   std::string str() const;
    bool operator==(const std::string &rhs) const;
    bool operator==(const shm_name_t &rhs) const;
    bool empty() const;

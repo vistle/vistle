@@ -98,6 +98,28 @@ void boost_oarchive::setSaver(std::shared_ptr<Saver> saver) {
 Fetcher::~Fetcher() {
 }
 
+bool Fetcher::renameObjects() const {
+    return false;
+}
+
+std::string Fetcher::translateObjectName(const std::string &name) const {
+    assert(!renameObjects());
+    return name;
+}
+
+std::string Fetcher::translateArrayName(const std::string &name) const {
+    assert(!renameObjects());
+    return name;
+}
+
+void Fetcher::registerObjectNameTranslation(const std::string &arname, const std::string &name) {
+    assert(!renameObjects());
+}
+
+void Fetcher::registerArrayNameTranslation(const std::string &arname, const std::string &name) {
+    assert(!renameObjects());
+}
+
 #ifdef USE_YAS
 void yas_oarchive::setCompressionMode(FieldCompressionMode mode) {
     m_compress = mode;
@@ -150,11 +172,36 @@ yas_iarchive::~yas_iarchive() {
     setCurrentObject(nullptr);
 }
 
+std::string yas_iarchive::translateObjectName(const std::string &name) const {
+    if (!m_fetcher)
+        return name;
+    return m_fetcher->translateObjectName(name);
+}
+
+std::string yas_iarchive::translateArrayName(const std::string &name) const {
+    if (!m_fetcher)
+        return name;
+    return m_fetcher->translateArrayName(name);
+}
+
+void yas_iarchive::registerObjectNameTranslation(const std::string &arname, const std::string &name) const {
+    if (!m_fetcher)
+        return;
+    m_fetcher->registerObjectNameTranslation(arname, name);
+}
+
+void yas_iarchive::registerArrayNameTranslation(const std::string &arname, const std::string &name) const {
+    if (!m_fetcher)
+        return;
+    m_fetcher->registerArrayNameTranslation(arname, name);
+}
+
 void yas_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
 void yas_iarchive::setCurrentObject(ObjectData *data) {
+
     if (data)
         data->ref();
     if (m_currentObject)
@@ -166,6 +213,10 @@ ObjectData *yas_iarchive::currentObject() const {
     return m_currentObject;
 }
 
+std::shared_ptr<Fetcher> yas_iarchive::fetcher() const {
+    return m_fetcher;
+}
+
 void yas_iarchive::setObjectCompletionHandler(const std::function<void ()> &completer) {
     m_completer = completer;
 }
@@ -174,11 +225,15 @@ const std::function<void ()> &yas_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
 
-obj_const_ptr yas_iarchive::getObject(const std::string &name, const std::function<void()> &completeCallback) const {
+obj_const_ptr yas_iarchive::getObject(const std::string &arname, const std::function<void(Object::const_ptr)> &completeCallback) const {
+    std::string name = arname;
+    if (m_fetcher)
+        name = m_fetcher->translateObjectName(arname);
+    std::cerr << "yas_iarchive::getObject(arname=" << arname << ", name=" << name << ")" << std::endl;
     auto obj = Shm::the().getObjectFromName(name);
     if (!obj) {
         assert(m_fetcher);
-        m_fetcher->requestObject(name, completeCallback);
+        m_fetcher->requestObject(arname, completeCallback);
         obj = Shm::the().getObjectFromName(name);
     }
     return obj;
@@ -197,6 +252,30 @@ boost_iarchive::~boost_iarchive()
     setCurrentObject(nullptr);
 }
 
+std::string boost_iarchive::translateObjectName(const std::string &name) const {
+    if (!m_fetcher)
+        return name;
+    return m_fetcher->translateObjectName(name);
+}
+
+std::string boost_iarchive::translateArrayName(const std::string &name) const {
+    if (!m_fetcher)
+        return name;
+    return m_fetcher->translateArrayName(name);
+}
+
+void boost_iarchive::registerObjectNameTranslation(const std::string &arname, const std::string &name) const {
+    if (!m_fetcher)
+        return;
+    m_fetcher->registerObjectNameTranslation(arname, name);
+}
+
+void boost_iarchive::registerArrayNameTranslation(const std::string &arname, const std::string &name) const {
+    if (!m_fetcher)
+        return;
+    m_fetcher->registerArrayNameTranslation(arname, name);
+}
+
 void boost_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
@@ -213,14 +292,16 @@ ObjectData *boost_iarchive::currentObject() const {
     return m_currentObject;
 }
 
-obj_const_ptr boost_iarchive::getObject(const std::string &name, const std::function<void ()> &completeCallback) const {
+std::shared_ptr<Fetcher> boost_iarchive::fetcher() const {
+    return m_fetcher;
+}
+
+obj_const_ptr boost_iarchive::getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const {
     auto obj = Shm::the().getObjectFromName(name);
     if (!obj) {
         assert(m_fetcher);
         m_fetcher->requestObject(name, completeCallback);
         obj = Shm::the().getObjectFromName(name);
-        if (obj)
-            completeCallback();
     }
     return obj;
 }

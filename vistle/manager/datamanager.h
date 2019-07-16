@@ -26,9 +26,9 @@ public:
     ~DataManager();
     bool handle(const message::Message &msg, std::vector<char> *payload);
     //! request a remote object for servicing an AddObject request
-    bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
+    bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void(Object::const_ptr)> &handler);
     //! request a remote object for resolving a reference to a sub-object
-    bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
+    bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void(Object::const_ptr)> &handler);
     bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
@@ -73,7 +73,7 @@ private:
 
     struct OutstandingObject {
        vistle::Object::const_ptr obj;
-       std::vector<std::function<void()>> completionHandlers;
+       std::vector<std::function<void(Object::const_ptr)>> completionHandlers;
     };
     std::map<std::string, OutstandingObject> m_requestedObjects; //!< requests for (sub-)objects which have not been serviced yet
 };

@@ -61,10 +61,21 @@ public:
     void saveArray(const std::string &name, int type, const void *array) override;
     void saveObject(const std::string &name, obj_const_ptr obj) override;
     SubArchiveDirectory getDirectory();
+    void flushDirectory();
+
+    bool isObjectSaved(const std::string &name) const;
+    bool isArraySaved(const std::string &name) const;
+
+    std::set<std::string> savedObjects() const;
+    std::set<std::string> savedArrays() const;
+    void setSavedObjects(const std::set<std::string> &objs);
+    void setSavedArrays(const std::set<std::string> &arrs);
 
 private:
     std::map<std::string,std::vector<char>> m_objects;
     std::map<std::string,std::vector<char>> m_arrays;
+    std::set<std::string> m_archivedObjects;
+    std::set<std::string> m_archivedArrays;
 };
 
 

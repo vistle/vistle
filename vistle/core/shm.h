@@ -104,6 +104,8 @@ struct shm {
 #endif
    static T *find(const std::string &name);
    static bool destroy(const std::string &name);
+   static T *find_array(const std::string &name); // as find, but reference array
+   static bool destroy_array(const std::string &name, array_ptr arr);
 };
 
 template<class T>
@@ -214,6 +216,25 @@ T *shm<T>::find(const std::string &name) {
 }
 
 template<typename T>
+T *shm<T>::find_array(const std::string &name) {
+#ifdef NO_SHMEM
+    Shm::the().lockDictionary();
+    T *t = shm<T>::find(name);
+    if (t)
+        t->ref();
+    Shm::the().unlockDictionary();
+    return t;
+#else
+   Shm::the().lockObjects();
+   T *t = shm<T>::find(name);
+   if (t)
+       t->ref();
+   Shm::the().unlockObjects();
+   return t;
+#endif
+}
+
+template<typename T>
 bool shm<T>::destroy(const std::string &name) {
 #ifdef NO_SHMEM
     Shm::the().lockDictionary();
@@ -222,6 +243,7 @@ bool shm<T>::destroy(const std::string &name) {
     bool ret = true;
     if (it == dict.end()) {
         Shm::the().unlockDictionary();
+        std::cerr << "WARNING: shm: did not find object " << name << " to be deleted" << std::endl;
         ret = false;
     } else {
         T *t = static_cast<T *>(it->second);
@@ -234,6 +256,30 @@ bool shm<T>::destroy(const std::string &name) {
 #endif
     Shm::the().markAsRemoved(name);
     return ret;
+}
+
+template<typename T>
+bool shm<T>::destroy_array(const std::string &name, shm<T>::array_ptr arr) {
+#ifdef NO_SHMEM
+    Shm::the().lockDictionary();
+    if (arr->refcount() > 0) {
+        Shm::the().unlockDictionary();
+        return true;
+    }
+    bool ret = shm<shm<T>::array>::destroy(name);
+    Shm::the().unlockDictionary();
+    return ret;
+#else
+    Shm::the().lockObjects();
+    if (arr->refcount() > 0) {
+        Shm::the().unlockObjects();
+        return true;
+    }
+    assert(arr->refcount() == 0);
+    bool ret = shm<shm<T>::array>::destroy(name);
+    Shm::the().unlockObjects();
+    return ret;
+#endif
 }
 
 #ifdef NO_SHMEM
@@ -250,11 +296,15 @@ shm<T>::Constructor::~Constructor() {
 template<typename T>
 template<typename... Args>
 T *shm<T>::Constructor::operator()(Args&&... args) {
-    T *t = new T(std::forward<Args>(args)...);
-    Shm::the().lockDictionary();
     auto &dict = Shm::the().m_objectDictionary;
+    auto it = dict.find(name);
+    if (it != dict.end()) {
+        std::cerr << "WARNING: shm: already have " << name << std::endl;
+        return reinterpret_cast<T *>(it->second);
+    }
+
+    T *t = new T(std::forward<Args>(args)...);
     dict[name] = t;
-    Shm::the().unlockDictionary();
     return t;
 }
 #endif
