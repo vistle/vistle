@@ -165,9 +165,15 @@ bool ShowGrid::compute() {
        } else {
            const Index numVert = str->getNumVertices();
            out->setSize(numVert);
+           auto x = &out->x()[0];
+           auto y = &out->y()[0];
+           auto z = &out->z()[0];
 
            for (Index i=0; i<numVert; ++i) {
-
+               auto v = str->getVertex(i);
+               x[i] = v[0];
+               y[i] = v[1];
+               z[i] = v[2];
            }
        }
    }
