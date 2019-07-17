@@ -7,6 +7,18 @@
 
 namespace vistle {
 
+/**
+ \class Reader
+
+ \brief base class for Vistle read modules
+
+ Derive from Reader, if you want to implement a module @ref Module for reading data from files.
+ You should reimplement the methods
+ - examine @ref Reader::examine
+ - prepareRead @ref Reader::prepareRead
+ - read @ref Reader::read
+ - finishRead @ref Reader::finishRead
+ */
 class V_MODULEEXPORT Reader: public Module {
     friend class Token;
 
@@ -17,6 +29,7 @@ public:
        friend V_MODULEEXPORT std::ostream &operator<<(std::ostream &os, const Token &tok);
 
    public:
+       /// an instance of this class is handed out with every read @ref Reader::read call
        Token(Reader *reader, std::shared_ptr<Token> previous);
        Reader *reader() const;
        const Meta &meta() const;
@@ -53,18 +66,37 @@ public:
        std::map<std::string, std::shared_ptr<PortState>> m_ports;
    };
 
+   /// construct a read module, parameters correspond to @ref Module constructor
+   /** construct a read module, parameters correspond to @ref Module constructor
+    *  @param description short description of the purpose of this reader
+    *  @param name name of the module in the workflow editor
+    *  @param moduleID unique identifier of the module instance
+    *  @param Boost.MPI communicator 
+    */
    Reader(const std::string &description,
           const std::string &name, const int moduleID, mpi::communicator comm);
    ~Reader() override;
-   bool prepare() override;
-   bool compute() override;
-
+   /// called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed
+   /** called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed.
+    *  After constructing the class, the method is called after all parameters have been set to their initial value with param==nullptr.
+    *  Otherwise, the changed parameter is passed.
+    *  Call @ref setTimesteps and @ref setPartitions according to the data to be read.
+    */
    virtual bool examine(const Parameter *param = nullptr);
+
+   /// called for every unit of work to be read
+   /** Called for every unit of work to be read.
+    *  The size of a work unit depends on the partitioning that has been requested by @ref setPartitions
+    */
    virtual bool read(Token &token, int timestep=-1, int block=-1) = 0;
+   /// called once on every rank after execution of the module has been initiated before read is called
    virtual bool prepareRead();
+   /// called once on every rank after all read calls have been made and before execution finishes
    virtual bool finishRead();
 
+   /// return number of timesteps to advance
    int timeIncrement() const;
+   /// compute rank on which partition p of timestep t should be read
    virtual int rankForTimestepAndPartition(int t, int p) const;
 
    //! query into how many parts the data should be split
@@ -73,19 +105,24 @@ public:
 protected:
    protected:
    enum ParallelizationMode {
-       Serial, //< only one operation at a time, all blocks of a timestep first, then other timesteps
-       ParallelizeTimesteps, //< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
-       ParallelizeTimeAndBlocks, //< up to 'concurrency' operations at a time
-       ParallelizeBlocks, //< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
+       Serial, ///< only one operation at a time, all blocks of a timestep first, then other timesteps
+       ParallelizeTimesteps, ///< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
+       ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
+       ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
    };
 
+   /// control whether and how @ref read invocations are called in parallel
    void setParallelizationMode(ParallelizationMode mode);
+   /// whether partitions should be handled by the @ref Reader class
    void setHandlePartitions(bool enable);
+   /// whether timesteps may be distributed to different ranks
    void setAllowTimestepDistribution(bool allow);
 
    //! whenever an observed parameter changes, data set should be rescanned
    void observeParameter(const Parameter *param);
+   //! call during @ref examine to inform module how many timesteps are present whithin dataset
    void setTimesteps(int number);
+   //! call during @ref examine to inform module nto how many the dataset will be split
    void setPartitions(int number);
 
    bool changeParameters(std::set<const Parameter *> params) override;
@@ -102,6 +139,9 @@ protected:
    IntParameter *m_checkConvexity = nullptr;
 
 private:
+   bool prepare() override;
+   bool compute() override;
+
    ParallelizationMode m_parallel = Serial;
    std::mutex m_mutex; // protect ports and message queues
    std::deque<std::shared_ptr<Token>> m_tokens;
