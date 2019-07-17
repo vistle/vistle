@@ -20,6 +20,8 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
    addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
    addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
    addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
+   addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
+   addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
    addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0, Parameter::Boolean);
 }
 
@@ -118,6 +120,8 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
    const bool showpri = getIntParameter("prism");
    const bool showhex = getIntParameter("hexahedron");
    const bool showpol = getIntParameter("polyhedron");
+   const bool showtri = getIntParameter("triangle");
+   const bool showqua = getIntParameter("quad");
    const bool reuseCoord = getIntParameter("reuseCoordinates");
 
    const Index num_elem = m_grid_in->getNumElements();
@@ -170,6 +174,12 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
           case UnstructuredGrid::HEXAHEDRON:
               show = showhex;
               break;
+          case UnstructuredGrid::TRIANGLE:
+              show = showtri;
+              break;
+          case UnstructuredGrid::QUAD:
+              show = showqua;
+              break;
           default:
               break;
           }
@@ -179,8 +189,10 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
             const auto &faces = UnstructuredGrid::FaceVertices[t];
             for (int f=0; f<numFaces; ++f) {
                const auto &face = faces[f];
-               Index neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
-               if (neighbour == InvalidIndex) {
+               Index neighbour = 0;
+               if (UnstructuredGrid::Dimensionality[t] == 3)
+                   neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
+               if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) {
                   const auto facesize = UnstructuredGrid::FaceSizes[t][f];
                   for (unsigned j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);
