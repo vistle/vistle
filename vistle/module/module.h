@@ -1,6 +1,15 @@
 #ifndef MODULE_H
 #define MODULE_H
 
+/**
+ \class Module
+
+ \brief base class for Vistle modules
+
+ Derive from Module, if you want to implement a module for processing data.
+ You should reimplement the method @ref compute in your derived class.
+ */
+
 #if 0
 #ifndef MPICH_IGNORE_CXX_SEEK
 #define MPICH_IGNORE_CXX_SEEK
