@@ -13,7 +13,7 @@ struct Color {
     int r=0, g=0, b=0, a=255;
     std::string str() const {
         std::stringstream s;
-        s << "#" << std::hex << std::setfill('0') << std::setw(2) << r << g << b;
+        s << "#" << std::hex << std::setfill('0') << std::setw(2) << r << std::setw(2) << g << std::setw(2) << b;
         if (a != 255) {
             s << a;
         }
