@@ -5,6 +5,7 @@
 #include <core/vec.h>
 #include <core/unstr.h>
 #include <core/polygons.h>
+#include <core/structuredgrid.h>
 #include "ctime"
 
 #include "DomainSurface.h"
@@ -29,11 +30,38 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
 DomainSurface::~DomainSurface() {
 }
 
+template<class T, int Dim>
+typename Vec<T,Dim>::ptr remapData(typename Vec<T,Dim>::const_ptr in, const DomainSurface::VerticesMapping &vm) {
+
+    typename Vec<T,Dim>::ptr out(new Vec<T,Dim>(vm.size()));
+
+    const T *data_in[Dim];
+    T *data_out[Dim];
+    for (int d=0; d<Dim; ++d) {
+        data_in[d] = &in->x(d)[0];
+        data_out[d] = out->x(d).data();
+    }
+
+    for (const auto &v: vm) {
+        Index f=v.first;
+        Index s=v.second;
+        for (int d=0; d<Dim; ++d) {
+            data_out[d][s] = data_in[d][f];
+        }
+    }
+
+    return out;
+}
+
 bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
+
    //DomainSurface Polygon
    DataBase::const_ptr data;
-   auto m_grid_in = task->accept<UnstructuredGrid>("data_in");
-   if (!m_grid_in) {
+   StructuredGridBase::const_ptr sgrid;
+   UnstructuredGrid::const_ptr ugrid;
+   ugrid = task->accept<UnstructuredGrid>("data_in");
+   sgrid = task->accept<StructuredGridBase>("data_in");
+   if (!ugrid && !sgrid) {
        data = task->expect<DataBase>("data_in");
       if (!data) {
           sendError("no grid and no data received");
@@ -43,78 +71,220 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
           sendError("no grid attached to data");
           return true;
       }
-      m_grid_in = UnstructuredGrid::as(data->grid());
-      if (!m_grid_in) {
+      ugrid = UnstructuredGrid::as(data->grid());
+      sgrid = StructuredGridBase::as(data->grid());
+      if (!ugrid && !sgrid) {
           sendError("no valid grid attached to data");
           return true;
       }
    }
+   Object::const_ptr grid_in = ugrid ? Object::as(ugrid) : std::dynamic_pointer_cast<const Object, const StructuredGridBase>(sgrid);
+   assert(grid_in);
+
+   Polygons::ptr surface;
+   if (ugrid) {
+       surface = createSurface(ugrid);
+   } else if (sgrid) {
+       surface = createSurface(sgrid);
+   }
+   if (!surface)
+       return true;
 
    VerticesMapping vm;
-   auto m_grid_out = createSurface(m_grid_in, vm);
-   if (!m_grid_out)
-      return true;
+   if (auto coords = Coords::as(grid_in)) {
+       renumberVertices(coords, surface, vm);
+   } else {
+       createVertices(sgrid, surface, vm);
+   }
 
-   m_grid_out->setMeta(m_grid_in->meta());
-   m_grid_out->copyAttributes(m_grid_in);
+   surface->setMeta(grid_in->meta());
+   surface->copyAttributes(grid_in);
+
    if (!data) {
-       task->addObject("data_out", m_grid_out);
+       task->addObject("data_out", surface);
        return true;
    }
 
-   if (data->getSize() != m_grid_in->getNumCoords()) {
-       sendError("data size does not match grid size");
+   if (data->guessMapping(grid_in) != DataBase::Vertex) {
+       sendError("data mapping not per vertex");
        return true;
    }
 
-   const bool reuseCoord = getIntParameter("reuseCoordinates");
-   if (reuseCoord) {
+   if (vm.empty()) {
        DataBase::ptr dout = data->clone();
-       dout->setGrid(m_grid_out);
+       dout->setGrid(surface);
        task->addObject("data_out", dout);
        return true;
    }
 
+   DataBase::ptr data_obj_out;
    if(auto data_in = Vec<Scalar, 3>::as(data)) {
-       const Scalar *data_in_x = &data_in->x()[0];
-       const Scalar *data_in_y = &data_in->y()[0];
-       const Scalar *data_in_z = &data_in->z()[0];
-       Vec<Scalar,3>::ptr data_obj_out(new Vec<Scalar,3>(vm.size()));
-       Scalar *data_out_x = data_obj_out->x().data();
-       Scalar *data_out_y = data_obj_out->y().data();
-       Scalar *data_out_z = data_obj_out->z().data();
-       for (auto &v: vm) {
-           Index f=v.first;
-           Index s=v.second;
-           data_out_x[s] = data_in_x[f];
-           data_out_y[s] = data_in_y[f];
-           data_out_z[s] = data_in_z[f];
-       }
-       data_obj_out->setGrid(m_grid_out);
-       data_obj_out->setMeta(data->meta());
-       data_obj_out->copyAttributes(data);
-       task->addObject("data_out", data_obj_out);
-   } else if(auto data_in = Vec<Scalar, 1>::as(data)) {
-       const Scalar *data_in_x = &data_in->x()[0];
-       Vec<Scalar,1>::ptr data_obj_out(new Vec<Scalar,1>(vm.size()));
-       Scalar *data_out_x = data_obj_out->x().data();
-       for (auto &v: vm) {
-           Index f=v.first;
-           Index s=v.second;
-           data_out_x[s] = data_in_x[f];
-       }
-       data_obj_out->setGrid(m_grid_out);
-       data_obj_out->copyAttributes(data);
-       data_obj_out->setMeta(data->meta());
-       task->addObject("data_out", data_obj_out);
+       data_obj_out = remapData<Scalar,3>(data_in, vm);
+   } else if(auto data_in = Vec<Scalar,1>::as(data)) {
+       data_obj_out = remapData<Scalar,1>(data_in, vm);
+   } else if(auto data_in = Vec<Index,3>::as(data)) {
+       data_obj_out = remapData<Index,3>(data_in, vm);
+   } else if(auto data_in = Vec<Index,1>::as(data)) {
+       data_obj_out = remapData<Index,1>(data_in, vm);
    } else {
          std::cerr << "WARNING: No valid 1D or 3D data on input Port" << std::endl;
+   }
+
+   if (data_obj_out) {
+       data_obj_out->setGrid(surface);
+       data_obj_out->setMeta(data->meta());
+       data_obj_out->copyAttributes(data);
+       task->addObject("data_out", data_obj_out);
    }
 
    return true;
 }
 
-Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in, VerticesMapping &vm) const {
+Polygons::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid) const {
+
+   auto sgrid = std::dynamic_pointer_cast<const StructuredGrid, const StructuredGridBase>(grid);
+
+   Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
+   auto &pl = m_grid_out->el();
+   auto &pcl = m_grid_out->cl();
+   Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
+
+   for (int d=0; d<3; ++d) {
+       int d1 = d==0 ? 1 : 0;
+       int d2 = d==d1+1 ? d1+2 : d1+1;
+       assert(d != d1);
+       assert(d != d2);
+       assert(d1 != d2);
+
+       Index b1 = grid->getNumGhostLayers(d1, StructuredGridBase::Bottom);
+       Index e1 = grid->getNumDivisions(d1);
+       if (grid->getNumGhostLayers(d1, StructuredGridBase::Top)+1 < e1)
+           e1 -= grid->getNumGhostLayers(d1, StructuredGridBase::Top)+1;
+       else
+           e1 = 0;
+       Index b2 = grid->getNumGhostLayers(d2, StructuredGridBase::Bottom);
+       Index e2 = grid->getNumDivisions(d2);
+       if (grid->getNumGhostLayers(d2, StructuredGridBase::Top)+1 < e2)
+           e2 -= grid->getNumGhostLayers(d2, StructuredGridBase::Top)+1;
+       else
+           e2 = 0;
+
+       if (grid->getNumGhostLayers(d, StructuredGridBase::Bottom) == 0) {
+           for (Index i1 = b1; i1 < e1; ++i1) {
+               for (Index i2 = b2; i2 < e2; ++i2) {
+                   Index idx[3]{0,0,0};
+                   idx[d1] = i1;
+                   idx[d2] = i2;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d1] = i1+1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d2] = i2+1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d1] = i1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   pl.push_back(pcl.size());
+               }
+           }
+       }
+       if (grid->getNumDivisions(d) > 1 && grid->getNumGhostLayers(d, StructuredGridBase::Top) == 0) {
+           for (Index i1 = b1; i1 < e1; ++i1) {
+               for (Index i2 = b2; i2 < e2; ++i2) {
+                   Index idx[3]{0,0,0};
+                   idx[d] = grid->getNumDivisions(d)-1;
+                   idx[d1] = i1;
+                   idx[d2] = i2;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d1] = i1+1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d2] = i2+1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   idx[d1] = i1;
+                   pcl.push_back(grid->vertexIndex(idx,dims));
+                   pl.push_back(pcl.size());
+               }
+           }
+
+       }
+   }
+
+   if (m_grid_out->getNumElements() == 0) {
+      return Polygons::ptr();
+   }
+
+   return m_grid_out;
+}
+
+void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, VerticesMapping &vm) const {
+
+   const bool reuseCoord = getIntParameter("reuseCoordinates");
+
+   if (reuseCoord) {
+      poly->d()->x[0] = coords->d()->x[0];
+      poly->d()->x[1] = coords->d()->x[1];
+      poly->d()->x[2] = coords->d()->x[2];
+   } else {
+      vm.clear();
+      Index c=0;
+      for (Index &v: poly->cl()) {
+         if (vm.emplace(v,c).second) {
+            v=c;
+            ++c;
+         } else {
+            v=vm[v];
+         }
+      }
+
+      const Scalar *xcoord = &coords->x()[0];
+      const Scalar *ycoord = &coords->y()[0];
+      const Scalar *zcoord = &coords->z()[0];
+      auto &px = poly->x();
+      auto &py = poly->y();
+      auto &pz = poly->z();
+      px.resize(c);
+      py.resize(c);
+      pz.resize(c);
+
+      for (const auto &v: vm) {
+         Index f=v.first;
+         Index s=v.second;
+         px[s] = xcoord[f];
+         py[s] = ycoord[f];
+         pz[s] = zcoord[f];
+      }
+   }
+}
+
+void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Indexed::ptr poly, VerticesMapping &vm) const {
+
+    vm.clear();
+    Index c=0;
+    for (Index &v: poly->cl()) {
+        if (vm.emplace(v,c).second) {
+            v=c;
+            ++c;
+        } else {
+            v=vm[v];
+        }
+    }
+
+    auto &px = poly->x();
+    auto &py = poly->y();
+    auto &pz = poly->z();
+    px.resize(c);
+    py.resize(c);
+    pz.resize(c);
+
+    for (const auto &v: vm) {
+        Index f=v.first;
+        Index s=v.second;
+        Vector p = grid->getVertex(f);
+        px[s] = p[0];
+        py[s] = p[1];
+        pz[s] = p[2];
+    }
+}
+
+Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in) const {
 
    const bool showgho = getIntParameter("ghost");
    const bool showtet = getIntParameter("tetrahedron");
@@ -124,7 +294,6 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
    const bool showpol = getIntParameter("polyhedron");
    const bool showtri = getIntParameter("triangle");
    const bool showqua = getIntParameter("quad");
-   const bool reuseCoord = getIntParameter("reuseCoordinates");
 
    const Index num_elem = m_grid_in->getNumElements();
    const Index *el = &m_grid_in->el()[0];
@@ -211,41 +380,6 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
 
    if (m_grid_out->getNumElements() == 0) {
       return Polygons::ptr();
-   }
-
-   if (reuseCoord) {
-      m_grid_out->d()->x[0] = m_grid_in->d()->x[0];
-      m_grid_out->d()->x[1] = m_grid_in->d()->x[1];
-      m_grid_out->d()->x[2] = m_grid_in->d()->x[2];
-   } else {
-      vm.clear();
-      Index c=0;
-      for (Index &v : m_grid_out->cl()) {
-         if (vm.emplace(v,c).second) {
-            v=c;
-            ++c;
-         } else {
-            v=vm[v];
-         }
-      }
-
-      const Scalar *xcoord = &m_grid_in->x()[0];
-      const Scalar *ycoord = &m_grid_in->y()[0];
-      const Scalar *zcoord = &m_grid_in->z()[0];
-      auto &px = m_grid_out->x();
-      auto &py = m_grid_out->y();
-      auto &pz = m_grid_out->z();
-      px.resize(c);
-      py.resize(c);
-      pz.resize(c);
-
-      for (auto &v: vm) {
-         Index f=v.first;
-         Index s=v.second;
-         px[s] = xcoord[f];
-         py[s] = ycoord[f];
-         pz[s] = zcoord[f];
-      }
    }
 
    return m_grid_out;
