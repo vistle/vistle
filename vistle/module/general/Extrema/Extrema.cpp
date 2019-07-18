@@ -222,13 +222,10 @@ bool Extrema::compute() {
    dim = -1;
 
 #ifdef BOUNDINGBOX
-   Object::const_ptr obj = expect<DataBase>("grid_in");
-   if (!Coords::as(obj)) {
-       if (DataBase::const_ptr data = DataBase::as(obj)) {
-           obj = data->grid();
-       } else {
-           return true;
-       }
+   auto obj = expect<Object>("grid_in");
+   auto data = DataBase::as(obj);
+   if (data && data->grid()) {
+       obj = data->grid();
    }
 #else
    Object::const_ptr obj = expect<DataBase>("data_in");
