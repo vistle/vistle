@@ -93,9 +93,14 @@ bool Vec<T,Dim>::isEmpty() const {
 template <class T, int Dim>
 bool Vec<T,Dim>::checkImpl() const {
 
+   size_t size = d()->x[0]->size();
    for (int c=0; c<Dim; ++c) {
       V_CHECK (d()->x[c]->check());
-      V_CHECK (d()->x[c]->size() == d()->x[0]->size());
+      V_CHECK (d()->x[c]->size() == size);
+      if (size > 0) {
+          V_CHECK ((d()->x[c])->at(0) * (d()->x[c])->at(0) >= 0)
+          V_CHECK ((d()->x[c])->at(size-1) * (d()->x[c])->at(size-1) >= 0)
+      }
    }
 
    return true;
