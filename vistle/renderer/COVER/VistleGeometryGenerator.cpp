@@ -898,22 +898,22 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 
    // set shader parameters
    std::map<std::string, std::string> parammap;
-   std::string name = m_geo->getAttribute("shader");
-   std::string params = m_geo->getAttribute("shader_params");
+   std::string shadername = m_geo->getAttribute("shader");
+   std::string shaderparams = m_geo->getAttribute("shader_params");
    // format has to be '"key=value" "key=value1 value2"'
    bool escaped = false;
    std::string::size_type keyvaluestart = std::string::npos;
-   for (std::string::size_type i=0; i<params.length(); ++i) {
+   for (std::string::size_type i=0; i<shaderparams.length(); ++i) {
        if (!escaped) {
-           if (params[i] == '\\') {
+           if (shaderparams[i] == '\\') {
                escaped = true;
                continue;
            }
-           if (params[i] == '"') {
+           if (shaderparams[i] == '"') {
                if (keyvaluestart == std::string::npos) {
                    keyvaluestart = i+1;
                } else {
-                   std::string keyvalue = params.substr(keyvaluestart, i-keyvaluestart-1);
+                   std::string keyvalue = shaderparams.substr(keyvaluestart, i-keyvaluestart-1);
                    std::string::size_type eq = keyvalue.find('=');
                    if (eq == std::string::npos) {
                        std::cerr << "ignoring " << keyvalue << ": no '=' sign" << std::endl;
@@ -940,9 +940,9 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            colormap->shaderUnlit->apply(state);
        }
 
-   } else if (!name.empty()) {
+   } else if (!shadername.empty()) {
        s_coverMutex.lock();
-       if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(name, &parammap)) {
+       if (opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(shadername, &parammap)) {
            shader->apply(state);
        }
        s_coverMutex.unlock();
@@ -1093,7 +1093,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                image->setName(nodename+".img");
                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0], osg::Image::NO_DELETE);
                osgTex->setImage(image);
-               if (tc || (tex && triangles)) {
+               if (tc || (tex && triangles) || (tex && polygons)) {
                    state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);
                    osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
                    osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
