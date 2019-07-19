@@ -87,6 +87,7 @@ protected:
     void updatePosition(QPointF newPos) const;
 
 public slots:
+    void restartModule();
     void execModule();
     void cancelExecModule();
     void deleteModule();
@@ -98,11 +99,12 @@ private:
     void createMenus();
     void doLayout();
 
-    QMenu *m_moduleMenu;
-    QAction *m_deleteThisAct, *m_deleteSelAct;
-    QAction *m_attachDebugger;
-    QAction *m_execAct;
-    QAction *m_cancelExecAct;
+    QMenu *m_moduleMenu = nullptr;
+    QAction *m_deleteThisAct = nullptr, *m_deleteSelAct = nullptr;
+    QAction *m_attachDebugger = nullptr;
+    QAction *m_execAct = nullptr;
+    QAction *m_cancelExecAct = nullptr;
+    QAction *m_restartAct = nullptr;
 
     int m_hub;
     int m_id;
@@ -110,6 +112,7 @@ private:
 
     ///\todo add data structure for the module information
     QString m_name;
+    QString m_displayName;
     Module::Status m_Status;
     QString m_statusText;
     bool m_validPosition;

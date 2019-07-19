@@ -45,6 +45,7 @@ class V_HUBEXPORT Hub {
    bool sendSlave(const message::Message &msg, int id, const std::vector<char> *payload=nullptr) const;
    bool sendHub(const message::Message &msg, int id, const std::vector<char> *payload=nullptr) const;
    bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const std::vector<char> *payload=nullptr) const;
+   bool sendModule(const message::Message &msg, int id, const std::vector<char> *payload=nullptr) const;
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -146,6 +147,8 @@ private:
    void setLoadedFile(const std::string &file);
    void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
    void clearStatus();
+
+   std::map<int, std::vector<message::Buffer>> m_sendAfterSpawn;
 
 #if BOOST_VERSION >= 106600
    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;

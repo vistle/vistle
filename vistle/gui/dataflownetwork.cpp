@@ -70,7 +70,7 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
     ///\todo add the objects only to the map (sortMap) currently used for sorting, not to the list.
     ///This will remove the need for moduleList altogether
     m_moduleList.append(module);
-    module->setHub(vistle::message::Id::MasterHub - hub);
+    module->setHub(hub);
 }
 
 void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
@@ -93,9 +93,8 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
    }
 
    mod->setId(moduleId);
-   int hub = vistle::message::Id::MasterHub - m_state.getHub(moduleId);
-   mod->setHub(hub);
-   mod->setName(QString("%1_%2").arg(name, QString::number(moduleId)));
+   mod->setHub(m_state.getHub(moduleId));
+   mod->setName(name);
 }
 
 void DataFlowNetwork::deleteModule(int moduleId)

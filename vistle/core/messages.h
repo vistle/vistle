@@ -141,6 +141,8 @@ class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
  public:
    Spawn(int hubId, const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
 
+   void setMigrateId(int id);
+   int migrateId() const;
    int hubId() const;
    int spawnId() const;
    void setSpawnId(int id);
@@ -160,6 +162,8 @@ class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
    int baseRank;
    //! number of ranks to skip when spawning process
    int rankSkip;
+   //! id of module to migrate
+   int m_migrateId = Id::Invalid;
    //! name of module to be started
    module_name_t name;
 };

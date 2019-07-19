@@ -819,6 +819,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
    m_comm.barrier();
 
+   message::SpawnPrepared prep(spawn);
+
 #ifdef MODULE_THREAD
    //AvailableModule::Key key(Communicator::the().hubId(), name);
    AvailableModule::Key key(0, name);
@@ -891,11 +893,14 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
        }
    }
 #else
-   message::SpawnPrepared prep(spawn);
    prep.setDestId(Id::LocalHub);
    if (getRank() == 0)
       sendHub(prep);
 #endif
+   prep.setDestId(Id::MasterHub);
+   prep.setNotify(true);
+   if (getRank() == 0)
+      sendHub(prep);
 
    // inform newly started module about current parameter values of other modules
    auto state = m_stateTracker.getState();

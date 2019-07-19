@@ -213,7 +213,16 @@ Spawn::Spawn(int hub,
    , rankSkip(rankSkip)
 {
 
-   COPY_STRING(name, n);
+    COPY_STRING(name, n);
+}
+
+void Spawn::setMigrateId(int id) {
+    m_migrateId = id;
+}
+
+int Spawn::migrateId() const {
+
+    return m_migrateId;
 }
 
 int Spawn::hubId() const {

@@ -738,6 +738,22 @@ bool Hub::sendUi(const message::Message &msg, int id, const std::vector<char> *p
    return true;
 }
 
+bool Hub::sendModule(const message::Message &msg, int id, const std::vector<char> *payload) const {
+
+    if (!Id::isModule(id)) {
+        CERR << "sendModule: id " << id << " is not for a module" << std::endl;
+        return false;
+    }
+
+    int hub = idToHub(id);
+    if (Id::Invalid == hub) {
+        CERR << "sendModule: could not find hub for id " << id << std::endl;
+        return false;
+    }
+
+    return sendHub(msg, hub, payload);
+}
+
 int Hub::idToHub(int id) const {
 
    if (id >= Id::ModuleBase)
@@ -1117,6 +1133,31 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   ++m_moduleCount;
                   doSpawn = true;
                }
+               std::vector<std::shared_ptr<Parameter>> params;
+               std::map<std::string, std::vector<Port>> inconns, outconns;
+               if (Id::isModule(spawn.migrateId())) {
+                   int id = spawn.migrateId();
+                   auto paramNames = m_stateTracker.getParameters(id);
+                   for (const auto &pn: paramNames) {
+                       auto p = m_stateTracker.getParameter(id, pn);
+                       params.emplace_back(p);
+                   }
+
+                   auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
+                   for (const auto &in: inputs) {
+                       for (const auto &from: in->connections())
+                           inconns[in->getName()].emplace_back(*from);
+                   }
+                   auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
+                   for (const auto &out: outputs) {
+                       for (const auto &to: out->connections())
+                           outconns[out->getName()].emplace_back(*to);
+                   }
+
+                   auto kill = Kill(spawn.migrateId());
+                   kill.setDestId(spawn.migrateId());
+                   handleMessage(kill);
+               }
                CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
                m_stateTracker.handle(notify);
@@ -1127,6 +1168,28 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   notify.setDestId(spawn.hubId());
                   CERR << "doSpawn: sendManager: " << notify << std::endl;
                   sendManager(notify, spawn.hubId());
+                  int id = notify.spawnId();
+
+                  for (const auto &p: params) {
+                      auto pm = SetParameter(id, p->getName(), p);
+                      pm.setDestId(id);
+                      m_sendAfterSpawn[id].emplace_back(pm);
+                  }
+
+                  for (const auto &ic: inconns) {
+                      auto &in = ic.first;
+                      for (auto &from: ic.second) {
+                          auto cm = Connect(from.getModuleID(), from.getName(), notify.spawnId(), in);
+                          m_sendAfterSpawn[id].emplace_back(cm);
+                      }
+                  }
+                  for (const auto &oc: outconns) {
+                      auto &out = oc.first;
+                      for (auto &to: oc.second) {
+                          auto cm = Connect(notify.spawnId(), out, to.getModuleID(), to.getName());
+                          m_sendAfterSpawn[id].emplace_back(cm);
+                      }
+                  }
                }
             } else {
                CERR << "SLAVE: handle spawn: " << spawn << std::endl;
@@ -1143,51 +1206,61 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          case message::SPAWNPREPARED: {
 
+             auto &spawn = static_cast<const SpawnPrepared &>(msg);
+             if (spawn.isNotification()) {
+                 auto it = m_sendAfterSpawn.find(spawn.spawnId());
+                 if (it != m_sendAfterSpawn.end()) {
+                     for (auto &m: it->second) {
+                         handleMessage(m);
+                     }
+                     m_sendAfterSpawn.erase(it);
+                 }
+             } else {
 #ifndef MODULE_THREAD
-            auto &spawn = static_cast<const SpawnPrepared &>(msg);
-            vassert(spawn.hubId() == m_hubId);
-            vassert(m_ready);
+                 vassert(spawn.hubId() == m_hubId);
+                 vassert(m_ready);
 
-            std::string name = spawn.getName();
-            AvailableModule::Key key(spawn.hubId(), name);
-            const AvailableModule *mod = nullptr;
-            auto it = m_availableModules.find(key);
-            if (it != m_availableModules.end()) {
-                mod = &it->second;
-            }
-            if (!mod) {
-               if (spawn.hubId() == m_hubId) {
-                   std::stringstream str;
-                   str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
-                   sendError(str.str());
-                   auto ex = make.message<message::ModuleExit>();
-                   ex.setSenderId(spawn.spawnId());
-                   sendManager(ex);
-               }
-               return true;
-            }
-            const std::string &path = mod->path;
-            const std::string &executable = path;
-            std::vector<std::string> argv;
-            argv.push_back(executable);
-            argv.push_back(Shm::instanceName(hostname(), m_port));
-            argv.push_back(name);
-            argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
+                 std::string name = spawn.getName();
+                 AvailableModule::Key key(spawn.hubId(), name);
+                 const AvailableModule *mod = nullptr;
+                 auto it = m_availableModules.find(key);
+                 if (it != m_availableModules.end()) {
+                     mod = &it->second;
+                 }
+                 if (!mod) {
+                     if (spawn.hubId() == m_hubId) {
+                         std::stringstream str;
+                         str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
+                         sendError(str.str());
+                         auto ex = make.message<message::ModuleExit>();
+                         ex.setSenderId(spawn.spawnId());
+                         sendManager(ex);
+                     }
+                     return true;
+                 }
+                 const std::string &path = mod->path;
+                 const std::string &executable = path;
+                 std::vector<std::string> argv;
+                 argv.push_back(executable);
+                 argv.push_back(Shm::instanceName(hostname(), m_port));
+                 argv.push_back(name);
+                 argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
 
-			auto pid = launchProcess(argv);
-			if (pid) {
-                //CERR << "started " << executable << " with PID " << pid << std::endl;
-				m_processMap[pid] = spawn.spawnId();
-			} else {
-                std::stringstream str;
-                str << "program " << argv[0] << " failed to start";
-                sendError(str.str());
-                auto ex = make.message<message::ModuleExit>();
-                ex.setSenderId(spawn.spawnId());
-                sendManager(ex);
-            }
+                 auto pid = launchProcess(argv);
+                 if (pid) {
+                     //CERR << "started " << executable << " with PID " << pid << std::endl;
+                     m_processMap[pid] = spawn.spawnId();
+                 } else {
+                     std::stringstream str;
+                     str << "program " << argv[0] << " failed to start";
+                     sendError(str.str());
+                     auto ex = make.message<message::ModuleExit>();
+                     ex.setSenderId(spawn.spawnId());
+                     sendManager(ex);
+                 }
 #endif
-            break;
+             }
+             break;
          }
 
          case message::DEBUG: {

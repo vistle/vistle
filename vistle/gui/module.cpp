@@ -82,6 +82,13 @@ void Module::cancelExecModule()
    vistle::VistleConnection::the().sendMessage(m);
 }
 
+void Module::restartModule()
+{
+    vistle::message::Spawn m(m_hub, m_name.toStdString());
+    m.setMigrateId(m_id);
+    vistle::VistleConnection::the().sendMessage(m);
+}
+
 /*!
  * \brief Module::deleteModule
  */
@@ -136,6 +143,10 @@ void Module::createActions()
     m_cancelExecAct = new QAction("Cancel Execution", this);
     m_cancelExecAct->setStatusTip("Interrupt execution of module");
     connect(m_cancelExecAct, SIGNAL(triggered()), this, SLOT(cancelExecModule()));
+
+    m_restartAct = new QAction("Restart", this);
+    m_restartAct->setStatusTip("Restart the module");
+    connect(m_restartAct, SIGNAL(triggered()), this, SLOT(restartModule()));
 }
 
 /*!
@@ -148,6 +159,7 @@ void Module::createMenus()
    m_moduleMenu->addAction(m_cancelExecAct);
    m_moduleMenu->addSeparator();
    m_moduleMenu->addAction(m_attachDebugger);
+   m_moduleMenu->addAction(m_restartAct);
    m_moduleMenu->addAction(m_deleteThisAct);
    m_moduleMenu->addAction(m_deleteSelAct);
 }
@@ -159,7 +171,7 @@ void Module::doLayout() {
    // get the pixel width of the string
    QFont font;
    QFontMetrics fm(font);
-   QRect textRect = fm.boundingRect(m_name);
+   QRect textRect = fm.boundingRect(m_displayName);
    m_fontHeight = textRect.height() + 4*portDistance;
 
    double w = textRect.width() + 2*portDistance;
@@ -239,7 +251,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
    painter->drawRoundedRect(rect(), portDistance, portDistance);
 
    painter->setPen(Qt::black);
-   painter->drawText(QPointF(portDistance, portDistance+Port::portSize+m_fontHeight/2.), m_name);
+   painter->drawText(QPointF(portDistance, portDistance+Port::portSize+m_fontHeight/2.), m_displayName);
 }
 
 /*!
@@ -340,6 +352,7 @@ QString Module::name() const
 void Module::setName(QString name)
 {
    m_name = name;
+   m_displayName = QString("%1_%2").arg(name, QString::number(m_id));
 
    doLayout();
 }
@@ -363,9 +376,10 @@ void Module::setHub(int hub)
 {
    m_hub = hub;
 
-   const int r = hub%2;
-   const int g = 1-(hub>>2)%2;
-   const int b = 1-(hub>>1)%2;
+   int h = m_hub - vistle::message::Id::MasterHub;
+   const int r = h%2;
+   const int g = 1-(h>>2)%2;
+   const int b = 1-(h>>1)%2;
    m_color = QColor(100+r*100, 100+g*100, 100+b*100);
 }
 
