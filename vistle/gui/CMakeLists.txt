@@ -110,7 +110,7 @@ target_link_libraries(${gui_name}
   ${Boost_LIBRARIES}
   ${PYTHON_LIBRARIES}
   vistle_core
-  vistle_userinterface
+  vistle_userinterface_embedded
   vistle_propertybrowser
   vistle_remotefiledialog
 )

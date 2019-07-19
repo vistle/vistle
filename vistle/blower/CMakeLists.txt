@@ -26,7 +26,7 @@ target_link_libraries(blower
         ${PYTHON_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core
-        vistle_userinterface
+        vistle_userinterface_embedded
 )
 
 if(UNIX)

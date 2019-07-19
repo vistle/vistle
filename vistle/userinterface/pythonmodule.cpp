@@ -26,6 +26,12 @@
 
 namespace py = pybind11;
 
+#ifdef EMBED_PYTHON
+#define PY_MODULE(mod, m) PYBIND11_EMBEDDED_MODULE(mod, m)
+#else
+#define PY_MODULE(mod, m) PYBIND11_MODULE(mod, m)
+#endif
+
 
 #ifdef VISTLE_CONTROL
 
@@ -615,7 +621,7 @@ static std::string getLoadedFile() {
    m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to (`value1`, `value2`, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a, "delayed"_a=false); \
    m.def("setParam", &f, "set parameter `name` of module with `id` to `(value1, value2, `value3`, `value4`)", "id"_a, "name"_a, "value1"_a, "value2"_a, "value3"_a, "value4"_a, "delayed"_a=false);
 
-PYBIND11_EMBEDDED_MODULE(_vistle, m) {
+PY_MODULE(_vistle, m) {
 
     using namespace py::literals;
     m.doc() = "Vistle Python bindings";

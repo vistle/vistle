@@ -34,8 +34,16 @@ include_directories(
 )
 
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
-
 target_link_libraries(vistle_userinterface
+        ${Boost_LIBRARIES}
+        ${EXTRA_LIBRARIES}
+        vistle_core
+        vistle_util
+)
+
+vistle_add_library(vistle_userinterface_embedded ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+target_compile_definitions(vistle_userinterface_embedded PRIVATE -DEMBED_PYTHON)
+target_link_libraries(vistle_userinterface_embedded
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core
