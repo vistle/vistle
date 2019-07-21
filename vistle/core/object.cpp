@@ -346,40 +346,6 @@ bool Object::isEmpty() const {
    return true;
 }
 
-#if 0
-namespace { 
-
-template<class T>
-struct wrap {};
-
-struct instantiate_load {
-   template<class Archive>
-   void operator()(wrap<Archive>) {
-      typename Archive::stream_type str(nullptr, 0);
-      Archive ar(str);
-      Object::loadObject(ar);
-   }
-};
-
-struct instantiate_save {
-   instantiate_save(Object::const_ptr obj): obj(obj) {}
-   Object::const_ptr obj;
-   template<class Archive>
-   void operator()(wrap<Archive>) {
-      typename Archive::stream_type str;
-      Archive ar(str);
-      obj->saveObject(ar);
-   }
-};
-
-}
-
-void instantiate_all_io(Object::const_ptr obj) {
-      mpl::for_each<InputArchives, wrap<mpl::_1> >(instantiate_load());
-      mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save(obj));
-}
-#endif
-
 void ObjectData::ref() const {
    ++refcount;
 }
