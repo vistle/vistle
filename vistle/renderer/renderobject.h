@@ -24,6 +24,10 @@ class V_RENDEREREXPORT RenderObject {
 
    virtual ~RenderObject();
 
+   void updateBounds();
+   void computeBounds();
+   bool boundsValid() const;
+
    int creatorId;
    int senderId;
    std::string senderPort;
@@ -37,11 +41,12 @@ class V_RENDEREREXPORT RenderObject {
    vistle::Texture1D::const_ptr texture;
    vistle::Vec<Scalar>::const_ptr scalars;
 
-   int timestep;
+   int timestep = -1;
+   bool bComputed = false;
    bool bValid = false;
    vistle::Vector bMin, bMax;
 
-   bool hasSolidColor;
+   bool hasSolidColor = false;
    vistle::Vector4 solidColor;
 };
 

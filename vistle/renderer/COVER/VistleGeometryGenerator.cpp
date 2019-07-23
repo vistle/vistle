@@ -531,6 +531,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
 
 osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
+   if (m_ro)
+      m_ro->updateBounds();
+
    if (!m_geo)
       return NULL;
 

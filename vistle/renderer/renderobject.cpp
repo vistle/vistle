@@ -24,10 +24,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 , hasSolidColor(false)
 , solidColor(0., 0., 0., 0.)
 {
-   const Scalar smax = std::numeric_limits<Scalar>::max();
-   bMin = Vector(smax, smax, smax);
-   bMax = Vector(-smax, -smax, -smax);
-
    std::string color;
    if (geometry && geometry->hasAttribute("_color")) {
        color = geometry->getAttribute("_color");
@@ -59,6 +55,46 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          solidColor = Vector4(r, g, b, a);
       }
    }
+   if (geometry)
+      timestep = geometry->getTimestep();
+   if (timestep < 0 && normals) {
+      timestep = normals->getTimestep();
+   }
+   if (timestep < 0 && texture) {
+      timestep = texture->getTimestep();
+   }
+   if (timestep < 0 && scalars) {
+      timestep = scalars->getTimestep();
+   }
+
+   variant = container->getAttribute("_variant");
+   if (variant.empty())
+       variant = geometry->getAttribute("_variant");
+
+   if (boost::algorithm::ends_with(variant, "_on")) {
+       variant = variant.substr(0, variant.length()-3);
+       visibility = Visible;
+   } else if (boost::algorithm::ends_with(variant, "_off")) {
+       variant = variant.substr(0, variant.length()-4);
+       visibility = Hidden;
+   }
+}
+
+RenderObject::~RenderObject() {
+}
+
+void RenderObject::updateBounds() {
+
+    if (bComputed)
+        return;
+    computeBounds();
+}
+
+void RenderObject::computeBounds() {
+
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   bMin = Vector(smax, smax, smax);
+   bMax = Vector(-smax, -smax, -smax);
 
    Matrix4 T = geometry->getTransform();
    bool identity = T.isIdentity();
@@ -122,32 +158,11 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
            bValid = false;
    }
 
-   if (geometry)
-      timestep = geometry->getTimestep();
-   if (timestep < 0 && normals) {
-      timestep = normals->getTimestep();
-   }
-   if (timestep < 0 && texture) {
-      timestep = texture->getTimestep();
-   }
-   if (timestep < 0 && scalars) {
-      timestep = scalars->getTimestep();
-   }
-
-   variant = container->getAttribute("_variant");
-   if (variant.empty())
-       variant = geometry->getAttribute("_variant");
-
-   if (boost::algorithm::ends_with(variant, "_on")) {
-       variant = variant.substr(0, variant.length()-3);
-       visibility = Visible;
-   } else if (boost::algorithm::ends_with(variant, "_off")) {
-       variant = variant.substr(0, variant.length()-4);
-       visibility = Hidden;
-   }
+   bComputed = true;
 }
 
-RenderObject::~RenderObject() {
+bool RenderObject::boundsValid() const {
+    return bValid;
 }
 
 }
