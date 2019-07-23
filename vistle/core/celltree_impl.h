@@ -367,6 +367,12 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty() const {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
+bool Celltree<Scalar, Index, NumDimensions>::isEmpty() {
+
+   return d()->m_nodes->empty() || d()->m_cells->empty();
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 
    V_CHECK(d()->m_nodes->size() >= 1);

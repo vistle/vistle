@@ -140,6 +140,11 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
     refreshImpl();
 }
 
+bool UnstructuredGrid::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool UnstructuredGrid::isEmpty() const {
 
    return Base::isEmpty();

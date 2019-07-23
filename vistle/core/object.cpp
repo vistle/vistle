@@ -346,6 +346,10 @@ bool Object::isEmpty() const {
    return true;
 }
 
+bool Object::isEmpty() {
+   return true;
+}
+
 void ObjectData::ref() const {
    ++refcount;
 }

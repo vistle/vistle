@@ -75,6 +75,11 @@ PlaceHolder::const_ptr PlaceHolder::texture() const {
 void PlaceHolder::refreshImpl() const {
 }
 
+bool PlaceHolder::isEmpty() {
+
+   return true;
+}
+
 bool PlaceHolder::isEmpty() const {
 
    return true;

@@ -31,6 +31,7 @@ void UniformGrid::refreshImpl() const {
         m_ghostLayers[c][0] = d ? d->ghostLayers[c][0] : 0;
         m_ghostLayers[c][1] = d ? d->ghostLayers[c][1] : 0;
     }
+    m_size = m_numDivisions[0]*m_numDivisions[1]*m_numDivisions[2];
 }
 
 // CHECK IMPL
@@ -47,6 +48,11 @@ bool UniformGrid::checkImpl() const {
 
 // IS EMPTY
 //-------------------------------------------------------------------------
+bool UniformGrid::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool UniformGrid::isEmpty() const {
 
    return Base::isEmpty();
@@ -79,8 +85,12 @@ void UniformGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsign
     return;
 }
 
-Index UniformGrid::getNumVertices() const {
+Index UniformGrid::getNumVertices() {
     return getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
+}
+
+Index UniformGrid::getNumVertices() const {
+    return m_size;
 }
 
 // GET BOUNDS

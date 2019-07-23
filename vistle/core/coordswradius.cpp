@@ -15,6 +15,11 @@ void CoordsWithRadius::refreshImpl() const {
     m_r = (d && d->r.valid()) ? d->r->data() : nullptr;
 }
 
+bool CoordsWithRadius::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool CoordsWithRadius::isEmpty() const {
 
    return Base::isEmpty();

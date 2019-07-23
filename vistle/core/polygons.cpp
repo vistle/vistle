@@ -11,6 +11,11 @@ Polygons::Polygons(const Index numElements,
     refreshImpl();
 }
 
+bool Polygons::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Polygons::isEmpty() const {
 
    return Base::isEmpty();

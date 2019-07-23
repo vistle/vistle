@@ -12,6 +12,11 @@ Tubes::Tubes(const Index numTubes, const Index numCoords,
 void Tubes::refreshImpl() const {
 }
 
+bool Tubes::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Tubes::isEmpty() const {
 
    return Base::isEmpty();

@@ -12,6 +12,12 @@ Triangles::Triangles(const Index numCorners, const Index numCoords,
 void Triangles::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
     m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
+    m_numCorners = (d && d->cl.valid()) ? d->cl->size() : 0;
+}
+
+bool Triangles::isEmpty() {
+
+   return getNumCoords()==0;
 }
 
 bool Triangles::isEmpty() const {
@@ -65,14 +71,24 @@ Triangles::Data * Triangles::Data::create(const Index numCorners,
    return t;
 }
 
+Index Triangles::getNumElements() {
+
+    return getNumCorners()>0 ? getNumCorners()/3 : getNumCoords()/3;
+}
+
 Index Triangles::getNumElements() const {
 
-   return getNumCorners()>0 ? getNumCorners()/3 : getNumCoords()/3;
+    return getNumCorners()>0 ? getNumCorners()/3 : getNumCoords()/3;
+}
+
+Index Triangles::getNumCorners() {
+
+   return d()->cl->size();
 }
 
 Index Triangles::getNumCorners() const {
 
-   return d()->cl->size();
+   return m_numCorners;
 }
 
 V_OBJECT_TYPE(Triangles, Object::TRIANGLES);

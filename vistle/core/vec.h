@@ -26,8 +26,11 @@ class Vec: public DataBase {
    Vec(const Index size,
         const Meta &meta=Meta());
 
-   Index getSize() const override {
+   Index getSize() override {
       return (Index)(d()->x[0]->size());
+   }
+   Index getSize() const override {
+      return m_size;
    }
 
    void resetArrays() override;

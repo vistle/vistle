@@ -41,6 +41,7 @@ public:
    const Scalar * coords(int c) const { return m_coords[c]; }
 
    // GridInterface
+   Index getNumVertices() override;
    Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
    Normals::const_ptr normals() const override;
@@ -57,6 +58,7 @@ private:
    mutable Index m_numDivisions[3];
    mutable const Scalar *m_coords[3];
    mutable Index m_ghostLayers[3][2];
+   mutable Index m_size = 0;
 
    // data object
    V_DATA_BEGIN(RectilinearGrid);

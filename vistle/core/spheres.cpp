@@ -12,6 +12,11 @@ Spheres::Spheres(const Index numSpheres,
 void Spheres::refreshImpl() const {
 }
 
+bool Spheres::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Spheres::isEmpty() const {
 
    return Base::isEmpty();

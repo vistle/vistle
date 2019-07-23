@@ -11,6 +11,11 @@
 
 namespace vistle {
 
+bool DataBase::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool DataBase::isEmpty() const {
 
    return Base::isEmpty();
@@ -76,6 +81,13 @@ DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
 void DataBase::resetArrays()
 {
    assert("should never be called" == NULL);
+}
+
+Index DataBase::getSize() {
+
+   assert("should never be called" == NULL);
+
+   return 0;
 }
 
 Index DataBase::getSize() const {

@@ -9,6 +9,11 @@ Points::Points(const Index numPoints,
     refreshImpl();
 }
 
+bool Points::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Points::isEmpty() const {
 
    return Base::isEmpty();
@@ -20,6 +25,10 @@ void Points::refreshImpl() const {
 bool Points::checkImpl() const {
 
    return true;
+}
+
+Index Points::getNumPoints() {
+   return getNumCoords();
 }
 
 Index Points::getNumPoints() const {

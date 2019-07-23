@@ -135,6 +135,7 @@ public:
    virtual void updateInternals();
 
    virtual bool isEmpty() const;
+   virtual bool isEmpty();
 
    template<class ObjectType>
    static std::shared_ptr<const Object> as(std::shared_ptr<const ObjectType> ptr) { return std::static_pointer_cast<const Object>(ptr); }
@@ -404,6 +405,7 @@ private:
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
    explicit ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \
+   virtual bool isEmpty() override; \
    virtual bool isEmpty() const override; \
    bool check() const override { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \

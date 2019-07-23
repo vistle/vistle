@@ -91,6 +91,12 @@ bool Vec<T,Dim>::isEmpty() const {
 }
 
 template <class T, int Dim>
+bool Vec<T,Dim>::isEmpty() {
+
+   return getSize() == 0;
+}
+
+template <class T, int Dim>
 bool Vec<T,Dim>::checkImpl() const {
 
    size_t size = d()->x[0]->size();

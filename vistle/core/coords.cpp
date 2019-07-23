@@ -12,6 +12,11 @@ Coords::Coords(const Index numVertices,
 void Coords::refreshImpl() const {
 }
 
+bool Coords::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Coords::isEmpty() const {
 
    return Base::isEmpty();
@@ -73,9 +78,16 @@ Index Coords::getNumVertices() const {
    return getSize();
 }
 
-Index Coords::getNumCoords() const {
+Index Coords::getNumVertices() {
+    return getSize();
+}
 
-   return getSize();
+Index Coords::getNumCoords() {
+    return getSize();
+}
+
+Index Coords::getNumCoords() const {
+    return getSize();
 }
 
 Normals::const_ptr Coords::normals() const {
