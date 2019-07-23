@@ -13,7 +13,7 @@ class WeldVertices: public vistle::Module {
    ~WeldVertices();
 
  private:
-   virtual bool compute() override;
+   bool compute(std::shared_ptr<vistle::PortTask> task) const override;
    vistle::Port *m_in[NumPorts], *m_out[NumPorts];
 };
 
@@ -68,7 +68,7 @@ struct Point {
 };
 
 
-bool WeldVertices::compute() {
+bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
 
     Object::const_ptr oin[NumPorts];
     DataBase::const_ptr din[NumPorts];
@@ -78,7 +78,7 @@ bool WeldVertices::compute() {
 
     for (int i=0; i<NumPorts; ++i) {
         if (m_in[i]->isConnected()) {
-            oin[i] = expect<Object>(m_in[i]);
+            oin[i] = task->expect<Object>(m_in[i]);
             din[i] = DataBase::as(oin[i]);
             Object::const_ptr g;
             if (din[i]) {
@@ -255,7 +255,7 @@ bool WeldVertices::compute() {
             if (din[i]->mapping() == DataBase::Element) {
                 auto dout = din[i]->clone();
                 dout->setGrid(ogrid);
-                addObject(m_out[i], dout);
+                task->addObject(m_out[i], dout);
             } else {
                 auto dout = din[i]->clone();
                 dout->resetArrays();
@@ -280,10 +280,10 @@ bool WeldVertices::compute() {
                     }
                 }
                 dout->setGrid(ogrid);
-                addObject(m_out[i], dout);
+                task->addObject(m_out[i], dout);
             }
         } else {
-            addObject(m_out[i], ogrid);
+            task->addObject(m_out[i], ogrid);
         }
     }
 
