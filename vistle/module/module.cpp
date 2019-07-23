@@ -1719,7 +1719,9 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     if (!isConnected(port.second))
                         continue;
                     const auto &objs = port.second.objects();
-                    if (!objs.empty()) {
+                    if (objs.empty()) {
+                        objectIsEmpty = true;
+                    } else {
                         int t = getTimestep(objs.front());
                         if (t != -1)
                             timestep = t;
