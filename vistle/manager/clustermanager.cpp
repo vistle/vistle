@@ -557,7 +557,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
                  && message.type() != message::SETPARAMETER) {
             return sendMessage(message.destId(), message);
          }
-      } else {
+      } else if (!message.wasBroadcast()) {
          return sendHub(message);
       }
    }
