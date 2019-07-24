@@ -1,4 +1,5 @@
 add_subdirectory(AddAttribute)
+add_subdirectory(Assemble)
 add_subdirectory(AttachGrid)
 add_subdirectory(AttachNormals)
 add_subdirectory(AttachShader)
