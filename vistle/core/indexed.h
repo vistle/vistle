@@ -25,7 +25,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
 
    Index getNumElements() override;
    Index getNumElements() const override;
-   void resetElements();
+   virtual void resetElements();
    Index getNumCorners();
    Index getNumCorners() const;
    void resetCorners();

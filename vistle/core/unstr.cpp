@@ -140,6 +140,13 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
     refreshImpl();
 }
 
+void UnstructuredGrid::resetElements() {
+    Base::resetElements();
+
+    d()->tl = ShmVector<unsigned char>();
+    d()->tl.construct(0);
+}
+
 bool UnstructuredGrid::isEmpty() {
 
    return Base::isEmpty();
