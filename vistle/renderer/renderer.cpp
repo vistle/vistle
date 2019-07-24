@@ -19,8 +19,6 @@ namespace mpi = boost::mpi;
 
 namespace vistle {
 
-const int MaxObjectsPerFrame = 10;
-
 Renderer::Renderer(const std::string &description,
                    const std::string &name, const int moduleID, mpi::communicator comm)
    : Module(description, name, moduleID, comm)
@@ -33,6 +31,9 @@ Renderer::Renderer(const std::string &description,
 
    m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_renderMode, RenderMode);
+
+   m_objectsPerFrame = addIntParameter("objects_per_frame", "Max. no. of objects to load between calls to render", m_numObjectsPerFrame);
+   setParameterMinimum(m_objectsPerFrame, Integer(1));
 
    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
@@ -226,7 +227,7 @@ bool Renderer::dispatch(bool *messageReceived) {
       int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
       int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
       ++numSync;
-      checkAgain = maxNumMessages>0 && numSync<MaxObjectsPerFrame*size();
+      checkAgain = maxNumMessages>0 && numSync<m_numObjectsPerFrame;
    } while (checkAgain);
 
    double start = 0.;
@@ -453,6 +454,10 @@ bool Renderer::changeParameter(const Parameter *p) {
             setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
             break;
         }
+    }
+
+    if (p == m_objectsPerFrame) {
+        m_numObjectsPerFrame = m_objectsPerFrame->getValue();
     }
 
     return Module::changeParameter(p);
