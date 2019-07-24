@@ -159,6 +159,8 @@ void Indexed::createVertexOwnerList() const {
    if (hasVertexOwnerList())
       return;
 
+   refresh();
+
    Index numelem=getNumElements();
    Index numcoord=getNumVertices();
 
