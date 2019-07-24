@@ -117,6 +117,9 @@ Object *Object::loadObject(Archive &ar) {
       }
       return obj;
 #endif
+   } catch (std::exception &ex) {
+       std::cerr << "exception during object loading: " << ex.what() << std::endl;
+       return obj;
    } catch (...) {
        throw;
    }

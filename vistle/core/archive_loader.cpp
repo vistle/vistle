@@ -127,9 +127,14 @@ ArrayLoader::ArrayLoader(const std::string &name, int type, const iarchive &ar):
 }
 
 bool ArrayLoader::load() {
-    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(*this));
-    if (!m_ok) {
-        std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive" << std::endl;
+    try {
+        boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(*this));
+        if (!m_ok) {
+            std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive" << std::endl;
+        }
+    } catch (std::exception &ex) {
+        m_ok = false;
+            std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive - exception: " << ex.what() << std::endl;
     }
     return m_ok;
 }
