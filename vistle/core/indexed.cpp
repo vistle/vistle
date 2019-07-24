@@ -361,6 +361,8 @@ void Indexed::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
     m_el = (d && d->el.valid()) ? d->el->data() : nullptr;
     m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
+    m_numEl = (d && d->el.valid()) ? d->el->size()-1 : 0;
+    m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
 }
 
 void Indexed::Data::initData() {
@@ -406,7 +408,7 @@ Index Indexed::getNumElements() {
 
 Index Indexed::getNumElements() const {
 
-    return d()->el->size()-1;
+    return m_numEl;
 }
 
 void Indexed::resetElements() {
@@ -422,7 +424,7 @@ Index Indexed::getNumCorners() {
 
 Index Indexed::getNumCorners() const {
 
-    return d()->cl->size();
+    return m_numCl;
 }
 
 void Indexed::resetCorners() {
