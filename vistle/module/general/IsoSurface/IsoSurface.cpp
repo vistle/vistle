@@ -31,8 +31,9 @@ MODULE_MAIN(IsoSurface)
 using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue,
-                                    (Point)
+                                    (PointPerTimestep)
                                     (Value)
+                                    (PointInFirstStep)
 )
 
 IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator comm)
@@ -78,8 +79,10 @@ bool IsoSurface::changeParameter(const Parameter* param) {
 
 #ifndef CUTTINGSURFACE
     if (param == m_pointOrValue) {
-        if (m_pointOrValue->getValue() == Point)
+        if (m_pointOrValue->getValue() == PointInFirstStep)
             setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
+        else if (m_pointOrValue->getValue() == PointPerTimestep)
+            setReducePolicy(message::ReducePolicy::PerTimestep);
         else
             setReducePolicy(message::ReducePolicy::Locally);
     }
@@ -90,9 +93,7 @@ bool IsoSurface::changeParameter(const Parameter* param) {
 
 bool IsoSurface::prepare() {
 
-   m_grids.clear();
-   m_datas.clear();
-   m_mapdatas.clear();
+   m_blocksForTime.clear();
 
    m_min = std::numeric_limits<Scalar>::max() ;
    m_max = -std::numeric_limits<Scalar>::max();
@@ -106,91 +107,83 @@ bool IsoSurface::prepare() {
 bool IsoSurface::reduce(int timestep) {
 
 #ifndef CUTTINGSURFACE
-   if (rank() == 0)
-       std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
-   if (timestep <=0 && m_pointOrValue->getValue() == Point && !m_performedPointSearch) {
-       m_performedPointSearch = true;
-       Scalar value = m_isovalue->getValue();
-       int found = 0;
-       Vector point = m_isopoint->getValue();
-       int nb = 0;
-       for (size_t i=0; i<m_grids.size(); ++i) {
-           int t = m_grids[i]->getTimestep();
-           if (t < 0)
-               t = m_datas[i]->getTimestep();
-           if (t==0 || t==-1) {
-               ++nb;
-               auto gi = m_grids[i]->getInterface<GridInterface>();
-               Index cell = gi->findCell(point);
-               if (cell != InvalidIndex) {
-                   ++found;
-                   auto interpol = gi->getInterpolator(cell, point);
-                   value = interpol(m_datas[i]->x());
-               }
-           }
-       }
-       std::cerr << "found " << nb << " candidate blocks" << std::endl;
-       int numFound = boost::mpi::all_reduce(comm(), found, std::plus<int>());
-       m_foundPoint = numFound>0;
-       if (m_rank == 0) {
-           if (numFound == 0)
-               sendInfo("iso-value point out of domain");
-           else if (numFound > 1)
-               sendWarning("found isopoint in %d blocks", numFound);
-       }
-       int valRank = found ? m_rank : m_size;
-       valRank = boost::mpi::all_reduce(comm(), valRank, boost::mpi::minimum<int>());
-       if (valRank < m_size) {
-           boost::mpi::broadcast(comm(), value, valRank);
-           setParameter(m_isovalue, (Float)value);
-           setParameter(m_pointOrValue, (Integer)Point);
-       }
-   }
+    if (rank() == 0)
+        std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
+    Scalar value = m_isovalue->getValue();
+    Vector point = m_isopoint->getValue();
 
-   if (m_foundPoint) {
-       auto task = std::make_shared<PortTask>(const_cast<IsoSurface *>(this));
-       for (size_t i=0; i<m_grids.size(); ++i) {
-           int t = m_grids[i] ? m_grids[i]->getTimestep() : -1;
-           if (m_datas[i])
-               t = std::max(t, m_datas[i]->getTimestep());
-           if (m_mapdatas[i])
-               t = std::max(t, m_mapdatas[i]->getTimestep());
-           if (t == timestep)
-               work(task, m_grids[i], m_datas[i], m_mapdatas[i]);
-       }
-   }
+    std::unique_lock<std::mutex> lock(m_mutex);
+    std::vector<BlockData> &blocks = m_blocksForTime[timestep];
+    lock.unlock();
+    if ((m_pointOrValue->getValue() == PointInFirstStep && !m_performedPointSearch && timestep <= 0)
+        || m_pointOrValue->getValue() == PointPerTimestep) {
+        int found = 0;
+        for (const auto &b: blocks) {
+            auto gi = b.grid->getInterface<GridInterface>();
+            Index cell = gi->findCell(point);
+            if (cell != InvalidIndex) {
+                ++found;
+                auto interpol = gi->getInterpolator(cell, point);
+                value = interpol(b.datas->x());
+            }
+        }
 
-   if (timestep == -1) {
-       Scalar min, max;
-       boost::mpi::all_reduce(comm(),
-                              m_min, min, boost::mpi::minimum<Scalar>());
-       boost::mpi::all_reduce(comm(),
-                              m_max, max, boost::mpi::maximum<Scalar>());
+        int numFound = boost::mpi::all_reduce(comm(), found, std::plus<int>());
+        m_foundPoint = numFound>0;
+        if (m_rank == 0) {
+            if (numFound == 0) {
+                if (m_pointOrValue->getValue()!=PointPerTimestep || (m_performedPointSearch && timestep != -1)) {
+                    sendInfo("iso-value point out of domain for timestep %d", timestep);
+                }
+            } else if (numFound > 1) {
+                sendWarning("found isopoint in %d blocks", numFound);
+            }
+        }
+        int valRank = found ? m_rank : m_size;
+        valRank = boost::mpi::all_reduce(comm(), valRank, boost::mpi::minimum<int>());
+        if (valRank < m_size) {
+            boost::mpi::broadcast(comm(), value, valRank);
+            if (m_pointOrValue->getValue() == PointInFirstStep)
+                setParameter(m_isovalue, (Float)value);
+        }
+        m_performedPointSearch = true;
+    }
 
-       if (max >= min) {
-           if (m_paraMin != (Float)min || m_paraMax != (Float)max)
-               setParameterRange(m_isovalue, (Float)min, (Float)max);
+    if (m_foundPoint) {
+        int numProcessed = 0;
+        for (const auto &b: blocks) {
+            ++numProcessed;
+            auto obj = work(b.grid, b.datas, b.mapdata, value);
+            addObject(m_dataOut, obj);
+        }
+    }
 
-           m_paraMax = max;
-           m_paraMin = min;
-       }
-   }
+    if (timestep == -1) {
+        Scalar min, max;
+        boost::mpi::all_reduce(comm(),
+                               m_min, min, boost::mpi::minimum<Scalar>());
+        boost::mpi::all_reduce(comm(),
+                               m_max, max, boost::mpi::maximum<Scalar>());
+
+        if (max >= min) {
+            if (m_paraMin != (Float)min || m_paraMax != (Float)max)
+                setParameterRange(m_isovalue, (Float)min, (Float)max);
+
+            m_paraMax = max;
+            m_paraMin = min;
+        }
+    }
 #endif
 
-   return Module::reduce(timestep);
+    return Module::reduce(timestep);
 }
 
-bool IsoSurface::work(std::shared_ptr<PortTask> task,
-             vistle::Object::const_ptr grid,
+Object::ptr IsoSurface::work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr dataS,
-             vistle::DataBase::const_ptr mapdata) const {
+             vistle::DataBase::const_ptr mapdata,
+             Scalar isoValue) const {
 
    const int processorType = getIntParameter("processortype");
-#ifdef CUTTINGSURFACE
-   const Scalar isoValue = 0.0;
-#else
-   const Scalar isoValue = getFloatParameter("isovalue");
-#endif
 
    Leveller l(isocontrol, grid, isoValue, processorType);
    l.setComputeNormals(m_computeNormals->getValue());
@@ -235,69 +228,16 @@ bool IsoSurface::work(std::shared_ptr<PortTask> task,
          mapresult->updateInternals();
          mapresult->copyAttributes(mapdata);
          mapresult->setGrid(result);
-         task->addObject(m_dataOut, mapresult);
+         return mapresult;
       }
 #ifndef CUTTINGSURFACE
       else {
-          task->addObject(m_dataOut, result);
+          return result;
       }
 #endif
    }
-   return true;
+   return Object::ptr();
 }
-
-#if 0
-bool IsoSurface::compute() {
-
-#ifdef CUTTINGSURFACE
-   auto mapdata = expect<DataBase>(m_mapDataIn);
-   if (!mapdata)
-       return true;
-   auto grid = mapdata->grid();
-#else
-   auto mapdata = accept<DataBase>(m_mapDataIn);
-   auto dataS = expect<Vec<Scalar>>("data_in");
-   if (!dataS)
-      return true;
-   if (dataS->guessMapping() != DataBase::Vertex) {
-      sendError("need per-vertex mapping on data_in");
-      return true;
-   }
-   auto grid = dataS->grid();
-#endif
-   auto uni = UniformGrid::as(grid);
-   auto rect = RectilinearGrid::as(grid);
-   auto str = StructuredGrid::as(grid);
-   auto unstr = UnstructuredGrid::as(grid);
-   if (!uni && !rect && !str && !unstr) {
-       if (grid)
-           sendError("grid required on input data: invalid type");
-       else
-           sendError("grid required on input data: none present");
-       return true;
-   }
-
-#ifdef CUTTINGSURFACE
-    return work(grid, nullptr, mapdata);
-#else
-    if (m_pointOrValue->getValue() == Value) {
-        return work(grid, dataS, mapdata);
-    } else {
-        int t = -1;
-        //unstr->getCelltree();
-        if (grid)
-            t = grid->getTimestep();
-        m_grids.push_back(grid);
-        m_datas.push_back(dataS);
-        if (t < 0)
-            t = dataS->getTimestep();
-        m_mapdatas.push_back(mapdata);
-        //std::cerr << "compute with t=" << t << std::endl;
-        return true;
-    }
-#endif
-}
-#endif
 
 
 bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
@@ -331,23 +271,30 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
    }
 
 #ifdef CUTTINGSURFACE
-    return work(task, grid, nullptr, mapdata);
+    auto obj = work(grid, nullptr, mapdata);
+    task->addObject(m_dataOut, obj);
+    return true;
 #else
     if (m_pointOrValue->getValue() == Value) {
-        return work(task, grid, dataS, mapdata);
+        auto obj = work(grid, dataS, mapdata, m_isovalue->getValue());
+        task->addObject(m_dataOut, obj);
+        return true;
     } else {
-        int t = -1;
-        //unstr->getCelltree();
-        if (grid)
-            t = grid->getTimestep();
         std::lock_guard<std::mutex> guard(m_mutex);
-        m_grids.push_back(grid);
-        m_datas.push_back(dataS);
-        if (t < 0)
-            t = dataS->getTimestep();
-        m_mapdatas.push_back(mapdata);
-        //std::cerr << "compute with t=" << t << std::endl;
+        BlockData b(grid, dataS, mapdata);
+        int t = b.getTimestep();
+        m_blocksForTime[t].emplace_back(b);
         return true;
     }
 #endif
+}
+
+int IsoSurface::BlockData::getTimestep() const {
+
+    int t = vistle::getTimestep(datas);
+    if (t < 0)
+        t = vistle::getTimestep(grid);
+    if (t < 0)
+        t = vistle::getTimestep(mapdata);
+    return t;
 }

@@ -21,13 +21,33 @@ class IsoSurface: public vistle::Module {
                                        int processorType
                                         );
 
-   mutable std::vector<vistle::Object::const_ptr> m_grids;
-   mutable std::vector<vistle::Vec<vistle::Scalar>::const_ptr> m_datas;
-   mutable std::vector<vistle::DataBase::const_ptr> m_mapdatas;
+   struct BlockData {
+       BlockData(vistle::Object::const_ptr g, vistle::Vec<vistle::Scalar>::const_ptr d, vistle::DataBase::const_ptr m)
+           : grid(g), datas(d), mapdata(m)
+       {}
+       int getTimestep() const;
+       vistle::Object::const_ptr grid;
+       vistle::Vec<vistle::Scalar>::const_ptr datas;
+       vistle::DataBase::const_ptr mapdata;
 
-   bool work(std::shared_ptr<vistle::PortTask> task, vistle::Object::const_ptr grid,
+       bool operator<(const BlockData &rhs) {
+           if (datas == rhs.datas) {
+               if (mapdata == rhs.mapdata) {
+                   return grid < rhs.grid;
+               }
+               return mapdata < rhs.mapdata;
+           }
+           return datas < rhs.datas;
+       }
+   };
+
+   mutable std::mutex m_mutex;
+   mutable std::map<int, std::vector<BlockData>> m_blocksForTime;
+
+   vistle::Object::ptr work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr data,
-             vistle::DataBase::const_ptr mapdata) const;
+             vistle::DataBase::const_ptr mapdata,
+             vistle::Scalar isoValue = 0.) const;
    bool compute(std::shared_ptr<vistle::PortTask> task) const override;
    //bool compute() override;
    bool prepare() override;
@@ -41,7 +61,6 @@ class IsoSurface: public vistle::Module {
    vistle::IntParameter *m_computeNormals;
    vistle::Port *m_mapDataIn, *m_dataOut;
 
-   mutable std::mutex m_mutex;
    mutable vistle::Scalar m_min, m_max;
    vistle::Float m_paraMin, m_paraMax;
    bool m_performedPointSearch = false;
