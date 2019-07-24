@@ -36,6 +36,7 @@ class Cache: public vistle::Module {
    OperationMode m_mode = Memory;
    bool m_toDisk = false, m_fromDisk = false;
    StringParameter *p_file = nullptr;
+   IntParameter *p_step = nullptr;
 
    int m_fd = -1;
    std::shared_ptr<DeepArchiveSaver> m_saver;
@@ -61,6 +62,9 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm)
    V_ENUM_SET_CHOICES(p_mode, OperationMode);
    p_file = addStringParameter("file", "filename where cache should be created", "", Parameter::Filename);
    setParameterFilters(p_file, "Vistle Data (*.vsld)/All Files (*)");
+
+   p_step = addIntParameter("step", "step width when reading from disk", 1);
+   setParameterMinimum(p_step, Integer(1));
 }
 
 Cache::~Cache() {
@@ -363,6 +367,8 @@ bool Cache::prepare() {
     if (!m_fromDisk)
         return true;
 
+    int step = p_step->getValue();
+
     m_fd = open(file.c_str(), O_RDONLY);
     if (m_fd == -1) {
         sendError("Could not open %s: %s", file.c_str(), strerror(errno));
@@ -432,11 +438,15 @@ bool Cache::prepare() {
             }
         }
 
-        ++numObjects;
         if (!m_outPort[port]->isConnected()) {
             //CERR << "skipping " << name0 << ", output " << port << " not connected" << std::endl;
             continue;
         }
+
+        if (timestep>=0 && timestep%step != 0)
+            continue;
+
+        ++numObjects;
 
         //CERR << "output to port " << port << ", " << num << " objects/arrays read" << std::endl;
         //CERR << "output to port " << port << ", initial " << name0 << " of size " << objects[name0].size() << std::endl;
@@ -447,6 +457,12 @@ bool Cache::prepare() {
         //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;
         Object::ptr obj(Object::loadObject(memar));
         updateMeta(obj);
+        auto t = obj->getTimestep();
+        if (t >= 0)
+            obj->setTimestep(t/step);
+        auto nt = obj->getNumTimesteps();
+        if (nt >= 0)
+            obj->setNumTimesteps((nt+step-1)/step);
         passThroughObject(m_outPort[port], obj);
         fetcher->releaseArrays();
     }
