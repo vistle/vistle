@@ -106,8 +106,17 @@ bool ColorMetapostPart::compute() {
    if (!obj)
       return true;
 
-   Object::ptr out = obj->clone();
    auto part = obj->getAttribute("_part");
+
+   auto db = DataBase::as(obj);
+   if (db) {
+       if (part.empty()) {
+           auto grid = db->grid();
+           part = grid->getAttribute("_part");
+       }
+   }
+
+   Object::ptr out = obj->clone();
    Index pid = InvalidIndex;
    std::stringstream str(part);
    str >> pid;
