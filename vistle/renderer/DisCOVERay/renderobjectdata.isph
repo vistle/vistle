@@ -24,10 +24,11 @@ enum PrimitiveFlags {
 };
 
 struct RTC_ALIGN(16) ColorMapData {
-    uniform unsigned int texWidth; //!< size of 1D texture (color table size)
+    const unsigned int texWidth; //!< size of 1D texture (color table size)
     const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
     const float min;
     const float max;
+    const unsigned int blendWithMaterial;
 };
 
 struct RTC_ALIGN(16) RenderObjectData {

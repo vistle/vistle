@@ -104,11 +104,12 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 const float &u = hit.u;
                 const float &v = hit.v;
                 const float w = 1.f - u - v;
+                Vec4f tc;
                 if (ro->perPrimitiveMapping) {
                     if (ro->indexBuffer) {
-                        color = texColor(ro->cmap, ro->texCoords[ro->indexBuffer[hit.primID].elem]);
+                        tc = texColor(ro->cmap, ro->texCoords[ro->indexBuffer[hit.primID].elem]);
                     } else {
-                        color = texColor(ro->cmap, ro->texCoords[hit.primID]);
+                        tc = texColor(ro->cmap, ro->texCoords[hit.primID]);
                     }
                 } else if (ro->indexBuffer) {
                     const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
@@ -118,13 +119,20 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
                     const float tc2 = ro->texCoords[v2];
-                    color = texColor(ro->cmap, w*tc0 + u*tc1 + v*tc2);
+                    tc = texColor(ro->cmap, w*tc0 + u*tc1 + v*tc2);
                 } else {
                     const unsigned int v0 = hit.primID;
                     const unsigned int v1 = hit.primID + 1;
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
-                    color = texColor(ro->cmap, w*tc0 + u*tc1);
+                    tc = texColor(ro->cmap, w*tc0 + u*tc1);
+                }
+
+                if (ro->cmap->blendWithMaterial) {
+                    color = (tc*tc.w+color*(255.f-tc.w))/255.f;
+                    color.w = 255.f;
+                } else {
+                    color = tc;
                 }
             }
 

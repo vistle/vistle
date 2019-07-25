@@ -77,6 +77,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       // texcoords as computed by Color module are between 0 and 1
       data->cmap->min = 0.;
       data->cmap->max = 1.;
+      data->cmap->blendWithMaterial = 0;
 
        std::cerr << "texcoords from texture" << std::endl;
    } else if (auto vec = Vec<Scalar,3>::as(texture)) {
@@ -88,7 +89,6 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
        const Scalar *x = &vec->x()[0];
        const Scalar *y = &vec->y()[0];
        const Scalar *z = &vec->z()[0];
-       float *d = tcoord.data();
        for (auto it = tcoord.begin(); it != tcoord.end(); ++it) {
            *it = sqrtf(*x * *x + *y * *y + *z * *z);
            ++x;
@@ -355,7 +355,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
        rtcReleaseGeometry(geom);
        rtcCommitGeometry(geom);
 
-       std::cerr << "added geom " << (data->indexBuffer ? " with " : " without " ) << " indexbuffer" << std::endl;
+       std::cerr << "added geom " << (data->indexBuffer ? "with" : "without") << " indexbuffer" << std::endl;
    }
 
    rtcCommitScene(data->scene);
@@ -377,6 +377,7 @@ void RayColorMap::deinit() {
         cmap->min = 0.f;
         cmap->max = 1.f;
         cmap->texWidth = 0;
+        cmap->blendWithMaterial = 0;
         cmap->texData = nullptr;
     }
 }

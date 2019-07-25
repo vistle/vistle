@@ -225,6 +225,7 @@ bool DisCOVERay::addColorMap(const std::string &species, Texture1D::const_ptr te
     cmap.cmap->max = texture->getMax();
     cmap.cmap->texWidth = texture->getWidth();
     cmap.cmap->texData = texture->pixels().data();
+    cmap.cmap->blendWithMaterial = texture->hasAttribute("_blend_with_material") ? 1 : 0;
 
     m_renderManager.setModified();
 
