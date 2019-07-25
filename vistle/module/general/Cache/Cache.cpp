@@ -38,6 +38,11 @@ class Cache: public vistle::Module {
    bool m_toDisk = false, m_fromDisk = false;
    StringParameter *p_file = nullptr;
    IntParameter *p_step = nullptr;
+   IntParameter *p_start = nullptr;
+   IntParameter *p_stop = nullptr;
+
+   IntParameter *p_reorder = nullptr;
+   IntParameter *p_renumber = nullptr;
 
    int m_fd = -1;
    std::shared_ptr<DeepArchiveSaver> m_saver;
@@ -66,6 +71,13 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm)
 
    p_step = addIntParameter("step", "step width when reading from disk", 1);
    setParameterMinimum(p_step, Integer(1));
+   p_start = addIntParameter("start", "start step", 0);
+   setParameterMinimum(p_start, Integer(0));
+   p_stop = addIntParameter("stop", "stop step", 1000);
+   setParameterMinimum(p_stop, Integer(0));
+
+   p_reorder = addIntParameter("reorder", "reorder timesteps", false, Parameter::Boolean);
+   p_renumber = addIntParameter("renumber", "renumber timesteps consecutively", true, Parameter::Boolean);
 }
 
 Cache::~Cache() {
@@ -368,7 +380,12 @@ bool Cache::prepare() {
     if (!m_fromDisk)
         return true;
 
+    int start = p_start->getValue();
     int step = p_step->getValue();
+    int stop = p_stop->getValue();
+
+    bool reorder = p_reorder->getValue();
+    bool renumber = p_renumber->getValue();
 
     m_fd = open(file.c_str(), O_RDONLY);
     if (m_fd == -1) {
@@ -383,6 +400,9 @@ bool Cache::prepare() {
         return true;
     }
 
+    typedef std::vector<std::string> TimestepObjects;
+    std::vector<TimestepObjects> portObjects[NumPorts];
+
     std::map<std::string, std::vector<char>> objects, arrays;
     std::map<std::string, std::string> objectTranslations, arrayTranslations;
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
@@ -391,6 +411,55 @@ bool Cache::prepare() {
     fetcher->setArrayTranslations(arrayTranslations);
     bool ok = true;
     int numObjects = 0;
+    int numTime = 0;
+
+    auto restoreObject = [this, &objects, &fetcher, start, stop, step, renumber](const std::string &name0, int port) {
+        //CERR << "output to port " << port << ", " << num << " objects/arrays read" << std::endl;
+        //CERR << "output to port " << port << ", initial " << name0 << " of size " << objects[name0].size() << std::endl;
+
+        vecistreambuf<char> membuf(objects[name0]);
+        vistle::iarchive memar(membuf);
+        memar.setFetcher(fetcher);
+        //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;
+        Object::ptr obj(Object::loadObject(memar));
+        updateMeta(obj);
+        auto t = obj->getTimestep();
+        if (renumber && t >= 0) {
+            t -= start;
+            t /= step;
+            obj->setTimestep(t);
+        }
+        auto nt = obj->getNumTimesteps();
+        if (renumber && nt >= 0) {
+            if (nt > stop)
+                nt = stop;
+            nt -= start;
+            nt = (nt+step-1)/step;
+            obj->setNumTimesteps(nt);
+        }
+        if (auto db = DataBase::as(obj)) {
+            if (auto cgrid = db->grid()) {
+                auto grid = std::const_pointer_cast<Object>(cgrid);
+                auto t = grid->getTimestep();
+                if (renumber && t >= 0) {
+                    t -= start;
+                    t /= step;
+                    grid->setTimestep(t);
+                }
+                auto nt = grid->getNumTimesteps();
+                if (renumber && nt >= 0) {
+                    if (nt > stop)
+                        nt = stop;
+                    nt -= start;
+                    nt = (nt+step-1)/step;
+                    grid->setNumTimesteps(nt);
+                }
+            }
+        }
+        passThroughObject(m_outPort[port], obj);
+        fetcher->releaseArrays();
+    };
+
     for (;;) {
         Header header, hgood;
         if (!Read(m_fd, header)) {
@@ -446,6 +515,18 @@ bool Cache::prepare() {
             }
         }
 
+        int tplus = timestep+1;
+        assert(tplus >= 0);
+        if (numTime < tplus)
+            numTime = tplus;
+        if (portObjects[port].size() <= numTime) {
+            portObjects[port].resize(numTime+1);
+        }
+        portObjects[port][tplus].push_back(name0);
+
+        if (reorder)
+            continue;
+
         if (!m_outPort[port]->isConnected()) {
             //CERR << "skipping " << name0 << ", output " << port << " not connected" << std::endl;
             continue;
@@ -454,37 +535,53 @@ bool Cache::prepare() {
         if (timestep>=0 && timestep%step != 0)
             continue;
 
+        if (timestep>=0 && timestep<start)
+            continue;
+
+        if (timestep>=0 && timestep>stop)
+            continue;
+
         ++numObjects;
 
-        //CERR << "output to port " << port << ", " << num << " objects/arrays read" << std::endl;
-        //CERR << "output to port " << port << ", initial " << name0 << " of size " << objects[name0].size() << std::endl;
+        restoreObject(name0, port);
+    }
 
-        vecistreambuf<char> membuf(objects[name0]);
-        vistle::iarchive memar(membuf);
-        memar.setFetcher(fetcher);
-        //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;
-        Object::ptr obj(Object::loadObject(memar));
-        updateMeta(obj);
-        auto t = obj->getTimestep();
-        if (t >= 0)
-            obj->setTimestep(t/step);
-        auto nt = obj->getNumTimesteps();
-        if (nt >= 0)
-            obj->setNumTimesteps((nt+step-1)/step);
-        if (auto db = DataBase::as(obj)) {
-            if (auto cgrid = db->grid()) {
-                auto grid = std::const_pointer_cast<Object>(cgrid);
-                auto t = grid->getTimestep();
-                if (t >= 0)
-                    grid->setTimestep(t/step);
-                auto nt = grid->getNumTimesteps();
-                if (nt >= 0)
-                    grid->setNumTimesteps((nt+step-1)/step);
+    if (reorder) {
+
+        std::vector<int> timesteps;
+        timesteps.push_back(-1);
+        for (int timestep=0; timestep<numTime; ++timestep) {
+
+            if (timestep%step != 0)
+                continue;
+
+            if (timestep<start)
+                continue;
+
+            if (timestep>stop)
+                continue;
+
+            timesteps.push_back(timestep);
+        }
+
+        for (auto &timestep: timesteps) {
+            for (int port=0; port<NumPorts; ++port) {
+                if (!m_outPort[port]->isConnected()) {
+                    //CERR << "skipping " << name0 << ", output " << port << " not connected" << std::endl;
+                    continue;
+                }
+
+                const auto &o = portObjects[port][timestep+1];
+                for (auto &name0: o) {
+
+                    ++numObjects;
+
+                    restoreObject(name0, port);
+                }
             }
         }
-        passThroughObject(m_outPort[port], obj);
-        fetcher->releaseArrays();
     }
+
     sendInfo("restored %d objects", numObjects);
     objectTranslations = fetcher->objectTranslations();
     arrayTranslations = fetcher->arrayTranslations();
