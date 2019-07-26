@@ -5,6 +5,8 @@
 #include <core/grid.h>
 #include <core/database.h>
 #include <core/unstr.h>
+#include <core/coords.h>
+#include <core/coordswradius.h>
 
 class Assemble: public vistle::Module {
   static const int NumPorts = 1;
@@ -229,6 +231,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
 
     Triangles::ptr ntri;
     Indexed::ptr nidx;
+    Coords::ptr ncoords;
     Object::ptr ogrid;
     Normals::ptr nnormals;
     DataBase::ptr dout[NumPorts];
@@ -288,11 +291,11 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 }
             }
             clOff[n+1] = clOff[n] + tri->getNumCorners();
-            coordOff[n+1] = coordOff[n] + tri->getNumCoords();
 
             if (!ntri) {
                 ntri.reset(new Triangles(0, 0));
                 ogrid = ntri;
+                ncoords = nidx;
             } else {
                 assert(ogrid == ntri);
             }
@@ -310,7 +313,6 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
             }
             elOff[n+1] = elOff[n] + idx->getNumElements();
             clOff[n+1] = clOff[n] + idx->getNumCorners();
-            coordOff[n+1] = coordOff[n] + idx->getNumCoords();
 
             if (!nidx) {
                 nidx = idx->clone();
@@ -318,8 +320,22 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 nidx->resetCorners();
                 nidx->resetElements();
                 ogrid = nidx;
+                ncoords = nidx;
             } else {
                 assert(ogrid == nidx);
+            }
+        }
+
+        if (auto coords = Coords::as(grid)) {
+
+            coordOff[n+1] = coordOff[n] + coords->getNumCoords();
+            if (!ncoords) {
+                assert(!ogrid);
+                ncoords = coords->clone();
+                ncoords->resetArrays();
+                ogrid = ncoords;
+            } else {
+                assert(ogrid == ncoords);
             }
         }
 
@@ -357,6 +373,15 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
         auto nunstr = UnstructuredGrid::as(ogrid);
         if (nunstr) {
             nunstr->tl().resize(elOff[numobj]);
+        }
+    }
+    if (ncoords) {
+        ncoords->x().resize(coordOff[numobj]);
+        ncoords->y().resize(coordOff[numobj]);
+        ncoords->z().resize(coordOff[numobj]);
+        auto nrad = CoordsWithRadius::as(ogrid);
+        if (nrad) {
+            nrad->r().resize(coordOff[numobj]);
         }
     }
     if (nnormals) {
@@ -420,11 +445,8 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     return false;
                 }
             }
-            const Scalar *x=tri->x(), *y=tri->y(), *z=tri->z();
 
             Index *ncl = ntri->cl().data();
-            auto &nx=ntri->x(), &ny=ntri->y(), &nz=ntri->z();
-
             if (cl) {
                 Index num = tri->getNumCorners();
                 Index off = clOff[n];
@@ -433,12 +455,6 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     ncl[off+i] = cl[i]+coff;
                 }
             }
-
-            Index off = coordOff[n];
-            Index num = tri->getNumCoords();
-            memcpy(&nx[off], x, num*sizeof(*x));
-            memcpy(&ny[off], y, num*sizeof(*y));
-            memcpy(&nz[off], z, num*sizeof(*z));
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
             const Index *cl = idx->getNumCorners()>0 ? idx->cl() : nullptr;
@@ -451,12 +467,9 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                     return false;
                 }
             }
-            const Scalar *x=idx->x(), *y=idx->y(), *z=idx->z();
-
 
             Index *nel = nidx->el().data();
             Index *ncl = nidx->cl().data();
-            auto &nx=nidx->x(), &ny=nidx->y(), &nz=nidx->z();
 
             if (cl) {
                 Index num = idx->getNumCorners();
@@ -485,11 +498,24 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 nel[off+num] = el[num]+coff;
             }
 
+        }
+
+        if (auto coords = Coords::as(grid)) {
             Index off = coordOff[n];
-            Index num = idx->getNumCoords();
+            Index num = coords->getNumCoords();
+            const Scalar *x=coords->x(), *y=coords->y(), *z=coords->z();
+            auto &nx=ncoords->x(), &ny=ncoords->y(), &nz=ncoords->z();
+
             memcpy(&nx[off], x, num*sizeof(*x));
             memcpy(&ny[off], y, num*sizeof(*y));
             memcpy(&nz[off], z, num*sizeof(*z));
+            auto nrad = CoordsWithRadius::as(ogrid);
+            auto rad = CoordsWithRadius::as(grid);
+            if (rad && nrad) {
+                const Scalar *r=rad->r();
+                auto &nr=nrad->r();
+                memcpy(&nr[off], r, num*sizeof(*r));
+            }
         }
 
         if (ogrid && n==0) {
