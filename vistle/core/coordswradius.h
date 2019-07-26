@@ -17,6 +17,8 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
 
    shm<Scalar>::array &r() { return *(d()->r); }
    const Scalar *r() const { return m_r; }
+   void resetArrays() override;
+   void setSize(const Index size) override;
 
    private:
    mutable const Scalar *m_r;

@@ -32,6 +32,18 @@ bool CoordsWithRadius::checkImpl() const {
    return true;
 }
 
+void CoordsWithRadius::resetArrays() {
+    Base::resetArrays();
+    d()->r = ShmVector<Scalar>();
+    d()->r.construct();
+}
+
+void CoordsWithRadius::setSize(const Index size) {
+    Base::setSize(size);
+    d()->r->resize(size);
+}
+
+
 void CoordsWithRadius::Data::initData() {
 }
 
