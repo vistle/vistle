@@ -77,13 +77,7 @@ bool IsoSurface::changeParameter(const Parameter* param) {
     bool ok = isocontrol.changeParameter(param);
 
 #ifndef CUTTINGSURFACE
-    if (param == m_isopoint) {
-        setParameter(m_pointOrValue, (Integer)Point);
-        setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
-    } else if (param == m_isovalue) {
-        setParameter(m_pointOrValue, (Integer)Value);
-        setReducePolicy(message::ReducePolicy::Locally);
-    } else if (param == m_pointOrValue) {
+    if (param == m_pointOrValue) {
         if (m_pointOrValue->getValue() == Point)
             setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
         else

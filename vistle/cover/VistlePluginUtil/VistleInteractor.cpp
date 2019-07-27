@@ -444,7 +444,28 @@ void VistleInteractor::setStringParam(const char *name, const char *val)
    sendParamMessage(sparam);
 }
 
-/// set choice parameter, pos starts with 1
+/// set choice parameter, pos starts with 0
+void VistleInteractor::setChoiceParam(const char *name, int pos)
+{
+   static std::vector<std::string> s_choices;
+   static std::vector<const char *> s_labels;
+
+   auto param = findParam(name);
+   if (!param)
+      return;
+   if (param->presentation() != Parameter::Choice)
+      return;
+
+   if (auto sparam = std::dynamic_pointer_cast<StringParameter>(param)) {
+       std::cerr << "cannot set string choice parameter based on position" << std::endl;
+   } else if (auto iparam = std::dynamic_pointer_cast<IntParameter>(param)) {
+      iparam->setValue(pos);
+      sendParamMessage(iparam);
+   } else {
+      return;
+   }
+}
+
 void VistleInteractor::setChoiceParam(const char *name, int num , const char * const *list, int pos)
 {
    static std::vector<std::string> s_choices;
