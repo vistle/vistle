@@ -39,8 +39,6 @@ class ToUnstructured : public vistle::Module {
    void compute_rectilinearVecs(vistle::RectilinearGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
                                    const Cartesian3<vistle::Index> numVertices);
 
-   // private constant members
-   const vistle::Index M_NUM_CORNERS_HEXAHEDRON = 8;
 };
 
 

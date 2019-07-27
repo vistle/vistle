@@ -81,9 +81,9 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
    V_ENUM_SET_CHOICES(m_dataMode[2], DataMode);
    m_dataScale[2] = addFloatParameter("data_scale_vec_z", "data scale factor", 1.);
 
-   m_size[0] = addIntParameter("size_x", "number of cells/block in x-direction", 10);
-   m_size[1] = addIntParameter("size_y", "number of cells/block in y-direction", 10);
-   m_size[2] = addIntParameter("size_z", "number of cells/block in z-direction", 10);
+   m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10);
+   m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10);
+   m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10);
 
    m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
    m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
@@ -158,7 +158,10 @@ void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy,
 void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
     Vector dist=max-min;
     for (int c=0; c<3; ++c) {
-        dist[c] /= dim[c]-1;
+        if (dim[c] > 1)
+            dist[c] /= dim[c]-1;
+        else
+            dist[c] = 0.;
     }
 //#pragma omp parallel for
     for (ssize_t i=0; i<dim[0]; ++i) {
@@ -196,7 +199,12 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         maxBlocks[i] = m_blocks[i]->getValue();
         bdist[i] = (gmax[i]-gmin[i])/maxBlocks[i];
         bmin[i] = gmin[i]+currBlock[i]*bdist[i];
-        dist[i] = bdist[i]/m_size[i]->getValue();
+        if (m_size[i]->getValue() > 0) {
+            dist[i] = bdist[i]/m_size[i]->getValue();
+        } else {
+            bdist[i] = 0.;
+            dist[i] = 0.;
+        }
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0]*dim[1]*dim[2];
@@ -268,6 +276,19 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         }
         numVert = dim[0]*dim[1]*dim[2];
 
+        Index numCellVert = 1;
+        int ndim = 0;
+        if (dim[2]>1) {
+            numCellVert = 8;
+            ndim = 3;
+        } else if (dim[1]>1) {
+            numCellVert = 4;
+            ndim = 2;
+        } else if (dim[0]>1) {
+            numCellVert = 2;
+            ndim = 1;
+        }
+
         for (int c=0; c<3; ++c) {
             min[c] -= ghostWidth[c][0]*dist[c];
             max[c] += ghostWidth[c][1]*dist[c];
@@ -306,35 +327,49 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
 
         } else if (geoMode == Unstructured_Grid) {
 
-            Index numElem = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
-            UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*8, numVert));
-            const Index nx = dim[0]-1;
-            const Index ny = dim[1]-1;
-            const Index nz = dim[2]-1;
+            const Index nx = std::max(dim[0]-1, Index(1));
+            const Index ny = std::max(dim[1]-1, Index(1));
+            const Index nz = std::max(dim[2]-1, Index(1));
+            Index numElem = nx * ny * nz;
+            UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*numCellVert, numVert));
             Index elem = 0;
             Index idx = 0;
             Index *cl = u->cl().data();
             Index *el = u->el().data();
             unsigned char *tl = u->tl().data();
 
+            unsigned type = UnstructuredGrid::POINT;
+            if (dim[2] > 1) {
+                type = UnstructuredGrid::HEXAHEDRON;
+            } else if (dim[1] > 1) {
+                type = UnstructuredGrid::QUAD;
+            } else if (dim[0] > 1) {
+                type = UnstructuredGrid::BAR;
+            }
+
             for (Index ix=0; ix<nx; ++ix) {
                 for (Index iy=0; iy<ny; ++iy) {
                     for (Index iz=0; iz<nz; ++iz) {
-                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
-                        cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
-                        cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
-                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);       // 3    4 -------- 5  |
-                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);       // 4    |  3-------|--2
-                        cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
-                        cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
-                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
+                        cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);
+                        if (dim[0] > 1) {
+                            cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);
+                            if (dim[1] > 1) {
+                                cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);
+                                cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);
+                                if (dim[2] > 1) {
+                                    cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);
+                                    cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);
+                                }
+                            }
+                        }
 
+                        tl[elem] = type;
                         if ((ix < ghostWidth[0][0] || ix+ghostWidth[0][1] >= nx)
                                 || (iy < ghostWidth[1][0] || iy+ghostWidth[1][1] >= ny)
                                 || (iz < ghostWidth[2][0] || iz+ghostWidth[2][1] >= nz)) {
-                            tl[elem] = UnstructuredGrid::GHOST_HEXAHEDRON;
-                        } else {
-                            tl[elem] = UnstructuredGrid::HEXAHEDRON;
+                            tl[elem] |= UnstructuredGrid::GHOST_BIT;
                         }
 
                         ++elem;

@@ -264,7 +264,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
-    std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
+    auto cl = cellVertices(elem, m_numDivisions);
     Vector corners[8];
     for (int i=0; i<8; ++i) {
         corners[i][0] = x[cl[i]];
@@ -363,8 +363,8 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
        return Interpolator(weights, indices);
    }
 
-   const Index nvert = 8;
-   std::array<Index,nvert> cl = cellVertices(elem, m_numDivisions);
+   auto cl = cellVertices(elem, m_numDivisions);
+   Index nvert = cl.size();
 
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
    Vector corners[nvert];
@@ -383,7 +383,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
            indices[i] = cl[i];
            weights[i] = w;
        }
-   } else if (mode == Linear) {
+   } else if (mode == Linear && nvert == 8) {
        vassert(nvert == 8);
        for (Index i=0; i<nvert; ++i) {
            indices[i] = cl[i];

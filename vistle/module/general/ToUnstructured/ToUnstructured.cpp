@@ -10,6 +10,11 @@
 
 using namespace vistle;
 
+const vistle::Index M_NUM_CORNERS_HEXAHEDRON = 8;
+const vistle::Index M_NUM_CORNERS_QUAD = 4;
+const vistle::Index M_NUM_CORNERS_BAR = 2;
+const vistle::Index M_NUM_CORNERS_POINT = 1;
+
 //-------------------------------------------------------------------------
 // MACROS
 //-------------------------------------------------------------------------
@@ -76,9 +81,25 @@ bool ToUnstructured::compute() {
     // * all Structured grids share the same algorithms for generating their tl, cl and el.
     // * x, y, z members are unique, however
 
+    const Index dim[3] = { grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2) };
+    const Index nx = dim[0]-1;
+    const Index ny = dim[1]-1;
+    const Index nz = dim[2]-1;
+
+    unsigned char CellType = UnstructuredGrid::POINT;
+    if (nz > 0) {
+        CellType = UnstructuredGrid::HEXAHEDRON;
+    } else if (ny > 0) {
+        CellType = UnstructuredGrid::QUAD;
+    } else if (nx > 0) {
+        CellType = UnstructuredGrid::BAR;
+    }
+
+    int NumCellCorners = UnstructuredGrid::NumVertices[CellType];
+
     // instantiate output unstructured grid data object
     const Index numElements = grid->getNumElements();
-    const Index numCorners = grid->getNumElements() * M_NUM_CORNERS_HEXAHEDRON;
+    const Index numCorners = grid->getNumElements() * NumCellCorners;
     const Index numVerticesTotal = grid->getNumDivisions(0) * grid->getNumDivisions(1) * grid->getNumDivisions(2);
     const Cartesian3<Index> numVertices = Cartesian3<Index>(
                 grid->getNumDivisions(0),
@@ -91,36 +112,62 @@ bool ToUnstructured::compute() {
 
     // construct type list and element list
     for (Index i = 0; i < numElements; i++) {
-        unstrGridOut->tl()[i] = grid->isGhostCell(i) ? UnstructuredGrid::GHOST_HEXAHEDRON : UnstructuredGrid::HEXAHEDRON;
-        unstrGridOut->el()[i] = i * M_NUM_CORNERS_HEXAHEDRON;
+        unstrGridOut->tl()[i] = grid->isGhostCell(i) ? (CellType | UnstructuredGrid::GHOST_BIT) : CellType;
+        unstrGridOut->el()[i] = i * NumCellCorners;
     }
 
     // add total at end
-    unstrGridOut->el()[numElements] = numElements * M_NUM_CORNERS_HEXAHEDRON;
-
+    unstrGridOut->el()[numElements] = numElements * NumCellCorners;
 
     // construct connectivity list (all hexahedra)
-    const Index dim[3] = { grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2) };
-    const Index nx = dim[0]-1;
-    const Index ny = dim[1]-1;
-    const Index nz = dim[2]-1;
-    Index el = 0;
-    for (Index ix=0; ix<nx; ++ix) {
-        for (Index iy=0; iy<ny; ++iy) {
-            for (Index iz=0; iz<nz; ++iz) {
-                const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
-                unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
-                unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
-                unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
-                unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);       // 3    4 -------- 5  |
-                unstrGridOut->cl()[baseInsertionIndex+4] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);       // 4    |  3-------|--2
-                unstrGridOut->cl()[baseInsertionIndex+5] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
-                unstrGridOut->cl()[baseInsertionIndex+6] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
-                unstrGridOut->cl()[baseInsertionIndex+7] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
+    if (nz > 0) {
+        // 3-dim
+        Index el = 0;
+        for (Index ix=0; ix<nx; ++ix) {
+            for (Index iy=0; iy<ny; ++iy) {
+                for (Index iz=0; iz<nz; ++iz) {
+                    const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
+                    unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
+                    unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
+                    unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
+                    unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);       // 3    4 -------- 5  |
+                    unstrGridOut->cl()[baseInsertionIndex+4] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);       // 4    |  3-------|--2
+                    unstrGridOut->cl()[baseInsertionIndex+5] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
+                    unstrGridOut->cl()[baseInsertionIndex+6] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
+                    unstrGridOut->cl()[baseInsertionIndex+7] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
+
+                    ++el;
+                }
+            }
+        }
+    } else if (ny > 0) {
+        // 2-dim
+        Index el = 0;
+        for (Index ix=0; ix<nx; ++ix) {
+            for (Index iy=0; iy<ny; ++iy) {
+                const Index baseInsertionIndex = el * M_NUM_CORNERS_QUAD;
+                unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   0, dim);
+                unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   0, dim);
+                unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, 0, dim);
+                unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, 0, dim);
 
                 ++el;
             }
         }
+    } else if (nx > 0) {
+        // 1-dim
+        Index el = 0;
+        for (Index ix=0; ix<nx; ++ix) {
+            const Index baseInsertionIndex = el * M_NUM_CORNERS_BAR;
+            unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   0, 0, dim);
+            unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, 0, 0, dim);
+
+            ++el;
+        }
+    } else {
+        // 0-dim
+        unstrGridOut->cl()[0] = 0;
+
     }
 
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type

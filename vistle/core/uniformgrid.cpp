@@ -26,7 +26,10 @@ void UniformGrid::refreshImpl() const {
         m_numDivisions[c] = d ? d->numDivisions[c] : 1;
         m_min[c] = d ? d->min[c] : 0.f;
         m_max[c] = d ? d->max[c] : 0.f;
-        m_dist[c] = (m_max[c]-m_min[c])/(m_numDivisions[c]-1);
+        if (m_numDivisions[c] > 1)
+            m_dist[c] = (m_max[c]-m_min[c])/(m_numDivisions[c]-1);
+        else
+            m_dist[c] = 0;
 
         m_ghostLayers[c][0] = d ? d->ghostLayers[c][0] : 0;
         m_ghostLayers[c][1] = d ? d->ghostLayers[c][1] : 0;
@@ -231,14 +234,14 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
    }
 
    std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-   std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
+   auto cl = cellVertices(elem, m_numDivisions);
 
    Vector corner(m_min[0]+n[0]*m_dist[0],
                m_min[1]+n[1]*m_dist[1],
                m_min[2]+n[2]*m_dist[2]);
    const Vector diff = point-corner;
 
-   const Index nvert = 8;
+   const Index nvert = cl.size();
    std::vector<Index> indices((mode==Linear || mode==Mean) ? nvert : 1);
    std::vector<Scalar> weights((mode==Linear || mode==Mean) ? nvert : 1);
 
@@ -248,7 +251,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
            indices[i] = cl[i];
            weights[i] = w;
        }
-   } else if (mode == Linear) {
+   } else if (mode == Linear && nvert == 8) {
        vassert(nvert == 8);
        for (Index i=0; i<nvert; ++i) {
            indices[i] = cl[i];

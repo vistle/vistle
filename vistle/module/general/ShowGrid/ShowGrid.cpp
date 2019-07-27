@@ -31,6 +31,8 @@ ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm
    addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
    addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
    addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
+   addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
+   addIntParameter("triangle", "Show triandle", 1, Parameter::Boolean);
    m_CellNrMin = addIntParameter("Show Cells from Cell Nr. :", "Show Cell Nr.", -1);
    m_CellNrMax = addIntParameter("Show Cells to Cell Nr. :", "Show Cell Nr.", -1);
 
@@ -52,6 +54,8 @@ bool ShowGrid::compute() {
    const bool showpri = getIntParameter("prism");
    const bool showhex = getIntParameter("hexahedron");
    const bool showpol = getIntParameter("polyhedron");
+   const bool showqua = getIntParameter("quad");
+   const bool showtri = getIntParameter("triangle");
    const Integer cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
    const Integer cellnrmax = getIntParameter("Show Cells to Cell Nr. :");
 
@@ -102,10 +106,16 @@ bool ShowGrid::compute() {
               if (!showhex) { continue; } break;
           case UnstructuredGrid::POLYHEDRON:
               if (!showpol) { continue; } break;
+          case UnstructuredGrid::QUAD:
+              if (!showqua) { continue; } break;
+          case UnstructuredGrid::TRIANGLE:
+              if (!showtri) { continue; } break;
           }
 
           const Index begin=unstr->el()[index], end=unstr->el()[index+1];
           switch(type) {
+          case UnstructuredGrid::QUAD:
+          case UnstructuredGrid::TRIANGLE:
           case UnstructuredGrid::TETRAHEDRON:
           case UnstructuredGrid::PYRAMID:
           case UnstructuredGrid::PRISM:
@@ -144,13 +154,19 @@ bool ShowGrid::compute() {
        if (cellnrmax >= 0)
            end = std::min(cellnrmax+1, (Integer)end);
 
+       int d = StructuredGridBase::dimensionality(dims);
+       const unsigned char type = d==3 ? UnstructuredGrid::HEXAHEDRON : d==2 ? UnstructuredGrid::QUAD : d==1 ? UnstructuredGrid::BAR : UnstructuredGrid::POINT;
+
        for (Index index = begin; index < end; ++index) {
+           if (type == UnstructuredGrid::HEXAHEDRON && !showhex)
+               continue;
+           if (type == UnstructuredGrid::QUAD && !showqua)
+               continue;
            bool ghost = str->isGhostCell(index);
            const bool show = ((showgho && ghost) || (shownor && !ghost));
            if (!show)
                continue;
            auto verts = StructuredGridBase::cellVertices(index, dims);
-           const unsigned char type = UnstructuredGrid::HEXAHEDRON;
            const auto numFaces = UnstructuredGrid::NumFaces[type];
            for (int f=0; f<numFaces; ++f) {
                const int nCorners = UnstructuredGrid::FaceSizes[type][f];

@@ -238,7 +238,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
    }
 
    std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-   std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
+   auto cl = cellVertices(elem, m_numDivisions);
 
    Vector corner0(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
    Vector corner1(m_coords[0][n[0]+1], m_coords[1][n[1]+1], m_coords[2][n[2]+1]);
@@ -255,7 +255,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
            indices[i] = cl[i];
            weights[i] = w;
        }
-   } else if (mode == Linear) {
+   } else if (mode == Linear && nvert == 8) {
        vassert(nvert == 8);
        for (Index i=0; i<nvert; ++i) {
            indices[i] = cl[i];
