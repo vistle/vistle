@@ -91,6 +91,8 @@ if (APPLE)
   set(gui_SOURCES ${gui_SOURCES} ${MACOSX_BUNDLE_ICON_FILE})
   set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
   set(gui_name Vistle)
+  set(gui_SOURCES ${gui_SOURCES} macosutils.m)
+  set(gui_HEADERS ${gui_SOURCES} macosutils.h)
 endif(APPLE)
 
 
@@ -114,3 +116,7 @@ target_link_libraries(${gui_name}
   vistle_propertybrowser
   vistle_remotefiledialog
 )
+
+if (APPLE)
+  target_link_libraries(${gui_name} "-framework AppKit")
+endif()
