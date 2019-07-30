@@ -42,7 +42,7 @@ target_link_libraries(vistle_userinterface
         vistle_util
 )
 
-pybind11_add_module(_vistle ${userinterface_SOURCES} ${userinterface_HEADERS})
+pybind11_add_module(_vistle NO_EXTRAS ${userinterface_SOURCES} ${userinterface_HEADERS})
 target_link_libraries(_vistle PRIVATE
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
