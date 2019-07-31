@@ -16,13 +16,17 @@ std::vector<char> createPayload(const std::vector<FileInfo> &info) {
 
 std::vector<FileInfo> unpackFileInfos(const std::vector<char> &payload) {
     std::vector<FileInfo> info;
-    vecistreambuf<char> buf(payload);
-    iarchive ar(buf);
-    Index size=0;
-    ar & size;
-    info.resize(size);
-    for (auto &i: info)
-        ar & i;
+    try {
+        vecistreambuf<char> buf(payload);
+        iarchive ar(buf);
+        Index size=0;
+        ar & size;
+        info.resize(size);
+        for (auto &i: info)
+            ar & i;
+    } catch (std::exception &ex) {
+        std::cerr << "unpackFileInfos: unhandled exception " << ex.what() << std::endl;
+    }
     return info;
 }
 
@@ -37,9 +41,13 @@ std::vector<char> createPayload(const SystemInfo &info)
 SystemInfo unpackSystemInfo(const std::vector<char> &payload)
 {
     SystemInfo info;
-    vecistreambuf<char> buf(payload);
-    iarchive ar(buf);
-    ar & info;
+    try {
+        vecistreambuf<char> buf(payload);
+        iarchive ar(buf);
+        ar & info;
+    } catch (std::exception &ex) {
+        std::cerr << "unpackSystemInfo: unhandled exception " << ex.what() << std::endl;
+    }
     return info;
 }
 
@@ -56,13 +64,17 @@ std::vector<char> packFileList(const std::vector<std::string> &files)
 std::vector<std::string> unpackFileList(const std::vector<char> &payload)
 {
     std::vector<std::string> files;
-    vecistreambuf<char> buf(payload);
-    iarchive ar(buf);
-    Index size=0;
-    ar & size;
-    files.resize(size);
-    for (auto &f: files)
-        ar & f;
+    try {
+        vecistreambuf<char> buf(payload);
+        iarchive ar(buf);
+        Index size=0;
+        ar & size;
+        files.resize(size);
+        for (auto &f: files)
+            ar & f;
+    } catch (std::exception &ex) {
+        std::cerr << "unpackFileList: unhandled exception " << ex.what() << std::endl;
+    }
     return files;
 }
 
