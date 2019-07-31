@@ -1,6 +1,7 @@
 #define ENUMS_FOR_PYTHON
 
 #include <cstdio>
+#include <thread>
 
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
