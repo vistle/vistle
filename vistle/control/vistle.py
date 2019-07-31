@@ -291,3 +291,56 @@ def load(filename = None):
 
    setLoadedFile(filename)
    setStatus("Workflow loaded: "+filename)
+
+
+# re-export functions from _vistle
+source = _vistle.source
+spawn = _vistle.spawn
+spawnAsync = _vistle.spawnAsync
+waitForSpawn = _vistle.waitForSpawn
+kill = _vistle.kill
+connect = _vistle.connect
+disconnect = _vistle.disconnect
+compute = _vistle.compute
+interrupt = _vistle.interrupt
+quit = _vistle.quit
+trace = _vistle.trace
+barrier = _vistle.barrier
+requestTunnel = _vistle.requestTunnel
+removeTunnel = _vistle.removeTunnel
+printInfo = _vistle.printInfo
+printWarning = _vistle.printWarning
+printError = _vistle.printError
+setStatus = _vistle.setStatus
+clearStatus = _vistle.clearStatus
+setLoadedFile = _vistle.setLoadedFile
+getLoadedFile = _vistle.getLoadedFile
+setParam = _vistle.setParam
+setIntParam = _vistle.setIntParam
+setFloatParam = _vistle.setFloatParam
+setStringParam = _vistle.setStringParam
+setVectorParam = _vistle.setVectorParam
+setIntVectorParam = _vistle.setIntVectorParam
+applyParameters = _vistle.applyParameters
+getAvailable = _vistle.getAvailable
+getRunning = _vistle.getRunning
+getBusy = _vistle.getBusy
+getModuleName = _vistle.getModuleName
+getInputPorts = _vistle.getInputPorts
+waitForHub = _vistle.waitForHub
+waitForHubs = _vistle.waitForHubs
+waitForNamedHubs = _vistle.waitForNamedHubs
+getMasterHub = _vistle.getMasterHub
+getVistleSession = _vistle.getVistleSession
+getAllHubs = _vistle.getAllHubs
+getHub = _vistle.getHub
+getOutputPorts = _vistle.getOutputPorts
+getConnections = _vistle.getConnections
+getParameters = _vistle.getParameters
+getParameterType = _vistle.getParameterType
+isParameterDefault = _vistle.isParameterDefault
+getIntParam = _vistle.getIntParam
+getFloatParam = _vistle.getFloatParam
+getVectorParam = _vistle.getVectorParam
+getIntVectorParam = _vistle.getIntVectorParam
+getStringParam = _vistle.getStringParam
