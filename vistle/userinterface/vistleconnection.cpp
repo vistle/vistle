@@ -62,6 +62,11 @@ bool VistleConnection::done() const {
    return m_done;
 }
 
+bool VistleConnection::started() const {
+   mutex_lock lock(m_mutex);
+   return m_started;
+}
+
 void VistleConnection::cancel() {
 
    if (!done()) {
@@ -83,16 +88,17 @@ void VistleConnection::cancel() {
 
 void VistleConnection::operator()() {
 
+   mutex_lock lock(m_mutex);
+   m_started = true;
+   lock.unlock();
    while(m_ui.dispatch()) {
-      mutex_lock lock(m_mutex);
+      lock.lock();
       if (m_done) {
          break;
       }
+      lock.unlock();
    }
-   {
-      mutex_lock lock(m_mutex);
-      m_done = true;
-   }
+   m_done = true;
 }
 
 void VistleConnection::setQuitOnExit(bool quit) {

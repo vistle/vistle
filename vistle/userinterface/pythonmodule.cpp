@@ -37,7 +37,6 @@ namespace py = pybind11;
 
 // if embedded in Vistle hub
 #include <control/hub.h>
-#define PORTMANAGER (*Hub::the().stateTracker().portTracker())
 #define MODULEMANAGER (Hub::the().stateTracker())
 #define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
 
@@ -45,11 +44,12 @@ namespace py = pybind11;
 
 // if part of a user interface
 #include "vistleconnection.h"
-#define PORTMANAGER (*(PythonModule::the().vistleConnection().ui().state().portTracker()))
 #define MODULEMANAGER ((PythonModule::the().vistleConnection().ui().state()))
 #define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = PythonModule::the().vistleConnection().locked()
 
 #endif
+
+#define PORTMANAGER (*MODULEMANAGER.portTracker())
 
 #ifndef EMBED_PYTHON
 static std::unique_ptr<vistle::VistleConnection> connection;
@@ -637,6 +637,10 @@ static bool sessionConnect(const std::string host, unsigned short port) {
     vistleThread.reset(new std::thread(std::ref(*connection)));
     if (!vistleThread)
         return false;
+
+    while (!userinterface->isInitialized()) {
+        usleep(100);
+    }
 
     return true;
 }

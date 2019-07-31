@@ -41,6 +41,8 @@ class V_UIEXPORT UserInterface {
    UserInterface(const std::string &host, const unsigned short port, StateObserver *observer=nullptr);
    virtual ~UserInterface();
 
+   bool isInitialized() const;
+
    void stop();
    void cancel();
 
@@ -95,8 +97,10 @@ class V_UIEXPORT UserInterface {
    typedef std::map<message::uuid_t, std::shared_ptr<RequestedMessage>> MessageMap;
    MessageMap m_messageMap;
    std::mutex m_messageMutex; //< protect access to m_messageMap
-   bool m_locked;
+   bool m_locked = false;
    std::vector<message::Buffer> m_sendQueue;
+   mutable std::mutex m_mutex;
+   bool m_initialized = false;
 
    int m_fileBrowserCount = 0;
    std::vector<FileBrowser *> m_fileBrowser;

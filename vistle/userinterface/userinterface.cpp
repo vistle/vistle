@@ -24,7 +24,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_isConnected(false)
 , m_stateTracker("UI state")
 , m_socket(m_ioService)
-, m_locked(false)
+, m_locked(true)
 {
    message::DefaultSender::init(message::Id::UI, 0);
 
@@ -54,11 +54,15 @@ void UserInterface::stop() {
 
 void UserInterface::cancel() {
 
-   m_socket.cancel();
-   if (isConnected()) {
-      m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-   }
-   m_ioService.stop();
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_initialized = false;
+    }
+    m_socket.cancel();
+    if (isConnected()) {
+        m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+    }
+    m_ioService.stop();
 }
 
 int UserInterface::id() const {
@@ -143,7 +147,7 @@ bool UserInterface::dispatch() {
 
 bool UserInterface::sendMessage(const message::Message &message, const std::vector<char> *payload) {
 
-   if (m_locked) {
+   if (m_locked && message.type() != message::IDENTIFY) {
       assert(!payload);
       m_sendQueue.emplace_back(message);
       return true;
@@ -184,6 +188,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
          m_id = id->getId();
          assert(m_id > 0);
          message::DefaultSender::init(id->senderId(), -m_id);
+         std::lock_guard<std::mutex> lock(m_mutex);
+         m_initialized = true;
          //std::cerr << "received new UI id: " << m_id << std::endl;
          break;
       }
@@ -301,8 +307,13 @@ void UserInterface::removeFileBrowser(FileBrowser *browser)
 
 UserInterface::~UserInterface() {
 
-   std::cerr << "  userinterface [" << host() << "] [" << id()
-             << "] quit" << std::endl;
+    std::cerr << "  userinterface [" << host() << "] [" << id() << "] quit" << std::endl;
+}
+
+bool UserInterface::isInitialized() const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_initialized;
 }
 
 FileBrowser::~FileBrowser() {
