@@ -46,4 +46,4 @@ add_subdirectory(Variant)
 add_subdirectory(VecToScalar)
 add_subdirectory(VectorField)
 #add_subdirectory(WriteHDF5)
-
+add_subdirectory(ReadWRFChem)
