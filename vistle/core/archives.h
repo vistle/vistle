@@ -84,9 +84,10 @@ typedef std::shared_ptr<const Object> obj_const_ptr;
 
 struct SubArchiveDirectoryEntry {
     std::string name;
-    bool is_array;
-    size_t size;
-    char *data;
+    bool is_array = false;
+    size_t size = 0;
+    char *data = nullptr;
+    std::unique_ptr<std::vector<char>> storage;
 
     SubArchiveDirectoryEntry(): is_array(false), size(0), data(nullptr) {}
     SubArchiveDirectoryEntry(const std::string &name, bool is_array, size_t size, char *data)
@@ -232,7 +233,13 @@ class V_COREEXPORT Fetcher {
 public:
     virtual ~Fetcher();
     virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) = 0;
-    virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) = 0;
+    virtual void requestObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) = 0;
+
+    virtual bool renameObjects() const;
+    virtual std::string translateObjectName(const std::string &name) const;
+    virtual std::string translateArrayName(const std::string &name) const;
+    virtual void registerObjectNameTranslation(const std::string &arname, const std::string &name);
+    virtual void registerArrayNameTranslation(const std::string &arname, const std::string &name);
 };
 
 
@@ -244,30 +251,45 @@ public:
     boost_iarchive(std::streambuf &bsb, unsigned int flags=0);
     ~boost_iarchive();
 
+    std::string translateObjectName(const std::string &name) const;
+    std::string translateArrayName(const std::string &name) const;
+    void registerObjectNameTranslation(const std::string &arname, const std::string &name) const;
+    void registerArrayNameTranslation(const std::string &arname, const std::string &name) const;
+
     void setFetcher(std::shared_ptr<Fetcher> fetcher);
     void setCurrentObject(ObjectData *data);
     ObjectData *currentObject() const;
+    std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    ShmVector<T> getArray(const std::string &name, const std::function<void()> &completeCallback) const {
-        auto arr = Shm::the().getArrayFromName<T>(name);
-        if (!arr) {
+    ShmVector<T> getArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+        std::string name = translateArrayName(arname);
+        ShmVector<T> arr;
+        if (!name.empty())
+            arr = Shm::the().getArrayFromName<T>(name);
+        if (arr) {
+            if (completeCallback)
+                completeCallback();
+        } else {
             assert(m_fetcher);
-            m_fetcher->requestArray(name, shm<T>::array::typeId(), completeCallback);
+            m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
+            name = translateArrayName(arname);
             arr = Shm::the().getArrayFromName<T>(name);
         }
         return arr;
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const;
+    obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
 
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 
 private:
+    bool m_rename = false;
     std::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject = nullptr;
     std::function<void()> m_completer;
+    std::map<std::string, std::string> m_transObject, m_transArray;
 };
 #endif
 
@@ -323,29 +345,44 @@ public:
     yas_iarchive(Stream &mi, unsigned int flags=0);
     ~yas_iarchive();
 
+    std::string translateObjectName(const std::string &name) const;
+    std::string translateArrayName(const std::string &name) const;
+    void registerObjectNameTranslation(const std::string &arname, const std::string &name) const;
+    void registerArrayNameTranslation(const std::string &arname, const std::string &name) const;
+
     void setFetcher(std::shared_ptr<Fetcher> fetcher);
     void setCurrentObject(ObjectData *data);
     ObjectData *currentObject() const;
+    std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    ShmVector<T> getArray(const std::string &name, const std::function<void()> &completeCallback) const {
-        auto arr = Shm::the().getArrayFromName<T>(name);
-        if (!arr) {
+    ShmVector<T> getArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+        std::string name = translateArrayName(arname);
+        ShmVector<T> arr;
+        if (!name.empty())
+            arr = Shm::the().getArrayFromName<T>(name);
+        if (arr) {
+            if (completeCallback)
+                completeCallback();
+        } else {
             assert(m_fetcher);
-            m_fetcher->requestArray(name, shm<T>::array::typeId(), completeCallback);
+            m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
+            name = translateArrayName(arname);
             arr = Shm::the().getArrayFromName<T>(name);
         }
         return arr;
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const;
+    obj_const_ptr getObject(const std::string &name, const std::function<void (Object::const_ptr)> &completeCallback) const;
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 
 private:
+    bool m_rename = false;
     std::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject = nullptr;
     std::function<void()> m_completer;
+    std::map<std::string, std::string> m_transObject, m_transArray;
 };
 #endif
 

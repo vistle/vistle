@@ -15,6 +15,10 @@ shm_name_t::shm_name_t(const std::string &s) {
    name[len] = '\0';
 }
 
+std::string shm_name_t::str() const {
+   return name.data();
+}
+
 shm_name_t::operator const char *() const {
    return name.data();
 }
@@ -24,7 +28,7 @@ shm_name_t::operator char *() {
 }
 
 shm_name_t::operator std::string () const {
-   return name.data();
+   return str();
 }
 
 bool shm_name_t::operator==(const std::string &rhs) const {

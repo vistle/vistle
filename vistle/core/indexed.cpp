@@ -12,6 +12,11 @@ Indexed::Indexed(const Index numElements, const Index numCorners,
     refreshImpl();
 }
 
+bool Indexed::isEmpty() {
+
+   return getNumElements()==0 || getNumCorners()==0;
+}
+
 bool Indexed::isEmpty() const {
 
    return getNumElements()==0 || getNumCorners()==0;
@@ -153,6 +158,8 @@ void Indexed::createVertexOwnerList() const {
 
    if (hasVertexOwnerList())
       return;
+
+   refresh();
 
    Index numelem=getNumElements();
    Index numcoord=getNumVertices();
@@ -356,6 +363,8 @@ void Indexed::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
     m_el = (d && d->el.valid()) ? d->el->data() : nullptr;
     m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
+    m_numEl = (d && d->el.valid()) ? d->el->size()-1 : 0;
+    m_numCl = (d && d->cl.valid()) ? d->cl->size() : 0;
 }
 
 void Indexed::Data::initData() {
@@ -394,9 +403,14 @@ Indexed::Data *Indexed::Data::create(const std::string &objId, Type id,
 }
 
 
-Index Indexed::getNumElements() const {
+Index Indexed::getNumElements() {
 
     return d()->el->size()-1;
+}
+
+Index Indexed::getNumElements() const {
+
+    return m_numEl;
 }
 
 void Indexed::resetElements() {
@@ -405,19 +419,19 @@ void Indexed::resetElements() {
     (*d()->el)[0] = 0;
 }
 
-Index Indexed::getNumCorners() const {
+Index Indexed::getNumCorners() {
 
     return d()->cl->size();
+}
+
+Index Indexed::getNumCorners() const {
+
+    return m_numCl;
 }
 
 void Indexed::resetCorners() {
     d()->cl = ShmVector<Index>();
     d()->cl.construct();
-}
-
-Index Indexed::getNumVertices() const {
-
-    return getSize();
 }
 
 Object::Type Indexed::type() {

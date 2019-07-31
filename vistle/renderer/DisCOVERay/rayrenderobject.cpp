@@ -30,6 +30,8 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 : vistle::RenderObject(senderId, senderPort, container, geometry, normals, texture)
 , data(new ispc::RenderObjectData)
 {
+   updateBounds();
+
    data->device = device;
    data->scene = nullptr;
    data->geomID = RTC_INVALID_GEOMETRY_ID;

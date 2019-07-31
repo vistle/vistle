@@ -147,6 +147,10 @@ bool Tracer::prepare(){
     data_in0.clear();
     data_in1.clear();
 
+    m_gridAttr.clear();
+    m_data0Attr.clear();
+    m_data1Attr.clear();
+
     return true;
 }
 
@@ -196,7 +200,9 @@ bool Tracer::compute() {
        celltree.resize(numSteps+1);
        data_in0.resize(numSteps+1);
        data_in1.resize(numSteps+1);
+    }
 
+    if (m_gridAttr.size() < numSteps+1) {
        m_gridAttr.resize(numSteps+1);
        m_data0Attr.resize(numSteps+1);
        m_data1Attr.resize(numSteps+1);

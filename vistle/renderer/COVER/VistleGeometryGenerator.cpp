@@ -37,6 +37,8 @@
 #include <PluginUtil/Tipsify.h>
 #endif
 
+//#define BUILD_KDTREES
+
 namespace  {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
@@ -529,6 +531,9 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
 
 osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
+   if (m_ro)
+      m_ro->updateBounds();
+
    if (!m_geo)
       return NULL;
 
@@ -962,6 +967,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 #ifdef COVER_PLUGIN
        opencover::cover->setRenderStrategy(d.get());
 
+#ifdef BUILD_KDTREES
 #if (OSG_VERSION_GREATER_OR_EQUAL(3, 4, 0))
        if (auto geom = d->asGeometry()) {
            osg::ref_ptr<osg::KdTreeBuilder> builder;
@@ -978,6 +984,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            guard.lock();
            kdTreeBuilders.push_back(builder);
        }
+#endif
 #endif
 
 #endif
@@ -1203,10 +1210,12 @@ OsgColorMap::OsgColorMap()
     shaderUnlit.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttribUnlit", &parammap));
     shaderUnlit->setFloatUniform("rangeMin", rangeMin);
     shaderUnlit->setFloatUniform("rangeMax", rangeMax);
+    shaderUnlit->setBoolUniform("blendWithMaterial", blendWithMaterial);
 
     shader.reset(opencover::coVRShaderList::instance()->getUnique("MapColorsAttrib", &parammap));
     shader->setFloatUniform("rangeMin", rangeMin);
     shader->setFloatUniform("rangeMax", rangeMax);
+    shader->setBoolUniform("blendWithMaterial", blendWithMaterial);
     //s_coverMutex.unlock();
 #endif
 }
@@ -1229,6 +1238,18 @@ void OsgColorMap::setRange(float min, float max) {
     if (shaderUnlit) {
         shaderUnlit->setFloatUniform("rangeMin", min);
         shaderUnlit->setFloatUniform("rangeMax", max);
+    }
+#endif
+}
+
+void OsgColorMap::setBlendWithMaterial(bool enable) {
+    blendWithMaterial = enable;
+#ifdef COVER_PLUGIN
+    if (shader) {
+        shader->setBoolUniform("blendWithMaterial", enable);
+    }
+    if (shaderUnlit) {
+        shaderUnlit->setBoolUniform("blendWithMaterial", enable);
     }
 #endif
 }

@@ -1,6 +1,7 @@
 #define ENUMS_FOR_PYTHON
 
 #include <cstdio>
+#include <thread>
 
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
@@ -37,7 +38,6 @@ namespace py = pybind11;
 
 // if embedded in Vistle hub
 #include <control/hub.h>
-#define PORTMANAGER (*Hub::the().stateTracker().portTracker())
 #define MODULEMANAGER (Hub::the().stateTracker())
 #define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
 
@@ -45,10 +45,25 @@ namespace py = pybind11;
 
 // if part of a user interface
 #include "vistleconnection.h"
-#define PORTMANAGER (*(PythonModule::the().vistleConnection().ui().state().portTracker()))
 #define MODULEMANAGER ((PythonModule::the().vistleConnection().ui().state()))
 #define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = PythonModule::the().vistleConnection().locked()
 
+#endif
+
+#define PORTMANAGER (*MODULEMANAGER.portTracker())
+
+#ifndef EMBED_PYTHON
+static std::unique_ptr<vistle::VistleConnection> connection;
+static std::unique_ptr<std::thread, std::function<void(std::thread*)>> vistleThread(nullptr, [](std::thread *thr){
+        if (connection) {
+            connection->cancel();
+        }
+        if (thr->joinable())
+            thr->join();
+        delete thr;
+        });
+static std::unique_ptr<vistle::UserInterface> userinterface;
+static std::unique_ptr<vistle::PythonModule> pymod;
 #endif
 
 namespace asio = boost::asio;
@@ -604,6 +619,53 @@ static std::string getLoadedFile() {
    return MODULEMANAGER.loadedWorkflowFile();
 }
 
+#ifndef EMBED_PYTHON
+static bool sessionConnect(const std::string host, unsigned short port) {
+    if (userinterface || connection || pymod || vistleThread) {
+        std::cerr << "already connected" << std::endl;
+        return false;
+    }
+
+    userinterface.reset(new UserInterface(host, port));
+    if (!userinterface)
+        return false;
+    connection.reset(new VistleConnection(*userinterface));
+    if (!connection)
+        return false;
+    pymod.reset(new PythonModule(connection.get()));
+    if (!pymod)
+        return false;
+    vistleThread.reset(new std::thread(std::ref(*connection)));
+    if (!vistleThread)
+        return false;
+
+    while (!userinterface->isInitialized()) {
+        usleep(100);
+    }
+
+    return true;
+}
+
+static bool sessionDisconnect() {
+
+    if (!vistleThread)
+        return false;
+    if (!pymod)
+        return false;
+    if (!connection)
+        return false;
+    if (!userinterface)
+        return false;
+
+    vistleThread.reset();
+    pymod.reset();
+    connection.reset();
+    userinterface.reset();
+
+    return true;
+}
+#endif
+
 
 #define param1(T, f) \
    m.def("set" #T "Param", &f, "set parameter `name` of module with `id` to `value`", "id"_a, "name"_a, "value"_a, "delayed"_a=false); \
@@ -716,6 +778,11 @@ PY_MODULE(_vistle, m) {
     m.def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getIntVectorParam", getParameterValue<IntParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
+
+#ifndef EMBED_PYTHON
+    m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a="localhost", "port"_a=31093);
+    m.def("sessionDisconnect", &sessionDisconnect, "disconnect from Vistle");
+#endif
 
    py::bind_vector<ParameterVector<Float>>(m, "ParameterVector<Float>");
    py::bind_vector<ParameterVector<Integer>>(m, "ParameterVector<Integer>");

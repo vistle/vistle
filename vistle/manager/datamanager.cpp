@@ -152,11 +152,11 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
    return true;
 }
 
-bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const std::function<void ()> &handler) {
+bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const std::function<void (Object::const_ptr)> &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
-      handler();
+      handler(obj);
       return false;
    }
 
@@ -176,11 +176,11 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    return true;
 }
 
-bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler) {
+bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void(Object::const_ptr)> &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
-      handler();
+      handler(obj);
       return false;
    }
 
@@ -293,7 +293,7 @@ public:
         m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
     }
 
-    void requestObject(const std::string &name, const std::function<void()> &completeCallback) override {
+    void requestObject(const std::string &name, const std::function<void(vistle::Object::const_ptr)> &completeCallback) override {
         m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
     }
 
@@ -351,6 +351,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
         vistle::iarchive memar(membuf);
         ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
         if (!loader.load()) {
+            CERR << "failed to restore array " << snd.objectId() << std::endl;
             return false;
         }
         //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
@@ -373,9 +374,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
         return false;
     }
 
-    auto senderId = snd.senderId();
-    auto senderRank = snd.rank();
-    auto completionHandler = [this, senderId, senderRank, objName] () mutable -> void {
+    auto completionHandler = [this, objName] () mutable -> void {
         auto addIt = m_outstandingAdds.find(objName);
         if (addIt == m_outstandingAdds.end()) {
             // that's normal if a sub-object was loaded
@@ -389,8 +388,10 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
 
         auto objIt = m_requestedObjects.find(objName);
         if (objIt != m_requestedObjects.end()) {
+            auto obj = Shm::the().getObjectFromName(objName);
+            assert(obj);
             for (const auto &handler: objIt->second.completionHandlers) {
-                handler();
+                handler(obj);
             }
             m_requestedObjects.erase(objIt);
         } else {
@@ -402,11 +403,15 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
     memar.setObjectCompletionHandler(completionHandler);
     std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
     memar.setFetcher(fetcher);
-    objIt->second.obj.reset(Object::loadObject(memar));
-    if (!objIt->second.obj) {
+    Object::const_ptr obj(Object::loadObject(memar));
+    if (!obj) {
         CERR << "loading from archive failed for " << objName << std::endl;
     }
-    assert(objIt->second.obj);
+    assert(obj);
+    objIt = m_requestedObjects.find(objName);
+    if (objIt != m_requestedObjects.end()) {
+        objIt->second.obj = obj;
+    }
 
     return true;
 }

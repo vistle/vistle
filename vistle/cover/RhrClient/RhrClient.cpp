@@ -943,6 +943,11 @@ void RhrClient::requestTimestep(int t) {
         return;
     }
 
+    if (m_remotes.empty()) {
+        commitTimestep(t);
+        return;
+    }
+
     m_requestedTimestep = t;
     if (checkAdvanceFrame()) {
         commitTimestep(m_requestedTimestep);
@@ -1086,7 +1091,12 @@ RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(RhrClient::Rem
    cover->getObjectsRoot()->removeChild(remote->scene());
    m_clientsChanged = true;
 
-   return m_remotes.erase(it);
+   auto iter = m_remotes.erase(it);
+   if (m_remotes.empty() && m_requestedTimestep != -1) {
+       commitTimestep(m_requestedTimestep);
+       m_requestedTimestep = -1;
+   }
+   return iter;
 }
 
 void RhrClient::setGeometryMode(GeometryMode mode) {

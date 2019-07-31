@@ -13,6 +13,10 @@ Texture1D::Texture1D(const Index width,
 void Texture1D::refreshImpl() const {
 }
 
+bool Texture1D::isEmpty() {
+   return getWidth() == 0;
+}
+
 bool Texture1D::isEmpty() const {
    return getWidth() == 0;
 }

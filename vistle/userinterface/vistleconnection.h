@@ -22,6 +22,7 @@ public:
    static VistleConnection &the();
 
    bool done() const;
+   bool started() const;
    void cancel();
    void operator()();
 
@@ -53,11 +54,12 @@ public:
 
 private:
    vistle::UserInterface &m_ui;
-   bool m_done;
+   bool m_started = false;
+   bool m_done = false;
    bool m_quitOnExit;
 
    typedef std::recursive_mutex mutex;
-   typedef std::lock_guard<mutex> mutex_lock;
+   typedef std::unique_lock<mutex> mutex_lock;
    mutable mutex m_mutex;
 
 private:

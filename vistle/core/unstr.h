@@ -53,6 +53,8 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
          const Index numVertices,
          const Meta &meta=Meta());
 
+   void resetElements() override;
+
    shm<unsigned char>::array &tl() { return *d()->tl; }
    const unsigned char *tl() const { return m_tl; }
 

@@ -24,10 +24,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 , hasSolidColor(false)
 , solidColor(0., 0., 0., 0.)
 {
-   const Scalar smax = std::numeric_limits<Scalar>::max();
-   bMin = Vector(smax, smax, smax);
-   bMax = Vector(-smax, -smax, -smax);
-
    std::string color;
    if (geometry && geometry->hasAttribute("_color")) {
        color = geometry->getAttribute("_color");
@@ -59,63 +55,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          solidColor = Vector4(r, g, b, a);
       }
    }
-
-   Matrix4 T = geometry->getTransform();
-   if (auto coords = CoordsWithRadius::as(geometry)) {
-      Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
-      for (int i=0; i<8; ++i) {
-          Vector3 v(0,0,0);
-          if (i%2) {
-              v += Vector(1,0,0);
-          } else {
-              v -= Vector(1,0,0);
-          }
-          if ((i/2)%2) {
-              v += Vector(0,1,0);
-          } else {
-              v -= Vector(0,1,0);
-          }
-          if ((i/4)%2) {
-              v += Vector(0,0,1);
-          } else {
-              v -= Vector(0,0,1);
-          }
-          Vector3 vv = transformPoint(T, v);
-          for (int c=0; c<3; ++c) {
-              rMin[c] = std::min(rMin[c], vv[c]);
-              rMax[c] = std::max(rMax[c], vv[c]);
-          }
-      }
-      for (Index i=0; i<coords->getNumCoords(); ++i) {
-         Scalar r = coords->r()[i];
-         Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
-         Vector pp = transformPoint(T, p);
-         for (int c=0; c<3; ++c) {
-             bMin[c] = std::min(bMin[c], pp[c]+r*rMin[c]);
-             bMax[c] = std::max(bMax[c], pp[c]+r*rMax[c]);
-         }
-      }
-   } else if (auto coords = Coords::as(geometry)) {
-
-      const Scalar *x=coords->x(0), *y=coords->x(1), *z=coords->x(2);
-      for (Index i=0; i<coords->getNumCoords(); ++i) {
-         Vector3 p(x[i], y[i], z[i]);
-         Vector3 pp = transformPoint(T, p);
-         for (int c=0; c<3; ++c) {
-            if (pp[c] < bMin[c])
-               bMin[c] = pp[c];
-            if (pp[c] > bMax[c])
-               bMax[c] = pp[c];
-         }
-      }
-   }
-
-   bValid = true;
-   for (int c=0; c<3; ++c) {
-       if (bMin[c] > bMax[c])
-           bValid = false;
-   }
-
    if (geometry)
       timestep = geometry->getTimestep();
    if (timestep < 0 && normals) {
@@ -142,6 +81,88 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 }
 
 RenderObject::~RenderObject() {
+}
+
+void RenderObject::updateBounds() {
+
+    if (bComputed)
+        return;
+    computeBounds();
+}
+
+void RenderObject::computeBounds() {
+
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   bMin = Vector(smax, smax, smax);
+   bMax = Vector(-smax, -smax, -smax);
+
+   Matrix4 T = geometry->getTransform();
+   bool identity = T.isIdentity();
+   if (auto coords = CoordsWithRadius::as(geometry)) {
+      Vector3 rMin(smax, smax, smax), rMax(-smax, -smax, -smax);
+      for (int i=0; i<8; ++i) {
+          Vector3 v(0,0,0);
+          if (i%2) {
+              v += Vector(1,0,0);
+          } else {
+              v -= Vector(1,0,0);
+          }
+          if ((i/2)%2) {
+              v += Vector(0,1,0);
+          } else {
+              v -= Vector(0,1,0);
+          }
+          if ((i/4)%2) {
+              v += Vector(0,0,1);
+          } else {
+              v -= Vector(0,0,1);
+          }
+          if (!identity)
+              v = transformPoint(T, v);
+          for (int c=0; c<3; ++c) {
+              rMin[c] = std::min(rMin[c], v[c]);
+              rMax[c] = std::max(rMax[c], v[c]);
+          }
+      }
+      const auto nc = coords->getNumCoords();
+      for (Index i=0; i<nc; ++i) {
+         Scalar r = coords->r()[i];
+         Vector3 p(coords->x(0)[i], coords->x(1)[i], coords->x(2)[i]);
+         if (!identity)
+             p = transformPoint(T, p);
+         for (int c=0; c<3; ++c) {
+             bMin[c] = std::min(bMin[c], p[c]+r*rMin[c]);
+             bMax[c] = std::max(bMax[c], p[c]+r*rMax[c]);
+         }
+      }
+   } else if (auto coords = Coords::as(geometry)) {
+
+      const auto nc = coords->getNumCoords();
+      const Scalar *x=coords->x(0), *y=coords->x(1), *z=coords->x(2);
+      for (Index i=0; i<nc; ++i) {
+         Vector3 p(x[i], y[i], z[i]);
+         if (!identity)
+             p = transformPoint(T, p);
+         for (int c=0; c<3; ++c) {
+            if (p[c] < bMin[c])
+               bMin[c] = p[c];
+            if (p[c] > bMax[c])
+               bMax[c] = p[c];
+         }
+      }
+   }
+
+   bValid = true;
+   for (int c=0; c<3; ++c) {
+       if (bMin[c] > bMax[c])
+           bValid = false;
+   }
+
+   bComputed = true;
+}
+
+bool RenderObject::boundsValid() const {
+    return bValid;
 }
 
 }

@@ -29,17 +29,23 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (Frosty)
                                     (Dolomiti)
                                     (Grays)
+                                    (Dark)
+                                    (Dark85)
+                                    (Dark70)
+                                    (Dark50)
+                                    (Dark30)
+                                    (Dark15)
+                                    (Material)
                                     )
 
-ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
-                   const size_t steps, const size_t w)
+ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w)
 : width(w)
 {
 
    data.resize(width*4);
 
-   std::map<vistle::Scalar, vistle::Vector>::iterator current = pins.begin();
-   std::map<vistle::Scalar, vistle::Vector>::iterator next = ++pins.begin();
+   TF::iterator current = pins.begin();
+   TF::iterator next = ++pins.begin();
 
    for (size_t index = 0; index < width; index ++) {
 
@@ -57,7 +63,7 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
          data[index * 4] = current->second[0];
          data[index * 4 + 1] = current->second[1];
          data[index * 4 + 2] = current->second[2];
-         data[index * 4 + 3] = 1.0;
+         data[index * 4 + 3] = current->second[3];
       } else {
 
          vistle::Scalar a = current->first;
@@ -71,7 +77,8 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
             (lerp(current->second[1], next->second[1], t) * 255.99);
          data[index * 4 + 2] =
             (lerp(current->second[2], next->second[2], t) * 255.99);
-         data[index * 4 + 3] = 1.0;
+         data[index * 4 + 3] =
+            (lerp(current->second[3], next->second[3], t) * 255.99);
       }
    }
 }
@@ -92,6 +99,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    V_ENUM_SET_CHOICES(map, TransferFunction);
    auto steps = addIntParameter("steps", "number of color map steps", 32);
    setParameterRange(steps, (Integer)1, (Integer)1024);
+   m_blendWithMaterialPara = addIntParameter("blend_with_material", "use alpha for blending with diffuse material", false, Parameter::Boolean);
 
    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
    addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true, Parameter::Boolean);
@@ -111,102 +119,130 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
    setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
 
-   TF pins;
+   ColorMap::TF pins;
+   typedef ColorMap::RGBA RGBA;
 
-   using vistle::Vector;
-   pins.insert(std::make_pair(0.0, vistle::Vector(0.0, 0.0, 1.0)));
-   pins.insert(std::make_pair(0.5, vistle::Vector(1.0, 0.0, 0.0)));
-   pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
+   pins.insert(std::make_pair(0.0, RGBA(0.0, 0.0, 1.0, 1.0)));
+   pins.insert(std::make_pair(0.5, RGBA(1.0, 0.0, 0.0, 1.0)));
+   pins.insert(std::make_pair(1.0, RGBA(1.0, 1.0, 0.0, 1.0)));
    transferFunctions[COVISE] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(0.10, 0.0, 0.90);
-   pins[0.07] = Vector(0.00, 0.00, 1.00);
-   pins[0.14] = Vector(0.63, 0.63, 1.00);
-   pins[0.21] = Vector(0.00, 0.75, 1.00);
-   pins[0.28] = Vector(0.00, 1.00, 1.00);
-   pins[0.35] = Vector(0.10, 0.80, 0.70);
-   pins[0.42] = Vector(0.10, 0.90, 0.00);
-   pins[0.50] = Vector(0.50, 1.00, 0.63);
-   pins[0.57] = Vector(0.75, 1.00, 0.25);
-   pins[0.64] = Vector(1.00, 1.00, 0.00);
-   pins[0.71] = Vector(1.00, 0.80, 0.10);
-   pins[0.78] = Vector(1.00, 0.60, 0.30);
-   pins[0.85] = Vector(1.00, 0.67, 0.95);
-   pins[0.92] = Vector(1.00, 0.00, 0.50);
-   pins[1.00] = Vector(1.00, 0.00, 0.00);
+   pins[0.00] = RGBA(0.10, 0.00, 0.90, 1.);
+   pins[0.07] = RGBA(0.00, 0.00, 1.00, 1.);
+   pins[0.14] = RGBA(0.63, 0.63, 1.00, 1.);
+   pins[0.21] = RGBA(0.00, 0.75, 1.00, 1.);
+   pins[0.28] = RGBA(0.00, 1.00, 1.00, 1.);
+   pins[0.35] = RGBA(0.10, 0.80, 0.70, 1.);
+   pins[0.42] = RGBA(0.10, 0.90, 0.00, 1.);
+   pins[0.50] = RGBA(0.50, 1.00, 0.63, 1.);
+   pins[0.57] = RGBA(0.75, 1.00, 0.25, 1.);
+   pins[0.64] = RGBA(1.00, 1.00, 0.00, 1.);
+   pins[0.71] = RGBA(1.00, 0.80, 0.10, 1.);
+   pins[0.78] = RGBA(1.00, 0.60, 0.30, 1.);
+   pins[0.85] = RGBA(1.00, 0.67, 0.95, 1.);
+   pins[0.92] = RGBA(1.00, 0.00, 0.50, 1.);
+   pins[1.00] = RGBA(1.00, 0.00, 0.00, 1.);
    transferFunctions[Star] = pins;
    pins.clear();
 
-   pins[0.] = Vector(1, 1, 1);
-   pins[1.] = Vector(0, 0, 1);
+   pins[0.] = RGBA(1, 1, 1, 1);
+   pins[1.] = RGBA(0, 0, 1, 1);
    transferFunctions[Blue_Light] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(0, 0, 1);
-   pins[0.25] = Vector(0, 1, 1);
-   pins[0.50] = Vector(0, 1, 0);
-   pins[0.75] = Vector(1, 1, 0);
-   pins[1.00] = Vector(1, 0, 0);
+   pins[0.00] = RGBA(0, 0, 1, 1);
+   pins[0.25] = RGBA(0, 1, 1, 1);
+   pins[0.50] = RGBA(0, 1, 0, 1);
+   pins[0.75] = RGBA(1, 1, 0, 1);
+   pins[1.00] = RGBA(1, 0, 0, 1);
    transferFunctions[ANSYS] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(0.231, 0.298, 0.752);
-   pins[0.25] = Vector(0.552, 0.690, 0.996);
-   pins[0.50] = Vector(0.866, 0.866, 0.866);
-   pins[0.75] = Vector(0.956, 0.603, 0.486);
-   pins[1.00] = Vector(0.705, 0.015, 0.149);
+   pins[0.00] = RGBA(0.231, 0.298, 0.752, 1);
+   pins[0.25] = RGBA(0.552, 0.690, 0.996, 1);
+   pins[0.50] = RGBA(0.866, 0.866, 0.866, 1);
+   pins[0.75] = RGBA(0.956, 0.603, 0.486, 1);
+   pins[1.00] = RGBA(0.705, 0.015, 0.149, 1);
    transferFunctions[CoolWarm] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(1,133,113)/255.;
-   pins[0.25] = Vector(128,205,193)/280.;
-   pins[0.50] = Vector(245,245,245)/300.;
-   pins[0.75] = Vector(223,194,125)/280.;
-   pins[1.00] = Vector(166, 97, 26)/255.;
+   pins[0.00] = RGBA(  1,133,113,255)/255.;
+   pins[0.25] = RGBA(128,205,193,280)/280.;
+   pins[0.50] = RGBA(245,245,245,300)/300.;
+   pins[0.75] = RGBA(223,194,125,280)/280.;
+   pins[1.00] = RGBA(166, 97, 26,255)/255.;
    transferFunctions[Frosty] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(77,172,38)/255.;
-   pins[0.25] = Vector(184,225,134)/280.;
-   pins[0.50] = Vector(247,247,247)/300.;
-   pins[0.75] = Vector(241,182,218)/280.;
-   pins[1.00] = Vector(208,28,139)/255.;
+   pins[0.00] = RGBA( 77,172, 38,255)/255.;
+   pins[0.25] = RGBA(184,225,134,280)/280.;
+   pins[0.50] = RGBA(247,247,247,300)/300.;
+   pins[0.75] = RGBA(241,182,218,280)/280.;
+   pins[1.00] = RGBA(208, 28,139,255)/255.;
    transferFunctions[Dolomiti] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(44,123,182)/255.;
-   pins[0.25] = Vector(171,217,233)/255.;
-   pins[0.50] = Vector(255,255,191)/255.;
-   pins[0.75] = Vector(253,174,97)/255.;
-   pins[1.00] = Vector(215,25,28)/255.;
+   pins[0.00] = RGBA( 44,123,182,255)/255.;
+   pins[0.25] = RGBA(171,217,233,255)/255.;
+   pins[0.50] = RGBA(255,255,191,255)/255.;
+   pins[0.75] = RGBA(253,174, 97,255)/255.;
+   pins[1.00] = RGBA(215, 25, 28,255)/255.;
    transferFunctions[CoolWarmBrewer] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(0.00, 0.00, 0.35);
-   pins[0.05] = Vector(0.00, 0.00, 1.00);
-   pins[0.26] = Vector(0.00, 1.00, 1.00);
-   pins[0.50] = Vector(0.00, 0.00, 1.00);
-   pins[0.74] = Vector(1.00, 1.00, 0.00);
-   pins[0.95] = Vector(1.00, 0.00, 0.00);
-   pins[1.00] = Vector(0.40, 0.00, 0.00);
+   pins[0.00] = RGBA(0.00, 0.00, 0.35, 1);
+   pins[0.05] = RGBA(0.00, 0.00, 1.00, 1);
+   pins[0.26] = RGBA(0.00, 1.00, 1.00, 1);
+   pins[0.50] = RGBA(0.00, 0.00, 1.00, 1);
+   pins[0.74] = RGBA(1.00, 1.00, 0.00, 1);
+   pins[0.95] = RGBA(1.00, 0.00, 0.00, 1);
+   pins[1.00] = RGBA(0.40, 0.00, 0.00, 1);
    transferFunctions[ITSM] = pins;
    pins.clear();
 
-   pins[0.0] = Vector(0.40, 0.00, 0.40);
-   pins[0.2] = Vector(0.00, 0.00, 1.00);
-   pins[0.4] = Vector(0.00, 1.00, 1.00);
-   pins[0.6] = Vector(0.00, 1.00, 0.00);
-   pins[0.8] = Vector(1.00, 1.00, 0.00);
-   pins[1.0] = Vector(1.00, 0.00, 0.00);
+   pins[0.0] = RGBA(0.40, 0.00, 0.40, 1);
+   pins[0.2] = RGBA(0.00, 0.00, 1.00, 1);
+   pins[0.4] = RGBA(0.00, 1.00, 1.00, 1);
+   pins[0.6] = RGBA(0.00, 1.00, 0.00, 1);
+   pins[0.8] = RGBA(1.00, 1.00, 0.00, 1);
+   pins[1.0] = RGBA(1.00, 0.00, 0.00, 1);
    transferFunctions[Rainbow] = pins;
    pins.clear();
 
-   pins[0.00] = Vector(25,25,25)/255.;
-   pins[1.00] = Vector(230,230,230)/255.;
+   pins[0.00] = RGBA(25,25,25,255)/255.;
+   pins[1.00] = RGBA(230,230,230,255)/255.;
    transferFunctions[Grays] = pins;
    pins.clear();
 
+   float d = 0.2;
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 1.0);
+   transferFunctions[Dark] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.85);
+   transferFunctions[Dark85] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.7);
+   transferFunctions[Dark70] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.5);
+   transferFunctions[Dark50] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.3);
+   transferFunctions[Dark30] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.15);
+   transferFunctions[Dark15] = pins;
+   pins.clear();
+
+   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.0);
+   transferFunctions[Material] = pins;
+   pins.clear();
 }
 
 Color::~Color() {
@@ -369,6 +405,8 @@ bool Color::changeParameter(const Parameter *p) {
             setParameterRange(m_insetCenterPara, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
             setParameterRange(m_insetWidthPara, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
         }
+    } else if (p == m_blendWithMaterialPara) {
+        newMap = true;
     }
 
     if (changeReduce) {
@@ -514,6 +552,8 @@ void Color::sendColorMap() {
        for (size_t index = 0; index < m_colors->width * 4; index ++)
            pix[index] = m_colors->data[index];
        tex->addAttribute("_species", m_species);
+       if (m_blendWithMaterialPara->getValue())
+           tex->addAttribute("_blend_with_material", "true");
        addObject(m_colorOut, tex);
 
        m_colorMapSent = true;

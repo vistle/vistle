@@ -15,6 +15,7 @@ class  V_COREEXPORT Points: public Coords {
    Points(const Index numPoints,
          const Meta &meta=Meta());
 
+   Index getNumPoints();
    Index getNumPoints() const;
 
    V_DATA_BEGIN(Points);

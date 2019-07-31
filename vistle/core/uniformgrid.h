@@ -48,6 +48,7 @@ public:
    void setNormals(Normals::const_ptr normals);
 
    // GridInterface
+   Index getNumVertices() override;
    Index getNumVertices() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
@@ -58,6 +59,7 @@ public:
 
 private:
    // mutable pointers to ShmVectors
+   mutable Index m_size;
    mutable Index m_numDivisions[3];
    mutable Scalar m_min[3];
    mutable Scalar m_max[3];

@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include <util/exception.h>
+#include <util/tools.h>
 #include "export.h"
 #include "index.h"
 #include "archives_config.h"
@@ -79,12 +80,18 @@ class shm_array {
    bool check() const {
        assert(m_refcount >= 0);
        assert(m_size <= m_capacity);
-       if (m_refcount < 0)
+       if (m_refcount < 0) {
+           std::cerr << "shm_array: INCONSISTENCY: m_refcount < 0" << std::endl;
            return false;
-       if (m_size > m_capacity)
+       }
+       if (m_size > m_capacity) {
+           std::cerr << "shm_array: INCONSISTENCY: m_size > m_capacity" << std::endl;
            return false;
-       if (m_dim[0]!=0 && m_size != m_dim[0]*m_dim[1]*m_dim[2])
+       }
+       if (m_dim[0]!=0 && m_size != m_dim[0]*m_dim[1]*m_dim[2]) {
+           std::cerr << "shm_array: INCONSISTENCY: dimensions" << std::endl;
            return false;
+       }
        return true;
    }
 

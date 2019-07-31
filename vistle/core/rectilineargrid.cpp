@@ -38,6 +38,7 @@ void RectilinearGrid::refreshImpl() const {
             m_ghostLayers[c][1] = 0;
         }
     }
+    m_size = getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
 }
 
 // CHECK IMPL
@@ -55,6 +56,11 @@ bool RectilinearGrid::checkImpl() const {
 
 // IS EMPTY
 //-------------------------------------------------------------------------
+bool RectilinearGrid::isEmpty() {
+
+   return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
+}
+
 bool RectilinearGrid::isEmpty() const {
 
    return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
@@ -87,8 +93,12 @@ void RectilinearGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, un
     return;
 }
 
-Index RectilinearGrid::getNumVertices() const {
+Index RectilinearGrid::getNumVertices() {
     return getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
+}
+
+Index RectilinearGrid::getNumVertices() const {
+    return m_size;
 }
 
 // GET FUNCTION - BOUNDS

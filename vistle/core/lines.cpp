@@ -14,6 +14,11 @@ Lines::Lines(const Index numElements, const Index numCorners,
 void Lines::refreshImpl() const {
 }
 
+bool Lines::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Lines::isEmpty() const {
 
    return Base::isEmpty();

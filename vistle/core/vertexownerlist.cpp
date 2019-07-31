@@ -45,6 +45,10 @@ VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, c
    return vol;
 }
 
+bool VertexOwnerList::isEmpty() {
+   return getNumVertices()==0;
+}
+
 bool VertexOwnerList::isEmpty() const {
    return getNumVertices()==0;
 }

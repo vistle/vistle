@@ -10,7 +10,10 @@
 class ColorMap {
 
 public:
-   ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins, const size_t steps, const size_t width);
+   typedef vistle::Vector4 RGBA;
+   typedef std::map<vistle::Scalar, RGBA> TF;
+
+   ColorMap(TF &pins, const size_t steps, const size_t width);
    ~ColorMap();
 
    std::vector<unsigned char> data;
@@ -41,8 +44,7 @@ class Color: public vistle::Module {
 
    void process(const vistle::DataBase::const_ptr data);
 
-   typedef std::map<vistle::Scalar, vistle::Vector> TF;
-   std::map<int, TF> transferFunctions;
+   std::map<int, ColorMap::TF> transferFunctions;
 
    std::shared_ptr<ColorMap> m_colors;
 
@@ -51,6 +53,7 @@ class Color: public vistle::Module {
    vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
    vistle::IntParameter *m_insetRelPara = nullptr;
    vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
+   vistle::IntParameter *m_blendWithMaterialPara = nullptr;
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
    vistle::Scalar m_min, m_max;

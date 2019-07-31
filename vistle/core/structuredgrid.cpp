@@ -57,6 +57,11 @@ bool StructuredGrid::checkImpl() const {
 
 // IS EMPTY
 //-------------------------------------------------------------------------
+bool StructuredGrid::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool StructuredGrid::isEmpty() const {
 
    return Base::isEmpty();

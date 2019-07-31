@@ -135,6 +135,7 @@ public:
    virtual void updateInternals();
 
    virtual bool isEmpty() const;
+   virtual bool isEmpty();
 
    template<class ObjectType>
    static std::shared_ptr<const Object> as(std::shared_ptr<const ObjectType> ptr) { return std::static_pointer_cast<const Object>(ptr); }
@@ -403,7 +404,8 @@ private:
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
-   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \
+   explicit ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \
+   virtual bool isEmpty() override; \
    virtual bool isEmpty() const override; \
    bool check() const override { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
@@ -413,7 +415,7 @@ private:
    ARCHIVE_REGISTRATION_INLINE \
    protected: \
    bool checkImpl() const; \
-   ObjType(Data *data); \
+   explicit ObjType(Data *data); \
    ObjType(); \
    private: \
    ARCHIVE_ACCESS_SPLIT \

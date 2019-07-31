@@ -12,6 +12,11 @@ Normals::Normals(const Index numNormals,
 void Normals::refreshImpl() const {
 }
 
+bool Normals::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool Normals::isEmpty() const {
 
    return Base::isEmpty();

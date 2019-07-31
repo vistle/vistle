@@ -19,6 +19,7 @@ public:
 
    typedef Object Base;
    virtual void resetArrays(); //< remove reference to data arrays and create empty ones
+   virtual Index getSize();
    virtual Index getSize() const;
    virtual void setSize(const Index size);
    virtual void applyDimensionHint(Object::const_ptr grid);

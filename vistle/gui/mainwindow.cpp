@@ -35,12 +35,13 @@ MainWindow::MainWindow(QWidget *parent)
 {
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
-    tabifyDockWidget(ui->modulesDock, ui->parameterDock);
 
     setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
     setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
+    tabifyDockWidget(ui->modulesDock, ui->parameterDock);
 
     m_console = ui->consoleWidget;
 

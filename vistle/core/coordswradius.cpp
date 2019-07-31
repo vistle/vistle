@@ -15,6 +15,11 @@ void CoordsWithRadius::refreshImpl() const {
     m_r = (d && d->r.valid()) ? d->r->data() : nullptr;
 }
 
+bool CoordsWithRadius::isEmpty() {
+
+   return Base::isEmpty();
+}
+
 bool CoordsWithRadius::isEmpty() const {
 
    return Base::isEmpty();
@@ -26,6 +31,18 @@ bool CoordsWithRadius::checkImpl() const {
    V_CHECK (getNumVertices() == d()->r->size());
    return true;
 }
+
+void CoordsWithRadius::resetArrays() {
+    Base::resetArrays();
+    d()->r = ShmVector<Scalar>();
+    d()->r.construct();
+}
+
+void CoordsWithRadius::setSize(const Index size) {
+    Base::setSize(size);
+    d()->r->resize(size);
+}
+
 
 void CoordsWithRadius::Data::initData() {
 }

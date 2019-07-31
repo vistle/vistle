@@ -34,6 +34,7 @@ include_directories(
 )
 
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+target_compile_definitions(vistle_userinterface PRIVATE -DEMBED_PYTHON)
 target_link_libraries(vistle_userinterface
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
@@ -41,9 +42,8 @@ target_link_libraries(vistle_userinterface
         vistle_util
 )
 
-vistle_add_library(vistle_userinterface_embedded ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
-target_compile_definitions(vistle_userinterface_embedded PRIVATE -DEMBED_PYTHON)
-target_link_libraries(vistle_userinterface_embedded
+pybind11_add_module(_vistle ${userinterface_SOURCES} ${userinterface_HEADERS})
+target_link_libraries(_vistle PRIVATE
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core

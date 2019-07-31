@@ -5,6 +5,11 @@ namespace vistle {
 void Empty::refreshImpl() const {
 }
 
+bool Empty::isEmpty() {
+
+   return true;
+}
+
 bool Empty::isEmpty() const {
 
    return true;

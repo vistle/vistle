@@ -546,6 +546,8 @@ bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr t
     cmap.image->setImage(texture->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &texture->pixels()[0], osg::Image::NO_DELETE);
     cmap.image->dirty();
 
+    cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+
     return true;
 }
 

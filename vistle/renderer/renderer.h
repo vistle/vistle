@@ -103,11 +103,14 @@ class V_RENDEREREXPORT Renderer: public Module {
    CreatorMap m_creatorMap;
 
    std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
-   IntParameter *m_renderMode;
+   IntParameter *m_renderMode = nullptr;
+   IntParameter *m_objectsPerFrame = nullptr;
    bool needsSync(const message::Message &m) const;
 
    VariantMap m_variants;
    ColorMapMap m_colormaps;
+
+   int m_numObjectsPerFrame = 500;
 };
 
 } // namespace vistle

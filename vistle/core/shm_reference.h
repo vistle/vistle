@@ -5,6 +5,7 @@
 #include <string>
 #include <cassert>
 #include "shmname.h"
+#include <boost/interprocess/offset_ptr.hpp>
 
 namespace vistle {
 
@@ -37,9 +38,8 @@ class shm_ref {
 
     shm_ref(const shm_name_t name)
     : m_name(name)
-    , m_p(shm<T>::find(name))
+    , m_p(name.empty() ? nullptr : shm<T>::find_array(name))
     {
-        ref();
     }
 
    ~shm_ref() {
@@ -56,8 +56,7 @@ class shm_ref {
     bool find() {
         assert(!m_name.empty());
         if (!m_p) {
-            m_p = shm<T>::find(m_name);
-            ref();
+            m_p = shm<T>::find_array(m_name);
         }
         return valid();
     }
@@ -65,6 +64,7 @@ class shm_ref {
     template<typename... Args>
     void construct(const Args&... args)
     {
+        assert(!valid());
         unref();
         if (m_name.empty())
             m_name = Shm::the().createArrayId();
@@ -74,10 +74,12 @@ class shm_ref {
     }
 
     const shm_ref &operator=(const shm_ref &rhs) {
-        unref();
-        m_name = rhs.m_name;
-        m_p = rhs.m_p;
-        ref();
+        if (&rhs != this) {
+            unref();
+            m_name = rhs.m_name;
+            m_p = rhs.m_p;
+            ref();
+        }
         return *this;
     }
 
@@ -96,6 +98,7 @@ class shm_ref {
    const T *operator->() const;
 
    const shm_name_t &name() const;
+   int refcount() const;
 
  private:
    shm_name_t m_name;
@@ -116,8 +119,9 @@ class shm_ref {
        if (m_p) {
             assert(!m_name.empty());
             assert(m_p->refcount() > 0);
+            //std::cerr << "shm_ref: giving up reference to " << m_name << ", refcount=" << m_p->refcount() << std::endl;
             if (m_p->unref() == 0) {
-                shm<T>::destroy(m_name);
+                shm<typename T::value_type>::destroy_array(m_name, m_p);
                 m_p = nullptr;
             }
        }
@@ -130,6 +134,7 @@ class shm_ref {
    template<class Archive>
    void load(Archive &ar);
 };
+
 
 #define V_DECLARE_SHMREF(T) \
     extern template class V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>; \

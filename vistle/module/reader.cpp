@@ -480,7 +480,6 @@ void Reader::Token::setPortReady(const std::string &port, bool ready) {
 #endif
     std::lock_guard<std::mutex> locker(m_mutex);
     assert(!m_finished);
-    assert(m_future.valid());
 
     auto &p = m_ports[port];
     if (!p) {

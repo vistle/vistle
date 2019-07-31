@@ -11,6 +11,9 @@
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
 #include <core/unstr.h>
+#include <core/points.h>
+#include <core/spheres.h>
+#include <core/coordswradius.h>
 #include <util/enum.h>
 
 #include "Gendat.h"
@@ -25,7 +28,9 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(GeoMode,
                                     (Uniform_Grid)
                                     (Rectilinear_Grid)
                                     (Structured_Grid)
-                                    (Unstructured_Grid))
+                                    (Unstructured_Grid)
+                                    (Point_Geometry)
+                                    (Sphere_Geometry))
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(DataMode,
                                     (One)
@@ -143,7 +148,7 @@ void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar sc
 }
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (ssize_t idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
         d[idx] = computeData(x, y, z, mode, scale, anim, time);
@@ -155,7 +160,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     for (int c=0; c<3; ++c) {
         dist[c] /= dim[c]-1;
     }
-#pragma omp parallel for
+//#pragma omp parallel for
     for (ssize_t i=0; i<dim[0]; ++i) {
         for (ssize_t j=0; j<dim[1]; ++j) {
             for (ssize_t k=0; k<dim[2]; ++k) {
@@ -294,47 +299,15 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
             geoOut = r;
 
         } else if (geoMode == Structured_Grid) {
+
             StructuredGrid::ptr s(new StructuredGrid(dim[0], dim[1], dim[2]));
-
-            Scalar *x = s->x().data();
-            Scalar *y = s->y().data();
-            Scalar *z = s->z().data();
-#pragma omp parallel for
-            for (ssize_t i=0; i<dim[0]; ++i) {
-#pragma omp parallel for
-                for (ssize_t j=0; j<dim[1]; ++j) {
-#pragma omp parallel for
-                    for (ssize_t k=0; k<dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+i*dist[0];
-                        y[idx] = min[1]+j*dist[1];
-                        z[idx] = min[2]+k*dist[2];
-                    }
-                }
-            }
             setStructuredGridGhostLayers(s, ghostWidth);
-
             geoOut = s;
 
         } else if (geoMode == Unstructured_Grid) {
+
             Index numElem = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
             UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*8, numVert));
-            Scalar *x = u->x().data();
-            Scalar *y = u->y().data();
-            Scalar *z = u->z().data();
-#pragma omp parallel for
-            for (ssize_t i=0; i<dim[0]; ++i) {
-#pragma omp parallel for
-                for (ssize_t j=0; j<dim[1]; ++j) {
-#pragma omp parallel for
-                    for (ssize_t k=0; k<dim[2]; ++k) {
-                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+i*dist[0];
-                        y[idx] = min[1]+j*dist[1];
-                        z[idx] = min[2]+k*dist[2];
-                    }
-                }
-            }
             const Index nx = dim[0]-1;
             const Index ny = dim[1]-1;
             const Index nz = dim[2]-1;
@@ -370,6 +343,43 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
                 }
             }
             geoOut = u;
+        } else if (geoMode == Point_Geometry) {
+            Points::ptr p(new Points(numVert));
+            geoOut = p;
+        } else if (geoMode == Sphere_Geometry) {
+            Spheres::ptr s(new Spheres(numVert));
+            geoOut = s;
+        }
+
+        if (auto coords = Coords::as(geoOut)) {
+            Scalar *x = coords->x().data();
+            Scalar *y = coords->y().data();
+            Scalar *z = coords->z().data();
+//#pragma omp parallel for
+            for (ssize_t i=0; i<dim[0]; ++i) {
+//#pragma omp parallel for
+                for (ssize_t j=0; j<dim[1]; ++j) {
+//#pragma omp parallel for
+                    for (ssize_t k=0; k<dim[2]; ++k) {
+                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        x[idx] = min[0]+i*dist[0];
+                        y[idx] = min[1]+j*dist[1];
+                        z[idx] = min[2]+k*dist[2];
+                    }
+                }
+            }
+        }
+
+        if (auto rad = CoordsWithRadius::as(geoOut)) {
+            Scalar *r = rad->r().data();
+            for (ssize_t i=0; i<dim[0]; ++i) {
+                for (ssize_t j=0; j<dim[1]; ++j) {
+                    for (ssize_t k=0; k<dim[2]; ++k) {
+                        Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
+                        r[idx] = dist[0] * 0.2;
+                    }
+                }
+            }
         }
     }
 

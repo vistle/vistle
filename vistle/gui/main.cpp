@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+#include "macosutils.h"
 
 Q_DECLARE_METATYPE(boost::uuids::uuid);
 
@@ -25,6 +26,10 @@ void debugMessageHandler(QtMsgType type, const QMessageLogContext &, const QStri
 
 int main(int argc, char *argv[])
 {
+#ifdef __APPLE__
+    macos_disable_tabs();
+#endif
+
    qRegisterMetaType<Module::Status>("Module::Status");
    qRegisterMetaType<Port::Type>("Port::Type");
    qRegisterMetaType<boost::uuids::uuid>();

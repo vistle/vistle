@@ -410,7 +410,7 @@ std::string Shm::createObjectId(const std::string &id) {
 
 std::string Shm::createArrayId(const std::string &id) {
 #ifndef MODULE_THREAD
-   vassert(m_moduleId > 0 || !id.empty());
+   //vassert(m_moduleId > 0 || !id.empty());
 #endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
@@ -525,6 +525,9 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
 }
 
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {
+
+   if (name.empty())
+       return Object::const_ptr();
 
    lockObjects();
    auto od = getObjectDataFromName(name);

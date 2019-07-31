@@ -23,11 +23,12 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
          const Index numVertices,
          const Meta &meta=Meta());
 
+   Index getNumElements() override;
    Index getNumElements() const override;
-   void resetElements();
+   virtual void resetElements();
+   Index getNumCorners();
    Index getNumCorners() const;
    void resetCorners();
-   Index getNumVertices() const override;
 
    typename shm<Index>::array &el() { return *d()->el; }
    typename shm<Index>::array &cl() { return *d()->cl; }
@@ -65,8 +66,9 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    virtual std::vector<Index> cellVertices(Index elem) const;
 
  private:
-   mutable const Index *m_el;
-   mutable const Index *m_cl;
+   mutable Index m_numEl = InvalidIndex, m_numCl = InvalidIndex;
+   mutable const Index *m_el = nullptr;
+   mutable const Index *m_cl = nullptr;
    mutable Celltree::const_ptr m_celltree;
    mutable VertexOwnerList::const_ptr m_vertexOwnerList;
    mutable std::unique_ptr<const NeighborFinder> m_neighborfinder;

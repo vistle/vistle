@@ -31,13 +31,23 @@ template<typename T>
 const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    typedef vistle::shm_array<T, typename vistle::shm<T>::allocator> array;
 
-   auto arr = vistle::shm<array>::find(name);
-
-   if (!arr || array::typeId() != arr->type()) {
+   if (name.empty()) {
        return vistle::shm_ref<array>();
    }
 
-   return vistle::shm_ref<array>(name, arr);
+   auto arr = vistle::shm<array>::find_array(name);
+
+   if (!arr) {
+       return vistle::shm_ref<array>();
+   }
+   if (array::typeId() != arr->type()) {
+       arr->unref();
+       return vistle::shm_ref<array>();
+   }
+
+   auto ref = vistle::shm_ref<array>(name, arr);
+   ref->unref();
+   return ref;
 }
 
 template<class Archive>

@@ -78,12 +78,15 @@ Object *Object::loadObject(Archive &ar) {
 
    Object *obj = nullptr;
    try {
-      std::string name;
-      ar & V_NAME(ar, "object_name", name);
+      std::string arname;
+      ar & V_NAME(ar, "object_name", arname);
+      std::string name = ar.translateObjectName(arname);
       int type;
       ar & V_NAME(ar, "object_type", type);
       Shm::the().lockObjects();
-      auto objData = Shm::the().getObjectDataFromName(name);
+      Object::Data *objData = nullptr;
+      if (!name.empty())
+          objData = Shm::the().getObjectDataFromName(name);
       if (objData && objData->isComplete()) {
           objData->ref();
           Shm::the().unlockObjects();
@@ -99,6 +102,8 @@ Object *Object::loadObject(Archive &ar) {
           Shm::the().unlockObjects();
           auto funcs = ObjectTypeRegistry::getType(type);
           obj = funcs.createEmpty(name);
+          name = obj->getName();
+          ar.registerObjectNameTranslation(arname, name);
           obj->loadFromArchive(ar);
           assert(obj->refcount() >= 1);
       }
@@ -112,6 +117,9 @@ Object *Object::loadObject(Archive &ar) {
       }
       return obj;
 #endif
+   } catch (std::exception &ex) {
+       std::cerr << "exception during object loading: " << ex.what() << std::endl;
+       return obj;
    } catch (...) {
        throw;
    }

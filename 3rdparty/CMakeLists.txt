@@ -37,7 +37,6 @@ set(ICET_BINARY_DIR ${PROJECT_BINARY_DIR} CACHE PATH "Value overriden by Vistle"
 set(ICET_INSTALL_LIB_DIR ${INSTALL_LIB_DIR} CACHE INTERNAL "")
 add_subdirectory(IceT)
 
-set(PYTHON_MODULE_EXTENSION "/some/path" CACHE PATH "Make PythonFindLibsNew believe")
-set(PythonLibsNew_FIND_REUQIRED FALSE)
+set(PythonLibsNew_FIND_REQUIRED FALSE)
 set(PythonLibsNew_FOUND TRUE)
 add_subdirectory(pybind11)
