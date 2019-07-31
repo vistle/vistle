@@ -4,6 +4,7 @@ set(util_SOURCES
    affinity.cpp
    coRestraint.cpp
    exception.cpp
+   fileio.cpp
    findself.cpp
    hostname.cpp
    stopwatch.cpp
@@ -21,6 +22,7 @@ set(util_HEADERS
    coRestraint.h
    enum.h
    exception.h
+   fileio.h
    findself.h
    hostname.h
    math.h

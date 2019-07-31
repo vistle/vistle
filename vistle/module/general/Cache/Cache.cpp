@@ -6,6 +6,7 @@
 
 #include <util/enum.h>
 #include <util/byteswap.h>
+#include <util/fileio.h>
 
 using namespace vistle;
 
