@@ -94,8 +94,12 @@ bool attach_debugger() {
 
 bool parentProcessDied() {
 
-#ifdef _WIN32
-   return false;
+#if defined(_WIN32)
+    // no implementation
+    return false;
+#elif defined (__linux__)
+    // not necessary as processes die automatically with their parent
+    return false;
 #else
    return kill(getppid(), 0) == -1;
 #endif

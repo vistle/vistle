@@ -11,6 +11,11 @@
 #include "shm.h"
 #include "assert.h"
 
+#ifdef __linux__
+// not necessary, as child processes die with their parent
+#define NO_CHECK_FOR_DEAD_PARENT
+#endif
+
 using namespace boost::interprocess;
 
 namespace vistle {
