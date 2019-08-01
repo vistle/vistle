@@ -145,6 +145,10 @@ bool ShowGrid::compute() {
            end = std::min(cellnrmax+1, (Integer)end);
 
        for (Index index = begin; index < end; ++index) {
+           bool ghost = str->isGhostCell(index);
+           const bool show = ((showgho && ghost) || (shownor && !ghost));
+           if (!show)
+               continue;
            auto verts = StructuredGridBase::cellVertices(index, dims);
            const unsigned char type = UnstructuredGrid::HEXAHEDRON;
            const auto numFaces = UnstructuredGrid::NumFaces[type];
