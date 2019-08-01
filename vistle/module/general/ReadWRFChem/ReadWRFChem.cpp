@@ -412,7 +412,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
 }
 
 bool ReadWRFChem::finishRead() {
-
+    delete ncFirstFile;
     return true;
 }
 
