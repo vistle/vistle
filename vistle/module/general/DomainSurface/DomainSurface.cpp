@@ -15,6 +15,7 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
    : Module("DomainSurface", name, moduleID, comm) {
    createInputPort("data_in");
    createOutputPort("data_out");
+   addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean);
    addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);
    addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean);
    addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
@@ -115,6 +116,7 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
 
 Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in, VerticesMapping &vm) const {
 
+   const bool showgho = getIntParameter("ghost");
    const bool showtet = getIntParameter("tetrahedron");
    const bool showpyr = getIntParameter("pyramid");
    const bool showpri = getIntParameter("prism");
@@ -137,6 +139,9 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
    auto nf = m_grid_in->getNeighborFinder();
    for (Index i=0; i<num_elem; ++i) {
       const Index elStart = el[i], elEnd = el[i+1];
+      bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
+      if (!showgho && ghost)
+          continue;
       unsigned char t = tl[i] & UnstructuredGrid::TYPE_MASK;
       if (t == UnstructuredGrid::POLYHEDRON) {
           if (showpol) {
