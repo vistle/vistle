@@ -619,14 +619,176 @@ static std::string getLoadedFile() {
    return MODULEMANAGER.loadedWorkflowFile();
 }
 
+class TrivialStateObserver: public StateObserver {
+public:
+
+   TrivialStateObserver()
+      : m_out(std::cerr)
+      {}
+
+   void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
+       m_out << "   hub: " << hub << ", module: " << name << " (" << path << ")" << std::endl;
+   }
+
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override {
+      (void)spawnUuid;
+      m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
+   }
+
+   void deleteModule(int moduleId) override {
+      m_out << "   module deleted: " << moduleId << std::endl;
+   }
+
+   void moduleStateChanged(int moduleId, int stateBits) override {
+      m_out << "   module state change: " << moduleId << " (";
+      if (stateBits & StateObserver::Initialized) m_out << "I";
+      if (stateBits & StateObserver::Killed) m_out << "K";
+      if (stateBits & StateObserver::Busy) m_out << "B";
+      m_out << ")" << std::endl;
+   }
+
+   void newParameter(int moduleId, const std::string &parameterName) override {
+      m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
+   }
+
+   void deleteParameter(int moduleId, const std::string &parameterName) override {
+      m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
+   }
+
+   void parameterValueChanged(int moduleId, const std::string &parameterName) override {
+      m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
+   }
+
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) override {
+      m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
+   }
+
+   void newPort(int moduleId, const std::string &portName) override {
+      m_out << "   new port: " << moduleId << ":" << portName << std::endl;
+   }
+
+   void deletePort(int moduleId, const std::string &portName) override {
+      m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
+   }
+
+   void newConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) override {
+      m_out << "   new connection: "
+         << fromId << ":" << fromName << " -> "
+         << toId << ":" << toName << std::endl;
+   }
+
+   void deleteConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) override {
+      m_out << "   connection removed: "
+         << fromId << ":" << fromName << " -> "
+         << toId << ":" << toName << std::endl;
+   }
+
+   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) override {
+
+      std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
+   }
+
+   void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+
+      std::cerr << "Module status: " << id << ": " << text << std::endl;
+   }
+
+   void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+
+      std::cerr << "Overall status: " << id << ": " << text << std::endl;
+   }
+
+ private:
+   std::ostream &m_out;
+
+};
+
+
+class PyStateObserver: public TrivialStateObserver {
+    typedef TrivialStateObserver Base;
+public:
+
+    using TrivialStateObserver::TrivialStateObserver;
+
+   void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
+       PYBIND11_OVERLOAD(void, /* Return type */
+           Base, /* Parent class */
+           moduleAvailable, /* Name of function in C++ (must match Python name) */
+           hub, /* parameters */
+           name,
+           path
+           );
+   }
+
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override {
+      PYBIND11_OVERLOAD(void, Base, newModule, moduleId, spawnUuid, moduleName);
+   }
+
+   void deleteModule(int moduleId) override {
+      PYBIND11_OVERLOAD(void, Base, deleteModule, moduleId);
+   }
+
+   void moduleStateChanged(int moduleId, int stateBits) override {
+      PYBIND11_OVERLOAD(void, Base, moduleStateChanged, moduleId, stateBits);
+   }
+
+   void newParameter(int moduleId, const std::string &parameterName) override {
+      PYBIND11_OVERLOAD(void, Base, newParameter, moduleId, parameterName);
+   }
+
+   void deleteParameter(int moduleId, const std::string &parameterName) override {
+       PYBIND11_OVERLOAD(void, Base, deleteParameter, moduleId, parameterName);
+   }
+
+   void parameterValueChanged(int moduleId, const std::string &parameterName) override {
+       PYBIND11_OVERLOAD(void, Base, parameterValueChanged, moduleId, parameterName);
+   }
+
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) override {
+       PYBIND11_OVERLOAD(void, Base, parameterChoicesChanged, moduleId, parameterName);
+   }
+
+   void newPort(int moduleId, const std::string &portName) override {
+       PYBIND11_OVERLOAD(void, Base, newPort, moduleId, portName);
+   }
+
+   void deletePort(int moduleId, const std::string &portName) override {
+       PYBIND11_OVERLOAD(void, Base, deletePort, moduleId, portName);
+   }
+
+   void newConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) override {
+       PYBIND11_OVERLOAD(void, Base, newConnection, fromId, fromName, toId, toName);
+   }
+
+   void deleteConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) override {
+       PYBIND11_OVERLOAD(void, Base, deleteConnection, fromId, fromName, toId, toName);
+   }
+
+   void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) override {
+       PYBIND11_OVERLOAD(void, Base, info, text, textType, senderId, senderRank, refType, refUuid);
+   }
+
+   void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+       PYBIND11_OVERLOAD(void, Base, status, id, text, prio);
+   }
+
+   void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
+       PYBIND11_OVERLOAD(void, Base, updateStatus, id, text, prio);
+   }
+};
+
 #ifndef EMBED_PYTHON
-static bool sessionConnect(const std::string host, unsigned short port) {
+static bool sessionConnect(StateObserver *o, const std::string host, unsigned short port) {
     if (userinterface || connection || pymod || vistleThread) {
         std::cerr << "already connected" << std::endl;
         return false;
     }
 
-    userinterface.reset(new UserInterface(host, port));
+    userinterface.reset(new UserInterface(host, port, o));
     if (!userinterface)
         return false;
     connection.reset(new VistleConnection(*userinterface));
@@ -709,6 +871,63 @@ PY_MODULE(_vistle, m) {
             .value("MasterHub", message::Id::MasterHub)
             .export_values();
 
+    typedef vistle::StateObserver SO;
+    py::class_<StateObserver>(m, "StateObserverBase")
+        //.def(py::init<>())
+        .def("moduleAvailable", &SO::moduleAvailable)
+        .def("newModule", &SO::newModule)
+        .def("deleteModule", &SO::deleteModule)
+        .def("moduleStateChanged", &SO::moduleStateChanged)
+        .def("newParameter", &SO::newParameter)
+        .def("deleteParameter", &SO::deleteParameter)
+        .def("parameterValueChanged", &SO::parameterValueChanged)
+        .def("parameterChoicesChanged", &SO::parameterChoicesChanged)
+        .def("newPort", &SO::newPort)
+        .def("deletePort", &SO::deletePort)
+        .def("newConnection", &SO::newConnection)
+        .def("deleteConnection", &SO::deleteConnection)
+        .def("info", &SO::info)
+        .def("status", &SO::status)
+        .def("updateStatus", &SO::updateStatus);
+
+    typedef vistle::TrivialStateObserver TSO;
+    py::class_<TrivialStateObserver, StateObserver>(m, "TrivialStateObserver")
+        //.def(py::init<>())
+        .def("moduleAvailable", &TSO::moduleAvailable)
+        .def("newModule", &TSO::newModule)
+        .def("deleteModule", &TSO::deleteModule)
+        .def("moduleStateChanged", &TSO::moduleStateChanged)
+        .def("newParameter", &TSO::newParameter)
+        .def("deleteParameter", &TSO::deleteParameter)
+        .def("parameterValueChanged", &TSO::parameterValueChanged)
+        .def("parameterChoicesChanged", &TSO::parameterChoicesChanged)
+        .def("newPort", &TSO::newPort)
+        .def("deletePort", &TSO::deletePort)
+        .def("newConnection", &TSO::newConnection)
+        .def("deleteConnection", &TSO::deleteConnection)
+        .def("info", &TSO::info)
+        .def("status", &TSO::status)
+        .def("updateStatus", &TSO::updateStatus);
+
+    typedef vistle::PyStateObserver PSO;
+    py::class_<PyStateObserver, TrivialStateObserver>(m, "StateObserver")
+        .def(py::init([](){ return new PyStateObserver; }))
+        .def("moduleAvailable", &PSO::moduleAvailable)
+        .def("newModule", &PSO::newModule)
+        .def("deleteModule", &PSO::deleteModule)
+        .def("moduleStateChanged", &PSO::moduleStateChanged)
+        .def("newParameter", &PSO::newParameter)
+        .def("deleteParameter", &PSO::deleteParameter)
+        .def("parameterValueChanged", &PSO::parameterValueChanged)
+        .def("parameterChoicesChanged", &PSO::parameterChoicesChanged)
+        .def("newPort", &PSO::newPort)
+        .def("deletePort", &PSO::deletePort)
+        .def("newConnection", &PSO::newConnection)
+        .def("deleteConnection", &PSO::deleteConnection)
+        .def("info", &PSO::info)
+        .def("status", &PSO::status)
+        .def("updateStatus", &PSO::updateStatus);
+
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("spawn", spawn, "spawn new module `arg1`\n" "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);
@@ -780,7 +999,7 @@ PY_MODULE(_vistle, m) {
     m.def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 
 #ifndef EMBED_PYTHON
-    m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a="localhost", "port"_a=31093);
+    m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "observer"_a, "host"_a="localhost", "port"_a=31093);
     m.def("sessionDisconnect", &sessionDisconnect, "disconnect from Vistle");
 #endif
 
