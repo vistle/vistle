@@ -136,7 +136,7 @@ bool ReadWRFChem::prepareRead() {
 
 bool ReadWRFChem::examine(const vistle::Parameter *param) {
 
-    if (param == m_filedir) {
+    if (!param || param == m_filedir) {
        if (!inspectDir())
            return false;
        sendInfo("File %s is used as base", fileList.front().c_str());

@@ -197,7 +197,7 @@ ReadItlrBin::~ReadItlrBin() {
 
 bool ReadItlrBin::examine(const Parameter *param)
 {
-    if (param == m_numPartitions)
+    if (!param || param == m_numPartitions)
         setPartitions(m_numPartitions->getValue());
 
     return true;

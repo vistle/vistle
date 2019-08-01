@@ -142,7 +142,7 @@ int ReadFOAM::rankForBlock(int processor) const {
 
 bool ReadFOAM::examine(const Parameter *p)
 {
-    if (p == m_casedir) {
+    if (!p || p == m_casedir) {
         std::string casedir = m_casedir->getValue();
         if (m_case.valid && m_case.casedir == casedir)
             return true;
