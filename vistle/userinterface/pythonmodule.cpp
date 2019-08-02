@@ -795,15 +795,7 @@ PythonModule::PythonModule(VistleConnection *vc)
    s_instance = this;
    std::cerr << "creating Vistle python module" << std::endl;
 
-#if 0
-#if PY_VERSION_HEX >= 0x03000000
-   PyImport_AppendInittab("_vistle", PyInit__vistle);
-#else
-   PyImport_AppendInittab("_vistle", init_vistle);
-#endif
-#else
    //auto mod = py::module::import("_vistle");
-#endif
 }
 
 PythonModule &PythonModule::the()
@@ -820,20 +812,6 @@ VistleConnection &PythonModule::vistleConnection() const
 
 bool PythonModule::import(py::object *ns, const std::string &path) {
 
-#if 0
-   // load boost::python wrapper - statically linked into binary
-   try {
-      (*ns)["_vistle"] = py::module::import("_vistle");
-   } catch (py::error_already_set) {
-      std::cerr << "vistle Python module import failed" << std::endl;
-      if (PyErr_Occurred()) {
-         std::cerr << PythonInterface::errorString() << std::endl;
-      }
-      //py::handle_exception();
-      PyErr_Clear();
-      return false;
-   }
-#endif
 
    // load vistle.py
    try {
