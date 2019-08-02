@@ -98,6 +98,7 @@ void VistleConnection::operator()() {
       }
       lock.unlock();
    }
+   lock.lock();
    m_done = true;
 }
 

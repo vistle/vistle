@@ -668,6 +668,7 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
    mod.hub = hub;
    mod.name = spawn.getName();
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
       o->newModule(moduleId, spawn.uuid(), mod.name);
@@ -695,6 +696,7 @@ bool StateTracker::handlePriv(const message::Started &started) {
    auto &mod = it->second;
    mod.initialized = true;
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->moduleStateChanged(moduleId, mod.state());
    }
@@ -784,6 +786,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
 
    cleanQueue(mod);
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
       o->deleteModule(mod);
@@ -818,6 +821,7 @@ bool StateTracker::handlePriv(const message::Busy &busy) {
    auto &mod = it->second;
    mod.busy = true;
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->moduleStateChanged(id, mod.state());
    }
@@ -842,6 +846,7 @@ bool StateTracker::handlePriv(const message::Idle &idle) {
    auto &mod = rit->second;
    mod.busy = false;
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->moduleStateChanged(id, mod.state());
    }
@@ -878,6 +883,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
       po[maxIdx+1] = addParam.getName();
    }
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
       o->newParameter(addParam.senderId(), addParam.getName());
@@ -921,6 +927,7 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
       }
    }
 
+   mutex_locker guard(m_stateMutex);
    if (portTracker()) {
       for (StateObserver *o: m_observers) {
          o->deletePort(removeParam.senderId(), removeParam.getName());
@@ -955,6 +962,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
    }
 
    if (handled) {
+      mutex_locker guard(m_stateMutex);
       for (StateObserver *o: m_observers) {
          o->incModificationCount();
          o->parameterValueChanged(setParam.senderId(), setParam.getName());
@@ -978,6 +986,7 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
    //CERR << "choices changed for " << choices.getModule() << ":" << choices.getName() << ": #" << p->choices().size() << std::endl;
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
       o->parameterChoicesChanged(choices.senderId(), choices.getName());
@@ -988,6 +997,7 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
 bool StateTracker::handlePriv(const message::Quit &quit) {
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->quitRequested();
    }
@@ -1006,6 +1016,7 @@ bool StateTracker::handlePriv(const message::Kill &kill) {
    auto &mod = it->second;
    mod.killed = true;
 
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->moduleStateChanged(id, mod.state());
    }
@@ -1037,6 +1048,7 @@ bool StateTracker::handlePriv(const message::AddPort &createPort) {
       if (!p)
          return false;
 
+      mutex_locker guard(m_stateMutex);
       for (StateObserver *o: m_observers) {
          o->incModificationCount();
          o->newPort(p->getModuleID(), p->getName());
@@ -1055,6 +1067,7 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort) {
 
       if (portTracker()->findPort(p)) {
 
+          mutex_locker guard(m_stateMutex);
           for (StateObserver *o: m_observers) {
               o->incModificationCount();
               o->deletePort(id, name);
@@ -1068,6 +1081,7 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort) {
 
 bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 {
+   mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
       o->resetModificationCount();
    }
@@ -1076,6 +1090,7 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 
 bool StateTracker::handlePriv(const message::SendText &info)
 {
+    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->info(info.text(), info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
     }
@@ -1086,6 +1101,7 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status) {
 
     if (status.statusType() == message::UpdateStatus::LoadedFile) {
         m_loadedWorkflowFile = status.text();
+        mutex_locker guard(m_stateMutex);
         for (StateObserver *o: m_observers) {
             o->loadedWorkflowChanged(m_loadedWorkflowFile);
         }
@@ -1103,6 +1119,7 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status) {
     mod.statusTime = m_statusTime;
     ++m_statusTime;
 
+    mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
         o->status(mod.id, mod.statusText, mod.statusImportance);
     }
@@ -1134,6 +1151,7 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
 
     AvailableModule::Key key(mod.hub, mod.name);
 
+    mutex_locker guard(m_stateMutex);
     if (m_availableModules.emplace(key, mod).second) {
         for (StateObserver *o: m_observers) {
             o->moduleAvailable(mod.hub, mod.name, mod.path);
