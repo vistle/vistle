@@ -844,6 +844,7 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
 #if PY_MAJOR_VERSION > 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 6)
       py::eval<py::eval_statements>(R"(
          import importlib
+         import importlib.util
          spec = importlib.util.spec_from_file_location(modulename, path)
          if spec != None and spec.loader != None:
              newmodule = spec.loader.load_module()
@@ -855,8 +856,8 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
          )", *ns, locals);
 #endif
       (*ns)["vistle"] = locals["newmodule"];
-   } catch (py::error_already_set &) {
-      std::cerr << "loading of vistle.py failed" << std::endl;
+   } catch (py::error_already_set &ex) {
+      std::cerr << "loading of vistle.py failed: " << ex.what() << std::endl;
       if (PyErr_Occurred()) {
          std::cerr << PythonInterface::errorString() << std::endl;
       }
