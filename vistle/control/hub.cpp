@@ -128,7 +128,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("hub,c", po::value<std::string>(), "connect to hub")
       ("batch,b", "do not start user interface")
       ("gui,g", "start graphical user interface")
-      ("tui,t", "start command line interface")
+      ("tui,t", "start command line interface (requires ipython)")
       ("name", "Vistle script to process or slave name")
       ;
    po::variables_map vm;
@@ -197,18 +197,27 @@ bool Hub::init(int argc, char *argv[]) {
          uiCmd.clear();
       }
    }
+   bool pythonUi = false;
+   if (vm.count("tui")) {
+       pythonUi = true;
+       uiCmd.clear();
+   }
    if (vm.count("gui")) {
       uiCmd = "vistle_gui";
-   } else if (vm.count("tui")) {
-      uiCmd = "blower";
    }
    if (vm.count("batch")) {
       uiCmd.clear();
+      pythonUi = false;
    }
 
-   if (!m_inManager && !uiCmd.empty()) {
-      std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
-      startUi(uipath);
+   if (!m_inManager) {
+       if (!uiCmd.empty()) {
+           std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+           startUi(uipath);
+       }
+       if (pythonUi) {
+           startPythonUi();
+       }
    }
 
    if (vm.count("name") == 1) {
@@ -452,7 +461,25 @@ bool Hub::dispatch() {
          CERR << "unknown process with PID " << pid << " exited" << std::endl;
       } else {
          const int id = it->second;
-         CERR << "process with id " << id << " (PID " << pid << ") exited" << std::endl;
+         std::string idstring;
+         switch(id) {
+         case Process::Manager:
+             idstring = "Manager";
+             break;
+         case Process::Cleaner:
+             idstring = "Cleaner";
+             break;
+         case Process::Debugger:
+             idstring = "Debugger";
+             break;
+         case Process::GUI:
+             idstring = "GUI";
+             break;
+         default:
+             idstring = std::to_string(id);
+             break;
+         }
+         CERR << "process with id " << idstring << " (PID " << pid << ") exited" << std::endl;
          m_processMap.erase(it);
          if (id == Process::Manager) {
             // manager died
@@ -1347,6 +1374,32 @@ bool Hub::startUi(const std::string &uipath) {
 
    return true;
 }
+
+bool Hub::startPythonUi() {
+
+   std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
+
+   std::string ipython = "ipython";
+   std::vector<std::string> args;
+   args.push_back(ipython);
+   args.push_back("-i");
+   args.push_back("-c");
+   std::string cmd = "import vistle; ";
+   cmd += "vistle._vistle.sessionConnect(None, \"" + m_masterHost + "\", " + port + "); ";
+   cmd += "from vistle import *; ";
+   args.push_back(cmd);
+   args.push_back("--");
+   auto pid = vistle::spawn_process(ipython, args);
+   if (!pid) {
+      CERR << "failed to spawn ipython " << ipython << std::endl;
+      return false;
+   }
+
+   m_processMap[pid] = Process::GUI;
+
+   return true;
+}
+
 
 bool Hub::processScript() {
 

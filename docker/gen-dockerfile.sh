@@ -42,7 +42,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y \
        git cmake make file \
        libjpeg-dev \
        libvncserver-dev \
-       libsnappy-dev zlib1g-dev libreadline-dev \
+       libsnappy-dev zlib1g-dev \
        libassimp-dev \
        libtinyxml2-dev libvtk6-dev \
        libboost-atomic-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev \

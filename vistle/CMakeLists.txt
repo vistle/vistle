@@ -178,7 +178,6 @@ add_subdirectory(userinterface)
 add_subdirectory(bin)
 add_subdirectory(hub)
 add_subdirectory(proxy)
-add_subdirectory(blower)
 
 add_subdirectory(module)
 add_subdirectory(renderer)

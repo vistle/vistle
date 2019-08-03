@@ -60,6 +60,7 @@ private:
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
    bool startUi(const std::string &uipath);
+   bool startPythonUi();
    bool startServer();
    bool startAccept();
    void handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);

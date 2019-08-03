@@ -52,9 +52,6 @@ Build Requirements
 - **Python**:
   for interpreting Vistle scripts (.vsl), Python 2.7 and 3 should work.
 
-- **Readline library**:
-  history and line editing for command line interface
-
 - **COVISE/OpenCOVER**:
   a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for:
@@ -184,7 +181,6 @@ Source Code Organization
     - `vistle/control`: Python code for controlling a Vistle session
     - `vistle/hub`: Vistle session controller
     - `vistle/gui`: graphical user interface
-    - `vistle/blower`: command line user interface (Python)
     - `vistle/module`: visualization algorithm modules and base library
         - `vistle/module/general`:
         - `vistle/module/test`: various debugging aids

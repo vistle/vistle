@@ -10,4 +10,12 @@ add_custom_target(vistle_spawner ALL
    SOURCES ${SPAWN_VISTLE}
 )
 
+if (UNIX)
+add_custom_target(vistle_tui ALL
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/vistle_tui.sh ${EXECUTABLE_OUTPUT_PATH}/vistle_tui
+   DEPENDS vistle_tui.sh
+   SOURCES vistle_tui.sh
+)
+endif()
+
 install(PROGRAMS ${SPAWN_VISTLE} DESTINATION bin)
