@@ -15,6 +15,8 @@
 
 namespace asio = boost::asio;
 
+#define CERR std::cerr << "UI [" << m_hostname << ":" << id() << "] "
+
 namespace vistle {
 
 UserInterface::UserInterface(const std::string &host, const unsigned short port, StateObserver *observer)
@@ -33,10 +35,9 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 
    //m_stateTracker.handle(message::Trace(message::Id::Broadcast, message::ANY, true));
 
-   std::cerr << "  userinterface ["  << id() << "] started as " << hostname() << ":"
-             << get_process_handle() << std::endl;
-
    m_hostname = hostname();
+
+   CERR << "started as " << hostname() << ":" << get_process_handle() << std::endl;
 
    tryConnect();
 }
@@ -60,7 +61,11 @@ void UserInterface::cancel() {
     }
     m_socket.cancel();
     if (isConnected()) {
-        m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+        try {
+            m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+        } catch (std::exception &ex) {
+            CERR << "exception during socket shutdown: " << ex.what() << std::endl;
+        }
     }
     m_ioService.stop();
 }
@@ -98,8 +103,7 @@ bool UserInterface::tryConnect() {
    boost::system::error_code ec;
    asio::connect(socket(), endpoint_iterator, ec);
    if (ec) {
-      std::cerr << "  userinterface [" << id() << "]: could not establish connection to "
-      << host << ":" << m_remotePort << std::endl;
+      CERR << "could not establish connection to " << host << ":" << m_remotePort << std::endl;
       m_isConnected = false;
       return false;
    }
@@ -190,7 +194,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
          message::DefaultSender::init(id->senderId(), -m_id);
          std::lock_guard<std::mutex> lock(m_mutex);
          m_initialized = true;
-         //std::cerr << "received new UI id: " << m_id << std::endl;
+         //CERR << "received new UI id: " << m_id << std::endl;
          break;
       }
 
@@ -224,8 +228,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
               }
           }
           if (!found) {
-              std::cerr << "userinterface [" << host() << "] [" << id() << "] "
-                        << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
+              CERR << "did not find filebrowser with id " << fq.filebrowserId() << std::endl;
           }
           break;
       }
