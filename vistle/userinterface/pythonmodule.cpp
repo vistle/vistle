@@ -54,6 +54,8 @@ namespace py = pybind11;
 
 #ifndef EMBED_PYTHON
 static std::unique_ptr<vistle::VistleConnection> connection;
+static std::unique_ptr<vistle::UserInterface> userinterface;
+static std::unique_ptr<vistle::PythonModule> pymod;
 static std::unique_ptr<std::thread, std::function<void(std::thread*)>> vistleThread(nullptr, [](std::thread *thr){
         if (connection) {
             connection->cancel();
@@ -62,8 +64,6 @@ static std::unique_ptr<std::thread, std::function<void(std::thread*)>> vistleThr
             thr->join();
         delete thr;
         });
-static std::unique_ptr<vistle::UserInterface> userinterface;
-static std::unique_ptr<vistle::PythonModule> pymod;
 #endif
 
 namespace asio = boost::asio;
