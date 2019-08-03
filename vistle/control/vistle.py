@@ -293,6 +293,40 @@ def load(filename = None):
    setStatus("Workflow loaded: "+filename)
 
 
+class PythonStateObserver(_vistle.StateObserver):
+    def __init__(self):
+        super(PythonStateObserver, self).__init__()
+    def moduleAvailable(self, hub, name, path):
+        super(PythonStateObserver, self).moduleAvailable(hub, name, path)
+    def newModule(self, moduleId, spawnUuid, moduleName):
+        super(PythonStateObserver, self).newModule(moduleId, spawnUuid, moduleName)
+    def deleteModule(self, moduleId):
+        super(PythonStateObserver, self).deleteModule(moduleId)
+    def moduleStateChanged(self, moduleId, stateBits):
+        super(PythonStateObserver, self).moduleStateChanged(moduleId, stateBits)
+    def newParameter(self, moduleId, parameterName):
+        super(PythonStateObserver, self).newParameter(moduleId, parameterName)
+    def deleteParameter(self, moduleId, parameterName):
+        super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
+    def parameterValueChanged(self, moduleId, parameterName):
+        super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
+    def parameterChoicesChanged(self, moduleId, parameterName):
+        super(PythonStateObserver, self).deleteParameter(moduleId, parameterName)
+    def newPort(self, moduleId, portName):
+        super(PythonStateObserver, self).newPort(moduleId, portName)
+    def deletePort(self, moduleId, portName):
+        super(PythonStateObserver, self).deletePort(moduleId, portName)
+    def newConnection(self, fromId, fromName, toId, toName):
+        super(PythonStateObserver, self).newConnection(fromId, fromName, toId, toName)
+    def deleteConnection(self, fromId, fromName, toId, toName):
+        super(PythonStateObserver, self).deleteConnection(fromId, fromName, toId, toName)
+    def info(self, text, textType, senderId, senderRank, refType, refUuid):
+        super(PythonStateObserver, self).info(text, textType, senderId, senderRank, refType, refUuid)
+    def status(self, moduleId, text, prio):
+        super(PythonStateObserver, self).status(moduleId, text, prio)
+    def updateStatus(self, moduleId, text, prio):
+        super(PythonStateObserver, self).updateStatus(moduleId, text, prio)
+
 # re-export functions from _vistle
 source = _vistle.source
 spawn = _vistle.spawn
