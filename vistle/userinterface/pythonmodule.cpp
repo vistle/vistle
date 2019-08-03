@@ -96,6 +96,11 @@ static bool sendMessage(const vistle::message::Message &m) {
 #endif
 }
 
+static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid) {
+   py::gil_scoped_release release;
+   return MODULEMANAGER.waitForReply(uuid);
+}
+
 static void source(const std::string &filename) {
 
    PythonInterface::the().exec_file(filename);
@@ -145,7 +150,7 @@ static bool barrier() {
    MODULEMANAGER.registerRequest(m.uuid());
    if (!sendMessage(m))
       return false;
-   auto buf = MODULEMANAGER.waitForReply(m.uuid());
+   auto buf = waitForReply(m.uuid());
    if (buf->type() == message::BARRIERREACHED) {
       return true;
    }
@@ -177,7 +182,7 @@ static int waitForSpawn(const std::string &uuid) {
 
    boost::uuids::string_generator gen;
    message::uuid_t u = gen(uuid);
-   auto buf = MODULEMANAGER.waitForReply(u);
+   auto buf = waitForReply(u);
    if (buf->type() == message::SPAWN) {
       auto &spawn = buf->as<message::Spawn>();
       return spawn.spawnId();
