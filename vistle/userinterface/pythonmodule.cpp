@@ -72,6 +72,7 @@ namespace vistle {
 
 namespace {
 PythonModule *pythonModuleInstance = nullptr;
+message::Type traceMessages = message::INVALID;
 }
 
 static bool sendMessage(const vistle::message::Message &m) {
@@ -84,6 +85,9 @@ static bool sendMessage(const vistle::message::Message &m) {
    }
    return ret;
 #else
+   if (traceMessages == m.type() || traceMessages == message::ANY) {
+       std::cerr << "Python: send " << m << std::endl;
+   }
    if (!pythonModuleInstance) {
        std::cerr << "cannot send message: no connection to Vistle session" << std::endl;
        return false;
@@ -124,6 +128,13 @@ static void trace(int id=message::Id::Broadcast, message::Type type=message::ANY
    std::cerr << "Python: trace " << id << << ", type " << type << ": " << std::boolalpha << onoff << std::endl;
    std::cerr.flags(cerrflags);
 #endif
+   if (id == message::Id::Broadcast || id == message::Id::UI) {
+       if (onoff)
+           traceMessages = type;
+       else
+           traceMessages = message::INVALID;
+   }
+
    message::Trace m(id, type, onoff);
    sendMessage(m);
 }
