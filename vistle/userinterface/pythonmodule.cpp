@@ -84,6 +84,10 @@ static bool sendMessage(const vistle::message::Message &m) {
    }
    return ret;
 #else
+   if (!pythonModuleInstance) {
+       std::cerr << "cannot send message: no connection to Vistle session" << std::endl;
+       return false;
+   }
    return pythonModuleInstance->vistleConnection().sendMessage(m);
 #endif
 }
