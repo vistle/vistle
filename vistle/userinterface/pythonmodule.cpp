@@ -1017,6 +1017,11 @@ PythonModule::PythonModule(VistleConnection *vc)
    //auto mod = py::module::import("_vistle");
 }
 
+PythonModule::~PythonModule()
+{
+    s_instance = nullptr;
+}
+
 PythonModule &PythonModule::the()
 {
    assert(s_instance);

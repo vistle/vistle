@@ -15,7 +15,8 @@ class VistleConnection;
 class V_UIEXPORT PythonModule {
 
 public:
-   PythonModule(VistleConnection *vc = nullptr);
+   explicit PythonModule(VistleConnection *vc = nullptr);
+   ~PythonModule();
    static PythonModule &the();
 
    VistleConnection &vistleConnection() const;
