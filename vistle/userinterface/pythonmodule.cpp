@@ -45,8 +45,8 @@ namespace py = pybind11;
 
 // if part of a user interface
 #include "vistleconnection.h"
-#define MODULEMANAGER ((PythonModule::the().vistleConnection().ui().state()))
-#define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = PythonModule::the().vistleConnection().locked()
+#define MODULEMANAGER ((pythonModuleInstance->vistleConnection().ui().state()))
+#define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = pythonModuleInstance->vistleConnection().locked()
 
 #endif
 
@@ -70,7 +70,9 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-PythonModule *PythonModule::s_instance = nullptr;
+namespace {
+PythonModule *pythonModuleInstance = nullptr;
+}
 
 static bool sendMessage(const vistle::message::Message &m) {
 
@@ -82,7 +84,7 @@ static bool sendMessage(const vistle::message::Message &m) {
    }
    return ret;
 #else
-   return PythonModule::the().vistleConnection().sendMessage(m);
+   return pythonModuleInstance->vistleConnection().sendMessage(m);
 #endif
 }
 
@@ -1010,8 +1012,8 @@ PY_MODULE(_vistle, m) {
 PythonModule::PythonModule(VistleConnection *vc)
    : m_vistleConnection(vc)
 {
-   assert(s_instance == nullptr);
-   s_instance = this;
+   assert(pythonModuleInstance == nullptr);
+   pythonModuleInstance = this;
    std::cerr << "creating Vistle python module" << std::endl;
 
    //auto mod = py::module::import("_vistle");
@@ -1019,13 +1021,7 @@ PythonModule::PythonModule(VistleConnection *vc)
 
 PythonModule::~PythonModule()
 {
-    s_instance = nullptr;
-}
-
-PythonModule &PythonModule::the()
-{
-   assert(s_instance);
-   return *s_instance;
+    pythonModuleInstance = nullptr;
 }
 
 VistleConnection &PythonModule::vistleConnection() const
