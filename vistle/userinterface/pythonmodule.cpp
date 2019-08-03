@@ -21,6 +21,7 @@
 #include "pythoninterface.h"
 
 //#define DEBUG
+//#define OBSERVER_DEBUG
 
 #include <core/statetracker.h>
 #include <core/porttracker.h>
@@ -649,77 +650,104 @@ public:
       {}
 
    void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
+#ifdef OBSERVER_DEBUG
        m_out << "   hub: " << hub << ", module: " << name << " (" << path << ")" << std::endl;
+#endif
    }
 
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override {
       (void)spawnUuid;
+#ifdef OBSERVER_DEBUG
       m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
+#endif
    }
 
    void deleteModule(int moduleId) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   module deleted: " << moduleId << std::endl;
+#endif
    }
 
    void moduleStateChanged(int moduleId, int stateBits) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   module state change: " << moduleId << " (";
       if (stateBits & StateObserver::Initialized) m_out << "I";
       if (stateBits & StateObserver::Killed) m_out << "K";
       if (stateBits & StateObserver::Busy) m_out << "B";
       m_out << ")" << std::endl;
+#endif
    }
 
    void newParameter(int moduleId, const std::string &parameterName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
+#endif
    }
 
    void deleteParameter(int moduleId, const std::string &parameterName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
+#endif
    }
 
    void parameterValueChanged(int moduleId, const std::string &parameterName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
+#endif
    }
 
    void parameterChoicesChanged(int moduleId, const std::string &parameterName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
+#endif
    }
 
    void newPort(int moduleId, const std::string &portName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   new port: " << moduleId << ":" << portName << std::endl;
+#endif
    }
 
    void deletePort(int moduleId, const std::string &portName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
+#endif
    }
 
    void newConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   new connection: "
          << fromId << ":" << fromName << " -> "
          << toId << ":" << toName << std::endl;
+#endif
    }
 
    void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) override {
+#ifdef OBSERVER_DEBUG
       m_out << "   connection removed: "
          << fromId << ":" << fromName << " -> "
          << toId << ":" << toName << std::endl;
+#endif
    }
 
    void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) override {
-
+#ifdef OBSERVER_DEBUG
       std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
+#endif
    }
 
    void status(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
-
+#ifdef OBSERVER_DEBUG
       std::cerr << "Module status: " << id << ": " << text << std::endl;
+#endif
    }
 
    void updateStatus(int id, const std::string &text, message::UpdateStatus::Importance prio) override {
-
+#ifdef OBSERVER_DEBUG
       std::cerr << "Overall status: " << id << ": " << text << std::endl;
+#endif
    }
 
  private:
@@ -804,7 +832,7 @@ public:
 };
 
 #ifndef EMBED_PYTHON
-static bool sessionConnect(StateObserver *o, const std::string host, unsigned short port) {
+static bool sessionConnectWithObserver(StateObserver *o, const std::string &host, unsigned short port) {
     if (userinterface || connection || pymod || vistleThread) {
         std::cerr << "already connected" << std::endl;
         return false;
@@ -828,6 +856,10 @@ static bool sessionConnect(StateObserver *o, const std::string host, unsigned sh
     }
 
     return true;
+}
+
+static bool sessionConnect(const std::string &host, unsigned short port) {
+    return sessionConnectWithObserver(nullptr, host, port);
 }
 
 static bool sessionDisconnect() {
@@ -872,6 +904,12 @@ PY_MODULE(_vistle, m) {
     using namespace py::literals;
     m.doc() = "Vistle Python bindings";
 
+    py::class_<boost::uuids::uuid> uuidt(m, "uuid");
+    uuidt.def(py::init<>());
+    uuidt.def("__repr__", [](const boost::uuids::uuid &id){
+        return boost::lexical_cast<std::string>(id);
+    });
+
     // make values of vistle::message::Type enum known to Python as Message.xxx
     py::class_<message::Message> message(m, "Message");
     vistle::message::enumForPython_Type(message, "Message");
@@ -879,6 +917,10 @@ PY_MODULE(_vistle, m) {
     // make values of vistle::message::UpdateStatus::Importance enum known to Python as Importance.xxx
     py::class_<message::UpdateStatus> us(m, "Status");
     vistle::message::UpdateStatus::enumForPython_Importance(us, "Importance");
+
+    // make values of vistle::message::SendText::TextType enum known to Python as Text.xxx
+    py::class_<message::SendText> st(m, "Text");
+    vistle::message::SendText::enumForPython_TextType(st, "Type");
 
     py::class_<message::Id> id(m, "Id");
     py::enum_<message::Id::Reserved>(id, "Id")
@@ -913,7 +955,8 @@ PY_MODULE(_vistle, m) {
         .def("updateStatus", &SO::updateStatus);
 
     typedef vistle::TrivialStateObserver TSO;
-    py::class_<TrivialStateObserver, StateObserver>(m, "TrivialStateObserver")
+    py::class_<TrivialStateObserver, PyStateObserver, StateObserver>(m, "StateObserver")
+        .def(py::init([](){ return new PyStateObserver; }))
         //.def(py::init<>())
         .def("moduleAvailable", &TSO::moduleAvailable)
         .def("newModule", &TSO::newModule)
@@ -930,25 +973,6 @@ PY_MODULE(_vistle, m) {
         .def("info", &TSO::info)
         .def("status", &TSO::status)
         .def("updateStatus", &TSO::updateStatus);
-
-    typedef vistle::PyStateObserver PSO;
-    py::class_<PyStateObserver, TrivialStateObserver>(m, "StateObserver")
-        .def(py::init([](){ return new PyStateObserver; }))
-        .def("moduleAvailable", &PSO::moduleAvailable)
-        .def("newModule", &PSO::newModule)
-        .def("deleteModule", &PSO::deleteModule)
-        .def("moduleStateChanged", &PSO::moduleStateChanged)
-        .def("newParameter", &PSO::newParameter)
-        .def("deleteParameter", &PSO::deleteParameter)
-        .def("parameterValueChanged", &PSO::parameterValueChanged)
-        .def("parameterChoicesChanged", &PSO::parameterChoicesChanged)
-        .def("newPort", &PSO::newPort)
-        .def("deletePort", &PSO::deletePort)
-        .def("newConnection", &PSO::newConnection)
-        .def("deleteConnection", &PSO::deleteConnection)
-        .def("info", &PSO::info)
-        .def("status", &PSO::status)
-        .def("updateStatus", &PSO::updateStatus);
 
     m.def("source", &source, "execute commands from `file`", "file"_a);
     m.def("spawn", spawn, "spawn new module `arg1`\n" "return its ID",
@@ -1021,7 +1045,8 @@ PY_MODULE(_vistle, m) {
     m.def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 
 #ifndef EMBED_PYTHON
-    m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "observer"_a, "host"_a="localhost", "port"_a=31093);
+    m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a="localhost", "port"_a=31093);
+    m.def("sessionConnect", &sessionConnectWithObserver, "connect to running Vistle instance", "observer"_a, "host"_a, "port"_a);
     m.def("sessionDisconnect", &sessionDisconnect, "disconnect from Vistle");
 #endif
 
