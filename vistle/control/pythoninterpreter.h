@@ -12,13 +12,14 @@ class Executor;
 class PythonInterpreter {
 
  public:
-   PythonInterpreter(const std::string &filename, const std::string &path);
+   PythonInterpreter(const std::string &filename, const std::string &path, bool executeModules=false);
    ~PythonInterpreter();
    void init();
 
    bool check();
 
    bool executeFile(const std::string &filename);
+   bool executeCommand(const std::string &cmd);
 
  private:
    std::string m_pythonPath;

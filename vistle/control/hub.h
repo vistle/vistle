@@ -96,6 +96,7 @@ private:
 
    std::string m_prefix;
    std::string m_scriptPath;
+   bool m_executeModules = false;
    bool m_quitting;
 
    AvailableMap m_availableModules;

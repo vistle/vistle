@@ -129,6 +129,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("batch,b", "do not start user interface")
       ("gui,g", "start graphical user interface")
       ("tui,t", "start command line interface (requires ipython)")
+      ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
       ;
    po::variables_map vm;
@@ -225,6 +226,9 @@ bool Hub::init(int argc, char *argv[]) {
          m_scriptPath = vm["name"].as<std::string>();
       else
          m_name = vm["name"].as<std::string>();
+   }
+   if (vm.count("execute") > 0) {
+       m_executeModules = true;
    }
 
    if (!m_inManager) {
@@ -1408,7 +1412,7 @@ bool Hub::processScript() {
    if (!m_scriptPath.empty()) {
       setStatus("Loading "+m_scriptPath+"...");
       setLoadedFile(m_scriptPath);
-      PythonInterpreter inter(m_scriptPath, dir::share(m_prefix));
+      PythonInterpreter inter(m_scriptPath, dir::share(m_prefix), m_executeModules);
       while(inter.check()) {
          dispatch();
       }
