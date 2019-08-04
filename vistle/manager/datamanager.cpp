@@ -50,7 +50,10 @@ DataManager::DataManager(mpi::communicator &comm)
 
 DataManager::~DataManager() {
 
-    m_quit = true;
+    {
+        std::lock_guard<std::mutex> guard(m_recvMutex);
+        m_quit = true;
+    }
 
     if (m_size > 1)
         m_req.cancel();
@@ -424,9 +427,12 @@ void DataManager::recvLoop()
 {
     for (;;)
     {
+        {
+            std::lock_guard<std::mutex> guard(m_recvMutex);
+            if (m_quit)
+                break;
+        }
         bool gotMsg = false;
-        if (m_quit)
-            break;
         if (m_dataSocket.is_open()) {
             message::Buffer buf;
             std::vector<char> payload;
@@ -437,8 +443,12 @@ void DataManager::recvLoop()
                 m_recvQueue.emplace_back(buf, payload);
                 //CERR << "Data received" << std::endl;
             }
+
+            std::lock_guard<std::mutex> guard(m_recvMutex);
+            if (m_quit)
+                break;
         }
-        vistle::adaptive_wait(gotMsg || m_quit, this);
+        vistle::adaptive_wait(gotMsg, this);
     }
 }
 
