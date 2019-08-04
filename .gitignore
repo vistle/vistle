@@ -12,4 +12,5 @@ test
 .vs
 .vscode
 .idea
+.ipynb_checkpoints
 **/.nfs*
