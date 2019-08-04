@@ -232,7 +232,8 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
 
    const IntParamVector &v = vparam->getValue();
    numElem = v.dim;
-   val = new int[numElem]; //FIXME: memory leak
+   val = new int[numElem];
+   intArrays.emplace_back(val);
    for (int i=0; i<numElem; ++i) {
       val[i] = v[i];
    }
@@ -250,7 +251,8 @@ int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numE
 
    const ParamVector &v = vparam->getValue();
    numElem = v.dim;
-   val = new float[numElem]; //FIXME: memory leak
+   val = new float[numElem];
+   floatArrays.emplace_back(val);
    for (int i=0; i<numElem; ++i) {
       val[i] = v[i];
    }
