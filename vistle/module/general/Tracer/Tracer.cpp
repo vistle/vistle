@@ -259,6 +259,13 @@ bool Tracer::reduce(int timestep) {
    if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep)
        return true;
 
+   size_t minsize = std::max(numTimesteps()+1, timestep+2);
+   if (m_gridAttr.size() < minsize) {
+       m_gridAttr.resize(minsize);
+       m_data0Attr.resize(minsize);
+       m_data1Attr.resize(minsize);
+   }
+
    if (timestep == -1) {
        for (int i=0; i<numTimesteps(); ++i) {
            mergeAttributes(m_gridAttr[0], m_gridAttr[i+1]);
@@ -406,7 +413,7 @@ bool Tracer::reduce(int timestep) {
        return checkSet.size();
    };
 
-   Index numconstant = grid_in[0].size();
+   Index numconstant = grid_in.size() ? grid_in[0].size() : 0;
    for (Index i=0; i<numconstant; ++i) {
        if (useCelltree && !celltree.empty()) {
            if (celltree[0].size() > i && celltree[0][i].valid())
