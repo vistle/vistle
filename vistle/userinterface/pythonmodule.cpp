@@ -18,7 +18,9 @@
 #include <core/port.h>
 
 #include "pythonmodule.h"
+#ifdef EMBED_PYTHON
 #include "pythoninterface.h"
+#endif
 
 //#define DEBUG
 //#define OBSERVER_DEBUG
@@ -102,9 +104,34 @@ static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid
    return MODULEMANAGER.waitForReply(uuid);
 }
 
-static void source(const std::string &filename) {
+static bool source(const std::string &filename) {
 
-   PythonInterface::the().exec_file(filename);
+#ifdef EMBED_PYTHON
+   return PythonInterface::the().exec_file(filename);
+#else
+   bool ok = false;
+   try {
+      py::object r = py::eval_file<py::eval_statements>(filename.c_str(), py::globals());
+      if (r.ptr()) {
+          py::print(r);
+          py::print("\n");
+      }
+      ok = true;
+   } catch (py::error_already_set &ex) {
+      std::cerr << "source: Error: " << ex.what() << std::endl;
+      //std::cerr << "Python exec error" << std::endl;
+      PyErr_Print();
+      PyErr_Clear();
+      ok = false;
+   } catch (std::exception &ex) {
+      std::cerr << "source: Unknown error: " << ex.what() << std::endl;
+      ok = false;
+   } catch (...) {
+      std::cerr << "source: Unknown error" << std::endl;
+      ok = false;
+   }
+   return ok;
+#endif
 }
 
 static void quit() {
@@ -1077,7 +1104,7 @@ VistleConnection &PythonModule::vistleConnection() const
 
 bool PythonModule::import(py::object *ns, const std::string &path) {
 
-
+#ifdef EMBED_PYTHON
    // load vistle.py
    try {
       py::dict locals;
@@ -1115,6 +1142,8 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
    }
 
    std::cerr << "done loading of vistle.py" << std::endl;
+#endif
+
    return true;
 }
 
