@@ -11,4 +11,5 @@ test
 .flavor
 .vs
 .vscode
+.idea
 **/.nfs*
