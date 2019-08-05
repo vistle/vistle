@@ -25,6 +25,9 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
    std::streamsize xsputn (const CharT *s, std::streamsize num) {
       size_t oldsize = m_vector.size();
+      if (oldsize+num > m_vector.capacity()) {
+          m_vector.reserve(std::max(2*(oldsize+num), m_vector.capacity()*2));
+      }
       m_vector.resize(oldsize+num);
       memcpy(m_vector.data()+oldsize, s, num);
       return num;
