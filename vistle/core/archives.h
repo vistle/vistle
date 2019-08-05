@@ -262,21 +262,17 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    ShmVector<T> getArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+    void fetchArray(const std::string &arname, const std::function<void()> &completeCallback) const {
         std::string name = translateArrayName(arname);
-        ShmVector<T> arr;
-        if (!name.empty())
-            arr = Shm::the().getArrayFromName<T>(name);
-        if (arr) {
-            if (completeCallback)
-                completeCallback();
-        } else {
-            assert(m_fetcher);
-            m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
-            name = translateArrayName(arname);
-            arr = Shm::the().getArrayFromName<T>(name);
+        if (!name.empty()) {
+            if (auto arr = Shm::the().getArrayFromName<T>(name)) {
+                if (completeCallback)
+                    completeCallback();
+                return;
+            }
         }
-        return arr;
+        assert(m_fetcher);
+        m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
     }
 
     obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
@@ -356,21 +352,17 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    ShmVector<T> getArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+    void fetchArray(const std::string &arname, const std::function<void()> &completeCallback) const {
         std::string name = translateArrayName(arname);
-        ShmVector<T> arr;
-        if (!name.empty())
-            arr = Shm::the().getArrayFromName<T>(name);
-        if (arr) {
-            if (completeCallback)
-                completeCallback();
-        } else {
-            assert(m_fetcher);
-            m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
-            name = translateArrayName(arname);
-            arr = Shm::the().getArrayFromName<T>(name);
+        if (!name.empty()) {
+            if (auto arr = Shm::the().getArrayFromName<T>(name)) {
+                if (completeCallback)
+                    completeCallback();
+                return;
+            }
         }
-        return arr;
+        assert(m_fetcher);
+        m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
     }
 
     obj_const_ptr getObject(const std::string &name, const std::function<void (Object::const_ptr)> &completeCallback) const;
