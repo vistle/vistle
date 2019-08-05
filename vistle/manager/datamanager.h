@@ -38,17 +38,18 @@ public:
 
     bool send(const message::Message &message, const std::vector<char> *payload=nullptr);
 
+    struct Msg {
+       Msg(message::Buffer &&buf, std::vector<char> &&payload);
+       message::Buffer buf;
+       std::vector<char> payload;
+    };
+
 private:
     bool handlePriv(const message::RequestObject &req);
     bool handlePriv(const message::SendObject &snd, std::vector<char> *payload);
     bool handlePriv(const message::AddObjectCompleted &complete);
     void updateStatus();
 
-    struct Msg {
-       Msg(message::Buffer &buf, std::vector<char> &payload);
-       message::Buffer buf;
-       std::vector<char> payload;
-    };
     std::mutex m_recvMutex;
     std::deque<Msg> m_recvQueue;
     bool m_quit = false;

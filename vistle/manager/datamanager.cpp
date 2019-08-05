@@ -440,7 +440,7 @@ void DataManager::recvLoop()
                 CERR << "Data communication error" << std::endl;
             } else if (gotMsg) {
                 std::lock_guard<std::mutex> guard(m_recvMutex);
-                m_recvQueue.emplace_back(buf, payload);
+                m_recvQueue.emplace_back(std::move(buf), std::move(payload));
                 //CERR << "Data received" << std::endl;
             }
 
@@ -452,9 +452,9 @@ void DataManager::recvLoop()
     }
 }
 
-DataManager::Msg::Msg(message::Buffer &buf, std::vector<char> &payload)
-: buf(buf)
-, payload(payload)
+DataManager::Msg::Msg(message::Buffer &&buf, std::vector<char> &&payload)
+: buf(std::move(buf))
+, payload(std::move(payload))
 {
 }
 
