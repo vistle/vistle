@@ -1,8 +1,4 @@
-import sys
-from time import sleep
-
 import _vistle
-from _vistle import *
 
 # print to network clients
 class _stdout:
@@ -106,11 +102,11 @@ def getParameter(id, name):
    return None
 
 def getSavableParam(id, name):
-   t = getParameterType(id, name)
+   t = _vistle.getParameterType(id, name)
    if t == "String":
       return "'"+getStringParam(id, name)+"'"
    elif t == "Vector":
-      v = getVectorParam(id, name)
+      v = _vistle.getVectorParam(id, name)
       s = ''
       first=True
       for c in v:
@@ -120,7 +116,7 @@ def getSavableParam(id, name):
          s += str(c)
       return s
    elif t == "IntVector":
-      v = getIntVectorParam(id, name)
+      v = _vistle.getIntVectorParam(id, name)
       s = ''
       first=True
       for c in v:
@@ -136,19 +132,19 @@ def showParameter(id, name):
    print(getParameter(id, name))
 
 def showParameters(id):
-   params = getParameters(id)
+   params = _vistle.getParameters(id)
    print("name\ttype\tvalue")
    for p in params:
-      print("%s\t%s\t%s" % (p, getParameterType(id, p), getParameter(id, p)))
+      print("%s\t%s\t%s" % (p, _vistle.getParameterType(id, p), getParameter(id, p)))
 
 def showAllParameters():
    mods = _vistle.getRunning()
    print("id\tmodule\tname\ttype\tvalue")
    for m in mods:
       name = _vistle.getModuleName(m)
-      params = getParameters(m)
+      params = _vistle.getParameters(m)
       for p in params:
-          print("%s\t%s\t%s\t%s\t%s" % (m, name, p, getParameterType(m, p), getSavableParam(m, p)))
+          print("%s\t%s\t%s\t%s\t%s" % (m, name, p, _vistle.getParameterType(m, p), getSavableParam(m, p)))
 
 def modvar(id):
    if (id >= 0):
@@ -158,7 +154,7 @@ def modvar(id):
    return "v"+str(-id)
 
 def hubVar(hub, numSlaves):
-   if (hub == getMasterHub()):
+   if (hub == _vistle.getMasterHub()):
       return "MasterHub"
    if (numSlaves == 1):
       return "SlaveHub"
@@ -169,10 +165,10 @@ def hubVarForModule(id, numSlaves):
    return hubVar(hub, numSlaves)
 
 def saveParameters(f, mod):
-      params = getParameters(mod)
+      params = _vistle.getParameters(mod)
       paramChanges = False
       for p in params:
-         if not isParameterDefault(mod, p):
+         if not _vistle.isParameterDefault(mod, p):
             f.write("set"+getParameterType(mod,p)+"Param("+modvar(mod)+", '"+p+"', "+str(getSavableParam(mod,p))+", True)\n")
             paramChanges = True
       if paramChanges:
@@ -188,7 +184,7 @@ def saveWorkflow(f, mods, numSlaves, remote):
       f.write("# spawn all local modules\n")
    for m in mods:
       hub = _vistle.getHub(m)
-      if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
+      if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
       #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
       f.write("u"+modvar(m)+" = spawnAsync("+hubVarForModule(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
@@ -196,7 +192,7 @@ def saveWorkflow(f, mods, numSlaves, remote):
 
    for m in mods:
       hub = _vistle.getHub(m)
-      if (remote and hub==getMasterHub()) or (not remote and hub!=getMasterHub()):
+      if (remote and hub==_vistle.getMasterHub()) or (not remote and hub!=_vistle.getMasterHub()):
             continue
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
       saveParameters(f, m)
@@ -207,26 +203,26 @@ def saveWorkflow(f, mods, numSlaves, remote):
       f.write("# all local connections\n")
    for m in mods:
       hub = _vistle.getHub(m)
-      if (not remote and hub!=getMasterHub()):
+      if (not remote and hub!=_vistle.getMasterHub()):
             continue
-      ports = getOutputPorts(m)
+      ports = _vistle.getOutputPorts(m)
       for p in ports:
-         conns = getConnections(m, p)
+         conns = _vistle.getConnections(m, p)
          for c in conns:
             hub2 = _vistle.getHub(c[0])
-            if (remote and hub==getMasterHub() and hub2==getMasterHub()) or (not remote and (hub!=getMasterHub() or hub2!=getMasterHub())):
+            if (remote and hub==_vistle.getMasterHub() and hub2==_vistle.getMasterHub()) or (not remote and (hub!=_vistle.getMasterHub() or hub2!=_vistle.getMasterHub())):
                continue
             f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
 
 
 def save(filename = None):
    if filename == None:
-      filename = getLoadedFile()
+      filename = _vistle.getLoadedFile()
    if filename == None or filename == "":
       print("No file loaded and no file specified")
       return
 
-   setLoadedFile(filename)
+   _vistle.setLoadedFile(filename)
 
    f = open(filename, 'w')
    mods = _vistle.getRunning()
@@ -272,25 +268,25 @@ def save(filename = None):
 def reset():
    mods = _vistle.getRunning()
    for m in mods:
-      kill(m)
-   barrier()
+      _vistle.kill(m)
+   _vistle.barrier()
    #_vistle._resetModuleCounter()
-   setLoadedFile("")
-   setStatus("Workflow cleared")
+   _vistle.setLoadedFile("")
+   _vistle.setStatus("Workflow cleared")
 
 def load(filename = None):
    if filename == None:
-      filename = getLoadedFile()
+      filename = _vistle.getLoadedFile()
    if filename == None or filename == "":
       print("File name required")
       return
 
    reset()
 
-   source(filename)
+   _vistle.source(filename)
 
-   setLoadedFile(filename)
-   setStatus("Workflow loaded: "+filename)
+   _vistle.setLoadedFile(filename)
+   _vistle.setStatus("Workflow loaded: "+filename)
 
 
 class PythonStateObserver(_vistle.StateObserver):
