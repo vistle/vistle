@@ -1,17 +1,19 @@
 #ifndef GENDAT_H
 #define GENDAT_H
 
-#include <module/module.h>
+#include <module/reader.h>
 
-class Gendat: public vistle::Module {
+class Gendat: public vistle::Reader {
 
  public:
    Gendat(const std::string &name, int moduleID, mpi::communicator comm);
    ~Gendat() override;
 
  private:
-   bool prepare() override;
-   void block(vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b, vistle::Index time);
+   bool examine(const vistle::Parameter *param) override;
+   bool read(Token &token, int timestep, int block) override;
+
+   void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b, vistle::Index time) const;
 
    // parameters
    vistle::IntParameter *m_geoMode;

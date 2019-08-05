@@ -55,7 +55,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode,
                                     (Add_Z))
 
 Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("generate test data", name, moduleID, comm) {
+   : Reader("generate test data", name, moduleID, comm) {
 
    createOutputPort("grid_out", "only grid");
    createOutputPort("data_out0", "scalar data");
@@ -102,10 +102,44 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
    m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
 
+   observeParameter(m_blocks[0]);
+   observeParameter(m_blocks[1]);
+   observeParameter(m_blocks[2]);
+   observeParameter(m_steps);
+
+   setParallelizationMode(ParallelizeBlocks);
 }
 
 Gendat::~Gendat() {
 
+}
+
+bool Gendat::examine(const Parameter *)
+{
+    setPartitions(m_blocks[0]->getValue()*m_blocks[1]->getValue()*m_blocks[2]->getValue());
+    setTimesteps(m_steps->getValue());
+    return true;
+}
+
+bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
+{
+    Index blocks[3];
+    for (int i=0; i<3; ++i) {
+        blocks[i] = m_blocks[i]->getValue();
+    }
+    Index steps = m_steps->getValue();
+    Index num = steps <= 0 ? 1 : steps;
+
+    Index b = blockNum;
+    Index bx = b % blocks[0];
+    b /= blocks[0];
+    Index by = b % blocks[1];
+    b /= blocks[1];
+    Index bz = b;
+
+    block(token, bx, by, bz, blockNum, steps==0 ? -1 : timestep);
+
+    return true;
 }
 
 inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
@@ -185,7 +219,7 @@ void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[
     }
 }
 
-void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) {
+void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const {
 
     Index dim[3];
     Vector dist, bdist;
@@ -456,7 +490,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
         geoOut->setBlock(block);
         if (time >= 0)
             geoOut->setTimestep(time);
-        addObject("grid_out", geoOut);
+        token.addObject("grid_out", geoOut);
         scalar->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
         scalar->setGrid(geoOut);
         vector->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
@@ -464,33 +498,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block, vistle::In
     }
 
     scalar->addAttribute("_species", "scalar");
-    addObject("data_out0", scalar);
+    token.addObject("data_out0", scalar);
     vector->addAttribute("_species", "vector");
-    addObject("data_out1", vector);
-}
-
-bool Gendat::prepare() {
-
-    Index blocks[3];
-    for (int i=0; i<3; ++i) {
-        blocks[i] = m_blocks[i]->getValue();
-    }
-    Index steps = m_steps->getValue();
-    Index num = steps <= 0 ? 1 : steps;
-
-    for (Index t=0; t<num; ++t) {
-        int b = 0;
-        for (Index bx=0; bx<blocks[0]; ++bx) {
-            for (Index by=0; by<blocks[1]; ++by) {
-                for (Index bz=0; bz<blocks[2]; ++bz) {
-                    if (b % size() == rank()) {
-                        block(bx, by, bz, b, steps==0 ? -1 : t);
-                    }
-                    ++b;
-                }
-            }
-        }
-    }
-
-    return true;
+    token.addObject("data_out1", vector);
 }
