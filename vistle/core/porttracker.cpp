@@ -16,6 +16,13 @@ PortTracker::PortTracker()
 }
 
 PortTracker::~PortTracker() {
+    std::vector<int> modules;
+    for (auto &m: m_ports) {
+        modules.emplace_back(m.first);
+    }
+    for (auto id: modules) {
+        removeModule(id);
+    }
 }
 
 void PortTracker::setTracker(StateTracker *tracker) {
