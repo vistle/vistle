@@ -34,6 +34,7 @@
 #include <core/assert.h>
 #include <util/directory.h>
 #include <util/enum.h>
+#include <util/stopwatch.h>
 
 #include "clustermanager.h"
 #include "datamanager.h"
@@ -1884,7 +1885,11 @@ bool ClusterManager::handlePriv(const message::DataTransferState &state) {
         Communicator::the().clearStatus();
     } else {
         str << m_totalNumTransferring << " objects to transfer" << std::endl;
-        Communicator::the().setStatus(str.str(), message::UpdateStatus::Low);
+        auto now = Clock::time();
+        if (now - m_lastStatusUpdateTime > 1.) {
+            m_lastStatusUpdateTime = now;
+            Communicator::the().setStatus(str.str(), message::UpdateStatus::Low);
+        }
     }
 
     return true;
