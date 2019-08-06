@@ -147,16 +147,24 @@ if [ "$MPISIZE" != "1" ]; then
 fi
 
 if [ "$OPENMPI" = "1" ]; then
+
+    BIND="-bind-to none"
+    if [ "$BINDTO" = "socket0" ]; then 
+        BIND="-cpu-list 0,1,2,3,4,5,6,7"
+    elif [ "$BINDTO" = "socket1" ]; then
+        BIND="-cpu-list 8,9,10,11,12,13,14,15"
+    fi
+
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT -bind-to none $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      echo mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT -bind-to none -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
       exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
-      echo exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
       exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
       exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
