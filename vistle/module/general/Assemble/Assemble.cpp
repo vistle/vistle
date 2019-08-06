@@ -175,7 +175,7 @@ bool Assemble::reduce(int tt) {
 
     const std::map<std::string, std::vector<Object::const_ptr>> *nonempty = nullptr;
     for (int i=0; i<NumPorts; ++i) {
-        if (!m_toCombineAttribute[i][t].empty()) {
+        if (m_toCombineAttribute[i].size()>t && !m_toCombineAttribute[i][t].empty()) {
             nonempty = &m_toCombineAttribute[i][t];
             break;
         }
