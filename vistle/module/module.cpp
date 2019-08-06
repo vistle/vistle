@@ -398,11 +398,11 @@ bool Module::havePort(const std::string &name) {
    if (param)
        return true;
 
-   std::map<std::string, Port*>::iterator iout = outputPorts.find(name);
+   auto iout = outputPorts.find(name);
    if (iout != outputPorts.end())
        return true;
 
-   std::map<std::string, Port*>::iterator iin = inputPorts.find(name);
+   auto iin = inputPorts.find(name);
    if (iin != inputPorts.end())
        return true;
 
@@ -417,14 +417,14 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       return nullptr;
    }
 
-   Port *p = new Port(id(), name, Port::INPUT, flags);
-   p->setDescription(description);
-   inputPorts[name] = p;
+   auto itp = inputPorts.emplace(name, Port(id(), name, Port::INPUT, flags));
+   auto &p = itp.first->second;
+   p.setDescription(description);
 
-   message::AddPort message(*p);
+   message::AddPort message(p);
    message.setDestId(Id::ForBroadcast);
    sendMessage(message);
-   return p;
+   return &p;
 }
 
 Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
@@ -435,19 +435,19 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       return nullptr;
    }
 
-   Port *p = new Port(id(), name, Port::OUTPUT, flags);
-   p->setDescription(description);
-   outputPorts[name] = p;
+   auto itp = outputPorts.emplace(name, Port(id(), name, Port::OUTPUT, flags));
+   auto &p = itp.first->second;
+   p.setDescription(description);
 
-   message::AddPort message(*p);
+   message::AddPort message(p);
    message.setDestId(Id::ForBroadcast);
    sendMessage(message);
-   return p;
+   return &p;
 }
 
 bool Module::destroyPort(const std::string &portName) {
 
-   Port *p = findInputPort(portName);
+   const Port *p = findInputPort(portName);
    if (!p)
       p = findOutputPort(portName);
    if (!p)
@@ -457,15 +457,15 @@ bool Module::destroyPort(const std::string &portName) {
    return destroyPort(p);
 }
 
-bool Module::destroyPort(Port *port) {
+bool Module::destroyPort(const Port *port) {
 
    vassert(port);
    message::RemovePort message(*port);
    message.setDestId(Id::ForBroadcast);
-   if (Port *p = findInputPort(port->getName())) {
+   if (const Port *p = findInputPort(port->getName())) {
        inputPorts.erase(port->getName());
        delete p;
-   } else if (Port *p = findOutputPort(port->getName())) {
+   } else if (const Port *p = findOutputPort(port->getName())) {
        outputPorts.erase(port->getName());
        delete p;
    } else {
@@ -476,24 +476,44 @@ bool Module::destroyPort(Port *port) {
    return true;
 }
 
-Port *Module::findInputPort(const std::string &name) const {
+Port *Module::findInputPort(const std::string &name) {
 
-   std::map<std::string, Port *>::const_iterator i = inputPorts.find(name);
+   auto i = inputPorts.find(name);
 
    if (i == inputPorts.end())
-      return NULL;
+      return nullptr;
 
-   return i->second;
+   return &i->second;
 }
 
-Port *Module::findOutputPort(const std::string &name) const {
+const Port *Module::findInputPort(const std::string &name) const {
 
-   std::map<std::string, Port *>::const_iterator i = outputPorts.find(name);
+   auto i = inputPorts.find(name);
+
+   if (i == inputPorts.end())
+      return nullptr;
+
+   return &i->second;
+}
+
+Port *Module::findOutputPort(const std::string &name) {
+
+   auto i = outputPorts.find(name);
 
    if (i == outputPorts.end())
-      return NULL;
+      return nullptr;
 
-   return i->second;
+   return &i->second;
+}
+
+const Port *Module::findOutputPort(const std::string &name) const {
+
+   auto i = outputPorts.find(name);
+
+   if (i == outputPorts.end())
+      return nullptr;
+
+   return &i->second;
 }
 
 Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param) {
@@ -679,13 +699,12 @@ void Module::updateMeta(vistle::Object::ptr obj) const {
 
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {
 
-   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
-   if (i != outputPorts.end()) {
-      return addObject(i->second, object);
-   }
-   CERR << "Module::addObject: output port " << portName << " not found" << std::endl;
-   vassert(i != outputPorts.end());
-   return false;
+    auto *p = findOutputPort(portName);
+    if (!p) {
+        CERR << "Module::addObject: output port " << portName << " not found" << std::endl;
+    }
+    assert(p);
+    return addObject(p, object);
 }
 
 bool Module::addObject(Port *port, vistle::Object::ptr object) {
@@ -698,13 +717,12 @@ bool Module::addObject(Port *port, vistle::Object::ptr object) {
 }
 
 bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object) {
-   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
-   if (i != outputPorts.end()) {
-      return passThroughObject(i->second, object);
+   auto *p = findOutputPort(portName);
+   if (!p) {
+       CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
    }
-   CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-   vassert(i != outputPorts.end());
-   return false;
+   assert(p);
+   return passThroughObject(p, object);
 }
 
 bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
@@ -725,21 +743,19 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
 ObjectList Module::getObjects(const std::string &portName) {
 
    ObjectList objects;
-   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
-
-   if (i != inputPorts.end()) {
-
-      ObjectList &olist = i->second->objects();
-      for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
-         Object::const_ptr object = *it;
-         if (object.get()) {
-            vassert(object->check());
-         }
-         objects.push_back(object);
-      }
-   } else {
+   auto *p = findInputPort(portName);
+   if (!p) {
       CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;
-      vassert(i != inputPorts.end());
+   }
+   assert(p);
+
+   ObjectList &olist = p->objects();
+   for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
+       Object::const_ptr object = *it;
+       if (object.get()) {
+           vassert(object->check());
+       }
+       objects.push_back(object);
    }
 
    return objects;
@@ -747,16 +763,13 @@ ObjectList Module::getObjects(const std::string &portName) {
 
 bool Module::hasObject(const std::string &portName) const {
 
-   std::map<std::string, Port *>::const_iterator i = inputPorts.find(portName);
-
-   if (i == inputPorts.end()) {
-      CERR << "Module::hasObject: input port " << portName << " not found" << std::endl;
-      vassert(i != inputPorts.end());
-
-      return false;
+   auto *p = findInputPort(portName);
+   if (!p) {
+       CERR << "Module::hasObject: input port " << portName << " not found" << std::endl;
    }
+   assert(p);
 
-   return hasObject(i->second);
+   return hasObject(p);
 }
 
 bool Module::hasObject(const Port *port) const {
@@ -766,15 +779,13 @@ bool Module::hasObject(const Port *port) const {
 
 vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
-   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
-
-   if (i == inputPorts.end()) {
+   auto *p = findInputPort(portName);
+   if (!p) {
       CERR << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
-      vassert(i != inputPorts.end());
-      return vistle::Object::ptr();
    }
+   assert(p);
 
-   return takeFirstObject(i->second);
+   return takeFirstObject(p);
 }
 
 void Module::requestPortMapping(unsigned short forwardPort, unsigned short localPort) {
@@ -870,18 +881,18 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
 
 bool Module::isConnected(const std::string &portname) const {
 
-   Port *p = findInputPort(portname);
+   const Port *p = findInputPort(portname);
    if (!p)
       p = findOutputPort(portname);
    if (!p)
       return false;
 
-   return isConnected(p);
+   return isConnected(*p);
 }
 
-bool Module::isConnected(const Port *port) const {
+bool Module::isConnected(const Port &port) const {
 
-   return !port->connections().empty();
+   return !port.connections().empty();
 }
 
 bool Module::changeParameter(const Parameter *p) {
@@ -1184,7 +1195,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   parent = findInputPort(basename);
                if (parent) {
                   newport = parent->child(idx, true);
-                  inputPorts[name] = newport;
+                  inputPorts.emplace(name, *newport);
                }
                break;
             case Port::OUTPUT:
@@ -1193,7 +1204,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   parent = findInputPort(basename);
                if (parent) {
                   newport = parent->child(idx, true);
-                  outputPorts[name] = newport;
+                  outputPorts.emplace(name, *newport);
                }
                break;
             case Port::PARAMETER:
@@ -1250,19 +1261,21 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             break;
          }
 
+         bool added = false;
          if (ports && port && other) {
             if (ports->find(other) == ports->end()) {
-               port->addConnection(other);
+               added = port->addConnection(other);
                if (inputConnection)
                   connectionAdded(other, port);
                else
                   connectionAdded(port, other);
-            } else {
-               delete other;
             }
          } else {
             if (!findParameter(ownPortName))
                CERR << " did not find port " << ownPortName << std::endl;
+         }
+         if (!added) {
+             delete other;
          }
          break;
       }
@@ -1467,15 +1480,15 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
             Index numConnected = 0;
             for (auto &port: inputPorts) {
-                port.second->objects().clear();
+                port.second.objects().clear();
                 if (!isConnected(port.second))
                     continue;
-                port.second->objects() = m_cache.getObjects(port.first);
+                port.second.objects() = m_cache.getObjects(port.first);
                 ++numConnected;
                 if (numObject == 0) {
-                    numObject = (vistle::Index)port.second->objects().size();
-                } else if (numObject != port.second->objects().size()) {
-                    CERR << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
+                    numObject = (vistle::Index)port.second.objects().size();
+                } else if (numObject != port.second.objects().size()) {
+                    CERR << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second.objects().size() << std::endl;
                     throw vistle::except::exception("input object mismatch");
                     return false;
                 }
@@ -1485,7 +1498,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         for (auto &port: inputPorts) {
             if (!isConnected(port.second))
                 continue;
-            const auto &objs = port.second->objects();
+            const auto &objs = port.second.objects();
             for (Index i=0; i<numObject && i<objs.size(); ++i) {
                 const auto obj = objs[i];
                 int t = getTimestep(obj);
@@ -1537,7 +1550,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 };
                 std::vector<TimeIndex> sortKey(numObject);
                 for (auto &port: inputPorts) {
-                    const auto &objs = port.second->objects();
+                    const auto &objs = port.second.objects();
                     size_t i=0;
                     for (auto &obj: objs) {
                         sortKey[i].idx = i;
@@ -1587,7 +1600,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
                 // add objects to port queue in processing order
                 for (auto &port: inputPorts) {
-                    port.second->objects().clear();
+                    port.second.objects().clear();
                     if (!isConnected(port.second))
                         continue;
                     auto objs = m_cache.getObjects(port.first);
@@ -1595,7 +1608,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     ssize_t cur = step<0 ? numObject-1 : 0;
                     for (size_t i=0; i<numObject; ++i) {
                         if (sortKey[cur].step < 0)
-                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                            port.second.objects().push_back(objs[sortKey[cur].idx]);
                         cur = (cur+step+numObject)%numObject;
                     }
                     // objects with timestep 0 (if to be handled first)
@@ -1603,7 +1616,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         cur = step<0 ? numObject-1 : 0;
                         for (size_t i=0; i<numObject; ++i) {
                             if (sortKey[cur].step == 0)
-                                port.second->objects().push_back(objs[sortKey[cur].idx]);
+                                port.second.objects().push_back(objs[sortKey[cur].idx]);
                             cur = (cur+step+numObject)%numObject;
                         }
                     }
@@ -1614,7 +1627,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         if (sortKey[cur].step == startTimestep)
                             push = true;
                         if (push && (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0)))
-                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                            port.second.objects().push_back(objs[sortKey[cur].idx]);
                         cur = (cur+step+numObject)%numObject;
                     }
                     // ...and from start until current timestep
@@ -1623,13 +1636,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                         if (sortKey[cur].step == startTimestep)
                             break;
                         if (sortKey[cur].step > 0 || (!startWithZero && sortKey[cur].step==0))
-                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                            port.second.objects().push_back(objs[sortKey[cur].idx]);
                         cur = (cur+step+numObject)%numObject;
                     }
-                    if (port.second->objects().size() != numObject) {
-                        CERR << "mismatch: expecting " << numObject << " objects, actually have " << port.second->objects().size() << " at port " << port.first << std::endl;
+                    if (port.second.objects().size() != numObject) {
+                        CERR << "mismatch: expecting " << numObject << " objects, actually have " << port.second.objects().size() << " at port " << port.first << std::endl;
                     }
-                    assert(port.second->objects().size() == numObject);
+                    assert(port.second.objects().size() == numObject);
                 }
             }
             if (gang) {
@@ -1683,7 +1696,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 for (auto &port: inputPorts) {
                     if (!isConnected(port.second))
                         continue;
-                    const auto &objs = port.second->objects();
+                    const auto &objs = port.second.objects();
                     if (!objs.empty()) {
                         int t = getTimestep(objs.front());
                         if (t != -1)
@@ -1699,7 +1712,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     for (auto &port: inputPorts) {
                         if (!isConnected(port.second))
                             continue;
-                        auto &objs = port.second->objects();
+                        auto &objs = port.second.objects();
                         if (!objs.empty()) {
                             objs.pop_front();
                         }
@@ -1834,8 +1847,12 @@ Module::~Module() {
       comm().barrier();
    } else {
        CERR << "Emergency quit" << std::endl;
-
    }
+
+   delete sendMessageQueue;
+   sendMessageQueue = nullptr;
+   delete receiveMessageQueue;
+   receiveMessageQueue = nullptr;
 }
 
 void Module::eventLoop() {
@@ -2150,9 +2167,9 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
    }
 
    for (auto &port: outputPorts) {
-       if (isConnected(port.second) && m_withOutput.find(port.second) == m_withOutput.end()) {
+       if (isConnected(port.second) && m_withOutput.find(&port.second) == m_withOutput.end()) {
            Empty::ptr empty(new Empty(Object::Initialized));
-           addObject(port.second, empty);
+           addObject(&port.second, empty);
        }
    }
 
@@ -2272,14 +2289,14 @@ PortTask::PortTask(Module *module)
 : m_module(module)
 {
     for (auto &p: module->inputPorts) {
-        m_portsByString[p.first] = p.second;
-        if (module->hasObject(p.second)) {
-            m_input[p.second] = module->takeFirstObject(p.second);
+        m_portsByString[p.first] = &p.second;
+        if (module->hasObject(&p.second)) {
+            m_input[&p.second] = module->takeFirstObject(&p.second);
         }
     }
     for (auto &p: module->outputPorts) {
-        m_portsByString[p.first] = p.second;
-        m_ports.insert(p.second);
+        m_portsByString[p.first] = &p.second;
+        m_ports.insert(&p.second);
     }
 }
 

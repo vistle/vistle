@@ -144,7 +144,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
    bool destroyPort(const std::string &portName);
-   bool destroyPort(Port *port);
+   bool destroyPort(const Port *port);
 
    bool sendObject(const mpi::communicator &comm, vistle::Object::const_ptr object, int destRank) const;
    bool sendObject(vistle::Object::const_ptr object, int destRank) const;
@@ -267,7 +267,7 @@ protected:
    bool syncMessageProcessing() const;
    void setSyncMessageProcessing(bool sync);
 
-   bool isConnected(const Port *port) const;
+   bool isConnected(const Port &port) const;
    bool isConnected(const std::string &portname) const;
    virtual void connectionAdded(const Port *from, const Port *to);
    virtual void connectionRemoved(const Port *from, const Port *to);
@@ -301,8 +301,10 @@ protected:
    int m_reducePolicy;
 
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
-   Port *findInputPort(const std::string &name) const;
-   Port *findOutputPort(const std::string &name) const;
+   Port *findInputPort(const std::string &name);
+   const Port *findInputPort(const std::string &name) const;
+   Port *findOutputPort(const std::string &name);
+   const Port *findOutputPort(const std::string &name) const;
 
    bool needsSync(const message::Message &m) const;
 
@@ -316,8 +318,8 @@ protected:
    virtual bool compute(); //< do processing - called on each rank individually
    virtual bool compute(std::shared_ptr<PortTask> task) const;
 
-   std::map<std::string, Port*> outputPorts;
-   std::map<std::string, Port*> inputPorts;
+   std::map<std::string, Port> outputPorts;
+   std::map<std::string, Port> inputPorts;
 
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;

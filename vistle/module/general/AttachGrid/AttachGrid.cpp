@@ -38,7 +38,7 @@ bool AttachGrid::compute() {
    for (size_t i=0; i<m_dataIn.size(); ++i) {
 
        auto &pin = m_dataIn[i];
-       if (isConnected(pin)) {
+       if (isConnected(*pin)) {
           auto d = expect<DataBase>(pin);
           if (!d) {
               ok = false;
@@ -58,7 +58,7 @@ bool AttachGrid::compute() {
 
        auto &pin = m_dataIn[i];
        auto &pout = m_dataOut[i];
-       if (isConnected(pin)) {
+       if (isConnected(*pin)) {
            vassert(data[i]);
            auto out = data[i]->clone();
            out->copyAttributes(data[i]);
