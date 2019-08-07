@@ -75,6 +75,8 @@ Hub::Hub(bool inManager)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
+, m_workGuard(asio::make_work_guard(m_ioService))
+, m_ioThread([this](){ m_ioService.run(); })
 {
 
    vassert(!hub_instance);
@@ -89,6 +91,10 @@ Hub::Hub(bool inManager)
 }
 
 Hub::~Hub() {
+
+   m_workGuard.reset();
+   m_ioService.stop();
+   m_ioThread.join();
 
    m_dataProxy.reset();
    hub_instance = nullptr;
@@ -435,8 +441,6 @@ void Hub::slaveReady(Slave &slave) {
 
 bool Hub::dispatch() {
 
-   m_ioService.poll();
-
    bool ret = true;
    bool work = false;
    size_t avail = 0;
@@ -513,7 +517,6 @@ bool Hub::dispatch() {
    }
 
    if (m_quitting) {
-      m_ioService.poll();
       if (m_processMap.empty()) {
          ret = false;
       } else {

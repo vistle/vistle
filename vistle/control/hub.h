@@ -144,6 +144,9 @@ private:
    void setLoadedFile(const std::string &file);
    void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
    void clearStatus();
+
+   boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+   std::thread m_ioThread;
 };
 
 }
