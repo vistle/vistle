@@ -273,9 +273,16 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
             filename = m_fileList[port][timestep];
         }
 
+        auto species = filename.leaf().string();
+        auto pos = species.find_last_of('.');
+        if (pos != species.npos) {
+            species = species.substr(0, pos);
+        }
+
         auto scal = readFieldBlock(filename.string(), block);
         if (scal) {
             scal->setGrid(m_grids[block]);
+            scal->addAttribute("_species", species);
             token.addObject(m_dataOut[port], scal);
         } else {
             token.addObject(m_dataOut[port], m_grids[block]);
