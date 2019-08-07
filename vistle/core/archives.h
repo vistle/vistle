@@ -276,7 +276,6 @@ public:
     }
 
     obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
-
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 
@@ -365,7 +364,7 @@ public:
         m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void (Object::const_ptr)> &completeCallback) const;
+    obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 
