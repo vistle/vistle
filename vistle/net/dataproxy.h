@@ -7,12 +7,17 @@
 #include <thread>
 
 #include <core/message.h>
+#include <util/enum.h>
 
 #include "export.h"
 
 namespace vistle {
 
 class StateTracker;
+
+namespace message {
+class Identify;
+}
 
 class V_NETEXPORT DataProxy {
    typedef boost::asio::ip::tcp::acceptor acceptor;
@@ -30,6 +35,8 @@ public:
    bool connectRemoteData(int hubId);
 
 private:
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote));
+
    int idToHub(int id) const;
    io_service &io();
    std::recursive_mutex m_mutex;
@@ -47,9 +54,13 @@ private:
    void handleConnect(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
    void startThread();
    void cleanUp();
-   std::shared_ptr<tcp_socket> getRemoteDataSock(int hubId);
-   std::shared_ptr<tcp_socket> getLocalDataSock(int rank);
 
+   void answerLocalIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
+   void answerRemoteIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
+   std::shared_ptr<tcp_socket> getRemoteDataSock(const message::Message &msg);
+   std::shared_ptr<tcp_socket> getLocalDataSock(const message::Message &msg);
+
+   void msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type);
    void localMsgRecv(std::shared_ptr<tcp_socket> sock);
    void remoteMsgRecv(std::shared_ptr<tcp_socket> sock);
 
