@@ -81,7 +81,7 @@ unsigned short Proxy::port() const {
    return m_port;
 }
 
-bool Proxy::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) {
+bool Proxy::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const buffer *payload) {
 
    bool result = true;
    try {
@@ -251,7 +251,7 @@ void Proxy::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
        senderType = it->second;
     message::Buffer msg;
     message::error_code ec;
-    std::vector<char> payload;
+    buffer payload;
     if (message::recv(*sock, msg, ec, &payload)) {
        bool ok = true;
        if (senderType == message::Identify::UI) {
@@ -419,7 +419,7 @@ void Proxy::hubReady() {
    }
 }
 
-bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const std::vector<char> &payload) {
+bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const buffer &payload) {
 
    using namespace vistle::message;
 

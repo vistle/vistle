@@ -7,6 +7,7 @@
 #include <deque>
 #include <future>
 
+#include <util/buffer.h>
 #include <core/message.h>
 #include <core/messages.h>
 #include <core/object.h>
@@ -29,7 +30,7 @@ class DataManager {
 public:
     DataManager(boost::mpi::communicator &comm);
     ~DataManager();
-    bool handle(const message::Message &msg, std::vector<char> *payload);
+    bool handle(const message::Message &msg, buffer *payload);
     //! request a remote object for servicing an AddObject request
     bool requestObject(const message::AddObject &add, const std::string &objId, const ObjectCompletionHandler &handler);
     //! request a remote object for resolving a reference to a sub-object
@@ -43,17 +44,17 @@ public:
 
     void trace(message::Type type);
 
-    bool send(const message::Message &message, std::shared_ptr<std::vector<char>> payload=nullptr);
+    bool send(const message::Message &message, std::shared_ptr<buffer> payload=nullptr);
 
     struct Msg {
-       Msg(message::Buffer &&buf, std::vector<char> &&payload);
+       Msg(message::Buffer &&buf, buffer &&payload);
        message::Buffer buf;
-       std::vector<char> payload;
+       buffer payload;
     };
 
 private:
     bool handlePriv(const message::RequestObject &req);
-    bool handlePriv(const message::SendObject &snd, std::vector<char> *payload);
+    bool handlePriv(const message::SendObject &snd, buffer *payload);
     bool handlePriv(const message::AddObjectCompleted &complete);
     void updateStatus();
 

@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <util/enum.h>
+#include <util/buffer.h>
 
 #include "export.h"
 #include "index.h"
@@ -199,9 +200,9 @@ template<> struct zfp_type_map<float> { static const zfp_type value = zfp_type_f
 template<> struct zfp_type_map<double> { static const zfp_type value = zfp_type_double; };
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
+bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
 template<zfp_type type>
-bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index dim[3]);
+bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]);
 #endif
 
 template<>
@@ -266,7 +267,7 @@ struct archive_helper<yas_tag> {
             ar & compress;
             if (compress) {
                 ar & m_dim[0] & m_dim[1] & m_dim[2];
-                std::vector<char> compressed;
+                buffer compressed;
                 ar & compressed;
 #ifdef HAVE_ZFP
                 Index dim[3];
@@ -290,7 +291,7 @@ struct archive_helper<yas_tag> {
                 param.precision = ar.zfpPrecision();
                 param.accuracy = ar.zfpAccuracy();
                 //std::cerr << "trying to compresss " << std::endl;
-                std::vector<char> compressed;
+                buffer compressed;
                 Index dim[3];
                 for (int c=0; c<3; ++c)
                     dim[c] = m_dim[c]==1 ? 0 : m_dim[c];
@@ -327,10 +328,10 @@ struct archive_helper<yas_tag> {
 
 #ifdef HAVE_ZFP
 template<>
-bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const Index dim[3]);
+bool V_COREEXPORT decompressZfp<zfp_type_none>(void *dest, const buffer &compressed, const Index dim[3]);
 
 template<zfp_type type>
-bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index dim[3]) {
+bool decompressZfp(void *dest, const buffer &compressed, const Index dim[3]) {
 #ifdef HAVE_ZFP
     bool ok = true;
     bitstream *stream = stream_open(const_cast<char *>(compressed.data()), compressed.size());
@@ -364,10 +365,10 @@ bool decompressZfp(void *dest, const std::vector<char> &compressed, const Index 
 
 #ifdef HAVE_ZFP
 template<>
-bool V_COREEXPORT compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
+bool V_COREEXPORT compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
 
 template<zfp_type type>
-bool compressZfp(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
+bool compressZfp(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
 #ifdef HAVE_ZFP
     bool ok = true;
     int ndims=1;

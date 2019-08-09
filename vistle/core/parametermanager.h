@@ -75,7 +75,7 @@ public:
    void init();
    void quit();
    bool handleMessage(const message::SetParameter &message);
-   virtual void sendParameterMessage(const message::Message &message, const std::vector<char> *payload=nullptr) const = 0;
+   virtual void sendParameterMessage(const message::Message &message, const buffer *payload=nullptr) const = 0;
    template<class Payload>
    void sendParameterMessageWithPayload(message::Message &message, Payload &payload);
    virtual bool changeParameters(std::set<const Parameter *> params); //< notify that some parameters have been changed

@@ -78,7 +78,7 @@ PythonModule *pythonModuleInstance = nullptr;
 message::Type traceMessages = message::INVALID;
 }
 
-static bool sendMessage(const vistle::message::Message &m, const std::vector<char> *payload=nullptr) {
+static bool sendMessage(const vistle::message::Message &m, const buffer *payload=nullptr) {
 
 #ifdef VISTLE_CONTROL
    bool ret = Hub::the().handleMessage(m, nullptr, payload);

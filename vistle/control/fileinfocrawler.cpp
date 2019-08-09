@@ -142,7 +142,7 @@ FileInfoCrawler::FileInfoCrawler(Hub &hub)
 {
 }
 
-bool FileInfoCrawler::handle(const message::FileQuery &query, const std::vector<char> &payload)
+bool FileInfoCrawler::handle(const message::FileQuery &query, const buffer &payload)
 {
     using namespace message;
     FileQueryResult::Status status = FileQueryResult::Ok;
@@ -207,13 +207,13 @@ bool FileInfoCrawler::handle(const message::FileQuery &query, const std::vector<
         }
     } catch (fs::filesystem_error &) {
         status = FileQueryResult::Error;
-        sendResponse(query, status, std::vector<char>());
+        sendResponse(query, status, buffer());
     }
 
     return false;
 }
 
-bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s, const std::vector<char> &payload)
+bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s, const buffer &payload)
 {
     message::FileQueryResult response(query, s, payload.size());
     if (m_hub.id() == query.senderId()) {

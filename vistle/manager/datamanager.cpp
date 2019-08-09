@@ -102,7 +102,7 @@ bool DataManager::dispatch() {
     for (bool gotMsg=true; m_dataSocket.is_open() && gotMsg; ) {
         gotMsg = false;
         message::Buffer buf;
-        std::vector<char> payload;
+        buffer payload;
         {
             std::lock_guard<std::mutex> guard(m_recvMutex);
             if (!m_recvQueue.empty()) {
@@ -147,7 +147,7 @@ void DataManager::trace(message::Type type) {
     m_traceMessages = type;
 }
 
-bool DataManager::send(const message::Message &message, std::shared_ptr<std::vector<char>> payload) {
+bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> payload) {
 
    if (isLocal(message.destId())) {
        std::unique_lock<Communicator> guard(Communicator::the());
@@ -315,7 +315,7 @@ bool DataManager::notifyTransferComplete(const message::AddObject &addObj) {
     //return send(complete);
 }
 
-bool DataManager::handle(const message::Message &msg, std::vector<char> *payload)
+bool DataManager::handle(const message::Message &msg, buffer *payload)
 {
     //CERR << "handle: " << msg << std::endl;
     using namespace message;
@@ -393,7 +393,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
     auto fut = std::async(std::launch::async, [this, req](){
         std::shared_ptr<message::SendObject> snd;
         vecostreambuf<char> buf;
-        std::vector<char> &mem = buf.get_vector();
+        buffer &mem = buf.get_vector();
         vistle::oarchive memar(buf);
 #ifdef USE_YAS
         memar.setCompressionMode(Communicator::the().clusterManager().fieldCompressionMode());
@@ -418,7 +418,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
             snd.reset(new message::SendObject(req, obj, mem.size()));
         }
 
-        auto compressed = std::make_shared<std::vector<char>>();
+        auto compressed = std::make_shared<buffer>();
         *compressed = message::compressPayload(Communicator::the().clusterManager().archiveCompressionMode(), *snd, mem, Communicator::the().clusterManager().archiveCompressionSpeed());
 
         snd->setDestId(req.senderId());
@@ -435,7 +435,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
     return true;
 }
 
-bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *payload) {
+bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
 
 #ifdef DEBUG
     if (snd.isArray()) {
@@ -445,10 +445,10 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
     }
 #endif
 
-    auto payload2 = std::make_shared<std::vector<char>>(std::move(*payload));
+    auto payload2 = std::make_shared<buffer>(std::move(*payload));
     auto fut = std::async(std::launch::async, [this, snd, payload2](){
 
-        std::vector<char> uncompressed = decompressPayload(snd, *payload2.get());
+        buffer uncompressed = decompressPayload(snd, *payload2.get());
         vecistreambuf<char> membuf(uncompressed);
 
         if (snd.isArray()) {
@@ -563,7 +563,7 @@ void DataManager::recvLoop()
         bool gotMsg = false;
         if (m_dataSocket.is_open()) {
             message::Buffer buf;
-            std::vector<char> payload;
+            buffer payload;
             message::error_code ec;
             if (message::recv(m_dataSocket, buf, ec, false, &payload)) {
                 gotMsg = true;
@@ -633,7 +633,7 @@ void DataManager::cleanLoop()
     }
 }
 
-DataManager::Msg::Msg(message::Buffer &&buf, std::vector<char> &&payload)
+DataManager::Msg::Msg(message::Buffer &&buf, buffer &&payload)
 : buf(std::move(buf))
 , payload(std::move(payload))
 {

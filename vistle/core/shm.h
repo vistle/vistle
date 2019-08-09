@@ -26,6 +26,7 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 #include "archives_config.h"
 
 #include <util/exception.h>
+#include <util/allocator.h>
 
 #include "export.h"
 #include "index.h"
@@ -79,7 +80,7 @@ struct ShmDebugInfo {
 template<typename T>
 struct shm {
 #ifdef NO_SHMEM
-   typedef std::allocator<T> allocator;
+   typedef vistle::default_init_allocator<T> allocator;
    typedef std::basic_string<T> string;
    typedef std::vector<T> vector;
    typedef vistle::shm_array<T, allocator> array;

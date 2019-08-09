@@ -32,7 +32,7 @@
 
 namespace vistle {
 
-bool RhrServer::send(const RemoteRenderMessage &msg, const std::vector<char> *payload) {
+bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
@@ -683,7 +683,7 @@ RhrServer::preFrame() {
           }
           if (avail >= sizeof(message::RemoteRenderMessage)) {
               message::Buffer msg;
-              std::vector<char> payload;
+              buffer payload;
               message::error_code ec;
               received = message::recv(*m_clientSocket, msg, ec, false, &payload);
               if (received) {

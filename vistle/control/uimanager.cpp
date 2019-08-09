@@ -27,7 +27,7 @@ UiManager::~UiManager() {
    disconnect();
 }
 
-bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const std::vector<char> &payload) {
+bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const buffer &payload) {
 
    using namespace vistle::message;
 
@@ -65,7 +65,7 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
    return m_hub.handleMessage(msg, sock, &payload);
 }
 
-void UiManager::sendMessage(const message::Message &msg, int id, const std::vector<char> *payload) const {
+void UiManager::sendMessage(const message::Message &msg, int id, const buffer *payload) const {
 
    std::vector<std::shared_ptr<UiClient>> toRemove;
 
@@ -82,7 +82,7 @@ void UiManager::sendMessage(const message::Message &msg, int id, const std::vect
    }
 }
 
-bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const std::vector<char> *payload) const {
+bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload) const {
 
 #if BOOST_VERSION < 107000
    //FIXME is message reliably sent, e.g. also during shutdown, without polling?

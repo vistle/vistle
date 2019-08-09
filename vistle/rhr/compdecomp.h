@@ -3,6 +3,7 @@
 
 #include <core/message.h>
 #include <util/enum.h>
+#include <util/buffer.h>
 #include <vector>
 #include "export.h"
 
@@ -57,16 +58,16 @@ struct CompressionParameters {
 };
 
 using RgbaCompressionParameters = CompressionParameters::RgbaCompressionParameters;
-std::vector<char> V_RHREXPORT compressRgba(const unsigned char *rgba,
+buffer V_RHREXPORT compressRgba(const unsigned char *rgba,
                                 int x, int y, int w, int h, int stride,
                                 RgbaCompressionParameters &param);
 
 using DepthCompressionParameters = CompressionParameters::DepthCompressionParameters;
-std::vector<char> V_RHREXPORT compressDepth(const float *depth,
+buffer V_RHREXPORT compressDepth(const float *depth,
                                 int x, int y, int w, int h, int stride,
                                 DepthCompressionParameters &param);
 
-bool V_RHREXPORT decompressTile(char *dest, const std::vector<char> &input,
+bool V_RHREXPORT decompressTile(char *dest, const buffer &input,
                     CompressionParameters param,
                     int x, int y, int w, int h, int stride);
 

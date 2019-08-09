@@ -278,7 +278,7 @@ const StateTracker &ClusterManager::state() const {
     return m_stateTracker;
 }
 
-void ClusterManager::sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const {
+void ClusterManager::sendParameterMessage(const message::Message &message, const buffer *payload) const {
     message::Buffer buf(message);
     buf.setSenderId(ParameterManager::id());
     MessagePayload pl;
@@ -1853,7 +1853,7 @@ bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices, 
    bool handled = true;
    int sender = setChoices.senderId();
    int dest = setChoices.destId();
-   std::vector<char> data(payload->begin(), payload->end());
+   buffer data(payload->begin(), payload->end());
    auto pl = message::getPayload<message::SetParameterChoices::Payload>(data);
    if (message::Id::isModule(dest)) {
       // message to owning module

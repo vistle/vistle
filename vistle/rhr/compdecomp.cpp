@@ -55,23 +55,23 @@ std::vector<std::shared_ptr<TjDecomp>> tjDecompContexts;
 
 namespace vistle {
 
-std::vector<char> copyTile(const char *img, int x, int y, int w, int h, int stride, int bpp) {
+buffer copyTile(const char *img, int x, int y, int w, int h, int stride, int bpp) {
 
     size_t size = w*h*bpp;
-    std::vector<char> tilebuf(size);
+    buffer tilebuf(size);
     for (int yy=0; yy<h; ++yy) {
         memcpy(tilebuf.data()+yy*bpp*w, img+((yy+y)*stride+x)*bpp, w*bpp);
     }
     return tilebuf;
 }
 
-std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, int stride, vistle::DepthCompressionParameters &param) {
+buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride, vistle::DepthCompressionParameters &param) {
 
     const char *zbuf = reinterpret_cast<const char *>(depth);
 #ifdef HAVE_ZFP
     switch (param.depthCodec) {
     case vistle::CompressionParameters::DepthZfp: {
-        std::vector<char> result;
+        buffer result;
         zfp_type type = zfp_type_float;
         zfp_field *field = zfp_field_2d(const_cast<float *>(depth+y*stride+x), type, w, h);
         zfp_field_set_stride_2d(field, 0, stride);
@@ -92,7 +92,7 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
             break;
         }
         size_t bufsize = zfp_stream_maximum_size(zfp, field);
-        std::vector<char> zfpbuf(bufsize);
+        buffer zfpbuf(bufsize);
         bitstream *stream = stream_open(zfpbuf.data(), bufsize);
         zfp_stream_set_bit_stream(zfp, stream);
 
@@ -115,10 +115,10 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
     case vistle::CompressionParameters::DepthQuant: {
         const int ds = 3; //msg.format == rfbDepth16Bit ? 2 : 3;
         size_t size = depthquant_size(DepthFloat, ds, w, h);
-        std::vector<char> qbuf(size);
+        buffer qbuf(size);
         depthquant(qbuf.data(), zbuf, DepthFloat, ds, x, y, w, h, stride);
 #ifdef QUANT_ERROR
-        std::vector<char> dequant(sizeof(float)*w*h);
+        buffer dequant(sizeof(float)*w*h);
         depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
         //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
         depthcompare(zbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride);
@@ -127,7 +127,7 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
     }
     case vistle::CompressionParameters::DepthPredict: {
         size_t size = w*h*3;
-        std::vector<char> pbuf(size);
+        buffer pbuf(size);
         transform_predict((unsigned char *)pbuf.data(), depth+stride*y+x, w, h, stride);
         return pbuf;
     }
@@ -139,9 +139,9 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
 }
 
 
-std::vector<char> compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int stride, vistle::RgbaCompressionParameters &param) {
+buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int stride, vistle::RgbaCompressionParameters &param) {
 
-    std::vector<char> result;
+    buffer result;
 
     const int bpp = 4;
 #ifdef HAVE_TURBOJPEG
@@ -149,7 +149,7 @@ std::vector<char> compressRgba(const unsigned char *rgba, int x, int y, int w, i
         TJSAMP sampling = param.rgbaChromaSubsamp ? TJSAMP_420 : TJSAMP_444;
         TjContext::reference tj = tjContexts.local();
         size_t maxsize = tjBufSize(w, h, sampling);
-        std::vector<char> jpegbuf(maxsize);
+        buffer jpegbuf(maxsize);
         unsigned long sz = 0;
         auto col = rgba + (stride*y+x)*bpp;
 #ifdef TIMING
@@ -172,7 +172,7 @@ std::vector<char> compressRgba(const unsigned char *rgba, int x, int y, int w, i
     return copyTile(reinterpret_cast<const char *>(rgba), x, y, w, h, stride, bpp);
 }
 
-std::vector<char> compressTile(const char *input, int x, int y, int w, int h, int stride,
+buffer compressTile(const char *input, int x, int y, int w, int h, int stride,
                          vistle::CompressionParameters &param)
 {
 
@@ -182,7 +182,7 @@ std::vector<char> compressTile(const char *input, int x, int y, int w, int h, in
     return compressRgba(reinterpret_cast<const unsigned char *>(input), x, y, w, h, stride, param.rgba);
 }
 
-bool decompressTile(char *dest, const std::vector<char> &input, CompressionParameters param, int x, int y, int w, int h, int stride) {
+bool decompressTile(char *dest, const buffer &input, CompressionParameters param, int x, int y, int w, int h, int stride) {
 
     int bpp = 4;
     if (param.isDepth) {

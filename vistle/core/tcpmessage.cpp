@@ -6,6 +6,7 @@
 #include <mutex>
 
 #include <util/tools.h>
+#include <util/buffer.h>
 #include "tcpmessage.h"
 #include "message.h"
 #include "messages.h"
@@ -44,7 +45,7 @@ bool check(const Message &msg, const char *payload, size_t size) {
     return true;
 }
 
-bool check(const Message &msg, const std::vector<char> *payload) {
+bool check(const Message &msg, const buffer *payload) {
 
     return check(msg, payload?payload->data():nullptr, payload?payload->size():0);
 }
@@ -55,13 +56,13 @@ bool check(const Message &msg, const std::vector<char> *payload) {
 namespace  {
 
 std::mutex buffer_pool_mutex;
-std::deque<std::shared_ptr<std::vector<char>>> buffer_pool;
+std::deque<std::shared_ptr<buffer>> buffer_pool;
 
 }
 #endif
 
 
-void return_buffer(std::shared_ptr<std::vector<char>> &buf) {
+void return_buffer(std::shared_ptr<buffer> &buf) {
 #ifdef USE_BUFFER_POOL
     if (!buf) {
         //std::cerr << "empty buffer returned" << std::endl;
@@ -76,7 +77,7 @@ void return_buffer(std::shared_ptr<std::vector<char>> &buf) {
 #endif
 }
 
-std::shared_ptr<std::vector<char>> get_buffer(size_t size) {
+std::shared_ptr<buffer> get_buffer(size_t size) {
 #ifdef USE_BUFFER_POOL
     {
         std::lock_guard<std::mutex> lock(buffer_pool_mutex);
@@ -97,7 +98,7 @@ std::shared_ptr<std::vector<char>> get_buffer(size_t size) {
 
     //std::cerr << "new buffer" << std::endl;
 #endif
-    return std::make_shared<std::vector<char>>();
+    return std::make_shared<buffer>();
 }
 
 namespace {
@@ -110,10 +111,10 @@ void submitSendRequest(std::shared_ptr<SendRequest> req);
 struct SendRequest {
     socket_t &sock;
     const message::Buffer msg;
-    std::shared_ptr<std::vector<char>> payload;
+    std::shared_ptr<buffer> payload;
     std::shared_ptr<socket_t> payloadSocket;
     std::function<void(error_code)> handler;
-    SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<std::vector<char>> payload, std::function<void(error_code)> handler)
+    SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<buffer> payload, std::function<void(error_code)> handler)
         : sock(sock)
         , msg(msg)
         , payload(payload)
@@ -141,7 +142,7 @@ struct SendRequest {
             }
         }
         if (send(sock, msg, ec, payload.get()) && payloadSocket) {
-            std::vector<char> bufvec(buffersize);
+            buffer bufvec(buffersize);
             for (size_t i = 0; i < n;) {
                 auto buf = asio::buffer(bufvec.data(), std::min(bufvec.size(), n-i));
                 ssize_t c = asio::read(*payloadSocket, buf, ec);
@@ -187,10 +188,10 @@ void submitSendRequest(std::shared_ptr<SendRequest> req) {
 
 }
 
-bool recv_payload(socket_t &sock, message::Buffer &msg, error_code &ec, std::vector<char> *payload) {
+bool recv_payload(socket_t &sock, message::Buffer &msg, error_code &ec, buffer *payload) {
 
     if (msg.payloadSize() > 0) {
-        std::vector<char> pl;
+        buffer pl;
         if (!payload) {
             std::cerr << "message::recv: ignoring payload: " << msg << std::endl;
             payload = &pl;
@@ -221,11 +222,11 @@ struct RecvRequest {
 
     socket_t &sock;
     message::Buffer &msg;
-    std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler;
+    std::function<void(error_code, std::shared_ptr<buffer>)> handler;
     std::function<void(error_code, message::Buffer &msg)> payload_handler;
     bool no_payload = false;
 
-    RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler)
+    RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, std::shared_ptr<buffer>)> handler)
         : sock(sock)
         , msg(msg)
         , handler(handler)
@@ -237,14 +238,14 @@ struct RecvRequest {
         bool error = false;
         if (!recv_message(sock, msg, ec, true)) {
             error = true;
-            handler(ec, std::shared_ptr<std::vector<char>>());
+            handler(ec, std::shared_ptr<buffer>());
         }
-        std::shared_ptr<std::vector<char>> payload;
+        std::shared_ptr<buffer> payload;
         if (!no_payload && !error && msg.payloadSize() > 0) {
             payload = get_buffer(msg.payloadSize());
             if (!recv_payload(sock, msg, ec, payload.get())) {
                 error = true;
-                handler(ec, std::shared_ptr<std::vector<char>>());
+                handler(ec, std::shared_ptr<buffer>());
             }
         }
         if (!error) {
@@ -325,7 +326,7 @@ bool recv_message(socket_t &sock, message::Buffer &msg, error_code &ec, bool blo
    return true;
 }
 
-bool recv(socket_t &sock, message::Buffer &msg, error_code &ec, bool block, std::vector<char> *payload) {
+bool recv(socket_t &sock, message::Buffer &msg, error_code &ec, bool block, buffer *payload) {
 
     if (!recv_message(sock, msg, ec, block)) {
         return false;
@@ -338,7 +339,7 @@ bool recv(socket_t &sock, message::Buffer &msg, error_code &ec, bool block, std:
    return true;
 }
 
-void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, std::shared_ptr<std::vector<char>>)> handler) {
+void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, std::shared_ptr<buffer>)> handler) {
 
    auto req = std::make_shared<RecvRequest>(sock, msg, handler);
 
@@ -354,7 +355,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
 
 void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec)> handler) {
 
-   auto h = [handler](boost::system::error_code ec, std::shared_ptr<std::vector<char>>){
+   auto h = [handler](boost::system::error_code ec, std::shared_ptr<buffer>){
        handler(ec);
    };
    auto req = std::make_shared<RecvRequest>(sock, msg, h);
@@ -370,7 +371,7 @@ void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(
    }
 }
 
-bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) {
+bool send(socket_t &sock, const Message &msg, const buffer *payload) {
 
     assert(check(msg, payload));
 
@@ -394,7 +395,7 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
     return true;
 }
 
-bool send(socket_t &sock, const message::Message &msg, error_code &ec, const std::vector<char> *payload) {
+bool send(socket_t &sock, const message::Message &msg, error_code &ec, const buffer *payload) {
 
    assert(check(msg, payload));
 
@@ -444,7 +445,7 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const cha
 
 
 void async_send(socket_t &sock, const message::Message &msg,
-                std::shared_ptr<std::vector<char>> payload,
+                std::shared_ptr<buffer> payload,
                 const std::function<void(error_code ec)> handler)
 {
    assert(check(msg, payload.get()));

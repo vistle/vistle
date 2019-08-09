@@ -3,6 +3,7 @@
 
 #include "archives.h"
 #include "shmvector.h"
+#include <util/buffer.h>
 
 #include <boost/mpl/for_each.hpp>
 
@@ -75,8 +76,8 @@ public:
 
 private:
     CompressionSettings m_compressionSettings;
-    std::map<std::string,std::vector<char>> m_objects;
-    std::map<std::string,std::vector<char>> m_arrays;
+    std::map<std::string,buffer> m_objects;
+    std::map<std::string,buffer> m_arrays;
     std::set<std::string> m_archivedObjects;
     std::set<std::string> m_archivedArrays;
 };

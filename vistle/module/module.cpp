@@ -567,7 +567,7 @@ bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, in
     vistle::oarchive memar(memstr);
     memar.setSaver(saver);
     obj->saveObject(memar);
-    const std::vector<char> &mem = memstr.get_vector();
+    const buffer &mem = memstr.get_vector();
     comm.send(destRank, 0, mem);
     auto dir = saver->getDirectory();
     comm.send(destRank, 0, dir);
@@ -583,10 +583,10 @@ bool Module::sendObject(Object::const_ptr object, int destRank) const {
 
 Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourceRank) const {
 
-    std::vector<char> mem;
+    buffer mem;
     comm.recv(sourceRank, 0, mem);
     vistle::SubArchiveDirectory dir;
-    std::map<std::string, std::vector<char>> objects, arrays;
+    std::map<std::string, buffer> objects, arrays;
     std::map<std::string, message::CompressionMode> comp;
     std::map<std::string, size_t> rawsizes;
     comm.recv(sourceRank, 0, dir);
@@ -621,18 +621,18 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         auto saver = std::make_shared<DeepArchiveSaver>();
         memar.setSaver(saver);
         obj->saveObject(memar);
-        const std::vector<char> &mem = memstr.get_vector();
-        mpi::broadcast(comm, const_cast<std::vector<char>&>(mem), root);
+        const buffer &mem = memstr.get_vector();
+        mpi::broadcast(comm, const_cast<buffer&>(mem), root);
         auto dir = saver->getDirectory();
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
             mpi::broadcast(comm, ent.data, ent.size, root);
         }
     } else {
-        std::vector<char> mem;
+        buffer mem;
         mpi::broadcast(comm, mem, root);
         vistle::SubArchiveDirectory dir;
-        std::map<std::string, std::vector<char>> objects, arrays;
+        std::map<std::string, buffer> objects, arrays;
         std::map<std::string, message::CompressionMode> comp;
         std::map<std::string, size_t> rawsizes;
         mpi::broadcast(comm, dir, root);
@@ -1102,11 +1102,11 @@ bool Module::dispatch(bool *messageReceived) {
 }
 
 
-void Module::sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const {
+void Module::sendParameterMessage(const message::Message &message, const buffer *payload) const {
     sendMessage(message, payload);
 }
 
-bool Module::sendMessage(const message::Message &message, const std::vector<char> *payload) const {
+bool Module::sendMessage(const message::Message &message, const buffer *payload) const {
 
    // exclude SendText messages to avoid circular calls
    if (message.type() != message::SENDTEXT

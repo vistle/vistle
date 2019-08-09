@@ -178,7 +178,7 @@ int StateTracker::getModuleState(int id) const {
 
 namespace {
 
-void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const message::Message &msg, std::shared_ptr<const std::vector<char>> payload = std::shared_ptr<const std::vector<char>>()) {
+void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const message::Message &msg, std::shared_ptr<const buffer> payload = std::shared_ptr<const buffer>()) {
 
    v.emplace_back(msg, payload);
 }
@@ -260,7 +260,7 @@ StateTracker::VistleState StateTracker::getState() const {
             choices.setSenderId(id);
             SetParameterChoices::Payload pl(param->choices());
             auto vec = addPayload(choices, pl);
-            auto shvec = std::make_shared<std::vector<char>>(vec);
+            auto shvec = std::make_shared<buffer>(vec);
             appendMessage(state, choices, shvec);
          }
 
@@ -328,7 +328,7 @@ const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableMo
     return m_availableModules;
 }
 
-bool StateTracker::handle(const message::Message &msg, const std::vector<char> *payload, bool track) {
+bool StateTracker::handle(const message::Message &msg, const buffer *payload, bool track) {
     return handle(msg, payload?payload->data():nullptr, payload?payload->size():0, track);
 }
 
@@ -365,7 +365,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
 
    bool handled = true;
 
-   std::vector<char> pl;
+   buffer pl;
    if (payload) {
        std::copy(payload, payload+payloadSize, std::back_inserter(pl));
    }
@@ -570,7 +570,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
    } else {
       if (msg.typeFlags() & QueueIfUnhandled) {
           if (payload) {
-              auto pl = std::make_shared<const std::vector<char>>(payload, payload+payloadSize);
+              auto pl = std::make_shared<const buffer>(payload, payload+payloadSize);
               m_queue.emplace_back(msg, pl);
 
           } else {
@@ -1004,7 +1004,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
    return handled;
 }
 
-bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const std::vector<char> &payload) {
+bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const buffer &payload) {
 
    const int senderId = choices.senderId();
    if (runningMap.find(senderId) == runningMap.end())
@@ -1122,7 +1122,7 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
    return true;
 }
 
-bool StateTracker::handlePriv(const message::SendText &info, const std::vector<char> &payload)
+bool StateTracker::handlePriv(const message::SendText &info, const buffer &payload)
 {
     auto pl = message::getPayload<message::SendText::Payload>(payload);
     mutex_locker guard(m_stateMutex);

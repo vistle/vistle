@@ -66,6 +66,8 @@
 
 #include <userinterface/userinterface.h>
 
+#include <util/buffer.h>
+
 QT_REQUIRE_CONFIG(filesystemmodel);
 
 QT_BEGIN_NAMESPACE
@@ -80,7 +82,7 @@ public:
     explicit VistleFileInfoGatherer(vistle::UserInterface *ui, int moduleId, QObject *parent = 0);
     ~VistleFileInfoGatherer() override;
 
-    bool handleMessage(const vistle::message::Message &message, const std::vector<char> &payload) override;
+    bool handleMessage(const vistle::message::Message &message, const vistle::buffer &payload) override;
 
     QString identifier() const override;
     bool isRootDir(const QString &path) const override;

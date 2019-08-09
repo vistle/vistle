@@ -105,7 +105,7 @@ VistleFileInfoGatherer::~VistleFileInfoGatherer()
     wait();
 }
 
-bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, const std::vector<char> &payload)
+bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, const vistle::buffer &payload)
 {
     using namespace vistle::message;
 

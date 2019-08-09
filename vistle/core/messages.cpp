@@ -33,7 +33,7 @@ static T min(T a, T b) { return a<b ? a : b; }
    }
 
 template<class Payload>
-std::vector<char> addPayload(Message &message, Payload &payload) {
+buffer addPayload(Message &message, Payload &payload) {
     vecostreambuf<char> buf;
     oarchive ar(buf);
     ar & payload;
@@ -43,7 +43,7 @@ std::vector<char> addPayload(Message &message, Payload &payload) {
 }
 
 template<class Payload>
-Payload getPayload(const std::vector<char> &data) {
+Payload getPayload(const buffer &data) {
     vecistreambuf<char> buf(data);
     Payload payload;
     try {
@@ -56,11 +56,11 @@ Payload getPayload(const std::vector<char> &data) {
     return payload;
 }
 
-template V_COREEXPORT std::vector<char> addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
-template V_COREEXPORT std::vector<char> addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
+template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
+template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
 
-template V_COREEXPORT SendText::Payload getPayload(const std::vector<char> &data);
-template V_COREEXPORT SetParameterChoices::Payload getPayload(const std::vector<char> &data);
+template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
+template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 
 Identify::Identify(Identity id, const std::string &name)
 : m_identity(id)

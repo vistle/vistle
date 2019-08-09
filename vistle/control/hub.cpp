@@ -350,7 +350,7 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
     return pid;
 }
 
-bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) const {
+bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const buffer *payload) const {
    bool result = true;
 #if 0
    try {
@@ -365,9 +365,9 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
       }
    }
 #else
-   std::shared_ptr<std::vector<char>> pl;
+   std::shared_ptr<buffer> pl;
    if (payload)
-       pl = std::make_shared<std::vector<char>>(*payload);
+       pl = std::make_shared<buffer>(*payload);
 
    message::async_send(*sock, msg, pl, [this](boost::system::error_code ec){
        if (ec) {
@@ -631,7 +631,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     if (it != m_sockets.end())
        senderType = it->second;
     message::Buffer msg;
-    std::vector<char> payload;
+    buffer payload;
     message::error_code ec;
     if (message::recv(*sock, msg, ec, false, &payload)) {
        bool ok = true;
@@ -658,7 +658,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     }
 }
 
-bool Hub::sendMaster(const message::Message &msg, const std::vector<char> *payload) const {
+bool Hub::sendMaster(const message::Message &msg, const buffer *payload) const {
 
    vassert(!m_isMaster);
    if (m_isMaster) {
@@ -677,7 +677,7 @@ bool Hub::sendMaster(const message::Message &msg, const std::vector<char> *paylo
    return numSent == 1;
 }
 
-bool Hub::sendManager(const message::Message &msg, int hub, const std::vector<char> *payload) const {
+bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload) const {
 
    if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
       vassert(m_managerConnected);
@@ -701,7 +701,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const std::vector<ch
    return sendHub(msg, hub, payload);
 }
 
-bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const std::vector<char> *payload) const {
+bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buffer *payload) const {
 
    vassert(m_isMaster);
    if (!m_isMaster)
@@ -727,7 +727,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const std
    return ok;
 }
 
-bool Hub::sendHub(const message::Message &msg, int hub, const std::vector<char> *payload) const {
+bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) const {
 
    if (hub == m_hubId)
       return true;
@@ -746,7 +746,7 @@ bool Hub::sendHub(const message::Message &msg, int hub, const std::vector<char> 
    return false;
 }
 
-bool Hub::sendSlave(const message::Message &msg, int dest, const std::vector<char> *payload) const {
+bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload) const {
 
    vassert(m_isMaster);
    if (!m_isMaster)
@@ -759,13 +759,13 @@ bool Hub::sendSlave(const message::Message &msg, int dest, const std::vector<cha
    return sendMessage(it->second.sock, msg, payload);
 }
 
-bool Hub::sendUi(const message::Message &msg, int id, const std::vector<char> *payload) const {
+bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload) const {
 
    m_uiManager.sendMessage(msg, id, payload);
    return true;
 }
 
-bool Hub::sendModule(const message::Message &msg, int id, const std::vector<char> *payload) const {
+bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload) const {
 
     if (!Id::isModule(id)) {
         CERR << "sendModule: id " << id << " is not for a module" << std::endl;
@@ -844,7 +844,7 @@ void Hub::hubReady() {
     }
 }
 
-bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const std::vector<char> *payload) {
+bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const buffer *payload) {
 
    using namespace vistle::message;
 
@@ -1901,13 +1901,13 @@ bool Hub::handlePriv(const message::Disconnect &disc) {
     return true;
 }
 
-bool Hub::handlePriv(const message::FileQuery &query, const std::vector<char> *payload)
+bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
 {
     int hub = m_stateTracker.getHub(query.moduleId());
     if (hub != m_hubId)
         return sendHub(query, hub, payload);
 
-    std::vector<char> pl;
+    buffer pl;
     if (!payload)
         payload = &pl;
 
@@ -1916,7 +1916,7 @@ bool Hub::handlePriv(const message::FileQuery &query, const std::vector<char> *p
     return c.handle(query, *payload);
 }
 
-bool Hub::handlePriv(const message::FileQueryResult &result, const std::vector<char> *payload)
+bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *payload)
 {
     if (result.destId() == m_hubId)
         return sendUi(result, result.destUiId(), payload);

@@ -3,6 +3,7 @@
 
 #include <core/filequery.h>
 #include <core/messages.h>
+#include <util/buffer.h>
 
 #include "hub.h"
 
@@ -12,10 +13,10 @@ class FileInfoCrawler {
 public:
 
     FileInfoCrawler(Hub &hub);
-    bool handle(const message::FileQuery &query, const std::vector<char> &payload);
+    bool handle(const message::FileQuery &query, const buffer &payload);
 
 private:
-    bool sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s, const std::vector<char> &payload);
+    bool sendResponse(const message::FileQuery &query, message::FileQueryResult::Status s, const buffer &payload);
 
     Hub &m_hub;
 };

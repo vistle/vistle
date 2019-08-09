@@ -21,14 +21,14 @@ class UiManager {
    ~UiManager();
 
    void requestQuit();
-   bool handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const std::vector<char> &payload);
-   void sendMessage(const message::Message &msg, int id = message::Id::Broadcast, const std::vector<char> *payload=nullptr) const;
+   bool handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const message::Message &msg, const buffer &payload);
+   void sendMessage(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload=nullptr) const;
    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void lockUi(bool lock);
    bool isLocked() const;
 
  private:
-   bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const std::vector<char> *payload=nullptr) const;
+   bool sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg, const buffer *payload=nullptr) const;
 
    void disconnect();
    bool removeClient(std::shared_ptr<UiClient> c) const;

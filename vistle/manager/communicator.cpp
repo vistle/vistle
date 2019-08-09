@@ -324,7 +324,7 @@ bool Communicator::dispatch(bool *work) {
    if (m_rank == 0) {
       message::Buffer buf;
       message::error_code ec;
-      std::vector<char> payload;
+      buffer payload;
       if (!message::recv(m_hubSocket, buf, ec, false, &payload)) {
          if (ec) {
              CERR << "Quit reason: hub comm interrupted: " << ec.message() << std::endl;

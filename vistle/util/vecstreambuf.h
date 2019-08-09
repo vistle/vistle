@@ -4,10 +4,11 @@
 #include <streambuf>
 #include <vector>
 #include <cstring>
+#include <util/allocator.h>
 
 namespace vistle {
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = default_init_allocator<CharT>>
 class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:
@@ -37,26 +38,26 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
        return xsputn(static_cast<const CharT *>(ptr), size);
    }
 
-   const std::vector<CharT> &get_vector() const {
+   const std::vector<CharT, allocator> &get_vector() const {
       return m_vector;
    }
 
-   std::vector<CharT> &get_vector() {
+   std::vector<CharT, allocator> &get_vector() {
       return m_vector;
    }
 
  private:
-   std::vector<CharT> m_vector;
+   std::vector<CharT, allocator> m_vector;
 };
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = default_init_allocator<CharT>>
 class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:
-   vecistreambuf(const std::vector<CharT> &vec)
+     vecistreambuf(const std::vector<CharT, allocator> &vec)
    : vec(vec)
    {
-      auto &v = const_cast<std::vector<CharT> &>(vec);
+      auto &v = const_cast<std::vector<CharT, allocator> &>(vec);
       this->setg(v.data(), v.data(), v.data()+v.size());
    }
 
@@ -74,7 +75,7 @@ class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
    void ungetch(char) { if (cur>0) --cur; }
 
 private:
-   const std::vector<CharT> &vec;
+   const std::vector<CharT, allocator> &vec;
    size_t cur = 0;
 };
 

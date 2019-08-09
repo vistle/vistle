@@ -5,6 +5,8 @@
 #include "assert.h"
 #include "shmvector.h"
 
+#include <util/buffer.h>
+
 #include <boost/mpl/for_each.hpp>
 
 namespace vistle {
@@ -74,7 +76,7 @@ struct V_COREEXPORT ArrayLoader {
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
 public:
-    DeepArchiveFetcher(const std::map<std::string, std::vector<char>> &objects, const std::map<std::string, std::vector<char>> &arrays,
+    DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
                        const std::map<std::string, message::CompressionMode> &compressions, const std::map<std::string,size_t> &sizes);
 
     void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override;
@@ -98,8 +100,8 @@ private:
     bool m_rename = false;
     std::map<std::string, std::string> m_transObject, m_transArray;
 
-    const std::map<std::string,std::vector<char>> &m_objects;
-    const std::map<std::string,std::vector<char>> &m_arrays;
+    const std::map<std::string,buffer> &m_objects;
+    const std::map<std::string,buffer> &m_arrays;
     const std::map<std::string,message::CompressionMode> &m_compression;
     const std::map<std::string,size_t> &m_rawSize;
 

@@ -184,8 +184,8 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    //! remove port forwarding requested by requestPortMapping
    void removePortMapping(unsigned short forwardPort);
 
-   void sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const override;
-   bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr) const override;
+   void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
+   bool sendMessage(const message::Message &message, const buffer *payload=nullptr) const override;
    template<class Payload>
    bool sendMessage(message::Message &message, Payload &payload) const;
 

@@ -129,7 +129,7 @@ bool UserInterface::dispatch() {
       work = true;
 
       message::Buffer buf;
-      std::vector<char> payload;
+      buffer payload;
       message::error_code ec;
       if (!message::recv(socket(), buf, ec, true /* blocking */, &payload)) {
           CERR << "receiving failed: " << ec.message() << std::endl;
@@ -147,7 +147,7 @@ bool UserInterface::dispatch() {
 }
 
 
-bool UserInterface::sendMessage(const message::Message &message, const std::vector<char> *payload) {
+bool UserInterface::sendMessage(const message::Message &message, const buffer *payload) {
 
    if (m_locked && message.type() != message::IDENTIFY) {
       m_sendQueue.emplace_back(message, payload);
@@ -158,7 +158,7 @@ bool UserInterface::sendMessage(const message::Message &message, const std::vect
 }
 
 
-bool UserInterface::handleMessage(const vistle::message::Message *message, const std::vector<char> &payload) {
+bool UserInterface::handleMessage(const vistle::message::Message *message, const buffer &payload) {
 
    bool ret = m_stateTracker.handle(*message, payload.data(), payload.size());
 
@@ -323,7 +323,7 @@ int FileBrowser::id() const {
     return m_id;
 }
 
-bool FileBrowser::sendMessage(const message::Message &message, const std::vector<char> *payload)
+bool FileBrowser::sendMessage(const message::Message &message, const buffer *payload)
 {
     assert(m_ui);
     message::Buffer buf(message);

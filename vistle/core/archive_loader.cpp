@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, std::vector<char> > &objects, const std::map<std::string, std::vector<char> > &arrays,
+DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, buffer> &objects, const std::map<std::string, buffer> &arrays,
                        const std::map<std::string, message::CompressionMode> &compressions, const std::map<std::string,size_t> &sizes)
 : m_objects(objects)
 , m_arrays(arrays)
@@ -31,7 +31,7 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
     if (its != m_rawSize.end()) {
         size = its->second;
     }
-    std::vector<char> raw;
+    buffer raw;
     if (comp != message::CompressionNone) {
         try {
             raw = message::decompressPayload(comp, it->second.size(), size, it->second.data());
@@ -70,7 +70,7 @@ void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCo
     if (its != m_rawSize.end()) {
         size = its->second;
     }
-    std::vector<char> raw;
+    buffer raw;
     if (comp != message::CompressionNone) {
         try {
             raw = message::decompressPayload(comp, it->second.size(), size, it->second.data());

@@ -90,6 +90,34 @@ void time_ptr(T *v, const std::string &tag, Index size) {
 template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
 
+template<class V>
+void time_all(const std::string &name, size_t size) {
+    {
+        V v;
+        time_resize(v, name+" resize", size);
+    }
+    {
+        V v;
+        time_pb(v, name+" push_back", size);
+    }
+    {
+        V v;
+        v.reserve(size);
+        time_pb(v, name+" reserve+push_back", size);
+        time_arr(v, name+" arr", size);
+        time_ptr(&v[0], name+" arr ptr", size);
+#ifdef TWICE
+        time_arr(v, name+" arr", size);
+        time_ptr(&v[0], name+" arr ptr", size);
+#endif
+    }
+    {
+        V v;
+        v.reserve(size);
+        time_eb(v, name+" emplace_back+reserve", size);
+    }
+}
+
 namespace bi = boost::interprocess;
 
 using namespace vistle;
@@ -106,102 +134,12 @@ int main(int argc, char *argv[]) {
    }
    const Index size = 1L << shift;
 
-   {
-      std::vector<DataType> v;
-      time_resize(v, "STL vector resize", size);
-   }
-   {
-      std::vector<DataType> v;
-      time_pb(v, "STL vector push_back", size);
-   }
-   {
-      std::vector<DataType> v;
-      v.reserve(size);
-      time_pb(v, "STL vector reserve+push_back", size);
-      time_arr(v, "STL vector arr", size);
-      time_ptr(&v[0], "STL vector arr ptr", size);
-#ifdef TWICE
-      time_arr(v, "STL vector arr", size);
-      time_ptr(&v[0], "STL vector arr ptr", size);
-#endif
-   }
-   {
-      std::vector<DataType> v;
-      v.reserve(size);
-      time_eb(v, "STL vector emplace_back+reserve", size);
-   }
-
-   {
-      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
-      time_resize(v, "STL vector+default_init resize", size);
-   }
-   {
-      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
-      time_pb(v, "STL vector+default_init push_back", size);
-   }
-   {
-      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
-      v.reserve(size);
-      time_pb(v, "STL vector+default_init reserve+push_back", size);
-      time_arr(v, "STL vector+default_init arr", size);
-      time_ptr(&v[0], "STL vector+default_init arr ptr", size);
-#ifdef TWICE
-      time_arr(v, "STL vector arr", size);
-      time_ptr(&v[0], "STL vector arr ptr", size);
-#endif
-   }
-   {
-      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
-      v.reserve(size);
-      time_eb(v, "STL vector+default_init emplace_back+reserve", size);
-   }
-
-   {
-      bi::vector<DataType> v;
-      time_resize(v, "B:I vector resize", size);
-   }
-   {
-      bi::vector<DataType> v;
-      time_pb(v, "B:I vector push_back", size);
-   }
-   {
-      bi::vector<DataType> v;
-      v.reserve(size);
-      time_pb(v, "B:I vector reserve+push_back", size);
-      time_arr(v, "B:I vector arr", size);
-      time_ptr(&v[0], "B:I vector arr ptr", size);
-#ifdef TWICE
-      time_arr(v, "B:I vector arr", size);
-      time_ptr(&v[0], "B:I vector arr ptr", size);
-#endif
-   }
-
-   {
-      vistle::shm_array<DataType, std::allocator<DataType>> v;
-      time_resize(v, "uninit array resize", size);
-   }
-   {
-      vistle::shm_array<DataType, std::allocator<DataType>> v;
-      time_pb(v, "uninit array push_back only", size);
-      time_arr(v, "uninit array arr", size);
-      time_ptr(&v[0], "uninit array arr ptr", size);
-#ifdef TWICE
-      time_arr(v, "uninit array arr", size);
-      time_ptr(&v[0], "uninit array arr ptr", size);
-#endif
-   }
-
-   {
-      vistle::shm_array<DataType, std::allocator<DataType>> v;
-      v.reserve(size);
-      time_pb(v, "uninit array reserve+push_back", size);
-      time_arr(v, "uninit array arr", size);
-      time_ptr(&v[0], "uninit array arr ptr", size);
-#ifdef TWICE
-      time_arr(v, "uninit array arr", size);
-      time_ptr(&v[0], "uninit array arr ptr", size);
-#endif
-   }
+   time_all<std::vector<DataType>>("STL vector", size);
+   time_all<std::vector<DataType, vistle::default_init_allocator<DataType>>>("STL vector+default_init", size);
+   time_all<bi::vector<DataType>>("Boost vector", size);
+   //time_all<bi::vector<DataType, vistle::default_init_allocator,DataType>>>("Boost vector+default_init", size);
+   time_all<vistle::shm_array<DataType, std::allocator<DataType>>>("shm_array", size);
+   //time_all<vistle::shm_array<DataType, vistle::default_init_allocator<DataType>>>("shm_array+default_init", size);
 
 #if 0
    {

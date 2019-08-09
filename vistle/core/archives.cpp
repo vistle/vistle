@@ -328,12 +328,12 @@ const std::function<void()> &boost_iarchive::objectCompletionHandler() const {
 namespace detail {
 
 template<>
-bool decompressZfp<zfp_type_none>(void *dest, const std::vector<char> &compressed, const Index dim[3]) {
+bool decompressZfp<zfp_type_none>(void *dest, const buffer &compressed, const Index dim[3]) {
     return false;
 }
 
 template<>
-bool compressZfp<zfp_type_none>(std::vector<char> &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
+bool compressZfp<zfp_type_none>(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param) {
    return false;
 }
 

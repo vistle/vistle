@@ -11,6 +11,7 @@
 #include <memory>
 #include <iostream>
 #include <util/vecstreambuf.h>
+#include <util/buffer.h>
 #include "message.h"
 
 #ifdef USE_BOOST_ARCHIVE
@@ -102,7 +103,7 @@ struct SubArchiveDirectoryEntry {
     bool is_array = false;
     size_t size = 0, compressedSize = 0;
     char *data = nullptr;
-    std::unique_ptr<std::vector<char>> storage;
+    std::unique_ptr<buffer> storage;
     message::CompressionMode compression = message::CompressionNone;
 
     SubArchiveDirectoryEntry(): is_array(false), size(0), data(nullptr) {}

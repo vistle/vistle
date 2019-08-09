@@ -6,6 +6,7 @@
 
 #include <util/enum.h>
 #include <util/directory.h> // ModuleNameLength
+#include <util/buffer.h>
 #include "uuid.h"
 #include "export.h"
 #include "shmname.h"
@@ -305,12 +306,12 @@ protected:
     }
 };
 
-V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode &mode, const char *raw, size_t size, int speed=-1 /* algorithm default */);
-V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode &mode, const std::vector<char> &raw, int speed=-1 /* algorithm default */);
-V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode mode, Message &msg, std::vector<char> &raw, int speed=-1 /* algorithm default */);
-V_COREEXPORT std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed);
-V_COREEXPORT std::vector<char> decompressPayload(vistle::message::CompressionMode mode, size_t size, size_t rawsize, std::vector<char> &compressed);
-V_COREEXPORT std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed);
+V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode &mode, const char *raw, size_t size, int speed=-1 /* algorithm default */);
+V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode &mode, const buffer &raw, int speed=-1 /* algorithm default */);
+V_COREEXPORT buffer compressPayload(vistle::message::CompressionMode mode, Message &msg, buffer &raw, int speed=-1 /* algorithm default */);
+V_COREEXPORT buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed);
+V_COREEXPORT buffer decompressPayload(vistle::message::CompressionMode mode, size_t size, size_t rawsize, buffer &compressed);
+V_COREEXPORT buffer decompressPayload(const Message &msg, buffer &compressed);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

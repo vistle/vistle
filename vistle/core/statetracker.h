@@ -9,6 +9,8 @@
 #include <mutex>
 #include <condition_variable>
 
+#include <util/buffer.h>
+
 #include "export.h"
 #include "message.h"
 #include "messages.h"
@@ -122,7 +124,7 @@ public:
 
     ParameterSet getConnectedParameters(const Parameter &param) const;
 
-    bool handle(const message::Message &msg, const std::vector<char> *payload, bool track=true);
+    bool handle(const message::Message &msg, const buffer *payload, bool track=true);
     bool handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track=true);
     bool handleConnect(const message::Connect &conn);
     bool handleDisconnect(const message::Disconnect &disc);
@@ -130,12 +132,12 @@ public:
     std::shared_ptr<PortTracker> portTracker() const;
 
     struct MessageWithPayload {
-        MessageWithPayload(const message::Message &m, std::shared_ptr<const std::vector<char>> payload)
+        MessageWithPayload(const message::Message &m, std::shared_ptr<const buffer> payload)
             : message(m)
               , payload(payload) {}
 
         message::Buffer message;
-        std::shared_ptr<const std::vector<char>> payload;
+        std::shared_ptr<const buffer> payload;
     };
     typedef std::vector<MessageWithPayload> VistleState;
 
@@ -226,12 +228,12 @@ public:
    bool handlePriv(const message::AddParameter &addParam);
    bool handlePriv(const message::RemoveParameter &removeParam);
    bool handlePriv(const message::SetParameter &setParam);
-   bool handlePriv(const message::SetParameterChoices &choices, const std::vector<char> &payload);
+   bool handlePriv(const message::SetParameterChoices &choices, const buffer &payload);
    bool handlePriv(const message::Kill &kill);
    bool handlePriv(const message::AddObject &addObj);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
-   bool handlePriv(const message::SendText &info, const std::vector<char> &payload);
+   bool handlePriv(const message::SendText &info, const buffer &payload);
    bool handlePriv(const message::UpdateStatus &status);
    bool handlePriv(const message::ReplayFinished &reset);
    bool handlePriv(const message::Quit &quit);

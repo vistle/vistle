@@ -213,7 +213,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
    using namespace message;
 
    std::shared_ptr<message::Buffer> buf(new message::Buffer);
-   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, std::shared_ptr<std::vector<char>> payload){
+   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, std::shared_ptr<buffer> payload){
       if (ec) {
           CERR << "recv error after accept: " << ec.message() << ", sock.use_count()=" << sock.use_count() << std::endl;
           return;
@@ -302,7 +302,7 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
 
     std::shared_ptr<message::Buffer> msg(new message::Buffer);
     if (store_and_forward) {
-        async_recv(*sock, *msg, [this, sock, msg, type](error_code ec, std::shared_ptr<std::vector<char>> payload){
+        async_recv(*sock, *msg, [this, sock, msg, type](error_code ec, std::shared_ptr<buffer> payload){
             if (ec) {
                 CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
                 return;

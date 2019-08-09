@@ -455,7 +455,7 @@ bool Read<std::string>(int fd, std::string &s) {
         return false;
     }
 
-    std::vector<char> d(l);
+    buffer d(l);
     ssize_t n = sread(fd, d.data(), d.size());
     if (n != d.size()) {
         CERR << "failed to read string data of size " << l << std::endl;
@@ -468,7 +468,7 @@ bool Read<std::string>(int fd, std::string &s) {
 }
 
 template<>
-bool Write<std::vector<char>>(int fd, const std::vector<char> &v) {
+bool Write<buffer>(int fd, const buffer &v) {
     uint64_t l = v.size();
     if (!Write(fd, l)) {
         CERR << "failed to write vector size" << std::endl;
@@ -484,7 +484,7 @@ bool Write<std::vector<char>>(int fd, const std::vector<char> &v) {
 }
 
 template<>
-bool Read<std::vector<char>>(int fd, std::vector<char> &v) {
+bool Read<buffer>(int fd, buffer &v) {
     uint64_t l;
     if (!Read(fd, l)) {
         CERR << "failed to read vector size" << std::endl;
@@ -578,7 +578,7 @@ bool WriteChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const SubAr
     message::CompressionMode comp = message::CompressionMode(mod->archiveCompression());
     int speed = mod->archiveCompressionSpeed();
 
-    std::vector<char> compressed;
+    buffer compressed;
     if (comp != message::CompressionNone) {
         compressed = message::compressPayload(comp, ent.data, ent.size, speed);
     }
@@ -689,7 +689,7 @@ bool ReadChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const ChunkH
     }
     ent.compressedSize = compLength;
 
-    ent.storage.reset(new std::vector<char>(compLength));
+    ent.storage.reset(new buffer(compLength));
     ent.data = ent.storage->data();
 
     ssize_t n = sread(fd, ent.data, ent.compressedSize);
@@ -761,7 +761,7 @@ bool Cache::compute() {
                 m_saver->flushDirectory();
 
                 // copy serialized object to disk
-                const std::vector<char> &mem = memstr.get_vector();
+                const buffer &mem = memstr.get_vector();
                 SubArchiveDirectoryEntry ent{obj->getName(), false, mem.size(), const_cast<char *>(mem.data())};
                 if (!WriteChunk(this, m_fd, ent))
                     return false;
@@ -837,7 +837,7 @@ bool Cache::prepare() {
     typedef std::vector<std::string> TimestepObjects;
     std::vector<TimestepObjects> portObjects[NumPorts];
 
-    std::map<std::string, std::vector<char>> objects, arrays;
+    std::map<std::string, buffer> objects, arrays;
     std::map<std::string, message::CompressionMode> compression;
     std::map<std::string, size_t> size;
     std::map<std::string, std::string> objectTranslations, arrayTranslations;
@@ -878,7 +878,7 @@ bool Cache::prepare() {
         //CERR << "output to port " << port << ", initial " << name0 << " of size " << objects[name0].size() << std::endl;
 
         const auto &objbuf = objects[name0];
-        std::vector<char> raw;
+        buffer raw;
         const auto &comp = compression[name0];
         if (comp != message::CompressionNone) {
             const auto &sz = size[name0];

@@ -8,6 +8,8 @@
 #include "archives_config.h"
 #include "export.h"
 
+#include <util/buffer.h>
+
 namespace vistle {
 
 struct V_COREEXPORT SystemInfo {
@@ -62,14 +64,14 @@ struct V_COREEXPORT FileInfo {
    }
 };
 
-std::vector<char> V_COREEXPORT createPayload(const std::vector<FileInfo> &info);
-std::vector<FileInfo> V_COREEXPORT unpackFileInfos(const std::vector<char> &payload);
+buffer V_COREEXPORT createPayload(const std::vector<FileInfo> &info);
+std::vector<FileInfo> V_COREEXPORT unpackFileInfos(const buffer &payload);
 
-std::vector<char> V_COREEXPORT createPayload(const SystemInfo &info);
-SystemInfo V_COREEXPORT unpackSystemInfo(const std::vector<char> &payload);
+buffer V_COREEXPORT createPayload(const SystemInfo &info);
+SystemInfo V_COREEXPORT unpackSystemInfo(const buffer &payload);
 
-std::vector<char> V_COREEXPORT packFileList(const std::vector<std::string> &files);
-std::vector<std::string> V_COREEXPORT unpackFileList(const std::vector<char> &payload);
+buffer V_COREEXPORT packFileList(const std::vector<std::string> &files);
+std::vector<std::string> V_COREEXPORT unpackFileList(const buffer &payload);
 
 }
 #endif

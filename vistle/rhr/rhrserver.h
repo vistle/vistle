@@ -307,7 +307,7 @@ private:
 
        tileMsg *message = nullptr;
        RemoteRenderMessage *rhrMessage = nullptr;
-       std::vector<char> payload;
+       buffer payload;
    };
 
    friend struct EncodeTask;
@@ -321,7 +321,7 @@ private:
    VariantVisibilityMap m_clientVariants;
    InitialVariantVisibilityMap m_localVariants;
 
-   bool send(const RemoteRenderMessage &msg, const std::vector<char> *payload=nullptr);
+   bool send(const RemoteRenderMessage &msg, const buffer *payload=nullptr);
    void resetClient();
    int m_framecount = 0;
    bool m_dumpImages = false;

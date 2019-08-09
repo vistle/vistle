@@ -18,7 +18,7 @@ using vistle::message::RemoteRenderMessage;
 #define CERR std::cerr << "RhrClient:Decode: "
 
 
-DecodeTask::DecodeTask(std::shared_ptr<const RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload)
+DecodeTask::DecodeTask(std::shared_ptr<const RemoteRenderMessage> msg, std::shared_ptr<buffer> payload)
 : msg(msg)
 , payload(payload)
 , rgba(NULL)

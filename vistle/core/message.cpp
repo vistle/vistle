@@ -237,15 +237,15 @@ void Message::setNotify(bool enable) {
     m_notification = enable;
 }
 
-std::vector<char> compressPayload(CompressionMode &mode, const std::vector<char> &raw, int speed) {
+buffer compressPayload(CompressionMode &mode, const buffer &raw, int speed) {
     return compressPayload(mode, raw.data(), raw.size(), speed);
 }
 
-std::vector<char> compressPayload(CompressionMode &mode, const char *raw, size_t size, int speed) {
+buffer compressPayload(CompressionMode &mode, const char *raw, size_t size, int speed) {
 
     auto m = mode;
     mode = message::CompressionNone;
-    std::vector<char> compressed;
+    buffer compressed;
     switch (m) {
 #ifdef HAVE_SNAPPY
     case CompressionSnappy: {
@@ -301,13 +301,13 @@ std::vector<char> compressPayload(CompressionMode &mode, const char *raw, size_t
     return compressed;
 }
 
-std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vector<char> &raw, int speed) {
+buffer compressPayload(CompressionMode mode, Message &msg, buffer &raw, int speed) {
 
     CompressionMode m = mode;
     msg.setPayloadRawSize(raw.size());
     msg.setPayloadCompression(CompressionNone);
 
-    std::vector<char> compressed = compressPayload(m, raw, speed);
+    auto compressed = compressPayload(m, raw, speed);
     msg.setPayloadCompression(m);
 
     if (msg.payloadCompression() == CompressionNone) {
@@ -319,7 +319,7 @@ std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vecto
     return compressed;
 }
 
-std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t rawsize, std::vector<char> &compressed) {
+buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, buffer &compressed) {
 
     if (mode == CompressionNone)
         return std::move(compressed);
@@ -328,8 +328,8 @@ std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t ra
     return decompressPayload(mode, size, rawsize, compressed.data());
 }
 
-std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed) {
-    std::vector<char> decompressed(rawsize);
+buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed) {
+    buffer decompressed(rawsize);
 
     switch (mode) {
     case CompressionSnappy: {
@@ -383,7 +383,7 @@ std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t ra
     return decompressed;
 }
 
-std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed) {
+buffer decompressPayload(const Message &msg, buffer &compressed) {
 
     assert(compressed.size() >= msg.payloadSize());
 

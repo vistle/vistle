@@ -51,7 +51,7 @@ class ClusterManager: public ParameterManager
    bool dispatch(bool &received);
    const StateTracker &state() const;
 
-   void sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const override;
+   void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
    bool sendMessage(int receiver, const message::Message &message, int destRank=-1, const MessagePayload &payload=MessagePayload()) const;
    bool sendAll(const message::Message &message, const MessagePayload &payload=MessagePayload()) const;
    bool sendAllLocal(const message::Message &message, const MessagePayload &payload=MessagePayload()) const;

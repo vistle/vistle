@@ -7,6 +7,7 @@
 #include <exception>
 
 #include "export.h"
+#include <util/buffer.h>
 #include <core/parameter.h>
 #include <core/port.h>
 #include <core/porttracker.h>
@@ -27,8 +28,8 @@ public:
     virtual ~FileBrowser();
     int id() const;
 
-    bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr);
-    virtual bool handleMessage(const message::Message &message, const std::vector<char> &payload) = 0;
+    bool sendMessage(const message::Message &message, const buffer *payload=nullptr);
+    virtual bool handleMessage(const message::Message &message, const buffer &payload) = 0;
 
 private:
     UserInterface *m_ui = nullptr;
@@ -47,7 +48,7 @@ class V_UIEXPORT UserInterface {
    void cancel();
 
    virtual bool dispatch();
-   bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr);
+   bool sendMessage(const message::Message &message, const buffer *payload=nullptr);
 
    int id() const;
    const std::string &host() const;
@@ -80,7 +81,7 @@ class V_UIEXPORT UserInterface {
 
    StateTracker m_stateTracker;
 
-   bool handleMessage(const message::Message *message, const std::vector<char> &payload);
+   bool handleMessage(const message::Message *message, const buffer &payload);
 
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::socket m_socket;
@@ -89,7 +90,7 @@ class V_UIEXPORT UserInterface {
       std::mutex mutex;
       std::condition_variable cond;
       bool received;
-      std::vector<char> buf;
+      buffer buf;
 
       RequestedMessage(): received(false) {}
    };
@@ -99,14 +100,14 @@ class V_UIEXPORT UserInterface {
    std::mutex m_messageMutex; //< protect access to m_messageMap
    bool m_locked = false;
    struct MessageWithPayload {
-       MessageWithPayload(const message::Message &msg, const std::vector<char> *payload=nullptr)
+       MessageWithPayload(const message::Message &msg, const buffer *payload=nullptr)
        : buf(msg)
        {
            if (payload)
-               this->payload.reset(new std::vector<char>(*payload));
+               this->payload.reset(new buffer(*payload));
        }
        message::Buffer buf;
-       std::unique_ptr<const std::vector<char>> payload;
+       std::unique_ptr<const buffer> payload;
    };
    std::vector<MessageWithPayload> m_sendQueue;
    mutable std::mutex m_mutex;

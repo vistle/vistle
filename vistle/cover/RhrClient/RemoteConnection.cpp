@@ -223,7 +223,7 @@ void RemoteConnection::operator()() {
         assert(m_comm);
 
         std::shared_ptr<RemoteRenderMessage> msg;
-        std::shared_ptr<std::vector<char>> payload;
+        std::shared_ptr<vistle::buffer> payload;
         while (distributeAndHandleTileMpi(msg, payload)) {
             lock_guard locker(*m_mutex);
             if (m_interrupt) {
@@ -333,7 +333,7 @@ void RemoteConnection::operator()() {
         }
 
         message::Buffer buf;
-        auto payload = std::make_shared<std::vector<char>>();
+        auto payload = std::make_shared<buffer>();
         message::error_code ec;
         bool received = message::recv(m_sock, buf, ec, false, payload.get());
         if (ec) {
@@ -634,7 +634,7 @@ bool RemoteConnection::handleBounds(const RemoteRenderMessage &msg, const bounds
     return true;
 }
 
-bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg &tile, std::shared_ptr<std::vector<char> > payload) {
+bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg &tile, std::shared_ptr<buffer> payload) {
 
     assert(msg.rhr().type == rfbTile);
 #ifdef CONNDEBUG
@@ -787,7 +787,7 @@ bool RemoteConnection::boundsUpdated() {
     return ret;
 }
 
-bool RemoteConnection::sendMessage(const message::Message &msg, const std::vector<char> *payload) {
+bool RemoteConnection::sendMessage(const message::Message &msg, const buffer *payload) {
     lock_guard locker(*m_sendMutex);
     if (!isConnected())
         return false;
@@ -985,7 +985,7 @@ bool RemoteConnection::canHandleTile(std::shared_ptr<const message::RemoteRender
     return m_lastTileAt.empty();
 }
 
-bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload) {
+bool RemoteConnection::handleTileMessage(std::shared_ptr<const message::RemoteRenderMessage> msg, std::shared_ptr<buffer> payload) {
 
     assert(msg->rhr().type == rfbTile);
     const auto &tile = static_cast<const tileMsg &>(msg->rhr());
@@ -1243,7 +1243,7 @@ void RemoteConnection::processMessages() {
 
    if (m_comm) {
        std::shared_ptr<RemoteRenderMessage> msg;
-       std::shared_ptr<std::vector<char>> payload;
+       std::shared_ptr<vistle::buffer> payload;
        if (coVRMSController::instance()->isMaster()) {
            for (unsigned i=0; i<ntiles; ++i) {
                {
@@ -1358,9 +1358,9 @@ void RemoteConnection::processMessages() {
                for (unsigned i=0; i<ntiles; ++i) {
                    auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
                    coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
-                   std::shared_ptr<std::vector<char>> payload;
+                   std::shared_ptr<vistle::buffer> payload;
                    if (msg->payloadSize() > 0) {
-                       payload.reset(new std::vector<char>(msg->payloadSize()));
+                       payload.reset(new vistle::buffer(msg->payloadSize()));
                        coVRMSController::instance()->syncData(payload->data(), msg->payloadSize());
                    }
                    lock_guard locker(*m_mutex);
@@ -1372,9 +1372,9 @@ void RemoteConnection::processMessages() {
                for (unsigned i=0; i<ntiles; ++i) {
                    auto msg = std::make_shared<RemoteRenderMessage>(tileMsg());
                    coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
-                   std::shared_ptr<std::vector<char>> payload;
+                   std::shared_ptr<vistle::buffer> payload;
                    if (msg->payloadSize() > 0) {
-                       payload.reset(new std::vector<char>(msg->payloadSize()));
+                       payload.reset(new vistle::buffer(msg->payloadSize()));
                        coVRMSController::instance()->readMaster(payload->data(), msg->payloadSize());
                    }
                    lock_guard locker(*m_mutex);
@@ -1496,7 +1496,7 @@ const osg::Matrix &RemoteConnection::getHeadMat() const {
     return m_head;
 }
 
-bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMessage> msg, std::shared_ptr<std::vector<char> > payload) {
+bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload) {
 
     if (coVRMSController::instance()->isMaster()) {
 
@@ -1558,7 +1558,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
             message::Buffer tile;
             m_comm->recv(0, TagTileSend, tile.data(), sizeof(RemoteRenderMessage));
             msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
-            payload = std::make_shared<std::vector<char>>(msg->payloadSize());
+            payload = std::make_shared<vistle::buffer>(msg->payloadSize());
             m_comm->recv(0, TagData, payload->data(), msg->payloadSize());
         } else if (status.tag() == TagTileAll
                    || status.tag() == TagTileAny
@@ -1591,7 +1591,7 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
 
             boost::mpi::broadcast(*comm, tile.data(), sizeof(RemoteRenderMessage), 0);
             msg = std::make_shared<RemoteRenderMessage>(tile.as<RemoteRenderMessage>());
-            payload = std::make_shared<std::vector<char>>(tile.payloadSize());
+            payload = std::make_shared<vistle::buffer>(tile.payloadSize());
             boost::mpi::broadcast(*comm, payload->data(), payload->size(), 0);
         }
     }

@@ -26,6 +26,8 @@
 
 #include <boost/mpi.hpp>
 
+#include <util/buffer.h>
+
 namespace opencover {
 class MultiChannelDrawer;
 }
@@ -125,16 +127,16 @@ class RemoteConnection {
 
     //! handle RFB bounds message
     bool handleBounds(const vistle::message::RemoteRenderMessage &msg, const vistle::boundsMsg &bound);
-    bool handleTile(const vistle::message::RemoteRenderMessage &msg, const vistle::tileMsg &tile, std::shared_ptr<std::vector<char>> payload);
+    bool handleTile(const vistle::message::RemoteRenderMessage &msg, const vistle::tileMsg &tile, std::shared_ptr<vistle::buffer> payload);
     bool isRunning() const;
     bool isListening() const;
     bool isConnecting() const;
     bool isConnected() const;
     bool boundsUpdated();
-    bool sendMessage(const vistle::message::Message &msg, const std::vector<char> *payload=nullptr);
+    bool sendMessage(const vistle::message::Message &msg, const vistle::buffer *payload=nullptr);
 
     template<class Message>
-    bool send(const Message &msg, const std::vector<char> *payload=nullptr) {
+    bool send(const Message &msg, const vistle::buffer *payload=nullptr) {
         vistle::message::RemoteRenderMessage r(msg, payload ? payload->size() : 0);
         return sendMessage(r, payload);
     }
@@ -173,7 +175,7 @@ class RemoteConnection {
    void enqueueTask(std::shared_ptr<DecodeTask> task);
    int m_deferredFrames = 0;
    bool updateTileQueue();
-   bool handleTileMessage(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char>> payload);
+   bool handleTileMessage(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload);
    int m_queuedTiles = 0;
 
    bool m_frameReady = false;
@@ -204,7 +206,7 @@ class RemoteConnection {
    bool m_needUpdate = false;
    osg::Matrix m_head, m_newHead, m_receivingHead;
    const osg::Matrix &getHeadMat() const;
-   bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<std::vector<char> > payload);
+   bool distributeAndHandleTileMpi(std::shared_ptr<vistle::message::RemoteRenderMessage> msg, std::shared_ptr<vistle::buffer> payload);
    void setMaxTilesPerFrame(unsigned ntiles);
    bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
    void skipFrames();

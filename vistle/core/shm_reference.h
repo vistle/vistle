@@ -48,6 +48,7 @@ class shm_array_ref {
     }
 
     explicit shm_array_ref(const std::vector<typename T::value_type> &data);
+    explicit shm_array_ref(const std::vector<typename T::value_type, vistle::default_init_allocator<typename T::value_type>> &data);
     shm_array_ref(const typename T::value_type *data, size_t size);
 
    ~shm_array_ref() {

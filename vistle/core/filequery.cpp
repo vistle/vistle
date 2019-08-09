@@ -5,7 +5,7 @@
 
 namespace vistle {
 
-std::vector<char> createPayload(const std::vector<FileInfo> &info) {
+buffer createPayload(const std::vector<FileInfo> &info) {
     vecostreambuf<char> buf;
     oarchive ar(buf);
     ar & Index(info.size());
@@ -14,7 +14,7 @@ std::vector<char> createPayload(const std::vector<FileInfo> &info) {
     return buf.get_vector();
 }
 
-std::vector<FileInfo> unpackFileInfos(const std::vector<char> &payload) {
+std::vector<FileInfo> unpackFileInfos(const buffer &payload) {
     std::vector<FileInfo> info;
     try {
         vecistreambuf<char> buf(payload);
@@ -30,7 +30,7 @@ std::vector<FileInfo> unpackFileInfos(const std::vector<char> &payload) {
     return info;
 }
 
-std::vector<char> createPayload(const SystemInfo &info)
+buffer createPayload(const SystemInfo &info)
 {
     vecostreambuf<char> buf;
     oarchive ar(buf);
@@ -38,7 +38,7 @@ std::vector<char> createPayload(const SystemInfo &info)
     return buf.get_vector();
 }
 
-SystemInfo unpackSystemInfo(const std::vector<char> &payload)
+SystemInfo unpackSystemInfo(const buffer &payload)
 {
     SystemInfo info;
     try {
@@ -51,7 +51,7 @@ SystemInfo unpackSystemInfo(const std::vector<char> &payload)
     return info;
 }
 
-std::vector<char> packFileList(const std::vector<std::string> &files)
+buffer packFileList(const std::vector<std::string> &files)
 {
     vecostreambuf<char> buf;
     oarchive ar(buf);
@@ -61,7 +61,7 @@ std::vector<char> packFileList(const std::vector<std::string> &files)
     return buf.get_vector();
 }
 
-std::vector<std::string> unpackFileList(const std::vector<char> &payload)
+std::vector<std::string> unpackFileList(const buffer &payload)
 {
     std::vector<std::string> files;
     try {
