@@ -605,6 +605,11 @@ void StateTracker::cleanQueue(int id) {
 
 bool StateTracker::handlePriv(const message::AddHub &slave) {
    std::lock_guard<mutex> locker(m_slaveMutex);
+   for (auto &h: m_hubs) {
+       if (h.id == slave.id()) {
+           return true;
+       }
+   }
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
    m_hubs.back().dataPort = slave.dataPort();
