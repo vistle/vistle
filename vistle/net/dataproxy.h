@@ -5,6 +5,7 @@
 #include <boost/asio.hpp>
 #include <mutex>
 #include <thread>
+#include <set>
 
 #include <core/message.h>
 #include <util/enum.h>
@@ -30,6 +31,7 @@ public:
     DataProxy(StateTracker &state, unsigned short basePort, bool changePort=true);
     ~DataProxy();
     void setHubId(int id);
+    void setNumRanks(int size);
     unsigned short port() const;
 
    bool connectRemoteData(int hubId);
@@ -41,6 +43,7 @@ private:
    io_service &io();
    std::recursive_mutex m_mutex;
    int m_hubId;
+   int m_numRanks = 0;
    StateTracker &m_stateTracker;
    unsigned short m_port;
    io_service m_io;
@@ -56,7 +59,7 @@ private:
    int m_boost_archive_version;
    void startAccept();
    void handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
-   void handleConnect(std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
+   void handleConnect(std::shared_ptr<tcp_socket> sock0, std::shared_ptr<tcp_socket> sock1, const boost::system::error_code &error);
    void startThread();
    void cleanUp();
 
@@ -68,6 +71,8 @@ private:
    void msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type);
    void localMsgRecv(std::shared_ptr<tcp_socket> sock);
    void remoteMsgRecv(std::shared_ptr<tcp_socket> sock);
+
+   std::set<std::shared_ptr<tcp_socket>> m_connectingSockets;
 
    message::MessageFactory make;
 };

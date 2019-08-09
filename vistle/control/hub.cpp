@@ -835,6 +835,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                vassert(!m_managerConnected);
                m_managerConnected = true;
                m_localRanks = id.numRanks();
+               m_dataProxy->setNumRanks(id.numRanks());
                CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
 
                if (m_hubId == Id::MasterHub) {
@@ -898,9 +899,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (it == m_slaves.end()) {
                break;
             }
-            m_stateTracker.handle(mm, true);
             auto &slave = it->second;
             slaveReady(slave);
+            m_stateTracker.handle(mm, true);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master with " << mm.numRanks() << " ranks" << std::endl;
@@ -912,8 +913,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                 m_stateTracker.handle(mm, true);
             }
          }
-         if (mm.id() > m_hubId) {
-             // establish data connection in the same direction as control connection
+
+         if (mm.id() != m_hubId) {
+             // establish data connections in both directions until enough connections are available
              CERR << "establishing data connection from hub " << m_hubId << " with " << m_localRanks << " ranks to " << mm.id() << " with " << mm.numRanks() << " ranks " << std::endl;
              m_dataProxy->connectRemoteData(mm.id());
          }
@@ -1095,6 +1097,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                sendSlaves(notify, true /* return to sender */);
                if (doSpawn) {
                   notify.setDestId(spawn.hubId());
+                  CERR << "doSpawn: sendManager: " << notify << std::endl;
                   sendManager(notify, spawn.hubId());
                }
             } else {
