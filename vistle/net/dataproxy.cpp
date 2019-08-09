@@ -224,7 +224,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
 
 void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
-    lock_guard lock(m_mutex);
+    //lock_guard lock(m_mutex);
     using namespace vistle::message;
 
     std::shared_ptr<message::Buffer> msg(new message::Buffer);
@@ -233,15 +233,26 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             CERR << "recv: error " << ec.message() << std::endl;
             return;
         }
+
+        localMsgRecv(sock);
+
         //CERR << "localMsgRecv: msg received, type=" << msg->type() << std::endl;
         switch(msg->type()) {
         case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
+#ifdef DEBUG
+            if (send.isArray()) {
+                CERR << "local SendObject: array " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+            } else {
+                CERR << "local SendObject: object " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+            }
+#endif
             int hubId = idToHub(send.destId());
             //CERR << "localMsgRecv on " << m_hubId << ": sending to " << hubId << std::endl;
             auto remote = getRemoteDataSock(hubId);
             if (remote) {
-                async_send(*remote, send, payload, [remote](error_code ec){
+                async_send(*remote, send, payload, [remote, payload](error_code ec) mutable {
+                    message::return_buffer(payload);
                     if (ec) {
                         CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
                         return;
@@ -253,6 +264,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             break;
         }
         case REQUESTOBJECT: {
+            message::return_buffer(payload);
             auto &req = msg->as<const RequestObject>();
             int hubId = idToHub(req.destId());
             //CERR << "localMsgRecv on " << m_hubId << ": sending to " << hubId << std::endl;
@@ -268,6 +280,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             break;
         }
         case ADDOBJECTCOMPLETED: {
+            message::return_buffer(payload);
             auto &complete = msg->as<const AddObjectCompleted>();
             int hubId = idToHub(complete.destId());
             auto remote = getRemoteDataSock(hubId);
@@ -282,6 +295,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             break;
         }
         case IDENTIFY: {
+            message::return_buffer(payload);
             auto &ident = msg->as<const Identify>();
             if (ident.identity() != Identify::LOCALBULKDATA) {
                 CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
@@ -289,18 +303,18 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             break;
         }
         default: {
+            message::return_buffer(payload);
             CERR << "localMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
         }
         }
-        localMsgRecv(sock);
     });
 }
 
 void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
     //CERR << "remoteMsgRecv posted on sock " << sock.get() << std::endl;
-    lock_guard lock(m_mutex);
+    //lock_guard lock(m_mutex);
 
     using namespace vistle::message;
 
@@ -310,9 +324,13 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
             CERR << "recv: error " << ec.message() << " on sock " << sock.get() << std::endl;
             return;
         }
+
+        remoteMsgRecv(sock);
+
         //CERR << "remoteMsgRecv success on sock " << sock.get() << ", msg=" << *msg << std::endl;
         switch(msg->type()) {
         case IDENTIFY: {
+            message::return_buffer(payload);
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::REQUEST) {
                 auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
@@ -338,24 +356,34 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
+#ifdef DEBUG
+            if (send.isArray()) {
+                CERR << "remote SendObject: array " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+            } else {
+                CERR << "remote SendObject: object " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+            }
             //int hubId = idToHub(send.senderId());
             //CERR << "remoteMsgRecv on " << m_hubId << ": SendObject from " << hubId << std::endl;
+#endif
             int hubId = idToHub(send.destId());
             vassert(hubId == m_hubId);
             auto local = getLocalDataSock(send.destRank());
             if (local) {
-                async_send(*local, send, payload, [this, local](error_code ec){
+                async_send(*local, send, payload, [local, payload](error_code ec) mutable {
+                    message::return_buffer(payload);
                     if (ec) {
                         CERR << "SendObject: error in local write: " << ec.message() << std::endl;
                         return;
                     }
                 });
             } else {
+                message::return_buffer(payload);
                 CERR << "did not find local socket for hub " << hubId << std::endl;
             }
             break;
         }
         case REQUESTOBJECT: {
+            message::return_buffer(payload);
             auto &req = msg->as<const RequestObject>();
             int hubId = idToHub(req.destId());
             int rank = req.destRank();
@@ -363,7 +391,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
                 CERR << "remoteMsgRecv: hub mismatch" << std::endl;
                 CERR << "remoteMsgRecv: on " << m_hubId << ": sending to " << hubId << std::endl;
             } else if (auto local = getLocalDataSock(rank)) {
-                async_send(*local, *msg, nullptr, [this, msg, rank, sock](error_code ec){
+                async_send(*local, *msg, nullptr, [msg, rank, sock](error_code ec){
                     if (ec) {
                         CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
                         return;
@@ -373,11 +401,11 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
             break;
         }
         default: {
+            message::return_buffer(payload);
             CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
         }
         }
-        remoteMsgRecv(sock);
     });
 }
 

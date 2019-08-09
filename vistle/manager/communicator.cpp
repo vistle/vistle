@@ -213,6 +213,8 @@ bool Communicator::dispatch(bool *work) {
 
    bool received = false;
 
+   std::unique_lock<Communicator> guard(*this);
+
    // check for new UIs and other network clients
    // handle or broadcast messages received from slaves (rank > 0)
    if (m_size > 1) {
@@ -277,7 +279,10 @@ bool Communicator::dispatch(bool *work) {
       }
    }
 
+   guard.unlock();
    m_ioService.poll();
+   guard.lock();
+
    if (m_rank == 0) {
       message::Buffer buf;
       bool gotMsg = false;
@@ -300,8 +305,10 @@ bool Communicator::dispatch(bool *work) {
       }
    }
 
+   guard.unlock();
    if (m_dataManager->dispatch())
        received = true;
+   guard.lock();
 
    // test for messages from modules
    if (done) {

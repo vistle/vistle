@@ -51,7 +51,7 @@ struct V_COREEXPORT ArrayLoader {
             arr = ShmVector<T>((shm_name_t)m_name);
             if (!arr.valid())
                 arr.construct();
-            std::cerr << "ArrayLoader: loading " << arname << " as " << m_name << ": arr=" << arr << std::endl;
+            //std::cerr << "ArrayLoader: loading " << arname << " as " << m_name << ": arr=" << arr << std::endl;
             m_name = arr.name().str();
             ar.registerArrayNameTranslation(arname, arr.name());
             //std::cerr << "ArrayLoader: constructed " << arname << " as " << arr.name() << std::endl;

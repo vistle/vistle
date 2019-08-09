@@ -80,7 +80,9 @@ ClusterManager::Module::~Module() {
 }
 
 void ClusterManager::Module::block(const message::Message &msg) const {
+#ifdef DEBUG
    std::cerr << "BLOCK: " << msg << std::endl;
+#endif
    blocked = true;
    blockers.emplace_back(message::Buffer(msg));
 }
@@ -100,7 +102,9 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
     };
 
     if (pred(blockers.front())) {
+#ifdef DEBUG
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
+#endif
         blockers.pop_front();
         vassert(blockedMessages.front().uuid() == msg.uuid()
                 && blockedMessages.front().type() == msg.type());
@@ -121,7 +125,9 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             }
         }
     } else {
+#ifdef DEBUG
         std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
+#endif
         auto it = std::find_if(blockers.begin(), blockers.end(), pred);
         vassert(it != blockers.end());
         if (it != blockers.end()) {
@@ -1252,6 +1258,8 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                    obj.reset();
                    // unblock receiving module
                    addObj2.setUnblocking();
+
+                   std::unique_lock<Communicator> guard(Communicator::the());
                    if (broadcast) {
                        Communicator::the().broadcastAndHandleMessage(addObj2);
                    } else {

@@ -232,7 +232,7 @@ struct ObjectData {
     shm_name_t name;
     mutable std::atomic<int> refcount;
 
-    int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
+    std::atomic<int> unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
 
     Meta meta;
 

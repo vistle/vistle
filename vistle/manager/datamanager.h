@@ -5,6 +5,7 @@
 #include <set>
 #include <thread>
 #include <deque>
+#include <future>
 
 #include <core/message.h>
 #include <core/messages.h>
@@ -36,7 +37,7 @@ public:
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
     bool dispatch();
 
-    bool send(const message::Message &message, const std::vector<char> *payload=nullptr);
+    bool send(const message::Message &message, std::shared_ptr<std::vector<char>> payload=nullptr);
 
     struct Msg {
        Msg(message::Buffer &&buf, std::vector<char> &&payload);
@@ -55,6 +56,8 @@ private:
     bool m_quit = false;
 
     void recvLoop();
+    void sendLoop();
+    void cleanLoop();
 
     boost::mpi::communicator m_comm;
     const int m_rank, m_size;
@@ -63,8 +66,6 @@ private:
 
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_dataSocket;
-
-    std::thread m_recvThread;
 
     std::set<message::AddObject> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs -- cannot be deleted yet
 
@@ -77,6 +78,18 @@ private:
        std::vector<std::function<void(Object::const_ptr)>> completionHandlers;
     };
     std::map<std::string, OutstandingObject> m_requestedObjects; //!< requests for (sub-)objects which have not been serviced yet
+    std::mutex m_requestMutex;
+
+    std::mutex m_recvTaskMutex;
+    std::deque<std::future<bool>> m_recvTasks;
+
+    std::mutex m_sendTaskMutex;
+    std::deque<std::future<bool>> m_sendTasks;
+
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+    std::thread m_ioThread;
+    std::thread m_recvThread;
+    std::thread m_cleanThread;
 };
 
 } // namespace vistle

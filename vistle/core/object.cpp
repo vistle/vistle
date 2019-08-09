@@ -212,8 +212,7 @@ bool Object::Data::isComplete() const {
 void ObjectData::referenceResolved(const std::function<void()> &completeCallback) {
     //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);
-    --unresolvedReferences;
-    if (isComplete() && completeCallback) {
+    if (unresolvedReferences.fetch_sub(1) == 1 && completeCallback) {
         completeCallback();
     }
 }

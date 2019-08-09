@@ -229,7 +229,7 @@ obj_const_ptr yas_iarchive::getObject(const std::string &arname, const std::func
     std::string name = arname;
     if (m_fetcher)
         name = m_fetcher->translateObjectName(arname);
-    std::cerr << "yas_iarchive::getObject(arname=" << arname << ", name=" << name << ")" << std::endl;
+    //std::cerr << "yas_iarchive::getObject(arname=" << arname << ", name=" << name << ")" << std::endl;
     auto obj = Shm::the().getObjectFromName(name);
     if (!obj) {
         assert(m_fetcher);

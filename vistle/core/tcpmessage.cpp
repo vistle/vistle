@@ -20,6 +20,8 @@ namespace message {
 typedef uint32_t SizeType;
 static const uint32_t VistleError = 12345;
 
+//#define USE_BUFFER_POOL
+
 namespace {
 
 bool check(const Message &msg, const std::vector<char> *payload) {
@@ -46,6 +48,55 @@ bool check(const Message &msg, const std::vector<char> *payload) {
     return true;
 }
 
+}
+
+#ifdef USE_BUFFER_POOL
+namespace  {
+
+std::mutex buffer_pool_mutex;
+std::deque<std::shared_ptr<std::vector<char>>> buffer_pool;
+
+}
+#endif
+
+
+void return_buffer(std::shared_ptr<std::vector<char>> &buf) {
+#ifdef USE_BUFFER_POOL
+    if (!buf) {
+        //std::cerr << "empty buffer returned" << std::endl;
+        return;
+    }
+
+    //std::cerr << "buffer returned, capacity=" << buf->capacity() << std::endl;
+    std::lock_guard<std::mutex> lock(buffer_pool_mutex);
+    buffer_pool.emplace_back(buf);
+#else
+    (void)buf;
+#endif
+}
+
+std::shared_ptr<std::vector<char>> get_buffer(size_t size) {
+#ifdef USE_BUFFER_POOL
+    {
+        std::lock_guard<std::mutex> lock(buffer_pool_mutex);
+        if (!buffer_pool.empty()) {
+            auto best = buffer_pool.front();
+            buffer_pool.pop_front();
+            for (auto &buf: buffer_pool) {
+                if (buf->size() >= size && buf->size() < best->size()) {
+                    std::swap(buf, best);
+                } else if (best->size() < size && buf->size() > best->size()) {
+                    std::swap(buf, best);
+                }
+            }
+            //std::cerr << "buffer reuse, requested=" << size << ", capacity=" << best->capacity() << std::endl;
+            return best;
+        }
+    }
+
+    //std::cerr << "new buffer" << std::endl;
+#endif
+    return std::make_shared<std::vector<char>>();
 }
 
 namespace {
@@ -91,13 +142,44 @@ struct SendRequest {
 
 void submitSendRequest(std::shared_ptr<SendRequest> req) {
     //std::cerr << "submitSendRequest: " << sendQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-#if BOOST_VERSION >= 107000
-	req->sock.get_executor().post(*req, std::allocator<char>());
+#if BOOST_VERSION >= 106900
+    req->sock.get_executor().post(*req, std::allocator<char>());
 #else
 	req->sock.get_io_service().post(*req);
 #endif
 }
 
+}
+
+bool recv_payload(socket_t &sock, message::Buffer &msg, bool &received, std::vector<char> *payload) {
+
+    bool result = true;
+    try {
+        boost::system::error_code ec;
+        if (msg.payloadSize() > 0) {
+            std::vector<char> pl;
+            if (!payload) {
+                std::cerr << "message::recv: ignoring payload: " << msg << std::endl;
+                payload = &pl;
+            }
+            payload->resize(msg.payloadSize());
+            auto buf = asio::buffer(payload->data(), payload->size());
+            asio::read(sock, buf, ec);
+            if (ec) {
+                std::cerr << "message::recv: payload error " << ec.message() << std::endl;
+                result = false;
+                received = false;
+            } else {
+                //std::cerr << "message::recv: payload of size " << payload->size() << " received" << std::endl;
+            }
+        }
+    } catch (std::exception &ex) {
+        std::cerr << "message::recv: exception: " << ex.what() << std::endl;
+        received = false;
+        result = false;
+    }
+
+    return result;
 }
 
 namespace {
@@ -112,6 +194,7 @@ struct RecvRequest {
     socket_t &sock;
     message::Buffer &msg;
     std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler;
+    std::function<void(error_code, message::Buffer &msg)> payload_handler;
 
     RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler)
         : sock(sock)
@@ -123,11 +206,24 @@ struct RecvRequest {
     void operator()() {
         bool received = true;
         error_code ec;
-        std::shared_ptr<std::vector<char>> payload(new std::vector<char>);
-        if (!recv(sock, msg, received, true, payload.get())) {
+        bool error = false;
+        if (!recv_message(sock, msg, received, true)) {
+            error = true;
             ec.assign(VistleError, boost::system::generic_category());
+            handler(ec, std::shared_ptr<std::vector<char>>());
         }
-        handler(ec, payload);
+        std::shared_ptr<std::vector<char>> payload;
+        if (!error && msg.payloadSize() > 0) {
+            payload = get_buffer(msg.payloadSize());
+            if (!recv_payload(sock, msg, received, payload.get())) {
+                error = true;
+                ec.assign(VistleError, boost::system::generic_category());
+                handler(ec, std::shared_ptr<std::vector<char>>());
+            };
+        }
+        if (!error) {
+            handler(ec, payload);
+        }
 
         std::lock_guard<std::mutex> locker(recvQueueMutex);
         assert(!recvQueues[&sock].empty());
@@ -143,8 +239,8 @@ struct RecvRequest {
 
 void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
     //std::cerr << "submitRecvRequest: " << recvQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-#if BOOST_VERSION >= 107000
-	req->sock.get_executor().post(*req, std::allocator<char>());
+#if BOOST_VERSION >= 106900
+    req->sock.get_executor().post(*req, std::allocator<char>());
 #else
 	req->sock.get_io_service().post(*req);
 #endif
@@ -152,7 +248,7 @@ void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
 
 }
 
-bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std::vector<char> *payload) {
+bool recv_message(socket_t &sock, message::Buffer &msg, bool &received, bool block) {
 
    received = false;
 
@@ -206,22 +302,6 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
                std::cerr << "message::recv: msg error " << ec.message() << std::endl;
                result = false;
                received = false;
-           } else if (msg.payloadSize() > 0) {
-               std::vector<char> pl;
-               if (!payload) {
-                   std::cerr << "message::recv: ignoring payload: " << msg << std::endl;
-                   payload = &pl;
-               }
-               payload->resize(msg.payloadSize());
-               auto buf = asio::buffer(payload->data(), payload->size());
-               asio::read(sock, buf, ec);
-               if (ec) {
-                   std::cerr << "message::recv: payload error " << ec.message() << std::endl;
-                   result = false;
-                   received = false;
-               } else {
-                   //std::cerr << "message::recv: payload of size " << payload->size() << " received" << std::endl;
-               }
            }
        }
    } catch (std::exception &ex) {
@@ -231,6 +311,19 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
    }
 
    return result;
+}
+
+bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std::vector<char> *payload) {
+
+    if (!recv_message(sock, msg, received, block)) {
+        return false;
+    }
+
+   if (!recv_payload(sock, msg, received, payload)) {
+       return false;
+   }
+
+   return true;
 }
 
 void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, std::shared_ptr<std::vector<char>>)> handler) {
