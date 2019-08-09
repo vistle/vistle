@@ -59,8 +59,8 @@ Hub *hub_instance = nullptr;
 
 Hub::Hub(bool inManager)
 : m_inManager(inManager)
-, m_port(31093)
-, m_masterPort(m_port)
+, m_port(0)
+, m_masterPort(m_basePort)
 , m_masterHost("localhost")
 , m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_stateTracker("Hub state")
@@ -135,6 +135,8 @@ bool Hub::init(int argc, char *argv[]) {
       ("batch,b", "do not start user interface")
       ("gui,g", "start graphical user interface")
       ("tui,t", "start command line interface (requires ipython)")
+      ("port,p", po::value<unsigned short>(), "control port")
+      ("dataport", po::value<unsigned short>(), "data port")
       ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
       ;
@@ -160,8 +162,29 @@ bool Hub::init(int argc, char *argv[]) {
       return false;
    }
 
-   startServer();
-   m_dataProxy.reset(new DataProxy(m_stateTracker, m_port+1));
+   if (vm.count("port") > 0) {
+       m_port = vm["port"].as<unsigned short>();
+   }
+   if (vm.count("dataport") > 0) {
+       m_dataPort = vm["dataport"].as<unsigned short>();
+       if (m_dataPort == m_port) {
+           CERR << "control port and data port have to be different" << std::endl;
+           return false;
+       }
+   }
+
+   try {
+       startServer();
+   } catch (std::exception &ex) {
+       CERR << "failed to initialise control server on port " << m_port << ": " << ex.what() << std::endl;
+       return false;
+   }
+
+   try {
+       m_dataProxy.reset(new DataProxy(m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
+   } catch (std::exception &ex) {
+       CERR << "failed to initialise data server on port " << (m_dataPort?m_dataPort:m_port+1) << ": " << ex.what() << std::endl;
+   }
 
    std::string uiCmd = "vistle_gui";
 
@@ -188,10 +211,6 @@ bool Hub::init(int argc, char *argv[]) {
       make.setRank(0);
       Router::init(message::Identify::HUB, m_hubId);
 
-      auto master = make.message<message::AddHub>(m_hubId, m_name);
-      master.setPort(m_port);
-      master.setDataPort(m_dataProxy->port());
-      m_stateTracker.handle(master);
       m_masterPort = m_port;
       m_dataProxy->setHubId(m_hubId);
    }
@@ -332,14 +351,21 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
 
 bool Hub::startServer() {
 
+   unsigned short port = m_basePort;
+   if (m_basePort == m_dataPort) {
+       port = m_basePort+1;
+   }
+   if (m_port) {
+       port = m_port;
+   }
    while (!m_acceptor->is_open()) {
 
-      asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
+      asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
       try {
          m_acceptor->open(endpoint.protocol());
       } catch (const boost::system::system_error &err) {
          if (err.code() == boost::system::errc::address_family_not_supported) {
-            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port);
             m_acceptor->open(endpoint.protocol());
          } else {
             throw(err);
@@ -351,12 +377,17 @@ bool Hub::startServer() {
       } catch(const boost::system::system_error &err) {
          if (err.code() == boost::system::errc::address_in_use) {
             m_acceptor->close();
-            ++m_port;
-            continue;
+            if (!m_port) {
+                ++port;
+                if (port == m_dataPort)
+                    ++port;
+                continue;
+            }
          }
          throw(err);
       }
       m_acceptor->listen();
+      m_port = port;
       CERR << "listening for connections on port " << m_port << std::endl;
       startAccept();
    }
@@ -398,7 +429,25 @@ void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::I
 
 bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock) {
 
-   return m_sockets.erase(sock) > 0;
+   try {
+       sock->shutdown(asio::ip::tcp::socket::shutdown_both);
+       sock->close();
+   } catch (std::exception &ex) {
+       CERR << "closing socket failed: " << ex.what() << std::endl;
+   }
+
+   if (m_masterSocket == sock) {
+       CERR << "lost connection to master" << std::endl;
+       m_masterSocket.reset();
+   }
+
+   if (m_clients.erase(sock) > 0) {
+       CERR << "removed client" << std::endl;
+   }
+
+   bool ret = m_sockets.erase(sock) > 0;
+   sock.reset();
+   return ret;
 }
 
 void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock) {
@@ -449,7 +498,13 @@ bool Hub::dispatch() {
       avail = 0;
       for (auto &s: m_clients) {
          boost::asio::socket_base::bytes_readable command(true);
-         s->io_control(command);
+         try {
+             s->io_control(command);
+         } catch (std::exception &ex) {
+             CERR << "socket error: " << ex.what() << std::endl;
+             removeSocket(sock);
+             return true;
+         }
          if (command.get() > avail) {
             avail = command.get();
             sock = s;
@@ -695,6 +750,7 @@ void Hub::hubReady() {
       processScript();
    } else {
       auto hub = make.message<message::AddHub>(m_hubId, m_name);
+      hub.setNumRanks(m_localRanks);
       hub.setDestId(Id::ForBroadcast);
       hub.setPort(m_port);
       hub.setDataPort(m_dataProxy->port());
@@ -714,6 +770,8 @@ void Hub::hubReady() {
             }
          }
       }
+
+      m_stateTracker.handle(hub, true);
 
       sendMaster(hub);
       m_ready = true;
@@ -776,6 +834,16 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             case Identify::MANAGER: {
                vassert(!m_managerConnected);
                m_managerConnected = true;
+               m_localRanks = id.numRanks();
+               CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
+
+               if (m_hubId == Id::MasterHub) {
+                   auto master = make.message<message::AddHub>(m_hubId, m_name);
+                   master.setNumRanks(m_localRanks);
+                   master.setPort(m_port);
+                   master.setDataPort(m_dataProxy->port());
+                   m_stateTracker.handle(master);
+               }
 
                if (m_hubId != Id::Invalid) {
                   auto set = make.message<message::SetId>(m_hubId);
@@ -798,6 +866,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             case Identify::HUB: {
                if (m_isMaster) {
                    CERR << "refusing connection from other master hub" << std::endl;
+                   removeSocket(sock);
                    return true;
                }
                vassert(!m_isMaster);
@@ -806,7 +875,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             }
             case Identify::SLAVEHUB: {
                if (!m_isMaster) {
-                   CERR << "refusing connection from other slave hub, connect directly to master" << std::endl;
+                   CERR << "refusing connection from other slave hub, connect directly to a master" << std::endl;
+                   removeSocket(sock);
                    return true;
                }
                vassert(m_isMaster);
@@ -828,11 +898,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (it == m_slaves.end()) {
                break;
             }
+            m_stateTracker.handle(mm, true);
             auto &slave = it->second;
             slaveReady(slave);
          } else {
             if (mm.id() == Id::MasterHub) {
-               CERR << "received AddHub for master" << std::endl;
+               CERR << "received AddHub for master with " << mm.numRanks() << " ranks" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_stateTracker.handle(m, true);
@@ -842,6 +913,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             }
          }
          if (mm.id() > m_hubId) {
+             // establish data connection in the same direction as control connection
+             CERR << "establishing data connection from hub " << m_hubId << " with " << m_localRanks << " ranks to " << mm.id() << " with " << mm.numRanks() << " ranks " << std::endl;
              m_dataProxy->connectRemoteData(mm.id());
          }
          break;
@@ -1340,17 +1413,31 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
    vassert(!m_isMaster);
 
-   asio::ip::tcp::resolver resolver(m_ioService);
-   asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
-   asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-   boost::system::error_code ec;
-   m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
-   asio::connect(*m_masterSocket, endpoint_iterator, ec);
-   if (ec) {
-      CERR << "could not establish connection to " << host << ":" << port << std::endl;
-      return false;
+   CERR << "connecting to master at " << host << ":" << port << std::flush;
+   bool connected = false;
+   while (!connected) {
+       asio::ip::tcp::resolver resolver(m_ioService);
+       asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+       asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+       boost::system::error_code ec;
+       m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
+       asio::connect(*m_masterSocket, endpoint_iterator, ec);
+       if (!ec) {
+           connected = true;
+       } else if (ec == boost::system::errc::connection_refused) {
+           std::cerr << "." << std::flush;
+           sleep(1);
+       } else {
+           break;
+       }
    }
 
+   if (!connected) {
+       std::cerr << " FAILED" << std::endl;
+       return false;
+   }
+
+   std::cerr << " done." << std::endl;
 #if 0
    message::Identify ident(message::Identify::SLAVEHUB, m_name);
    sendMessage(m_masterSocket, ident);
@@ -1358,7 +1445,6 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
    addSocket(m_masterSocket, message::Identify::HUB);
    addClient(m_masterSocket);
 
-   CERR << "connected to master at " << host << ":" << port << std::endl;
    return true;
 }
 

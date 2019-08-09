@@ -84,6 +84,7 @@ struct V_COREEXPORT HubData {
 
     int id;
     std::string name;
+    int numRanks = 0;
     unsigned short port;
     unsigned short dataPort;
     boost::asio::ip::address address;

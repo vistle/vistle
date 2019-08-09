@@ -428,8 +428,11 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          auto &id = message.as<message::Identify>();
          CERR << "Identify message: " << id << std::endl;
          vassert(id.identity() == message::Identify::REQUEST);
-         if (getRank() == 0)
-             sendHub(message::Identify(message::Identify::MANAGER));
+         if (getRank() == 0) {
+             message::Identify ident(message::Identify::MANAGER);
+             ident.setNumRanks(m_size);
+             sendHub(ident);
+         }
          //scanModules(m_moduleDir);
          break;
       }

@@ -137,7 +137,7 @@ int StateTracker::getHub(int id) const {
 }
 
 const HubData &StateTracker::getHubData(int id) const {
-    static HubData invalidHub(0, "");
+    static HubData invalidHub(Id::Invalid, "");
 
     mutex_locker guard(m_stateMutex);
     for (const auto &hub: m_hubs) {
@@ -186,6 +186,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
    for (const auto &slave: m_hubs) {
       AddHub msg(slave.id, slave.name);
+      msg.setNumRanks(slave.numRanks);
       msg.setPort(slave.port);
       msg.setDataPort(slave.dataPort);
       msg.setAddress(slave.address);
@@ -611,6 +612,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
        }
    }
    m_hubs.emplace_back(slave.id(), slave.name());
+   m_hubs.back().numRanks = slave.numRanks();
    m_hubs.back().port = slave.port();
    m_hubs.back().dataPort = slave.dataPort();
    if (slave.hasAddress())

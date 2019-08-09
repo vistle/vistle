@@ -49,11 +49,15 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
    Identity identity() const;
    const char *name() const;
    int rank() const;
+   int numRanks() const;
    int boost_archive_version() const;
+
+   void setNumRanks(int size);
 
  private:
    Identity m_identity;
    text_t m_name;
+   int m_numRanks;
    int m_rank;
    int m_boost_archive_version;
 };
@@ -74,6 +78,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    AddHub(int id, const std::string &name);
    int id() const;
    const char *name() const;
+   int numRanks() const;
    unsigned short port() const;
    unsigned short dataPort() const;
    AddressType addressType() const;
@@ -83,6 +88,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    boost::asio::ip::address_v6 addressV6() const;
    boost::asio::ip::address_v4 addressV4() const;
 
+   void setNumRanks(int size);
    void setPort(unsigned short port);
    void setDataPort(unsigned short port);
    void setAddress(boost::asio::ip::address addr);
@@ -92,6 +98,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
  private:
    int m_id;
    address_t m_name;
+   int m_numRanks;
    unsigned short m_port;
    unsigned short m_dataPort;
    AddressType m_addrType;

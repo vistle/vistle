@@ -31,6 +31,7 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 Identify::Identify(Identity id, const std::string &name)
 : m_identity(id)
+, m_numRanks(-1)
 , m_rank(-1)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
@@ -42,6 +43,7 @@ Identify::Identify(Identity id, const std::string &name)
 
 Identify::Identify(Identity id, int rank)
 : m_identity(id)
+, m_numRanks(-1)
 , m_rank(rank)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
@@ -62,12 +64,21 @@ const char *Identify::name() const {
 
 int Identify::rank() const {
 
-   return m_rank;
+    return m_rank;
+}
+
+int Identify::numRanks() const
+{
+    return m_numRanks;
 }
 
 int Identify::boost_archive_version() const {
 
-   return m_boost_archive_version;
+    return m_boost_archive_version;
+}
+
+void Identify::setNumRanks(int size) {
+    m_numRanks = size;
 }
 
 AddHub::AddHub(int id, const std::string &name)
@@ -85,7 +96,11 @@ int AddHub::id() const {
 }
 
 const char *AddHub::name() const {
-   return m_name.data();
+    return m_name.data();
+}
+
+int AddHub::numRanks() const {
+    return m_numRanks;
 }
 
 unsigned short AddHub::port() const {
@@ -126,6 +141,10 @@ boost::asio::ip::address_v6 AddHub::addressV6() const {
 boost::asio::ip::address_v4 AddHub::addressV4() const {
    vassert(m_addrType == IPv4);
    return boost::asio::ip::address_v4::from_string(m_address.data());
+}
+
+void AddHub::setNumRanks(int size) {
+    m_numRanks = size;
 }
 
 void AddHub::setPort(unsigned short port) {
