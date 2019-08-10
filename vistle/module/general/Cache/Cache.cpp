@@ -464,16 +464,16 @@ bool Cache::prepare() {
         auto nt = obj->getNumTimesteps();
         if (nt >= 0)
             obj->setNumTimesteps((nt+step-1)/step);
-        auto db = DataBase::as(obj);
-        if (db) {
-            auto cgrid = db->grid();
-            auto grid = std::const_pointer_cast<Object>(cgrid);
-            auto t = grid->getTimestep();
-            if (t >= 0)
-                grid->setTimestep(t/step);
-            auto nt = grid->getNumTimesteps();
-            if (nt >= 0)
-                grid->setNumTimesteps((nt+step-1)/step);
+        if (auto db = DataBase::as(obj)) {
+            if (auto cgrid = db->grid()) {
+                auto grid = std::const_pointer_cast<Object>(cgrid);
+                auto t = grid->getTimestep();
+                if (t >= 0)
+                    grid->setTimestep(t/step);
+                auto nt = grid->getNumTimesteps();
+                if (nt >= 0)
+                    grid->setNumTimesteps((nt+step-1)/step);
+            }
         }
         passThroughObject(m_outPort[port], obj);
         fetcher->releaseArrays();
