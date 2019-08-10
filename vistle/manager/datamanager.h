@@ -38,6 +38,8 @@ public:
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
     bool dispatch();
 
+    void trace(message::Type type);
+
     bool send(const message::Message &message, std::shared_ptr<std::vector<char>> payload=nullptr);
 
     struct Msg {
@@ -91,6 +93,7 @@ private:
     std::thread m_ioThread;
     std::thread m_recvThread;
     std::thread m_cleanThread;
+    message::Type m_traceMessages = message::INVALID;
 };
 
 } // namespace vistle

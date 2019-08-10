@@ -33,6 +33,7 @@ public:
     void setHubId(int id);
     void setNumRanks(int size);
     unsigned short port() const;
+    void setTrace(message::Type type);
 
    bool connectRemoteData(int hubId);
 
@@ -75,6 +76,7 @@ private:
    std::set<std::shared_ptr<tcp_socket>> m_connectingSockets;
 
    message::MessageFactory make;
+   message::Type m_traceMessages = message::INVALID;
 };
 
 }

@@ -133,6 +133,10 @@ bool DataManager::dispatch() {
     return work;
 }
 
+void DataManager::trace(message::Type type) {
+    m_traceMessages = type;
+}
+
 bool DataManager::send(const message::Message &message, std::shared_ptr<std::vector<char>> payload) {
 
    if (isLocal(message.destId())) {
@@ -305,6 +309,10 @@ bool DataManager::handle(const message::Message &msg, std::vector<char> *payload
 {
     //CERR << "handle: " << msg << std::endl;
     using namespace message;
+
+    if (m_traceMessages == message::ANY || msg.type() == m_traceMessages) {
+        CERR << "handle: " << msg << std::endl;
+    }
 
     switch (msg.type()) {
     case message::IDENTIFY: {

@@ -85,6 +85,11 @@ unsigned short DataProxy::port() const {
     return m_port;
 }
 
+void DataProxy::setTrace(message::Type type) {
+
+    m_traceMessages = type;
+}
+
 asio::io_service &DataProxy::io() {
     return m_io;
 }
@@ -200,6 +205,11 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
       if (payload && payload->size()>0) {
           CERR << "recv error after accept: cannot handle payload of size " << payload->size() << std::endl;
       }
+
+      if (m_traceMessages == message::ANY || buf->type() == m_traceMessages) {
+          CERR << "handle accept: " << *buf << std::endl;
+      }
+
       //CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
       switch(buf->type()) {
       case message::IDENTIFY: {
@@ -272,6 +282,10 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
         if (ec) {
             CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
             return;
+        }
+
+        if (m_traceMessages == message::ANY || msg->type() == m_traceMessages) {
+            CERR << "handle forward to " << toString(type) << ": " << *msg << std::endl;
         }
 
         msgForward(sock, type);

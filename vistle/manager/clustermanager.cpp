@@ -530,6 +530,11 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case SPAWN:
          // handled in handlePriv(...)
          break;
+      case message::TRACE: {
+         const Trace &trace = message.as<Trace>();
+         handlePriv(trace);
+         break;
+      }
       default:
          m_stateTracker.handle(message);
          break;
@@ -579,12 +584,6 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case message::QUIT: {
 
          result = false;
-         break;
-      }
-
-      case message::TRACE: {
-         const Trace &trace = message.as<Trace>();
-         result = handlePriv(trace);
          break;
       }
 
@@ -759,18 +758,21 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
 
    CERR << "handle: " << trace << std::endl;
 
-   if (trace.module() >= Id::ModuleBase) {
+   if (Id::isModule(trace.module())) {
       sendMessage(trace.module(), trace);
    } else if (trace.module() == Id::Broadcast) {
       sendAllLocal(trace);
    }
 
-   if (trace.module() == Id::Broadcast || trace.module() == Communicator::the().hubId()) {
+   if (trace.module() == Communicator::the().hubId()
+       || !(Id::isModule(trace.module() || Id::isHub(trace.module())))) {
       if (trace.on())
          m_traceMessages = trace.messageType();
       else
          m_traceMessages = message::INVALID;
    }
+
+   Communicator::the().dataManager().trace(m_traceMessages);
 
    return true;
 }

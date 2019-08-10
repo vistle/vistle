@@ -1645,6 +1645,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
        s << ", ref: " << boost::lexical_cast<std::string>(m.referrer());
 
    switch (m.type()) {
+      case TRACE: {
+         auto &mm = static_cast<const Trace &>(m);
+         s << ", module: " << mm.module() << ", type: " << toString(mm.messageType());
+         break;
+      }
       case IDENTIFY: {
          auto &mm = static_cast<const Identify &>(m);
          s << ", identity: " << Identify::toString(mm.identity());

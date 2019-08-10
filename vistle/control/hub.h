@@ -120,7 +120,7 @@ private:
    bool m_ready = false;
 
    int m_moduleCount;
-   int m_traceMessages;
+   message::Type m_traceMessages;
 
    int m_execCount;
 

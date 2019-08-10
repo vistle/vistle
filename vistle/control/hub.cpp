@@ -182,8 +182,10 @@ bool Hub::init(int argc, char *argv[]) {
 
    try {
        m_dataProxy.reset(new DataProxy(m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
+       m_dataProxy->setTrace(m_traceMessages);
    } catch (std::exception &ex) {
        CERR << "failed to initialise data server on port " << (m_dataPort?m_dataPort:m_port+1) << ": " << ex.what() << std::endl;
+       return false;
    }
 
    std::string uiCmd = "vistle_gui";
@@ -800,6 +802,24 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
+
+   switch (msg.type()) {
+   case message::TRACE: {
+       auto &mm = msg.as<Trace>();
+       CERR << "handle Trace: " << mm << std::endl;
+       if (mm.module() == m_hubId || !(Id::isHub(mm.module()) || Id::isModule(mm.module()))) {
+           if (mm.on())
+               m_traceMessages = mm.messageType();
+           else
+               m_traceMessages = message::INVALID;
+           m_dataProxy->setTrace(m_traceMessages);
+       }
+       break;
+   }
+   default: {
+       break;
+   }
+   }
 
    if (msg.destId() == Id::ForBroadcast) {
        if (m_hubId == Id::MasterHub) {
