@@ -306,6 +306,8 @@ struct ObjectData {
     ObjectData &operator=(const ObjectData &) = delete;
 };
 
+typedef std::function<void(const std::string &name)> ArrayCompletionHandler;
+typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
 
 class V_COREEXPORT ObjectTypeRegistry {
 public:

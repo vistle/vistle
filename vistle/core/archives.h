@@ -77,10 +77,13 @@ extern template class detail::common_oarchive<vistle::boost_oarchive>;
 
 namespace vistle {
 
+// repeated from core/object.h
 class Object;
 struct ObjectData;
 typedef std::shared_ptr<Object> obj_ptr;
 typedef std::shared_ptr<const Object> obj_const_ptr;
+typedef std::function<void(const std::string &name)> ArrayCompletionHandler;
+typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
 
 struct SubArchiveDirectoryEntry {
     std::string name;
@@ -232,8 +235,8 @@ public:
 class V_COREEXPORT Fetcher {
 public:
     virtual ~Fetcher();
-    virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) = 0;
-    virtual void requestObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) = 0;
+    virtual void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) = 0;
+    virtual void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) = 0;
 
     virtual bool renameObjects() const;
     virtual std::string translateObjectName(const std::string &name) const;
@@ -262,12 +265,12 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
             if (auto arr = Shm::the().getArrayFromName<T>(name)) {
                 if (completeCallback)
-                    completeCallback();
+                    completeCallback(name);
                 return;
             }
         }
@@ -351,12 +354,12 @@ public:
     std::shared_ptr<Fetcher> fetcher() const;
 
     template<typename T>
-    void fetchArray(const std::string &arname, const std::function<void()> &completeCallback) const {
+    void fetchArray(const std::string &arname, const ArrayCompletionHandler &completeCallback) const {
         std::string name = translateArrayName(arname);
         if (!name.empty()) {
             if (auto arr = Shm::the().getArrayFromName<T>(name)) {
                 if (completeCallback)
-                    completeCallback();
+                    completeCallback(name);
                 return;
             }
         }
@@ -364,7 +367,7 @@ public:
         m_fetcher->requestArray(arname, shm<T>::array::typeId(), completeCallback);
     }
 
-    obj_const_ptr getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const;
+    obj_const_ptr getObject(const std::string &name, const ObjectCompletionHandler &completeCallback) const;
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;
 

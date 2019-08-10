@@ -225,7 +225,7 @@ const std::function<void ()> &yas_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
 
-obj_const_ptr yas_iarchive::getObject(const std::string &arname, const std::function<void(Object::const_ptr)> &completeCallback) const {
+obj_const_ptr yas_iarchive::getObject(const std::string &arname, const ObjectCompletionHandler &completeCallback) const {
     std::string name = arname;
     if (m_fetcher)
         name = m_fetcher->translateObjectName(arname);
@@ -296,7 +296,7 @@ std::shared_ptr<Fetcher> boost_iarchive::fetcher() const {
     return m_fetcher;
 }
 
-obj_const_ptr boost_iarchive::getObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) const {
+obj_const_ptr boost_iarchive::getObject(const std::string &name, const ObjectCompletionHandler &completeCallback) const {
     auto obj = Shm::the().getObjectFromName(name);
     if (!obj) {
         assert(m_fetcher);

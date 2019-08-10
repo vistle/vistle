@@ -23,18 +23,10 @@ void shm_ref<T>::load(Archive &ar) {
    std::string arname = shmname.str();
    std::string name = ar.translateArrayName(arname);
    //std::cerr << "shm_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << std::endl;
-   if (m_name.str().empty()) {
+   if (name.empty() || m_name.str() != name) {
        unref();
-       m_name = Shm::the().createArrayId(name);
+       m_name.clear();
    }
-   if (name.empty() && !m_name.str().empty()) {
-       ar.registerArrayNameTranslation(arname, m_name);
-   }
-
-   if (m_name.str() != name) {
-       unref();
-   }
-   name = m_name.str();
 
    ObjectData *obj = ar.currentObject();
    if (obj) {
@@ -43,11 +35,11 @@ void shm_ref<T>::load(Archive &ar) {
    }
 
    auto handler = ar.objectCompletionHandler();
-   ar.template fetchArray<typename T::value_type>(arname, [this, arname, name, obj, handler]() -> void {
+   ar.template fetchArray<typename T::value_type>(arname, [this, obj, handler](const std::string &name) -> void {
       auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
       //std::cerr << "shm_array: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
       if (!ref) {
-          std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << arname << " -> " << name << "/" << m_name << ", ref=" << ref << std::endl;
+          std::cerr << "shm_array: NOT COMPLETE: array completion handler: " << name << ", ref=" << ref << std::endl;
       }
       assert(ref);
       *this = ref;

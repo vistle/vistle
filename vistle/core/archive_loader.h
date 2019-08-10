@@ -76,8 +76,8 @@ class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared
 public:
     DeepArchiveFetcher(const std::map<std::string, std::vector<char>> &objects, const std::map<std::string, std::vector<char>> &arrays);
 
-    void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override;
-    void requestObject(const std::string &name, const std::function<void(Object::const_ptr)> &completeCallback) override;
+    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override;
+    void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override;
 
     bool renameObjects() const override;
     std::string translateObjectName(const std::string &name) const override;

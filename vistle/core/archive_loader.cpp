@@ -9,7 +9,7 @@ namespace vistle {
 DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, std::vector<char> > &objects, const std::map<std::string, std::vector<char> > &arrays)
     : m_objects(objects), m_arrays(arrays) {}
 
-void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const std::function<void()>& completeCallback) {
+void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const ArrayCompletionHandler& completeCallback) {
     //std::cerr << "DeepArchiveFetcher: trying array " << arname << std::endl;
     auto it = m_arrays.find(arname);
     if (it == m_arrays.end()) {
@@ -23,14 +23,14 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
     if (loader.load()) {
         //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
         m_ownedArrays.emplace(loader.owner());
-        completeCallback();
+        completeCallback(ar.translateArrayName(arname));
     }
     else {
         std::cerr << "DeepArchiveFetcher: failed to load array " << arname << std::endl;
     }
 }
 
-void DeepArchiveFetcher::requestObject(const std::string &arname, const std::function<void(Object::const_ptr)> &completeCallback) {
+void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCompletionHandler &completeCallback) {
     //std::cerr << "DeepArchiveFetcher: trying object " << arname << std::endl;
     auto it = m_objects.find(arname);
     if (it == m_objects.end()) {

@@ -158,7 +158,7 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<std::vec
    }
 }
 
-bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
+bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const ArrayCompletionHandler &handler) {
 
     //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
     {
@@ -182,7 +182,7 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
     return true;
 }
 
-bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const std::function<void (Object::const_ptr)> &handler) {
+bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const ObjectCompletionHandler &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
@@ -216,7 +216,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    return true;
 }
 
-bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void(Object::const_ptr)> &handler) {
+bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const ObjectCompletionHandler &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
@@ -347,12 +347,12 @@ public:
     {
     }
 
-    void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override {
+    void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override {
         vassert(!m_add);
         m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
     }
 
-    void requestObject(const std::string &name, const std::function<void(vistle::Object::const_ptr)> &completeCallback) override {
+    void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override {
         m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
     }
 
@@ -457,7 +457,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, std::vector<char> *
                 m_requestedArrays.erase(it);
                 lock.unlock();
                 for (const auto &completionHandler: handlers)
-                    completionHandler();
+                    completionHandler(snd.objectId());
                 lock.lock();
             }
 
