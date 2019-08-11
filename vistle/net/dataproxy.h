@@ -51,12 +51,11 @@ private:
    acceptor m_acceptor;
    std::vector<std::thread> m_threads;
    std::map<int, std::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket
-   struct RemoteSock {
-       RemoteSock(std::shared_ptr<tcp_socket> sock): sock(sock) {}
-       bool inUse = false;
-       std::shared_ptr<tcp_socket> sock;
+   struct ConnectionData {
+       std::vector<std::shared_ptr<tcp_socket>> sockets; // hub id -> socket
+       size_t next_socket = 0;
    };
-   std::map<int, std::vector<RemoteSock>> m_remoteDataSocket; // hub id -> socket
+   std::map<int, ConnectionData> m_remoteDataSocket; // hub id -> socket
    int m_boost_archive_version;
    void startAccept();
    void handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
