@@ -20,6 +20,8 @@ namespace message {
 typedef uint32_t SizeType;
 static const uint32_t VistleError = 12345;
 
+static const size_t buffersize = 16384;
+
 //#define USE_BUFFER_POOL
 
 namespace {
@@ -35,12 +37,7 @@ bool check(const Message &msg, const std::vector<char> *payload) {
         return false;
     }
 
-    if (msg.payloadSize() > 0 && !payload) {
-        std::cerr << "check message: no payload but positive payload size" << std::endl;
-        return false;
-    }
-
-    if (msg.payloadSize() > 0 && payload->size() != msg.payloadSize()) {
+    if (payload && msg.payloadSize() > 0 && payload->size() != msg.payloadSize()) {
         std::cerr << "check message: payload and size do not match" << std::endl;
         return false;
     }
@@ -110,6 +107,7 @@ struct SendRequest {
     socket_t &sock;
     const message::Buffer msg;
     std::shared_ptr<std::vector<char>> payload;
+    std::shared_ptr<socket_t> payloadSocket;
     std::function<void(error_code)> handler;
     SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<std::vector<char>> payload, std::function<void(error_code)> handler)
         : sock(sock)
@@ -119,11 +117,47 @@ struct SendRequest {
     {
     }
 
+    SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<socket_t> payloadSocket, std::function<void(error_code)> handler)
+        : sock(sock)
+        , msg(msg)
+        , payloadSocket(payloadSocket)
+        , handler(handler)
+    {
+    }
+
     void operator()() {
 
         error_code ec;
+        size_t n = msg.payloadSize();
+        if (payload) {
+            if (n >= payload->size()) {
+                n -= payload->size();
+            } else {
+                n = 0;
+            }
+        }
         if (!send(sock, msg, payload.get())) {
             ec.assign(VistleError, boost::system::generic_category());
+        }
+        if (payloadSocket) {
+            std::vector<char> bufvec(buffersize);
+            for (size_t i = 0; i < n;) {
+                auto buf = asio::buffer(bufvec.data(), std::min(bufvec.size(), n-i));
+                ssize_t c = asio::read(*payloadSocket, buf, ec);
+                if (c < 0) {
+                    break;
+                }
+                if (c == 0) {
+                    ec.assign(VistleError, boost::system::generic_category());
+                    break;
+                }
+                auto buf2 = asio::buffer(bufvec.data(), c);
+                ssize_t w = asio::write(sock, buf2, ec);
+                if (w != c) {
+                    break;
+                }
+                i += c;
+            }
         }
         handler(ec);
 
@@ -195,6 +229,7 @@ struct RecvRequest {
     message::Buffer &msg;
     std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler;
     std::function<void(error_code, message::Buffer &msg)> payload_handler;
+    bool no_payload = false;
 
     RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler)
         : sock(sock)
@@ -213,7 +248,7 @@ struct RecvRequest {
             handler(ec, std::shared_ptr<std::vector<char>>());
         }
         std::shared_ptr<std::vector<char>> payload;
-        if (!error && msg.payloadSize() > 0) {
+        if (!no_payload && !error && msg.payloadSize() > 0) {
             payload = get_buffer(msg.payloadSize());
             if (!recv_payload(sock, msg, received, payload.get())) {
                 error = true;
@@ -340,6 +375,24 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
    }
 }
 
+void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec)> handler) {
+
+   auto h = [handler](boost::system::error_code ec, std::shared_ptr<std::vector<char>>){
+       handler(ec);
+   };
+   std::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, h));
+   req->no_payload = true;
+
+   std::lock_guard<std::mutex> locker(recvQueueMutex);
+   bool submit = recvQueues[&sock].empty();
+   recvQueues[&sock].push_back(req);
+   //std::cerr << "message::async_recv: " << recvQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+
+   if (submit) {
+       submitRecvRequest(req);
+   }
+}
+
 bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) {
 
    assert(check(msg, payload));
@@ -375,6 +428,22 @@ void async_send(socket_t &sock, const message::Message &msg,
 {
    assert(check(msg, payload.get()));
    std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
+
+   std::lock_guard<std::mutex> locker(sendQueueMutex);
+   bool submit = sendQueues[&sock].empty();
+   sendQueues[&sock].push_back(req);
+   //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+
+   if (submit) {
+       submitSendRequest(req);
+   }
+}
+
+void async_forward(socket_t &sock, const message::Message &msg,
+                std::shared_ptr<socket_t> payloadSock,
+                const std::function<void(error_code ec)> handler)
+{
+   std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payloadSock, handler));
 
    std::lock_guard<std::mutex> locker(sendQueueMutex);
    bool submit = sendQueues[&sock].empty();

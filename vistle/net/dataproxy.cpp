@@ -8,6 +8,10 @@
 
 #define CERR std::cerr << "DataProxy: "
 
+static const bool store_and_forward = true;
+static const int min_num_sockets = 2;
+static const int max_num_sockets = 12;
+
 namespace asio = boost::asio;
 using boost::system::error_code;
 typedef std::unique_lock<std::recursive_mutex> lock_guard;
@@ -17,7 +21,9 @@ namespace vistle {
 
 using vistle::message::Identify;
 using vistle::message::async_send;
+using vistle::message::async_forward;
 using vistle::message::async_recv;
+using vistle::message::async_recv_header;
 
 using std::shared_ptr;
 
@@ -278,78 +284,142 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
     using namespace vistle::message;
 
     std::shared_ptr<message::Buffer> msg(new message::Buffer);
-    async_recv(*sock, *msg, [this, sock, msg, type](error_code ec, std::shared_ptr<std::vector<char>> payload){
-        if (ec) {
-            CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
-            return;
-        }
+    if (!store_and_forward) {
+        async_recv_header(*sock, *msg, [this, sock, msg, type](error_code ec){
+            if (ec) {
+                CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                return;
+            }
 
-        if (m_traceMessages == message::ANY || msg->type() == m_traceMessages) {
-            CERR << "handle forward to " << toString(type) << ": " << *msg << std::endl;
-        }
+            if (m_traceMessages == message::ANY || msg->type() == m_traceMessages) {
+                CERR << "handle forward to " << toString(type) << ": " << *msg << std::endl;
+            }
 
-        msgForward(sock, type);
-
-        bool needPayload = false;
-        bool forward = false;
-        switch(msg->type()) {
-        case IDENTIFY: {
-            auto &ident = msg->as<const Identify>();
-            type==Local ? answerRemoteIdentify(sock, ident) : answerLocalIdentify(sock, ident);
-            break;
-        }
-        case SENDOBJECT: {
-            forward = true;
-            needPayload = true;
+            bool forward = false;
+            switch(msg->type()) {
+            case IDENTIFY: {
+                auto &ident = msg->as<const Identify>();
+                type==Local ? answerRemoteIdentify(sock, ident) : answerLocalIdentify(sock, ident);
+                break;
+            }
+            case SENDOBJECT: {
+                forward = true;
 #ifdef DEBUG
-            auto &send = msg->as<const SendObject>();
-            if (send.isArray()) {
-                CERR << "local SendObject: array " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
-            } else {
-                CERR << "local SendObject: object " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
-            }
+                auto &send = msg->as<const SendObject>();
+                if (send.isArray()) {
+                    CERR << "local SendObject: array " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+                } else {
+                    CERR << "local SendObject: object " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+                }
 #endif
-            break;
-        }
-        case REQUESTOBJECT: {
-            forward = true;
-            break;
-        }
-        case ADDOBJECTCOMPLETED: {
-            forward = true;
-            break;
-        }
-        default: {
-            CERR << "have unexpected message " << *msg << std::endl;
-            forward = true;
-            break;
-        }
-        }
-
-        if (!needPayload) {
-            if (payload) {
-                CERR << "have unnecessary payload for " << *msg << std::endl;
+                break;
             }
-            needPayload = true;
-        }
+            case REQUESTOBJECT: {
+                forward = true;
+                break;
+            }
+            case ADDOBJECTCOMPLETED: {
+                forward = true;
+                break;
+            }
+            default: {
+                CERR << "have unexpected message " << *msg << std::endl;
+                forward = true;
+                break;
+            }
+            }
 
-        if (forward) {
-            auto dest = type==Local ? getLocalDataSock(*msg) : getRemoteDataSock(*msg);
-            if (dest) {
-                async_send(*dest, *msg, payload, [type, dest, payload](error_code ec) mutable {
-                    message::return_buffer(payload);
-                    if (ec) {
-                        CERR << "error in write to " << toString(type) << ": " << ec.message() << std::endl;
-                        return;
-                    }
-                });
+            if (forward) {
+                std::cerr << "msg: " << *msg << ", forwarding payload of " << msg->payloadSize() << " bytes" << std::endl;
+                auto dest = type==Local ? getLocalDataSock(*msg) : getRemoteDataSock(*msg);
+                if (dest) {
+                    async_forward(*dest, *msg, sock, [this, type, dest, sock](error_code ec) mutable {
+                        if (ec) {
+                            CERR << "error in write to " << toString(type) << ": " << ec.message() << std::endl;
+                            return;
+                        }
+
+                        msgForward(sock, type);
+                    });
+                } else {
+                    CERR << "no destination socket for " << toString(type) << " forward of " << *msg << std::endl;
+                }
+            }
+        });
+    } else {
+        async_recv(*sock, *msg, [this, sock, msg, type](error_code ec, std::shared_ptr<std::vector<char>> payload){
+            if (ec) {
+                CERR << "msgForward, dest=" << toString(type) << ": error " << ec.message() << std::endl;
+                return;
+            }
+
+            if (m_traceMessages == message::ANY || msg->type() == m_traceMessages) {
+                CERR << "handle forward to " << toString(type) << ": " << *msg << std::endl;
+            }
+
+            msgForward(sock, type);
+
+            bool needPayload = false;
+            bool forward = false;
+            switch(msg->type()) {
+            case IDENTIFY: {
+                auto &ident = msg->as<const Identify>();
+                type==Local ? answerRemoteIdentify(sock, ident) : answerLocalIdentify(sock, ident);
+                break;
+            }
+            case SENDOBJECT: {
+                forward = true;
+                needPayload = true;
+#ifdef DEBUG
+                auto &send = msg->as<const SendObject>();
+                if (send.isArray()) {
+                    CERR << "local SendObject: array " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+                } else {
+                    CERR << "local SendObject: object " << send.objectId() << ", size=" << send.payloadSize() << std::endl;
+                }
+#endif
+                break;
+            }
+            case REQUESTOBJECT: {
+                forward = true;
+                break;
+            }
+            case ADDOBJECTCOMPLETED: {
+                forward = true;
+                break;
+            }
+            default: {
+                CERR << "have unexpected message " << *msg << std::endl;
+                forward = true;
+                break;
+            }
+            }
+
+            if (!needPayload) {
+                if (payload) {
+                    CERR << "have unnecessary payload for " << *msg << std::endl;
+                }
+                needPayload = true;
+            }
+
+            if (forward) {
+                auto dest = type==Local ? getLocalDataSock(*msg) : getRemoteDataSock(*msg);
+                if (dest) {
+                    async_send(*dest, *msg, payload, [type, dest, payload](error_code ec) mutable {
+                        message::return_buffer(payload);
+                        if (ec) {
+                            CERR << "error in write to " << toString(type) << ": " << ec.message() << std::endl;
+                            return;
+                        }
+                    });
+                } else {
+                    CERR << "no destination socket for " << toString(type) << " forward of " << *msg << std::endl;
+                }
             } else {
-                CERR << "no destination socket for " << toString(type) << " forward of " << *msg << std::endl;
+                message::return_buffer(payload);
             }
-        } else {
-            message::return_buffer(payload);
-        }
-    });
+        });
+    }
 }
 
 bool DataProxy::connectRemoteData(int hubId) {
@@ -384,7 +454,7 @@ bool DataProxy::connectRemoteData(int hubId) {
        m_connectingSockets.clear();
    });
 
-   size_t numconn = std::min(std::max(1, std::max(m_numRanks, remote.numRanks)), 12);
+   size_t numconn = std::min(max_num_sockets, std::max(min_num_sockets, std::max(m_numRanks, remote.numRanks)));
    size_t numtries = numconn - m_remoteDataSocket[hubId].size();
    CERR << "establishing data connecton to hub at " << remote.address << ":" << remote.dataPort << " with " << numconn << " parallel connections, " << numtries << " tries" << std::endl;
    boost::asio::ip::tcp::endpoint dest(remote.address, remote.dataPort);
