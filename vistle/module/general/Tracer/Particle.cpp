@@ -161,6 +161,7 @@ bool Particle::findCell(double time) {
 
             if (!m_currentSegment) {
                 m_currentSegment = std::make_shared<Segment>();
+                m_currentSegment->m_id = id();
                 m_currentSegment->m_startStep = m_stp;
                 m_currentSegment->m_num = m_segment;
                 if (m_forward)
@@ -477,8 +478,7 @@ void Particle::startSendData(boost::mpi::communicator mpi_comm) {
 
     assert(rank() != mpi_comm.rank());
     m_sendingSegment->m_rank = mpi_comm.rank();
-    m_requests.emplace_back(mpi_comm.isend(rank(), 0, id()));
-    m_requests.emplace_back(mpi_comm.isend(rank(), 0, *m_sendingSegment));
+    m_requests.emplace_back(mpi_comm.isend(rank(), id(), *m_sendingSegment));
 }
 
 void Particle::finishSendData() {
@@ -489,16 +489,13 @@ void Particle::finishSendData() {
 
 void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {
 
-    Index recvId;
-    mpi_comm.recv(rank, 0, recvId);
-    if (id() != recvId) {
-        std::cerr << "MPI rank " << this->rank() << " received invalid id " << recvId << " for particle " << id() << " from rank " << rank << std::endl;
-    }
-    assert(id() == recvId);
     auto seg = std::make_shared<Segment>();
-    mpi_comm.recv(rank, 0, *seg);
+    mpi_comm.recv(rank, id(), *seg);
     m_segments[seg->m_num] = seg;
-    //std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size() << " points" << std::endl;
+    if (seg->m_id != id()) {
+        std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size() << " points for particle " << seg->m_id  << std::endl;
+    }
+    assert(seg->m_id == id());
 }
 
 void Particle::UpdateBlock(BlockData *block) {

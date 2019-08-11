@@ -83,6 +83,7 @@ private:
     vistle::Index m_segmentStart; //! number of step where this segment started
 
     struct Segment {
+        vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
         int m_rank;
         int m_num; // >= 0: forward, < 0: backward
         vistle::Index m_startStep;
@@ -102,6 +103,7 @@ private:
         // just for Boost.MPI
         template<class Archive>
         void serialize(Archive &ar, const unsigned int version) {
+            ar & m_id;
             ar & m_rank;
             ar & m_num;
             ar & m_xhist;
@@ -113,6 +115,7 @@ private:
         }
 
         void clear() {
+            m_id = vistle::InvalidIndex;
             m_rank = -1;
             m_num = 0;
             m_xhist.clear();
