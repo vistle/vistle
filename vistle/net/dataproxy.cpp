@@ -453,7 +453,7 @@ bool DataProxy::connectRemoteData(int hubId) {
            return;
        }
        if (ec) {
-           CERR << "timer failed: " << ec << std::endl;
+           CERR << "timer failed: " << ec.message() << std::endl;
            lock_guard lock(m_mutex);
            m_connectingSockets.clear();
            return;
@@ -490,7 +490,7 @@ bool DataProxy::connectRemoteData(int hubId) {
                return;
            }
            if (ec) {
-               CERR << "could not establish bulk data connection to " << remote.address << ":" << remote.dataPort << ": " << ec << std::endl;
+               CERR << "could not establish bulk data connection to " << remote.address << ":" << remote.dataPort << ": " << ec.message() << std::endl;
                return;
            }
 

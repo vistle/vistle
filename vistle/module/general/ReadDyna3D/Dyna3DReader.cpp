@@ -3176,7 +3176,7 @@ bool Dyna3DReaderBase::examine(bool rescan)
                 }
                 size_t size = file_size(curfile, ec);
                 if (ec) {
-                    std::cerr << "filesystem error while checking length of " << curfile.string() << ":" << ec << std::endl;
+                    std::cerr << "filesystem error while checking length of " << curfile.string() << ": " << ec.message() << std::endl;
                     break;
                 } else if (size == 0) {
                     std::cerr << "length of " << curfile.string() << " is zero" << std::endl;

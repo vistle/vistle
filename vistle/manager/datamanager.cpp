@@ -152,7 +152,7 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<std::vec
 #if 1
        message::async_send(m_dataSocket, message, payload, [this, message](boost::system::error_code ec){
            if (ec) {
-               CERR << "async send " << message << " failed: " << ec << std::endl;
+               CERR << "async send " << message << " failed: " << ec.message() << std::endl;
            }
        });
        return true;
