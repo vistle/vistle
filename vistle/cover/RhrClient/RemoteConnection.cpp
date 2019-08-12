@@ -333,9 +333,10 @@ void RemoteConnection::operator()() {
 
         message::Buffer buf;
         auto payload = std::make_shared<std::vector<char>>();
-        bool received = false;
-        bool ok = message::recv(m_sock, buf, received, false, payload.get());
-        if (!ok) {
+        message::error_code ec;
+        bool received = message::recv(m_sock, buf, ec, false, payload.get());
+        if (ec) {
+            NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
             break;
         }
         {

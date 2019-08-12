@@ -593,14 +593,20 @@ bool Hub::dispatch() {
 
 void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
+    if (error) {
+        CERR << "error during write on socket: " << error.message() << std::endl;
+        m_quitting = true;
+        return;
+    }
+
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     auto it = m_sockets.find(sock);
     if (it != m_sockets.end())
        senderType = it->second;
     message::Buffer msg;
-    bool received = false;
     std::vector<char> payload;
-    if (message::recv(*sock, msg, received, false, &payload) && received) {
+    message::error_code ec;
+    if (message::recv(*sock, msg, ec, false, &payload)) {
        bool ok = true;
        if (senderType == message::Identify::UI) {
           ok = m_uiManager.handleMessage(sock, msg, payload);
@@ -619,6 +625,9 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
           m_quitting = true;
           //break;
        }
+    } else if (ec) {
+        CERR << "error during read from socket: " << ec.message() << std::endl;
+        m_quitting = true;
     }
 }
 

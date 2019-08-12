@@ -168,10 +168,16 @@ bool Communicator::connectData() {
 
 bool Communicator::sendHub(const message::Message &message) {
 
-   if (getRank() == 0)
-      return message::send(m_hubSocket, message);
-   else
-      return forwardToMaster(message);
+    if (getRank() == 0) {
+        message::error_code ec;
+        if (message::send(m_hubSocket, message, ec))
+            return true;
+        if (ec) {
+            CERR << "sending " << message << " to hub failed: " << ec.message() << std::endl;
+        }
+        return false;
+    }
+    return forwardToMaster(message);
 }
 
 bool Communicator::scanModules(const std::string &dir) {
@@ -285,12 +291,14 @@ bool Communicator::dispatch(bool *work) {
 
    if (m_rank == 0) {
       message::Buffer buf;
-      bool gotMsg = false;
-      if (!message::recv(m_hubSocket, buf, gotMsg)) {
-         broadcastAndHandleMessage(message::Quit());
-         CERR << "Quit reason: hub comm interrupted" << std::endl;
-         done = true;
-      } else if (gotMsg) {
+      message::error_code ec;
+      if (!message::recv(m_hubSocket, buf, ec)) {
+         if (ec) {
+             CERR << "Quit reason: hub comm interrupted: " << ec.message() << std::endl;
+             broadcastAndHandleMessage(message::Quit());
+             done = true;
+         }
+      } else {
          received = true;
          if (buf.destRank() == 0) {
              handleMessage(buf);

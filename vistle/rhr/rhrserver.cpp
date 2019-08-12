@@ -41,8 +41,13 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const std::vector<char> *pa
     if (!m_clientSocket)
         return false;
 
-    if (!message::send(*m_clientSocket, msg, payload)) {
-        CERR << "client error, disconnecting" << std::endl;
+    message::error_code ec;
+    if (!message::send(*m_clientSocket, msg, ec, payload)) {
+        if (ec) {
+            CERR << "client error: " << ec.message() << ", disconnecting" << std::endl;
+        } else {
+            CERR << "unknown client error, disconnecting" << std::endl;
+        }
         resetClient();
         return false;
     }
@@ -681,7 +686,9 @@ RhrServer::preFrame() {
           if (avail >= sizeof(message::RemoteRenderMessage)) {
               message::Buffer msg;
               std::vector<char> payload;
-              if (message::recv(*m_clientSocket, msg, received, false, &payload) && received) {
+              message::error_code ec;
+              received = message::recv(*m_clientSocket, msg, ec, false, &payload);
+              if (received) {
                   switch(msg.type()) {
                   case message::REMOTERENDERING: {
                       auto &m = msg.as<message::RemoteRenderMessage>();
@@ -724,6 +731,8 @@ RhrServer::preFrame() {
                       break;
                   }
                   }
+              } else if (ec) {
+                  CERR << "error during message receive: " << ec.message() << std::endl;
               }
           }
       } while (received);

@@ -554,12 +554,14 @@ void DataManager::recvLoop()
         if (m_dataSocket.is_open()) {
             message::Buffer buf;
             std::vector<char> payload;
-            if (!message::recv(m_dataSocket, buf, gotMsg, false, &payload)) {
-                CERR << "Data communication error" << std::endl;
-            } else if (gotMsg) {
+            message::error_code ec;
+            if (message::recv(m_dataSocket, buf, ec, false, &payload)) {
+                gotMsg = true;
                 std::lock_guard<std::mutex> guard(m_recvMutex);
                 m_recvQueue.emplace_back(std::move(buf), std::move(payload));
                 //CERR << "Data received" << std::endl;
+            } else if (ec) {
+                CERR << "Data communication error: " << ec.message() << std::endl;
             }
 
             std::lock_guard<std::mutex> guard(m_recvMutex);

@@ -127,17 +127,15 @@ bool UserInterface::dispatch() {
    while (isConnected()) {
 
       work = true;
-      bool received = false;
 
       message::Buffer buf;
       std::vector<char> payload;
-      if (!message::recv(socket(), buf, received, true /* blocking */, &payload)) {
-         return false;
+      message::error_code ec;
+      if (!message::recv(socket(), buf, ec, true /* blocking */, &payload)) {
+          CERR << "receiving failed: " << ec.message() << std::endl;
+          return false;
       }
       
-      if (!received)
-         break;
-
       if (!handleMessage(&buf, payload))
          return false;
 

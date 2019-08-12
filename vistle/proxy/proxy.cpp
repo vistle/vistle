@@ -239,13 +239,19 @@ bool Proxy::dispatch() {
 
 void Proxy::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
+    if (error) {
+        CERR << "write error on socket: " << error.message() << std::endl;
+        m_quitting = true;
+        return;
+    }
+
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     auto it = m_sockets.find(sock);
     if (it != m_sockets.end())
        senderType = it->second;
     message::Buffer msg;
-    bool received = false;
-    if (message::recv(*sock, msg, received) && received) {
+    message::error_code ec;
+    if (message::recv(*sock, msg, ec)) {
        bool ok = true;
        if (senderType == message::Identify::UI) {
           //ok = m_uiManager.handleMessage(msg, sock);
@@ -264,6 +270,9 @@ void Proxy::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
           m_quitting = true;
           //break;
        }
+    } else if (ec) {
+        CERR << "receiving message failed: " << ec.message();
+        m_quitting = true;
     }
 }
 
