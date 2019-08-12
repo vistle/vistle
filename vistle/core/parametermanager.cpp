@@ -165,6 +165,8 @@ bool ParameterManager::updateParameter(const std::string &name, const Parameter 
    message::SetParameter set(m_id, name, i->second, rt);
    if (inResponseTo) {
       set.setReferrer(inResponseTo->uuid());
+      if (inResponseTo->isDelayed())
+          set.setDelayed();
    }
    set.setDestId(message::Id::ForBroadcast);
    sendParameterMessage(set);

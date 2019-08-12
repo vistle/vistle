@@ -1057,15 +1057,15 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
 
    const int rt = rangeType();
    if (auto pint = std::dynamic_pointer_cast<IntParameter>(param)) {
-      if (rt == Parameter::Value) pint->setValue(v_int, initialize);
+      if (rt == Parameter::Value) pint->setValue(v_int, initialize, delayed);
       if (rt == Parameter::Minimum) pint->setMinimum(v_int);
       if (rt == Parameter::Maximum) pint->setMaximum(v_int);
    } else if (auto pfloat = std::dynamic_pointer_cast<FloatParameter>(param)) {
-      if (rt == Parameter::Value) pfloat->setValue(v_scalar, initialize);
+      if (rt == Parameter::Value) pfloat->setValue(v_scalar, initialize, delayed);
       if (rt == Parameter::Minimum) pfloat->setMinimum(v_scalar);
       if (rt == Parameter::Maximum) pfloat->setMaximum(v_scalar);
    } else if (auto pvec = std::dynamic_pointer_cast<VectorParameter>(param)) {
-      if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
+      if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize, delayed);
       if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
       if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
    } else if (auto pivec = std::dynamic_pointer_cast<IntVectorParameter>(param)) {
@@ -1073,7 +1073,7 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
       if (rt == Parameter::Minimum) pivec->setMinimum(IntParamVector(dim, &v_ivector[0]));
       if (rt == Parameter::Maximum) pivec->setMaximum(IntParamVector(dim, &v_ivector[0]));
    } else if (auto pstring = std::dynamic_pointer_cast<StringParameter>(param)) {
-      if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
+      if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize, delayed);
       if (rt == Parameter::Minimum) pstring->setMinimum(v_string.data());
       if (rt == Parameter::Maximum) pstring->setMaximum(v_string.data());
    } else {

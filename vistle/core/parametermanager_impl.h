@@ -25,7 +25,10 @@ bool ParameterManager::setParameter(const std::string &name, const T &value, con
 template<class T>
 bool ParameterManager::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
 
-   param->setValue(value);
+   bool delayed = false;
+   if (inResponseTo && inResponseTo->isDelayed())
+       delayed = true;
+   param->setValue(value, false, delayed);
    if (!inResponseTo || !inResponseTo->isDelayed())
        parameterChangedWrapper(param);
    else

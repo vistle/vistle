@@ -115,10 +115,10 @@ class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
    friend class gui::Parameters;
    friend class ::VistleInteractor;
 
-   virtual bool setValue(T value, bool init=false) {
+   virtual bool setValue(T value, bool init=false, bool delayed=false) {
       if (init)
          m_defaultValue=value;
-      else if (!checkValue(value))
+      else if (!delayed && !checkValue(value))
          return false;
       this->m_value = value;
       return true;
