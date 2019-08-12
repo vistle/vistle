@@ -1438,12 +1438,15 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
    CERR << "connecting to master at " << host << ":" << port << std::flush;
    bool connected = false;
+   boost::system::error_code ec;
    while (!connected) {
        asio::ip::tcp::resolver resolver(m_ioService);
        asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
-       asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-       boost::system::error_code ec;
        m_masterSocket.reset(new boost::asio::ip::tcp::socket(m_ioService));
+       asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+       if (ec) {
+           break;
+       }
        asio::connect(*m_masterSocket, endpoint_iterator, ec);
        if (!ec) {
            connected = true;
@@ -1456,7 +1459,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
    }
 
    if (!connected) {
-       std::cerr << " FAILED" << std::endl;
+       std::cerr << " FAILED: " << ec.message() << std::endl;
        return false;
    }
 
