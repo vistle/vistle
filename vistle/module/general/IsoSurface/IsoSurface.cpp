@@ -54,7 +54,7 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
    m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
    setReducePolicy(message::ReducePolicy::Locally);
-   m_pointOrValue = addIntParameter("Interactor", "point or value interaction", Value, Parameter::Choice);
+   m_pointOrValue = addIntParameter("point_or_value", "point or value interaction", Value, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
 
    createInputPort("data_in");
