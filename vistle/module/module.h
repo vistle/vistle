@@ -347,6 +347,8 @@ protected:
    std::deque<std::shared_ptr<PortTask>> m_tasks;
 };
 
+V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
+
 template<>
 V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 

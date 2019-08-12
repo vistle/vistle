@@ -149,8 +149,10 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 };
 
 
-namespace {
 int getTimestep(Object::const_ptr obj) {
+
+    if (!obj)
+        return -1;
 
     int t = obj->getTimestep();
     if (t < 0) {
@@ -162,7 +164,6 @@ int getTimestep(Object::const_ptr obj) {
     }
 
     return t;
-}
 }
 
 bool Module::setup(const std::string &shmname, int moduleID, int rank) {
@@ -1554,15 +1555,15 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     size_t i=0;
                     for (auto &obj: objs) {
                         sortKey[i].idx = i;
-                        sortKey[i].step = getTimestep(obj);
-                        sortKey[i].time = obj->getRealTime();
+                        sortKey[i].step = sortKey[i].step==-1 ? getTimestep(obj) : sortKey[i].step;
+                        sortKey[i].time = sortKey[i].time==0. ? obj->getRealTime() : sortKey[i].time;
                         if (sortKey[i].step >= 0 && sortKey[i].time == 0.)
                             sortKey[i].time = sortKey[i].step;
                         ++i;
                     }
                 }
                 if (numObject > 0) {
-                    std::sort(sortKey.begin(), sortKey.end());
+                    std::stable_sort(sortKey.begin(), sortKey.end());
                     auto best = sortKey[0];
                     for (auto &ti: sortKey) {
                         if (std::abs(ti.step - exec->animationRealTime()) < std::abs(best.step - exec->animationRealTime())) {
@@ -1597,6 +1598,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 } else {
                     startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
                 }
+                assert(startTimestep >= 0);
 
                 // add objects to port queue in processing order
                 for (auto &port: inputPorts) {
@@ -1684,6 +1686,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 assert(numReductions <= m_numTimesteps);
             }
             //CERR << "runReduce(t=" << timestep << "): exec count = " << m_executionCount << std::endl;
+            waitAllTasks();
             return reduce(timestep);
         };
         bool computeOk = false;
@@ -1722,18 +1725,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     computeOk = compute();
                 }
 
-                if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-                    // FIXME do not wait for tasks
-                    waitAllTasks();
+                if (reordered && timestep>=0 && m_numTimesteps>0 && reducePerTimestep) {
                     // if processing for another timestep starts, run reduction for previous timesteps
-                    if (startWithZero && waitForZero) {
-                        if (timestep > 0) {
+                    if (waitForZero) {
+                        if (startWithZero && timestep > 0) {
                             waitForZero = false;
                             computeOk &= runReduce(0, numReductions);
                         }
-                    }
-                    if (waitForZero) {
-                    } else if (timestep < 0) {
                     } else if (direction >= 0) {
                         if (prevTimestep > timestep) {
                             for (int t=prevTimestep; t<m_numTimesteps; ++t) {
@@ -1797,7 +1795,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         }
 
         if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-            waitAllTasks();
             // run reduction for remaining (most often just the last) timesteps
             int t = prevTimestep;
             while (numReductions < m_numTimesteps && !cancelRequested(true)) {
