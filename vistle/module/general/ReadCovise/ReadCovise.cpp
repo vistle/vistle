@@ -104,7 +104,7 @@ bool ReadCovise::examine(const Parameter *param)
 #ifdef READ_DIRECTORY
     if (!param || param == m_directory) {
         std::vector<std::string> choices;
-        choices.push_back("(none)");
+        choices.emplace_back(NONE);
         auto dir = filesystem::path(m_directory->getValue());
         try {
             if (!filesystem::is_directory(dir)) {
