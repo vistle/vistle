@@ -328,7 +328,7 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
    m_aggregatedPayload += msg.payloadSize();
 
 #ifndef NDEBUG
-   if (msg.type() != message::ADDOBJECT) {
+   if (msg.type() != message::ADDOBJECT && msg.uuid() != msg.referrer()) {
        if (m_alreadySeen.find(msg.uuid()) != m_alreadySeen.end()) {
            CERR << "duplicate message: " << msg << std::endl;
        }
@@ -610,6 +610,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    std::lock_guard<mutex> locker(m_slaveMutex);
    for (auto &h: m_hubs) {
        if (h.id == slave.id()) {
+           m_slaveCondition.notify_all();
            return true;
        }
    }
@@ -1322,9 +1323,9 @@ bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Mes
 
 std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 
+    std::unique_lock<mutex> locker(m_slaveMutex);
    auto hubIds = getSlaveHubs();
    while (hubIds.size() < count) {
-      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
       hubIds = getSlaveHubs();
    }
@@ -1356,9 +1357,9 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
       return found == names.size();
    };
 
+   std::unique_lock<mutex> locker(m_slaveMutex);
    std::vector<int> ids;
    while (!findAll(names, ids)) {
-      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
    }
    return ids;

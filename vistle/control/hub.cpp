@@ -758,6 +758,13 @@ void Hub::hubReady() {
    vassert(m_managerConnected);
    if (m_isMaster) {
       m_ready = true;
+
+      for (auto s: m_slavesToConnect) {
+          auto set = make.message<message::SetId>(s->id);
+          sendMessage(s->sock, set);
+      }
+      m_slavesToConnect.clear();
+
       processScript();
    } else {
       auto hub = make.message<message::AddHub>(m_hubId, m_name);
@@ -786,12 +793,6 @@ void Hub::hubReady() {
 
       sendMaster(hub);
       m_ready = true;
-
-      for (auto s: m_slavesToConnect) {
-          auto set = make.message<message::SetId>(s->id);
-          sendMessage(s->sock, set);
-      }
-      m_slavesToConnect.clear();
    }
 }
 
@@ -838,7 +839,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        }
    }
 
-   bool masterAdded = false;
    switch (msg.type()) {
       case message::IDENTIFY: {
 
@@ -865,6 +865,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m_managerConnected = true;
                m_localRanks = id.numRanks();
                m_dataProxy->setNumRanks(id.numRanks());
+               m_dataProxy->setBoostArchiveVersion(id.boost_archive_version());
                CERR << "manager connected with " << m_localRanks << " ranks" << std::endl;
 
                if (m_hubId == Id::MasterHub) {
@@ -923,30 +924,28 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       }
       case message::ADDHUB: {
          auto &mm = static_cast<const AddHub &>(msg);
+         CERR << "received AddHub: " << msg << std::endl;
          if (m_isMaster) {
             auto it = m_slaves.find(mm.id());
             if (it == m_slaves.end()) {
+               std::cerr << "ignoring for unknown slave: " << msg << std::endl;
                break;
             }
             auto &slave = it->second;
             slaveReady(slave);
+            m_dataProxy->connectRemoteData(mm);
             m_stateTracker.handle(mm, true);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master with " << mm.numRanks() << " ranks" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
+               m_dataProxy->connectRemoteData(m);
                m_stateTracker.handle(m, true);
-               masterAdded = true;
             } else {
+                m_dataProxy->connectRemoteData(mm);
                 m_stateTracker.handle(mm, true);
             }
-         }
-
-         if (mm.id() != m_hubId) {
-             // establish data connections in both directions until enough connections are available
-             CERR << "establishing data connection from hub " << m_hubId << " with " << m_localRanks << " ranks to " << mm.id() << " with " << mm.numRanks() << " ranks " << std::endl;
-             m_dataProxy->connectRemoteData(mm.id());
          }
          break;
       }
@@ -1048,7 +1047,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
            if (msg.destId() == Id::ForBroadcast)
                msg.setDestId(Id::Broadcast);
        }
-       bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
+       bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
        m_stateTracker.handle(msg, track);
 
        if (Router::the().toManager(msg, senderType, sender)

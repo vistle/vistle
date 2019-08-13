@@ -18,6 +18,7 @@ class StateTracker;
 
 namespace message {
 class Identify;
+class AddHub;
 }
 
 class V_NETEXPORT DataProxy {
@@ -32,10 +33,11 @@ public:
     ~DataProxy();
     void setHubId(int id);
     void setNumRanks(int size);
+    void setBoostArchiveVersion(int ver);
     unsigned short port() const;
     void setTrace(message::Type type);
 
-   bool connectRemoteData(int hubId);
+   bool connectRemoteData(const message::AddHub &hub);
 
 private:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote));

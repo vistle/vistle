@@ -435,7 +435,6 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
-   bool masterAdded = false;
    switch (msg.type()) {
       case message::IDENTIFY: {
 
@@ -504,19 +503,19 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
             }
             auto &slave = it->second;
             slaveReady(slave);
+            m_dataProxy->connectRemoteData(mm);
+            m_stateTracker.handle(mm, true);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
+               m_dataProxy->connectRemoteData(m);
                m_stateTracker.handle(m, true);
-               masterAdded = true;
             } else {
+                m_dataProxy->connectRemoteData(mm);
                 m_stateTracker.handle(mm, true);
             }
-         }
-         if (mm.id() > m_hubId) {
-             m_dataProxy->connectRemoteData(mm.id());
          }
          break;
       }
@@ -534,7 +533,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
            if (msg.destId() == Id::ForBroadcast)
                msg.setDestId(Id::Broadcast);
        }
-       bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
+       bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
        m_stateTracker.handle(msg, track);
 
        if (Router::the().toManager(msg, senderType, sender)

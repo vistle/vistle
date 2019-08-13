@@ -87,6 +87,14 @@ void DataProxy::setNumRanks(int size) {
     m_numRanks = size;
 }
 
+void DataProxy::setBoostArchiveVersion(int ver) {
+
+    if (m_boost_archive_version && m_boost_archive_version != ver) {
+        CERR << "local Boost.Archive version mismatch: " << ver << " != " << m_boost_archive_version << std::endl;
+    }
+    m_boost_archive_version = ver;
+}
+
 unsigned short DataProxy::port() const {
     return m_port;
 }
@@ -225,6 +233,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
              {
                  lock_guard lock(m_mutex);
                  m_remoteDataSocket[id.senderId()].sockets.emplace_back(sock);
+                 std::cerr << "." << std::flush;
              }
 
              if (id.boost_archive_version() != m_boost_archive_version) {
@@ -435,15 +444,18 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
     }
 }
 
-bool DataProxy::connectRemoteData(int hubId) {
+bool DataProxy::connectRemoteData(const message::AddHub &remote) {
+   if (remote.id() == m_hubId)
+       return true;
+
    lock_guard lock(m_mutex);
 
-   const auto &remote = m_stateTracker.getHubData(hubId);
-
-   if (remote.id == message::Id::Invalid) {
-       CERR << "don't know hub with id " << hubId << std::endl;
+   if (!message::Id::isHub(remote.id())) {
+       CERR << "id is not for a hub: " << remote.id() << std::endl;
        return false;
    }
+
+   auto hubId = remote.id();
 
    asio::deadline_timer timer(io());
    timer.expires_from_now(boost::posix_time::seconds(10));
@@ -467,10 +479,11 @@ bool DataProxy::connectRemoteData(int hubId) {
        m_connectingSockets.clear();
    });
 
-   size_t numconn = std::min(max_num_sockets, std::max(min_num_sockets, std::max(m_numRanks, remote.numRanks)));
+   size_t numconn = std::min(max_num_sockets, std::max(min_num_sockets, std::max(m_numRanks, remote.numRanks())));
    size_t numtries = numconn - m_remoteDataSocket[hubId].sockets.size();
-   CERR << "establishing data connecton to hub at " << remote.address << ":" << remote.dataPort << " with " << numconn << " parallel connections, " << numtries << " tries" << std::endl;
-   boost::asio::ip::tcp::endpoint dest(remote.address, remote.dataPort);
+   CERR << "establishing data connection from hub " << m_hubId << " with " << m_numRanks << " ranks to " << remote.id() << " with " << remote.numRanks() << " ranks, "
+        << numtries << " tries for " << numconn << " parallel connections to " << remote.address() << ":" << remote.dataPort() << std::flush;
+   boost::asio::ip::tcp::endpoint dest(remote.address(), remote.dataPort());
 
    size_t count=0;
    while (m_remoteDataSocket[hubId].sockets.size() < numconn && count < numtries) {
@@ -490,11 +503,12 @@ bool DataProxy::connectRemoteData(int hubId) {
                return;
            }
            if (ec) {
-               CERR << "could not establish bulk data connection to " << remote.address << ":" << remote.dataPort << ": " << ec.message() << std::endl;
+               CERR << "could not establish bulk data connection to " << remote.address() << ":" << remote.dataPort() << ": " << ec.message() << std::endl;
                return;
            }
 
            m_remoteDataSocket[hubId].sockets.emplace_back(sock);
+           std::cerr << "." << std::flush;
            //CERR << "connected to " << remote.address << ":" << remote.dataPort << ", now have " << m_remoteDataSocket[hubId].sockets.size() << " connections" << std::endl;
            lock.unlock();
 
@@ -515,10 +529,11 @@ bool DataProxy::connectRemoteData(int hubId) {
    timer.cancel();
    m_connectingSockets.clear();
 
+   std::cerr << std::endl;
    if (m_remoteDataSocket[hubId].sockets.size() >= numconn) {
-       CERR << "connected to hub (data) at " << remote.address << ":" << remote.dataPort << " with " << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;
+       CERR << "connected to hub " << hubId << " at " << remote.address() << ":" << remote.dataPort() << " with " << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;
    } else {
-       CERR << "WARNING: connected to hub (data) at " << remote.address << ":" << remote.dataPort << " with ONLY " << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;
+       CERR << "WARNING: connected to hub (data) at " << remote.address() << ":" << remote.dataPort() << " with ONLY " << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;
    }
 
    return !m_remoteDataSocket[hubId].sockets.empty();
