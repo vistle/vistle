@@ -332,7 +332,7 @@ Execute::Execute(Execute::What what, const int module, const int count)
    , executionCount(count)
    , m_what(what)
    , m_realtime(0.)
-   , m_animationStepDuration(1./25.)
+   , m_animationStepDuration(0.)
 {
 }
 
