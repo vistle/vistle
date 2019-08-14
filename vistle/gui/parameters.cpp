@@ -118,8 +118,6 @@ void Parameters::setVistleConnection(vistle::VistleConnection *conn)
 
 void Parameters::setModule(int id)
 {
-   m_ignorePropertyChanges = true;
-
    clear();
    m_paramToProp.clear();
    m_propToParam.clear();
@@ -137,8 +135,6 @@ void Parameters::setModule(int id)
    auto params = m_vistle->getParameters(id);
    for (auto &p: params)
        newParameter(id, QString::fromStdString(p));
-
-   m_ignorePropertyChanges = false;
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)
@@ -149,6 +145,8 @@ void Parameters::newParameter(int moduleId, QString parameterName)
    auto p = m_vistle->getParameter(moduleId, parameterName.toStdString());
    if (!p)
       return;
+
+   m_ignorePropertyChanges = true;
 
    const auto it = m_paramToProp.find(parameterName);
    if (vistle::message::Id::isModule(moduleId)) {
@@ -232,6 +230,8 @@ void Parameters::newParameter(int moduleId, QString parameterName)
 
    parameterChoicesChanged(moduleId, parameterName);
    parameterValueChanged(moduleId, parameterName);
+
+   m_ignorePropertyChanges = false;
 }
 
 void Parameters::deleteParameter(int moduleId, QString parameterName)
