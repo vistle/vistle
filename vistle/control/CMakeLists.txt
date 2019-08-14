@@ -1,5 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
-
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
 )
@@ -35,7 +33,8 @@ endif()
 
 vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 target_link_libraries(vistle_control
-        ${Boost_LIBRARIES}
+        ${Boost_SYSTEM_LIBRARY}
+        ${Boost_PROGRAM_OPTIONS_LIBRARY}
         ${EXTRA_LIBRARIES}
         vistle_util
         vistle_core

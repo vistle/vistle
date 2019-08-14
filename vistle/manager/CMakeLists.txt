@@ -1,4 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
 vistle_find_package(XCB)
 vistle_find_package(X11)
 
@@ -57,7 +56,7 @@ vistle_add_executable(vistle_manager ${SOURCES})
 
 target_link_libraries(vistle_manager
         vistle_boost_mpi
-        ${Boost_LIBRARIES}
+        ${Boost_SYSTEM_LIBRARY}
         ${MPI_C_LIBRARIES}
         vistle_control
         vistle_util
@@ -93,7 +92,7 @@ endif()
 
 vistle_add_executable(clean_vistle clean_vistle.cpp)
 target_link_libraries(clean_vistle
-        ${Boost_LIBRARIES}
+        ${Boost_SYSTEM_LIBRARY}
         ${MPI_C_LIBRARIES}
         vistle_core
         vistle_boost_mpi

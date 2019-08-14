@@ -1,5 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system filesystem)
-
 set(util_SOURCES
    affinity.cpp
    coRestraint.cpp
@@ -46,7 +44,10 @@ endif()
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
-    PUBLIC ${Boost_LIBRARIES}
+    PRIVATE ${Boost_SYSTEM_LIBRARY}
+)
+target_link_libraries(vistle_util
+    PUBLIC ${Boost_FILESYSTEM_LIBRARY}
 )
 target_link_libraries(vistle_util
     PRIVATE Threads::Threads

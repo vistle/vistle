@@ -1,5 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS program_options system)
-
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
 )
@@ -13,7 +11,8 @@ set(proxy_SOURCES
 
 vistle_add_executable(vistle_proxy ${proxy_SOURCES})
 target_link_libraries(vistle_proxy
-        ${Boost_LIBRARIES}
+        ${Boost_PROGRAM_OPTIONS_LIBRARY}
+        ${Boost_SYSTEM_LIBRARY}
         vistle_core
         vistle_net
 )

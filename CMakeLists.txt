@@ -245,7 +245,14 @@ set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
 
 set (BOOST_INCLUDEDIR /usr/include/boost169)  
 set (BOOST_LIBRARYDIR /usr/lib64/boost169)
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
+if (WIN32)
+    set(BOOST_OPT zlib)
+else()
+    set(BOOST_OPT)
+endif()
+vistle_find_package(Boost 1.53 REQUIRED
+    COMPONENTS system serialization program_options date_time filesystem iostreams
+    OPTIONAL_COMPONENTS ${BOOST_OPT})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")

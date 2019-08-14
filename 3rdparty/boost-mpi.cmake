@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system)
+#vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system)
 
 add_definitions(-DBOOST_MPI_SOURCE)
 if(NOT WIN32)
@@ -53,6 +53,7 @@ include_directories(SYSTEM
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
 target_link_libraries(vistle_boost_mpi
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
+    ${Boost_SYSTEM_LIBRARY}
+    ${Boost_SERIALIZATION_LIBRARY}
+    ${MPI_C_LIBRARIES}
 )

@@ -1,5 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS system)
-
 set(net_SOURCES
    dataproxy.cpp
    tunnel.cpp
@@ -14,7 +12,7 @@ set(net_HEADERS
 vistle_add_library(vistle_net ${VISTLE_LIB_TYPE} ${net_SOURCES} ${net_HEADERS})
 
 target_link_libraries(vistle_net
-        ${Boost_LIBRARIES}
+        ${Boost_SYSTEM_LIBRARY}
         vistle_core
 )
 

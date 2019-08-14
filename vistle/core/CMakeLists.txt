@@ -1,4 +1,3 @@
-vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system date_time)
 vistle_find_package(Zstd)
 vistle_find_package(LZ4)
 vistle_find_package(SNAPPY)
@@ -195,7 +194,9 @@ endif()
 
 target_link_libraries(vistle_core
         vistle_util
-        ${Boost_LIBRARIES}
+        ${Boost_SYSTEM_LIBRARY}
+        ${Boost_SERIALIZATION_LIBRARY}
+        ${Boost_DATE_TIME_LIBRARY}
 )
 
 include_directories(SYSTEM

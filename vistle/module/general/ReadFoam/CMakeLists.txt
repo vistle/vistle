@@ -1,8 +1,3 @@
-set(BOOST_COMPONENTS iostreams system)
-if (WIN32)
-   set(BOOST_COMPONENTS ${BOOST_COMPONENTS} zlib)
-endif()
-
 if (APPLE)
    # find keg-only libarchive from homebrew
    set(LibArchive_ROOT /usr/local/opt/libarchive)
@@ -12,7 +7,6 @@ vistle_find_package(LibArchive)
 vistle_find_package(LibZip)
 
 #vistle_find_package(ZLIB)
-vistle_find_package(Boost 1.53 COMPONENTS ${BOOST_COMPONENTS})
 if (NOT Boost_FOUND)
     return()
 endif()
@@ -43,6 +37,9 @@ add_module(ReadFoam ReadFOAM.cpp
 target_link_libraries(ReadFoam
         ${ZLIB_LIBRARIES}
 )
+if (Boost_ZLIB_FOUND)
+   target_link_libraries(ReadFoam ${Boost_ZLIB_LIBRARIES})
+endif()
 
 if (LibArchive_FOUND)
    target_link_libraries(ReadFoam ${LibArchive_LIBRARIES})
