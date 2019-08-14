@@ -123,12 +123,16 @@ bool Gendat::examine(const Parameter *)
 
 bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
 {
+    Index steps = m_steps->getValue();
+    if (steps > 0 && timestep < 0) {
+        // don't generate constant data when animation has been requested
+        return true;
+    }
+
     Index blocks[3];
     for (int i=0; i<3; ++i) {
         blocks[i] = m_blocks[i]->getValue();
     }
-    Index steps = m_steps->getValue();
-    Index num = steps <= 0 ? 1 : steps;
 
     Index b = blockNum;
     Index bx = b % blocks[0];
@@ -137,7 +141,7 @@ bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
     b /= blocks[1];
     Index bz = b;
 
-    block(token, bx, by, bz, blockNum, steps==0 ? -1 : timestep);
+    block(token, bx, by, bz, blockNum, timestep);
 
     return true;
 }
