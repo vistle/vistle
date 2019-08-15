@@ -1,4 +1,3 @@
-vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(X11)
 vistle_find_package(GLEW)

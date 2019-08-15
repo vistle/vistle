@@ -1,4 +1,3 @@
-vistle_find_package(TBB)
 use_openmp()
 add_definitions(-DCUTGEOMETRY)
 add_definitions(-DCUTTINGSURFACE)
@@ -28,14 +27,12 @@ if(OPENMP_FOUND)
 elseif(TBB_FOUND)
    add_definitions(-DUSE_TBB)
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
+   include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
 else()
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP)
    add_definitions(-DUSE_CPP)
 endif()
 
-include_directories(SYSTEM
-        ${THRUST_INCLUDE_DIR}
-        ${TBB_INCLUDE_DIRS}
-)
+include_directories(SYSTEM ${THRUST_INCLUDE_DIR})
 
 add_module(CutGeometry CutGeometry.cpp ../IsoSurface/IsoDataFunctor.cpp)

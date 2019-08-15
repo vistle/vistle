@@ -1,5 +1,4 @@
 vistle_find_package(OpenGL)
-vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 #vistle_find_package(ZFP)

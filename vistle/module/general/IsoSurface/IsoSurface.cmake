@@ -1,7 +1,7 @@
-vistle_find_package(TBB)
 use_openmp()
 
 set(PREFER_TBB TRUE)
+set(USE_TBB FALSE)
 
 set(SOURCES
     ../IsoSurface/IsoSurface.cpp
@@ -21,10 +21,12 @@ else()
    set(SOURCES ${SOURCES} "../IsoSurface/Leveller.cpp")
    if(TBB_FOUND AND PREFER_TBB)
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
+      set(USE_TBB TRUE)
    elseif(OPENMP_FOUND)
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
    elseif(TBB_FOUND)
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_TBB)
+      set(USE_TBB TRUE)
    else()
       add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP)
    endif()
@@ -33,12 +35,14 @@ endif()
 if(TBB_FOUND AND PREFER_TBB)
    add_definitions(-DUSE_TBB)
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
+   set(USE_TBB TRUE)
 elseif(OPENMP_FOUND)
    add_definitions(-DUSE_OMP)
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_OMP)
 elseif(TBB_FOUND)
    add_definitions(-DUSE_TBB)
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_TBB)
+   set(USE_TBB TRUE)
 else()
    add_definitions(-DTHRUST_HOST_SYSTEM=THRUST_HOST_SYSTEM_CPP)
    add_definitions(-DUSE_CPP)
@@ -49,11 +53,15 @@ include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
 )
 
+if (USE_TBB)
+   include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
+endif()
+
 add_module(${NAME} ${SOURCES} ${CUDA_OBJ})
 
-target_link_libraries(${NAME}
-        ${TBB_LIBRARIES}
-)
+if (USE_TBB)
+    target_link_libraries(${NAME} ${TBB_LIBRARIES})
+endif()
 
 if (CUDA_FOUND)
    target_link_libraries(${NAME}

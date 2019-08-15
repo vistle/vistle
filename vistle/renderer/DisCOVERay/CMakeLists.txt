@@ -2,7 +2,6 @@ include(FindPackageHandleStandardArgs)
 vistle_find_package(embree 3.0)
 find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
 
-vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 
 if (NOT TBB_FOUND)

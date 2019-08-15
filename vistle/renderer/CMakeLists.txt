@@ -1,5 +1,3 @@
-vistle_find_package(TBB)
-
 set(renderer_SOURCES
    renderer.cpp
    renderobject.cpp

@@ -218,6 +218,8 @@ set(ICET_CORE_LIBS "IceTCore")
 set(ICET_MPI_LIBS "IceTMPI")
 set(ICET_FOUND TRUE)
 
+vistle_find_package(TBB)
+
 set(ASAN_COMPILE_FLAGS "")
 set(ASAN_LINK_FLAGS "")
 if (VISTLE_SANITIZE_UNDEFINED)
