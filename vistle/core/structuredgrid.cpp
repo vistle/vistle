@@ -367,7 +367,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
    Index nvert = cl.size();
 
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
-   Vector corners[nvert];
+   Vector *corners = new Vector[nvert];
    for (Index i=0; i<nvert; ++i) {
        corners[i][0] = x[0][cl[i]];
        corners[i][1] = x[1][cl[i]];
@@ -415,6 +415,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
             }
          }
       }
+      delete[] corners;
    }
 
    return Interpolator(weights, indices);
