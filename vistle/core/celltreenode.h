@@ -14,12 +14,12 @@ struct CelltreeNode;
 template<int NumDimensions>
 struct CelltreeNode<8, NumDimensions> {
    union {
-      struct {
-         Scalar Lmax, Rmin; //< for inner nodes: max of left subvolume, min of right subvolume
-      };
-      struct {
-         Index start, size; //< for leaf nodes: index into cell array
-      };
+         Scalar Lmax; //< for inner nodes: max of left subvolume
+         Index start; //< for leaf nodes: index into cell array
+   };
+   union {
+         Scalar Rmin; //< for inner nodes: min of right subvolume
+         Index size; //< for leaf nodes: index into cell array
    };
 
    Index dim: NumDimensions==1 ? 1 : 2; //< split dimension, or NumDimensions for leaf nodes
@@ -51,12 +51,12 @@ struct CelltreeNode<8, NumDimensions> {
 template<int NumDimensions>
 struct CelltreeNode<4, NumDimensions> {
    union {
-      struct {
-         Scalar Lmax, Rmin; //< for inner nodes: max of left subvolume, min of right subvolume
-      };
-      struct {
-         Index start, size; //< for leaf nodes: index into cell array
-      };
+         Scalar Lmax; //< for inner nodes: max of left subvolume
+         Index start; //< for leaf nodes: index into cell array
+   };
+   union {
+         Scalar Rmin; //< for inner nodes: min of right subvolume
+         Index size; //< for leaf nodes: index into cell array
    };
 
    Index dim; //< split dimension, or NumDimensions for leaf nodes
