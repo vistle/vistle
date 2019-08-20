@@ -110,13 +110,13 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
                 return false;
             }
         }
-        addObject(p_grid, grid);
+        token.addObject(p_grid, grid);
     }
     else if (!p_only_geometry->getValue()){
         {//velocities
             auto grid = mGrids.find(partition);
             if (grid == mGrids.end()) {
-                sendError(".nek5000 did not find a matching grid for block " + partition);
+                sendError(".nek5000 did not find a matching grid for block %d", partition);
                 return false;
             }
             Vec<float, 3>::ptr velocity(new Vec<Scalar, 3>(iTotalBlockSize * blocksToRead));
@@ -136,20 +136,20 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
                 }
             }
             grid->second->updateInternals();
-            addObject(p_velocity, velocity);
+            token.addObject(p_velocity, velocity);
         }
         if (bHasPressure) {
-            if (!ReadScalarData(p_pressure, "pressure", timestep, partition)) {
+            if (!ReadScalarData(token, p_pressure, "pressure", timestep, partition)) {
                 return false;
             }
         }
         if (bHasTemperature) {
-            if (!ReadScalarData(p_temperature, "temperature", timestep, partition)) {
+            if (!ReadScalarData(token, p_temperature, "temperature", timestep, partition)) {
                 return false;
             }
         }
         for (size_t i = 0; i < iNumSFields; i++) {
-            if (!ReadScalarData(pv_misc[i], "s" + std::to_string(i + 1), timestep, partition)) {
+            if (!ReadScalarData(token, pv_misc[i], "s" + std::to_string(i + 1), timestep, partition)) {
                 return false;
             }
         }
@@ -335,7 +335,7 @@ bool ReadNek::ParseNekFileHeader() {
     ifstream  f(blockfilename, ifstream::binary);
 
     if (!f.is_open()) {
-        sendError("Could not open file %s, which should exist according to header file %s.", blockfilename, p_data_path);
+        sendError("Could not open file %s, which should exist according to header file %s.", blockfilename.c_str(), p_data_path->getValue().c_str());
         return false;
     }
 
@@ -808,12 +808,12 @@ bool ReadNek::ReadVar(const char* varname, int timestep, int block, float* data)
     return true;
 }
 
-bool ReadNek::ReadScalarData(vistle::Port *p, const std::string& varname, int timestep, int partition) {
+bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition) {
 
     int blocksRead = partition * std::floor(iNumBlocks / p_numPartitions->getValue());
     auto grid = mGrids.find(partition);
     if (grid == mGrids.end()) {
-        sendError(".nek5000 did not find a matching grid for block " + partition);
+        sendError(".nek5000 did not find a matching grid for block %d", partition);
         return false;
     }
     Vec<Scalar>::ptr scal(new Vec<Scalar>(iTotalBlockSize * BlocksToRead(partition)));
@@ -830,7 +830,7 @@ bool ReadNek::ReadScalarData(vistle::Port *p, const std::string& varname, int ti
             return false;
         }
     }
-    addObject(p, scal);
+    token.addObject(p, scal);
     return true;
 }
 
@@ -898,10 +898,7 @@ void ReadNek::ReadBlockLocations() {
     //badFile = UnifyMinimumValue(badFile);
     if (badFile < iTotalNumBlocks) {
         blockfilename = GetFileName(0, badFile);
-        char msg[1024];
-        snprintf(msg, 1024, "Could not open file \"%s\" to read block "
-            "locations.", blockfilename.c_str());
-        sendError(".nek5000 ", msg);
+        sendError("Could not open file \"%s\" to read block locations.", blockfilename.c_str());
     }
     delete[] tmpBlocks;
 

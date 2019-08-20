@@ -30,7 +30,6 @@
 #include <util/coRestraint.h>
 #include <util/byteswap.h>
 
-#include <core/unstr.h>
 #include <core/vec.h>
 //#include <core/structuredgrid.h>
 #include <core/unstr.h>
@@ -104,7 +103,7 @@ private:
     //read var with varname in data
     bool ReadVar(const char* varname, int timestep, int block, float* data);
     
-    bool ReadScalarData(vistle::Port *p, const std::string& varname, int timestep, int partition);
+    bool ReadScalarData(Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition);
     void ReadBlockLocations();
     void UpdateCyclesAndTimes();
 //      Create a filename from the template and other info.
@@ -147,7 +146,7 @@ private:
     vistle::IntParameter* p_numBlocks = nullptr;
     vistle::IntParameter* p_numPartitions = nullptr;
     float minVeclocity = 0, maxVelocity = 0;
-    int numReads = 0; 
+    int numReads = 0;
     // This info is embedded in the .nek3d text file 
         // originally specified by Dave Bremer
     std::string fileTemplate;
