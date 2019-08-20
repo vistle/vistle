@@ -19,7 +19,7 @@
   **                                                                        **
   **                             Dennis Grieger                             **
   **                                 HLRS                                   **
-  **                            Nobelstraﬂe 19                              **
+  **                            Nobelstra√üe 19                              **
   **                            70550 Stuttgart                             **
   **                                                                        **
   ** Date:  08.07.19  V1.0                                                  **
