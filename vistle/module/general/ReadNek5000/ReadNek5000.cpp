@@ -162,7 +162,7 @@ bool ReadNek::examine(const vistle::Parameter* param) {
    
     iNumBlocks = p_numBlocks->getValue();
     if (iNumBlocks <= 0 ||iNumBlocks > iTotalNumBlocks) {
-        iNumBlocks == iTotalNumBlocks;
+        iNumBlocks = iTotalNumBlocks;
     }
     int oldNumSFields = iNumSFields;
     if (fs::exists(p_data_path->getValue())) {
