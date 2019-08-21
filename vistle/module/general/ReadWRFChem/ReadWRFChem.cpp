@@ -189,7 +189,7 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
 }
 
 
-void ReadWRFChem::setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep) {
+void ReadWRFChem::setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep) const {
     if(!obj)
         return;
 
@@ -201,7 +201,7 @@ void ReadWRFChem::setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int ti
     obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
 }
 
-bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) {
+bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) const {
     std::string name = "";
     name = ch->getValue();
     if ((name == "") || (name=="NONE"))
@@ -240,7 +240,7 @@ ReadWRFChem::Block ReadWRFChem::computeBlock(int part, int nBlocks, long blockBe
     return block;
 }
 
-StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) {
+StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
 
     StructuredGrid::ptr outGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
@@ -268,7 +268,7 @@ StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) {
     return outGrid;
 }
 
-bool ReadWRFChem::addDataToPort(NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) {
+bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const {
 
     NcVar *varData = ncDataFile->get_var(m_variables[vi]->getValue().c_str());
     int numDimElem = varData->num_dims();
@@ -297,7 +297,7 @@ bool ReadWRFChem::addDataToPort(NcFile *ncDataFile, int vi, StructuredGrid::ptr 
     obj->setMapping(DataBase::Vertex);
     std::string pVar = m_variables[vi]->getValue();
     obj->addAttribute("_species", pVar);
-    addObject(m_dataOut[vi], obj);
+    token.addObject(m_dataOut[vi], obj);
 
     return true;
 }
@@ -387,7 +387,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             StructuredGrid::ptr outDataGrid = generateGrid(b);
             setMeta(outDataGrid, block, numBlocks, -1);
             outDataGrid->setNumTimesteps(-1);
-            addObject(m_gridOut, outDataGrid);
+            token.addObject(m_gridOut, outDataGrid);
 
             // ******** DATA *************
             for (int t = 0; t < numFiles; ++t) {
@@ -402,7 +402,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
                     if (emptyValue(m_variables[vi])) {
                         continue;
                     }
-                    addDataToPort(ncDataFile, vi, outDataGrid, b,  block, t);
+                    addDataToPort(token, ncDataFile, vi, outDataGrid, b,  block, t);
                 }
                 delete ncDataFile;
             }

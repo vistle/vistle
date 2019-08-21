@@ -99,7 +99,7 @@ bool ReadModel::prepareRead()
    return true;
 }
 
-Object::ptr ReadModel::load(const std::string &name) {
+Object::ptr ReadModel::load(const std::string &name) const {
 
     Object::ptr ret;
     Assimp::Importer importer;

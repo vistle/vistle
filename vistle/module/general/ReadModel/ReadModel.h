@@ -21,7 +21,7 @@ class ReadModel: public vistle::Reader {
 
  private:
 
-   vistle::Object::ptr load(const std::string & filename);
+   vistle::Object::ptr load(const std::string & filename) const;
 
    vistle::Integer m_firstBlock, m_lastBlock;
 };

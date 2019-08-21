@@ -36,8 +36,8 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
-    void setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep);
-    bool emptyValue(vistle::StringParameter *ch);
+    void setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep) const;
+    bool emptyValue(vistle::StringParameter *ch) const;
 
     struct Block {
         int part=0;
@@ -46,8 +46,8 @@ private:
     };
 
     bool inspectDir();
-    bool addDataToPort(NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t);
-    StructuredGrid::ptr generateGrid(Block *b);
+    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const;
+    StructuredGrid::ptr generateGrid(Block *b) const;
 
 
     std::vector<std::string> fileList;

@@ -490,7 +490,7 @@ bool ReadVtk::read(Reader::Token &token, int timestep, int block)
     return true;
 }
 
-bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) {
+bool ReadVtk::load(Token &token, const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) const {
 
    auto ds_pieces = getDataSet(filename, piece, ghost);
    auto dobj = ds_pieces.dataset;
