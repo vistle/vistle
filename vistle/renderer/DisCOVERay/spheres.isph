@@ -6,7 +6,7 @@
 
 struct RenderObjectData;
 
-struct RTC_ALIGN(16) Sphere
+struct Sphere
 {
   Vec3f p;                      //!< position of the sphere
   float r;                      //!< radius of the sphere

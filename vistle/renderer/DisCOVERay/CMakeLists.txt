@@ -22,6 +22,9 @@ else()
    use_openmp()
 endif()
 
+add_compile_options("-Wno-c99-extensions")
+add_compile_options("-Wno-gnu-variable-sized-type-not-at-end")
+
 # BEGIN: ispc
 ##############################################################
 # ISA configuration

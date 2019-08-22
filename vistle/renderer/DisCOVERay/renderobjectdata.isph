@@ -23,7 +23,7 @@ enum PrimitiveFlags {
    PFEndDisc = 64,
 };
 
-struct RTC_ALIGN(16) ColorMapData {
+struct ColorMapData {
     const unsigned int texWidth; //!< size of 1D texture (color table size)
     const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
     const float min;
@@ -31,7 +31,7 @@ struct RTC_ALIGN(16) ColorMapData {
     const unsigned int blendWithMaterial;
 };
 
-struct RTC_ALIGN(16) RenderObjectData {
+struct RenderObjectData {
 
    int t; //!< timestep number
    RTCDevice device; //!< embree device
