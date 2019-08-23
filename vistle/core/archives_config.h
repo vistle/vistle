@@ -117,7 +117,7 @@ struct archive_helper<boost_tag> {
         return boost::serialization::make_nvp(name, obj);
     }
 
-#if BOOST_VERSION > 105300
+#if BOOST_VERSION > 105500
     template<class T>
     using ArrayWrapper = const boost::serialization::array_wrapper<T>;
 #else

@@ -75,7 +75,11 @@ Hub::Hub(bool inManager)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
+#if BOOST_VERSION >= 106600
 , m_workGuard(asio::make_work_guard(m_ioService))
+#else
+, m_workGuard(new asio::io_service::work(m_ioService))
+#endif
 , m_ioThread([this](){ m_ioService.run(); })
 {
 

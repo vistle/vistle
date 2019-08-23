@@ -147,7 +147,11 @@ private:
    void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
    void clearStatus();
 
+#if BOOST_VERSION >= 106600
    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+#else
+   std::shared_ptr<boost::asio::io_service::work> m_workGuard;
+#endif
    std::thread m_ioThread;
 };
 

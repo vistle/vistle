@@ -3,7 +3,7 @@ if(NOT assimp_FOUND)
    return()
 endif()
 
-include_directories(
+include_directories(SYSTEM
         ${ASSIMP_INCLUDE_DIRS}
 )
 

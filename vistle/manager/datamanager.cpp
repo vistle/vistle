@@ -43,7 +43,11 @@ DataManager::DataManager(mpi::communicator &comm)
 , m_rank(comm.rank())
 , m_size(comm.size())
 , m_dataSocket(m_ioService)
+#if BOOST_VERSION >= 106600
 , m_workGuard(asio::make_work_guard(m_ioService))
+#else
+, m_workGuard(new asio::io_service::work(m_ioService))
+#endif
 , m_ioThread([this](){ sendLoop(); })
 , m_recvThread([this](){ recvLoop(); })
 , m_cleanThread([this](){ cleanLoop(); })

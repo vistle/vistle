@@ -90,7 +90,11 @@ private:
     std::mutex m_sendTaskMutex;
     std::deque<std::future<bool>> m_sendTasks;
 
+#if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+#else
+    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
+#endif
     std::thread m_ioThread;
     std::thread m_recvThread;
     std::thread m_cleanThread;
