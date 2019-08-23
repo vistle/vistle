@@ -85,6 +85,7 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
 ReadWRFChem::~ReadWRFChem() {
     if (ncFirstFile) {
         delete ncFirstFile;
+        ncFirstFile = nullptr;
     }
 }
 
@@ -141,8 +142,10 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
            return false;
        sendInfo("File %s is used as base", fileList.front().c_str());
 
-       if (ncFirstFile)
+       if (ncFirstFile) {
            delete ncFirstFile;
+           ncFirstFile = nullptr;
+       }
        std::string sDir = m_filedir->getValue() + "/" + fileList.front();
        ncFirstFile = new NcFile(sDir.c_str(), NcFile::ReadOnly, NULL, 0, NcFile::Offset64Bits);
 
@@ -175,13 +178,13 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             setTimesteps(numFiles);
 
         } else {
-            std::cerr << "ReadWRFChem: could not open NC file" << std::endl;
+            std::cerr << "Could not open NC file" << std::endl;
             return false;
         }
     }
 
 
-   /* if ((param == m_numPartitionsLat) || (param == m_numPartitionsVer)) {
+    /*if ((param == m_numPartitionsLat) || (param == m_numPartitionsVer)) {
        int N_p = static_cast<int>( m_numPartitionsLat->getValue() * m_numPartitionsLat->getValue() * m_numPartitionsVer->getValue());
        setPartitions(N_p);
     }*/
@@ -412,7 +415,10 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
 }
 
 bool ReadWRFChem::finishRead() {
-    delete ncFirstFile;
+    if(ncFirstFile) {
+        delete ncFirstFile;
+        ncFirstFile = nullptr;
+    }
     return true;
 }
 
