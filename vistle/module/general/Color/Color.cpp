@@ -29,13 +29,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (Frosty)
                                     (Dolomiti)
                                     (Grays)
-                                    (Dark)
-                                    (Dark85)
-                                    (Dark70)
-                                    (Dark50)
-                                    (Dark30)
-                                    (Dark15)
-                                    (Material)
+                                    (Gray20)
                                     )
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w)
@@ -95,6 +89,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
 
    m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
    m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
+   m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
+   setParameterRange(m_opacity, 0., 1.);
    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
    V_ENUM_SET_CHOICES(map, TransferFunction);
    auto steps = addIntParameter("steps", "number of color map steps", 32);
@@ -118,6 +114,8 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    setParameterRange(res, (Integer)1, (Integer)1024);
    setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
    setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
+   m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
+   setParameterRange(m_insetOpacity, 0., 1.);
 
    ColorMap::TF pins;
    typedef ColorMap::RGBA RGBA;
@@ -217,31 +215,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
 
    float d = 0.2;
    pins[0.0] = pins[1.0] = RGBA(d, d, d, 1.0);
-   transferFunctions[Dark] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.85);
-   transferFunctions[Dark85] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.7);
-   transferFunctions[Dark70] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.5);
-   transferFunctions[Dark50] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.3);
-   transferFunctions[Dark30] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.15);
-   transferFunctions[Dark15] = pins;
-   pins.clear();
-
-   pins[0.0] = pins[1.0] = RGBA(d, d, d, 0.0);
-   transferFunctions[Material] = pins;
+   transferFunctions[Gray20] = pins;
    pins.clear();
 }
 
@@ -492,6 +466,8 @@ void Color::computeMap() {
    if (pins.empty()) {
        pins = transferFunctions[COVISE];
    }
+   float op = m_opacity->getValue();
+   float inset_op = m_insetOpacity->getValue();
    int steps = getIntParameter("steps");
    int resolution = steps;
    bool relative = getIntParameter("inset_relative");
@@ -509,6 +485,9 @@ void Color::computeMap() {
    }
    //std::cerr << "computing color map with " << steps << " steps and a resolution of " << resolution << std::endl;
    m_colors.reset(new ColorMap(pins, steps, resolution));
+   for (auto i=0; i<m_colors->width; ++i) {
+       m_colors->data[i*4+3] *= op;
+   }
 
    if (m_nest) {
        auto inset_pins = transferFunctions[getIntParameter("inset_map")];
@@ -531,6 +510,9 @@ void Color::computeMap() {
        assert(insetStart >= 0);
        assert(unsigned(insetEnd) < m_colors->width);
        ColorMap inset(inset_pins, inset_steps, insetRes);
+       for (auto i=0; i<inset.width; ++i) {
+           inset.data[i*4+3] *= inset_op;
+       }
        for (int i=insetStart; i<=insetEnd; ++i) {
            for (int c=0; c<4; ++c)
                m_colors->data[i*4+c] = inset.data[(i-insetStart)*4+c];

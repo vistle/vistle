@@ -54,6 +54,7 @@ class Color: public vistle::Module {
    vistle::IntParameter *m_insetRelPara = nullptr;
    vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
    vistle::IntParameter *m_blendWithMaterialPara = nullptr;
+   vistle::FloatParameter *m_opacity = nullptr, *m_insetOpacity = nullptr;
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
    vistle::Scalar m_min, m_max;
