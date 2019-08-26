@@ -503,7 +503,6 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       }
       case MODULEAVAILABLE: {
          const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
-         std::cerr << "MODULEAVAILABLE Message arrived" << std::endl;
          handled = handlePriv(mod);
          break;
       }

@@ -193,7 +193,6 @@ bool Communicator::scanModules(const std::string &dir) {
    if (getRank() == 0) {
       for (auto &p: m_localModules) {
          const auto &m = p.second;
-         std::cerr << "sendModuleAvail" << std::endl;
          message::ModuleAvailable msg(m_hubId, m.name, m.path);
          sendHub(msg);
       }
@@ -422,7 +421,6 @@ bool Communicator::handleMessage(const message::Buffer &message) {
 
    std::lock_guard<Communicator> guard(*this);
 
-   CERR << "got messageid " << message.type() << std::endl;
    switch(message.type()) {
       case message::SETID: {
          auto &set = message.as<message::SetId>();
