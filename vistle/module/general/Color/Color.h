@@ -13,7 +13,7 @@ public:
    typedef vistle::Vector4 RGBA;
    typedef std::map<vistle::Scalar, RGBA> TF;
 
-   ColorMap(TF &pins, const size_t steps, const size_t width);
+   ColorMap(TF &pins, const size_t steps, const size_t width, float center=0.5f, float compress=1.f);
    ~ColorMap();
 
    std::vector<unsigned char> data;
@@ -51,6 +51,9 @@ class Color: public vistle::Module {
    bool m_autoRange = true, m_autoInsetCenter = true, m_nest = false;
    vistle::IntParameter *m_autoRangePara, *m_autoInsetCenterPara, *m_nestPara;
    vistle::FloatParameter *m_minPara = nullptr, *m_maxPara = nullptr;
+   vistle::FloatParameter *m_center = nullptr;
+   vistle::IntParameter *m_centerAbsolute = nullptr;
+   vistle::FloatParameter *m_compress = nullptr;
    vistle::IntParameter *m_insetRelPara = nullptr;
    vistle::FloatParameter *m_insetCenterPara = nullptr, *m_insetWidthPara = nullptr;
    vistle::IntParameter *m_blendWithMaterialPara = nullptr;

@@ -41,7 +41,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (Gray20)
                                     )
 
-ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w)
+ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
 : width(w)
 {
 
@@ -56,6 +56,18 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w)
        if (steps > 1) {
            int step = Scalar(index)/(Scalar(width)/Scalar(steps));
            x = step / (vistle::Scalar) (steps-1);
+       }
+       if (x > center) {
+           auto r = 1. - center;
+           x = (x-center)/r*0.5+0.5;
+       } else {
+           auto r = center;
+           x = x/r*0.5;
+       }
+       if (x > 0.5) {
+           x = pow((x-0.5)*2., compress)*0.5+0.5;
+       } else {
+           x = 0.5-pow((0.5-x)*2., compress)*0.5;
        }
        while (next != pins.end() && x > next->first) {
            ++next;
@@ -110,6 +122,11 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
 
    m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
    m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
+   m_center = addFloatParameter("center", "center of colormap range", 0.5);
+   setParameterRange(m_center, 0., 1.);
+   m_centerAbsolute = addIntParameter("center_absoulute", "absolute value for center", false, Parameter::Boolean);
+   m_compress = addFloatParameter("range_compression", "compression of range towards center", 1.);
+   setParameterRange(m_compress, 1e-5, 1e+5);
    m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
    setParameterRange(m_opacity, 0., 1.);
    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
@@ -409,6 +426,12 @@ bool Color::changeParameter(const Parameter *p) {
         }
     } else if (p == m_blendWithMaterialPara) {
         newMap = true;
+    } else if (p == m_centerAbsolute) {
+        if (m_centerAbsolute->getValue()) {
+            setParameterRange(m_center, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
+        } else {
+            setParameterRange(m_center, 0., 1.);
+        }
     }
 
     if (changeReduce) {
@@ -481,7 +504,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
 #pragma omp parallel for
 #endif
       for (ssize_t index = 0; index < numElem; index ++) {
-         tc[index] = index%2 ? 0. : 1.;
+          tc[index] = (index%2) ? 0. : 1.;
       }
    }
 
@@ -512,7 +535,17 @@ void Color::computeMap() {
        }
    }
    //std::cerr << "computing color map with " << steps << " steps and a resolution of " << resolution << std::endl;
-   m_colors.reset(new ColorMap(pins, steps, resolution));
+   double relcenter = m_center->getValue();
+   if (m_centerAbsolute->getValue()) {
+       if (m_min >= relcenter) {
+           relcenter = 0.;
+       } else if (m_max <= relcenter) {
+           relcenter = 1.;
+       } else {
+           relcenter = (relcenter - m_min)/(m_max - m_min);
+       }
+   }
+   m_colors.reset(new ColorMap(pins, steps, resolution, relcenter, m_compress->getValue()));
    for (size_t i=0; i<m_colors->width; ++i) {
        m_colors->data[i*4+3] *= op;
    }
