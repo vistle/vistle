@@ -1,4 +1,8 @@
+IF(WIN32)
+cmake_minimum_required(VERSION 3.15.2 FATAL_ERROR)
+ELSE(WIN32)
 cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
+ENDIF()
 set (CMAKE_CXX_STANDARD 14)
 set (CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -247,14 +251,28 @@ set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${ASAN_LINK_FLAGS}")
 
 set (BOOST_INCLUDEDIR /usr/include/boost169)  
 set (BOOST_LIBRARYDIR /usr/lib64/boost169)
+
 if (WIN32)
     set(BOOST_OPT zlib)
+set (BOOST_LIBRARYDIR $ENV{EXTERNLIBS}/boost/lib)
 else()
     set(BOOST_OPT)
 endif()
+
+#set (Boost_DEBUG ON)
+IF(WIN32)
+#otherwise Boost_INCLUDE_DIRS is not set and headers are not found
+set (Boost_NO_BOOST_CMAKE ON)
+set (Boost_USE_STATIC_RUNTIME OFF)
+ENDIF(WIN32)
+
 vistle_find_package(Boost 1.53 REQUIRED
-    COMPONENTS system serialization program_options date_time filesystem iostreams
+    COMPONENTS system serialization program_options date_time filesystem iostreams chrono locale thread
     OPTIONAL_COMPONENTS ${BOOST_OPT})
+	
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS}) 
+endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
@@ -317,8 +335,9 @@ if (NOT CRAY)
    set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 endif()
 
+# for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
-if (Boost_VERSION VERSION_GREATER 106099)
+if (Boost_VERSION VERSION_GREATER 1.60.99)
    set(BOOST_MPI_DIR "boost-mpi")
 elseif (Boost_VERSION VERSION_GREATER 105899)
    set(BOOST_MPI_DIR "boost-mpi-1.60")
@@ -327,7 +346,7 @@ elseif (Boost_VERSION VERSION_GREATER 105599)
 else()
    set(BOOST_MPI_DIR "boost-mpi-1.55")
 endif()
-#message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
+message("Using Boost.MPI from ${BOOST_MPI_DIR} for Boost ${Boost_VERSION}")
 
 get_property(LIB64 GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
 if (LIB64)

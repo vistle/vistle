@@ -12,6 +12,7 @@
 #include <core/object.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/executor_work_guard.hpp>
 #include <boost/mpi/request.hpp>
 #include <boost/mpi/communicator.hpp>
 

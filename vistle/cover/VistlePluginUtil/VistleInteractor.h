@@ -139,8 +139,8 @@ class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
    void sendParamMessage(const std::shared_ptr<vistle::Parameter> param) const;
 
    // clean up arrays allocated for getVectorParam
-   mutable std::vector<std::unique_ptr<int, std::default_delete<int[]>>> intArrays;
-   mutable std::vector<std::unique_ptr<float, std::default_delete<float[]>>> floatArrays;
+   mutable std::vector<int*> intArrays;
+   mutable std::vector<float*> floatArrays;
 };
 
 #endif

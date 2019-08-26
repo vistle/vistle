@@ -310,9 +310,9 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
     std::vector<std::string> args;
 #ifdef _WIN32
     // windows mpiexec not working yet, remove the following three lines 
-	std::copy(argv.begin(), argv.end(), std::back_inserter(args));
-	auto pid2 = spawn_process(argv[0], args);
-	return pid2;
+	//std::copy(argv.begin(), argv.end(), std::back_inserter(args));
+	//auto pid2 = spawn_process(argv[0], args);
+	//return pid2;
     std::string spawn = "spawn_vistle.bat";
 #else
     std::string spawn = "spawn_vistle.sh";

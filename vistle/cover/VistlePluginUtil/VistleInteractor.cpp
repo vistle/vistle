@@ -17,6 +17,14 @@ VistleInteractor::VistleInteractor(const Module *owner, const std::string &modul
 VistleInteractor::~VistleInteractor()
 {
    m_parameterMap.clear();
+   for (auto& i : intArrays)
+   {
+       delete[] i;
+   }
+   for (auto& f : floatArrays)
+   {
+       delete[] f;
+   }
 }
 
 std::shared_ptr<vistle::Parameter> VistleInteractor::findParam(const std::string &name) const
@@ -233,7 +241,7 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
    const IntParamVector &v = vparam->getValue();
    numElem = v.dim;
    val = new int[numElem];
-   intArrays.emplace_back(val);
+   intArrays.push_back(val);
    for (int i=0; i<numElem; ++i) {
       val[i] = v[i];
    }
@@ -252,7 +260,7 @@ int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numE
    const ParamVector &v = vparam->getValue();
    numElem = v.dim;
    val = new float[numElem];
-   floatArrays.emplace_back(val);
+   floatArrays.push_back(val);
    for (int i=0; i<numElem; ++i) {
       val[i] = v[i];
    }
