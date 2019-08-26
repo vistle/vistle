@@ -39,3 +39,6 @@
 [submodule "singularity"]
 	path = singularity
 	url = git://github.com/vistle/singularity.git
+[submodule "3rdparty/boost-mpi-1.69"]
+	path = 3rdparty/boost-mpi-1.69
+	url = git://github.com/boostorg/mpi.git

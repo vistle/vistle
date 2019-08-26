@@ -337,8 +337,10 @@ endif()
 
 # for CMake config file version of boost this needs to be changed to version numbers such as 1.60.99 instead of 106099
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
-if (Boost_VERSION VERSION_GREATER 1.60.99)
+if (Boost_VERSION VERSION_GREATER 1.69.99)
    set(BOOST_MPI_DIR "boost-mpi")
+elseif (Boost_VERSION VERSION_GREATER 1.60.99)
+   set(BOOST_MPI_DIR "boost-mpi-1.69")
 elseif (Boost_VERSION VERSION_GREATER 105899)
    set(BOOST_MPI_DIR "boost-mpi-1.60")
 elseif (Boost_VERSION VERSION_GREATER 105599)
