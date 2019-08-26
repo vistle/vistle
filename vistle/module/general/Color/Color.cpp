@@ -11,6 +11,9 @@
 
 #include "Color.h"
 
+#include "matplotlib.h"
+#include "turbo_colormap.h"
+
 MODULE_MAIN(Color)
 
 //#define USE_OPENMP
@@ -19,10 +22,16 @@ using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (COVISE)
+                                    (Plasma)
+                                    (Magma)
+                                    (Inferno)
                                     (CoolWarmBrewer)
+                                    (Viridis)
+                                    (Cividis)
                                     (Star)
                                     (ITSM)
                                     (Rainbow)
+                                    (Turbo)
                                     (Blue_Light)
                                     (ANSYS)
                                     (CoolWarm)
@@ -80,6 +89,18 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w)
 ColorMap::~ColorMap() {
 }
 
+ColorMap::TF pinsFromArray(const float data[256][3]) {
+
+    ColorMap::TF tf;
+    for (size_t i=0; i<256; ++i) {
+        float x = i/255.f;
+        tf[x] = Vector4(data[i][0], data[i][1], data[i][2], 1);
+    }
+
+    return tf;
+}
+
+
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("Color", name, moduleID, comm) {
 
@@ -125,6 +146,13 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins.insert(std::make_pair(1.0, RGBA(1.0, 1.0, 0.0, 1.0)));
    transferFunctions[COVISE] = pins;
    pins.clear();
+
+   transferFunctions[Plasma] = pinsFromArray(_plasma_data);
+   transferFunctions[Inferno] = pinsFromArray(_inferno_data);
+   transferFunctions[Magma] = pinsFromArray(_magma_data);
+   transferFunctions[Viridis] = pinsFromArray(_viridis_data);
+   transferFunctions[Cividis] = pinsFromArray(_cividis_data);
+   transferFunctions[Turbo] = pinsFromArray(turbo_srgb_floats);
 
    pins[0.00] = RGBA(0.10, 0.00, 0.90, 1.);
    pins[0.07] = RGBA(0.00, 0.00, 1.00, 1.);
@@ -485,7 +513,7 @@ void Color::computeMap() {
    }
    //std::cerr << "computing color map with " << steps << " steps and a resolution of " << resolution << std::endl;
    m_colors.reset(new ColorMap(pins, steps, resolution));
-   for (auto i=0; i<m_colors->width; ++i) {
+   for (size_t i=0; i<m_colors->width; ++i) {
        m_colors->data[i*4+3] *= op;
    }
 
@@ -510,7 +538,7 @@ void Color::computeMap() {
        assert(insetStart >= 0);
        assert(unsigned(insetEnd) < m_colors->width);
        ColorMap inset(inset_pins, inset_steps, insetRes);
-       for (auto i=0; i<inset.width; ++i) {
+       for (size_t i=0; i<inset.width; ++i) {
            inset.data[i*4+3] *= inset_op;
        }
        for (int i=insetStart; i<=insetEnd; ++i) {
