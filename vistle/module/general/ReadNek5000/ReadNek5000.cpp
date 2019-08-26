@@ -169,6 +169,7 @@ bool ReadNek::examine(const vistle::Parameter* param) {
         if (!parseMetaDataFile() || !ParseNekFileHeader()) {
             return false;
         }
+        mGrids.clear();
         setTimesteps(iNumTimesteps);
         setPartitions(p_numPartitions->getValue());
     }
