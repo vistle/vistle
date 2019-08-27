@@ -12,6 +12,7 @@
 #include "Color.h"
 
 #include "matplotlib.h"
+#include "fake_parula.h"
 #include "turbo_colormap.h"
 
 MODULE_MAIN(Color)
@@ -22,23 +23,24 @@ using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (COVISE)
-                                    (Plasma)
-                                    (Magma)
                                     (Inferno)
+                                    (Magma)
+                                    (Plasma)
                                     (CoolWarmBrewer)
-                                    (Viridis)
-                                    (Cividis)
-                                    (Star)
-                                    (ITSM)
-                                    (Rainbow)
-                                    (Turbo)
-                                    (Blue_Light)
-                                    (ANSYS)
                                     (CoolWarm)
                                     (Frosty)
                                     (Dolomiti)
+                                    (Parula)
+                                    (Viridis)
+                                    (Cividis)
+                                    (Turbo)
+                                    (Blue_Light)
                                     (Grays)
                                     (Gray20)
+                                    (ANSYS)
+                                    (Star)
+                                    (ITSM)
+                                    (Rainbow)
                                     )
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
@@ -101,12 +103,12 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, f
 ColorMap::~ColorMap() {
 }
 
-ColorMap::TF pinsFromArray(const float data[256][3]) {
+ColorMap::TF pinsFromArray(const float *data, size_t n) {
 
     ColorMap::TF tf;
-    for (size_t i=0; i<256; ++i) {
-        float x = i/255.f;
-        tf[x] = Vector4(data[i][0], data[i][1], data[i][2], 1);
+    for (size_t i=0; i<n; ++i) {
+        float x = i/(n-1.f);
+        tf[x] = Vector4(data[i*3+0], data[i*3+1], data[i*3+2], 1);
     }
 
     return tf;
@@ -166,12 +168,17 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    transferFunctions[COVISE] = pins;
    pins.clear();
 
-   transferFunctions[Plasma] = pinsFromArray(_plasma_data);
-   transferFunctions[Inferno] = pinsFromArray(_inferno_data);
-   transferFunctions[Magma] = pinsFromArray(_magma_data);
-   transferFunctions[Viridis] = pinsFromArray(_viridis_data);
-   transferFunctions[Cividis] = pinsFromArray(_cividis_data);
-   transferFunctions[Turbo] = pinsFromArray(turbo_srgb_floats);
+#define TF(a) pinsFromArray(&a[0][0], sizeof(a)/sizeof(a[0]))
+
+   transferFunctions[Plasma] = TF(_plasma_data);
+   transferFunctions[Inferno] = TF(_inferno_data);
+   transferFunctions[Magma] = TF(_magma_data);
+   transferFunctions[Viridis] = TF(_viridis_data);
+   transferFunctions[Cividis] = TF(_cividis_data);
+   transferFunctions[Parula] = TF(_fake_parula_data);
+   transferFunctions[Turbo] = TF(turbo_srgb_floats);
+
+#undef TF
 
    pins[0.00] = RGBA(0.10, 0.00, 0.90, 1.);
    pins[0.07] = RGBA(0.00, 0.00, 1.00, 1.);

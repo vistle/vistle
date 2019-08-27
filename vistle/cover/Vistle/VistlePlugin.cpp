@@ -93,7 +93,7 @@ bool VistlePlugin::init() {
        cover->visMenu = new ui::Menu("Vistle", this);
 
        auto executeButton = new ui::Action("Execute", cover->visMenu);
-       cover->visMenu->add(executeButton, ui::Container::Front);
+       cover->visMenu->add(executeButton, ui::Container::KeepFirst);
        executeButton->setShortcut("e");
        executeButton->setCallback([this](){
            executeAll();
