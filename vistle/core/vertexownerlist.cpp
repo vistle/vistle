@@ -107,7 +107,7 @@ bool VertexOwnerList::checkImpl() const {
    return true;
 }
 
-V_OBJECT_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST);
-V_OBJECT_CTOR(VertexOwnerList);
+V_OBJECT_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
+V_OBJECT_CTOR(VertexOwnerList)
 
 } // namespace vistle

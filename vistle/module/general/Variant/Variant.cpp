@@ -21,7 +21,7 @@ class Variant: public vistle::Module {
 };
 
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(Visibility, (DontChange)(Visible)(Hidden));
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Visibility, (DontChange)(Visible)(Hidden))
 
 using namespace vistle;
 

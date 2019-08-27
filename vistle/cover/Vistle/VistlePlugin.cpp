@@ -192,4 +192,4 @@ bool VistlePlugin::executeAll() {
     return false;
 }
 
-COVERPLUGIN(VistlePlugin);
+COVERPLUGIN(VistlePlugin)

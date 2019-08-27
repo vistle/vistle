@@ -152,7 +152,7 @@ const Meta &PlaceHolder::originalMeta() const {
    return d()->originalMeta;
 }
 
-V_OBJECT_TYPE(PlaceHolder, Object::PLACEHOLDER);
-V_OBJECT_CTOR(PlaceHolder);
+V_OBJECT_TYPE(PlaceHolder, Object::PLACEHOLDER)
+V_OBJECT_CTOR(PlaceHolder)
 
 } // namespace vistle

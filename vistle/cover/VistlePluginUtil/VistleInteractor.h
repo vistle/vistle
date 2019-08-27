@@ -12,7 +12,7 @@ class ModuleRenderObject;
 
 namespace vistle {
 class Module;
-};
+}
 
 class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
 

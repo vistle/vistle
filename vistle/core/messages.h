@@ -42,7 +42,7 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
          (SLAVEHUB) //< slave hub
          (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
          (REMOTEBULKDATA) //< bulk data transfer to remote hubs
-         );
+         )
 
    Identify(Identity id, const std::string &name = "");
    Identify(Identity id, int rank);
@@ -894,7 +894,7 @@ public:
         (LookUpFiles)
         (ReadDirectory)
         (MakeDirectory)
-    );
+    )
     FileQuery(int moduleId, const std::string &path, Command cmd, size_t payloadsize=0);
     Command command() const;
     int moduleId() const;
@@ -917,7 +917,7 @@ public:
         (Error)
         (DoesNotExist)
         (NoPermission)
-    );
+    )
     FileQueryResult(const FileQuery &request, Status status, size_t payloadsize);
     const char *path() const;
     FileQuery::Command command() const;

@@ -59,7 +59,7 @@ Lines::Data * Lines::Data::create(const std::string &objId, const Index numEleme
    return l;
 }
 
-V_OBJECT_TYPE(Lines, Object::LINES);
-V_OBJECT_CTOR(Lines);
+V_OBJECT_TYPE(Lines, Object::LINES)
+V_OBJECT_CTOR(Lines)
 
 } // namespace vistle

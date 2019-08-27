@@ -16,7 +16,7 @@
 
 #include "macosutils.h"
 
-Q_DECLARE_METATYPE(boost::uuids::uuid);
+Q_DECLARE_METATYPE(boost::uuids::uuid)
 
 using namespace gui;
 

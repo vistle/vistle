@@ -47,7 +47,7 @@ Empty::Data * Empty::Data::create(const std::string &objId) {
    return p;
 }
 
-V_OBJECT_TYPE(Empty, Object::EMPTY);
-V_OBJECT_CTOR(Empty);
+V_OBJECT_TYPE(Empty, Object::EMPTY)
+V_OBJECT_CTOR(Empty)
 
 } // namespace vistle

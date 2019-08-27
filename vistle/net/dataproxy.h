@@ -40,7 +40,7 @@ public:
    bool connectRemoteData(const message::AddHub &hub);
 
 private:
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote));
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote))
 
    int idToHub(int id) const;
    io_service &io();

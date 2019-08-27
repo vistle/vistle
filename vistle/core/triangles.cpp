@@ -91,7 +91,7 @@ Index Triangles::getNumCorners() const {
    return m_numCorners;
 }
 
-V_OBJECT_TYPE(Triangles, Object::TRIANGLES);
-V_OBJECT_CTOR(Triangles);
+V_OBJECT_TYPE(Triangles, Object::TRIANGLES)
+V_OBJECT_CTOR(Triangles)
 
 } // namespace vistle

@@ -51,7 +51,7 @@ enum Id {
     GUI = -2,
     Debugger = -3,
 };
-};
+}
 
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
 

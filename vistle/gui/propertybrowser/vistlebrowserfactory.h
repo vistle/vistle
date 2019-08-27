@@ -8,7 +8,7 @@ class VistleBrowserFactoryPrivate;
 
 namespace vistle {
 class UserInterface;
-};
+}
 
 class QT_QTPROPERTYBROWSER_EXPORT VistleBrowserFactory : public QtAbstractEditorFactory<VistleBrowserPropertyManager>
 {

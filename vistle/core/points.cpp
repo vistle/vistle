@@ -69,7 +69,7 @@ Points::Data *Points::Data::create(const Index numPoints, const Meta &meta) {
    return p;
 }
 
-V_OBJECT_TYPE(Points, Object::POINTS);
-V_OBJECT_CTOR(Points);
+V_OBJECT_TYPE(Points, Object::POINTS)
+V_OBJECT_CTOR(Points)
 
 } // namespace vistle

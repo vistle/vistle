@@ -145,8 +145,8 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
     return mapping();
 }
 
-V_OBJECT_TYPE(DataBase, Object::DATABASE);
-//V_OBJECT_CTOR(DataBase);
+V_OBJECT_TYPE(DataBase, Object::DATABASE)
+//V_OBJECT_CTOR(DataBase)
 DataBase::DataBase(DataBase::Data *data): DataBase::Base(data) { refreshImpl(); }
 DataBase::DataBase(): DataBase::Base() { refreshImpl(); }
 #if 0

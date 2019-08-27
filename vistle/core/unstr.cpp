@@ -1072,7 +1072,7 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const Index numElements,
    return u;
 }
 
-V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
-V_OBJECT_CTOR(UnstructuredGrid);
+V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID)
+V_OBJECT_CTOR(UnstructuredGrid)
 
 } // namespace vistle

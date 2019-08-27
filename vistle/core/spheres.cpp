@@ -65,7 +65,7 @@ Spheres::Data *Spheres::Data::create(const Index numSpheres, const Meta &meta) {
    return p;
 }
 
-V_OBJECT_TYPE(Spheres, Object::SPHERES);
-V_OBJECT_CTOR(Spheres);
+V_OBJECT_TYPE(Spheres, Object::SPHERES)
+V_OBJECT_CTOR(Spheres)
 
 } // namespace vistle

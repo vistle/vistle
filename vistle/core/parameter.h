@@ -269,11 +269,11 @@ struct ParameterCheck<std::string> {
 #define V_PARAM_TYPE(ValueType,Name) \
     extern template class V_COREEXPORT ParameterBase<ValueType>; \
     typedef ParameterBase<ValueType> Name;
-V_PARAM_TYPE(ParamVector, VectorParameter);
-V_PARAM_TYPE(IntParamVector, IntVectorParameter);
-V_PARAM_TYPE(Float, FloatParameter);
-V_PARAM_TYPE(Integer, IntParameter);
-V_PARAM_TYPE(std::string, StringParameter);
+V_PARAM_TYPE(ParamVector, VectorParameter)
+V_PARAM_TYPE(IntParamVector, IntVectorParameter)
+V_PARAM_TYPE(Float, FloatParameter)
+V_PARAM_TYPE(Integer, IntParameter)
+V_PARAM_TYPE(std::string, StringParameter)
 #undef V_PARAM_TYPE
 
 V_ENUM_OUTPUT_OP(Type, Parameter)

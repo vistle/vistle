@@ -103,7 +103,7 @@ Tubes::Data *Tubes::Data::create(const Index numTubes, const Index numCoords, co
    return p;
 }
 
-V_OBJECT_TYPE(Tubes, Object::TUBES);
-V_OBJECT_CTOR(Tubes);
+V_OBJECT_TYPE(Tubes, Object::TUBES)
+V_OBJECT_CTOR(Tubes)
 
 } // namespace vistle

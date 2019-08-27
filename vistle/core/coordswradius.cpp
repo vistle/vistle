@@ -80,7 +80,7 @@ CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId,
    return NULL;
 }
 
-V_OBJECT_TYPE(CoordsWithRadius, Object::COORDWRADIUS);
-V_OBJECT_CTOR(CoordsWithRadius);
+V_OBJECT_TYPE(CoordsWithRadius, Object::COORDWRADIUS)
+V_OBJECT_CTOR(CoordsWithRadius)
 
 } // namespace vistle

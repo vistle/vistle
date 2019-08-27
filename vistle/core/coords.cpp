@@ -99,7 +99,7 @@ void Coords::setNormals(Normals::const_ptr normals) {
     d()->normals = normals;
 }
 
-V_OBJECT_TYPE(Coords, Object::COORD);
-V_OBJECT_CTOR(Coords);
+V_OBJECT_TYPE(Coords, Object::COORD)
+V_OBJECT_CTOR(Coords)
 
 } // namespace vistle

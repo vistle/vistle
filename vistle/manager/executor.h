@@ -12,7 +12,7 @@ class Communicator;
 
 namespace message {
 class Message;
-};
+}
 
 class Executor {
 

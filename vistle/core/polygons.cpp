@@ -60,7 +60,7 @@ Polygons::Data * Polygons::Data::create(const Index numElements,
    return p;
 }
 
-V_OBJECT_TYPE(Polygons, Object::POLYGONS);
-V_OBJECT_CTOR(Polygons);
+V_OBJECT_TYPE(Polygons, Object::POLYGONS)
+V_OBJECT_CTOR(Polygons)
 
 } // namespace vistle

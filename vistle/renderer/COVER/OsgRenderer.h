@@ -22,7 +22,7 @@ class VistleInteractor;
 
 namespace opencover {
 class coVRPlugin;
-};
+}
 
 class PluginRenderObject: public vistle::RenderObject {
 

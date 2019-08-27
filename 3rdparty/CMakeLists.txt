@@ -35,6 +35,9 @@ SET(ICET_LIBRARY_DIR ${PROJECT_BINARY_DIR}/lib CACHE PATH "Output directory for 
 SET(ICET_EXECUTABLE_DIR ${PROJECT_BINARY_DIR}/bin CACHE PATH "Output directory for building all executable.")
 set(ICET_BINARY_DIR ${PROJECT_BINARY_DIR} CACHE PATH "Value overriden by Vistle")
 set(ICET_INSTALL_LIB_DIR ${INSTALL_LIB_DIR} CACHE INTERNAL "")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-Wno-variadic-macros -Wno-pedantic)
+endif()
 add_subdirectory(IceT)
 
 set(PythonLibsNew_FIND_REQUIRED FALSE)

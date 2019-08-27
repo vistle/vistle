@@ -65,7 +65,7 @@ Normals::Data *Normals::Data::create(const Index numNormals, const Meta &meta) {
    return p;
 }
 
-V_OBJECT_TYPE(Normals, Object::NORMALS);
-V_OBJECT_CTOR(Normals);
+V_OBJECT_TYPE(Normals, Object::NORMALS)
+V_OBJECT_CTOR(Normals)
 
 } // namespace vistle

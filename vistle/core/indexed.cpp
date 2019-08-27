@@ -439,6 +439,6 @@ Object::Type Indexed::type() {
    return Object::UNKNOWN;
 }
 
-V_OBJECT_CTOR(Indexed);
+V_OBJECT_CTOR(Indexed)
 
 } // namespace vistle
