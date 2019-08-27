@@ -280,7 +280,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    add_compile_options("-pedantic-errors")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-   add_compile_flags("-pedantic-errors")
+   add_compile_options("-pedantic-errors")
 
    if (NOT ${BUILD_SHARED_LIBS})
       # for linking the libraries into plugins
