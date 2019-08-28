@@ -9,6 +9,7 @@ using namespace vistle;
 VistleInteractor::VistleInteractor(const Module *owner, const std::string &moduleName, int moduleId)
 : m_owner(owner)
 , m_moduleName(moduleName)
+, m_pluginName(moduleName)
 , m_moduleId(moduleId)
 , m_object(new ModuleRenderObject(m_moduleName, m_moduleId))
 {
@@ -25,6 +26,11 @@ VistleInteractor::~VistleInteractor()
    {
        delete[] f;
    }
+}
+
+void VistleInteractor::setPluginName(const std::string &plugin) {
+
+    m_pluginName = plugin;
 }
 
 std::shared_ptr<vistle::Parameter> VistleInteractor::findParam(const std::string &name) const
@@ -524,7 +530,7 @@ const char *VistleInteractor::getObjName()
 }
 
 // the covise data object which has feedback attributes
-opencover::RenderObject *VistleInteractor::getObject()
+ModuleRenderObject *VistleInteractor::getObject()
 {
    return m_object.get();
 }
@@ -532,7 +538,7 @@ opencover::RenderObject *VistleInteractor::getObject()
 // get the name of the module which created the data object
 const char *VistleInteractor::getPluginName()
 {
-   return m_moduleName.c_str();
+   return m_pluginName.c_str();
 }
 
 // get the name of the module which created the data object

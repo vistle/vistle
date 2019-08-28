@@ -220,6 +220,8 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       plugin = "CuttingSurface";
    if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
        plugin = "RhrClient";
+   if (plugin == "Color")
+       plugin = "ColorBars";
    // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
 #if 0
@@ -235,6 +237,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
            cover->addPlugin(plugin.c_str());
 
        m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
+       m_interactorMap[senderId]->setPluginName(plugin);
        it = m_interactorMap.find(senderId);
        std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
        it->second->incRefCount();
@@ -547,6 +550,38 @@ bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr t
     cmap.image->dirty();
 
     cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+
+    std::string plugin = texture->getAttribute("_plugin");
+    if (!plugin.empty())
+        cover->addPlugin(plugin.c_str());
+
+    int modId = texture->getCreator();
+    auto it = m_interactorMap.find(modId);
+    if (it == m_interactorMap.end()) {
+        std::cerr << rank() << ": no module with id " << modId << " found for colormap for species " << species << std::endl;
+        return true;
+    }
+
+    auto inter = it->second;
+    if (!inter) {
+        std::cerr << rank() << ": no interactor for id " << modId << " found for colormap for species " << species << std::endl;
+        return true;
+    }
+    auto ro = inter->getObject();
+    if (!ro) {
+        std::cerr << rank() << ": no renderobject for id " << modId << " found for colormap for species " << species << std::endl;
+        return true;
+    }
+
+    auto att = texture->getAttribute("_colormap");
+    if (att.empty()) {
+        ro->removeAttribute("COLORMAP");
+    } else {
+        ro->addAttribute("COLORMAP", att);
+        std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
+    }
+
+    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
 
     return true;
 }

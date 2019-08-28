@@ -101,10 +101,15 @@ class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
 
    const char *getAttribute(const char *) const;
 
+   void addAttribute(const std::string &key, const std::string &value);
+   void removeAttribute(const std::string &key);
+
  private:
    std::string m_moduleName;
    int m_moduleId;
    std::string m_name;
+
+   std::map<std::string, std::string> m_attributes;
 };
 
 class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {

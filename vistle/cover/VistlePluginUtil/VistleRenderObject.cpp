@@ -213,10 +213,25 @@ RenderObject *ModuleRenderObject::getVertexAttribute() const
 
 const char *ModuleRenderObject::getAttribute(const char *attrname) const
 {
+    auto it = m_attributes.find(attrname);
+    if (it != m_attributes.end()) {
+        return it->second.c_str();
+    }
+
    if (!strcmp(attrname, "OBJECTNAME"))
       return getName();
 
    return NULL;
+}
+
+void ModuleRenderObject::addAttribute(const std::string &key, const std::string &value) {
+
+    m_attributes[key] = value;
+}
+
+void ModuleRenderObject::removeAttribute(const std::string &key) {
+
+    m_attributes.erase(key);
 }
 
 VariantRenderObject::VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible)

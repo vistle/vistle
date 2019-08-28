@@ -7,8 +7,7 @@
 #include <core/messagesender.h>
 
 #include "export.h"
-
-class ModuleRenderObject;
+#include "VistleRenderObject.h"
 
 namespace vistle {
 class Module;
@@ -19,6 +18,7 @@ class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
  public:
    VistleInteractor(const vistle::Module *owner, const std::string &moduleName, int moduleId);
    ~VistleInteractor();
+   void setPluginName(const std::string &plugin);
 
    void addParam(const std::string &name, const vistle::message::AddParameter &msg);
    void removeParam(const std::string &name, const vistle::message::RemoveParameter &msg);
@@ -101,7 +101,7 @@ class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
    virtual const char *getObjName();
 
    // the covise data object which has feedback attributes
-   virtual opencover::RenderObject *getObject();
+   virtual ModuleRenderObject *getObject();
 
    // get the name of the module which created the data object
    virtual const char *getPluginName();
@@ -128,6 +128,7 @@ class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
  private:
    const vistle::MessageSender *m_owner;
    std::string m_moduleName;
+   std::string m_pluginName;
    int m_moduleId;
    std::shared_ptr<ModuleRenderObject> m_object;
 

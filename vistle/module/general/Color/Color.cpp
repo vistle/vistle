@@ -599,6 +599,22 @@ void Color::sendColorMap() {
            tex->addAttribute("_blend_with_material", "true");
        addObject(m_colorOut, tex);
 
+       std::stringstream buffer;
+       buffer << tex->getName() << '\n'
+              << m_species << '\n'
+              << m_min << '\n'
+              << m_max << '\n'
+              << m_colors->width << '\n'
+              << '0';
+
+       buffer.precision(4);
+       buffer << std::fixed;
+       for (size_t index = 0; index < m_colors->width * 4; index ++)
+           buffer << "\n" << int(pix[index])/255.f;
+
+       tex->addAttribute("_colormap", buffer.str());
+       tex->addAttribute("_plugin", "ColorBars");
+
        m_colorMapSent = true;
    }
 }
