@@ -13,15 +13,15 @@ public:
     struct Data
     {
         Data() : val(0), minVal(LONG_MIN), maxVal(LONG_MAX), singleStep(1), readOnly(false) {}
-        long val;
-        long minVal;
-        long maxVal;
-        long singleStep;
+        vistle::Integer val;
+        vistle::Integer minVal;
+        vistle::Integer maxVal;
+        vistle::Integer singleStep;
         bool readOnly;
-        long minimumValue() const { return minVal; }
-        long maximumValue() const { return maxVal; }
-        void setMinimumValue(long newMinVal) { setSimpleMinimumData(this, newMinVal); }
-        void setMaximumValue(long newMaxVal) { setSimpleMaximumData(this, newMaxVal); }
+        vistle::Integer minimumValue() const { return minVal; }
+        vistle::Integer maximumValue() const { return maxVal; }
+        void setMinimumValue(vistle::Integer newMinVal) { setSimpleMinimumData(this, newMinVal); }
+        void setMaximumValue(vistle::Integer newMaxVal) { setSimpleMaximumData(this, newMaxVal); }
     };
 
     typedef QMap<const QtProperty *, Data> PropertyValueMap;
@@ -32,9 +32,9 @@ public:
 /*!
     \class QtLongPropertyManager
 
-    \brief The QtLongPropertyManager provides and manages long properties.
+    \brief The QtLongPropertyManager provides and manages vistle::Integer properties.
 
-    An long property has a current value, and a range specifying the
+    An vistle::Integer property has a current value, and a range specifying the
     valid values. The range is defined by a minimum and a maximum
     value.
 
@@ -52,7 +52,7 @@ public:
 */
 
 /*!
-    \fn void QtLongPropertyManager::valueChanged(QtProperty *property, long value)
+    \fn void QtLongPropertyManager::valueChanged(QtProperty *property, vistle::Integer value)
 
     This signal is emitted whenever a property created by this manager
     changes its value, passing a pointer to the \a property and the new
@@ -62,7 +62,7 @@ public:
 */
 
 /*!
-    \fn void QtLongPropertyManager::rangeChanged(QtProperty *property, long minimum, long maximum)
+    \fn void QtLongPropertyManager::rangeChanged(QtProperty *property, vistle::Integer minimum, vistle::Integer maximum)
 
     This signal is emitted whenever a property created by this manager
     changes its range of valid values, passing a pointer to the
@@ -72,7 +72,7 @@ public:
 */
 
 /*!
-    \fn void QtLongPropertyManager::singleStepChanged(QtProperty *property, long step)
+    \fn void QtLongPropertyManager::singleStepChanged(QtProperty *property, vistle::Integer step)
 
     This signal is emitted whenever a property created by this manager
     changes its single step property, passing a pointer to the
@@ -108,9 +108,9 @@ QtLongPropertyManager::~QtLongPropertyManager()
 
     \sa setValue()
 */
-long QtLongPropertyManager::value(const QtProperty *property) const
+vistle::Integer QtLongPropertyManager::value(const QtProperty *property) const
 {
-    return getValue<long>(d_ptr->m_values, property, 0);
+    return getValue<vistle::Integer>(d_ptr->m_values, property, 0);
 }
 
 /*!
@@ -118,9 +118,9 @@ long QtLongPropertyManager::value(const QtProperty *property) const
 
     \sa setMinimum(), maximum(), setRange()
 */
-long QtLongPropertyManager::minimum(const QtProperty *property) const
+vistle::Integer QtLongPropertyManager::minimum(const QtProperty *property) const
 {
-    return getMinimum<long>(d_ptr->m_values, property, 0);
+    return getMinimum<vistle::Integer>(d_ptr->m_values, property, 0);
 }
 
 /*!
@@ -128,9 +128,9 @@ long QtLongPropertyManager::minimum(const QtProperty *property) const
 
     \sa setMaximum(), minimum(), setRange()
 */
-long QtLongPropertyManager::maximum(const QtProperty *property) const
+vistle::Integer QtLongPropertyManager::maximum(const QtProperty *property) const
 {
-    return getMaximum<long>(d_ptr->m_values, property, 0);
+    return getMaximum<vistle::Integer>(d_ptr->m_values, property, 0);
 }
 
 /*!
@@ -140,9 +140,9 @@ long QtLongPropertyManager::maximum(const QtProperty *property) const
 
     \sa setSingleStep()
 */
-long QtLongPropertyManager::singleStep(const QtProperty *property) const
+vistle::Integer QtLongPropertyManager::singleStep(const QtProperty *property) const
 {
-    return getData<long>(d_ptr->m_values, &QtLongPropertyManagerPrivate::Data::singleStep, property, 0);
+    return getData<vistle::Integer>(d_ptr->m_values, &QtLongPropertyManagerPrivate::Data::singleStep, property, 0);
 }
 
 /*!
@@ -169,7 +169,7 @@ QString QtLongPropertyManager::valueText(const QtProperty *property) const
 }
 
 /*!
-    \fn void QtLongPropertyManager::setValue(QtProperty *property, long value)
+    \fn void QtLongPropertyManager::setValue(QtProperty *property, vistle::Integer value)
 
     Sets the value of the given \a property to \a value.
 
@@ -179,10 +179,10 @@ QString QtLongPropertyManager::valueText(const QtProperty *property) const
 
     \sa value(), setRange(), valueChanged()
 */
-void QtLongPropertyManager::setValue(QtProperty *property, long val)
+void QtLongPropertyManager::setValue(QtProperty *property, vistle::Integer val)
 {
-    void (QtLongPropertyManagerPrivate::*setSubPropertyValue)(QtProperty *, long) = 0;
-    setValueInRange<long, QtLongPropertyManagerPrivate, QtLongPropertyManager, long>(this, d_ptr,
+    void (QtLongPropertyManagerPrivate::*setSubPropertyValue)(QtProperty *, vistle::Integer) = 0;
+    setValueInRange<vistle::Integer, QtLongPropertyManagerPrivate, QtLongPropertyManager, vistle::Integer>(this, d_ptr,
                 &QtLongPropertyManager::propertyChanged,
                 &QtLongPropertyManager::valueChanged,
                 property, val, setSubPropertyValue);
@@ -197,9 +197,9 @@ void QtLongPropertyManager::setValue(QtProperty *property, long val)
 
     \sa minimum(), setRange(), rangeChanged()
 */
-void QtLongPropertyManager::setMinimum(QtProperty *property, long minVal)
+void QtLongPropertyManager::setMinimum(QtProperty *property, vistle::Integer minVal)
 {
-    setMinimumValue<long, QtLongPropertyManagerPrivate, QtLongPropertyManager, long, QtLongPropertyManagerPrivate::Data>(this, d_ptr,
+    setMinimumValue<vistle::Integer, QtLongPropertyManagerPrivate, QtLongPropertyManager, vistle::Integer, QtLongPropertyManagerPrivate::Data>(this, d_ptr,
                 &QtLongPropertyManager::propertyChanged,
                 &QtLongPropertyManager::valueChanged,
                 &QtLongPropertyManager::rangeChanged,
@@ -215,9 +215,9 @@ void QtLongPropertyManager::setMinimum(QtProperty *property, long minVal)
 
     \sa maximum(), setRange(), rangeChanged()
 */
-void QtLongPropertyManager::setMaximum(QtProperty *property, long maxVal)
+void QtLongPropertyManager::setMaximum(QtProperty *property, vistle::Integer maxVal)
 {
-    setMaximumValue<long, QtLongPropertyManagerPrivate, QtLongPropertyManager, long, QtLongPropertyManagerPrivate::Data>(this, d_ptr,
+    setMaximumValue<vistle::Integer, QtLongPropertyManagerPrivate, QtLongPropertyManager, vistle::Integer, QtLongPropertyManagerPrivate::Data>(this, d_ptr,
                 &QtLongPropertyManager::propertyChanged,
                 &QtLongPropertyManager::valueChanged,
                 &QtLongPropertyManager::rangeChanged,
@@ -225,7 +225,7 @@ void QtLongPropertyManager::setMaximum(QtProperty *property, long maxVal)
 }
 
 /*!
-    \fn void QtLongPropertyManager::setRange(QtProperty *property, long minimum, long maximum)
+    \fn void QtLongPropertyManager::setRange(QtProperty *property, vistle::Integer minimum, vistle::Integer maximum)
 
     Sets the range of valid values.
 
@@ -238,10 +238,10 @@ void QtLongPropertyManager::setMaximum(QtProperty *property, long maxVal)
 
     \sa setMinimum(), setMaximum(), rangeChanged()
 */
-void QtLongPropertyManager::setRange(QtProperty *property, long minVal, long maxVal)
+void QtLongPropertyManager::setRange(QtProperty *property, vistle::Integer minVal, vistle::Integer maxVal)
 {
-    void (QtLongPropertyManagerPrivate::*setSubPropertyRange)(QtProperty *, long, long, long) = 0;
-    setBorderValues<long, QtLongPropertyManagerPrivate, QtLongPropertyManager, long>(this, d_ptr,
+    void (QtLongPropertyManagerPrivate::*setSubPropertyRange)(QtProperty *, vistle::Integer, vistle::Integer, vistle::Integer) = 0;
+    setBorderValues<vistle::Integer, QtLongPropertyManagerPrivate, QtLongPropertyManager, vistle::Integer>(this, d_ptr,
                 &QtLongPropertyManager::propertyChanged,
                 &QtLongPropertyManager::valueChanged,
                 &QtLongPropertyManager::rangeChanged,
@@ -255,7 +255,7 @@ void QtLongPropertyManager::setRange(QtProperty *property, long minVal, long max
 
     \sa singleStep()
 */
-void QtLongPropertyManager::setSingleStep(QtProperty *property, long step)
+void QtLongPropertyManager::setSingleStep(QtProperty *property, vistle::Integer step)
 {
     const QtLongPropertyManagerPrivate::PropertyValueMap::iterator it = d_ptr->m_values.find(property);
     if (it == d_ptr->m_values.end())

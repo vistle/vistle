@@ -42,7 +42,7 @@ private:
     QtLongVectorPropertyManagerPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongVectorPropertyManager)
     Q_DISABLE_COPY(QtLongVectorPropertyManager)
-    Q_PRIVATE_SLOT(d_func(), void slotLongChanged(QtProperty *, long))
+    Q_PRIVATE_SLOT(d_func(), void slotLongChanged(QtProperty *, vistle::Integer))
     Q_PRIVATE_SLOT(d_func(), void slotPropertyDestroyed(QtProperty *))
     void valueChangedSignal(QtProperty *property, const IntParamVector &val);
     void propertyChangedSignal(QtProperty *property);

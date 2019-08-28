@@ -23,7 +23,7 @@ public:
         int dimension;
     };
 
-    void slotLongChanged(QtProperty *property, long value);
+    void slotLongChanged(QtProperty *property, vistle::Integer value);
     void slotPropertyDestroyed(QtProperty *property);
 
     typedef QMap<const QtProperty *, Data> PropertyValueMap;
@@ -35,7 +35,7 @@ public:
     QMap<const QtProperty *, QtProperty *> m_fromSub[vistle::MaxDimension];
 };
 
-void QtLongVectorPropertyManagerPrivate::slotLongChanged(QtProperty *property, long value)
+void QtLongVectorPropertyManagerPrivate::slotLongChanged(QtProperty *property, vistle::Integer value)
 {
    for (int i=0; i<vistle::MaxDimension; ++i) {
       if (QtProperty *prop = m_fromSub[i].value(property, nullptr)) {
@@ -99,8 +99,8 @@ QtLongVectorPropertyManager::QtLongVectorPropertyManager(QObject *parent)
     d_ptr->q_ptr = this;
 
     d_ptr->m_longPropertyManager = new QtLongPropertyManager(this);
-    connect(d_ptr->m_longPropertyManager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotLongChanged(QtProperty *, long)));
+    connect(d_ptr->m_longPropertyManager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotLongChanged(QtProperty *, vistle::Integer)));
     connect(d_ptr->m_longPropertyManager, SIGNAL(propertyDestroyed(QtProperty *)),
                 this, SLOT(slotPropertyDestroyed(QtProperty *)));
 }

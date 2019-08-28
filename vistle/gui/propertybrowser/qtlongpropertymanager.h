@@ -2,6 +2,7 @@
 #define QT_LONG_PROPERTY_MANAGER
 
 #include <QtAbstractPropertyManager>
+#include <core/scalar.h>
 
 class QtLongPropertyManagerPrivate;
 
@@ -12,23 +13,23 @@ public:
     QtLongPropertyManager(QObject *parent = 0);
     ~QtLongPropertyManager();
 
-    long value(const QtProperty *property) const;
-    long minimum(const QtProperty *property) const;
-    long maximum(const QtProperty *property) const;
-    long singleStep(const QtProperty *property) const;
+    vistle::Integer value(const QtProperty *property) const;
+    vistle::Integer minimum(const QtProperty *property) const;
+    vistle::Integer maximum(const QtProperty *property) const;
+    vistle::Integer singleStep(const QtProperty *property) const;
     bool isReadOnly(const QtProperty *property) const;
 
 public Q_SLOTS:
-    void setValue(QtProperty *property, long val);
-    void setMinimum(QtProperty *property, long minVal);
-    void setMaximum(QtProperty *property, long maxVal);
-    void setRange(QtProperty *property, long minVal, long maxVal);
-    void setSingleStep(QtProperty *property, long step);
+    void setValue(QtProperty *property, vistle::Integer val);
+    void setMinimum(QtProperty *property, vistle::Integer minVal);
+    void setMaximum(QtProperty *property, vistle::Integer maxVal);
+    void setRange(QtProperty *property, vistle::Integer minVal, vistle::Integer maxVal);
+    void setSingleStep(QtProperty *property, vistle::Integer step);
     void setReadOnly(QtProperty *property, bool readOnly);
 Q_SIGNALS:
-    void valueChanged(QtProperty *property, long val);
-    void rangeChanged(QtProperty *property, long minVal, long maxVal);
-    void singleStepChanged(QtProperty *property, long step);
+    void valueChanged(QtProperty *property, vistle::Integer val);
+    void rangeChanged(QtProperty *property, vistle::Integer minVal, vistle::Integer maxVal);
+    void singleStepChanged(QtProperty *property, vistle::Integer step);
     void readOnlyChanged(QtProperty *property, bool readOnly);
 protected:
     QString valueText(const QtProperty *property) const;
