@@ -22,7 +22,8 @@ else()
    use_openmp()
 endif()
 
-if(NOT WIN32)
+if (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang"
+        OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 	add_compile_options("-Wno-c99-extensions")
 	add_compile_options("-Wno-gnu-variable-sized-type-not-at-end")
 endif()
