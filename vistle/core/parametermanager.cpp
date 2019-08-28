@@ -266,9 +266,7 @@ Float ParameterManager::getFloatParameter(const std::string & name) const {
 IntParameter *ParameterManager::addIntParameter(const std::string & name, const std::string &description,
                              const Integer value, Parameter::Presentation p) {
 
-   IntParameter * ip = dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
-   setParameterRange(ip, vistle::Integer(std::numeric_limits<int>::min()), vistle::Integer(std::numeric_limits<int>::max()));
-   return ip;
+   return dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
 }
 
 bool ParameterManager::setIntParameter(const std::string & name,
