@@ -68,7 +68,6 @@ class NekReaderBase;
 class ReadNek : public vistle::Reader {
 public:
 private:
-    std::map<int, int> randomOrder; //for testing
     bool prepareRead() override;
     bool read(Token& token, int timestep = -1, int block = -1) override;
     bool examine(const vistle::Parameter* param) override;

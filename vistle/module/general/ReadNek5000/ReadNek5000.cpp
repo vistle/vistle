@@ -61,6 +61,12 @@ using std::string;
 bool ReadNek::prepareRead() {
     UpdateCyclesAndTimes();   //This call also finds which timesteps have a mesh.
     ReadBlockLocations();
+
+    iNumBlocks = p_numBlocks->getValue();
+    if (iNumBlocks <= 0 || iNumBlocks > iTotalNumBlocks) {
+        iNumBlocks = iTotalNumBlocks;
+    }
+
     numReads = 0;
     return true;
 }
@@ -160,16 +166,11 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
 
 bool ReadNek::examine(const vistle::Parameter* param) {
    
-    iNumBlocks = p_numBlocks->getValue();
-    if (iNumBlocks <= 0 ||iNumBlocks > iTotalNumBlocks) {
-        iNumBlocks = iTotalNumBlocks;
-    }
     int oldNumSFields = iNumSFields;
     if (fs::exists(p_data_path->getValue())) {
         if (!parseMetaDataFile() || !ParseNekFileHeader()) {
             return false;
         }
-        mGrids.clear();
         setTimesteps(iNumTimesteps);
         setPartitions(p_numPartitions->getValue());
     }
@@ -184,13 +185,17 @@ bool ReadNek::examine(const vistle::Parameter* param) {
 }
 
 bool ReadNek::finishRead() {
+    mGrids.clear();
+    if (fdMesh) {
+        fclose(fdMesh);
+        fdMesh = nullptr;
+        curOpenMeshFile = "";
+    }
     std::cerr << "_________________________________________________________" << std::endl;
     std::cerr << "read was called "<< numReads << " times" << std::endl;
     std::cerr << "_________________________________________________________" << std::endl;
     return true;
 }
-
-
 
 bool ReadNek::parseMetaDataFile() {
     string tag;
@@ -331,7 +336,7 @@ bool ReadNek::parseMetaDataFile() {
 bool ReadNek::ParseNekFileHeader() {
     string buf2, tag;
 
-    //Now read the header out of one the files to get block and variable info
+    //Now read the header of one of the files to get block and variable info
     string blockfilename = GetFileName(0, 0);
     ifstream  f(blockfilename, ifstream::binary);
 
@@ -524,13 +529,8 @@ void ReadNek::ParseFieldTags(ifstream& f) {
     }
 }
 
-
-
-
-
-
 bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
-    if (fdMesh == NULL || (bParFormat && aBlockLocs[block * 2] != iCurrMeshProc)) {
+    if (fdMesh == nullptr || (bParFormat && aBlockLocs[block * 2] != iCurrMeshProc)) {
 
         iCurrMeshProc = 0;
         if (bParFormat)
@@ -557,7 +557,7 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
         block = aBlockLocs[block * 2 + 1];
 
 
-    DomainParams dp = GetDomainSizeAndVarOffset(timestep, NULL);
+    DomainParams dp = GetDomainSizeAndVarOffset(timestep, nullptr);
     int nFloatsInDomain = dp.domSizeInFloats;
     long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[iCurrMeshProc] * sizeof(int) : 0);
 
@@ -988,7 +988,7 @@ void ReadNek::UpdateCyclesAndTimes() {
 
     aTimes[curTimestep] = t;
     aCycles[curTimestep] = c;
-    //if (metadata != NULL) {
+    //if (metadata != nullptr) {
     //    metadata->SetTime(curTimestep + timeSliceOffset, t);
     //    metadata->SetTimeIsAccurate(true, curTimestep + timeSliceOffset);
     //    metadata->SetCycle(curTimestep + timeSliceOffset, c);
@@ -1056,7 +1056,7 @@ void ReadNek::FindAsciiDataStart(FILE* fd, int& outDataStart, int& outLineLen) {
         int res = fscanf(fd, " %f", &dummy); (void)res;
     }
     char tmp[1024];
-    char* res = NULL; (void)res;
+    char* res = nullptr; (void)res;
     res = fgets(tmp, 1023, fd);
     outDataStart = ftell(fd);
 
@@ -1206,10 +1206,6 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
 
    MPI_Comm_size(comm, &iNumberOfRanks);
-
-   vistle::IntParameter* test = addIntParameter("test", "test", 1);
-
-
 }
 
 ReadNek::~ReadNek() {
