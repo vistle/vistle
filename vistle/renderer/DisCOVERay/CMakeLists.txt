@@ -22,8 +22,10 @@ else()
    use_openmp()
 endif()
 
-add_compile_options("-Wno-c99-extensions")
-add_compile_options("-Wno-gnu-variable-sized-type-not-at-end")
+if(NOT WIN32)
+	add_compile_options("-Wno-c99-extensions")
+	add_compile_options("-Wno-gnu-variable-sized-type-not-at-end")
+endif()
 
 # BEGIN: ispc
 ##############################################################

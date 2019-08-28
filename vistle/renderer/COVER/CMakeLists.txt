@@ -36,7 +36,7 @@ target_link_libraries(COVER ${EXTRA_LIBS} vistle_util ${CMAKE_DL_LIBS} vistle_co
 if(NOT VISTLE_MULTI_PROCESS)
 if(APPLE)
     set (CMAKE_SHARED_LINKER_FLAGS "${VISTLE_SHARED_LINKER_FLAGS} -Wl,-undefined,dynamic_lookup")
-elseif(WINDOWS)
+elseif(WIN32)
 else()
     set (CMAKE_SHARED_LINKER_FLAGS "${VISTLE_SHARED_LINKER_FLAGS} -Wl,--allow-shlib-undefined")
 endif()
