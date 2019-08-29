@@ -436,9 +436,11 @@ bool ReadNek::ParseNekFileHeader() {
         ParseFieldTags(f);
 
     }
-
     if (iBlockSize[2] == 1)
         iDim = 2;
+    else {
+        iDim = 3;
+    }
     iTotalBlockSize = iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
     if (bBinary) {
         // Determine endianness and whether we need to swap bytes.
