@@ -67,14 +67,14 @@ class QtLongSpinBoxFactoryPrivate : public EditorFactoryPrivate<QLongSpinBox>
     Q_DECLARE_PUBLIC(QtLongSpinBoxFactory)
 public:
 
-    void slotPropertyChanged(QtProperty *property, long value);
-    void slotRangeChanged(QtProperty *property, long min, long max);
-    void slotSingleStepChanged(QtProperty *property, long step);
+    void slotPropertyChanged(QtProperty *property, vistle::Integer value);
+    void slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max);
+    void slotSingleStepChanged(QtProperty *property, vistle::Integer step);
     void slotReadOnlyChanged(QtProperty *property, bool readOnly);
-    void slotSetValue(long value);
+    void slotSetValue(vistle::Integer value);
 };
 
-void QtLongSpinBoxFactoryPrivate::slotPropertyChanged(QtProperty *property, long value)
+void QtLongSpinBoxFactoryPrivate::slotPropertyChanged(QtProperty *property, vistle::Integer value)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -89,7 +89,7 @@ void QtLongSpinBoxFactoryPrivate::slotPropertyChanged(QtProperty *property, long
     }
 }
 
-void QtLongSpinBoxFactoryPrivate::slotRangeChanged(QtProperty *property, long min, long max)
+void QtLongSpinBoxFactoryPrivate::slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -108,7 +108,7 @@ void QtLongSpinBoxFactoryPrivate::slotRangeChanged(QtProperty *property, long mi
     }
 }
 
-void QtLongSpinBoxFactoryPrivate::slotSingleStepChanged(QtProperty *property, long step)
+void QtLongSpinBoxFactoryPrivate::slotSingleStepChanged(QtProperty *property, vistle::Integer step)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -139,7 +139,7 @@ void QtLongSpinBoxFactoryPrivate::slotReadOnlyChanged( QtProperty *property, boo
     }
 }
 
-void QtLongSpinBoxFactoryPrivate::slotSetValue(long value)
+void QtLongSpinBoxFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QLongSpinBox *, QtProperty *>::ConstIterator  ecend = m_editorToProperty.constEnd();
@@ -191,12 +191,12 @@ QtLongSpinBoxFactory::~QtLongSpinBoxFactory()
 */
 void QtLongSpinBoxFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
     connect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
                 this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
@@ -216,7 +216,7 @@ QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtPr
     editor->setKeyboardTracking(false);
     editor->setReadOnly(manager->isReadOnly(property));
 
-    connect(editor, SIGNAL(valueChanged(long)), this, SLOT(slotSetValue(long)));
+    connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
@@ -229,12 +229,12 @@ QWidget *QtLongSpinBoxFactory::createEditor(QtLongPropertyManager *manager, QtPr
 */
 void QtLongSpinBoxFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
     disconnect(manager, SIGNAL(readOnlyChanged(QtProperty *, bool)),
                 this, SLOT(slotReadOnlyChanged(QtProperty *, bool)));
 }
@@ -246,13 +246,13 @@ class QtLongSliderFactoryPrivate : public EditorFactoryPrivate<QSlider>
     QtLongSliderFactory *q_ptr;
     Q_DECLARE_PUBLIC(QtLongSliderFactory)
 public:
-    void slotPropertyChanged(QtProperty *property, long value);
-    void slotRangeChanged(QtProperty *property, long min, long max);
-    void slotSingleStepChanged(QtProperty *property, long step);
-    void slotSetValue(long value);
+    void slotPropertyChanged(QtProperty *property, vistle::Integer value);
+    void slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max);
+    void slotSingleStepChanged(QtProperty *property, vistle::Integer step);
+    void slotSetValue(vistle::Integer value);
 };
 
-void QtLongSliderFactoryPrivate::slotPropertyChanged(QtProperty *property, long value)
+void QtLongSliderFactoryPrivate::slotPropertyChanged(QtProperty *property, vistle::Integer value)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -265,7 +265,7 @@ void QtLongSliderFactoryPrivate::slotPropertyChanged(QtProperty *property, long 
     }
 }
 
-void QtLongSliderFactoryPrivate::slotRangeChanged(QtProperty *property, long min, long max)
+void QtLongSliderFactoryPrivate::slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -284,7 +284,7 @@ void QtLongSliderFactoryPrivate::slotRangeChanged(QtProperty *property, long min
     }
 }
 
-void QtLongSliderFactoryPrivate::slotSingleStepChanged(QtProperty *property, long step)
+void QtLongSliderFactoryPrivate::slotSingleStepChanged(QtProperty *property, vistle::Integer step)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -297,7 +297,7 @@ void QtLongSliderFactoryPrivate::slotSingleStepChanged(QtProperty *property, lon
     }
 }
 
-void QtLongSliderFactoryPrivate::slotSetValue(long value)
+void QtLongSliderFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QSlider *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
@@ -349,12 +349,12 @@ QtLongSliderFactory::~QtLongSliderFactory()
 */
 void QtLongSliderFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 /*!
@@ -371,7 +371,7 @@ QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtPro
     editor->setRange(manager->minimum(property), manager->maximum(property));
     editor->setValue(manager->value(property));
 
-    connect(editor, SIGNAL(valueChanged(long)), this, SLOT(slotSetValue(long)));
+    connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
@@ -384,12 +384,12 @@ QWidget *QtLongSliderFactory::createEditor(QtLongPropertyManager *manager, QtPro
 */
 void QtLongSliderFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 // QtLongSliderFactory
@@ -399,13 +399,13 @@ class QtLongScrollBarFactoryPrivate : public  EditorFactoryPrivate<QScrollBar>
     QtLongScrollBarFactory *q_ptr;
     Q_DECLARE_PUBLIC(QtLongScrollBarFactory)
 public:
-    void slotPropertyChanged(QtProperty *property, long value);
-    void slotRangeChanged(QtProperty *property, long min, long max);
-    void slotSingleStepChanged(QtProperty *property, long step);
-    void slotSetValue(long value);
+    void slotPropertyChanged(QtProperty *property, vistle::Integer value);
+    void slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max);
+    void slotSingleStepChanged(QtProperty *property, vistle::Integer step);
+    void slotSetValue(vistle::Integer value);
 };
 
-void QtLongScrollBarFactoryPrivate::slotPropertyChanged(QtProperty *property, long value)
+void QtLongScrollBarFactoryPrivate::slotPropertyChanged(QtProperty *property, vistle::Integer value)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -419,7 +419,7 @@ void QtLongScrollBarFactoryPrivate::slotPropertyChanged(QtProperty *property, lo
     }
 }
 
-void QtLongScrollBarFactoryPrivate::slotRangeChanged(QtProperty *property, long min, long max)
+void QtLongScrollBarFactoryPrivate::slotRangeChanged(QtProperty *property, vistle::Integer min, vistle::Integer max)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -438,7 +438,7 @@ void QtLongScrollBarFactoryPrivate::slotRangeChanged(QtProperty *property, long 
     }
 }
 
-void QtLongScrollBarFactoryPrivate::slotSingleStepChanged(QtProperty *property, long step)
+void QtLongScrollBarFactoryPrivate::slotSingleStepChanged(QtProperty *property, vistle::Integer step)
 {
     if (!m_createdEditors.contains(property))
         return;
@@ -451,7 +451,7 @@ void QtLongScrollBarFactoryPrivate::slotSingleStepChanged(QtProperty *property, 
     }
 }
 
-void QtLongScrollBarFactoryPrivate::slotSetValue(long value)
+void QtLongScrollBarFactoryPrivate::slotSetValue(vistle::Integer value)
 {
     QObject *object = q_ptr->sender();
     const QMap<QScrollBar *, QtProperty *>::ConstIterator ecend = m_editorToProperty.constEnd();
@@ -502,12 +502,12 @@ QtLongScrollBarFactory::~QtLongScrollBarFactory()
 */
 void QtLongScrollBarFactory::connectPropertyManager(QtLongPropertyManager *manager)
 {
-    connect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    connect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    connect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    connect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    connect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    connect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 /*!
@@ -523,7 +523,7 @@ QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, Qt
     editor->setSingleStep(manager->singleStep(property));
     editor->setRange(manager->minimum(property), manager->maximum(property));
     editor->setValue(manager->value(property));
-    connect(editor, SIGNAL(valueChanged(long)), this, SLOT(slotSetValue(long)));
+    connect(editor, SIGNAL(valueChanged(vistle::Integer)), this, SLOT(slotSetValue(vistle::Integer)));
     connect(editor, SIGNAL(destroyed(QObject *)),
                 this, SLOT(slotEditorDestroyed(QObject *)));
     return editor;
@@ -536,12 +536,12 @@ QWidget *QtLongScrollBarFactory::createEditor(QtLongPropertyManager *manager, Qt
 */
 void QtLongScrollBarFactory::disconnectPropertyManager(QtLongPropertyManager *manager)
 {
-    disconnect(manager, SIGNAL(valueChanged(QtProperty *, long)),
-                this, SLOT(slotPropertyChanged(QtProperty *, long)));
-    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, long, long)),
-                this, SLOT(slotRangeChanged(QtProperty *, long, long)));
-    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, long)),
-                this, SLOT(slotSingleStepChanged(QtProperty *, long)));
+    disconnect(manager, SIGNAL(valueChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotPropertyChanged(QtProperty *, vistle::Integer)));
+    disconnect(manager, SIGNAL(rangeChanged(QtProperty *, vistle::Integer, vistle::Integer)),
+                this, SLOT(slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer)));
+    disconnect(manager, SIGNAL(singleStepChanged(QtProperty *, vistle::Integer)),
+                this, SLOT(slotSingleStepChanged(QtProperty *, vistle::Integer)));
 }
 
 #if QT_VERSION >= 0x040400

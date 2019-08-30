@@ -66,11 +66,11 @@ private:
     QtLongSpinBoxFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongSpinBoxFactory)
     Q_DISABLE_COPY(QtLongSpinBoxFactory)
-    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, long))
-    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, long, long))
-    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, long))
+    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, vistle::Integer))
     Q_PRIVATE_SLOT(d_func(), void slotReadOnlyChanged(QtProperty *, bool))
-    Q_PRIVATE_SLOT(d_func(), void slotSetValue(long))
+    Q_PRIVATE_SLOT(d_func(), void slotSetValue(vistle::Integer))
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed(QObject *))
 };
 
@@ -91,10 +91,10 @@ private:
     QtLongSliderFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongSliderFactory)
     Q_DISABLE_COPY(QtLongSliderFactory)
-    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, long))
-    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, long, long))
-    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, long))
-    Q_PRIVATE_SLOT(d_func(), void slotSetValue(long))
+    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotSetValue(vistle::Integer))
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed(QObject *))
 };
 
@@ -115,10 +115,10 @@ private:
     QtLongScrollBarFactoryPrivate *d_ptr;
     Q_DECLARE_PRIVATE(QtLongScrollBarFactory)
     Q_DISABLE_COPY(QtLongScrollBarFactory)
-    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, long))
-    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, long, long))
-    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, long))
-    Q_PRIVATE_SLOT(d_func(), void slotSetValue(long))
+    Q_PRIVATE_SLOT(d_func(), void slotPropertyChanged(QtProperty *, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotRangeChanged(QtProperty *, vistle::Integer, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotSingleStepChanged(QtProperty *, vistle::Integer))
+    Q_PRIVATE_SLOT(d_func(), void slotSetValue(vistle::Integer))
     Q_PRIVATE_SLOT(d_func(), void slotEditorDestroyed(QObject *))
 };
 

@@ -14,7 +14,7 @@ QLongSpinBox::QLongSpinBox( QWidget* parent /*= 0*/ )
     });
 }
 
-long QLongSpinBox::value() const
+vistle::Integer QLongSpinBox::value() const
 {
    return m_value;
 }
@@ -24,7 +24,7 @@ QString QLongSpinBox::text() const
    return QString::number(m_value);
 }
 
-void QLongSpinBox::setRange(long min, long max)
+void QLongSpinBox::setRange(vistle::Integer min, vistle::Integer max)
 {
    m_min = min;
    m_max = max;
@@ -32,12 +32,12 @@ void QLongSpinBox::setRange(long min, long max)
       std::swap(m_min, m_max);
 }
 
-long QLongSpinBox::singleStep() const
+vistle::Integer QLongSpinBox::singleStep() const
 {
    return m_step;
 }
 
-void QLongSpinBox::setValue(long val)
+void QLongSpinBox::setValue(vistle::Integer val)
 {
    m_value = val;
    lineEdit()->setText(QString::number(m_value));
@@ -47,13 +47,13 @@ void QLongSpinBox::setValue(long val)
 
 void QLongSpinBox::setText(QString t)
 {
-   m_value = t.toLong();
+   m_value = t.toLongLong();
    lineEdit()->setText(QString::number(m_value));
    emit valueChanged(m_value);
    emit valueChanged(text());
 }
 
-void QLongSpinBox::setSingleStep(long step)
+void QLongSpinBox::setSingleStep(vistle::Integer step)
 {
    m_step = step;
 }
@@ -77,7 +77,7 @@ QAbstractSpinBox::StepEnabled QLongSpinBox::stepEnabled() const
 
 QValidator::State QLongSpinBox::validate(QString &input, int &pos) const
 {
-   long val = input.toLong();
+   vistle::Integer val = input.toLongLong();
    if (val < m_min || val > m_max) {
       return QValidator::Intermediate;
    }
@@ -86,7 +86,7 @@ QValidator::State QLongSpinBox::validate(QString &input, int &pos) const
 
 void QLongSpinBox::fixup(QString &str) const
 {
-   long val = str.toLong();
+    vistle::Integer val = str.toLongLong();
    if (val < m_min)
       val = m_min;
    if (val > m_max)

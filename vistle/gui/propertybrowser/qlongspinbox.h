@@ -3,32 +3,34 @@
 
 #include <QWidget>
 #include <QAbstractSpinBox>
+
+#include <core/scalar.h>
  
 class QLongSpinBox: public QAbstractSpinBox
 {
    Q_OBJECT
-   Q_PROPERTY(long value READ value WRITE setValue NOTIFY valueChanged USER true)
-   Q_PROPERTY(long singleStep READ singleStep WRITE setSingleStep)
+   Q_PROPERTY(vistle::Integer value READ value WRITE setValue NOTIFY valueChanged USER true)
+   Q_PROPERTY(vistle::Integer singleStep READ singleStep WRITE setSingleStep)
 
 public:
    QLongSpinBox(QWidget* parent = 0);
 
-   long value() const;
+   vistle::Integer value() const;
    QString text() const;
-   void setRange(long min, long max);
-   long singleStep() const;
+   void setRange(vistle::Integer min, vistle::Integer max);
+   vistle::Integer singleStep() const;
 
 public slots:
-   void setValue(long val);
+   void setValue(vistle::Integer val);
    void setText(QString text);
-   void setSingleStep(long step);
+   void setSingleStep(vistle::Integer step);
    void stepBy(int steps);
 
 public:
    QAbstractSpinBox::StepEnabled stepEnabled() const;
 
 signals:
-   void valueChanged(long);
+   void valueChanged(vistle::Integer);
    void valueChanged(const QString &);
 
 protected:
@@ -36,9 +38,9 @@ protected:
    virtual void fixup(QString &str) const;
 
 private:
-   long m_value;
-   long m_step;
-   long m_min, m_max;
+   vistle::Integer m_value;
+   vistle::Integer m_step;
+   vistle::Integer m_min, m_max;
 };
 
 #endif
