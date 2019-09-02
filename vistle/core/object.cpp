@@ -578,6 +578,8 @@ std::string Object::Data::getAttribute(const std::string &key) const {
    if (it == attributes.end())
       return std::string();
    const AttributeList &a = it->second;
+   if (a.empty())
+      return std::string();
    return std::string(a.back().c_str(), a.back().length());
 }
 
