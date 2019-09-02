@@ -151,6 +151,37 @@ macro(vistle_find_package package)
    set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 endmacro(vistle_find_package PACKAGE)
 
+if(WIN32)
+   #set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
+   #STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
+    #set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    #add_definitions(-DOMPI_IMPORTS)
+
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DNOMINMAX)
+
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    #add_definitions(-DBOOST_ALL_DYN_LINK)
+    add_definitions(-DBOOST_MPI_DYN_LINK)
+    add_definitions(-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
+    add_definitions(-DBOOST_ZLIB_DYN_LINK)
+    add_definitions(-DBOOST_IOSTREAMS_DYN_LINK)
+
+    add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4244") # possible loss of data
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4250") # 'class1': inheritcs 'class2::member' via dominance
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4251") # 'identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4267") # 'var' : conversion from 'size_t' to 'type', possible loss of data
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4275") # non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4661") # 'identifier' : no suitable definition provided for explicit template instantiation request
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4910") # '<identifier>' : '__declspec(dllexport)' and 'extern' are incompatible on an explicit instantiation
+    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4996") # The compiler encountered a deprecated declaration.
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_WARNINGS} /EHsc")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MSVC_WARNINGS} /EHsc")
+endif(WIN32)
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
+
 # ensure that OpenMP works with Apple Clang and libomp installed
 if (APPLE)
     set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
@@ -185,36 +216,6 @@ if (UNIX AND NOT APPLE)
     set(PYTHON_LIBRARIES ${PYTHON_LIBRARIES} ${CMAKE_DL_LIBS})
     set(PYTHON_LIBRARIES ${PYTHON_LIBRARIES} -lutil)
 endif()
-
-if(WIN32)
-   #set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
-   #STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
-    #set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
-    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    #add_definitions(-DOMPI_IMPORTS)
-
-    add_definitions(-DWIN32_LEAN_AND_MEAN)
-    add_definitions(-DNOMINMAX)
-
-    add_definitions(-DBOOST_ALL_NO_LIB)
-    #add_definitions(-DBOOST_ALL_DYN_LINK)
-    add_definitions(-DBOOST_MPI_DYN_LINK)
-    add_definitions(-DBOOST_PROGRAM_OPTIONS_DYN_LINK)
-    add_definitions(-DBOOST_ZLIB_DYN_LINK)
-    add_definitions(-DBOOST_IOSTREAMS_DYN_LINK)
-
-    add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4244") # possible loss of data
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4250") # 'class1': inheritcs 'class2::member' via dominance
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4251") # 'identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4267") # 'var' : conversion from 'size_t' to 'type', possible loss of data
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4275") # non - DLL-interface class 'class_1' used as base for DLL-interface class 'class_2'
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4661") # 'identifier' : no suitable definition provided for explicit template instantiation request
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4910") # '<identifier>' : '__declspec(dllexport)' and 'extern' are incompatible on an explicit instantiation
-    set(MSVC_WARNINGS "${MSVC_WARNINGS} /wd4996") # The compiler encountered a deprecated declaration.
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_WARNINGS} /EHsc")
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MSVC_WARNINGS} /EHsc")
-endif(WIN32)
 
 #vistle_find_package(IceT REQUIRED)
 set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
