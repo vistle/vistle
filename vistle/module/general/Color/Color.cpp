@@ -116,6 +116,8 @@ ColorMap::TF pinsFromArray(const float data[256][3]) {
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("Color", name, moduleID, comm) {
 
+   setReducePolicy(message::ReducePolicy::OverAll);
+
    m_dataIn = createInputPort("data_in");
    m_dataOut = createOutputPort("data_out");
    m_colorOut = createOutputPort("color_out");
@@ -124,9 +126,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
    m_center = addFloatParameter("center", "center of colormap range", 0.5);
    setParameterRange(m_center, 0., 1.);
-   m_centerAbsolute = addIntParameter("center_absoulute", "absolute value for center", false, Parameter::Boolean);
-   m_compress = addFloatParameter("range_compression", "compression of range towards center", 1.);
-   setParameterRange(m_compress, 1e-5, 1e+5);
+   m_centerAbsolute = addIntParameter("center_absolute", "absolute value for center", false, Parameter::Boolean);
+   m_compress = addFloatParameter("range_compression", "compression of range towards center", 0.);
+   setParameterRange(m_compress, -1., 1.);
    m_opacity = addFloatParameter("opacity_factor", "multiplier for opacity", 1.0);
    setParameterRange(m_opacity, 0., 1.);
    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
@@ -397,18 +399,14 @@ bool Color::changeParameter(const Parameter *p) {
 
     bool newMap = false;
 
-    bool changeReduce = false;
     if (p == m_autoRangePara) {
         m_autoRange = m_autoRangePara->getValue();
-        changeReduce = true;
         newMap = true;
     } else if (p == m_autoInsetCenterPara) {
         m_autoInsetCenter = m_autoInsetCenterPara->getValue();
-        changeReduce = true;
         newMap = true;
     } else if (p == m_nestPara) {
         m_nest = m_nestPara->getValue();
-        changeReduce = true;
         newMap = true;
     } else if (p == m_minPara) {
         m_min = m_minPara->getValue();
@@ -431,14 +429,6 @@ bool Color::changeParameter(const Parameter *p) {
             setParameterRange(m_center, std::numeric_limits<Float>::lowest(), std::numeric_limits<Float>::max());
         } else {
             setParameterRange(m_center, 0., 1.);
-        }
-    }
-
-    if (changeReduce) {
-        if (m_autoRange || (m_nest && m_autoInsetCenter)) {
-            setReducePolicy(message::ReducePolicy::OverAll);
-        } else {
-            setReducePolicy(message::ReducePolicy::Locally);
         }
     }
 
@@ -545,7 +535,7 @@ void Color::computeMap() {
            relcenter = (relcenter - m_min)/(m_max - m_min);
        }
    }
-   m_colors.reset(new ColorMap(pins, steps, resolution, relcenter, m_compress->getValue()));
+   m_colors.reset(new ColorMap(pins, steps, resolution, relcenter, std::pow(10., m_compress->getValue())));
    for (size_t i=0; i<m_colors->width; ++i) {
        m_colors->data[i*4+3] *= op;
    }
@@ -624,8 +614,9 @@ bool Color::prepare() {
     m_species.clear();
     m_colorMapSent = false;
 
-   m_min = std::numeric_limits<Scalar>::max();
-   m_max = -std::numeric_limits<Scalar>::max();
+   m_dataMin = std::numeric_limits<Scalar>::max();
+   m_dataMax = -std::numeric_limits<Scalar>::max();
+   m_dataRangeValid = false;
 
    if (!m_autoRange) {
       m_min = getFloatParameter("min");
@@ -660,9 +651,9 @@ bool Color::compute() {
       return true;
    }
 
+   getMinMax(data, m_dataMin, m_dataMax);
    bool preview = getIntParameter("preview");
    if (m_autoRange) {
-       getMinMax(data, m_min, m_max);
        m_inputQueue.push_back(data);
        if (preview)
            process(data);
@@ -682,15 +673,20 @@ bool Color::reduce(int timestep) {
     assert(timestep == -1);
     bool preview = getIntParameter("preview");
 
+    m_dataMin = boost::mpi::all_reduce(comm(), m_dataMin, boost::mpi::minimum<Scalar>());
+    m_dataMax = boost::mpi::all_reduce(comm(), m_dataMax, boost::mpi::maximum<Scalar>());
+    m_dataRangeValid = true;
+    auto diff = m_dataMax - m_dataMin;
+    setParameterRange<Float>("min", m_dataMin - diff*0.5, m_dataMax);
+    setParameterRange<Float>("max", m_dataMin, m_dataMax + diff*0.5);
+
     if (m_autoRange) {
-        m_min = boost::mpi::all_reduce(comm(), m_min, boost::mpi::minimum<Scalar>());
-        m_max = boost::mpi::all_reduce(comm(), m_max, boost::mpi::maximum<Scalar>());
-        setFloatParameter("min", m_min);
-        setFloatParameter("max", m_max);
-    } else {
-        m_min = getFloatParameter("min");
-        m_max = getFloatParameter("max");
+        setFloatParameter("min", m_dataMin);
+        setFloatParameter("max", m_dataMax);
     }
+
+    m_min = getFloatParameter("min");
+    m_max = getFloatParameter("max");
 
     if (m_nest && m_autoInsetCenter) {
         std::vector<unsigned long> bins(getIntParameter("resolution"));

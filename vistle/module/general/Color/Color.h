@@ -60,6 +60,8 @@ class Color: public vistle::Module {
    vistle::FloatParameter *m_opacity = nullptr, *m_insetOpacity = nullptr;
    std::deque<vistle::DataBase::const_ptr> m_inputQueue;
 
+   bool m_dataRangeValid = false;
+   vistle::Scalar m_dataMin, m_dataMax;
    vistle::Scalar m_min, m_max;
 
    std::string m_species;
