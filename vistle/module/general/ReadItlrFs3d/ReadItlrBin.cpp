@@ -197,8 +197,13 @@ ReadItlrBin::~ReadItlrBin() {
 
 bool ReadItlrBin::examine(const Parameter *param)
 {
-    if (!param || param == m_numPartitions)
-        setPartitions(m_numPartitions->getValue());
+    if (!param || param == m_numPartitions) {
+        int npart = m_numPartitions->getValue();
+        if (npart == -1)
+            npart = size();
+        m_nparts = npart;
+        setPartitions(npart);
+    }
 
     return true;
 }
@@ -212,6 +217,7 @@ bool ReadItlrBin::prepareRead()
         if (m_scalarFile[port].empty())
             continue;
 
+
         m_fileList[port].push_back(m_scalarFile[port]);
         bool haveList = false;
         if (boost::algorithm::ends_with(m_scalarFile[port], ".lst")) {
@@ -220,6 +226,13 @@ bool ReadItlrBin::prepareRead()
         }
         filesystem::path listFilePath(m_scalarFile[port]);
         m_directory[port] = listFilePath.parent_path();
+
+        auto species = listFilePath.leaf().string();
+        auto pos = species.find_last_of('.');
+        if (pos != species.npos) {
+            species = species.substr(0, pos);
+        }
+        m_species[port] = species;
 
         if (numFiles < 0) {
             m_haveListFile = haveList;
@@ -273,16 +286,11 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
             filename = m_fileList[port][timestep];
         }
 
-        auto species = filename.leaf().string();
-        auto pos = species.find_last_of('.');
-        if (pos != species.npos) {
-            species = species.substr(0, pos);
-        }
 
         auto scal = readFieldBlock(filename.string(), block);
         if (scal) {
             scal->setGrid(m_grids[block]);
-            scal->addAttribute("_species", species);
+            scal->addAttribute("_species", m_species[port]);
             token.addObject(m_dataOut[port], scal);
         } else {
             token.addObject(m_dataOut[port], m_grids[block]);

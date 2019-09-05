@@ -34,6 +34,7 @@ private:
 
    vistle::StringParameter *m_gridFilename, *m_filename[NumPorts];
    vistle::IntParameter *m_numPartitions;
+   std::string m_species[NumPorts];
 #if 0
    vistle::IntParameter *m_distributeTimesteps;
    vistle::IntParameter *m_firstStep, *m_lastStep, *m_stepSkip;
