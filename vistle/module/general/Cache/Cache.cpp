@@ -61,7 +61,7 @@ Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm)
 
    p_mode = addIntParameter("mode", "operation mode", m_mode, Parameter::Choice);
    V_ENUM_SET_CHOICES(p_mode, OperationMode);
-   p_file = addStringParameter("file", "filename where cache should be created", "", Parameter::Filename);
+   p_file = addStringParameter("file", "filename where cache should be created", "/scratch/", Parameter::Filename);
    setParameterFilters(p_file, "Vistle Data (*.vsld)/All Files (*)");
 
    p_step = addIntParameter("step", "step width when reading from disk", 1);
@@ -373,6 +373,13 @@ bool Cache::prepare() {
     m_fd = open(file.c_str(), O_RDONLY);
     if (m_fd == -1) {
         sendError("Could not open %s: %s", file.c_str(), strerror(errno));
+    }
+    int errorfd = mpi::all_reduce(comm(), m_fd, mpi::minimum<int>());
+    if (errorfd == -1) {
+        m_toDisk = false;
+        if (m_fd >= 0)
+            close(m_fd);
+        m_fd = -1;
         return true;
     }
 
