@@ -190,7 +190,7 @@ bool Assemble::reduce(int tt) {
     for (const auto &av: *nonempty) {
         const auto &attr = av.first;
         for (int i=0; i<NumPorts; ++i) {
-            if (m_toCombineAttribute[i][t][attr].size() > t)
+            if (m_toCombineAttribute[i].size() > t)
                 comb[i] = &m_toCombineAttribute[i][t][attr];
             else
                 comb[i] = nullptr;
