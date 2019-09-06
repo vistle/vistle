@@ -45,11 +45,13 @@ fi
 
 #echo SPAWN "$@"
 
-LOGFILE="$(basename $1)"-$$.log
+LOGPREFIX=
+mkdir -p "/var/tmp/${USER}" && LOGPREFIX="/var/tmp/${USER}"
+LOGFILE="${LOGPREFIX}$(basename $1)"-$$.log
 
 if [ -n "$4" ]; then
    # include module ID
-   LOGFILE="$(basename $1)"-$4-$$.log
+   LOGFILE="${LOGPREFIX}/$(basename $1)"-$4-$$.log
 fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
