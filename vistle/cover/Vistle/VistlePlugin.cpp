@@ -168,8 +168,11 @@ bool VistlePlugin::update() {
        throw(e);
    }
 
-   bool updateRequested = m_module->updateRequired();
-   m_module->clearUpdate();
+   bool updateRequested = false;
+   if (m_module) {
+       updateRequested = m_module->updateRequired();
+       m_module->clearUpdate();
+   }
    return messageReceived || updateRequested;
 }
 
