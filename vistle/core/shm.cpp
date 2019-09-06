@@ -51,7 +51,7 @@ template<> size_t memorySize<8>() {
 #elif defined(_WIN32)
       return (size_t)1 << 30; // 1 GB
 #else
-      return (size_t)1 << 38; // 256 GB
+      return (size_t)1 << 40; // 1 TB
 #endif
    }
 }
