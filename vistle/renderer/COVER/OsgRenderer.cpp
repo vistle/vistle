@@ -458,7 +458,7 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    }
    vgr.setColorMaps(&m_colormaps);
    m_delayedObjects.push_back(DelayedObject(pro, vgr));
-   updateStatus();
+   //updateStatus();
    osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
 
    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
@@ -466,6 +466,8 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
 }
 
 bool OsgRenderer::render() {
+
+   updateStatus();
 
    if (m_delayedObjects.empty())
       return false;
@@ -533,7 +535,7 @@ bool OsgRenderer::render() {
    }
 
    if (numAdd > 0) {
-       updateStatus();
+       //updateStatus();
    }
 
    return true;
@@ -609,12 +611,16 @@ void OsgRenderer::updateStatus() {
         return;
 
     if (m_delayedObjects.empty()) {
-        clearStatus();
+        if (m_status != 0)
+            clearStatus();
     } else {
-        std::stringstream str;
-        str << m_delayedObjects.size() << " objects to add";
-        setStatus(str.str());
+        if (m_status != m_delayedObjects.size()) {
+            std::stringstream str;
+            str << m_delayedObjects.size() << " objects to add";
+            setStatus(str.str());
+        }
     }
+    m_status = m_delayedObjects.size();
 }
 
 
