@@ -10,7 +10,7 @@ struct Sphere;
 
 #include "spheres.isph"
 
-struct Triangle { unsigned int v0, v1, v2, elem; };
+struct Quad { unsigned int v0, v1, v2, v3; }; // v3 is used as element id for triangles
 
 enum PrimitiveFlags {
    PFNone = 0,
@@ -39,9 +39,10 @@ struct RenderObjectData {
    int geomID; //!< embree geometry id of this object's scene
    unsigned int instID; //!< embree instance id of this object's scene
 
-   Triangle *indexBuffer; //< triangle list
+   Quad *indexBuffer; //< triangle/quad list
    Sphere *spheres; //!< sphere data
    unsigned int *primitiveFlags; //!< bit-wise or of several PrimitiveFlags for each primitive
+   unsigned int triangles; //! whether indexBuffer contains triangles+element id (instead of quads)
 
    unsigned int lighted; //!< whether to use lighting
    unsigned int hasSolidColor; //!< whether object has a color different from default
@@ -56,5 +57,5 @@ struct RenderObjectData {
 };
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);
-export void forceExportTrangle(uniform Triangle *uniform triangle);
+export void forceExportQuad(uniform Quad *uniform quad);
 export void forceExportPrimitiveFlags(uniform PrimitiveFlags *uniform flags);

@@ -9,6 +9,7 @@
 #include <core/triangles.h>
 #include <core/normals.h>
 #include <core/polygons.h>
+#include <core/quads.h>
 #include <core/spheres.h>
 #include <core/tubes.h>
 #include <core/texture1d.h>
@@ -149,6 +150,30 @@ bool ToTriangles::compute() {
       for (Index e=0; e<nelem; ++e) {
          const Index begin=el[e], end=el[e+1];
          const Index N = end - begin;
+         for (Index v=0; v<N-2; ++v) {
+            tcl[i++] = cl[begin];
+            tcl[i++] = cl[begin+v+1];
+            tcl[i++] = cl[begin+v+2];
+         }
+      }
+      vassert(i == 3*ntri);
+   } else if (auto quads = Quads::as(obj)) {
+
+      Index nelem = quads->getNumElements();
+      Index nvert = quads->getNumCorners();
+      Index ntri = nvert-2*nelem;
+      assert(ntri == nelem*2);
+
+      tri.reset(new Triangles(3*ntri, 0));
+      for (int i=0; i<3; ++i)
+         tri->d()->x[i] = quads->d()->x[i];
+
+      const Index N = 4;
+      Index i = 0;
+      auto cl = &quads->cl()[0];
+      auto tcl = &tri->cl()[0];
+      for (Index e=0; e<nelem; ++e) {
+         const Index begin=e*N, end=begin+N;
          for (Index v=0; v<N-2; ++v) {
             tcl[i++] = cl[begin];
             tcl[i++] = cl[begin+v+1];

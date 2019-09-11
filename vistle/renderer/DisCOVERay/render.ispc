@@ -99,35 +99,47 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                 color.z = w*255.f;
                 color.w = 255.f;
             }
-            else if (ro->texCoords && ro->cmap && ro->cmap->texData) {
+            else if (ro->texCoords && ro->cmap && ro->cmap->texData && ro->cmap->texWidth>0) {
 
                 const float &u = hit.u;
                 const float &v = hit.v;
                 const float w = 1.f - u - v;
-                Vec4f tc;
+                float c = 0.f;
                 if (ro->perPrimitiveMapping) {
-                    if (ro->indexBuffer) {
-                        tc = texColor(ro->cmap, ro->texCoords[ro->indexBuffer[hit.primID].elem]);
+                    if (ro->triangles && ro->indexBuffer) {
+                        c = ro->texCoords[ro->indexBuffer[hit.primID].v3];
                     } else {
-                        tc = texColor(ro->cmap, ro->texCoords[hit.primID]);
+                        c = ro->texCoords[hit.primID];
                     }
-                } else if (ro->indexBuffer) {
-                    const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
-                    const unsigned int v1 = ro->indexBuffer[hit.primID].v1;
-                    const unsigned int v2 = ro->indexBuffer[hit.primID].v2;
+                } else if (ro->triangles && ro->indexBuffer) {
+                    unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                    unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                    unsigned int v2 = ro->indexBuffer[hit.primID].v2;
 
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
                     const float tc2 = ro->texCoords[v2];
-                    tc = texColor(ro->cmap, w*tc0 + u*tc1 + v*tc2);
+                    c = w*tc0 + u*tc1 + v*tc2;
+                } else if (ro->indexBuffer) {
+                    unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                    unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                    unsigned int v2 = ro->indexBuffer[hit.primID].v2;
+                    unsigned int v3 = ro->indexBuffer[hit.primID].v3;
+
+                    const float tc0 = ro->texCoords[v0];
+                    const float tc1 = ro->texCoords[v1];
+                    const float tc2 = ro->texCoords[v2];
+                    const float tc3 = ro->texCoords[v3];
+                    c = (1-v)*((1-u)*tc0 + u*tc1) + v*((1-u)*tc3 + u*tc2);
                 } else {
                     const unsigned int v0 = hit.primID;
                     const unsigned int v1 = hit.primID + 1;
                     const float tc0 = ro->texCoords[v0];
                     const float tc1 = ro->texCoords[v1];
-                    tc = texColor(ro->cmap, w*tc0 + u*tc1);
+                    c = w*tc0 + u*tc1;
                 }
 
+                Vec4f tc = texColor(ro->cmap, c);
                 if (ro->cmap->blendWithMaterial) {
                     color = (tc*tc.w+color*(255.f-tc.w))/255.f;
                     color.w = 255.f;
@@ -148,20 +160,30 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     const float w = 1.f - u - v;
                     if (ro->normalsPerPrimitiveMapping) {
                         if (ro->indexBuffer) {
-                            const unsigned int idx = ro->indexBuffer[hit.primID].elem;
+                            const unsigned int idx = ro->indexBuffer[hit.primID].v3;
                             normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
                         } else {
                             const unsigned int idx = hit.primID;
                             normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
                         }
-                    } else if (ro->indexBuffer) {
-                        const unsigned int v0 = ro->indexBuffer[hit.primID].v0;
-                        const unsigned int v1 = ro->indexBuffer[hit.primID].v1;
-                        const unsigned int v2 = ro->indexBuffer[hit.primID].v2;
+                    } else if (ro->triangles && ro->indexBuffer) {
+                        unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                        unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                        unsigned int v2 = ro->indexBuffer[hit.primID].v2;
                         const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
                         const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
                         const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
                         normal = w*n0 + u*n1 + v*n2;
+                    } else if (ro->indexBuffer) {
+                        unsigned int v0 = ro->indexBuffer[hit.primID].v0;
+                        unsigned int v1 = ro->indexBuffer[hit.primID].v1;
+                        unsigned int v2 = ro->indexBuffer[hit.primID].v2;
+                        unsigned int v3 = ro->indexBuffer[hit.primID].v3;
+                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
+                        const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
+                        const Vec3f n3 = make_Vec3f(ro->normals[0][v3], ro->normals[1][v3], ro->normals[2][v3]);
+                        normal = (1-v)*((1-u)*n0 + u*n1) + v*((1-u)*n3 + u*n2);
                     } else {
                         const unsigned int v0 = hit.primID;
                         const unsigned int v1 = hit.primID + 1;

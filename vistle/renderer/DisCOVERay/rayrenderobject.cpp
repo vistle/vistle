@@ -1,5 +1,6 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/lines.h>
 #include <core/tubes.h>
 #include <core/spheres.h>
@@ -18,7 +19,7 @@
 using namespace vistle;
 
 using ispc::Vertex;
-using ispc::Triangle;
+using ispc::Quad;
 
 float RayRenderObject::pointSize = 0.001f;
 
@@ -39,6 +40,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    data->spheres = nullptr;
    data->primitiveFlags = nullptr;
    data->indexBuffer = nullptr;
+   data->triangles = 1;
    data->texCoords = nullptr;
    data->lighted = 1;
    data->hasSolidColor = hasSolidColor;
@@ -117,7 +119,45 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
    RTCGeometry geom = 0;
    bool useNormals = true;
-   if (auto tri = Triangles::as(geometry)) {
+   if (auto quads = Quads::as(geometry)) {
+
+      Index numElem = quads->getNumElements();
+      geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_QUAD);
+      rtcSetGeometryBuildQuality(geom,RTC_BUILD_QUALITY_MEDIUM);
+      rtcSetGeometryTimeStepCount(geom,1);
+      std::cerr << "Quad: #: " << quads->getNumElements() << ", #corners: " << quads->getNumCorners() << ", #coord: " << quads->getNumCoords() << std::endl;
+
+      Vertex* vertices = (Vertex*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_VERTEX,0,RTC_FORMAT_FLOAT3,4*sizeof(float),quads->getNumCoords());
+      for (Index i=0; i<quads->getNumCoords(); ++i) {
+         vertices[i].x = quads->x()[i];
+         vertices[i].y = quads->y()[i];
+         vertices[i].z = quads->z()[i];
+      }
+
+
+      //data->indexBuffer = new Triangle[numElem];
+      //rtcSetSharedGeometryBuffer(geom_0,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),numElem);
+      Quad* quad = (Quad*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT4,sizeof(Quad),numElem);
+      data->indexBuffer = quad;
+      data->triangles = 0;
+      if (quads->getNumCorners() == 0) {
+         for (Index i=0; i<numElem; ++i) {
+            quad[i].v0 = i*4;
+            quad[i].v1 = i*4+1;
+            quad[i].v2 = i*4+2;
+            quad[i].v3 = i*4+3;
+         }
+      } else {
+         const auto *cl = &quads->cl()[0];
+         for (Index i=0; i<numElem; ++i) {
+            quad[i].v0 = cl[i*4];
+            quad[i].v1 = cl[i*4+1];
+            quad[i].v2 = cl[i*4+2];
+            quad[i].v3 = cl[i*4+3];
+         }
+      }
+
+   } else if (auto tri = Triangles::as(geometry)) {
 
       Index numElem = tri->getNumElements();
       geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
@@ -135,21 +175,21 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
       //data->indexBuffer = new Triangle[numElem];
       //rtcSetSharedGeometryBuffer(geom_0,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),numElem);
-      Triangle* triangles = (Triangle*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Triangle),numElem);
-      data->indexBuffer = triangles;
+      Quad* quad = (Quad*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Quad),numElem);
+      data->indexBuffer = quad;
       if (tri->getNumCorners() == 0) {
          for (Index i=0; i<numElem; ++i) {
-            triangles[i].v0 = i*3;
-            triangles[i].v1 = i*3+1;
-            triangles[i].v2 = i*3+2;
-            triangles[i].elem = i;
+            quad[i].v0 = i*3;
+            quad[i].v1 = i*3+1;
+            quad[i].v2 = i*3+2;
+            quad[i].v3 = i; // element id
          }
       } else {
          for (Index i=0; i<numElem; ++i) {
-            triangles[i].v0 = tri->cl()[i*3];
-            triangles[i].v1 = tri->cl()[i*3+1];
-            triangles[i].v2 = tri->cl()[i*3+2];
-            triangles[i].elem = i;
+            quad[i].v0 = tri->cl()[i*3];
+            quad[i].v1 = tri->cl()[i*3+1];
+            quad[i].v2 = tri->cl()[i*3+2];
+            quad[i].v3 = i; // element id
          }
       }
       
@@ -173,7 +213,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
       //data->indexBuffer = new Triangle[ntri];
       //rtcSetSharedGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,data->indexBuffer,0,sizeof(Triangle),ntri);
-      Triangle* triangles = (Triangle*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Triangle),ntri);
+      Quad* triangles = (Quad*) rtcSetNewGeometryBuffer(geom,RTC_BUFFER_TYPE_INDEX,0,RTC_FORMAT_UINT3,sizeof(Quad),ntri);
       data->indexBuffer = triangles;
       Index t = 0;
       for (Index i=0; i<poly->getNumElements(); ++i) {
@@ -182,7 +222,6 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          const Index nvert = end-start;
          const Index last = end-1;
          for (Index v=0; v<nvert-2; ++v) {
-            triangles[t].elem = i;
             const Index v2 = v/2;
             if (v%2) {
                triangles[t].v0 = poly->cl()[last-v2];
@@ -193,6 +232,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
                triangles[t].v1 = poly->cl()[start+v2+1];
                triangles[t].v2 = poly->cl()[last-v2];
             }
+            triangles[t].v3 = t;
             ++t;
          }
       }

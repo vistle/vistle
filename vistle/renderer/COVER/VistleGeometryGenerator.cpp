@@ -24,6 +24,7 @@
 #include <core/spheres.h>
 #include <core/lines.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/texture1d.h>
 #include <core/placeholder.h>
 #include <core/normals.h>
@@ -106,6 +107,17 @@ Index PrimitiveAdapter<Triangles>::getPrimitiveBegin(Index prim) const {
 template<>
 Index PrimitiveAdapter<Triangles>::getNumTriangles() const {
     return m_numPrim;
+}
+
+template<>
+Index PrimitiveAdapter<Quads>::getPrimitiveBegin(Index prim) const {
+
+    return 4*prim;
+}
+
+template<>
+Index PrimitiveAdapter<Quads>::getNumTriangles() const {
+    return m_numPrim*2;
 }
 
 template<>
@@ -237,6 +249,7 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
       case vistle::Object::POINTS:
       case vistle::Object::LINES:
       case vistle::Object::TRIANGLES:
+      case vistle::Object::QUADS:
       case vistle::Object::POLYGONS:
 #ifdef COVER_PLUGIN
       case vistle::Object::SPHERES:
@@ -474,9 +487,31 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, bool index
     return normals;
 }
 
-osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, bool indexGeom) {
+osg::PrimitiveSet *buildTrianglesFromTriangles(const PrimitiveBin &bin, bool indexGeom) {
 
     Index numTri = bin.prim.size();
+    Index numCorners = bin.ncl.size();
+    if (indexGeom) {
+        const Index *cl = bin.ncl.data();
+        auto corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+        corners->reserve(numTri*3);
+        for (Index corner = 0; corner < numCorners; corner ++)
+            corners->push_back(cl[corner]);
+#ifdef COVER_PLUGIN
+        opencover::tipsify(&(*corners)[0], corners->size());
+#endif
+        assert(corners->size() == numTri*3);
+        return corners;
+    } else {
+        return new osg::DrawArrays(osg::PrimitiveSet::TRIANGLES, 0, bin.ntri*3);
+    }
+
+    return nullptr;
+}
+
+osg::PrimitiveSet *buildTrianglesFromQuads(const PrimitiveBin &bin, bool indexGeom) {
+
+    Index numTri = bin.prim.size()*2;
     Index numCorners = bin.ncl.size();
     if (indexGeom) {
         const Index *cl = bin.ncl.data();
@@ -757,7 +792,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
              osg::ref_ptr<osg::Vec3Array> vertices = applyTriangle<Triangles, Triangles::const_ptr, osg::Vec3Array, false>(triangles, triangles, indexGeom, bin);
              geom->setVertexArray(vertices);
 
-             auto ps = buildTriangles(bin, indexGeom);
+             auto ps = buildTrianglesFromTriangles(bin, indexGeom);
              geom->addPrimitiveSet(ps);
 
              osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Triangles, Normals::const_ptr, osg::Vec3Array, true>(triangles, normals, indexGeom, bin);
@@ -775,6 +810,60 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                  fl = applyTriangle<Triangles, vistle::Vec<Scalar,3>::const_ptr, osg::FloatArray, false>(triangles, vdata, indexGeom, bin);
              } else if (idata) {
                  fl = applyTriangle<Triangles, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(triangles, idata, indexGeom, bin);
+             }
+             if (fl)
+                 geom->setVertexAttribArray(DataAttrib, fl);
+
+             bin.clear();
+         }
+
+         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+         break;
+      }
+
+      case vistle::Object::QUADS: {
+
+         vistle::Quads::const_ptr quads = vistle::Quads::as(m_geo);
+
+         const Index numCorners = quads->getNumCorners();
+         const Index numVertices = quads->getNumVertices();
+         if (numCorners == 0)
+             indexGeom = false;
+
+         debug << "Quads: [ #c " << numCorners << ", #v " << numVertices << ", indexed=" << (indexGeom?"t":"f") << " ]";
+
+         osg::ref_ptr<osg::Vec3Array> gnormals;
+         if (!normals)
+             gnormals = computeNormals<vistle::Quads>(quads, indexGeom);
+
+         auto bins = binPrimitives<vistle::Quads>(quads);
+         debug << " #bins: " << bins.size();
+
+         for (auto bin: bins) {
+             auto geom = new osg::Geometry();
+             draw.push_back(geom);
+
+             osg::ref_ptr<osg::Vec3Array> vertices = applyTriangle<Quads, Quads::const_ptr, osg::Vec3Array, false>(quads, quads, indexGeom, bin);
+             geom->setVertexArray(vertices);
+
+             auto ps = buildTrianglesFromQuads(bin, indexGeom);
+             geom->addPrimitiveSet(ps);
+
+             osg::ref_ptr<osg::Vec3Array> norm = applyTriangle<Quads, Normals::const_ptr, osg::Vec3Array, true>(quads, normals, indexGeom, bin);
+             if (!norm)
+                 norm = applyTriangle<Quads, osg::Vec3Array*, osg::Vec3Array, false>(quads, gnormals.get(), indexGeom, bin);
+             geom->setNormalArray(norm.get());
+
+             osg::ref_ptr<osg::FloatArray> fl;
+             auto tc = applyTriangle<Quads, vistle::Texture1D::const_ptr, osg::FloatArray, false>(quads, tex, indexGeom, bin);
+             if (tc) {
+                 geom->setTexCoordArray(0, tc);
+             } else if (data) {
+                 fl = applyTriangle<Quads, vistle::Vec<Scalar>::const_ptr, osg::FloatArray, false>(quads, data, indexGeom, bin);
+             } else if (vdata) {
+                 fl = applyTriangle<Quads, vistle::Vec<Scalar,3>::const_ptr, osg::FloatArray, false>(quads, vdata, indexGeom, bin);
+             } else if (idata) {
+                 fl = applyTriangle<Quads, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(quads, idata, indexGeom, bin);
              }
              if (fl)
                  geom->setVertexAttribArray(DataAttrib, fl);
