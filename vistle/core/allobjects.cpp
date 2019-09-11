@@ -12,7 +12,7 @@
 #include "tubes.cpp"
 #include "indexed.cpp"
 #include "lines.cpp"
-#include "triangles.cpp"
+#include "ngons.cpp"
 #include "polygons.cpp"
 #include "texture1d.cpp"
 #include "empty.cpp"
@@ -41,6 +41,7 @@
 #include "indexed.h"
 #include "lines.h"
 #include "triangles.h"
+#include "quads.h"
 #include "polygons.h"
 #include "texture1d.h"
 #include "empty.h"
@@ -80,6 +81,7 @@ void registerTypes() {
    REGISTER_TYPE(Lines, Object::LINES);
    REGISTER_TYPE(Tubes, Object::TUBES);
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
+   REGISTER_TYPE(Quads, Object::QUADS);
    REGISTER_TYPE(Polygons, Object::POLYGONS);
    REGISTER_TYPE(UniformGrid, Object::UNIFORMGRID);
    REGISTER_TYPE(RectilinearGrid, Object::RECTILINEARGRID);

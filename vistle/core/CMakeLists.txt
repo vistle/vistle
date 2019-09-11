@@ -66,7 +66,7 @@ if(${TEMPLATES_IN_HEADERS})
       tubes.cpp
       indexed.cpp
       lines.cpp
-      triangles.cpp
+      ngons.cpp
       polygons.cpp
       texture1d.cpp
       empty.cpp
@@ -156,7 +156,9 @@ set(core_HEADERS
    texture1d.h
    texture1d_impl.h
    triangles.h
-   triangles_impl.h
+   quads.h
+   ngons.h
+   ngons_impl.h
    unstr.h
    unstr_impl.h
    database.h

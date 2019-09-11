@@ -1,10 +1,11 @@
-#ifndef TRIANGLES_IMPL_H
-#define TRIANGLES_IMPL_H
+#ifndef VISTLE_NGONS_IMPL_H
+#define VISTLE_NGONS_IMPL_H
 
 namespace vistle {
 
+template<int N>
 template<class Archive>
-void Triangles::Data::serialize(Archive &ar) {
+void Ngons<N>::Data::serialize(Archive &ar) {
    ar & V_NAME(ar, "base_coords", serialize_base<Base::Data>(ar, *this));
    ar & V_NAME(ar, "connection_list", cl);
 }

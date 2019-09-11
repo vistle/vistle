@@ -102,6 +102,7 @@ public:
       UNIFORMGRID       = 25,
       RECTILINEARGRID   = 26,
       STRUCTUREDGRID    = 27,
+      QUADS             = 28,
 
       VERTEXOWNERLIST   = 95,
       CELLTREE1         = 96,
