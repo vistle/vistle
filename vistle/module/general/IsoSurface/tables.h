@@ -13,23 +13,9 @@
 */
 // triangle table maps same cube vertex index to a list of up to 5 triangles
 // which are built from the interpolated edge vertices
+
+// unused entry
 #define X 255
-
-//Vector vertlist[12];
-//vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
-//vertlist[1] = lerp3(newv[1], newv[2], tlist[1]);
-//vertlist[2] = lerp3(newv[2], newv[3], tlist[2]);
-//vertlist[3] = lerp3(newv[3], newv[0], tlist[3]);
-
-//vertlist[4] = lerp3(newv[4], newv[5], tlist[4]);
-//vertlist[5] = lerp3(newv[5], newv[6], tlist[5]);
-//vertlist[6] = lerp3(newv[6], newv[7], tlist[6]);
-//vertlist[7] = lerp3(newv[7], newv[4], tlist[7]);
-
-//vertlist[8] = lerp3(newv[0], newv[4], tlist[8]);
-//vertlist[9] = lerp3(newv[1], newv[5], tlist[9]);
-//vertlist[10] = lerp3(newv[2], newv[6], tlist[10]);
-//vertlist[11] = lerp3(newv[3], newv[7], tlist[11]);
 
 
 static CONSTANT int hexaEdgeTable[2][12] = {
@@ -557,19 +543,11 @@ static CONSTANT int hexaNumVertsTable[256] = {
 };
 
 
+
 #ifndef ONLY_HEXAHEDRON
 
 // triangle table maps same cube vertex index to a list of up to 5 triangles
 // which are built from the interpolated edge vertices
-
-//vertlist[0] = vertexInterp(isoValue, v[0], v[1], field[0], field[1]);
-//vertlist[1] = vertexInterp(isoValue, v[0], v[2], field[0], field[2]);
-//vertlist[2] = vertexInterp(isoValue, v[0], v[3], field[0], field[3]);
-//
-//vertlist[3] = vertexInterp(isoValue, v[1], v[2], field[1], field[2]);
-//vertlist[4] = vertexInterp(isoValue, v[1], v[3], field[1], field[3]);
-//
-//vertlist[5] = vertexInterp(isoValue, v[2], v[3], field[2], field[3]);
 
 static CONSTANT int tetraTriTable[16][6] = {
    { X, X, X, X, X, X }, //0
@@ -616,22 +594,7 @@ static CONSTANT int tetraEdgeTable[2][6] = {
 
 
 
-//vertlist[0] = vertexInterp(isoValue, v[0], v[1], field[0], field[1]);
-//vertlist[1] = vertexInterp(isoValue, v[1], v[2], field[1], field[2]);
-
-//vertlist[2] = vertexInterp(isoValue, v[0], v[2], field[0], field[2]);
-//vertlist[3] = vertexInterp(isoValue, v[3], v[4], field[3], field[4]);
-
-//vertlist[4] = vertexInterp(isoValue, v[4], v[5], field[4], field[5]);
-//vertlist[5] = vertexInterp(isoValue, v[3], v[5], field[3], field[5]);
-
-//vertlist[6] = vertexInterp(isoValue, v[0], v[3], field[0], field[3]);
-//vertlist[7] = vertexInterp(isoValue, v[1], v[4], field[1], field[4]);
-//vertlist[8] = vertexInterp(isoValue, v[2], v[5], field[2], field[5]);
-
-
 static CONSTANT int prismTriTable[64][12] = {
-
 { X, X, X, X, X, X, X, X, X, X, X, X },//0
 { 0, 6, 2, X, X, X, X, X, X, X, X, X },
 { 0, 1, 7, X, X, X, X, X, X, X, X, X },//2
@@ -696,12 +659,9 @@ static CONSTANT int prismTriTable[64][12] = {
 { 0, 7, 1, X, X, X, X, X, X, X, X, X },
 { 0, 2, 6, X, X, X, X, X, X, X, X, X },//62
 { X, X, X, X, X, X, X, X, X, X, X, X },
-
-        };
+};
 
 static CONSTANT int prismNumVertsTable[64] = {
-
-
     0,
     3,
     3,
@@ -766,26 +726,12 @@ static CONSTANT int prismNumVertsTable[64] = {
     3,
     3,
     0,
-
 };
 
 static CONSTANT int prismEdgeTable[2][9] = {
     {0,1,0,3,4,3,0,1,2},
     {1,2,2,4,5,5,3,4,5},
 };
-
-
-//vertlist[0] = vertexInterp(isoValue, v[0], v[1], field[0], field[1]);
-//vertlist[1] = vertexInterp(isoValue, v[0], v[4], field[0], field[4]);
-
-//vertlist[2] = vertexInterp(isoValue, v[0], v[3], field[0], field[3]);
-//vertlist[3] = vertexInterp(isoValue, v[1], v[4], field[1], field[4]);
-
-//vertlist[4] = vertexInterp(isoValue, v[1], v[2], field[1], field[2]);
-//vertlist[5] = vertexInterp(isoValue, v[2], v[3], field[2], field[3]);
-
-//vertlist[6] = vertexInterp(isoValue, v[2], v[4], field[2], field[4]);
-//vertlist[7] = vertexInterp(isoValue, v[3], v[4], field[3], field[4]);
 
 
 
@@ -823,7 +769,6 @@ static CONSTANT int pyrTriTable[32][12] = {
     { 0, 2, 1, X, X, X, X, X, X, X, X, X },//30
     { X, X, X, X, X, X, X, X, X, X, X, X }
 };
-
 
 static CONSTANT int pyrNumVertsTable[32] = {
     0,
@@ -864,7 +809,83 @@ static CONSTANT int pyrEdgeTable[2][8] = {
  {0,0,0,1,1,2,2,3},
  {1,4,3,4,2,3,4,4},
 };
+
+
+
+static CONSTANT int triLineTable[8][2] = {
+    { X, X },
+    { 0, 2 },
+    { 0, 1 },
+    { 1, 2 },
+    { 2, 1 },
+    { 1, 0 },
+    { 2, 0 },
+    { X, X },
+};
+
+static CONSTANT int triNumVertsTable[8] = {
+    0,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    0,
+};
+
+static CONSTANT int triEdgeTable[2][3] = {
+ {0,1,2},
+ {1,2,0},
+};
+
+
+
+static CONSTANT int quadLineTable[16][4] = {
+    { X, X, X, X },
+    { 3, 0, X, X },
+    { 0, 1, X, X },
+    { 3, 1, X, X },
+    { 1, 2, X, X },
+    { 3, 0, 1, 2 },
+    { 0, 2, X, X },
+    { 2, 3, X, X },
+    { 3, 2, X, X },
+    { 2, 0, X, X },
+    { 2, 3, 0, 1 },
+    { 2, 1, X, X },
+    { 1, 3, X, X },
+    { 1, 0, X, X },
+    { 0, 3, X, X },
+    { X, X, X, X },
+};
+
+static CONSTANT int quadNumVertsTable[16] = {
+    0,
+    2,
+    2,
+    2,
+    2,
+    4,
+    2,
+    2,
+    2,
+    2,
+    4,
+    2,
+    2,
+    2,
+    2,
+    0,
+};
+
+static CONSTANT int quadEdgeTable[2][4] = {
+ {0,1,2,3},
+ {1,2,3,0},
+};
+
 #endif /* ONLY_HEXAHEDRON */
+
 
 #undef X
 

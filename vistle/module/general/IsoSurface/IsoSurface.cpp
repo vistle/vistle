@@ -262,7 +262,10 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
    auto rect = RectilinearGrid::as(grid);
    auto str = StructuredGrid::as(grid);
    auto unstr = UnstructuredGrid::as(grid);
-   if (!uni && !rect && !str && !unstr) {
+   auto tri = Triangles::as(grid);
+   auto quad = Quads::as(grid);
+   auto poly = Polygons::as(grid);
+   if (!uni && !rect && !str && !unstr && !tri && !quad && !poly) {
        if (grid)
            sendError("grid required on input data: invalid type");
        else

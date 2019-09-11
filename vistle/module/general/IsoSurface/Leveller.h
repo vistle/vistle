@@ -9,7 +9,10 @@
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
 #include <core/unstr.h>
+#include <core/polygons.h>
+#include <core/quads.h>
 #include <core/triangles.h>
+#include <core/lines.h>
 #include <util/enum.h>
 
 #ifdef CUTTINGSURFACE
@@ -34,6 +37,9 @@ class Leveller  {
    vistle::StructuredGrid::const_ptr m_str;
    vistle::UnstructuredGrid::const_ptr m_unstr;
    vistle::StructuredGridBase::const_ptr m_strbase;
+   vistle::Polygons::const_ptr m_poly;
+   vistle::Quads::const_ptr m_quad;
+   vistle::Triangles::const_ptr m_tri;
    vistle::Coords::const_ptr m_coord;
 #ifndef CUTTINGSURFACE
    vistle::Vec<vistle::Scalar>::const_ptr m_data;
@@ -43,6 +49,7 @@ class Leveller  {
    vistle::Scalar m_isoValue;
    vistle::Index m_processortype;
    vistle::Triangles::ptr m_triangles;
+   vistle::Lines::ptr m_lines;
    std::vector<vistle::DataBase::ptr> m_outvertData;
    std::vector<vistle::DataBase::ptr> m_outcellData;
    vistle::Scalar gmin, gmax;
