@@ -81,20 +81,24 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    Object::const_ptr grid_in = ugrid ? Object::as(ugrid) : std::dynamic_pointer_cast<const Object, const StructuredGridBase>(sgrid);
    assert(grid_in);
 
-   Polygons::ptr surface;
-   if (ugrid) {
-       surface = createSurface(ugrid);
-   } else if (sgrid) {
-       surface = createSurface(sgrid);
-   }
-   if (!surface)
-       return true;
-
+   Object::ptr surface;
    VerticesMapping vm;
-   if (auto coords = Coords::as(grid_in)) {
-       renumberVertices(coords, surface, vm);
-   } else {
-       createVertices(sgrid, surface, vm);
+   if (ugrid) {
+       auto poly = createSurface(ugrid);
+       surface = poly;
+       if (!poly)
+           return true;
+       renumberVertices(ugrid, poly, vm);
+   } else if (sgrid) {
+       auto quad = createSurface(sgrid);
+       surface = quad;
+       if (!quad)
+           return true;
+       if (auto coords = Coords::as(grid_in)) {
+           renumberVertices(coords, quad, vm);
+       } else {
+           createVertices(sgrid, quad, vm);
+       }
    }
 
    surface->setMeta(grid_in->meta());
@@ -140,12 +144,11 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    return true;
 }
 
-Polygons::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid) const {
+Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid) const {
 
    auto sgrid = std::dynamic_pointer_cast<const StructuredGrid, const StructuredGridBase>(grid);
 
-   Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
-   auto &pl = m_grid_out->el();
+   Quads::ptr m_grid_out(new Quads(0, 0));
    auto &pcl = m_grid_out->cl();
    Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
 
@@ -182,7 +185,6 @@ Polygons::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
-                   pl.push_back(pcl.size());
                }
            }
        }
@@ -200,15 +202,10 @@ Polygons::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
-                   pl.push_back(pcl.size());
                }
            }
 
        }
-   }
-
-   if (m_grid_out->getNumElements() == 0) {
-      return Polygons::ptr();
    }
 
    return m_grid_out;
@@ -254,11 +251,51 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly
    }
 }
 
-void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Indexed::ptr poly, VerticesMapping &vm) const {
+void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, VerticesMapping &vm) const {
+
+   const bool reuseCoord = getIntParameter("reuseCoordinates");
+
+   if (reuseCoord) {
+      quad->d()->x[0] = coords->d()->x[0];
+      quad->d()->x[1] = coords->d()->x[1];
+      quad->d()->x[2] = coords->d()->x[2];
+   } else {
+      vm.clear();
+      Index c=0;
+      for (Index &v: quad->cl()) {
+         if (vm.emplace(v,c).second) {
+            v=c;
+            ++c;
+         } else {
+            v=vm[v];
+         }
+      }
+
+      const Scalar *xcoord = &coords->x()[0];
+      const Scalar *ycoord = &coords->y()[0];
+      const Scalar *zcoord = &coords->z()[0];
+      auto &px = quad->x();
+      auto &py = quad->y();
+      auto &pz = quad->z();
+      px.resize(c);
+      py.resize(c);
+      pz.resize(c);
+
+      for (const auto &v: vm) {
+         Index f=v.first;
+         Index s=v.second;
+         px[s] = xcoord[f];
+         py[s] = ycoord[f];
+         pz[s] = zcoord[f];
+      }
+   }
+}
+
+void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::ptr quad, VerticesMapping &vm) const {
 
     vm.clear();
     Index c=0;
-    for (Index &v: poly->cl()) {
+    for (Index &v: quad->cl()) {
         if (vm.emplace(v,c).second) {
             v=c;
             ++c;
@@ -267,9 +304,9 @@ void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Indexed::
         }
     }
 
-    auto &px = poly->x();
-    auto &py = poly->y();
-    auto &pz = poly->z();
+    auto &px = quad->x();
+    auto &py = quad->y();
+    auto &pz = quad->z();
     px.resize(c);
     py.resize(c);
     pz.resize(c);
