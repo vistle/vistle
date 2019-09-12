@@ -272,10 +272,6 @@ vistle_find_package(Boost 1.53 REQUIRED
     iostreams chrono locale thread regex
     OPTIONAL_COMPONENTS ${BOOST_OPT})
 	
-if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS}) 
-endif()
-
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")

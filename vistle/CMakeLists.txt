@@ -135,7 +135,11 @@ set(EIGEN3_INCLUDE_PATH "../3rdparty")
 include_directories(SYSTEM ${EIGEN3_INCLUDE_PATH})
 
 #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
-include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+if(Boost_FOUND)
+    include_directories(AFTER SYSTEM ${Boost_INCLUDE_DIRS}) 
+endif()
+
 
 # header-only python byindings
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")

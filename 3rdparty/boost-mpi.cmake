@@ -29,7 +29,7 @@ set(boost_mpi_SOURCES
    ${BOOST_MPI_DIR}/src/timer.cpp
 )
 
-if (BOOST_MPI_DIR STREQUAL "boost-mpi")
+if (BOOST_MPI_DIR STREQUAL "boost-mpi-1.69")
    set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
       ${BOOST_MPI_DIR}/src/offsets.cpp
    )
