@@ -2,6 +2,7 @@
 #include "depthquant.h"
 #include <iostream>
 #include <mutex>
+#include <memory>
 
 #ifdef HAVE_ZFP
 #include <zfp.h>
