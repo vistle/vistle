@@ -368,7 +368,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
-    BOOST_DLL_ALIAS(newModuleInstance, newModule);
+    BOOST_DLL_ALIAS(newModuleInstance, newModule)
 #endif
 
 #define MODULE_DEBUG(X)

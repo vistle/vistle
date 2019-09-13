@@ -16,7 +16,7 @@ static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name
        //return std::shared_ptr<X>(new X("dummy shm", name, moduleId));
     return nullptr;
 }
-BOOST_DLL_ALIAS(newModuleInstance, newModule);
+BOOST_DLL_ALIAS(newModuleInstance, newModule)
 #else
 int main(int argc, char *argv[]) {
 
