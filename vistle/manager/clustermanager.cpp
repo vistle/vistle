@@ -779,6 +779,8 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
 
 bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
+    CERR << "handling spawn: " << spawn << std::endl;
+
    if (spawn.spawnId() == Id::Invalid) {
       // ignore messages where master hub did not yet create an id
       return true;
@@ -821,7 +823,9 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    AvailableModule::Key key(0, name);
    auto avail = Communicator::the().localModules();
    auto it = avail.find(key);
-   if (it != avail.end()) {
+   if (it == avail.end()) {
+       CERR << "did not find module " << name << std::endl;
+   } else {
        auto &m = it->second;
        try {
 #ifdef MODULE_STATIC
@@ -871,6 +875,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
            });
            mod.thread = std::move(t);
        } else {
+           CERR << "no newModule method for module " << name << std::endl;
            auto it = runningMap.find(newId);
            if (it != runningMap.end()) {
                runningMap.erase(it);
