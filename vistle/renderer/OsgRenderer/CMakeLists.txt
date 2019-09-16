@@ -55,6 +55,7 @@ endif()
 
 target_link_libraries(OsgRenderer
         ${OPENSCENEGRAPH_LIBRARIES}
+        ${GLEW_LIBRARY}
         ${GLEW_LIBRARIES}
         ${OPENGL_LIBRARIES}
         vistle_module
