@@ -727,6 +727,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case message::OBJECTRECEIVEPOLICY:
       case message::PONG:
       case message::UPDATESTATUS:
+      case message::TRACE:
          break;
 
       default:
