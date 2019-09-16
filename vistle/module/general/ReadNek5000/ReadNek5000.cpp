@@ -110,15 +110,24 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
         auto x = grid->x().data();
         auto y = grid->y().data();
         auto z = grid->z().data();
+        curOpenMeshFiles[partition] = OpenFile();
+
         for (size_t b = 0; b < blocksToRead; b++) {
 
-            if (!ReadMesh(timestepToUseForMesh, blocksRead + b, x + b * iTotalBlockSize, y + b * iTotalBlockSize, z + b * iTotalBlockSize)) {
+            if (!ReadMesh(partition, timestepToUseForMesh, blocksRead + b, x + b * iTotalBlockSize, y + b * iTotalBlockSize, z + b * iTotalBlockSize)) {
                 return false;
             }
         }
+        //cleanup open file
+        if(curOpenMeshFiles[partition].file)
+        {
+           fclose(curOpenMeshFiles[partition].file);
+        }
+        curOpenMeshFiles[partition] = OpenFile();
         token.addObject(p_grid, grid);
     }
     else if (!p_only_geometry->getValue()){
+        curOpenVarFiles[partition] = OpenFile();
         {//velocities
             auto grid = mGrids.find(partition);
             if (grid == mGrids.end()) {
@@ -136,7 +145,7 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
             auto z = velocity->z().data();
             if (bHasVelocity) {
                 for (size_t b = 0; b < blocksToRead; b++) {
-                    if (!ReadVelocity(timestep, blocksRead + b, x + b * iTotalBlockSize, y + b * iTotalBlockSize, z + b * iTotalBlockSize)) {
+                    if (!ReadVelocity(partition, timestep, blocksRead + b, x + b * iTotalBlockSize, y + b * iTotalBlockSize, z + b * iTotalBlockSize)) {
                         return false;
                     }
                 }
@@ -159,21 +168,27 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
                 return false;
             }
         }
-
+        //cleanup open file
+        if(curOpenVarFiles[partition].file)
+        {
+           fclose(curOpenVarFiles[partition].file);
+        }
+        curOpenVarFiles[partition] = OpenFile();
     }
     return true;
 }
 
 bool ReadNek::examine(const vistle::Parameter* param) {
    
-    int oldNumSFields = iNumSFields;
-    if (fs::exists(p_data_path->getValue())) {
-        if (!parseMetaDataFile() || !ParseNekFileHeader()) {
-            return false;
-        }
-        setTimesteps(iNumTimesteps);
-        setPartitions(p_numPartitions->getValue());
+    if (!fs::exists(p_data_path->getValue())) {
+        return false;
     }
+    int oldNumSFields = iNumSFields;
+    if (!parseMetaDataFile() || !ParseNekFileHeader()) {
+        return false;
+    }
+    setTimesteps(iNumTimesteps);
+    setPartitions(p_numPartitions->getValue());
     for (size_t i = oldNumSFields; i < iNumSFields; i++) {
         pv_misc.push_back(createOutputPort("scalarFiled" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
     }
@@ -186,10 +201,19 @@ bool ReadNek::examine(const vistle::Parameter* param) {
 
 bool ReadNek::finishRead() {
     mGrids.clear();
-    if (fdMesh) {
-        fclose(fdMesh);
-        fdMesh = nullptr;
-        curOpenMeshFile = "";
+    for(auto file : curOpenMeshFiles)
+    {
+        if(file.second.file)
+        {
+            fclose(file.second.file);
+        }
+    }
+    for(auto file : curOpenVarFiles)
+    {
+        if(file.second.file)
+        {
+            fclose(file.second.file);
+        }
     }
     std::cerr << "_________________________________________________________" << std::endl;
     std::cerr << "read was called "<< numReads << " times" << std::endl;
@@ -531,28 +555,29 @@ void ReadNek::ParseFieldTags(ifstream& f) {
     }
 }
 
-bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
-    if (fdMesh == nullptr || (bParFormat && aBlockLocs[block * 2] != iCurrMeshProc)) {
+bool ReadNek::ReadMesh(int numReads, int timestep, int block, float *x, float *y, float* z) {
+    auto &curFile = curOpenMeshFiles[numReads];
+    if (curFile.file == nullptr || (bParFormat && aBlockLocs[block * 2] != curFile.curProc)) {
 
-        iCurrMeshProc = 0;
+        curFile.curProc = 0;
         if (bParFormat)
-            iCurrMeshProc = aBlockLocs[block * 2];
+            curFile.curProc = aBlockLocs[block * 2];
 
-        string meshfilename = GetFileName(timestep, iCurrMeshProc);
+        string meshfilename = GetFileName(timestep, curFile.curProc);
 
-        if (curOpenMeshFile != meshfilename) {
-            if (fdMesh)
-                fclose(fdMesh);
+        if (curFile.fileName != meshfilename) {
+            if (curFile.file)
+                fclose(curFile.file);
 
-            fdMesh = fopen(meshfilename.c_str(), "rb");
-            curOpenMeshFile = meshfilename;
-            if (!fdMesh)                 {
+            curFile.file = fopen(meshfilename.c_str(), "rb");
+            curFile.fileName = meshfilename;
+            if (!curFile.file)                 {
                 sendError("nek5000: can't open file: " + meshfilename);
                 return false;
             }
         }
         if (!bBinary)
-            FindAsciiDataStart(fdMesh, iAsciiMeshFileStart, iAsciiMeshFileLineLen);
+            FindAsciiDataStart(curFile.file, curFile.iAsciiFileStart, curFile.iAsciiFileLineLen);
     }
 
     if (bParFormat)
@@ -561,7 +586,7 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, nullptr);
     int nFloatsInDomain = dp.domSizeInFloats;
-    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[iCurrMeshProc] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[curFile.curProc] * sizeof(int) : 0);
 
     if (bBinary) {
         //In the parallel format, the whole mesh comes before all the vars.
@@ -569,11 +594,11 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
             nFloatsInDomain = iDim * iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
 
         if (iPrecision == 4) {
-             fseek(fdMesh, iRealHeaderSize + (long)nFloatsInDomain * sizeof(float) * block, SEEK_SET);
-            size_t res = fread(x, sizeof(float), iTotalBlockSize, fdMesh); (void)res;
-            res = fread(y, sizeof(float), iTotalBlockSize, fdMesh); (void)res;
+             fseek(curFile.file, iRealHeaderSize + (long)nFloatsInDomain * sizeof(float) * block, SEEK_SET);
+            size_t res = fread(x, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
+            res = fread(y, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
             if (iDim == 3) {
-                size_t res = fread(z, sizeof(float), iTotalBlockSize, fdMesh); (void)res;
+                size_t res = fread(z, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
             }
             else {
                 memset(z, 0, iTotalBlockSize * sizeof(float));
@@ -588,10 +613,10 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
 
         } else {
             double* tmppts = new double[iTotalBlockSize * iDim];
-            fseek(fdMesh, iRealHeaderSize +
+            fseek(curFile.file, iRealHeaderSize +
                 (long)nFloatsInDomain * sizeof(double) * block,
                 SEEK_SET);
-            size_t res = fread(tmppts, sizeof(double), iTotalBlockSize * iDim, fdMesh); (void)res;
+            size_t res = fread(tmppts, sizeof(double), iTotalBlockSize * iDim, curFile.file); (void)res;
             if (bSwapEndian)
                 ByteSwapArray(tmppts, iTotalBlockSize * iDim);
             for (size_t i = 0; i < iTotalBlockSize; i++) {
@@ -609,13 +634,13 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
         }
     } else {
         for (int ii = 0; ii < iTotalBlockSize; ii++) {
-            fseek(fdMesh, (long)iAsciiMeshFileStart +
-                (long)block * iAsciiMeshFileLineLen * iTotalBlockSize +
-                (long)ii * iAsciiMeshFileLineLen, SEEK_SET);
+            fseek(curFile.file, (long)curFile.iAsciiFileStart +
+                (long)block * curFile.iAsciiFileLineLen * iTotalBlockSize +
+                (long)ii * curFile.iAsciiFileLineLen, SEEK_SET);
             if (iDim == 3) {
-                int res = fscanf(fdMesh, " %f %f %f", &x[ii], &y[ii], &z[ii]); (void)res;
+                int res = fscanf(curFile.file, " %f %f %f", &x[ii], &y[ii], &z[ii]); (void)res;
             } else {
-                int res = fscanf(fdMesh, " %f %f", &x[ii], &y[ii]); (void)res;
+                int res = fscanf(curFile.file, " %f %f", &x[ii], &y[ii]); (void)res;
                 memset(z, 0, iTotalBlockSize * sizeof(float));
             }
         }
@@ -623,8 +648,8 @@ bool ReadNek::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
     return true;
 }
 
-bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z) {
-
+bool ReadNek::ReadVelocity(int numReads, int timestep, int block, float* x, float* y, float* z) {
+auto &curFile = curOpenVarFiles[numReads];
 
     if (timestep < 0) {
         return false;
@@ -632,25 +657,25 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
 
     int ii;
     //ReadBlockLocations();
-    if (timestep != iCurrTimestep || (bParFormat && aBlockLocs[block * 2] != iCurrVarProc)) {
-        if (fdVar)
-            fclose(fdVar);
+    if (timestep != curFile.curTimestep| (bParFormat && aBlockLocs[block * 2] != curFile.curProc)) {
+        if (curFile.file) //!this is not thread save
+            fclose(curFile.file);
 
-        iCurrVarProc = 0;
+        curFile.curProc = 0;
         if (bParFormat)
-            iCurrVarProc = aBlockLocs[block * 2];
+            curFile.curProc = aBlockLocs[block * 2];
 
-        string filename = GetFileName(timestep, iCurrVarProc);
+        string filename = GetFileName(timestep, curFile.curProc);
 
-        fdVar = fopen(filename.c_str(), "rb");
-        if (!fdVar) {
+        curFile.file = fopen(filename.c_str(), "rb");
+        if (!curFile.file) {
             sendError(".nek5000 could not open file " + filename);
             return false;
         }
 
-        iCurrTimestep = timestep;
+        curFile.curTimestep = timestep;
         if (!bBinary)
-            FindAsciiDataStart(fdVar, iAsciiCurrFileStart, iAsciiCurrFileLineLen);
+            FindAsciiDataStart(curFile.file, curFile.iAsciiFileStart, curFile.iAsciiFileLineLen);
     }
 
     
@@ -658,7 +683,7 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
     if (bParFormat)
         block = aBlockLocs[block * 2 + 1];
 
-    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[iCurrVarProc] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[curFile.curProc] * sizeof(int) : 0);
 
     if (bBinary) {
         long filepos;
@@ -667,14 +692,14 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
         else
             //This assumes [block 0: 216u 216v 216w][block 1: 216u 216v 216w]...[block n: 216u 216v 216w]
             filepos = (long)iRealHeaderSize +
-            (long)vBlocksPerFile[iCurrVarProc] * dp.varOffsetBinary * iPrecision + //the header and mesh if one exists
+            (long)vBlocksPerFile[curFile.curProc] * dp.varOffsetBinary * iPrecision + //the header and mesh if one exists
             (long)block * iTotalBlockSize * iDim * iPrecision;
         if (iPrecision == 4) {
-            fseek(fdVar, filepos, SEEK_SET);
-            size_t res = fread(x, sizeof(float), iTotalBlockSize, fdVar); (void)res;
-            res = fread(y, sizeof(float), iTotalBlockSize, fdVar); (void)res;
+            fseek(curFile.file, filepos, SEEK_SET);
+            size_t res = fread(x, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
+            res = fread(y, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
             if (iDim == 3) {
-                res = fread(z, sizeof(float), iTotalBlockSize, fdVar); (void)res;
+                res = fread(z, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
             }
             else {
                 memset(z, 0, iTotalBlockSize * sizeof(float));
@@ -691,8 +716,8 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
             }
         } else {
             double* tmppts = new double[iTotalBlockSize * iDim];
-            fseek(fdVar, filepos, SEEK_SET);
-            size_t res = fread(tmppts, sizeof(double), iTotalBlockSize * iDim, fdVar); (void)res;
+            fseek(curFile.file, filepos, SEEK_SET);
+            size_t res = fread(tmppts, sizeof(double), iTotalBlockSize * iDim, curFile.file); (void)res;
 
             if (bSwapEndian)
                 ByteSwapArray(tmppts, iTotalBlockSize * iDim);
@@ -710,14 +735,14 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
         }
     } else {
         for (ii = 0; ii < iTotalBlockSize; ii++) {
-            fseek(fdVar, (long)iAsciiCurrFileStart +
-                (long)block * iAsciiCurrFileLineLen * iTotalBlockSize +
-                (long)ii * iAsciiCurrFileLineLen +
+            fseek(curFile.file, (long)curFile.iAsciiFileStart +
+                (long)block * curFile.iAsciiFileLineLen * iTotalBlockSize +
+                (long)ii * curFile.iAsciiFileLineLen +
                 (long)dp.varOffsetAscii, SEEK_SET);
             if (iDim == 3) {
-                int res = fscanf(fdVar, " %f %f %f", x + ii, y +ii, z+ ii); (void)res;
+                int res = fscanf(curFile.file, " %f %f %f", x + ii, y +ii, z+ ii); (void)res;
             } else {
-                int res = fscanf(fdVar, " %f %f", &x[ii], &y[ii]); (void)res;
+                int res = fscanf(curFile.file, " %f %f", &x[ii], &y[ii]); (void)res;
                 z[ii] = 0.0f;
             }
         }
@@ -725,33 +750,33 @@ bool ReadNek::ReadVelocity(int timestep, int block, float* x, float* y, float* z
     return true;
 }
 
-bool ReadNek::ReadVar(const char* varname, int timestep, int block, float* data) {
+bool ReadNek::ReadVar(int numReads, const char* varname, int timestep, int block, float* data) {
 
     //ReadBlockLocations();
+auto &curFile = curOpenVarFiles[numReads];
+    if (timestep != curFile.curTimestep || (bParFormat && aBlockLocs[block * 2] != curFile.curProc)) {
+        if (curFile.file)
+            fclose(curFile.file);
 
-    if (timestep != iCurrTimestep || (bParFormat && aBlockLocs[block * 2] != iCurrVarProc)) {
-        if (fdVar)
-            fclose(fdVar);
 
 
-
-        iCurrVarProc = 0;
+        curFile.curProc = 0;
         if (bParFormat)
-            iCurrVarProc = aBlockLocs[block * 2];
+            curFile.curProc = aBlockLocs[block * 2];
 
-        string filename = GetFileName(timestep, iCurrVarProc);
+        string filename = GetFileName(timestep, curFile.curProc);
 
-        fdVar = fopen(filename.c_str(), "rb");
-        if (!fdVar)             {
+        curFile.file = fopen(filename.c_str(), "rb");
+        if (!curFile.file)             {
             sendError(".nek500: can not open file" + filename);
             return false;
         }
 
 
 
-        iCurrTimestep = timestep;
+        curFile.curTimestep = timestep;
         if (!bBinary)
-            FindAsciiDataStart(fdVar, iAsciiCurrFileStart, iAsciiCurrFileLineLen);
+            FindAsciiDataStart(curFile.file, curFile.iAsciiFileStart, curFile.iAsciiFileLineLen);
     }
 
 
@@ -760,7 +785,7 @@ bool ReadNek::ReadVar(const char* varname, int timestep, int block, float* data)
     if (bParFormat)
         block = aBlockLocs[block * 2 + 1];
 
-    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[iCurrVarProc] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (bParFormat ? vBlocksPerFile[curFile.curProc] * sizeof(int) : 0);
 
     if (bBinary) {
         long filepos;
@@ -771,24 +796,24 @@ bool ReadNek::ReadVar(const char* varname, int timestep, int block, float* data)
             // then p or t as   [block0: 216p][block1: 216p][block2: 216p]...
             if (strcmp(varname + 2, "velocity") == 0) {
                 filepos = (long)iRealHeaderSize +                              //header
-                    (long)dp.timestepHasMesh * vBlocksPerFile[iCurrVarProc] * iTotalBlockSize * iDim * iPrecision + //mesh
+                    (long)dp.timestepHasMesh * vBlocksPerFile[curFile.curProc] * iTotalBlockSize * iDim * iPrecision + //mesh
                     (long)block * iTotalBlockSize * iDim * iPrecision +                  //start of block
                     (long)(varname[0] - 'x') * iTotalBlockSize * iPrecision;            //position within block
             } else
                 filepos = (long)iRealHeaderSize +
-                (long)vBlocksPerFile[iCurrVarProc] * dp.varOffsetBinary * iPrecision + //the header, mesh, vel if present,
+                (long)vBlocksPerFile[curFile.curProc] * dp.varOffsetBinary * iPrecision + //the header, mesh, vel if present,
                 (long)block * iTotalBlockSize * iPrecision;
         }
         if (iPrecision == 4) {
-            fseek(fdVar, filepos, SEEK_SET);
-            size_t res = fread(data, sizeof(float), iTotalBlockSize, fdVar); (void)res;
+            fseek(curFile.file, filepos, SEEK_SET);
+            size_t res = fread(data, sizeof(float), iTotalBlockSize, curFile.file); (void)res;
             if (bSwapEndian)
                 ByteSwapArray(data, iTotalBlockSize);
         } else {
             double* tmp = new double[iTotalBlockSize];
 
-            fseek(fdVar, filepos, SEEK_SET);
-            size_t res = fread(tmp, sizeof(double), iTotalBlockSize, fdVar); (void)res;
+            fseek(curFile.file, filepos, SEEK_SET);
+            size_t res = fread(tmp, sizeof(double), iTotalBlockSize, curFile.file); (void)res;
             if (bSwapEndian)
                 ByteSwapArray(tmp, iTotalBlockSize);
 
@@ -800,11 +825,11 @@ bool ReadNek::ReadVar(const char* varname, int timestep, int block, float* data)
     } else {
         float* var_tmp = data;
         for (int ii = 0; ii < iTotalBlockSize; ii++) {
-            fseek(fdVar, (long)iAsciiCurrFileStart +
-                (long)block * iAsciiCurrFileLineLen * iTotalBlockSize +
-                (long)ii * iAsciiCurrFileLineLen +
+            fseek(curFile.file, (long)curFile.iAsciiFileStart +
+                (long)block * curFile.iAsciiFileLineLen * iTotalBlockSize +
+                (long)ii * curFile.iAsciiFileLineLen +
                 (long)dp.varOffsetAscii, SEEK_SET);
-            int res = fscanf(fdVar, " %f", var_tmp); (void)res;
+            int res = fscanf(curFile.file, " %f", var_tmp); (void)res;
             var_tmp++;
         }
     }
@@ -829,10 +854,17 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     scal->addAttribute("_species", varname);
 
     for (size_t b = 0; b < BlocksToRead(partition); b++) {
-        if (!ReadVar(varname.c_str(), timestep, blocksRead + b, data + b * iTotalBlockSize)) {
+        if (!ReadVar(partition, varname.c_str(), timestep, blocksRead + b, data + b * iTotalBlockSize)) {
             return false;
         }
     }
+    //cleanup open file
+    if(curOpenVarFiles[partition].file)
+    {
+       fclose(curOpenVarFiles[partition].file);
+    }
+    curOpenVarFiles[partition] = OpenFile();
+
     token.addObject(p, scal);
     return true;
 }
@@ -1033,6 +1065,7 @@ std::string ReadNek::GetFileName(int rawTimestep, int pardir) {
     int bufSize = fileTemplate.size();
     int len;
     char* outFileName = nullptr;
+    string s;
     do
     {
         bufSize += 64;
@@ -1043,9 +1076,9 @@ std::string ReadNek::GetFileName(int rawTimestep, int pardir) {
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, timestep);
         else
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, pardir, timestep);
+        s = string(outFileName, len);
+        delete[]outFileName;
     } while (len >= bufSize);
-    string s(outFileName, len);
-    delete[]outFileName;
     return string(s);
 }
 

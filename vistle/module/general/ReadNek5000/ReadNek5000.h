@@ -96,11 +96,11 @@ private:
     //      Gets the mesh associated with this file.  The mesh is returned as a
 //      derived type of vtkDataSet (ie vtkRectilinearGrid, vtkStructuredGrid,
 //      vtkUnstructuredGrid, etc).
-    bool ReadMesh(int timestep, int element, float* x, float* y, float* z);
+    bool ReadMesh(int numReads, int timestep, int element, float* x, float* y, float* z);
     //read velocity in x, y and z
-    bool ReadVelocity(int timestep, int block, float* x, float* y, float* z);
+    bool ReadVelocity(int numReads, int timestep, int block, float* x, float* y, float* z);
     //read var with varname in data
-    bool ReadVar(const char* varname, int timestep, int block, float* data);
+    bool ReadVar(int numReads, const char* varname, int timestep, int block, float* data);
     
     bool ReadScalarData(Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition);
     void ReadBlockLocations();
@@ -183,19 +183,22 @@ private:
     int curTimestep = 1;
     int timestepToUseForMesh = 0;
 
-    // Cached data describing how to read data out of the file.
-    FILE* fdMesh = nullptr, * fdVar = nullptr;
-    std::string  curOpenMeshFile;
-    std::string  curOpenVarFile;
+
+
+
     //maps the grids to the blocks
     std::map<int, vistle::UnstructuredGrid::ptr> mGrids;
-    int  iCurrTimestep;        //which timestep is associated with fdVar
-    int  iCurrMeshProc;        //For parallel format, proc associated with fdMesh
-    int  iCurrVarProc;         //For parallel format, proc associated with fdVar  
-    int  iAsciiMeshFileStart;  //For ascii data, file pos where data begins, in mesh file
-    int  iAsciiCurrFileStart;  //For ascii data, file pos where data begins, in current timestep
-    int  iAsciiMeshFileLineLen; //For ascii data, length of each line, in mesh file
-    int  iAsciiCurrFileLineLen; //For ascii data, length of each line, in current timestep
+    struct OpenFile
+    {
+        FILE* file = nullptr;
+        std::string fileName;
+        int curTimestep = -1;
+        int curProc = -1; //For parallel format, proc associated with file
+        int  iAsciiFileStart = -1;  //For ascii data, file pos where data begins, in current timestep
+        int  iAsciiFileLineLen = -1; //For ascii data, length of each line, in mesh file
+    };
+        // Cached data describing how to read data out of the file.
+    std::map<int, OpenFile> curOpenMeshFiles, curOpenVarFiles;
 
     std::vector<int> aBlockLocs;           //For parallel format, make a table for looking up blocks.
                                //This has 2 ints per block, with proc # and local block #.
