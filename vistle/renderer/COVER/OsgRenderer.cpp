@@ -255,7 +255,8 @@ bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, 
         auto inter = it->second;
         inter->removeParam(name, msg);
         if (!inter->hasParams()) {
-            std::cerr << "removing interactor for " << senderId << " (" << getModuleName(senderId) << ")" << std::endl;
+            std::cerr << "removing interactor for " << senderId << " (" << getModuleName(senderId) << "), refcount=" << inter->refCount() << std::endl;
+            coVRPluginList::instance()->removeObject(inter->getObjName(), false);
             inter->decRefCount();
             m_interactorMap.erase(it);
         }
@@ -272,6 +273,7 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
 
    VistleInteractor *inter = it->second;
    inter->applyParam(name, msg);
+   coVRPluginList::instance()->removeObject(inter->getObjName(), true);
    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
 
    return true;
@@ -583,6 +585,7 @@ bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr t
         std::cerr << rank() << ": adding COLORMAP attribute for " << species << std::endl;
     }
 
+    coVRPluginList::instance()->removeObject(inter->getObjName(), true);
     coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
 
     return true;

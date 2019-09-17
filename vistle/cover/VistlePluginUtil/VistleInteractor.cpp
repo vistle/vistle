@@ -72,6 +72,7 @@ void VistleInteractor::applyParam(const std::string &name, const vistle::message
 
 void VistleInteractor::removedObject()
 {
+    std::cerr << "VistleInteractor(" << m_moduleName << ") / " << getObjName() << std::endl;
 }
 
 /// returns true, if Interactor comes from same Module as intteractor i;
@@ -526,6 +527,9 @@ void VistleInteractor::setFileBrowserParam(const char *name, const char *val)
 // name of the covise data object which has feedback attributes
 const char *VistleInteractor::getObjName()
 {
+   static const char empty[] = "";
+   if (!m_object)
+       return empty;
    return m_object->getName();
 }
 
