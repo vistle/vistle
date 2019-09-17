@@ -17,6 +17,7 @@
 #include <core/object.h>
 #include <core/parameter.h>
 #include <core/assert.h>
+#include <core/shm.h>
 #include <util/sleep.h>
 #include <util/tools.h>
 #include <util/hostname.h>
@@ -427,6 +428,7 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);
+         Shm::the().setId(m_hubId);
          m_clusterManager->init();
          scanModules(m_moduleDir);
          return connectData();

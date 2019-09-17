@@ -116,6 +116,7 @@ using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
 class V_COREEXPORT Shm {
     template<typename T>
     friend struct shm;
+    friend class Communicator;
 
  public:
    static std::string instanceName(const std::string &host, unsigned short port);
@@ -179,10 +180,12 @@ class V_COREEXPORT Shm {
        message::MessageQueue *messageQueue, bool create);
    ~Shm();
 
+   void setId(int id);
+
    void_allocator *m_allocator;
    std::string m_name;
    bool m_remove;
-   const int m_moduleId;
+   int m_id;
    const int m_rank;
    std::atomic<int> m_objectId, m_arrayId;
    static Shm *s_singleton;

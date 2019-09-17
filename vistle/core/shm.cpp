@@ -79,7 +79,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
    : m_allocator(nullptr)
    , m_name(name)
    , m_remove(create)
-   , m_moduleId(m)
+   , m_id(m)
    , m_rank(r)
    , m_objectId(0)
    , m_arrayId(0)
@@ -137,6 +137,11 @@ Shm::~Shm() {
 #endif
 
    delete m_allocator;
+}
+
+void Shm::setId(int id) {
+
+    m_id = id;
 }
 
 void Shm::detach() {
@@ -300,13 +305,13 @@ bool Shm::isAttached() {
     return s_singleton;
 }
 
-bool Shm::remove(const std::string &name, const int moduleID, const int rank) {
+bool Shm::remove(const std::string &name, const int id, const int rank) {
 
    std::string n = shmSegName(name, rank);
    return interprocess::shared_memory_object::remove(n.c_str());
 }
 
-Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
+Shm & Shm::create(const std::string &name, const int id, const int rank,
                     message::MessageQueue * mq) {
 
    std::string n = shmSegName(name, rank);
@@ -323,7 +328,7 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(n, moduleID, rank, memsize, mq, true);
+            s_singleton = new Shm(n, id, rank, memsize, mq, true);
          } catch (boost::interprocess::interprocess_exception & /*ex*/) {
             memsize /= 2;
          }
@@ -332,7 +337,7 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
       if (!s_singleton) {
          throw(shm_exception("failed to create shared memory segment"));
 
-         std::cerr << "failed to create shared memory: module id: " << moduleID
+         std::cerr << "failed to create shared memory: module id: " << id
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
    }
@@ -342,7 +347,7 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
    return *s_singleton;
 }
 
-Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
+Shm & Shm::attach(const std::string &name, const int id, const int rank,
                     message::MessageQueue * mq) {
 
    std::string n = shmSegName(name, rank);
@@ -352,14 +357,14 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(n, moduleID, rank, memsize, mq, false);
+            s_singleton = new Shm(n, id, rank, memsize, mq, false);
          } catch (boost::interprocess::interprocess_exception &) {
             memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);
 
       if (!s_singleton) {
-         std::cerr << "failed to attach to shared memory: module id: " << moduleID
+         std::cerr << "failed to attach to shared memory: module id: " << id
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
    }
@@ -388,8 +393,10 @@ const managed_shm & Shm::shm() const {
 
 std::string Shm::createObjectId(const std::string &id) {
 
-#ifndef MODULE_THREAD
-   vassert(m_moduleId > 0 || !id.empty());
+#ifdef MODULE_THREAD
+   vassert(m_id < 0);
+#else
+   vassert(m_id > 0 || !id.empty());
 #endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
@@ -397,8 +404,10 @@ std::string Shm::createObjectId(const std::string &id) {
    }
    std::stringstream name;
    name
-#ifndef MODULE_THREAD
-        << m_moduleId << "m"
+#ifdef MODULE_THREAD
+        << -m_id << "h"
+#else
+        << m_id << "m"
 #endif
         << m_objectId++ << "o"
         << m_rank << "r";
@@ -409,8 +418,10 @@ std::string Shm::createObjectId(const std::string &id) {
 }
 
 std::string Shm::createArrayId(const std::string &id) {
-#ifndef MODULE_THREAD
-   //vassert(m_moduleId > 0 || !id.empty());
+#ifdef MODULE_THREAD
+   vassert(m_id < 0 || !id.empty());
+#else
+   //vassert(m_id > 0 || !id.empty());
 #endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
@@ -419,8 +430,10 @@ std::string Shm::createArrayId(const std::string &id) {
 
    std::stringstream name;
    name
-#ifndef MODULE_THREAD
-        << m_moduleId << "m"
+#ifdef MODULE_THREAD
+        << -m_id << "h"
+#else
+        << m_id << "m"
 #endif
         << m_arrayId++ << "a"
         << m_rank << "r";
