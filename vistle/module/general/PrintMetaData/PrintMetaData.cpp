@@ -22,6 +22,7 @@
 #include <core/spheres.h>
 #include <core/tubes.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/polygons.h>
 #include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
@@ -182,7 +183,9 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
     } else if (auto triangles = Triangles::as(data)) {
         m_currentProfile.vertices += triangles->getNumCorners();
         m_currentProfile.elements += triangles->getNumElements();
-
+    } else if (auto quads = Quads::as(data)) {
+        m_currentProfile.vertices += quads->getNumCorners();
+        m_currentProfile.elements += quads->getNumElements();
     }
 
     // Structured Grids

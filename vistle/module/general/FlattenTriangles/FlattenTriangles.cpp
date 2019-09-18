@@ -5,6 +5,7 @@
 
 #include <core/object.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/normals.h>
 #include <core/polygons.h>
 #include <core/spheres.h>
@@ -31,10 +32,17 @@ FlattenTriangles::~FlattenTriangles() {
 template<int Dim>
 struct Flatten {
    Triangles::const_ptr tri;
+   Quads::const_ptr quad;
    DataBase::const_ptr object;
    DataBase::ptr result;
    Flatten(Triangles::const_ptr tri, DataBase::const_ptr obj, DataBase::ptr result)
       : tri(tri)
+      , object(obj)
+      , result(result)
+      {
+      }
+   Flatten(Quads::const_ptr wq, DataBase::const_ptr obj, DataBase::ptr result)
+      : quad(quad)
       , object(obj)
       , result(result)
       {
@@ -71,6 +79,13 @@ DataBase::ptr flatten(Triangles::const_ptr tri, DataBase::const_ptr src, DataBas
    return result;
 }
 
+DataBase::ptr flatten(Quads::const_ptr quad, DataBase::const_ptr src, DataBase::ptr result) {
+
+   boost::mpl::for_each<Scalars>(Flatten<1>(quad, src, result));
+   boost::mpl::for_each<Scalars>(Flatten<3>(quad, src, result));
+   return result;
+}
+
 bool FlattenTriangles::compute() {
 
    auto data = expect<DataBase>("grid_in");
@@ -83,31 +98,55 @@ bool FlattenTriangles::compute() {
       data.reset();
    }
 
-   auto in = Triangles::as(grid);
-   if (!in) {
-       sendError("did not receive Triangles");
+   auto intri = Triangles::as(grid);
+   auto inquad = Quads::as(grid);
+   if (!intri && !inquad) {
+       sendError("did not receive Triangles ");
        return true;
    }
 
-   if (in->getNumCorners() == 0) {
-       // already flat
-       passThroughObject("grid_out", in);
-       return true;
+   Object::ptr outgrid;
+   if (intri) {
+       if (intri->getNumCorners() == 0) {
+           // already flat
+           passThroughObject("grid_out", intri);
+           return true;
+       }
+
+       Triangles::ptr tri = intri->cloneType();
+       tri->setSize(intri->getNumCorners());
+       flatten(intri, intri, tri);
+       tri->setMeta(intri->meta());
+       tri->copyAttributes(intri);
+       outgrid = tri;
+   } else if (inquad) {
+       if (inquad->getNumCorners() == 0) {
+           // already flat
+           passThroughObject("grid_out", inquad);
+           return true;
+       }
+
+       Quads::ptr q = inquad->cloneType();
+       q->setSize(inquad->getNumCorners());
+       flatten(inquad, inquad, q);
+       q->setMeta(inquad->meta());
+       q->copyAttributes(inquad);
+       outgrid = q;
    }
 
-   Triangles::ptr tri = in->cloneType();
-   tri->setSize(in->getNumCorners());
-   flatten(in, in, tri);
-   tri->setMeta(in->meta());
-   tri->copyAttributes(in);
    if (data) {
        DataBase::ptr dout = data->clone();
        dout->resetArrays();
-       flatten(in, data, dout);
-       dout->setGrid(tri);
+       if (intri) {
+           flatten(intri, data, dout);
+           dout->setGrid(outgrid);
+       } else if (inquad) {
+           flatten(inquad, data, dout);
+           dout->setGrid(outgrid);
+       }
        addObject("grid_out", dout);
    } else {
-       addObject("grid_out", tri);
+       addObject("grid_out", outgrid);
    }
 
    return true;

@@ -12,6 +12,7 @@
 #include <core/coords.h>
 #include <core/lines.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/indexed.h>
 
 using namespace vistle;
@@ -183,6 +184,10 @@ bool ObjectStatistics::compute() {
    } else if (auto t = Triangles::as(obj)) {
       s.elements = t->getNumElements();
       s.vertices = t->getNumCorners();
+      ++s.grids;
+   } else if (auto q = Quads::as(obj)) {
+      s.elements = q->getNumElements();
+      s.vertices = q->getNumCorners();
       ++s.grids;
    }
    if (auto c = Coords::as(obj)) {

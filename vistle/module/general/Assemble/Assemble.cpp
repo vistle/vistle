@@ -1,5 +1,6 @@
 #include <module/module.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/indexed.h>
 #include <core/normals.h>
 #include <core/grid.h>
@@ -230,6 +231,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
     }
 
     Triangles::ptr ntri;
+    Quads::ptr nquad;
     Indexed::ptr nidx;
     Coords::ptr ncoords;
     Object::ptr ogrid;
@@ -298,6 +300,27 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
                 ncoords = nidx;
             } else {
                 assert(ogrid == ntri);
+            }
+        } else if (auto quad = Quads::as(grid)) {
+
+            const Index *cl = quad->getNumCorners()>0 ? quad->cl() : nullptr;
+            if (!cl) {
+                if (quad->getNumCoords() > 0)
+                    flatGeometry = true;
+            } else {
+                if (flatGeometry) {
+                    sendError("flat Triangle geometry on some but not all ports");
+                    return true;
+                }
+            }
+            clOff[n+1] = clOff[n] + quad->getNumCorners();
+
+            if (!nquad) {
+                nquad.reset(new Quads(0, 0));
+                ogrid = nquad;
+                ncoords = nidx;
+            } else {
+                assert(ogrid == nquad);
             }
         } else if (auto idx = Indexed::as(grid)) {
             auto unstr = UnstructuredGrid::as(idx);
@@ -449,6 +472,28 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
             Index *ncl = ntri->cl().data();
             if (cl) {
                 Index num = tri->getNumCorners();
+                Index off = clOff[n];
+                Index coff = coordOff[n];
+                for (Index i=0; i<num; ++i) {
+                    ncl[off+i] = cl[i]+coff;
+                }
+            }
+        } else if (auto quad = Quads::as(grid)) {
+
+            const Index *cl = quad->getNumCorners()>0 ? quad->cl() : nullptr;
+            if (!cl) {
+                if (quad->getNumCoords() > 0)
+                    flatGeometry = true;
+            } else {
+                if (flatGeometry) {
+                    sendError("flat Quad geometry on some but not all ports");
+                    return false;
+                }
+            }
+
+            Index *ncl = nquad->cl().data();
+            if (cl) {
+                Index num = quad->getNumCorners();
                 Index off = clOff[n];
                 Index coff = coordOff[n];
                 for (Index i=0; i<num; ++i) {
