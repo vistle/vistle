@@ -1,5 +1,6 @@
 #include <module/module.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 #include <core/indexed.h>
 #include <core/normals.h>
 #include <core/grid.h>
@@ -173,6 +174,55 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         }
 
         ogrid = ntri;
+    } else if (auto quad = Quads::as(grid)) {
+
+        Index num = quad->getNumCorners();
+        const Index *cl = num>0 ? quad->cl() : nullptr;
+        if (!cl)
+            num = quad->getNumCoords();
+        remap.reserve(num);
+        const Scalar *x=quad->x(), *y=quad->y(), *z=quad->z();
+
+        Quads::ptr nquad(new Quads(num, 0));
+        Index *ncl = nquad->cl().data();
+        auto &nx=nquad->x(), &ny=nquad->y(), &nz=nquad->z();
+
+        if (cl) {
+            Index count = 0;
+            Index num = quad->getNumCorners();
+            for (Index i=0; i<num; ++i) {
+                Index v = cl[i];
+                Point p(x[v], y[v], z[v], v, floats);
+                auto &idx = indexMap[p];
+                if (idx == 0) {
+                    remap.push_back(v);
+                    idx = ++count;
+                    nx.push_back(x[v]);
+                    ny.push_back(y[v]);
+                    nz.push_back(z[v]);
+                }
+                ncl[i] = idx-1;
+            }
+            //sendInfo("found %d unique vertices among %d", count-1, num);
+        } else {
+            Index count = 0;
+            Index num = quad->getNumCoords();
+            for (Index v=0; v<num; ++v) {
+                Point p(x[v], y[v], z[v], v, floats);
+                auto &idx = indexMap[p];
+                if (idx == 0) {
+                    remap.push_back(v);
+                    idx = ++count;
+                    nx.push_back(x[v]);
+                    ny.push_back(y[v]);
+                    nz.push_back(z[v]);
+                }
+                ncl[v] = idx-1;
+            }
+            //sendInfo("found %d unique vertices among %d", count-1, num);
+        }
+
+        ogrid = nquad;
     } else if (auto idx = Indexed::as(grid)) {
         Index num = idx->getNumCorners();
         const Index *cl = num>0 ? idx->cl() : nullptr;
