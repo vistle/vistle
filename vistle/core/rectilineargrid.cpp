@@ -82,6 +82,10 @@ Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) c
     return m_ghostLayers[dim][layerPosition];
 }
 
+void RectilinearGrid::setGlobalIndexOffset(int c, Index offset) {
+    d()->indexOffset[c] = offset;
+}
+
 // SET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 void RectilinearGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
@@ -297,6 +301,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
 void RectilinearGrid::Data::initData() {
 
     for (int c=0; c<3; ++c) {
+        indexOffset[c] = 0;
         ghostLayers[c][0] = ghostLayers[c][1] = 0;
     }
 }

@@ -32,6 +32,8 @@ public:
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
+   Index getGlobalIndexOffset(int c) const override { return d()->indexOffset[c]; }
+   void setGlobalIndexOffset(int c, Index offset) override;
 
    // virtual set functions
    void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
@@ -64,6 +66,7 @@ private:
    V_DATA_BEGIN(RectilinearGrid);
 
    shm_obj_ref<Normals> normals;
+   Index indexOffset[3]; //< global index offset
    ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
    Index ghostLayers[3][2]; //< number of ghost cell layers in each x, y, z directions
 

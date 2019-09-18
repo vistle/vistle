@@ -77,6 +77,11 @@ Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const
     return m_ghostLayers[dim][layerPosition];
 }
 
+void UniformGrid::setGlobalIndexOffset(int c, Index offset) {
+
+    d()->indexOffset[c] = offset;
+}
+
 // SET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 void UniformGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
@@ -294,6 +299,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
 void UniformGrid::Data::initData() {
 
     for (int i=0; i<3; ++i) {
+        indexOffset[i] = 0;
         numDivisions[i] = 0;
         ghostLayers[i][0] = ghostLayers[i][1] = 0;
         min[i] = 1;

@@ -55,6 +55,19 @@ void Vec<T,Dim>::setSize(const Index size) {
 }
 
 template <class T, int Dim>
+bool Vec<T,Dim>::copyEntry(Index to, DataBase::const_ptr src, Index from) {
+    auto s = Vec<T,Dim>::as(src);
+    if (!s)
+        return false;
+
+    for (int c=0; c<Dim; ++c) {
+        x(c)[to] = s->x(c)[from];
+    }
+
+    return true;
+}
+
+template <class T, int Dim>
 void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
     if (auto str = StructuredGridBase::as(grid)) {
         for (int c=0; c<Dim; ++c)

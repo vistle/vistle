@@ -32,6 +32,8 @@ public:
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
    Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
+   Index getGlobalIndexOffset(int c) const override { return d()->indexOffset[c]; }
+   void setGlobalIndexOffset(int d, Index offset) override;
 
    // virtual set functions
    void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
@@ -71,6 +73,7 @@ private:
 
    shm_obj_ref<Normals> normals;
    // each of the following variables represents a coordinate (by index, in order x, y, z)
+   Index indexOffset[3]; //< global index offset
    Index numDivisions[3]; //< number of divisions on each axis (1 more than number of cells)
    Scalar min[3]; //< coordinates of minimum grid point
    Scalar max[3]; //< coordinates of maximum grid point

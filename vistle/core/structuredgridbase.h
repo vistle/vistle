@@ -130,6 +130,9 @@ public:
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const { return 0; }
    virtual Vector getVertex(Index v) const = 0;
 
+   virtual Index getGlobalIndexOffset(int d) const { return 0; }
+   virtual void setGlobalIndexOffset(int d, Index offset) = 0;
+
    // virtual set functions
    virtual void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) { return; }
 

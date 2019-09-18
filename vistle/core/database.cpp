@@ -145,6 +145,14 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
     return mapping();
 }
 
+int DataBase::dimension() const {
+    return 0;
+}
+
+bool DataBase::copyEntry(Index to, DataBase::const_ptr src, Index from) {
+    return  false;
+}
+
 V_OBJECT_TYPE(DataBase, Object::DATABASE)
 //V_OBJECT_CTOR(DataBase)
 DataBase::DataBase(DataBase::Data *data): DataBase::Base(data) { refreshImpl(); }

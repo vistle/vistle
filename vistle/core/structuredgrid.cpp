@@ -83,6 +83,10 @@ Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) co
     return m_ghostLayers[dim][layerPosition];
 }
 
+void StructuredGrid::setGlobalIndexOffset(int c, Index offset) {
+    d()->indexOffset[c] = offset;
+}
+
 // SET FUNCTION - GHOST CELL LAYER
 //-------------------------------------------------------------------------
 void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
@@ -424,6 +428,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 void StructuredGrid::Data::initData() {
 
     for (int i=0; i<3; ++i) {
+        indexOffset[i] = 0;
         numDivisions[i] = 0;
         ghostLayers[i][0] = ghostLayers[i][1] = 0;
     }

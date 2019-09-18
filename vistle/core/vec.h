@@ -33,6 +33,12 @@ class Vec: public DataBase {
       return m_size;
    }
 
+   int dimension() const override {
+       return Dim;
+   }
+
+   bool copyEntry(Index to, DataBase::const_ptr src, Index from) override;
+
    void resetArrays() override;
    void setSize(const Index size) override;
    void applyDimensionHint(Object::const_ptr grid) override;

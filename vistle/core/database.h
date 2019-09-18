@@ -32,6 +32,9 @@ public:
 
    void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
+   virtual int dimension() const;
+   virtual bool copyEntry(Index to, DataBase::const_ptr src, Index from);
+
 private:
    V_DATA_BEGIN(DataBase);
       shm_obj_ref<Object> grid;
