@@ -23,9 +23,9 @@ using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (COVISE)
+                                    (Plasma)
                                     (Inferno)
                                     (Magma)
-                                    (Plasma)
                                     (CoolWarmBrewer)
                                     (CoolWarm)
                                     (Frosty)
