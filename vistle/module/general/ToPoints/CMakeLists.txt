@@ -1,1 +1,1 @@
-add_module(ToPoints ToPoints.cpp)
+add_module(ToPoints ToPoints.cpp ToPoints.h)
