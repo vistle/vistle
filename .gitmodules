@@ -55,3 +55,6 @@
 [submodule "lib/3rdparty/sz3"]
 	path = lib/3rdparty/sz3
 	url = https://github.com/szcompressor/SZ3.git
+[submodule "module/general/Calc/exprtk"]
+	path = module/general/Calc/exprtk
+	url = https://github.com/ArashPartow/exprtk.git
