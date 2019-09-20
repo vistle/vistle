@@ -1,1 +1,1 @@
-add_module(VecToScalar VecToScalar.cpp)
+add_module(VecToScalar VecToScalar.cpp VecToScalar.h)
