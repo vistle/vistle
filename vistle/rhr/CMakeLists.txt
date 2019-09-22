@@ -22,20 +22,18 @@ endif()
 
 set(RHR_SOURCES
    depthquant.cpp
-   compdecomp.cpp
    rfbext.cpp
    )
 
 set(RHR_HEADERS
    depthquant.h
-   compdecomp.h
    rfbext.h
    ReadBackCuda.h
    )
 
 if(TBB_FOUND)
-   set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
-   set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
+   set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp compdecomp.cpp)
+   set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h compdecomp.h)
    include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
    )
