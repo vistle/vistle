@@ -1,4 +1,3 @@
-set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 vistle_find_package(COVER)
 if (NOT COVER_FOUND)
    message("COVER not found - not building COVER plugins")
