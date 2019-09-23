@@ -113,6 +113,7 @@ add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
 macro(vistle_find_package package)
    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+   set(SAVED_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 
    set(pack "${package}")
    if (pack STREQUAL "PythonLibs")
@@ -122,8 +123,8 @@ macro(vistle_find_package package)
       set(pack "Python")
    endif()
    if (pack STREQUAL "COVISE" OR pack STREQUAL "COVER")
-       set(CMAKE_PREFIX_PATH $ENV{COVISEDIR}/cmake ${CMAKE_PREFIX_PATH})
-       set(CMAKE_PREFIX_PATH $ENV{COVISEDIR}/share/cmake ${CMAKE_PREFIX_PATH})
+       set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
+       set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/share/cmake" ${CMAKE_MODULE_PATH})
    endif()
 
    string(TOUPPER ${pack} UPPER)
@@ -153,6 +154,7 @@ macro(vistle_find_package package)
    find_package(${ARGV})
 
    set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
+   set(CMAKE_MODULE_PATH ${SAVED_CMAKE_MODULE_PATH})
 endmacro(vistle_find_package PACKAGE)
 
 if(WIN32)
