@@ -59,16 +59,23 @@ bool ReadNek::prepareRead() {
 
 bool ReadNek::read(Token& token, int timestep, int partition) {
     ++numReads;
+    if (!myRead(token, timestep, partition)) {
+        sendError("nek: could not read: timestep = " + to_string(timestep) + ", partition = " + to_string(partition));
+        finishRead();
+    }
+    return true;
+}
+
+bool ReadNek::myRead(Token& token, int timestep, int partition) {
     auto r = readers.find(partition);
-    if(r == readers.end())
-    {
-        r = readers.insert(std::pair<int, nek5000::PartitionReader>(partition, nek5000::PartitionReader{*readerBase})).first;
-        r->second.setPartition(partition);
+    if (r == readers.end()) {
+        r = readers.insert(std::pair<int, nek5000::PartitionReader>(partition, nek5000::PartitionReader{ *readerBase })).first;
+        r->second.setPartition(partition, p_useMap->getValue());
 
     }
     nek5000::PartitionReader* pReader = &r->second;
     if (timestep == -1) {//there is only one grid for all timesteps, so we read it in advance
-        
+
 
         int hexes = pReader->getHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
@@ -78,8 +85,7 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
         } else {
             std::fill_n(grid->tl().data(), hexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON);
         }
-        if(!pReader->fillConnectivityList(grid->cl().data()))
-        {
+        if (!pReader->fillConnectivityList(grid->cl().data())) {
             cerr << "nek: failed to fill connectivity list" << endl;
             return false;
         }
@@ -90,8 +96,7 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
                 grid->el().data()[i] = 8 * i;
             }
         }
-        if(!pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data()))
-        {
+        if (!pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data())) {
             cerr << "nek: failed to fill mesh" << endl;
             return false;
         }
@@ -100,11 +105,9 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
         grid->setTimestep(-1);
         grid->applyDimensionHint(grid);
         token.addObject(p_grid, grid);
-    }
-    else if (!p_only_geometry->getValue()){
+    } else if (!p_only_geometry->getValue()) {
         {//velocities
-            if(pReader->hasVelocity())
-            {
+            if (pReader->hasVelocity()) {
                 auto grid = mGrids.find(partition);
                 if (grid == mGrids.end()) {
                     sendError(".nek5000 did not find a matching grid for block %d", partition);
@@ -224,6 +227,8 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    //V_ENUM_SET_CHOICES(p_byteswap, ByteSwap);
 
    p_only_geometry = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
+   p_useMap = addIntParameter("useMap", "use .map file to partition mesh", false, Parameter::Boolean);
+
    //p_readOptionToGetAllTimes = addIntParameter("ReadOptionToGetAllTimes", "Read all times and cycles", false, Parameter::Boolean);
    //p_duplicateData = addIntParameter("DublicateData", "Duplicate data for particle advection(slower for all other techniques)", false, Parameter::Boolean);
    p_numBlocks = addIntParameter("number of blocks", "number of blocks, <= 0 to read all", 0);

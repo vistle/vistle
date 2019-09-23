@@ -218,7 +218,7 @@ bool ReaderBase::ParseGridMap(){
       for(int i=0; i<num_map_elements; ++i)
       {
         mptr >> map_elements[i] >> buf2 >> buf2 >> buf2 >> buf2;
-        if(iDim == 3)
+        if(dim == 3)
             mptr >> buf2 >> buf2 >> buf2 >> buf2;
         map_elements[i]+=1;
       }
@@ -335,9 +335,9 @@ bool ReaderBase::ParseNekFileHeader() {
 
     }
     if (iBlockSize[2] == 1)
-        iDim = 2;
+        dim = 2;
     else {
-        iDim = 3;
+        dim = 3;
     }
     blockSize = iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
     if (isBinary) {

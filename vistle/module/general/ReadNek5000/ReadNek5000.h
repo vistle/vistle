@@ -50,7 +50,8 @@ class ReadNek : public vistle::Reader {
 public:
 private:
     bool prepareRead() override;
-    bool read(Token& token, int timestep = -1, int block = -1) override;
+    bool read(Token& token, int timestep = -1, int partition = -1) override;
+    bool myRead(Token& token, int timestep = -1, int partition = -1);
     bool examine(const vistle::Parameter* param) override;
     bool finishRead() override;
 
@@ -66,6 +67,7 @@ private:
     // Parameters
     vistle::StringParameter* p_data_path = nullptr;
     vistle::IntParameter* p_only_geometry = nullptr;
+    vistle::IntParameter* p_useMap = nullptr;
     vistle::IntParameter* p_byteswap = nullptr;
     vistle::IntParameter* p_readOptionToGetAllTimes = nullptr;
     vistle::IntParameter* p_duplicateData = nullptr;

@@ -24,7 +24,7 @@ bool PartitionReader::fillConnectivityList(vistle::Index *connectivities)
             long pt_start = blockSize * elements_so_far;
             for (Index ii = 0; ii < iBlockSize[0] - 1; ii++) {
                 for (Index jj = 0; jj < iBlockSize[1] - 1; jj++) {
-                    if (iDim == 2) {
+                    if (dim == 2) {
                         *nl++ = jj * (iBlockSize[0]) + ii + pt_start;
                         *nl++ = jj * (iBlockSize[0]) + ii + 1 + pt_start;
                         *nl++ = (jj + 1) * (iBlockSize[0]) + ii + 1 + pt_start;
@@ -95,13 +95,13 @@ size_t PartitionReader::getFirstBlockToRead() const
 size_t PartitionReader::getHexes()const
 {
     int hexes_per_element = (iBlockSize[0] - 1) * (iBlockSize[1] - 1);
-    if (iDim == 3)
+    if (dim == 3)
         hexes_per_element *= (iBlockSize[2] - 1);
     return hexes_per_element * myBlocksToRead;
 }
 size_t PartitionReader::getNumConn() const
 {
-        int numConn = (iDim == 3 ? 8  : 4 );
+        int numConn = (dim == 3 ? 8  : 4 );
         return numConn * getHexes();
 }
 
@@ -114,7 +114,7 @@ size_t PartitionReader::getGridSize() const
 
 
 //setter
-bool PartitionReader::setPartition(int partition)
+bool PartitionReader::setPartition(int partition, bool useMap)
 {
     if(partition > numPartitions)
         return false;
@@ -123,46 +123,12 @@ bool PartitionReader::setPartition(int partition)
     int one_extra_until = numBlocksToRead % numPartitions;
     myBlocksToRead = blocks_per_partition + (myPartition < one_extra_until ? 1 : 0);
     myFirstBlockToRead = blocks_per_partition * myPartition + (myPartition < one_extra_until ? myPartition : one_extra_until);
-    if(!ReadBlockLocations())
+    if(!ReadBlockLocations(useMap))
         return false;
     return true;
 }
 
 //private methods
-bool PartitionReader::AssembleBlockMap(std::vector<int> blockList, bool fromMap, std::map<int, std::pair<int, int>> blockMap)
-{
-    myBlockIDs.reserve(myBlocksToRead);
-    for(int i=0; i < myBlocksToRead; ++i)
-    {
-      myBlockIDs.emplace_back(blockList[myFirstBlockToRead + i]);
-    }
-    if(fromMap)
-    {
-        std::sort(myBlockIDs.begin(), myBlockIDs.end());
-    }
-    myBlockPositions.reserve(myBlocksToRead);
-    for(int i=0; i < myBlocksToRead; ++i)
-    {
-      myBlockPositions[i] = blockMap.find(myBlockIDs[i])->second.second;
-    }
-
-    // TEMP: checking for duplicates within myBlockPositions
-    if(fromMap)
-    {
-      for(int i=0; i<this->myBlocksToRead-1; i++)
-      {
-        for(int j=i+1; j<this->myBlocksToRead; j++)
-        {
-          if(this->myBlockPositions[i] == this->myBlockPositions[j])
-          {
-            std::cerr<<"********my_partition: "<< myPartition<< " : Hey (this->myBlockPositions["<<i<<"] and ["<<j<<"] both == "<< this->myBlockPositions[j]<< std::endl;
-          }
-        }
-      }
-    }
-    return false;
-}
-
 
 bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, float* z) {
     int fileID = getFileID(block);
@@ -170,7 +136,8 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
         return false;
 
     if (isParalellFormat)
-        block = blockMap[block].second;
+        block = myBlockPositions[block];
+        //block = blockMap[block].second;
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, string());
     int nFloatsInDomain = dp.domSizeInFloats;
@@ -179,13 +146,13 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
     if (isBinary) {
         //In the parallel format, the whole mesh comes before all the vars.
         if (isParalellFormat)
-            nFloatsInDomain = iDim * iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
+            nFloatsInDomain = dim * iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
 
         if (iPrecision == 4) {
              fseek(curOpenMeshFile->file(), iRealHeaderSize + (long)nFloatsInDomain * sizeof(float) * block, SEEK_SET);
             size_t res = fread(x, sizeof(float), blockSize, curOpenMeshFile->file()); (void)res;
             res = fread(y, sizeof(float), blockSize, curOpenMeshFile->file()); (void)res;
-            if (iDim == 3) {
+            if (dim == 3) {
                 size_t res = fread(z, sizeof(float), blockSize, curOpenMeshFile->file()); (void)res;
             }
             else {
@@ -194,26 +161,26 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
             if (bSwapEndian)                 {
                 ByteSwapArray(x, blockSize);
                 ByteSwapArray(y, blockSize);
-                if (iDim == 3) {
+                if (dim == 3) {
                     ByteSwapArray(z, blockSize);
                 }
             }
 
         } else {
-            double* tmppts = new double[blockSize * iDim];
+            double* tmppts = new double[blockSize * dim];
             fseek(curOpenMeshFile->file(), iRealHeaderSize +
                 (long)nFloatsInDomain * sizeof(double) * block,
                 SEEK_SET);
-            size_t res = fread(tmppts, sizeof(double), blockSize * iDim, curOpenMeshFile->file()); (void)res;
+            size_t res = fread(tmppts, sizeof(double), blockSize * dim, curOpenMeshFile->file()); (void)res;
             if (bSwapEndian)
-                ByteSwapArray(tmppts, blockSize * iDim);
+                ByteSwapArray(tmppts, blockSize * dim);
             for (int i = 0; i < blockSize; i++) {
                 x[i] = static_cast<int>(tmppts[i]);
             }
             for (int i = 0; i < blockSize; i++) {
                 y[i] = static_cast<int>(tmppts[i + blockSize]);
             }
-            if (iDim == 3) {
+            if (dim == 3) {
                 for (int i = 0; i < blockSize; i++) {
                     z[i] = static_cast<int>(tmppts[i + 2 * blockSize]);
                 }
@@ -225,7 +192,7 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
             fseek(curOpenMeshFile->file(), (long)curOpenMeshFile->iAsciiFileStart +
                 (long)block * curOpenMeshFile->iAsciiFileLineLen * blockSize +
                 (long)ii * curOpenMeshFile->iAsciiFileLineLen, SEEK_SET);
-            if (iDim == 3) {
+            if (dim == 3) {
                 int res = fscanf(curOpenMeshFile->file(), " %f %f %f", &x[ii], &y[ii], &z[ii]); (void)res;
             } else {
                 int res = fscanf(curOpenMeshFile->file(), " %f %f", &x[ii], &y[ii]); (void)res;
@@ -243,7 +210,8 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, "velocity");
     if (isParalellFormat)
-        block = blockMap[block].second;
+        block = myBlockPositions[block];
+    //block = blockMap[block].second;
 
     long iRealHeaderSize = iHeaderSize + (isParalellFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
 
@@ -255,12 +223,12 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
             //This assumes [block 0: 216u 216v 216w][block 1: 216u 216v 216w]...[block n: 216u 216v 216w]
             filepos = (long)iRealHeaderSize +
             (long)vBlocksPerFile[fileID] * dp.varOffsetBinary * iPrecision + //the header and mesh if one exists
-            (long)block * blockSize * iDim * iPrecision;
+            (long)block * blockSize * dim * iPrecision;
         if (iPrecision == 4) {
             fseek(curOpenVarFile->file(), filepos, SEEK_SET);
             size_t res = fread(x, sizeof(float), blockSize, curOpenVarFile->file()); (void)res;
             res = fread(y, sizeof(float), blockSize, curOpenVarFile->file()); (void)res;
-            if (iDim == 3) {
+            if (dim == 3) {
                 res = fread(z, sizeof(float), blockSize, curOpenVarFile->file()); (void)res;
             }
             else {
@@ -272,22 +240,22 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
             if (bSwapEndian) {
                 ByteSwapArray(x, blockSize);
                 ByteSwapArray(y, blockSize);
-                if (iDim == 3) {
+                if (dim == 3) {
                     ByteSwapArray(z, blockSize);
                 }
             }
         } else {
-            double* tmppts = new double[blockSize * iDim];
+            double* tmppts = new double[blockSize * dim];
             fseek(curOpenVarFile->file(), filepos, SEEK_SET);
-            size_t res = fread(tmppts, sizeof(double), blockSize * iDim, curOpenVarFile->file()); (void)res;
+            size_t res = fread(tmppts, sizeof(double), blockSize * dim, curOpenVarFile->file()); (void)res;
 
             if (bSwapEndian)
-                ByteSwapArray(tmppts, blockSize * iDim);
+                ByteSwapArray(tmppts, blockSize * dim);
 
             for (int ii = 0; ii < blockSize; ii++) {
                 x[ii] = (double)tmppts[ii];
                 y[ii] = (double)tmppts[ii + blockSize];
-                if (iDim == 3) {
+                if (dim == 3) {
                     z[ii] = (double)tmppts[ii + blockSize + blockSize];
                 } else {
                     z[ii] = 0.0;
@@ -301,7 +269,7 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
                 (long)block * curOpenVarFile->iAsciiFileLineLen * blockSize +
                 (long)ii * curOpenVarFile->iAsciiFileLineLen +
                 (long)dp.varOffsetAscii, SEEK_SET);
-            if (iDim == 3) {
+            if (dim == 3) {
                 int res = fscanf(curOpenVarFile->file(), " %f %f %f", x + ii, y +ii, z+ ii); (void)res;
             } else {
                 int res = fscanf(curOpenVarFile->file(), " %f %f", &x[ii], &y[ii]); (void)res;
@@ -321,7 +289,8 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, varname);
 
     if (isParalellFormat)
-        block = blockMap[block].second;
+        block = myBlockPositions[block];
+    //block = blockMap[block].second;
 
     long iRealHeaderSize = iHeaderSize + (isParalellFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
 
@@ -334,8 +303,8 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
             // then p or t as   [block0: 216p][block1: 216p][block2: 216p]...
             if (strcmp(varname.c_str() + 2, "velocity") == 0) {
                 filepos = (long)iRealHeaderSize +                              //header
-                    (long)dp.timestepHasMesh * vBlocksPerFile[fileID] * blockSize * iDim * iPrecision + //mesh
-                    (long)block * blockSize * iDim * iPrecision +                  //start of block
+                    (long)dp.timestepHasMesh * vBlocksPerFile[fileID] * blockSize * dim * iPrecision + //mesh
+                    (long)block * blockSize * dim * iPrecision +                  //start of block
                     (long)(varname[0] - 'x') * blockSize * iPrecision;            //position within block
             } else
                 filepos = (long)iRealHeaderSize +
@@ -374,7 +343,7 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
     return true;
 }
 
-bool PartitionReader::ReadBlockLocations() {
+bool PartitionReader::ReadBlockLocations(bool useMap) {
     // In each parallel file, in the header, there's a table that maps
     // each local block to a global id which starts at 1.  Here, I make
     // an inverse map, from a zero-based global id to a proc num and local
@@ -429,7 +398,7 @@ bool PartitionReader::ReadBlockLocations() {
         return false;
     }
     bool fromMap = true;
-    if(!ParseGridMap())
+    if(!useMap || !ParseGridMap())
     {
         all_element_list = tmpBlocks;
         fromMap = false;
@@ -448,7 +417,14 @@ bool PartitionReader::ReadBlockLocations() {
     myBlockPositions.reserve(myBlocksToRead);
     for(int i=0; i < myBlocksToRead; ++i)
     {
-      myBlockPositions.emplace_back(blockMap.find(myBlockIDs[i])->second.second);
+        auto pos = blockMap.find(myBlockIDs[i] - 1);
+        if (pos != blockMap.end())             {
+            myBlockPositions.emplace_back(pos->second.second);
+        }
+        else {
+            cerr << "error" << endl;
+        }
+
     }
 
     // TEMP: checking for duplicates within myBlockPositions
@@ -461,7 +437,6 @@ bool PartitionReader::ReadBlockLocations() {
           if(this->myBlockPositions[i] == this->myBlockPositions[j])
           {
             sendError("nek5000: my_partition: " + to_string(myPartition) + " : Hey (this->myBlockPositions[" + to_string(i) + "] and [" + to_string(j) + "] both == " + to_string(this->myBlockPositions[j]));
-            return false;
           }
         }
       }
@@ -509,9 +484,9 @@ PartitionReader::DomainParams PartitionReader::GetDomainSizeAndVarOffset(int iTi
 
     int nFloatsPerSample = 0;
     if (params.timestepHasMesh)
-        nFloatsPerSample += iDim;
+        nFloatsPerSample += dim;
     if (bHasVelocity)
-        nFloatsPerSample += iDim;
+        nFloatsPerSample += dim;
     if (bHasPressure)
         nFloatsPerSample += 1;
     if (bHasTemperature)
@@ -526,34 +501,34 @@ PartitionReader::DomainParams PartitionReader::GetDomainSizeAndVarOffset(int iTi
             var == "velocity_mag"||
             var == "x_velocity") {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
         } else if (var == "y_velocity") {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
 
             iNumPrecedingFloats += 1;
         } else if (var == "z_velocity") {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
 
             iNumPrecedingFloats += 2;
         } else if (var == "pressure") {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
             if (bHasVelocity)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
         } else if (var == "temperature") {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
             if (bHasVelocity)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
             if (bHasPressure)
                 iNumPrecedingFloats += 1;
         } else if (var[0] == 's') {
             if (params.timestepHasMesh)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
             if (bHasVelocity)
-                iNumPrecedingFloats += iDim;
+                iNumPrecedingFloats += dim;
             if (bHasPressure)
                 iNumPrecedingFloats += 1;
             if (bHasTemperature)
@@ -583,11 +558,6 @@ bool PartitionReader::CheckOpenFile(std::unique_ptr<OpenFile>& file, int timeste
         return false;
     }
     string filename = GetFileName(timestep, fileID);
-
-if(file)
-    cerr << "checking open file, open file is " << file->name() << ", looking for " << filename << endl;
-else
-    cerr << "checking open file, open file is closed" << endl;
 
     if(!file || file->name() != filename)
     {

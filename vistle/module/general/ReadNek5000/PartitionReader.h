@@ -28,7 +28,7 @@ public:
 
 
 //setter
-    bool setPartition(int partition); //also starts mapping the block ids
+    bool setPartition(int partition, bool useMap = true); //also starts mapping the block ids
 private:
     //variables
 
@@ -71,7 +71,7 @@ private:
 
     //methods
     void BlocksToRead(int totalNumBlocks, int numPartitions);
-    bool AssembleBlockMap(std::vector<int> blockList, bool fromMap, std::map<int, std::pair<int, int>> blockMap);
+
     // Cached data describing how to read data out of the file.
     std::unique_ptr<OpenFile> curOpenMeshFile, curOpenVarFile;
 
@@ -87,7 +87,7 @@ private:
     bool ReadVar(const std::string &varname, int timestep, int block, float* data);
 
     //parses data files with mesh and stores the information about the block positions. If it finds a .map file use its info and returns true
-    bool ReadBlockLocations();
+    bool ReadBlockLocations(bool useMap);
 
 
     //      If the data is ascii format, there is a certain amount of deprecated

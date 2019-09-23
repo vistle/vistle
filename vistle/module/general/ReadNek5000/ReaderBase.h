@@ -34,7 +34,7 @@ protected:
     int numTimesteps = 1;
     int blockDimensions[3];
     int blockSize = 0;
-    int dim = 2;
+    int dim = 1;
     int totalNumBlocks = 0; //total number of blocks per timestep
     int iNumberOfRanks = 1;
 
@@ -55,7 +55,6 @@ protected:
     bool bHasTemperature = false;
     int numScalarFields = 0;
     int iHeaderSize = 0;
-    int iDim = 3;
     int iPrecision = 4; //4 or 8 for float or double
     // This info is distributed through all the dumps, and only
     // computed on demand
