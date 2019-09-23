@@ -219,6 +219,14 @@ Vector UniformGrid::getVertex(Index v) const {
     return Vector(m_min[0]+n[0]*m_dist[0], m_min[1]+n[1]*m_dist[1], m_min[2]+n[2]*m_dist[2]);
 }
 
+void UniformGrid::copyAttributes(Object::const_ptr src, bool replace) {
+    Base::copyAttributes(src, replace);
+    if (auto s = StructuredGridBase::as(src)) {
+        for (int c=0; c<3; ++c)
+            setGlobalIndexOffset(c, s->getGlobalIndexOffset(c));
+    }
+}
+
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
 GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {

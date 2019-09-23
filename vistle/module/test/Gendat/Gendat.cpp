@@ -223,6 +223,12 @@ void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[
     }
 }
 
+void setStructuredGridGlobalOffsets(StructuredGridBase::ptr ptr, Index offset[3]) {
+    for (Index i=0; i<3; ++i) {
+            ptr->setGlobalIndexOffset(i, offset[i]);
+    }
+}
+
 void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block, vistle::Index time) const {
 
     Index dim[3];
@@ -304,13 +310,18 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     } else {
         // obtain dimenstions of current block while taking into consideration ghost cells
         Index ghostWidth[3][2];
+        Index offsets[3];
 
         for (unsigned i = 0; i < 3; i++) {
+            offsets[i] = 0;
+            if (currBlock[i] > 0)
+                offsets[i] = currBlock[i]*(dim[i]-1) - m_ghostLayerWidth->getValue();
+
             ghostWidth[i][0] = (currBlock[i] == 0) ? 0 : m_ghostLayerWidth->getValue();
             ghostWidth[i][1] = (currBlock[i] == maxBlocks[i] - 1) ? 0 : m_ghostLayerWidth->getValue();
 
-
             dim[i] += ghostWidth[i][0] + ghostWidth[i][1];
+
         }
         numVert = dim[0]*dim[1]*dim[2];
 
@@ -341,6 +352,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                 u->max()[i] = max[i];
             }
             setStructuredGridGhostLayers(u, ghostWidth);
+            setStructuredGridGlobalOffsets(u, offsets);
 
             geoOut = u;
 
@@ -354,6 +366,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
                 }
             }
             setStructuredGridGhostLayers(r, ghostWidth);
+            setStructuredGridGlobalOffsets(r, offsets);
 
             geoOut = r;
 
@@ -361,6 +374,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
             StructuredGrid::ptr s(new StructuredGrid(dim[0], dim[1], dim[2]));
             setStructuredGridGhostLayers(s, ghostWidth);
+            setStructuredGridGlobalOffsets(s, offsets);
             geoOut = s;
 
         } else if (geoMode == Unstructured_Grid) {

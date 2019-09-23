@@ -23,6 +23,8 @@ void RectilinearGrid::Data::serialize(Archive &ar) {
        std::string tag1 = nvpTag+"1";
        ar & V_NAME(ar, tag0.c_str(), ghostLayers[c][0]);
        ar & V_NAME(ar, tag1.c_str(), ghostLayers[c][1]);
+
+       ar & V_NAME(ar, ("indexoffset"+std::to_string(c)).c_str(), indexOffset[c]);
    }
 }
 

@@ -343,6 +343,14 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const 
     return exitDist;
 }
 
+void StructuredGrid::copyAttributes(Object::const_ptr src, bool replace) {
+    Base::copyAttributes(src, replace);
+    if (auto s = StructuredGridBase::as(src)) {
+        for (int c=0; c<3; ++c)
+            setGlobalIndexOffset(c, s->getGlobalIndexOffset(c));
+    }
+}
+
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {

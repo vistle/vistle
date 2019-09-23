@@ -221,6 +221,14 @@ Vector RectilinearGrid::getVertex(Index v) const {
     return Vector(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
 }
 
+void RectilinearGrid::copyAttributes(Object::const_ptr src, bool replace) {
+    Base::copyAttributes(src, replace);
+    if (auto s = StructuredGridBase::as(src)) {
+        for (int c=0; c<3; ++c)
+            setGlobalIndexOffset(c, s->getGlobalIndexOffset(c));
+    }
+}
+
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------

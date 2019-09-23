@@ -392,6 +392,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Bottom, b.ghost[0]);
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Top, b.ghost[1]);
+        grid->setGlobalIndexOffset(SplitDim, b.begin);
         for (int i=0; i<3; ++i) {
             if (i==SplitDim) {
                 std::copy(coords[i].begin()+b.begin, coords[i].begin()+b.end, &grid->coords(i)[0]);

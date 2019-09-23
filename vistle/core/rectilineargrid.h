@@ -55,6 +55,8 @@ public:
    Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
    Vector getVertex(Index v) const override;
 
+   void copyAttributes(Object::const_ptr src, bool replace = true) override;
+
 private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
