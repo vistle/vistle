@@ -87,6 +87,7 @@ if (APPLE)
           DEPENDS gui_wrapper.sh
           SOURCES gui_wrapper.sh
   )
+  install(PROGRAMS gui_wrapper.sh DESTINATION bin RENAME vistle_gui)
   set(MACOSX_BUNDLE_ICON_FILE vistle.icns)
   set(gui_SOURCES ${gui_SOURCES} ${MACOSX_BUNDLE_ICON_FILE})
   set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
