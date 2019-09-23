@@ -1,6 +1,6 @@
 #include "PartitionReader.h"
 
-#include <algorithm>
+//#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -55,6 +55,7 @@ bool PartitionReader::fillMesh(float *x, float *y, float *z)
             return false;
         }
     }
+    return true;
 }
 
 bool PartitionReader::fillVelocity(int timestep, float *x, float *y, float *z)
@@ -77,6 +78,7 @@ bool PartitionReader::fillScalarData(std::string varName, int timestep, float *d
             return false;
         }
     }
+    return true;
 }
 
 
@@ -158,6 +160,7 @@ bool PartitionReader::AssembleBlockMap(std::vector<int> blockList, bool fromMap,
         }
       }
     }
+    return false;
 }
 
 
@@ -473,7 +476,7 @@ bool PartitionReader::ReadBlockLocations() {
         sendError("nek5000: Sum of blocks per file does not equal total number of blocks");
         return false;
     }
-
+    return true;
 
 }
 

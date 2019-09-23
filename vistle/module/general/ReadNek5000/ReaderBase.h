@@ -28,12 +28,12 @@ protected:
     std::string file; //path to meta data file
     std::string fileTemplate; //template for datafiles
 
-    int numPartitions;
-    int numBlocksToRead; //blocks to read given by user input
+    int numPartitions = 0;
+    int numBlocksToRead = 0; //blocks to read given by user input
     int firstTimestep = 1;
     int numTimesteps = 1;
     int blockDimensions[3];
-    int blockSize;
+    int blockSize = 0;
     int dim = 2;
     int totalNumBlocks = 0; //total number of blocks per timestep
     int iNumberOfRanks = 1;

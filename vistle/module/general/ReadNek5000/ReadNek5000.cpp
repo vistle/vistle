@@ -74,9 +74,9 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
 
         if (pReader->getDim() == 2) {
-            std::fill_n(grid->tl().data(), hexes, (unsigned)UnstructuredGrid::QUAD);
+            std::fill_n(grid->tl().data(), hexes, (const unsigned char)UnstructuredGrid::QUAD);
         } else {
-            std::fill_n(grid->tl().data(), grid->cl().data(), (unsigned)UnstructuredGrid::HEXAHEDRON);
+            std::fill_n(grid->tl().data(), hexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON);
         }
         if(!pReader->fillConnectivityList(grid->cl().data()))
         {

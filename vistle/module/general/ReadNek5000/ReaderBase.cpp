@@ -1,10 +1,13 @@
 #include "ReaderBase.h"
 
-#include <algorithm>
+
 #include <iostream>
 #include <fstream>
 #include <cstring>
 
+#ifdef _WIN32
+#include <direct.h>
+#endif // _WIN32
 
 using namespace std;
 namespace nek5000 {
