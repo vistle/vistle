@@ -348,6 +348,7 @@ protected:
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);
+V_MODULEEXPORT double getRealTime(Object::const_ptr obj);
 
 template<>
 V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);

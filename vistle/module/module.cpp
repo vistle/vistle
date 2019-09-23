@@ -166,6 +166,22 @@ int getTimestep(Object::const_ptr obj) {
     return t;
 }
 
+double getRealTime(Object::const_ptr obj) {
+
+    if (!obj)
+        return -1;
+
+    int t = obj->getTimestep();
+    if (t < 0) {
+        if (auto data = DataBase::as(obj)) {
+            if (auto grid = data->grid()) {
+                return grid->getRealTime();
+            }
+        }
+    }
+    return obj->getRealTime();
+}
+
 bool Module::setup(const std::string &shmname, int moduleID, int rank) {
 
 #ifndef MODULE_THREAD
