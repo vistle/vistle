@@ -159,6 +159,10 @@ void DataBase::setValue(Index idx, int component, const double &value) {
     assert("should never be called" == NULL);
 }
 
+double DataBase::value(Index idx, int component) const {
+    assert("should never be called" == NULL);
+}
+
 V_OBJECT_TYPE(DataBase, Object::DATABASE)
 //V_OBJECT_CTOR(DataBase)
 DataBase::DataBase(DataBase::Data *data): DataBase::Base(data) { refreshImpl(); }

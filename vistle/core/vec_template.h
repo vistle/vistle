@@ -75,6 +75,13 @@ void Vec<T,Dim>::setValue(Index idx, int component, const double &value) {
 }
 
 template <class T, int Dim>
+double Vec<T,Dim>::value(Index idx, int component) const {
+    assert(component >= 0);
+    assert(component < Dim);
+    return static_cast<double>(x(component)[idx]);
+}
+
+template <class T, int Dim>
 void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
     if (auto str = StructuredGridBase::as(grid)) {
         for (int c=0; c<Dim; ++c)
