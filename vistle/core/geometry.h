@@ -17,6 +17,7 @@ class V_COREEXPORT GeometryInterface: virtual public ObjectInterfaceBase {
    virtual Index getNumVertices() = 0;
    virtual Index getNumVertices() const = 0;
    virtual normals_const_ptr normals() const = 0;
+   virtual Vector3 getVertex(Index v) const = 0;
 };
 
 class V_COREEXPORT ElementInterface: virtual public GeometryInterface {

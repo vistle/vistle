@@ -38,6 +38,7 @@ class Vec: public DataBase {
    }
 
    bool copyEntry(Index to, DataBase::const_ptr src, Index from) override;
+   void setValue(Index idx, int component, const double &value) override;
 
    void resetArrays() override;
    void setSize(const Index size) override;

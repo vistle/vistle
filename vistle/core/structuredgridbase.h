@@ -128,7 +128,6 @@ public:
    virtual Index getNumDivisions(int d) const { return 1; }     //< get number of vertices in dimension d
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) { return 0; }
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const { return 0; }
-   virtual Vector getVertex(Index v) const = 0;
 
    virtual Index getGlobalIndexOffset(int d) const { return 0; }
    virtual void setGlobalIndexOffset(int d, Index offset) = 0;

@@ -343,11 +343,6 @@ Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const 
     return exitDist;
 }
 
-Vector StructuredGrid::getVertex(Index v) const {
-
-    return Vector(x()[v], y()[v], z()[v]);
-}
-
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {

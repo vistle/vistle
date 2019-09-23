@@ -99,6 +99,11 @@ void Coords::setNormals(Normals::const_ptr normals) {
     d()->normals = normals;
 }
 
+Vector3 Coords::getVertex(Index v) const {
+    assert(v < getSize());
+    return Vector3(x()[v], y()[v], z()[v]);
+}
+
 V_OBJECT_TYPE(Coords, Object::COORD)
 V_OBJECT_CTOR(Coords)
 

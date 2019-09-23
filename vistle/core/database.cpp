@@ -146,11 +146,17 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
 }
 
 int DataBase::dimension() const {
+    assert("should never be called" == NULL);
     return 0;
 }
 
 bool DataBase::copyEntry(Index to, DataBase::const_ptr src, Index from) {
+    assert("should never be called" == NULL);
     return  false;
+}
+
+void DataBase::setValue(Index idx, int component, const double &value) {
+    assert("should never be called" == NULL);
 }
 
 V_OBJECT_TYPE(DataBase, Object::DATABASE)

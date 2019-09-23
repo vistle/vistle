@@ -34,6 +34,7 @@ public:
 
    virtual int dimension() const;
    virtual bool copyEntry(Index to, DataBase::const_ptr src, Index from);
+   virtual void setValue(Index idx, int component, const double &value);
 
 private:
    V_DATA_BEGIN(DataBase);

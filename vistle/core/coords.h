@@ -28,6 +28,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
    Index getNumVertices() const override;
    Normals::const_ptr normals() const override;
    void setNormals(Normals::const_ptr normals);
+   Vector3 getVertex(Index v) const override;
 
    V_DATA_BEGIN(Coords);
       shm_obj_ref<Normals> normals;

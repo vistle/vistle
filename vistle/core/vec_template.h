@@ -68,6 +68,13 @@ bool Vec<T,Dim>::copyEntry(Index to, DataBase::const_ptr src, Index from) {
 }
 
 template <class T, int Dim>
+void Vec<T,Dim>::setValue(Index idx, int component, const double &value) {
+    assert(component >= 0);
+    assert(component < Dim);
+    x(component)[idx] = value;
+}
+
+template <class T, int Dim>
 void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
     if (auto str = StructuredGridBase::as(grid)) {
         for (int c=0; c<Dim; ++c)
