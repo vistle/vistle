@@ -7,5 +7,9 @@ if [ "$1" = "-g" ]; then
 fi
 
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
+grealpath=echo
+if which grealpath >/dev/null 2>&1; then
+    grealpath=grealpath
+fi
 
-exec $GDB "$(dirname $0)/Vistle.app/Contents/MacOS/Vistle" "$@"
+exec $GDB "$(dirname $($grealpath $0))/Vistle.app/Contents/MacOS/Vistle" "$@"
