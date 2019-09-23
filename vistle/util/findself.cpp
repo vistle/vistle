@@ -139,7 +139,7 @@ std::string getbindir(int argc, char *argv[]) {
             std::string macosdir = executable.substr(0, idx);
             const std::string bundle = ".app/Contents/MacOS";
             const auto len = bundle.length();
-            if (executable.length() >= len) {
+            if (macosdir.length() >= len) {
                std::string tail = macosdir.substr(macosdir.length()-len);
                if (tail == bundle) {
                   dir = macosdir.substr(0, macosdir.length()-len);
