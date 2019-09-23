@@ -46,7 +46,6 @@
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ByteSwap, (Off)(On)(Auto))
 
-namespace nek5000{
 class ReadNek : public vistle::Reader {
 public:
 private:
@@ -74,8 +73,8 @@ private:
     vistle::IntParameter* p_numPartitions = nullptr;
     float minVeclocity = 0, maxVelocity = 0;
     int numReads = 0;
-    std::unique_ptr<ReaderBase> readerBase;
-    std::map<int, PartitionReader> readers;
+    std::unique_ptr<nek5000::ReaderBase> readerBase;
+    std::map<int, nek5000::PartitionReader> readers;
     //maps the grids to the blocks
     std::map<int, vistle::UnstructuredGrid::ptr> mGrids;
 
@@ -85,5 +84,5 @@ public:
     ~ReadNek() override;
 
 };
-}//nek5000
+
 #endif // _READNEK5000_H

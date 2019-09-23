@@ -51,15 +51,7 @@ using namespace vistle;
 using namespace std;
 namespace fs = boost::filesystem;
 
-#ifndef STREQUAL
-#if defined(_WIN32) 
-#  define STREQUAL(a,b)              stricmp(a,b)
-#else
-#  define STREQUAL(a,b)              strcasecmp(a,b)
-#endif
-#endif
-using std::string;
-namespace nek5000{
+
 bool ReadNek::prepareRead() {
 
     return true;
@@ -70,11 +62,11 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
     auto r = readers.find(partition);
     if(r == readers.end())
     {
-        r = readers.insert(std::pair<int, PartitionReader>(partition, PartitionReader{*readerBase})).first;
+        r = readers.insert(std::pair<int, nek5000::PartitionReader>(partition, nek5000::PartitionReader{*readerBase})).first;
         r->second.setPartition(partition);
 
     }
-    PartitionReader* pReader = &r->second;
+    nek5000::PartitionReader* pReader = &r->second;
     if (timestep == -1) {//there is only one grid for all timesteps, so we read it in advance
         
 
@@ -86,7 +78,11 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
         } else {
             std::fill_n(grid->tl().data(), grid->cl().data(), (unsigned)UnstructuredGrid::HEXAHEDRON);
         }
-        pReader->fillConnectivityList(grid->cl().data());
+        if(!pReader->fillConnectivityList(grid->cl().data()))
+        {
+            cerr << "nek: failed to fill connectivity list" << endl;
+            return false;
+        }
         for (int i = 0; i < hexes + 1; i++) {
             if (pReader->getDim() == 2) {
                 grid->el().data()[i] = 4 * i;
@@ -94,7 +90,11 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
                 grid->el().data()[i] = 8 * i;
             }
         }
-        pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data());
+        if(!pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data()))
+        {
+            cerr << "nek: failed to fill mesh" << endl;
+            return false;
+        }
         mGrids[partition] = grid;
         grid->setBlock(partition);
         grid->setTimestep(-1);
@@ -147,11 +147,11 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
 }
 
 bool ReadNek::examine(const vistle::Parameter* param) {
-   
+    (void)param;
     if (!fs::exists(p_data_path->getValue())) {
         return false;
     }
-    readerBase.reset(new ReaderBase(p_data_path->getValue(),p_numPartitions->getValue(), p_numBlocks->getValue()));
+    readerBase.reset(new nek5000::ReaderBase(p_data_path->getValue(),p_numPartitions->getValue(), p_numBlocks->getValue()));
     if(!readerBase->init())
         return false;
     size_t oldNumSFields = pv_misc.size();
@@ -170,6 +170,7 @@ bool ReadNek::examine(const vistle::Parameter* param) {
 
 bool ReadNek::finishRead() {
     mGrids.clear();
+    readers.clear();
     std::cerr << "_________________________________________________________" << std::endl;
     std::cerr << "read was called "<< numReads << " times" << std::endl;
     std::cerr << "_________________________________________________________" << std::endl;
@@ -179,13 +180,13 @@ bool ReadNek::finishRead() {
 
 bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition) {
 
-    auto r = preaders.find(partition);
-    if(r == preaders.end())
+    auto r = readers.find(partition);
+    if(r == readers.end())
     {
         sendError("nek: ReadScalar failed to find reader for partition " + std::to_string(partition));
         return false;
     }
-    PartitionReader *pReader = &r->second;
+    nek5000::PartitionReader *pReader = &r->second;
     auto grid = mGrids.find(partition);
     if (grid == mGrids.end()) {
         sendError(".nek5000 did not find a matching grid for block %d", partition);
@@ -237,12 +238,12 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    observeParameter(p_numBlocks);
    observeParameter(p_numPartitions);
 
-   setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
+   setParallelizationMode(ParallelizationMode::Serial);
 
 }
 
 ReadNek::~ReadNek() {
 }
-
-}//nek5000
 MODULE_MAIN(ReadNek)
+
+
