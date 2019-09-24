@@ -79,7 +79,6 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
 
         int hexes = pReader->getHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
-
         if (pReader->getDim() == 2) {
             std::fill_n(grid->tl().data(), hexes, (const unsigned char)UnstructuredGrid::QUAD);
         } else {
@@ -100,6 +99,8 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
             cerr << "nek: failed to fill mesh" << endl;
             return false;
         }
+        cerr << "number of unique Points: " << numberOfUniqePoints(grid) << endl;
+        cerr << "equal corners: " << pReader->numberOfEqalBlockCorners() << endl;
         mGrids[partition] = grid;
         grid->setBlock(partition);
         grid->setTimestep(-1);
@@ -210,7 +211,13 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     return true;
 }
 
-
+int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)     {
+    std::set<std::array<float, 3>> uniquePts;
+    for (size_t i = 0; i < grid->getNumCoords(); i++) {
+        uniquePts.insert(std::array<float, 3>{grid->x().data()[i], grid->y().data()[i], grid->z().data()[i]});
+    }
+    return uniquePts.size();
+}
 
 ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    :vistle::Reader("Read .nek5000 files", name, moduleID, comm)

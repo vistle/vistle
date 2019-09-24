@@ -273,9 +273,9 @@ bool ReaderBase::ParseNekFileHeader() {
 
     if (!isParalellFormat) {
         f >> totalNumBlocks;
-        f >> iBlockSize[0];
-        f >> iBlockSize[1];
-        f >> iBlockSize[2];
+        f >> blockDimensions[0];
+        f >> blockDimensions[1];
+        f >> blockDimensions[2];
 
         f >> buf2;   //skip
         f >> buf2;   //skip
@@ -305,9 +305,9 @@ bool ReaderBase::ParseNekFileHeader() {
             return false;
         }
         f >> iPrecision;
-        f >> iBlockSize[0];
-        f >> iBlockSize[1];
-        f >> iBlockSize[2];
+        f >> blockDimensions[0];
+        f >> blockDimensions[1];
+        f >> blockDimensions[2];
         f >> buf2;  //blocks per file
         f >> totalNumBlocks;
 
@@ -334,12 +334,12 @@ bool ReaderBase::ParseNekFileHeader() {
         ParseFieldTags(f);
 
     }
-    if (iBlockSize[2] == 1)
+    if (blockDimensions[2] == 1)
         dim = 2;
     else {
         dim = 3;
     }
-    blockSize = iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
+    blockSize = blockDimensions[0] * blockDimensions[1] * blockDimensions[2];
     if (isBinary) {
         // Determine endianness and whether we need to swap bytes.
         // If this machine's endian matches the file's, the read will

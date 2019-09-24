@@ -17,6 +17,7 @@ public:
     bool fillMesh(float* x, float* y, float* z);
     bool fillVelocity(int timestep, float* x, float* y, float* z);
     bool fillScalarData(std::string varName, int timestep, float* data);
+    int numberOfEqalBlockCorners();
 //getter
     size_t getBlocksToRead() const;
     size_t getFirstBlockToRead() const;
@@ -32,15 +33,12 @@ public:
 private:
     //variables
 
-
-
     int myPartition;
-
-
     int myBlocksToRead; //number of blocks to read for this partition
     int myFirstBlockToRead; //first block to read
 
-
+    //contains the corner points of each block
+    std::map<int, std::vector < std::array<float, 3>>> blockCorners;
     // This info is for managing which blocks are read on which processors
     // and caching blocks that have been read.
     std::vector<int> myBlockIDs;
@@ -50,12 +48,6 @@ private:
 
     //only used in parallel binary
     std::vector<int> vBlocksPerFile;
-
-
-
-
-
-
 
 
     //maps the local block-id to the rank <local blockID, fileID, position in file>
@@ -74,8 +66,6 @@ private:
 
     // Cached data describing how to read data out of the file.
     std::unique_ptr<OpenFile> curOpenMeshFile, curOpenVarFile;
-
-
 
     //      Gets the mesh associated with this file.  The mesh is returned as a
     //      derived type of vtkDataSet (ie vtkRectilinearGrid, vtkStructuredGrid,

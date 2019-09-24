@@ -48,8 +48,6 @@ protected:
     // This info is embedded in, or derived from, the file header
     bool bSwapEndian = false;
 
-    int iNumBlocks = 0;
-    vistle::Index iBlockSize[3]{ 1,1,1 };
     bool bHasVelocity = false;
     bool bHasPressure = false;
     bool bHasTemperature = false;

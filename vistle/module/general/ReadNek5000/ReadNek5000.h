@@ -57,6 +57,8 @@ private:
 
     bool ReadScalarData(Reader::Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition);
 
+    int numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid);
+
     // Ports
     vistle::Port* p_grid = nullptr;
     vistle::Port* p_velocity = nullptr;

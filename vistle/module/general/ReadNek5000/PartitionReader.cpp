@@ -1,9 +1,10 @@
 #include "PartitionReader.h"
-
+#include <set>
 //#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <array>
 
 using namespace std;
 
@@ -22,23 +23,23 @@ bool PartitionReader::fillConnectivityList(vistle::Index *connectivities)
         Index* nl = connectivities;
         for (Index elements_so_far = 0; elements_so_far < myBlocksToRead; ++elements_so_far) {
             long pt_start = blockSize * elements_so_far;
-            for (Index ii = 0; ii < iBlockSize[0] - 1; ii++) {
-                for (Index jj = 0; jj < iBlockSize[1] - 1; jj++) {
+            for (Index ii = 0; ii < blockDimensions[0] - 1; ii++) {
+                for (Index jj = 0; jj < blockDimensions[1] - 1; jj++) {
                     if (dim == 2) {
-                        *nl++ = jj * (iBlockSize[0]) + ii + pt_start;
-                        *nl++ = jj * (iBlockSize[0]) + ii + 1 + pt_start;
-                        *nl++ = (jj + 1) * (iBlockSize[0]) + ii + 1 + pt_start;
-                        *nl++ = (jj + 1) * (iBlockSize[0]) + ii + pt_start;
+                        *nl++ = jj * (blockDimensions[0]) + ii + pt_start;
+                        *nl++ = jj * (blockDimensions[0]) + ii + 1 + pt_start;
+                        *nl++ = (jj + 1) * (blockDimensions[0]) + ii + 1 + pt_start;
+                        *nl++ = (jj + 1) * (blockDimensions[0]) + ii + pt_start;
                     } else {
-                        for (Index kk = 0; kk < iBlockSize[2] - 1; kk++) {
-                            *nl++ = kk * (iBlockSize[1]) * (iBlockSize[0]) + jj * (iBlockSize[0]) + ii + pt_start;
-                            *nl++ = kk * (iBlockSize[1]) * (iBlockSize[0]) + jj * (iBlockSize[0]) + ii + 1 + pt_start;
-                            *nl++ = kk * (iBlockSize[1]) * (iBlockSize[0]) + (jj + 1) * (iBlockSize[0]) + ii + 1 + pt_start;
-                            *nl++ = kk * (iBlockSize[1]) * (iBlockSize[0]) + (jj + 1) * (iBlockSize[0]) + ii + pt_start;
-                            *nl++ = (kk + 1) * (iBlockSize[1]) * (iBlockSize[0]) + jj * (iBlockSize[0]) + ii + pt_start;
-                            *nl++ = (kk + 1) * (iBlockSize[1]) * (iBlockSize[0]) + jj * (iBlockSize[0]) + ii + 1 + pt_start;
-                            *nl++ = (kk + 1) * (iBlockSize[1]) * (iBlockSize[0]) + (jj + 1) * (iBlockSize[0]) + ii + 1 + pt_start;
-                            *nl++ = (kk + 1) * (iBlockSize[1]) * (iBlockSize[0]) + (jj + 1) * (iBlockSize[0]) + ii + pt_start;
+                        for (Index kk = 0; kk < blockDimensions[2] - 1; kk++) {
+                            *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + pt_start;
+                            *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1 + pt_start;
+                            *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1 + pt_start;
+                            *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + pt_start;
+                            *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + pt_start;
+                            *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1 + pt_start;
+                            *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1 + pt_start;
+                            *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + pt_start;
                         }
                     }
                 }
@@ -81,7 +82,18 @@ bool PartitionReader::fillScalarData(std::string varName, int timestep, float *d
     return true;
 }
 
+int PartitionReader::numberOfEqalBlockCorners() {
+    int numCorners = dim == 2 ? 4 : 8;
+    set<array<float, 3>> corners;
+    auto b = blockCorners.begin();
+    for (b; b != blockCorners.end(); ++b) {
+        for (size_t i = 0; i < numCorners; ++i) {
+            corners.insert(b->second[i]);
+        }
 
+    }
+    return numCorners * myBlocksToRead - corners.size();
+}
 
 //getter
 size_t PartitionReader::getBlocksToRead() const
@@ -94,9 +106,9 @@ size_t PartitionReader::getFirstBlockToRead() const
 }
 size_t PartitionReader::getHexes()const
 {
-    int hexes_per_element = (iBlockSize[0] - 1) * (iBlockSize[1] - 1);
+    int hexes_per_element = (blockDimensions[0] - 1) * (blockDimensions[1] - 1);
     if (dim == 3)
-        hexes_per_element *= (iBlockSize[2] - 1);
+        hexes_per_element *= (blockDimensions[2] - 1);
     return hexes_per_element * myBlocksToRead;
 }
 size_t PartitionReader::getNumConn() const
@@ -146,7 +158,7 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
     if (isBinary) {
         //In the parallel format, the whole mesh comes before all the vars.
         if (isParalellFormat)
-            nFloatsInDomain = dim * iBlockSize[0] * iBlockSize[1] * iBlockSize[2];
+            nFloatsInDomain = dim * blockDimensions[0] * blockDimensions[1] * blockDimensions[2];
 
         if (iPrecision == 4) {
              fseek(curOpenMeshFile->file(), iRealHeaderSize + (long)nFloatsInDomain * sizeof(float) * block, SEEK_SET);
@@ -200,6 +212,22 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
             }
         }
     }
+    //store corners
+    vector < array<float, 3>> corners;
+
+    array<int, 8> cornerIndex;
+    cornerIndex[0] = 0;//0,0,0
+    cornerIndex[1] = blockDimensions[0] - 1;//1,0,0
+    cornerIndex[2] = blockDimensions[0] * (blockDimensions[1] - 1);//0,1,0
+    cornerIndex[3] = cornerIndex[1] + cornerIndex[2];//1,1,0
+    cornerIndex[4] = blockDimensions[0] * blockDimensions[1] * (blockDimensions[2] - 1);// 0, 0, 1
+    cornerIndex[5] = cornerIndex[1] + cornerIndex[4]; //1,0,1
+    cornerIndex[6] = cornerIndex[2] + cornerIndex[4]; //0,1,1
+    cornerIndex[7] = cornerIndex[1] + cornerIndex[6]; //1,1,1
+    for (size_t i = 0; i < 8; i++) {
+        corners.push_back(array<float, 3>{*(x + cornerIndex[i]), * (y + cornerIndex[i]), * (z + cornerIndex[i])});
+    }
+    blockCorners[block] = corners;
     return true;
 }
 
