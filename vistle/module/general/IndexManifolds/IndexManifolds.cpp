@@ -75,7 +75,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
         tghost[d] = str->getNumGhostLayers(d, StructuredGridBase::Top);
     }
 
-    if (off[dir]+bghost[dir] <= coord[dir] && off[dir]+str->getNumDivisions(dir) > coord[dir]+tghost[dir]) {
+    if (isConnected(*p_surface_out) && off[dir]+bghost[dir] <= coord[dir] && off[dir]+str->getNumDivisions(dir) > coord[dir]+tghost[dir]) {
         // compute surface
         Index nvert1 = dims[dir1] - bghost[dir1] - tghost[dir1];
         Index nvert2 = dims[dir2] - bghost[dir2] - tghost[dir2];
@@ -130,7 +130,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             task->addObject(p_surface_out, surface);
     }
 
-    if (off[dir1]+bghost[dir1] <= coord[dir1] && off[dir1]+str->getNumDivisions(dir1) > coord[dir1]+tghost[dir1]
+    if (isConnected(*p_line_out) && off[dir1]+bghost[dir1] <= coord[dir1] && off[dir1]+str->getNumDivisions(dir1) > coord[dir1]+tghost[dir1]
         && off[dir2]+bghost[dir2] <= coord[dir2] && off[dir2]+str->getNumDivisions(dir2) > coord[dir2]+tghost[dir2]) {
         // compute line
         Index nvert = dims[dir] - bghost[dir] - tghost[dir];
@@ -168,7 +168,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             task->addObject(p_line_out, line);
     }
 
-    if (off[0]+bghost[0] <= coord[0] && off[0]+str->getNumDivisions(0) > coord[0]+tghost[0]
+    if (isConnected(*p_point_out) && off[0]+bghost[0] <= coord[0] && off[0]+str->getNumDivisions(0) > coord[0]+tghost[0]
         && off[1]+bghost[1] <= coord[1] && off[1]+str->getNumDivisions(1) > coord[1]+tghost[1]
         && off[2]+bghost[2] <= coord[2] && off[2]+str->getNumDivisions(2) > coord[2]+tghost[2]) {
         // get point
