@@ -97,19 +97,24 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             x[d] = surface->x(d).data();
         }
         Index *cl = surface->cl().data();
+
+        Index ii=0;
+        for (Index i=0; i<nvert1-1; ++i) {
+            for (Index j=0; j<nvert2-1; ++j) {
+                cl[ii++] = i*nvert2 + j;
+                cl[ii++] = (i+1)*nvert2 + j;
+                cl[ii++] = (i+1)*nvert2 + j+1;
+                cl[ii++] = i*nvert2 + j+1;
+            }
+        }
+        assert(ii == nquad*4);
+
         Index cc[3]{c[0], c[1], c[2]};
-        Index ii=0, vv=0;
         cc[dir1] = bghost[dir1];
+        Index vv=0;
         for (Index i=0; i<nvert1; ++i) {
             cc[dir2] = bghost[dir2];
             for (Index j=0; j<nvert2; ++j) {
-                if (i+1<nvert1 && j+1<nvert2)
-                {
-                    cl[ii++] = cc[dir1]*nvert2 + cc[dir2];
-                    cl[ii++] = (cc[dir1]+1)*nvert2 + cc[dir2];
-                    cl[ii++] = (cc[dir1]+1)*nvert2 + cc[dir2]+1;
-                    cl[ii++] = cc[dir1]*nvert2 + cc[dir2]+1;
-                }
                 Index v = StructuredGridBase::vertexIndex(cc[0], cc[1], cc[2], dims);
                 auto p = str->getVertex(v);
                 for (int d=0; d<3; ++d)
@@ -122,8 +127,8 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             }
             ++cc[dir1];
         }
-        assert(ii == nquad*4);
         assert(vv == nvert);
+
         if (outdata)
             task->addObject(p_surface_out, outdata);
         else
