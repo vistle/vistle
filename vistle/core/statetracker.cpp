@@ -10,6 +10,9 @@
 
 #include "statetracker.h"
 
+#include <util/vecstreambuf.h>
+#include "archives.h"
+
 #define CERR \
    std::cerr << m_name << ": "
 
@@ -173,16 +176,20 @@ int StateTracker::getModuleState(int id) const {
    return it->second.state();
 }
 
-static void appendMessage(std::vector<message::Buffer> &v, const message::Message &msg) {
+namespace {
 
-   v.emplace_back(msg);
+void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const message::Message &msg, std::shared_ptr<const std::vector<char>> payload = std::shared_ptr<const std::vector<char>>()) {
+
+   v.emplace_back(msg, payload);
 }
 
-std::vector<message::Buffer> StateTracker::getState() const {
+}
+
+StateTracker::VistleState StateTracker::getState() const {
 
    mutex_locker guard(m_stateMutex);
    using namespace vistle::message;
-   std::vector<message::Buffer> state;
+   VistleState state;
 
    for (const auto &slave: m_hubs) {
       AddHub msg(slave.id, slave.name);
@@ -249,9 +256,12 @@ std::vector<message::Buffer> StateTracker::getState() const {
          appendMessage(state, setDef);
 
          if (param->presentation() == Parameter::Choice) {
-            SetParameterChoices choices(name, param->choices());
+            SetParameterChoices choices(name, param->choices().size());
             choices.setSenderId(id);
-            appendMessage(state, choices);
+            SetParameterChoices::Payload pl(param->choices());
+            auto vec = addPayload(choices, pl);
+            auto shvec = std::make_shared<std::vector<char>>(vec);
+            appendMessage(state, choices, shvec);
          }
 
          SetParameter setV(id, name, param, Parameter::Value);
@@ -304,7 +314,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
    }
 
    for (const auto &m: m_queue)
-      appendMessage(state, m);
+      appendMessage(state, m.message, m.payload);
 
    // finalize
    appendMessage(state, ReplayFinished());
@@ -318,7 +328,11 @@ const std::map<AvailableModule::Key, AvailableModule> &StateTracker::availableMo
     return m_availableModules;
 }
 
-bool StateTracker::handle(const message::Message &msg, bool track) {
+bool StateTracker::handle(const message::Message &msg, const std::vector<char> *payload, bool track) {
+    return handle(msg, payload?payload->data():nullptr, payload?payload->size():0, track);
+}
+
+bool StateTracker::handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track) {
 
    using namespace vistle::message;
 
@@ -350,6 +364,11 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       return true;
 
    bool handled = true;
+
+   std::vector<char> pl;
+   if (payload) {
+       std::copy(payload, payload+payloadSize, std::back_inserter(pl));
+   }
 
    mutex_locker locker(getMutex());
    switch (msg.type()) {
@@ -442,7 +461,7 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       }
       case SETPARAMETERCHOICES: {
          const SetParameterChoices &choice = static_cast<const SetParameterChoices &>(msg);
-         handled = handlePriv(choice);
+         handled = handlePriv(choice, pl);
          break;
       }
       case PING: {
@@ -493,7 +512,7 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       }
       case SENDTEXT: {
          const SendText &info = static_cast<const SendText &>(msg);
-         handled = handlePriv(info);
+         handled = handlePriv(info, pl);
          break;
       }
       case UPDATESTATUS: {
@@ -550,7 +569,13 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       }
    } else {
       if (msg.typeFlags() & QueueIfUnhandled) {
-         m_queue.emplace_back(msg);
+          if (payload) {
+              auto pl = std::make_shared<const std::vector<char>>(payload, payload+payloadSize);
+              m_queue.emplace_back(msg, pl);
+
+          } else {
+              m_queue.emplace_back(msg, nullptr);
+          }
 #ifndef NDEBUG
          m_alreadySeen.erase(msg.uuid());
 #endif
@@ -566,11 +591,11 @@ void StateTracker::processQueue() {
       return;
    m_processingQueue = true;
 
-   std::vector<message::Buffer> queue;
+   VistleState queue;
    std::swap(m_queue, queue);
 
    for (auto &m: queue) {
-      handle(m);
+      handle(m.message, m.payload.get());
    }
 
    m_processingQueue = false;
@@ -580,10 +605,11 @@ void StateTracker::cleanQueue(int id) {
 
    using namespace message;
 
-   std::vector<message::Buffer> queue;
+   VistleState queue;
    std::swap(m_queue, queue);
 
-   for (auto &msg: queue) {
+   for (auto &m: queue) {
+      auto &msg = m.message;
       if (msg.destId() == id)
           continue;
       switch(msg.type()) {
@@ -602,7 +628,7 @@ void StateTracker::cleanQueue(int id) {
       default:
           break;
       }
-      m_queue.emplace_back(msg);
+      m_queue.emplace_back(m);
    }
 }
 
@@ -977,7 +1003,7 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
    return handled;
 }
 
-bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
+bool StateTracker::handlePriv(const message::SetParameterChoices &choices, const std::vector<char> &payload) {
 
    const int senderId = choices.senderId();
    if (runningMap.find(senderId) == runningMap.end())
@@ -987,7 +1013,9 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
    if (!p)
       return false;
 
-   choices.apply(p);
+   auto pl = message::getPayload<message::SetParameterChoices::Payload>(payload);
+
+   choices.apply(p, pl);
 
    //CERR << "choices changed for " << choices.getModule() << ":" << choices.getName() << ": #" << p->choices().size() << std::endl;
 
@@ -1093,12 +1121,14 @@ bool StateTracker::handlePriv(const message::ReplayFinished &reset)
    return true;
 }
 
-bool StateTracker::handlePriv(const message::SendText &info)
+bool StateTracker::handlePriv(const message::SendText &info, const std::vector<char> &payload)
 {
+    auto pl = message::getPayload<message::SendText::Payload>(payload);
     mutex_locker guard(m_stateMutex);
     for (StateObserver *o: m_observers) {
-        o->info(info.text(), info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
+        o->info(pl.text, info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
     }
+
     return true;
 }
 

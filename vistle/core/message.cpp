@@ -185,6 +185,14 @@ void Message::setPayloadSize(size_t size) {
     m_payloadSize = size;
 }
 
+std::string Message::payloadName() const {
+    return m_payloadName;
+}
+
+void Message::setPayloadName(const shm_name_t &name) {
+    m_payloadName = name;
+}
+
 CompressionMode Message::payloadCompression() const {
    return CompressionMode(m_payloadCompression);
 }

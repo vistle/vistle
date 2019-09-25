@@ -18,6 +18,7 @@
 #include <core/parameter.h>
 #include <core/assert.h>
 #include <core/shm.h>
+#include <core/messagepayload.h>
 #include <util/sleep.h>
 #include <util/tools.h>
 #include <util/hostname.h>
@@ -167,18 +168,28 @@ bool Communicator::connectData() {
     return m_dataManager->connect(m_dataEndpoint);
 }
 
-bool Communicator::sendHub(const message::Message &message) {
+bool Communicator::sendHub(const message::Message &message, const MessagePayload &payload) {
+
+    if (message.payloadSize() > 0) {
+        assert(payload);
+        assert(payload->size() == message.payloadSize());
+    }
 
     if (getRank() == 0) {
         message::error_code ec;
-        if (message::send(m_hubSocket, message, ec))
-            return true;
+        if (payload) {
+            if (message::send(m_hubSocket, message, ec, payload->data(), payload->size()))
+                return true;
+        } else {
+            if (message::send(m_hubSocket, message, ec))
+                return true;
+        }
         if (ec) {
             CERR << "sending " << message << " to hub failed: " << ec.message() << std::endl;
         }
         return false;
     }
-    return forwardToMaster(message);
+    return forwardToMaster(message, payload);
 }
 
 bool Communicator::scanModules(const std::string &dir) {
@@ -232,13 +243,20 @@ bool Communicator::dispatch(bool *work) {
 
          received = true;
          message::Message *message = &m_recvBufToRank;
+         MessagePayload payload;
+         if (message->payloadSize() > 0) {
+             payload.construct(message->payloadSize());
+             MPI_Status status2;
+             MPI_Recv(payload->data(), payload->size(), MPI_BYTE, status.MPI_SOURCE, TagToRank, MPI_COMM_WORLD, &status2);
+             message->setPayloadName(payload.name());
+         }
          if (m_rank == 0 && message->isForBroadcast()) {
-            if (!broadcastAndHandleMessage(*message)) {
+            if (!broadcastAndHandleMessage(*message, payload)) {
                CERR << "Quit reason: broadcast & handle" << std::endl;
                done = true;
             }
          }  else {
-            if (!handleMessage(*message)) {
+            if (!handleMessage(*message, payload)) {
                CERR << "Quit reason: handle" << std::endl;
                done = true;
             }
@@ -258,8 +276,7 @@ bool Communicator::dispatch(bool *work) {
             CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
          }
          vassert(m_recvSize <= m_recvBufToAny.bufferSize());
-         MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
-               status.MPI_SOURCE, MPI_COMM_WORLD);
+         MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE, status.MPI_SOURCE, MPI_COMM_WORLD);
 
          unsigned recvSize = m_recvSize;
 
@@ -274,8 +291,14 @@ bool Communicator::dispatch(bool *work) {
             printf("[%02d] message from [%02d] message type %d m_size %d\n",
                   m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
+            MessagePayload payload;
+            if (message->payloadSize() > 0) {
+                payload.construct(message->payloadSize());
+                MPI_Bcast(payload->data(), payload->size(), MPI_BYTE, status.MPI_SOURCE, MPI_COMM_WORLD);
+                message->setPayloadName(payload.name());
+            }
             //CERR << "handle broadcast: " << *message << std::endl;
-            if (!handleMessage(*message)) {
+            if (!handleMessage(*message, payload)) {
                CERR << "Quit reason: handle message received via broadcast: " << *message << std::endl;
                done = true;
             }
@@ -303,7 +326,8 @@ bool Communicator::dispatch(bool *work) {
    if (m_rank == 0) {
       message::Buffer buf;
       message::error_code ec;
-      if (!message::recv(m_hubSocket, buf, ec)) {
+      std::vector<char> payload;
+      if (!message::recv(m_hubSocket, buf, ec, false, &payload)) {
          if (ec) {
              CERR << "Quit reason: hub comm interrupted: " << ec.message() << std::endl;
              broadcastAndHandleMessage(message::Quit());
@@ -311,13 +335,17 @@ bool Communicator::dispatch(bool *work) {
          }
       } else {
          received = true;
+         MessagePayload pl(payload);
          if (buf.destRank() == 0) {
-             handleMessage(buf);
+             handleMessage(buf, pl);
          } else if (buf.destRank() >= 0) {
              auto p = m_ongoingSends.emplace(new SendRequest(buf));
              auto it = p.first;
              MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD, &(*it)->req);
-         } else if(!broadcastAndHandleMessage(buf)) {
+             if (buf.payloadSize() > 0) {
+                 MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, MPI_COMM_WORLD, &(*it)->req);
+             }
+         } else if(!broadcastAndHandleMessage(buf, pl)) {
             CERR << "Quit reason: broadcast & handle 2: " << buf << buf << std::endl;
             done = true;
          }
@@ -365,45 +393,65 @@ bool Communicator::dispatch(bool *work) {
    return !done;
 }
 
-bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank) {
+bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank, const MessagePayload &payload) {
 
    if (m_rank == destRank || destRank == -1) {
       return clusterManager().sendMessage(moduleId, message);
    } else {
       auto p = m_ongoingSends.emplace(new SendRequest(message));
       auto it = p.first;
-      MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD, &(*it)->req);
+      auto &sr = **it;
+      MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD, &sr.req);
+      if (sr.buf.payloadSize() > 0) {
+          sr.payload = payload;
+          MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &sr.payload_req);
+      }
    }
    return true;
 }
 
-bool Communicator::forwardToMaster(const message::Message &message) {
+bool Communicator::forwardToMaster(const message::Message &message, const MessagePayload &payload) {
+
+    if (message.payloadSize() > 0) {
+        assert(payload);
+        assert(payload->size() == message.payloadSize());
+    }
 
    vassert(m_rank != 0);
    if (m_rank != 0) {
       auto p = m_ongoingSends.emplace(new SendRequest(message));
       auto it = p.first;
-      MPI_Isend(&(*it)->buf, (*it)->buf.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &(*it)->req);
+      auto &sr = **it;
+      MPI_Isend(&sr.buf, sr.buf.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &sr.req);
+      if (sr.buf.payloadSize() > 0) {
+          sr.payload = payload;
+          MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &sr.payload_req);
+      }
    }
 
    return true;
 }
 
-bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
+bool Communicator::broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload) {
 
     assert(message.destRank() == -1);
+    if (message.payloadSize() > 0) {
+        assert(payload);
+        assert(payload->size() == message.payloadSize());
+    }
 
     // message will be handled when received again from rank 0
     message::Buffer buf(message);
     if (m_rank > 0) {
         buf.setForBroadcast(true);
         buf.setWasBroadcast(false);
-        return forwardToMaster(buf);
+        return forwardToMaster(buf, payload);
     }
 
     buf.setForBroadcast(false);
     buf.setWasBroadcast(true);
 
+    MessagePayload pl = payload;
     if (m_size > 0) {
         std::vector<MPI_Request> s(m_size);
         for (int index = 0; index < m_size; ++index) {
@@ -423,12 +471,25 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
         }
 
         MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
+        if (buf.payloadSize() > 0) {
+            if (m_rank > 0) {
+                pl.construct(buf.payloadSize());
+            }
+            MPI_Bcast(pl->data(), pl->size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
+        }
     }
 
-    return handleMessage(buf);
+    if (pl)
+        buf.setPayloadName(pl.name());
+    return handleMessage(buf, pl);
 }
 
-bool Communicator::handleMessage(const message::Buffer &message) {
+bool Communicator::handleMessage(const message::Buffer &message, const MessagePayload &payload) {
+
+    if (message.payloadSize() > 0) {
+        assert(payload);
+        assert(payload->size() == message.payloadSize());
+    }
 
    std::lock_guard<Communicator> guard(*this);
 
@@ -457,7 +518,7 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          break;
       }
       default: {
-         return m_clusterManager->handle(message);
+         return m_clusterManager->handle(message, payload);
       }
    }
 

@@ -485,7 +485,7 @@ void Hub::slaveReady(Slave &slave) {
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
-      sendMessage(slave.sock, m);
+       sendMessage(slave.sock, m.message, m.payload.get());
    }
    slave.ready = true;
 }
@@ -805,7 +805,7 @@ void Hub::hubReady() {
          }
       }
 
-      m_stateTracker.handle(hub, true);
+      m_stateTracker.handle(hub, nullptr, true);
 
       sendMaster(hub);
       m_ready = true;
@@ -851,7 +851,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        if (m_hubId == Id::MasterHub) {
            msg.setDestId(Id::Broadcast);
        } else {
-           return sendMaster(msg);
+           return sendMaster(msg, payload);
        }
    }
 
@@ -889,7 +889,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    master.setNumRanks(m_localRanks);
                    master.setPort(m_port);
                    master.setDataPort(m_dataProxy->port());
-                   m_stateTracker.handle(master);
+                   m_stateTracker.handle(master, nullptr);
                }
 
                if (m_hubId != Id::Invalid) {
@@ -898,7 +898,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   if (m_hubId <= Id::MasterHub) {
                      auto state = m_stateTracker.getState();
                      for (auto &m: state) {
-                        sendMessage(sock, m);
+                         sendMessage(sock, m.message, m.payload.get());
                      }
                   }
                   hubReady();
@@ -950,17 +950,17 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             auto &slave = it->second;
             slaveReady(slave);
             m_dataProxy->connectRemoteData(mm);
-            m_stateTracker.handle(mm, true);
+            m_stateTracker.handle(mm, nullptr, true);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master with " << mm.numRanks() << " ranks" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_dataProxy->connectRemoteData(m);
-               m_stateTracker.handle(m, true);
+               m_stateTracker.handle(m, nullptr, true);
             } else {
                 m_dataProxy->connectRemoteData(mm);
-                m_stateTracker.handle(mm, true);
+                m_stateTracker.handle(mm, nullptr, true);
             }
          }
          break;
@@ -985,7 +985,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              }
          } else {
              if (mm.isNotification()) {
-                 m_stateTracker.handle(mm);
+                 m_stateTracker.handle(mm, nullptr);
                  sendManager(mm);
                  sendUi(mm);
              } else {
@@ -1013,7 +1013,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              }
          } else {
              if (mm.isNotification()) {
-                 m_stateTracker.handle(mm);
+                 m_stateTracker.handle(mm, nullptr);
                  sendManager(mm);
                  sendUi(mm);
              } else {
@@ -1040,7 +1040,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              AvailableModule::Key key(mod.hub, mod.name);
              m_availableModules.emplace(key, mod);
              message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
-             m_stateTracker.handle(avail);
+             m_stateTracker.handle(avail, nullptr);
              if (!m_isMaster)
                  sendMaster(avail);
              sendUi(avail);
@@ -1064,7 +1064,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                msg.setDestId(Id::Broadcast);
        }
        bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
-       m_stateTracker.handle(msg, track);
+       m_stateTracker.handle(msg, payload?payload->data():nullptr, payload?payload->size():0, track);
 
        if (Router::the().toManager(msg, senderType, sender)
                || (Id::isModule(msg.destId()) && dest == m_hubId)) {
@@ -1160,7 +1160,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                }
                CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
-               m_stateTracker.handle(notify);
+               m_stateTracker.handle(notify, nullptr);
                sendManager(notify);
                sendUi(notify);
                sendSlaves(notify, true /* return to sender */);
@@ -1196,7 +1196,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                if (spawn.spawnId() == Id::Invalid) {
                   sendMaster(spawn);
                } else {
-                  m_stateTracker.handle(spawn);
+                  m_stateTracker.handle(spawn, nullptr);
                   sendManager(spawn);
                   sendUi(spawn);
                }
@@ -1318,7 +1318,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    AvailableModule::Key key(mod.hub, mod.name);
                    m_availableModules.emplace(key, mod);
                    message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
-                   m_stateTracker.handle(avail);
+                   m_stateTracker.handle(avail, nullptr);
                    sendMaster(avail);
                    sendUi(avail);
                }
@@ -1485,27 +1485,31 @@ bool Hub::startCleaner() {
 
 void Hub::sendInfo(const std::string &s) const {
     CERR << s << std::endl;
-    auto t = make.message<message::SendText>(message::SendText::Info, s);
-    sendUi(t);
+    auto t = make.message<message::SendText>(message::SendText::Info);
+    message::SendText::Payload pl(s);
+    auto payload = addPayload(t, pl);
+    sendUi(t, Id::Broadcast, &payload);
 }
 
 void Hub::sendError(const std::string &s) const {
     CERR << "Error: " << s << std::endl;
-    auto t = make.message<message::SendText>(message::SendText::Error, s);
-    sendUi(t);
+    auto t = make.message<message::SendText>(message::SendText::Error);
+    message::SendText::Payload pl(s);
+    auto payload = addPayload(t, pl);
+    sendUi(t, Id::Broadcast, &payload);
 }
 
 void Hub::setLoadedFile(const std::string &file) {
    CERR << "Loaded file: " << file << std::endl;
    auto t = make.message<message::UpdateStatus>(message::UpdateStatus::LoadedFile, file);
-   m_stateTracker.handle(t);
+   m_stateTracker.handle(t, nullptr);
    sendUi(t);
 }
 
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio) {
    CERR << "Status: " << s << std::endl;
    auto t = make.message<message::UpdateStatus>(s, prio);
-   m_stateTracker.handle(t);
+   m_stateTracker.handle(t, nullptr);
    sendUi(t);
 }
 
@@ -1697,7 +1701,7 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
          m_barrierReached = 0;
          auto r = make.message<message::BarrierReached>(reached.uuid());
          r.setDestId(Id::NextHop);
-         m_stateTracker.handle(r);
+         m_stateTracker.handle(r, nullptr);
          sendUi(r);
          sendSlaves(r);
          sendManager(r);

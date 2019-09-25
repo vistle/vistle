@@ -32,6 +32,7 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
 #include <core/messagerouter.h>
+#include <core/messagepayload.h>
 #include <core/parameter.h>
 #include <core/shm.h>
 #include <core/port.h>
@@ -1055,6 +1056,8 @@ bool Module::dispatch(bool *messageReceived) {
 
       message::Buffer buf;
       getNextMessage(buf);
+      MessagePayload pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+      pl.unref();
 
       if (syncMessageProcessing()) {
          int sync = needsSync(buf) ? 1 : 0;
@@ -1064,16 +1067,18 @@ bool Module::dispatch(bool *messageReceived) {
          do {
             sync = needsSync(buf) ? 1 : 0;
 
-            again &= handleMessage(&buf);
+            again &= handleMessage(&buf, pl);
 
             if (allsync && !sync) {
                 getNextMessage(buf);
+                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                pl.unref();
             }
 
          } while(allsync && !sync);
       } else {
 
-         again &= handleMessage(&buf);
+         again &= handleMessage(&buf, pl);
       }
    } catch (vistle::except::parent_died &e) {
 
@@ -1086,11 +1091,11 @@ bool Module::dispatch(bool *messageReceived) {
 }
 
 
-void Module::sendParameterMessage(const message::Message &message) const {
-    sendMessage(message);
+void Module::sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const {
+    sendMessage(message, payload);
 }
 
-bool Module::sendMessage(const message::Message &message) const {
+bool Module::sendMessage(const message::Message &message, const std::vector<char> *payload) const {
 
    // exclude SendText messages to avoid circular calls
    if (message.type() != message::SENDTEXT
@@ -1098,25 +1103,37 @@ bool Module::sendMessage(const message::Message &message) const {
       CERR << "SEND: " << message << std::endl;
    }
    if (rank() == 0 || message::Router::the().toRank0(message)) {
-#ifdef MODULE_THREAD
        message::Buffer buf(message);
+       if (payload) {
+           MessagePayload pl;
+           pl.construct(payload->size());
+           memcpy(pl->data(), payload->data(), payload->size());
+           pl.ref();
+           buf.setPayloadName(pl.name());
+           buf.setPayloadSize(payload->size());
+       }
+#ifdef MODULE_THREAD
        buf.setSenderId(id());
        buf.setRank(rank());
-
-       sendMessageQueue->send(buf);
-#else
-       sendMessageQueue->send(message);
 #endif
+       sendMessageQueue->send(buf);
    }
 
    return true;
 }
 
-bool Module::handleMessage(const vistle::message::Message *message) {
+bool Module::handleMessage(const vistle::message::Message *message, const MessagePayload &payload) {
 
    using namespace vistle::message;
 
-    m_stateTracker->handle(*message);
+   if (message->payloadSize() > 0) {
+       assert(payload);
+   }
+
+   if (payload)
+       m_stateTracker->handle(*message, payload->data(), payload->size());
+   else
+       m_stateTracker->handle(*message, nullptr);
 
    if (m_traceMessages == message::ANY || message->type() == m_traceMessages) {
       CERR << "RECV: " << *message << std::endl;
@@ -1881,38 +1898,11 @@ void Module::eventLoop() {
     prepareQuit();
 }
 
-namespace {
-
-using namespace boost;
-
-class InstModule: public Module {
-public:
-   InstModule()
-   : Module("description", "name", 1, boost::mpi::communicator())
-   {}
-   bool compute() { return true; }
-};
-
-struct instantiator {
-   template<typename P> P operator()(P) {
-      InstModule m;
-      ParameterBase<P> *p(new ParameterBase<P>(m.id(), "param"));
-      m.setParameterMinimum(p, P());
-      m.setParameterMaximum(p, P());
-      return P();
-   }
-};
-}
-
-void instantiate_parameter_functions() {
-
-   mpl::for_each<Parameters>(instantiator());
-}
-
 void Module::sendText(int type, const std::string &msg) const {
 
-   message::SendText info(message::SendText::TextType(type), msg);
-   sendMessage(info);
+   message::SendText info(static_cast<message::SendText::TextType>(type));
+   message::SendText::Payload pl(msg);
+   sendMessage(info, pl);
 }
 
 static void sendTextVarArgs(const Module *self, message::SendText::TextType type, const char *fmt, va_list args) {
@@ -1936,8 +1926,9 @@ static void sendTextVarArgs(const Module *self, message::SendText::TextType type
          break;
    }
    std::cout << text.data() << std::endl;
-   message::SendText info(type, text.data());
-   self->sendMessage(info);
+   message::SendText info(type);
+   message::SendText::Payload pl(text.data());
+   self->sendMessage(info, pl);
 }
 
 void Module::sendInfo(const char *fmt, ...) const {
@@ -1951,8 +1942,9 @@ void Module::sendInfo(const char *fmt, ...) const {
 void Module::sendInfo(const std::string &text) const {
 
    std::cout << "INFO: " << text << std::endl;
-   message::SendText info(message::SendText::Info, text);
-   sendMessage(info);
+   message::SendText info(message::SendText::Info);
+   message::SendText::Payload pl(text);
+   sendMessage(info, pl);
 }
 
 void Module::sendWarning(const char *fmt, ...) const {
@@ -1966,8 +1958,9 @@ void Module::sendWarning(const char *fmt, ...) const {
 void Module::sendWarning(const std::string &text) const {
 
    std::cout << "WARN: " << text << std::endl;
-   message::SendText info(message::SendText::Warning, text);
-   sendMessage(info);
+   message::SendText info(message::SendText::Warning);
+   message::SendText::Payload pl(text);
+   sendMessage(info, pl);
 }
 
 void Module::sendError(const char *fmt, ...) const {
@@ -1981,8 +1974,9 @@ void Module::sendError(const char *fmt, ...) const {
 void Module::sendError(const std::string &text) const {
 
    std::cout << "ERR:  " << text << std::endl;
-   message::SendText info(message::SendText::Error, text);
-   sendMessage(info);
+   message::SendText info(message::SendText::Error);
+   message::SendText::Payload pl(text);
+   sendMessage(info, pl);
 }
 
 void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
@@ -1997,15 +1991,17 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    va_end(args);
 
    std::cout << "ERR:  " << text.data() << std::endl;
-   message::SendText info(text.data(), msg);
-   sendMessage(info);
+   message::SendText info(msg);
+   message::SendText::Payload pl(text.data());
+   sendMessage(info, pl);
 }
 
 void Module::sendError(const message::Message &msg, const std::string &text) const {
 
    std::cout << "ERR:  " << text << std::endl;
-   message::SendText info(text, msg);
-   sendMessage(info);
+   message::SendText info(msg);
+   message::SendText::Payload pl(text);
+   sendMessage(info, pl);
 }
 
 void Module::setObjectReceivePolicy(int pol) {
@@ -2466,6 +2462,13 @@ bool PortTask::waitDependencies() {
     m_dependencies.clear();
 
     return true;
+}
+
+template<class Payload>
+bool Module::sendMessage(message::Message &message, Payload &payload) const {
+
+    auto pl = addPayload(message, payload);
+    return this->sendMessage(message, &pl);
 }
 
 } // namespace vistle

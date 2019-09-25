@@ -10,6 +10,8 @@ namespace vistle {
     template class Vec<ValueType,2>; \
     template class Vec<ValueType,3>; \
     template class Vec<ValueType,4>;
+V_VEC_TEMPLATE_INST(char)
+V_VEC_TEMPLATE_INST(signed char)
 V_VEC_TEMPLATE_INST(unsigned char)
 V_VEC_TEMPLATE_INST(int32_t)
 V_VEC_TEMPLATE_INST(uint32_t)

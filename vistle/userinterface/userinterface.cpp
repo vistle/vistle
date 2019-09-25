@@ -161,7 +161,7 @@ bool UserInterface::sendMessage(const message::Message &message, const std::vect
 
 bool UserInterface::handleMessage(const vistle::message::Message *message, const std::vector<char> &payload) {
 
-   bool ret = m_stateTracker.handle(*message);
+   bool ret = m_stateTracker.handle(*message, payload.data(), payload.size());
 
    {
       std::lock_guard<std::mutex> lock(m_messageMutex);

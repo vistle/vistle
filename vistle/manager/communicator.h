@@ -8,6 +8,7 @@
 #include <boost/mpi.hpp>
 
 #include <core/message.h>
+#include <core/messagepayload.h>
 #include <util/directory.h>
 
 namespace vistle {
@@ -36,10 +37,10 @@ class Communicator {
    void setModuleDir(const std::string &dir);
    void run();
    bool dispatch(bool *work);
-   bool handleMessage(const message::Buffer &message);
-   bool forwardToMaster(const message::Message &message);
-   bool broadcastAndHandleMessage(const message::Message &message);
-   bool sendMessage(int receiver, const message::Message &message, int rank=-1);
+   bool handleMessage(const message::Buffer &message, const MessagePayload &payload=MessagePayload());
+   bool forwardToMaster(const message::Message &message, const vistle::MessagePayload &payload=MessagePayload());
+   bool broadcastAndHandleMessage(const message::Message &message, const MessagePayload &payload=MessagePayload());
+   bool sendMessage(int receiver, const message::Message &message, int rank=-1, const MessagePayload &payload=MessagePayload());
 
    int hubId() const;
    int getRank() const;
@@ -57,7 +58,7 @@ class Communicator {
    void unlock();
 
  private:
-   bool sendHub(const message::Message &message);
+   bool sendHub(const message::Message &message, const MessagePayload &payload=MessagePayload());
    bool connectData();
    bool scanModules(const std::string &dir);
 
@@ -79,8 +80,9 @@ class Communicator {
    struct SendRequest {
        SendRequest(const message::Message &msg): buf(msg) {}
        SendRequest(const message::Buffer &buf): buf(buf) {}
-       MPI_Request req;
        message::Buffer buf;
+       MessagePayload payload;
+       MPI_Request req, payload_req;
    };
    std::set<std::shared_ptr<SendRequest>> m_ongoingSends;
 

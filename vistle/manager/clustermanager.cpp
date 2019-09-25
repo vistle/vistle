@@ -28,6 +28,7 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
 #include <core/messagerouter.h>
+#include <core/messagepayload.h>
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
@@ -96,31 +97,48 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
     if (blockers.empty())
         return;
 
-    auto pred = [msg](const message::Buffer &buf) -> bool {
+    auto isSame = [msg](const message::Buffer &buf) -> bool {
         return buf.uuid() == msg.uuid()
                 && buf.type() == msg.type();
     };
 
-    if (pred(blockers.front())) {
+    auto hasSame = [msg](const MessageWithPayload &mpl) -> bool {
+        return mpl.buf.uuid() == msg.uuid()
+                && mpl.buf.type() == msg.type();
+    };
+
+    if (isSame(blockers.front())) {
 #ifdef DEBUG
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
 #endif
         blockers.pop_front();
-        vassert(blockedMessages.front().uuid() == msg.uuid()
-                && blockedMessages.front().type() == msg.type());
+        vassert(blockedMessages.front().buf.uuid() == msg.uuid()
+                && blockedMessages.front().buf.type() == msg.type());
+        message::Buffer buf(msg);
+        blockedMessages.front().payload.ref();
+        if (blockedMessages.front().payload)
+            buf.setPayloadName(blockedMessages.front().payload.name());
         blockedMessages.pop_front();
         sendQueue->send(msg);
         if (blockers.empty()) {
             //std::cerr << "UNBLOCK: completely unblocked" << std::endl;
             blocked = false;
             while (!blockedMessages.empty()) {
-                sendQueue->send(blockedMessages.front());
+                auto &mpl = blockedMessages.front();
+                mpl.payload.ref();
+                if (mpl.payload)
+                    mpl.buf.setPayloadName(mpl.payload.name());
+                sendQueue->send(mpl.buf);
                 blockedMessages.pop_front();
             }
         } else {
             const auto &uuid = blockers.front().uuid();
-            while (blockedMessages.front().uuid() != uuid) {
-                sendQueue->send(blockedMessages.front());
+            while (blockedMessages.front().buf.uuid() != uuid) {
+                auto &mpl = blockedMessages.front();
+                mpl.payload.ref();
+                if (mpl.payload)
+                    mpl.buf.setPayloadName(mpl.payload.name());
+                sendQueue->send(mpl.buf);
                 blockedMessages.pop_front();
             }
         }
@@ -128,27 +146,35 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
 #ifdef DEBUG
         std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
 #endif
-        auto it = std::find_if(blockers.begin(), blockers.end(), pred);
+        auto it = std::find_if(blockers.begin(), blockers.end(), isSame);
         vassert(it != blockers.end());
         if (it != blockers.end()) {
             //std::cerr << "UNBLOCK: found in blockers" << std::endl;
             blockers.erase(it);
         }
-        it = std::find_if(blockedMessages.begin(), blockedMessages.end(), pred);
-        vassert (it != blockedMessages.end());
-        if (it != blockedMessages.end()) {
+        auto it2 = std::find_if(blockedMessages.begin(), blockedMessages.end(), hasSame);
+        vassert (it2 != blockedMessages.end());
+        if (it2 != blockedMessages.end()) {
             //std::cerr << "UNBLOCK: updating message" << std::endl;
             *it = message::Buffer(msg);
+            it->setPayloadName(it2->payload.name());
+            it2->buf.setPayloadName(it2->payload.name());
         }
     }
 }
 
-bool ClusterManager::Module::send(const message::Message &msg) const {
+bool ClusterManager::Module::send(const message::Message &msg, const MessagePayload &payload) const {
+   message::Buffer buf(msg);
+   if (payload) {
+       buf.setPayloadName(payload.name());
+   }
    if (blocked) {
-      blockedMessages.emplace_back(msg);
+      blockedMessages.emplace_back(buf, payload);
       return true;
    } else if (sendQueue) {
-      return sendQueue->send(msg);
+      if (payload)
+          payload->ref();
+      return sendQueue->send(buf);
    }
    return false;
 }
@@ -159,8 +185,8 @@ bool ClusterManager::Module::update() const {
     return false;
 }
 
-void ClusterManager::Module::delay(const message::Message &msg) {
-    delayedMessages.push_back(msg);
+void ClusterManager::Module::delay(const message::Message &msg, const MessagePayload &payload) {
+    delayedMessages.emplace_back(msg, payload);
 }
 
 bool  ClusterManager::Module::processDelayed() {
@@ -170,9 +196,10 @@ bool  ClusterManager::Module::processDelayed() {
         if (Communicator::the().getRank() == 0) {
             if (ranksStarted == 0)
             {
-                auto &msg = delayedMessages.front();
+                auto &mpl = delayedMessages.front();
+                auto &msg = mpl.buf;
                 auto type = msg.type();
-                ret = Communicator::the().broadcastAndHandleMessage(delayedMessages.front());
+                ret = Communicator::the().broadcastAndHandleMessage(mpl.buf, mpl.payload);
                 delayedMessages.pop_front();
                 if (type == message::EXECUTE)
                     break;
@@ -236,10 +263,16 @@ const StateTracker &ClusterManager::state() const {
     return m_stateTracker;
 }
 
-void ClusterManager::sendParameterMessage(const message::Message &message) const {
+void ClusterManager::sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const {
     message::Buffer buf(message);
     buf.setSenderId(ParameterManager::id());
-    sendHub(buf);
+    MessagePayload pl;
+    if (payload) {
+        pl.construct(payload->size());
+        std::copy(payload->begin(), payload->end(), pl->begin());
+        //buf.setPayloadName(pl.name());
+    }
+    sendHub(buf, pl);
 }
 
 FieldCompressionMode ClusterManager::fieldCompressionMode() const {
@@ -325,7 +358,7 @@ void ClusterManager::barrierReached(const message::uuid_t &uuid) {
    message::BarrierReached m(uuid);
    m.setDestId(message::Id::MasterHub);
    if (getRank() == 0)
-      sendHub(m, Id::MasterHub);
+      sendHub(m, MessagePayload(), Id::MasterHub);
 }
 
 std::string ClusterManager::getModuleName(int id) const {
@@ -383,8 +416,13 @@ bool ClusterManager::dispatch(bool &received) {
 
          if (recv) {
             received = true;
-            if (!Communicator::the().handleMessage(buf))
-               done = true;
+            MessagePayload pl;
+            if (buf.payloadSize() > 0) {
+                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+            }
+            if (!Communicator::the().handleMessage(buf, pl))
+                done = true;
+            pl.unref();
          }
       }
    }
@@ -401,33 +439,33 @@ bool ClusterManager::dispatch(bool &received) {
    return !done;
 }
 
-bool ClusterManager::sendAll(const message::Message &message) const {
+bool ClusterManager::sendAll(const message::Message &message, const MessagePayload &payload) const {
 
    // no module has id Invalid
-   return sendAllOthers(message::Id::Invalid, message);
+   return sendAllOthers(message::Id::Invalid, message, payload);
 }
 
-bool ClusterManager::sendAllLocal(const message::Message &message) const {
+bool ClusterManager::sendAllLocal(const message::Message &message, const MessagePayload &payload) const {
 
    // no module has id Invalid
-   return sendAllOthers(message::Id::Invalid, message, true);
+   return sendAllOthers(message::Id::Invalid, message, payload, true);
 }
 
-bool ClusterManager::sendAllOthers(int excluded, const message::Message &message, bool localOnly) const {
+bool ClusterManager::sendAllOthers(int excluded, const message::Message &message, const MessagePayload &payload, bool localOnly) const {
 
    message::Buffer buf(message);
    if (!localOnly) {
       buf.setDestId(Id::ForBroadcast);
       if (Communicator::the().isMaster()) {
          if (getRank() == 0)
-            sendHub(buf);
+            sendHub(buf, payload);
       } else {
          int senderHub = message.senderId();
          if (senderHub >= Id::ModuleBase)
             senderHub = idToHub(senderHub);
          if (senderHub == Communicator::the().hubId()) {
             if (getRank() == 0)
-               sendHub(buf);
+               sendHub(buf, payload);
          }
       }
       return true;
@@ -448,19 +486,19 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
       const int hub = idToHub(modId);
 
       if (hub == Communicator::the().hubId()) {
-         mod.send(message);
+         mod.send(message, payload);
       }
    }
 
    return true;
 }
 
-bool ClusterManager::sendUi(const message::Message &message) const {
+bool ClusterManager::sendUi(const message::Message &message, const MessagePayload &payload) const {
 
-   return sendHub(message);
+   return sendHub(message, payload);
 }
 
-bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
+bool ClusterManager::sendHub(const message::Message &message, const MessagePayload &payload, int destHub) const {
 
     if (getRank()!=0 && !message::Router::the().toRank0(message)) {
         return true;
@@ -469,26 +507,30 @@ bool ClusterManager::sendHub(const message::Message &message, int destHub) const
     message::Buffer buf(message);
     if (Id::isHub(destHub))
        buf.setDestId(destHub);
-    return Communicator::the().sendHub(buf);
+    buf.setPayloadName(std::string());
+    return Communicator::the().sendHub(buf, payload);
 }
 
-bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
+bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank, const MessagePayload &payload) const {
 
    const int hub = idToHub(moduleId);
 
+   message::Buffer buf(message);
+   if (payload)
+       buf.setPayloadName(payload.name());
    if (hub == Communicator::the().hubId()) {
-      //std::cerr << "local send to " << moduleId << ": " << message << std::endl;
+      //std::cerr << "local send to " << moduleId << ": " << buf << std::endl;
       if (destRank == -1 || destRank == getRank()) {
          RunningMap::const_iterator it = runningMap.find(moduleId);
          if (it == runningMap.end()) {
              CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
-             std::cerr << "  message: " << message << std::endl;
+             std::cerr << "  message: " << buf << std::endl;
              return true;
          }
 
          auto &mod = it->second;
-         if (message.type() == message::ADDOBJECT) {
-             auto &addObj = message.as<message::AddObject>();
+         if (buf.type() == message::ADDOBJECT) {
+             auto &addObj = buf.as<message::AddObject>();
              if (addObj.isUnblocking()) {
                  mod.unblock(addObj);
                  return true;
@@ -497,27 +539,26 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
                  mod.block(addObj);
              }
          }
-         mod.send(message);
+         mod.send(buf, payload);
       } else {
-         Communicator::the().sendMessage(moduleId, message, destRank);
+         Communicator::the().sendMessage(moduleId, message, destRank, payload);
       }
    } else {
       std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
-      message::Buffer buf(message);
       buf.setDestId(moduleId);
       buf.setDestRank(destRank);
-      sendHub(buf);
+      sendHub(buf, payload);
    }
 
    return true;
 }
 
-bool ClusterManager::handle(const message::Buffer &message) {
+bool ClusterManager::handle(const message::Buffer &message, const MessagePayload &payload) {
 
    using namespace vistle::message;
 
    if (message.destId() == Id::ForBroadcast) {
-       return sendHub(message);
+       return sendHub(message, payload);
    }
 
    if (message.type() == m_traceMessages || m_traceMessages==ANY) {
@@ -536,7 +577,10 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
       default:
-         m_stateTracker.handle(message);
+         if (payload)
+             m_stateTracker.handle(message, payload->data(), payload->size());
+         else
+             m_stateTracker.handle(message, nullptr);
          break;
    }
 
@@ -554,11 +598,11 @@ bool ClusterManager::handle(const message::Buffer &message) {
       if (message.senderId() != hubId && senderHub == hubId) {
          CERR << "BC: " << message << std::endl;
          if (getRank() == 0)
-            sendHub(message);
+            sendHub(message, payload);
       }
 #endif
       if (message.typeFlags() & BroadcastModule) {
-         sendAllLocal(message);
+         sendAllLocal(message, payload);
       }
    }
    if (message::Id::isModule(message.destId())) {
@@ -567,15 +611,15 @@ bool ClusterManager::handle(const message::Buffer &message) {
          if (message.type() != message::EXECUTE
                  && message.type() != message::CANCELEXECUTE
                  && message.type() != message::SETPARAMETER) {
-            return sendMessage(message.destId(), message);
+             return sendMessage(message.destId(), message, -1, payload);
          }
       } else if (!message.wasBroadcast()) {
-         return sendHub(message);
+         return sendHub(message, payload);
       }
    }
    if (message::Id::isHub(message.destId())) {
        if (destHub != hubId || message.type() == message::EXECUTE || message.type() == message::CANCELEXECUTE) {
-           return sendHub(message);
+           return sendHub(message, payload);
        }
    }
 
@@ -672,7 +716,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
       case message::SETPARAMETERCHOICES: {
          const message::SetParameterChoices &m = message.as<SetParameterChoices>();
-         result = handlePriv(m);
+         result = handlePriv(m, payload);
          break;
       }
 
@@ -692,7 +736,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
 
       case message::SENDTEXT: {
          const message::SendText &m = message.as<SendText>();
-         result = handlePriv(m);
+         result = handlePriv(m, payload);
          break;
       }
 
@@ -788,7 +832,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    }
 
    if (spawn.destId() == Id::Broadcast || spawn.destId() == Id::NextHop) {
-      m_stateTracker.handle(spawn);
+      m_stateTracker.handle(spawn, nullptr);
       sendAllLocal(spawn);
       return true;
    }
@@ -905,7 +949,14 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    // inform newly started module about current parameter values of other modules
    auto state = m_stateTracker.getState();
    for (const auto &m: state) {
-      sendMessage(newId, m);
+       MessagePayload pl;
+       message::Buffer buf(m.message);
+       if (m.payload) {
+           pl.construct(m.payload->size());
+           std::copy(m.payload->begin(), m.payload->end(), pl->begin());
+           buf.setPayloadName(pl.name());
+       }
+       sendMessage(newId, buf, -1, pl);
    }
 
    return true;
@@ -914,7 +965,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 bool ClusterManager::handlePriv(const message::Connect &connect) {
 
     if (connect.isNotification()) {
-        m_stateTracker.handle(connect);
+        m_stateTracker.handle(connect, nullptr);
         int modFrom = connect.getModuleA();
         int modTo = connect.getModuleB();
         if (isLocal(modFrom))
@@ -972,7 +1023,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 #endif
 
    if (disconnect.isNotification()) {
-        m_stateTracker.handle(disconnect);
+        m_stateTracker.handle(disconnect, nullptr);
         int modFrom = disconnect.getModuleA();
         int modTo = disconnect.getModuleB();
         if (isLocal(modFrom))
@@ -1013,7 +1064,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
    const int mod = moduleExit.senderId();
-   sendAllOthers(mod, moduleExit, true);
+   sendAllOthers(mod, moduleExit, MessagePayload(), true);
    const bool local = isLocal(mod);
 
    if (!moduleExit.isForwarded()) {
@@ -1199,7 +1250,8 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
               a.setDestId(hub);
               a.setDestRank(0);
               Communicator::the().dataManager().prepareTransfer(a);
-              sendHub(a, hub);
+              // TODO: serialize object into message payload
+              sendHub(a, MessagePayload(), hub);
           }
       }
    }
@@ -1642,7 +1694,7 @@ bool ClusterManager::handlePriv(const message::Busy &busy) {
       if (mod.busyCount == 0) {
          message::Buffer buf(busy);
          buf.setDestId(Id::UI);
-         sendHub(buf, Id::MasterHub);
+         sendHub(buf, MessagePayload(), Id::MasterHub);
       }
       ++mod.busyCount;
    } else {
@@ -1660,7 +1712,7 @@ bool ClusterManager::handlePriv(const message::Idle &idle) {
       if (mod.busyCount == 0) {
          message::Buffer buf(idle);
          buf.setDestId(Id::UI);
-         sendHub(buf, Id::MasterHub);
+         sendHub(buf, MessagePayload(), Id::MasterHub);
       }
    } else {
       Communicator::the().forwardToMaster(idle);
@@ -1719,10 +1771,10 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
          setParam.apply(param);
       }
       if (dest == Id::ForBroadcast) {
-          sendHub(setParam, dest);
+          sendHub(setParam, MessagePayload(), dest);
           return true;
       } else if (!Communicator::the().isMaster()) {
-         sendAllOthers(sender, setParam, true);
+         sendAllOthers(sender, setParam, MessagePayload(), true);
       }
    }
 
@@ -1770,30 +1822,37 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    return handled;
 }
 
-bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices) {
+bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices, const MessagePayload &payload) {
 #ifdef DEBUG
    CERR << "SetParameterChoices: " << setChoices << std::endl;
 #endif
 
+   assert(payload);
+   if (!payload) {
+       return false;
+   }
+
    bool handled = true;
    int sender = setChoices.senderId();
    int dest = setChoices.destId();
+   std::vector<char> data(payload->begin(), payload->end());
+   auto pl = message::getPayload<message::SetParameterChoices::Payload>(data);
    if (message::Id::isModule(dest)) {
       // message to owning module
       auto param = getParameter(dest, setChoices.getName());
       if (param) {
-         setChoices.apply(param);
+         setChoices.apply(param, pl);
       }
    } else if (message::Id::isModule(sender)) {
       // message from owning module
       auto param = getParameter(sender, setChoices.getName());
       if (param) {
-         setChoices.apply(param);
+         setChoices.apply(param, pl);
       }
       if (dest == Id::ForBroadcast) {
-          sendHub(setChoices, Id::MasterHub);
+          sendHub(setChoices, payload, Id::MasterHub);
       } else if (!Communicator::the().isMaster()) {
-         sendAllOthers(sender, setChoices, true);
+         sendAllOthers(sender, setChoices, payload, true);
       }
    }
 
@@ -1841,14 +1900,14 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
    return true;
 }
 
-bool ClusterManager::handlePriv(const message::SendText &text) {
+bool ClusterManager::handlePriv(const message::SendText &text, const MessagePayload &payload) {
 
    if (Communicator::the().isMaster()) {
       message::Buffer buf(text);
       buf.setDestId(Id::MasterHub);
-      sendHub(buf);
+      sendHub(buf, payload);
    } else {
-      sendHub(text);
+      sendHub(text, payload);
    }
    return true;
 }

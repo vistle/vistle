@@ -13,6 +13,9 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/archive/basic_archive.hpp>
 
+#include "archives.h"
+#include <util/vecstreambuf.h>
+
 #include <algorithm>
 
 namespace vistle {
@@ -28,6 +31,36 @@ static T min(T a, T b) { return a<b ? a : b; }
       dst[size] = '\0'; \
       vassert(src.size() < dst.size()); \
    }
+
+template<class Payload>
+std::vector<char> addPayload(Message &message, Payload &payload) {
+    vecostreambuf<char> buf;
+    oarchive ar(buf);
+    ar & payload;
+    auto vec = buf.get_vector();
+    message.setPayloadSize(vec.size());
+    return vec;
+}
+
+template<class Payload>
+Payload getPayload(const std::vector<char> &data) {
+    vecistreambuf<char> buf(data);
+    Payload payload;
+    try {
+        iarchive ar(buf);
+        ar & payload;
+    } catch (::yas::io_exception &ex) {
+        std::cerr << "ERROR: failed to get message payload from " << data.size() << " bytes: " << ex.what() << std::endl;
+    }
+
+    return payload;
+}
+
+template V_COREEXPORT std::vector<char> addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
+template V_COREEXPORT std::vector<char> addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
+
+template V_COREEXPORT SendText::Payload getPayload(const std::vector<char> &data);
+template V_COREEXPORT SetParameterChoices::Payload getPayload(const std::vector<char> &data);
 
 Identify::Identify(Identity id, const std::string &name)
 : m_identity(id)
@@ -1093,17 +1126,10 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
    return true;
 }
 
-SetParameterChoices::SetParameterChoices(const std::string &n, const std::vector<std::string> &ch)
-: numChoices(ch.size())
+SetParameterChoices::SetParameterChoices(const std::string &n, unsigned numChoices)
+: numChoices(numChoices)
 {
    COPY_STRING(name, n);
-   if (numChoices > param_num_choices) {
-      std::cerr << "SetParameterChoices::ctor: maximum number of choices (" << param_num_choices << ") exceeded (" << numChoices << ") - truncating" << std::endl;
-      numChoices = param_num_choices;
-   }
-   for (int i=0; i<numChoices; ++i) {
-      COPY_STRING(choices[i], ch[i]);
-   }
 }
 
 const char *SetParameterChoices::getName() const
@@ -1111,7 +1137,7 @@ const char *SetParameterChoices::getName() const
    return name.data();
 }
 
-bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param) const {
+bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param, const SetParameterChoices::Payload &payload) const {
 
    if (param->type() != Parameter::Integer
          && param->type() != Parameter::String) {
@@ -1124,13 +1150,7 @@ bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param) const 
       return false;
    }
 
-   std::vector<std::string> ch;
-   for (int i=0; i<numChoices && i<param_num_choices; ++i) {
-      size_t len = strnlen(choices[i].data(), choices[i].size());
-      ch.push_back(std::string(choices[i].data(), len));
-   }
-
-   param->setChoices(ch);
+   param->setChoices(payload.choices);
    return true;
 }
 
@@ -1157,27 +1177,17 @@ ReplayFinished::ReplayFinished()
 {
 }
 
-SendText::SendText(const std::string &text, const Message &inResponseTo)
+SendText::SendText(const Message &inResponseTo)
 : m_textType(TextType::Error)
 , m_referenceUuid(inResponseTo.uuid())
 , m_referenceType(inResponseTo.type())
-, m_truncated(false)
 {
-   if (text.size() >= sizeof(m_text)) {
-      m_truncated = true;
-   }
-   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
 }
 
-SendText::SendText(SendText::TextType type, const std::string &text)
+SendText::SendText(SendText::TextType type)
 : m_textType(type)
 , m_referenceType(INVALID)
-, m_truncated(false)
 {
-   if (text.size() >= sizeof(m_text)) {
-      m_truncated = true;
-   }
-   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
 }
 
 SendText::TextType SendText::textType() const {
@@ -1195,14 +1205,11 @@ uuid_t SendText::referenceUuid() const {
    return m_referenceUuid;
 }
 
-const char *SendText::text() const {
+SendText::Payload::Payload() = default;
 
-   return m_text.data();
-}
-
-bool SendText::truncated() const {
-
-   return m_truncated;
+SendText::Payload::Payload(const std::string &text)
+: text(text)
+{
 }
 
 UpdateStatus::UpdateStatus(const std::string &text, UpdateStatus::Importance prio)
@@ -1638,7 +1645,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    s  << "uuid: " << boost::lexical_cast<std::string>(m.uuid())
       << ", type: " << m.type()
-      << ", size: " << m.size()
+      << ", size: " << m.size() << "+" << m.payloadSize()
       << ", sender: " << m.senderId();
    if (Id::isHub(m.senderId())) {
        s << ", UI: " << m.uiId();
@@ -1743,7 +1750,6 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case SENDTEXT: {
          auto &mm = static_cast<const SendText &>(m);
-         s << ", text: " << mm.text();
          break;
       }
       case UPDATESTATUS: {
@@ -1786,6 +1792,13 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
    }
 
    return s;
+}
+
+SetParameterChoices::Payload::Payload() = default;
+
+SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices)
+: choices(choices)
+{
 }
 
 } // namespace message

@@ -95,12 +95,15 @@ std::array<Object::const_ptr,3> splitObject(Object::const_ptr container) {
     return geo_norm_data;
 }
 
-bool Renderer::handleMessage(const message::Message *message) {
+bool Renderer::handleMessage(const message::Message *message, const MessagePayload &payload) {
 
     switch (message->type()) {
     case vistle::message::ADDOBJECT: {
         auto add = static_cast<const message::AddObject *>(message);
-        m_stateTracker->handle(*add);
+        if (payload)
+            m_stateTracker->handle(*add, payload->data(), payload->size());
+        else
+            m_stateTracker->handle(*add, nullptr);
         return handleAddObject(*add);
         break;
     }
@@ -109,7 +112,7 @@ bool Renderer::handleMessage(const message::Message *message) {
     }
     }
 
-    return Module::handleMessage(message);
+    return Module::handleMessage(message, payload);
 }
 
 bool Renderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
@@ -202,7 +205,9 @@ bool Renderer::dispatch(bool *messageReceived) {
             if (messageReceived)
                *messageReceived = true;
 
-            quit = !handleMessage(&message);
+            MessagePayload pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+            pl.unref();
+            quit = !handleMessage(&message, pl);
             if (quit) {
                 std::cerr << "Quitting: " << message << std::endl;
                 break;

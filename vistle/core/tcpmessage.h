@@ -17,6 +17,7 @@ using boost::system::error_code;
 
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, const std::vector<char> *payload=nullptr);
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &ec, const std::vector<char> *payload=nullptr);
+bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size);
 void V_COREEXPORT async_send(socket_t &sock, const Message &msg,
                              std::shared_ptr<std::vector<char>> payload,
                              const std::function<void(error_code ec)> handler);

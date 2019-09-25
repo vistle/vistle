@@ -91,44 +91,55 @@ struct V_COREEXPORT HubData {
 };
 
 class V_COREEXPORT StateTracker {
-   friend class ClusterManager;
-   friend class Hub;
-   friend class DataProxy;
-   friend class PortTracker;
+    friend class ClusterManager;
+    friend class Hub;
+    friend class DataProxy;
+    friend class PortTracker;
 
- public:
-   StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker=std::shared_ptr<PortTracker>());
-   ~StateTracker();
+public:
+    StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker=std::shared_ptr<PortTracker>());
+    ~StateTracker();
 
-   typedef std::recursive_mutex mutex;
-   typedef std::unique_lock<mutex> mutex_locker;
-   mutex &getMutex();
+    typedef std::recursive_mutex mutex;
+    typedef std::unique_lock<mutex> mutex_locker;
+    mutex &getMutex();
 
-   bool dispatch(bool &received);
+    bool dispatch(bool &received);
 
-   int getMasterHub() const;
-   std::vector<int> getHubs() const;
-   std::vector<int> getSlaveHubs() const;
-   const std::string &hubName(int id) const;
-   std::vector<int> getRunningList() const;
-   std::vector<int> getBusyList() const;
-   int getHub(int id) const;
-   const HubData &getHubData(int id) const;
-   std::string getModuleName(int id) const;
-   int getModuleState(int id) const;
+    int getMasterHub() const;
+    std::vector<int> getHubs() const;
+    std::vector<int> getSlaveHubs() const;
+    const std::string &hubName(int id) const;
+    std::vector<int> getRunningList() const;
+    std::vector<int> getBusyList() const;
+    int getHub(int id) const;
+    const HubData &getHubData(int id) const;
+    std::string getModuleName(int id) const;
+    int getModuleState(int id) const;
 
-   std::vector<std::string> getParameters(int id) const;
-   std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
+    std::vector<std::string> getParameters(int id) const;
+    std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
-   ParameterSet getConnectedParameters(const Parameter &param) const;
+    ParameterSet getConnectedParameters(const Parameter &param) const;
 
-   bool handle(const message::Message &msg, bool track=true);
-   bool handleConnect(const message::Connect &conn);
-   bool handleDisconnect(const message::Disconnect &disc);
+    bool handle(const message::Message &msg, const std::vector<char> *payload, bool track=true);
+    bool handle(const message::Message &msg, const char *payload, size_t payloadSize, bool track=true);
+    bool handleConnect(const message::Connect &conn);
+    bool handleDisconnect(const message::Disconnect &disc);
 
-   std::shared_ptr<PortTracker> portTracker() const;
+    std::shared_ptr<PortTracker> portTracker() const;
 
-   std::vector<message::Buffer> getState() const;
+    struct MessageWithPayload {
+        MessageWithPayload(const message::Message &m, std::shared_ptr<const std::vector<char>> payload)
+            : message(m)
+              , payload(payload) {}
+
+        message::Buffer message;
+        std::shared_ptr<const std::vector<char>> payload;
+    };
+    typedef std::vector<MessageWithPayload> VistleState;
+
+   VistleState getState() const;
 
    const std::map<AvailableModule::Key, AvailableModule> &availableModules() const;
 
@@ -187,7 +198,7 @@ class V_COREEXPORT StateTracker {
 
    std::set<StateObserver *> m_observers;
 
-   std::vector<message::Buffer> m_queue;
+   VistleState m_queue;
    void processQueue();
    void cleanQueue(int moduleId);
    bool m_processingQueue = false;
@@ -215,12 +226,12 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::AddParameter &addParam);
    bool handlePriv(const message::RemoveParameter &removeParam);
    bool handlePriv(const message::SetParameter &setParam);
-   bool handlePriv(const message::SetParameterChoices &choices);
+   bool handlePriv(const message::SetParameterChoices &choices, const std::vector<char> &payload);
    bool handlePriv(const message::Kill &kill);
    bool handlePriv(const message::AddObject &addObj);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
-   bool handlePriv(const message::SendText &info);
+   bool handlePriv(const message::SendText &info, const std::vector<char> &payload);
    bool handlePriv(const message::UpdateStatus &status);
    bool handlePriv(const message::ReplayFinished &reset);
    bool handlePriv(const message::Quit &quit);

@@ -36,6 +36,7 @@
 #include <core/message.h>
 #include <core/parametermanager.h>
 #include <core/messagesender.h>
+#include <core/messagepayload.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -183,8 +184,10 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    //! remove port forwarding requested by requestPortMapping
    void removePortMapping(unsigned short forwardPort);
 
-   void sendParameterMessage(const message::Message &message) const override;
-   bool sendMessage(const message::Message &message) const override;
+   void sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const override;
+   bool sendMessage(const message::Message &message, const std::vector<char> *payload=nullptr) const override;
+   template<class Payload>
+   bool sendMessage(message::Message &message, Payload &payload) const;
 
    //! type should be a message::SendText::TextType
    void sendText(int type, const std::string &msg) const;
@@ -256,7 +259,7 @@ protected:
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
    std::deque<message::Buffer> messageBacklog;
-   virtual bool handleMessage(const message::Message *message);
+   virtual bool handleMessage(const message::Message *message, const vistle::MessagePayload &payload);
    bool handleExecute(const message::Execute *exec);
    bool cancelRequested(bool collective=false);
 

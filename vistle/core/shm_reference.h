@@ -5,6 +5,7 @@
 #include <string>
 #include <cassert>
 #include "shmname.h"
+#include "shm_array.h"
 #include <boost/interprocess/offset_ptr.hpp>
 
 namespace vistle {
@@ -36,11 +37,14 @@ class shm_ref {
         ref();
     }
 
-    shm_ref(const shm_name_t name)
+    explicit shm_ref(const shm_name_t name)
     : m_name(name)
     , m_p(name.empty() ? nullptr : shm<T>::find_array(name))
     {
     }
+
+    explicit shm_ref(const std::vector<typename T::value_type> &data);
+    shm_ref(const typename T::value_type *data, size_t size);
 
    ~shm_ref() {
         unref();
@@ -100,13 +104,6 @@ class shm_ref {
    const shm_name_t &name() const;
    int refcount() const;
 
- private:
-   shm_name_t m_name;
-#ifdef NO_SHMEM
-   T *m_p;
-#else
-   boost::interprocess::offset_ptr<T> m_p;
-#endif
    void ref() {
        if (m_p) {
            assert(!m_name.empty());
@@ -127,6 +124,13 @@ class shm_ref {
        }
    }
 
+ private:
+   shm_name_t m_name;
+#ifdef NO_SHMEM
+   T *m_p;
+#else
+   boost::interprocess::offset_ptr<T> m_p;
+#endif
    ARCHIVE_ACCESS_SPLIT
 
    template<class Archive>
@@ -150,6 +154,8 @@ class shm_ref {
     template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
     template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
 
+V_DECLARE_SHMREF(char) // for MessagePayload
+V_DECLARE_SHMREF(signed char)
 V_DECLARE_SHMREF(unsigned char)
 V_DECLARE_SHMREF(int32_t)
 V_DECLARE_SHMREF(uint32_t)

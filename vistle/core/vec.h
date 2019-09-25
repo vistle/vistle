@@ -100,6 +100,8 @@ class Vec: public DataBase {
     extern template class V_COREEXPORT Vec<ValueType,2>; \
     extern template class V_COREEXPORT Vec<ValueType,3>; \
     extern template class V_COREEXPORT Vec<ValueType,4>;
+V_VEC_TEMPLATE(char)
+V_VEC_TEMPLATE(signed char)
 V_VEC_TEMPLATE(unsigned char)
 V_VEC_TEMPLATE(int32_t)
 V_VEC_TEMPLATE(uint32_t)

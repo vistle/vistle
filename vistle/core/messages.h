@@ -18,6 +18,8 @@
 #include "message.h"
 #include "export.h"
 
+#include "archives_config.h"
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -56,7 +58,7 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 
  private:
    Identity m_identity;
-   text_t m_name;
+   description_t m_name;
    int m_numRanks;
    int m_rank;
    int m_boost_archive_version;
@@ -334,7 +336,7 @@ class V_COREEXPORT AddPort: public MessageBase<AddPort, ADDPORT> {
    Port getPort() const;
  private:
    port_name_t m_name;
-   text_t m_description;
+   description_t m_description;
    int m_porttype;
    int m_flags;
 };
@@ -478,7 +480,7 @@ class V_COREEXPORT AddParameter: public MessageBase<AddParameter, ADDPARAMETER> 
       param_name_t name;
       param_name_t m_group;
       module_name_t module;
-      param_desc_t m_description;
+      description_t m_description;
       int paramtype;
       int presentation;
 };
@@ -557,18 +559,30 @@ static_assert(sizeof(SetParameter) <= Message::MESSAGE_SIZE, "message too large"
 //! set list of choice descriptions for a choice parameter
 class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, SETPARAMETERCHOICES> {
    public:
-      SetParameterChoices(const std::string &name, const std::vector<std::string> &choices);
+      struct Payload {
+          Payload();
+          Payload(const std::vector<std::string> &choices);
+
+          std::vector<std::string> choices;
+
+          ARCHIVE_ACCESS
+          template<class Archive>
+          void serialize(Archive & ar)
+          {
+              ar & choices;
+          }
+      };
+
+      SetParameterChoices(const std::string &name, unsigned numChoices);
 
       const char *getName() const;
       int getNumChoices() const;
-      const char *getChoice(int idx) const;
 
-      bool apply(std::shared_ptr<Parameter> param) const;
+      bool apply(std::shared_ptr<Parameter> param, const Payload &payload) const;
 
    private:
       int numChoices;
       param_name_t name;
-      param_choice_t choices[param_num_choices];
 };
 static_assert(sizeof(SetParameterChoices) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -618,15 +632,26 @@ public:
       (Error)
    )
 
+   struct Payload {
+       Payload();
+       Payload(const std::string &text);
+
+       std::string text;
+
+       ARCHIVE_ACCESS
+       template<class Archive>
+               void serialize(Archive & ar) {
+           ar & text;
+       }
+   };
+
    //! Error message in response to a Message
-   SendText(const std::string &text, const Message &inResponseTo);
-   SendText(TextType type, const std::string &text);
+   SendText(const Message &inResponseTo);
+   SendText(TextType type);
 
    TextType textType() const;
    Type referenceType() const;
    uuid_t referenceUuid() const;
-   const char *text() const;
-   bool truncated() const;
 
 private:
    //! type of text
@@ -635,10 +660,6 @@ private:
    uuid_t m_referenceUuid;
    //! Type of Message this message is a response to
    Type m_referenceType;
-   //! message text
-   text_t m_text;
-   //! whether m_text has been truncated
-   bool m_truncated;
 };
 static_assert(sizeof(SendText) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(TextType, SendText)
@@ -658,15 +679,29 @@ public:
                                        (LoadedFile)
    )
 
+   struct Payload {
+       Payload();
+       Payload(const std::string &status);
+
+       std::string status;
+
+       ARCHIVE_ACCESS
+       template<class Archive>
+       void serialize(Archive & ar) {
+           ar & status;
+       }
+   };
+
    UpdateStatus(const std::string &text, Importance prio=Low);
    UpdateStatus(Type type, const std::string &text);
    const char *text() const;
+
    Importance importance() const;
    Type statusType() const;
 
 private:
    //! message text
-   text_t m_text;
+   description_t m_text;
    //! message importance
    Importance m_importance;
    //! status type
@@ -674,6 +709,7 @@ private:
 };
 static_assert(sizeof(UpdateStatus) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Importance, UpdateStatus)
+
 
 //! control where AddObject messages are sent
 class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, OBJECTRECEIVEPOLICY> {
@@ -783,7 +819,7 @@ class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAV
  private:
    int m_hub;
    module_name_t m_name;
-   text_t m_path;
+   path_t m_path;
 };
 static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -835,7 +871,7 @@ class V_COREEXPORT RequestTunnel: public MessageBase<RequestTunnel, REQUESTTUNNE
  private:
    unsigned short m_srcPort;
    AddressType m_destType;
-   text_t m_destAddr;
+   address_t m_destAddr;
    unsigned short m_destPort;
    bool m_remove;
 };
@@ -910,7 +946,7 @@ private:
     int m_command;
     int m_moduleId;
     int m_filebrowser = -1;
-    text_t m_path;
+    path_t m_path;
 };
 static_assert(sizeof(FileQuery) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -932,7 +968,7 @@ private:
     int m_command;
     int m_status;
     int m_filebrowser;
-    text_t m_path;
+    path_t m_path;
 };
 static_assert(sizeof(FileQueryResult) <= Message::MESSAGE_SIZE, "message too large");
 
@@ -944,6 +980,17 @@ public:
 private:
     long m_numTransferring;
 };
+
+template<class Payload>
+extern V_COREEXPORT std::vector<char> addPayload(Message &message, Payload &payload);
+template<class Payload>
+extern V_COREEXPORT Payload getPayload(const std::vector<char> &data);
+
+extern template V_COREEXPORT std::vector<char> addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
+extern template V_COREEXPORT std::vector<char> addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
+
+extern template V_COREEXPORT SendText::Payload getPayload(const std::vector<char> &data);
+extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const std::vector<char> &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

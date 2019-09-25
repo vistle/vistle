@@ -1,10 +1,18 @@
 #include "parametermanager.h"
+#include "messages.h"
 
 #include <iostream>
 
 #define CERR std::cerr << m_name << "_" << id() << " "
 
 namespace vistle {
+
+template<class Payload>
+void ParameterManager::sendParameterMessageWithPayload(message::Message &message, Payload &payload) {
+
+    auto pl = addPayload(message, payload);
+    return sendParameterMessage(message, &pl);
+}
 
 ParameterManager::ParameterManager(const std::string &name, int id)
 : m_id(id)
@@ -183,9 +191,10 @@ void ParameterManager::setParameterChoices(const std::string &name, const std::v
 
 void ParameterManager::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
 {
-    message::SetParameterChoices sc(param->getName(), choices);
+    message::SetParameterChoices sc(param->getName(), choices.size());
     sc.setDestId(message::Id::ForBroadcast);
-    sendParameterMessage(sc);
+    message::SetParameterChoices::Payload pl(choices);
+    sendParameterMessageWithPayload(sc, pl);
 }
 
 void ParameterManager::setParameterFilters(const std::string &name, const std::string &filters)

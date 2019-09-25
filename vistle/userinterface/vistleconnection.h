@@ -28,7 +28,7 @@ public:
 
    void setQuitOnExit(bool quit);
 
-   bool sendMessage(const vistle::message::Message &msg) const;
+   bool sendMessage(const vistle::message::Message &msg, const std::vector<char> *payload=nullptr) const;
    bool requestReplyAsync(const vistle::message::Message &send) const;
    bool waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const;
    bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;

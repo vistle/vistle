@@ -81,11 +81,11 @@ unsigned short Proxy::port() const {
    return m_port;
 }
 
-bool Proxy::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
+bool Proxy::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload) {
 
    bool result = true;
    try {
-      result = message::send(*sock, msg);
+      result = message::send(*sock, msg, payload);
    } catch(const boost::system::system_error &err) {
       std::cerr << "exception: err.code()=" << err.code() << std::endl;
       result = false;
@@ -198,7 +198,7 @@ void Proxy::slaveReady(Slave &slave) {
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
-      sendMessage(slave.sock, m);
+       sendMessage(slave.sock, m.message, m.payload.get());
    }
    slave.ready = true;
 }
@@ -251,7 +251,8 @@ void Proxy::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
        senderType = it->second;
     message::Buffer msg;
     message::error_code ec;
-    if (message::recv(*sock, msg, ec)) {
+    std::vector<char> payload;
+    if (message::recv(*sock, msg, ec, &payload)) {
        bool ok = true;
        if (senderType == message::Identify::UI) {
           //ok = m_uiManager.handleMessage(msg, sock);
@@ -264,7 +265,7 @@ void Proxy::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
           CERR << "invalid identity on socket: " << senderType << std::endl;
           ok = false;
        } else {
-          ok = handleMessage(msg, sock);
+          ok = handleMessage(msg, sock, payload);
        }
        if (!ok) {
           m_quitting = true;
@@ -418,7 +419,7 @@ void Proxy::hubReady() {
    }
 }
 
-bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
+bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const std::vector<char> &payload) {
 
    using namespace vistle::message;
 
@@ -466,7 +467,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
                   if (m_hubId <= Id::MasterHub) {
                      auto state = m_stateTracker.getState();
                      for (auto &m: state) {
-                        sendMessage(sock, m);
+                         sendMessage(sock, m.message, m.payload.get());
                      }
                   }
                   hubReady();
@@ -504,17 +505,17 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
             auto &slave = it->second;
             slaveReady(slave);
             m_dataProxy->connectRemoteData(mm);
-            m_stateTracker.handle(mm, true);
+            m_stateTracker.handle(mm, nullptr, true);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_dataProxy->connectRemoteData(m);
-               m_stateTracker.handle(m, true);
+               m_stateTracker.handle(m, nullptr, true);
             } else {
                 m_dataProxy->connectRemoteData(mm);
-                m_stateTracker.handle(mm, true);
+                m_stateTracker.handle(mm, nullptr, true);
             }
          }
          break;
@@ -534,7 +535,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
                msg.setDestId(Id::Broadcast);
        }
        bool track = Router::the().toTracker(msg, senderType) && msg.type() != message::ADDHUB;
-       m_stateTracker.handle(msg, track);
+       m_stateTracker.handle(msg, &payload, track);
 
        if (Router::the().toManager(msg, senderType, sender)
                || (Id::isModule(msg.destId()) && dest == m_hubId)) {
@@ -600,7 +601,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
                for (auto &m: state) {
-                  sendMessage(sock, m);
+                   sendMessage(sock, m.message, m.payload.get());
                }
                hubReady();
             }
@@ -704,7 +705,7 @@ bool Proxy::init(int argc, char *argv[]) {
       message::AddHub master(m_hubId, m_name);
       master.setPort(m_port);
       master.setDataPort(m_dataProxy->port());
-      m_stateTracker.handle(master);
+      m_stateTracker.handle(master, nullptr);
       m_masterPort = m_port;
    }
 

@@ -13,6 +13,7 @@
 #include <core/messagequeue.h>
 #include <core/parametermanager.h>
 #include <core/parameter.h>
+#include <core/messagepayload.h>
 
 #include "portmanager.h"
 
@@ -50,13 +51,13 @@ class ClusterManager: public ParameterManager
    bool dispatch(bool &received);
    const StateTracker &state() const;
 
-   void sendParameterMessage(const message::Message &message) const override;
-   bool sendMessage(int receiver, const message::Message &message, int destRank=-1) const;
-   bool sendAll(const message::Message &message) const;
-   bool sendAllLocal(const message::Message &message) const;
-   bool sendAllOthers(int excluded, const message::Message &message, bool localOnly=false) const;
-   bool sendUi(const message::Message &message) const;
-   bool sendHub(const message::Message &message, int destHub=message::Id::Broadcast) const;
+   void sendParameterMessage(const message::Message &message, const std::vector<char> *payload) const override;
+   bool sendMessage(int receiver, const message::Message &message, int destRank=-1, const MessagePayload &payload=MessagePayload()) const;
+   bool sendAll(const message::Message &message, const MessagePayload &payload=MessagePayload()) const;
+   bool sendAllLocal(const message::Message &message, const MessagePayload &payload=MessagePayload()) const;
+   bool sendAllOthers(int excluded, const message::Message &message, const MessagePayload &payload, bool localOnly=false) const;
+   bool sendUi(const message::Message &message, const MessagePayload &paylod=MessagePayload()) const;
+   bool sendHub(const message::Message &message, const MessagePayload &payload=MessagePayload(), int destHub=message::Id::Broadcast) const;
 
    bool quit();
    bool quitOk() const;
@@ -70,7 +71,7 @@ class ClusterManager: public ParameterManager
 
    PortManager &portManager() const;
 
-   bool handle(const message::Buffer &msg);
+   bool handle(const message::Buffer &msg, const MessagePayload &payload=MessagePayload());
    //bool handleData(const message::Message &msg);
 
    FieldCompressionMode fieldCompressionMode() const;
@@ -118,12 +119,12 @@ class ClusterManager: public ParameterManager
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);
    bool handlePriv(const message::SetParameter &setParam);
-   bool handlePriv(const message::SetParameterChoices &setChoices);
+   bool handlePriv(const message::SetParameterChoices &setChoices, const MessagePayload &payload);
    bool handlePriv(const message::AddObject &addObj);
    bool handlePriv(const message::AddObjectCompleted &complete);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
-   bool handlePriv(const message::SendText &text);
+   bool handlePriv(const message::SendText &text, const MessagePayload &payload);
    bool handlePriv(const message::RequestTunnel &tunnel);
    bool handlePriv(const message::Ping &ping);
    bool handlePriv(const message::DataTransferState &state);
@@ -146,9 +147,16 @@ class ClusterManager: public ParameterManager
       bool reducing;
       bool prepared, reduced;
       int busyCount;
+      struct MessageWithPayload {
+          MessageWithPayload(const message::Buffer &buf, const MessagePayload &pl=MessagePayload())
+              : buf(buf), payload(pl) {}
+          message::Buffer buf;
+          MessagePayload payload;
+      };
       mutable bool blocked;
-      mutable std::deque<message::Buffer> blockedMessages, blockers;
-      std::deque<message::Buffer> delayedMessages;
+      mutable std::deque<message::Buffer> blockers;
+      mutable std::deque<MessageWithPayload> blockedMessages;
+      std::deque<MessageWithPayload> delayedMessages;
       std::vector<int> objectCount; // no. of available object tuples on each rank
 
       Module(): ranksStarted(0), ranksFinished(0), reducing(false),
@@ -159,9 +167,9 @@ class ClusterManager: public ParameterManager
 
       void block(const message::Message &msg) const;
       void unblock(const message::Message &msg) const;
-      bool send(const message::Message &msg) const;
+      bool send(const message::Message &msg, const MessagePayload &payload=MessagePayload()) const;
       bool update() const;
-      void delay(const message::Message &msg);
+      void delay(const message::Message &msg, const MessagePayload &payload=MessagePayload());
       bool processDelayed();
       bool haveDelayed() const;
    };

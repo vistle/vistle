@@ -132,7 +132,7 @@ void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 
       auto state = m_stateTracker.getState();
       for (auto &m: state) {
-         sendMessage(c, m);
+          sendMessage(c, m.message, m.payload.get());
       }
    }
 }

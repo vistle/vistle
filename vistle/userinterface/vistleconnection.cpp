@@ -127,10 +127,10 @@ std::unique_ptr<VistleConnection::Locker> VistleConnection::locked() {
    return std::unique_ptr<Locker>(new VistleConnectionLocker(m_mutex));
 }
 
-bool VistleConnection::sendMessage(const vistle::message::Message &msg) const
+bool VistleConnection::sendMessage(const vistle::message::Message &msg, const std::vector<char> *payload) const
 {
    mutex_lock lock(m_mutex);
-   return ui().sendMessage(msg);
+   return ui().sendMessage(msg, payload);
 }
 
 std::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const

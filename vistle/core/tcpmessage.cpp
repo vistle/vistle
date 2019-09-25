@@ -25,7 +25,7 @@ static const size_t buffersize = 16384;
 
 namespace {
 
-bool check(const Message &msg, const std::vector<char> *payload) {
+bool check(const Message &msg, const char *payload, size_t size) {
     if (msg.type() <= ANY || msg.type() >= NumMessageTypes) {
         std::cerr << "check message: invalid type " << msg.type() << std::endl;
         return false;
@@ -36,12 +36,17 @@ bool check(const Message &msg, const std::vector<char> *payload) {
         return false;
     }
 
-    if (payload && msg.payloadSize() > 0 && payload->size() != msg.payloadSize()) {
+    if (payload && msg.payloadSize() > 0 && size != msg.payloadSize()) {
         std::cerr << "check message: payload and size do not match" << std::endl;
         return false;
     }
 
     return true;
+}
+
+bool check(const Message &msg, const std::vector<char> *payload) {
+
+    return check(msg, payload?payload->data():nullptr, payload?payload->size():0);
 }
 
 }
@@ -398,6 +403,29 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const std
    buffers.push_back(boost::asio::buffer(&msg, msg.size()));
    if (payload && payload->size()) {
        buffers.push_back(boost::asio::buffer(*payload));
+       //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
+   }
+
+   asio::write(sock, buffers, ec);
+   if (ec) {
+       std::cerr << "message::send: error: " << ec.message() << std::endl;
+       if (ec != boost::system::errc::connection_reset)
+           std::cerr << backtrace() << std::endl;
+       return false;
+   }
+
+   return true;
+}
+
+bool send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size) {
+
+   const SizeType sz = htonl(msg.size());
+   std::vector<boost::asio::const_buffer> buffers;
+   //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
+   buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
+   buffers.push_back(boost::asio::buffer(&msg, msg.size()));
+   if (payload && size>0) {
+       buffers.push_back(boost::asio::buffer(payload, size));
        //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
    }
 

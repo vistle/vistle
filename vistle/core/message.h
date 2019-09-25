@@ -8,6 +8,7 @@
 #include <util/directory.h> // ModuleNameLength
 #include "uuid.h"
 #include "export.h"
+#include "shmname.h"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -136,12 +137,11 @@ typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 32> port_name_t;
 typedef std::array<char, 32> param_name_t;
 typedef std::array<char, 256> param_value_t;
-typedef std::array<char, 512> param_desc_t;
 typedef std::array<char, 50> param_choice_t;
-const int param_num_choices = 18;
 typedef std::array<char, 300> shmsegname_t;
-typedef std::array<char, 800> text_t;
-typedef std::array<char, 300> address_t;
+typedef std::array<char, 350> description_t;
+typedef std::array<char, 200> address_t;
+typedef std::array<char, 500> path_t;
 
 typedef boost::uuids::uuid uuid_t;
 
@@ -210,6 +210,10 @@ class V_COREEXPORT Message {
    size_t payloadSize() const;
    //! set payload size
    void setPayloadSize(size_t size);
+   //! retrieve name of payload in shared memory
+   std::string payloadName() const;
+   //! set name of payload in shared memory
+   void setPayloadName(const shm_name_t &name);
    //! compression method for payload
    CompressionMode payloadCompression() const;
    //! set compression method for payload
@@ -248,6 +252,8 @@ class V_COREEXPORT Message {
    uint64_t m_payloadRawSize;
    //! payload compression method
    int m_payloadCompression;
+   //! name of payload in shared memory
+   shm_name_t m_payloadName;
    //! broadcast to all ranks?
    bool m_forBroadcast, m_wasBroadcast;
    //! message is not a request for action
@@ -303,11 +309,6 @@ V_COREEXPORT std::vector<char> compressPayload(vistle::message::CompressionMode 
 V_COREEXPORT std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
-
-class V_COREEXPORT MessageSender {
-public:
-    virtual bool sendMessage(const Message &msg) const = 0;
-};
 
 } // namespace message
 } // namespace vistle

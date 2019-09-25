@@ -7,6 +7,26 @@
 namespace vistle {
 
 template<class T>
+shm_ref<T>::shm_ref(const std::vector<typename T::value_type> &data)
+    : m_name(Shm::the().createArrayId())
+    , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
+    {
+        ref();
+        (*this)->resize(data.size());
+        std::copy(data.begin(), data.end(), (*this)->begin());
+    }
+
+template<class T>
+shm_ref<T>::shm_ref(const typename T::value_type *data, size_t size)
+    : m_name(Shm::the().createArrayId())
+    , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
+    {
+        ref();
+        (*this)->resize(size);
+        std::copy(data, data+size, (*this)->begin());
+    }
+
+template<class T>
 template<class Archive>
 void shm_ref<T>::save(Archive &ar) const {
 

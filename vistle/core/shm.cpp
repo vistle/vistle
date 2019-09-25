@@ -562,6 +562,8 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    return Object::const_ptr();
 }
 
+V_DEFINE_SHMREF(char)
+V_DEFINE_SHMREF(signed char)
 V_DEFINE_SHMREF(unsigned char)
 V_DEFINE_SHMREF(int32_t)
 V_DEFINE_SHMREF(uint32_t)

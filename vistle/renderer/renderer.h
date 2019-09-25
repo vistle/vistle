@@ -50,7 +50,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    typedef std::map<std::string, ColorMap> ColorMapMap;
 
  protected:
-   bool handleMessage(const message::Message *message) override;
+   bool handleMessage(const message::Message *message, const MessagePayload &payload) override;
 
    virtual bool addColorMap(const std::string &species, Texture1D::const_ptr texture);
    virtual bool removeColorMap(const std::string &species);

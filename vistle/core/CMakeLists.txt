@@ -37,6 +37,7 @@ set(core_SOURCES
    messages.cpp
    messagequeue.cpp
    messagerouter.cpp
+   messagepayload.cpp
    tcpmessage.cpp
    filequery.cpp
    port.cpp
@@ -107,6 +108,7 @@ set(core_HEADERS
    messagequeue.h
    messagerouter.h
    messagesender.h
+   messagepayload.h
    normals.h
    normals_impl.h
    object.h

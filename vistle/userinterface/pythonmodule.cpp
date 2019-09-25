@@ -78,10 +78,10 @@ PythonModule *pythonModuleInstance = nullptr;
 message::Type traceMessages = message::INVALID;
 }
 
-static bool sendMessage(const vistle::message::Message &m) {
+static bool sendMessage(const vistle::message::Message &m, const std::vector<char> *payload=nullptr) {
 
 #ifdef VISTLE_CONTROL
-   bool ret = Hub::the().handleMessage(m);
+   bool ret = Hub::the().handleMessage(m, nullptr, payload);
    assert(ret);
    if (!ret) {
       std::cerr << "Python: failed to send message " << m << std::endl;
@@ -95,8 +95,14 @@ static bool sendMessage(const vistle::message::Message &m) {
        std::cerr << "cannot send message: no connection to Vistle session" << std::endl;
        return false;
    }
-   return pythonModuleInstance->vistleConnection().sendMessage(m);
+   return pythonModuleInstance->vistleConnection().sendMessage(m, payload);
 #endif
+}
+
+template<class Payload>
+static bool sendMessage(vistle::message::Message &m, Payload &payload) {
+    auto pl = addPayload(m, payload);
+    return sendMessage(m, &pl);
 }
 
 static std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid) {
@@ -625,8 +631,9 @@ static void printInfo(const std::string &message) {
    std::cerr << "Python: printInfo " << message << std::endl;
 #endif
 
-   message::SendText m(message::SendText::Info, message);
-   sendMessage(m);
+   message::SendText m(message::SendText::Info);
+   message::SendText::Payload pl(message);
+   sendMessage(m, pl);
 }
 
 static void printWarning(const std::string &message) {
@@ -634,8 +641,9 @@ static void printWarning(const std::string &message) {
    std::cerr << "Python: printWarning " << message << std::endl;
 #endif
 
-   message::SendText m(message::SendText::Warning, message);
-   sendMessage(m);
+   message::SendText m(message::SendText::Warning);
+   message::SendText::Payload pl(message);
+   sendMessage(m, pl);
 }
 
 static void printError(const std::string &message) {
@@ -643,8 +651,9 @@ static void printError(const std::string &message) {
    std::cerr << "Python: printError " << message << std::endl;
 #endif
 
-   message::SendText m(message::SendText::Error, message);
-   sendMessage(m);
+   message::SendText m(message::SendText::Error);
+   message::SendText::Payload pl(message);
+   sendMessage(m, pl);
 }
 
 static void setStatus(const std::string &text, message::UpdateStatus::Importance prio) {

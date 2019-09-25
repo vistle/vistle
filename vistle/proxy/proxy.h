@@ -22,12 +22,13 @@ class Proxy {
 
    bool init(int argc, char *argv[]);
    bool dispatch();
-   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg);
+   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const std::vector<char> *payload=nullptr);
    unsigned short port() const;
    const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
-         std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>());
+         std::shared_ptr<boost::asio::ip::tcp::socket> sock,
+         const std::vector<char> &payload);
    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub);
    bool sendMaster(const message::Message &msg);
    bool sendSlaves(const message::Message &msg, bool returnToSender=false);
