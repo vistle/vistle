@@ -471,6 +471,7 @@ Scalar Particle::time() const {
 void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
 
     boost::mpi::broadcast(mpi_comm, *this, root);
+    m_integrator.m_hact = m_integrator.m_h;
     m_progress = false;
 }
 

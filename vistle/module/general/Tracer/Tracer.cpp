@@ -114,7 +114,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     setParameterRange("dt_step", 0.0, 1e6);
 
     setCurrentParameterGroup("Step Length Control");
-    addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
+    addFloatParameter("h_init", "fixed step size for euler integration", 1e-03);
     setParameterRange("h_init", 0.0, 1e6);
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
     setParameterRange("h_min", 0.0, 1e6);
