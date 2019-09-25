@@ -129,6 +129,7 @@ class V_PLUGINUTILEXPORT VistleInteractor: public opencover::coInteractor {
    const vistle::MessageSender *m_owner;
    std::string m_moduleName;
    std::string m_pluginName;
+   std::string m_hubName;
    int m_moduleId;
    std::shared_ptr<ModuleRenderObject> m_object;
 

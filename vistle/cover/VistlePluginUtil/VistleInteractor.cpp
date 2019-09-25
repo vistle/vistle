@@ -3,6 +3,7 @@
 #include <cover/coVRAnimationManager.h>
 #include <core/parameter.h>
 #include <module/module.h>
+#include <core/statetracker.h>
 
 using namespace vistle;
 
@@ -13,6 +14,8 @@ VistleInteractor::VistleInteractor(const Module *owner, const std::string &modul
 , m_moduleId(moduleId)
 , m_object(new ModuleRenderObject(m_moduleName, m_moduleId))
 {
+    const auto &hub = owner->getHub();
+    m_hubName = hub.name;
 }
 
 VistleInteractor::~VistleInteractor()
@@ -560,8 +563,7 @@ int VistleInteractor::getModuleInstance()
 // get the hostname of the module which created the data object
 const char *VistleInteractor::getModuleHost()
 {
-   static const char *localhost = "localhost";
-   return localhost;
+    return m_hubName.c_str();
 }
 
 // -- The following functions only works for coFeedback attributes

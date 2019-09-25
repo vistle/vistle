@@ -28,4 +28,5 @@ target_link_libraries(VistlePluginUtil
         ${COVER_LIBRARY}
         ${OPENGL_LIBRARIES}
         vistle_core
+        vistle_module
 )
