@@ -156,9 +156,9 @@ struct PrimitiveBin {
 };
 
 template<class Geo>
-std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo> &adp, const Vector &bmin, const Vector &bmax, const PrimitiveBin &bin)
+std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo> &adp, const Vector &bmin, const Vector &bmax, const PrimitiveBin &bin, size_t numPrimitives)
 {
-    if (bin.prim.size() < NumPrimitives || level > 8)
+    if (bin.prim.size() < numPrimitives || level > 8)
     {
         std::vector<PrimitiveBin> result;
         if (!bin.prim.empty())
@@ -196,11 +196,11 @@ std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo
 
     auto smax = bmax;
     smax[splitDim] = splitMax;
-    auto rMin = binPrimitivesRec(level+1, adp, bmin, smax, binMin);
+    auto rMin = binPrimitivesRec(level+1, adp, bmin, smax, binMin, numPrimitives);
 
     auto smin = bmin;
     smin[splitDim] = splitMin;
-    auto rMax = binPrimitivesRec(level+1, adp, smin, bmax, binMax);
+    auto rMax = binPrimitivesRec(level+1, adp, smin, bmax, binMax, numPrimitives);
 
     std::copy(rMin.begin(), rMin.end(), std::back_inserter(rMax));
 
@@ -208,7 +208,7 @@ std::vector<PrimitiveBin> binPrimitivesRec(int level, const PrimitiveAdapter<Geo
 }
 
 template<class Geo>
-std::vector<PrimitiveBin> binPrimitives(typename Geo::const_ptr geo) {
+std::vector<PrimitiveBin> binPrimitives(typename Geo::const_ptr geo, size_t numPrimitives) {
     PrimitiveAdapter<Geo> adp(geo);
     auto bounds = geo->getBounds();
 
@@ -216,7 +216,7 @@ std::vector<PrimitiveBin> binPrimitives(typename Geo::const_ptr geo) {
     bin.prim.reserve(adp.getNumPrimitives());
     for (Index i=0; i<adp.getNumPrimitives(); ++i)
         bin.prim.emplace_back(i);
-    return binPrimitivesRec(0, adp, bounds.first, bounds.second, bin);
+    return binPrimitivesRec(0, adp, bounds.first, bounds.second, bin, numPrimitives);
 }
 
 VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
@@ -368,7 +368,16 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, bool in
             std::cerr << "applyTriangle: primitive has only " << end-begin << " vertices" << std::endl;
             continue;
         }
-        if (adap.mapping == vistle::DataBase::Vertex) {
+        if (adap.mapping == vistle::DataBase::Element) {
+            auto val = adap.getValue(prim);
+            for (Index i=0; i<end-begin-2; ++i) {
+                if (buildConn)
+                    ++bin.ntri;
+                arr->push_back(val);
+                arr->push_back(val);
+                arr->push_back(val);
+            }
+        } else if (adap.mapping == vistle::DataBase::Vertex) {
             if (indexGeom) {
                 for (Index i = begin; i < end-2; ++i) {
                     if (buildConn)
@@ -410,15 +419,6 @@ Array *applyTriangle(typename Geometry::const_ptr tri, MappedPtr mapped, bool in
                     arr->push_back(adap.getValue(v+1));
                     arr->push_back(adap.getValue(v+2));
                 }
-            }
-        } else if (adap.mapping == vistle::DataBase::Element) {
-            auto val = adap.getValue(prim);
-            for (Index i=0; i<end-begin-2; ++i) {
-                if (buildConn)
-                    ++bin.ntri;
-                arr->push_back(val);
-                arr->push_back(val);
-                arr->push_back(val);
             }
         }
     }
@@ -619,6 +619,16 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
 #endif
 
    bool transparent = false;
+   if (m_geo && m_geo->hasAttribute("_transparent")) {
+       transparent = m_geo->getAttribute("_transparent") != "false";
+   }
+
+   size_t numPrimitives = NumPrimitives;
+   if (m_geo && m_geo->hasAttribute("_bin_num_primitives")) {
+       auto np = m_geo->getAttribute("_bin_num_primitives");
+       numPrimitives = atol(np.c_str());
+   }
+
    osg::Material *mat = nullptr;
    if (m_ro && m_ro->hasSolidColor) {
        const auto &c = m_ro->solidColor;
@@ -782,7 +792,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          if (!normals)
              gnormals = computeNormals<vistle::Triangles>(triangles, indexGeom);
 
-         auto bins = binPrimitives<vistle::Triangles>(triangles);
+         auto bins = binPrimitives<vistle::Triangles>(triangles, numPrimitives);
          debug << " #bins: " << bins.size();
 
          for (auto bin: bins) {
@@ -836,7 +846,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          if (!normals)
              gnormals = computeNormals<vistle::Quads>(quads, indexGeom);
 
-         auto bins = binPrimitives<vistle::Quads>(quads);
+         auto bins = binPrimitives<vistle::Quads>(quads, numPrimitives);
          debug << " #bins: " << bins.size();
 
          for (auto bin: bins) {
@@ -893,7 +903,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          if (!normals)
              gnormals = computeNormals<vistle::Indexed>(polygons, indexGeom);
 
-         auto bins = binPrimitives<vistle::Indexed>(polygons);
+         auto bins = binPrimitives<vistle::Indexed>(polygons, numPrimitives);
          debug << " #bins: " << bins.size();
 
          for (auto bin: bins) {
