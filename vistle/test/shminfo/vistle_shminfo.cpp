@@ -90,7 +90,7 @@ int main(int argc, char ** argv) {
                        Object::Data *od = Shm::the().getObjectDataFromHandle(info.handle);
                        if (od) {
                            std::cout << " type " << od->type;
-                           std::cout << " ref " << od->refcount << std::endl;
+                           std::cout << " ref " << od->refcount() << std::endl;
                        } else {
                            std::cout << " ERR" << std::endl;
                        }

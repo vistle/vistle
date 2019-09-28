@@ -140,6 +140,7 @@ set(core_HEADERS
    scalars.h
    serialize.h
    shm.h
+   shmdata.h
    shmname.h
    shmvector.h
    shm_array.h

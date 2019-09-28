@@ -31,6 +31,7 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 #include "index.h"
 //#include "shm_array.h"
 #include "shmname.h"
+#include "shmdata.h"
 
 //#define SHMDEBUG
 //#define SHMPUBLISH
@@ -38,7 +39,7 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 namespace vistle {
 
 #ifdef NO_SHMEM
-typedef void *shm_handle_t;
+typedef ShmData *shm_handle_t;
 #else
 typedef managed_shm::handle_t shm_handle_t;
 #endif
@@ -192,7 +193,7 @@ class V_COREEXPORT Shm {
 #ifdef NO_SHMEM
    mutable std::recursive_mutex *m_shmDeletionMutex;
    mutable std::recursive_mutex *m_objectDictionaryMutex;
-   std::map<std::string, void*> m_objectDictionary;
+   std::map<std::string, shm_handle_t> m_objectDictionary;
 #else
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
    mutable boost::interprocess::interprocess_recursive_mutex *m_objectDictionaryMutex;
@@ -281,6 +282,7 @@ bool shm<T>::destroy_array(const std::string &name, shm<T>::array_ptr arr) {
     assert(arr->refcount() == 0);
     bool ret = shm<shm<T>::array>::destroy(name);
     Shm::the().unlockObjects();
+    Shm::the().markAsRemoved(name);
     return ret;
 #endif
 }

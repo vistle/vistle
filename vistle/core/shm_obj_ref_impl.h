@@ -131,7 +131,7 @@ template<class T>
 void shm_obj_ref<T>::ref() {
     if (m_d) {
         assert(m_name == m_d->name);
-        assert(m_d->refcount >= 0);
+        assert(m_d->refcount() >= 0);
         m_d->ref();
     }
 }
@@ -139,7 +139,7 @@ void shm_obj_ref<T>::ref() {
 template<class T>
 void shm_obj_ref<T>::unref() {
     if (m_d) {
-        assert(m_d->refcount > 0);
+        assert(m_d->refcount() > 0);
         m_d->unref();
     }
     m_d = nullptr;

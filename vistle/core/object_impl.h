@@ -97,7 +97,7 @@ Object *Object::loadObject(Archive &ar) {
           assert(obj->refcount() >= 1);
       } else {
           if (objData) {
-              std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount << std::endl;
+              std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount() << std::endl;
           }
           Shm::the().unlockObjects();
           auto funcs = ObjectTypeRegistry::getType(type);

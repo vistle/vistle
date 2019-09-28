@@ -186,8 +186,8 @@ public:
    Object::const_ptr getAttachment(const std::string &key) const;
    bool removeAttachment(const std::string &key) const;
 
-   void ref() const;
-   void unref() const;
+   int ref() const;
+   int unref() const;
    int refcount() const;
 
    template<class Archive>
@@ -228,10 +228,8 @@ public:
 
 ARCHIVE_ASSUME_ABSTRACT(Object)
 
-struct ObjectData {
+struct ObjectData: public ShmData {
     Object::Type type;
-    shm_name_t name;
-    mutable std::atomic<int> refcount;
 
     std::atomic<int> unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
 
@@ -289,8 +287,8 @@ struct ObjectData {
     V_COREEXPORT void operator delete(void *ptr);
     V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
 #endif
-    V_COREEXPORT void ref() const;
-    V_COREEXPORT void unref() const;
+    V_COREEXPORT int ref() const;
+    V_COREEXPORT int unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     V_COREEXPORT bool isComplete() const; //! check whether all references have been resolved
     V_COREEXPORT void unresolvedReference();

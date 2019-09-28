@@ -11,11 +11,12 @@
 #include "export.h"
 #include "index.h"
 #include "archives_config.h"
+#include "shmdata.h"
 
 namespace vistle {
 
 template<typename T, class allocator>
-class shm_array {
+class shm_array: public ShmData {
 
  public: 
    typedef T value_type;
@@ -25,8 +26,8 @@ class shm_array {
    static int typeId();
 
    shm_array(const allocator &alloc = allocator())
-   : m_type(typeId())
-   , m_refcount(0)
+   : ShmData(ShmData::ARRAY)
+   , m_type(typeId())
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -36,8 +37,8 @@ class shm_array {
    }
 
    shm_array(const size_t size, const allocator &alloc = allocator())
-   : m_type(typeId())
-   , m_refcount(0)
+   : ShmData(ShmData::ARRAY)
+   , m_type(typeId())
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -47,8 +48,8 @@ class shm_array {
    }
 
    shm_array(const size_t size, const T &value, const allocator &alloc = allocator())
-   : m_type(typeId())
-   , m_refcount(0)
+   : ShmData(ShmData::ARRAY)
+   , m_type(typeId())
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -58,8 +59,8 @@ class shm_array {
    }
 
    shm_array(shm_array &&other)
-   : m_type(other.m_type)
-   , m_refcount(0)
+   : ShmData(ShmData::ARRAY)
+   , m_type(other.m_type)
    , m_size(other.m_size)
    , m_capacity(other.m_capacity)
    , m_data(other.m_data)
@@ -72,16 +73,16 @@ class shm_array {
    }
 
    ~shm_array() {
-      assert(m_refcount == 0);
+      assert(refcount() == 0);
       reserve_or_shrink(0);
    }
 
    int type() const { return m_type; }
    bool check() const {
-       assert(m_refcount >= 0);
+       assert(refcount() >= 0);
        assert(m_size <= m_capacity);
-       if (m_refcount < 0) {
-           std::cerr << "shm_array: INCONSISTENCY: m_refcount < 0" << std::endl;
+       if (refcount() < 0) {
+           std::cerr << "shm_array: INCONSISTENCY: refcount() < 0" << std::endl;
            return false;
        }
        if (m_size > m_capacity) {
@@ -195,13 +196,8 @@ class shm_array {
    }
    void shrink_to_fit() { reserve_or_shrink(m_size); assert(m_capacity == m_size); }
 
-   int ref() const { assert(m_refcount >= 0); return ++m_refcount; }
-   int unref() const { assert(m_refcount > 0); return --m_refcount; }
-   int refcount() const { assert(m_refcount >= 0); return m_refcount; }
-
  private:
    const uint32_t m_type;
-   mutable std::atomic<int> m_refcount;
    size_t m_size = 0;
    size_t m_dim[3] = {0, 1, 1};
    size_t m_capacity = 0;

@@ -167,9 +167,8 @@ void Object::publish(const Object::Data *d) {
 }
 
 ObjectData::ObjectData(const Object::Type type, const std::string & n, const Meta &m)
-   : type(type)
-   , name(n)
-   , refcount(0)
+   : ShmData(ShmData::OBJECT, n)
+   , type(type)
    , unresolvedReferences(0)
    , meta(m)
    , attributes(std::less<Key>(), Shm::the().allocator())
@@ -178,9 +177,8 @@ ObjectData::ObjectData(const Object::Type type, const std::string & n, const Met
 }
 
 ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::Type id)
-: type(id==Object::UNKNOWN ? o.type : id)
-, name(name)
-, refcount(0)
+: ShmData(ShmData::OBJECT, name)
+, type(id==Object::UNKNOWN ? o.type : id)
 , unresolvedReferences(0)
 , meta(o.meta)
 , attributes(std::less<Key>(), Shm::the().allocator())
@@ -194,7 +192,7 @@ ObjectData::~ObjectData() {
 
    //std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
 
-    assert(refcount == 0);
+    assert(refcount() == 0);
 
     for (auto &objd: attachments) {
         // referenced in addAttachment
@@ -301,7 +299,7 @@ void Object::refresh() const {
 
 bool Object::check() const {
 
-   V_CHECK (d()->refcount > 0); // we are holding a reference
+   V_CHECK (d()->refcount() > 0); // we are holding a reference
 
    bool terminated = false;
    for (size_t i=0; i<sizeof(shm_name_t); ++i) {
@@ -330,16 +328,16 @@ void Object::updateInternals()
 {
 }
 
-void Object::ref() const {
-   d()->ref();
+int Object::ref() const {
+   return d()->ref();
 }
 
-void Object::unref() const {
-   d()->unref();
+int Object::unref() const {
+   return d()->unref();
 }
 
 int Object::refcount() const {
-   return d()->refcount;
+   return d()->refcount();
 }
 
 bool Object::isEmpty() const {
@@ -350,18 +348,21 @@ bool Object::isEmpty() {
    return true;
 }
 
-void ObjectData::ref() const {
-   ++refcount;
+int ObjectData::ref() const {
+    return ShmData::ref();
 }
 
-void ObjectData::unref() const {
-   assert(refcount > 0);
-   if (--refcount == 0) {
-      Shm::the().lockObjects();
-      if (refcount == 0)
-          ObjectTypeRegistry::getDestroyer(type)(name);
-      Shm::the().unlockObjects();
+int ObjectData::unref() const {
+   int ref = ShmData::unref();
+   if (ref == 0) {
+       Shm::the().lockObjects();
+       ref = refcount();
+       if (ref == 0) {
+           ObjectTypeRegistry::getDestroyer(type)(name);
+       }
+       Shm::the().unlockObjects();
    }
+   return ref;
 }
 
 shm_handle_t Object::getHandle() const {

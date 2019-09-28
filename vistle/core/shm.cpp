@@ -515,8 +515,7 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
 ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
 
-   // we have to use char here, otherwise boost-internal consistency checks fail
-    return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+    return static_cast<Object::Data *>(vistle::shm<ShmData>::find(name));
 }
 
 ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
