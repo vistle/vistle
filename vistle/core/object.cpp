@@ -97,6 +97,7 @@ const char *Object::toString(Type v) {
             V_OBJECT_CASE(LINES)
             V_OBJECT_CASE(TUBES)
             V_OBJECT_CASE(TRIANGLES)
+            V_OBJECT_CASE(QUADS)
             V_OBJECT_CASE(POLYGONS)
             V_OBJECT_CASE(UNSTRUCTUREDGRID)
             V_OBJECT_CASE(UNIFORMGRID)
