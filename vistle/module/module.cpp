@@ -67,7 +67,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    msgstreambuf(Module *mod)
    : m_module(mod)
    , m_console(true)
-   , m_gui(true)
+   , m_gui(false)
    {}
 
    ~msgstreambuf() {
