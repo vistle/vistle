@@ -9,7 +9,7 @@
 namespace vistle {
 
 template<class T>
-using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
+using ShmVector = shm_array_ref<shm_array<T, typename shm<T>::allocator>>;
 
 }*/
 

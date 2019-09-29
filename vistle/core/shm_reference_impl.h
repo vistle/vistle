@@ -7,7 +7,7 @@
 namespace vistle {
 
 template<class T>
-shm_ref<T>::shm_ref(const std::vector<typename T::value_type> &data)
+shm_array_ref<T>::shm_array_ref(const std::vector<typename T::value_type> &data)
     : m_name(Shm::the().createArrayId())
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     {
@@ -17,7 +17,7 @@ shm_ref<T>::shm_ref(const std::vector<typename T::value_type> &data)
     }
 
 template<class T>
-shm_ref<T>::shm_ref(const typename T::value_type *data, size_t size)
+shm_array_ref<T>::shm_array_ref(const typename T::value_type *data, size_t size)
     : m_name(Shm::the().createArrayId())
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     {
@@ -28,7 +28,7 @@ shm_ref<T>::shm_ref(const typename T::value_type *data, size_t size)
 
 template<class T>
 template<class Archive>
-void shm_ref<T>::save(Archive &ar) const {
+void shm_array_ref<T>::save(Archive &ar) const {
 
     ar & V_NAME(ar, "shm_name", m_name);
     ar.template saveArray<typename T::value_type>(*this);
@@ -36,13 +36,13 @@ void shm_ref<T>::save(Archive &ar) const {
 
 template<class T>
 template<class Archive>
-void shm_ref<T>::load(Archive &ar) {
+void shm_array_ref<T>::load(Archive &ar) {
    shm_name_t shmname;
    ar & V_NAME(ar, "shm_name", shmname);
 
    std::string arname = shmname.str();
    std::string name = ar.translateArrayName(arname);
-   //std::cerr << "shm_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << std::endl;
+   //std::cerr << "shm_array_ref: loading " << shmname << " for " << m_name << "/" << name << ", valid=" << valid() << std::endl;
    if (name.empty() || m_name.str() != name) {
        unref();
        m_name.clear();
@@ -74,17 +74,17 @@ void shm_ref<T>::load(Archive &ar) {
 }
 
 template<class T>
-T &shm_ref<T>::operator*() {
+T &shm_array_ref<T>::operator*() {
     return *m_p;
 }
 
 template<class T>
-const T &shm_ref<T>::operator*() const {
+const T &shm_array_ref<T>::operator*() const {
     return *m_p;
 }
 
 template<class T>
-T *shm_ref<T>::operator->() {
+T *shm_array_ref<T>::operator->() {
 #ifdef NO_SHMEM
     return m_p;
 #else
@@ -93,7 +93,7 @@ T *shm_ref<T>::operator->() {
 }
 
 template<class T>
-const T *shm_ref<T>::operator->() const {
+const T *shm_array_ref<T>::operator->() const {
 #ifdef NO_SHMEM
     return m_p;
 #else
@@ -102,14 +102,14 @@ const T *shm_ref<T>::operator->() const {
 }
 
 template<class T>
-int shm_ref<T>::refcount() const {
+int shm_array_ref<T>::refcount() const {
     if (m_p)
         return m_p->refcount();
     return -1;
 }
 
 template<class T>
-const shm_name_t &shm_ref<T>::name() const {
+const shm_name_t &shm_array_ref<T>::name() const {
     return m_name;
 }
 

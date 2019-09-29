@@ -32,20 +32,20 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    typedef vistle::shm_array<T, typename vistle::shm<T>::allocator> array;
 
    if (name.empty()) {
-       return vistle::shm_ref<array>();
+       return vistle::shm_array_ref<array>();
    }
 
-   auto arr = vistle::shm<array>::find_array(name);
+   auto arr = vistle::shm<array>::find_and_ref(name);
 
    if (!arr) {
-       return vistle::shm_ref<array>();
+       return vistle::shm_array_ref<array>();
    }
    if (array::typeId() != arr->type()) {
        arr->unref();
-       return vistle::shm_ref<array>();
+       return vistle::shm_array_ref<array>();
    }
 
-   auto ref = vistle::shm_ref<array>(name, arr);
+   auto ref = vistle::shm_array_ref<array>(name, arr);
    ref->unref();
    return ref;
 }

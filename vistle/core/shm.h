@@ -105,14 +105,14 @@ struct shm {
 #endif
    static T *find(const std::string &name);
    static bool destroy(const std::string &name);
-   static T *find_array(const std::string &name); // as find, but reference array
+   static T *find_and_ref(const std::string &name); // as find, but reference array
    static bool destroy_array(const std::string &name, array_ptr arr);
 };
 
 template<class T>
-class shm_ref;
+class shm_array_ref;
 template<class T>
-using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
+using ShmVector = shm_array_ref<shm_array<T, typename shm<T>::allocator>>;
 
 class V_COREEXPORT Shm {
     template<typename T>
@@ -220,7 +220,7 @@ T *shm<T>::find(const std::string &name) {
 }
 
 template<typename T>
-T *shm<T>::find_array(const std::string &name) {
+T *shm<T>::find_and_ref(const std::string &name) {
 #ifdef NO_SHMEM
     Shm::the().lockDictionary();
     T *t = shm<T>::find(name);
@@ -321,7 +321,7 @@ T *shm<T>::Constructor::operator()(Args&&... args) {
 #include "shm_reference.h"
 
 namespace vistle {
-//using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
+//using ShmVector = shm_array_ref<shm_array<T, typename shm<T>::allocator>>;
 
 
 }

@@ -48,8 +48,8 @@ struct HostData {
    int m_numVertPerCell = 0;
    Index m_nvert[3];
    Index m_nghost[3][2];
-   std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
-   std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
+   std::vector<vistle::shm_array_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
+   std::vector<vistle::shm_array_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
    std::vector<const Scalar*> m_inVertPtr, m_inCellPtr;
    std::vector<const Index*> m_inVertPtrI, m_inCellPtrI;
    std::vector<Scalar*> m_outVertPtr, m_outCellPtr;

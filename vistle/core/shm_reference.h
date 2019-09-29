@@ -11,10 +11,10 @@
 namespace vistle {
 
 template<class T>
-class shm_ref {
+class shm_array_ref {
 
  public:
-    shm_ref()
+    shm_array_ref()
     //: m_name(Shm::the().createArrayId())
     : m_name("")
     //, m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
@@ -23,36 +23,36 @@ class shm_ref {
         ref();
     }
 
-    shm_ref(const std::string &name, T *p)
+    shm_array_ref(const std::string &name, T *p)
     : m_name(name)
     , m_p(p)
     {
         ref();
     }
 
-    shm_ref(const shm_ref &other)
+    shm_array_ref(const shm_array_ref &other)
     : m_name(other.m_name)
     , m_p(other.m_p)
     {
         ref();
     }
 
-    explicit shm_ref(const shm_name_t name)
+    explicit shm_array_ref(const shm_name_t name)
     : m_name(name)
-    , m_p(name.empty() ? nullptr : shm<T>::find_array(name))
+    , m_p(name.empty() ? nullptr : shm<T>::find_and_ref(name))
     {
     }
 
-    explicit shm_ref(const std::vector<typename T::value_type> &data);
-    shm_ref(const typename T::value_type *data, size_t size);
+    explicit shm_array_ref(const std::vector<typename T::value_type> &data);
+    shm_array_ref(const typename T::value_type *data, size_t size);
 
-   ~shm_ref() {
+   ~shm_array_ref() {
         unref();
     }
 
     template<typename... Args>
-    static shm_ref create(const Args&... args) {
-       shm_ref result;
+    static shm_array_ref create(const Args&... args) {
+       shm_array_ref result;
        result.construct(args...);
        return result;
     }
@@ -60,7 +60,7 @@ class shm_ref {
     bool find() {
         assert(!m_name.empty());
         if (!m_p) {
-            m_p = shm<T>::find_array(m_name);
+            m_p = shm<T>::find_and_ref(m_name);
         }
         return valid();
     }
@@ -77,7 +77,7 @@ class shm_ref {
         ref();
     }
 
-    const shm_ref &operator=(const shm_ref &rhs) {
+    const shm_array_ref &operator=(const shm_array_ref &rhs) {
         if (&rhs != this) {
             unref();
             m_name = rhs.m_name;
@@ -116,7 +116,7 @@ class shm_ref {
        if (m_p) {
             assert(!m_name.empty());
             assert(m_p->refcount() > 0);
-            //std::cerr << "shm_ref: giving up reference to " << m_name << ", refcount=" << m_p->refcount() << std::endl;
+            //std::cerr << "shm_array_ref: giving up reference to " << m_name << ", refcount=" << m_p->refcount() << std::endl;
             if (m_p->unref() == 0) {
                 shm<typename T::value_type>::destroy_array(m_name, m_p);
                 m_p = nullptr;
@@ -141,18 +141,18 @@ class shm_ref {
 
 
 #define V_DECLARE_SHMREF(T) \
-    extern template class V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>; \
-    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
-    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
-    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
-    extern template void V_COREEXPORT shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+    extern template class V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
 
 #define V_DEFINE_SHMREF(T) \
-    template class shm_ref<shm_array<T, typename shm<T>::allocator>>; \
-    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
-    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
-    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
-    template void shm_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+    template class shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
 
 V_DECLARE_SHMREF(char) // for MessagePayload
 V_DECLARE_SHMREF(signed char)
