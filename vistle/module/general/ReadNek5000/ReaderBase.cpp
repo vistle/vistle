@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstring>
 
+
 #ifdef _WIN32
 #include <direct.h>
 #endif // _WIN32
@@ -27,7 +28,7 @@ ReaderBase::~ReaderBase()
 
 bool ReaderBase::init()
 {
-    if (!parseMetaDataFile() || !ParseNekFileHeader()) {
+    if (!parseMetaDataFile() || !ParseNekFileHeader() || !ParseGridMap()) {
         return false;
     }
     if(numBlocksToRead < 1 || numBlocksToRead > totalNumBlocks)
@@ -211,25 +212,144 @@ bool ReaderBase::ParseGridMap(){
     ifstream  mptr(map_filename);
     if(mptr.is_open())
     {
-      int num_map_elements;
-      string buf2;
-      mptr >> num_map_elements >> buf2 >> buf2 >> buf2 >> buf2 >> buf2 >> buf2;
-      std::vector<int> map_elements(num_map_elements);
-      for(int i=0; i<num_map_elements; ++i)
+
+      for (size_t i = 0; i < 7; i++) {
+          mptr >> mapFileHeader[i];
+      }
+      std::vector<int> map_elements(mapFileHeader[0]);
+      mapFileData.reserve(mapFileHeader[0]);
+      int columns = dim == 2 ? 5 : 9;
+      for(int i=0; i< mapFileHeader[0]; ++i)
       {
-        mptr >> map_elements[i] >> buf2 >> buf2 >> buf2 >> buf2;
-        if(dim == 3)
-            mptr >> buf2 >> buf2 >> buf2 >> buf2;
-        map_elements[i]+=1;
+          array<int, 9> line;
+          for (size_t j = 0; j < columns; j++) {
+              mptr >> line[j];
+          }
+          mapFileData.emplace_back(line);
+          map_elements[i] = line[0] + 1;
       }
       mptr.close();
 
       all_element_list = map_elements;
 
+      map<int, vector<int>> matches;
+      int line = 1;
+      for (auto entry : mapFileData)           {
+          for (size_t i = 1; i <= numCorners; i++) {
+              matches[entry[i]].push_back(line);
+          }
+          ++line;
+      }
+      //map<int, vector<pair<int, vector<int>>>> points;
+      //for (auto point : matches)           {
+      //    points[point.second.size()].push_back(make_pair( point.first, point.second ));
+      //}
+      //cerr << "___________number of corner apperences_____________" << endl;
+      //for (auto p : points)           {
+      //    cerr << "[" << p.first << "] ";
+      //    for (auto n : p.second)               {
+      //        cerr << n.first << " (";
+      //        for (auto l : n.second)                   {
+      //            cerr << l << ", ";
+      //        }
+      //        cerr << "); ";
+      //    }
+      //    cerr << endl;
+      //}
+
       return true;
     }
 return false;
 }
+
+
+array<int, 27> ReaderBase::getSurroundingBlocks(int block)     {
+    
+    map<vector<int>, int> SharedEdges; //maps the shared corners to the block
+    int edges = dim == 2 ? 4 : 8;
+    auto myCorners = mapFileData[block];
+    for (size_t i = 0; i < totalNumBlocks; i++) {
+        auto otherCorners = mapFileData[i];
+        vector<int> se;
+        for (size_t j = 1; j <= edges; ++j) {
+            int hits = 0;
+            for (size_t k = 1; k <= edges; k++) {
+                if (myCorners[j] == otherCorners[k]) {
+                    se.push_back(j);
+                }
+            }
+        }
+        SharedEdges[se] = i;
+    }
+    array<int, 27> neighbors;
+    
+    int numNeighbors = dim == 2 ? 9 : 29;
+    for (size_t i = 0; i < numNeighbors; i++) {
+        auto it = SharedEdges.find(getCornersSharedWithNeighbors()[i]);
+        if (it != SharedEdges.end()) {
+            neighbors[i] = it->second;
+        }
+        else {
+            neighbors[i] = -1;
+        }
+
+    }
+
+    return neighbors;
+}
+
+
+ std::array<std::vector<int>, 27> ReaderBase::getCornersSharedWithNeighbors() {
+ /*
+ 
+     __________
+    7         8
+   /         /|
+  /         / |
+ /_________/  |
+ 5         6  |
+ |    _____|__|
+ |   3     |  4
+ |  /      | /
+ | /       |/
+ 1_________2
+ */
+  
+    std::array<std::vector<int>, 27> a;
+    a[0] = vector<int>{ 1 };
+    a[1] = vector<int>{ 1, 2 };
+    a[2] = vector<int>{ 2 };
+    a[3] = vector<int>{ 1, 3 };
+    a[4] = vector<int>{ 1,2,3,4 };
+    a[5] = vector<int>{ 2,4 };
+    a[6] = vector<int>{ 3 };
+    a[7] = vector<int>{ 3,4 };
+    a[8] = vector<int>{ 4 };
+
+    a[9] = vector<int>{ 1, 5 };
+    a[10] = vector<int>{ 1, 2, 5, 6 };
+    a[11] = vector<int>{ 2, 6 };
+    a[12] = vector<int>{ 1, 3, 5, 7 };
+    a[13] = vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8}; //itself
+    a[14] = vector<int>{ 2, 4, 6, 8 };
+    a[15] = vector<int>{ 3, 7 };
+    a[16] = vector<int>{ 3, 4, 7, 8 };
+    a[17] = vector<int>{ 4, 8 };
+
+    a[18] = vector<int>{ 5 };
+    a[19] = vector<int>{ 5, 6 };
+    a[20] = vector<int>{ 6 };
+    a[21] = vector<int>{ 5, 7 };
+    a[22] = vector<int>{ 5, 6, 7, 8 };
+    a[23] = vector<int>{ 6, 8 };
+    a[24] = vector<int>{ 7 };
+    a[25] = vector<int>{ 7, 8 };
+    a[26] = vector<int>{ 8 };
+
+    return a;
+}
+
+
 
 bool ReaderBase::ParseNekFileHeader() {
     string buf2, tag;
@@ -334,12 +454,13 @@ bool ReaderBase::ParseNekFileHeader() {
         ParseFieldTags(f);
 
     }
-    if (blockDimensions[2] == 1)
-        dim = 2;
-    else {
-        dim = 3;
-    }
+    dim = blockDimensions[2] == 1 ? 2 : 3;
+    numCorners = dim == 2 ?  4 : 8;
     blockSize = blockDimensions[0] * blockDimensions[1] * blockDimensions[2];
+    hexesPerBlock = (blockDimensions[0] - 1) * (blockDimensions[1] - 1);
+    if(dim==3)
+        hexesPerBlock *= (blockDimensions[2] - 1);
+    makeBaseConnList();
     if (isBinary) {
         // Determine endianness and whether we need to swap bytes.
         // If this machine's endian matches the file's, the read will
@@ -527,5 +648,31 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
 void ReaderBase::sendError(const std::string &msg)
 {
     cerr << msg << endl;
+}
+void ReaderBase::makeBaseConnList() {
+    using vistle::Index;
+    baseConnList.resize(numCorners * hexesPerBlock);
+    Index* nl = baseConnList.data();
+    for (Index ii = 0; ii < blockDimensions[0] - 1; ii++) {
+        for (Index jj = 0; jj < blockDimensions[1] - 1; jj++) {
+            if (dim == 2) {
+                *nl++ = jj * (blockDimensions[0]) + ii;
+                *nl++ = jj * (blockDimensions[0]) + ii + 1;
+                *nl++ = (jj + 1) * (blockDimensions[0]) + ii + 1;
+                *nl++ = (jj + 1) * (blockDimensions[0]) + ii;
+            } else {
+                for (Index kk = 0; kk < blockDimensions[2] - 1; kk++) {
+                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii;
+                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1;
+                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1;
+                    *nl++ = kk * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii;
+                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + jj * (blockDimensions[0]) + ii + 1;
+                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii + 1;
+                    *nl++ = (kk + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (jj + 1) * (blockDimensions[0]) + ii;
+                }
+            }
+        }
+    }
 }
 }

@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <memory>
+#include <array>
 
 #include <util/byteswap.h>
 #include<core/index.h>
@@ -35,9 +36,11 @@ protected:
     int blockDimensions[3];
     int blockSize = 0;
     int dim = 1;
+    int numCorners = 0;
+    int hexesPerBlock = 0;
     int totalNumBlocks = 0; //total number of blocks per timestep
     int iNumberOfRanks = 1;
-
+    std::vector<vistle::Index> baseConnList;
     bool isBinary = false;         //binary or ascii
     int numOutputDirs = 1;  //number of parallel files per timestep
     bool isParalellFormat = false;
@@ -62,6 +65,10 @@ protected:
     std::vector<bool> vTimestepsWithMesh;
     int curTimestep = 1;
     int timestepToUseForMesh = 0;
+    //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
+    std::array<int, 7> mapFileHeader;
+    //contains the data from the .map file
+    std::vector < std::array<int, 9>> mapFileData; //toDo: sort out blocks that do not belong to this partition
 
     std::vector<int>all_element_list;
     //methods
@@ -77,6 +84,8 @@ protected:
     //if there is a .map file, use it to partition the grid
     bool ParseGridMap();
 
+    std::array<int, 27> getSurroundingBlocks(int block);
+    static std::array<std::vector<int>, 27> getCornersSharedWithNeighbors();
     //      Parses the characters in a binary Nek header file that indicate which
     //  fields are present.  Tags can be separated by 0 or more spaces.  Parsing
     //  stops when an unknown character is encountered, or when the file pointer
@@ -102,7 +111,11 @@ protected:
             val[i] = vistle::byte_swap<vistle::endianness::little_endian, vistle::endianness::big_endian>(val[i]);
         }
     }
-        void sendError(const std::string &msg);
+
+    void sendError(const std::string &msg);
+
+    private:
+        void makeBaseConnList(); 
 };
 }//nek5000
 

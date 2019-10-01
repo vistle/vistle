@@ -75,6 +75,7 @@ private:
     vistle::IntParameter* p_duplicateData = nullptr;
     vistle::IntParameter* p_numBlocks = nullptr;
     vistle::IntParameter* p_numPartitions = nullptr;
+    vistle::VectorParameter* p_testConnectivity = nullptr;
     float minVeclocity = 0, maxVelocity = 0;
     int numReads = 0;
     std::unique_ptr<nek5000::ReaderBase> readerBase;
@@ -85,6 +86,7 @@ private:
 
 public:
     ReadNek(const std::string& name, int moduleID, mpi::communicator comm);
+    void testConnectivity(int dimX, int dimY, int dimZ);
     ~ReadNek() override;
 
 };
