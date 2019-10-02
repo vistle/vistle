@@ -149,7 +149,6 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
 
 bool ReadNek::examine(const vistle::Parameter* param) {
     (void)param;
-    testConnectivity(p_testConnectivity->getValue().x, p_testConnectivity->getValue().y, p_testConnectivity->getValue().z);
     if (!fs::exists(p_data_path->getValue())) {
         return false;
     }
@@ -230,7 +229,6 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    p_data_path = addStringParameter("filename", "Geometry file path", "", Parameter::Filename);
    //p_byteswap = addIntParameter("byteswap", "Perform Byteswapping", Auto, Parameter::Choice);
    //V_ENUM_SET_CHOICES(p_byteswap, ByteSwap);
-   p_testConnectivity = addVectorParameter("connectivityDimensions", "connectyvity list dimensions", { 0,0,0 });
    p_only_geometry = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
    p_useMap = addIntParameter("useMap", "use .map file to partition mesh", false, Parameter::Boolean);
 
@@ -250,39 +248,6 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
 
    setParallelizationMode(ParallelizationMode::Serial);
 
-}
-
-void ReadNek::testConnectivity(int dimX, int dimY, int dimZ) {
-    long pt_start = 0;
-    vector<int> connectivityList;
-    int dim = dimZ == 1 ? 2 : 3;
-    for (int xx = 0; xx < dimX - 1; xx++) {
-        for (int yy = 0; yy < dimY - 1; yy++) {
-            if (dim == 2) {
-                connectivityList.push_back(yy * (dimX)+xx + pt_start);
-                connectivityList.push_back(yy * (dimX)+xx + 1 + pt_start);
-                connectivityList.push_back((yy + 1) * (dimX)+xx + 1 + pt_start);
-                connectivityList.push_back((yy + 1) * (dimX)+xx + pt_start);
-            } else {
-                for (int zz = 0; zz < dimZ - 1; zz++) {
-                    connectivityList.push_back(zz * (dimY) * (dimX)+yy * (dimX)+xx + pt_start);
-                    connectivityList.push_back(zz * (dimY) * (dimX)+yy * (dimX)+xx + 1 + pt_start);
-                    connectivityList.push_back(zz * (dimY) * (dimX)+(yy + 1) * (dimX)+xx + 1 + pt_start);
-                    connectivityList.push_back(zz * (dimY) * (dimX)+(yy + 1) * (dimX)+xx + pt_start);
-                    connectivityList.push_back((zz + 1) * (dimY) * (dimX)+yy * (dimX)+xx + pt_start);
-                    connectivityList.push_back((zz + 1) * (dimY) * (dimX)+yy * (dimX)+xx + 1 + pt_start);
-                    connectivityList.push_back((zz + 1) * (dimY) * (dimX)+(yy + 1) * (dimX)+xx + 1 + pt_start);
-                    connectivityList.push_back((zz + 1) * (dimY) * (dimX)+(yy + 1) * (dimX)+xx + pt_start);
-                }
-            }
-        }
-    }
-    int i = 0;
-    cerr << "ConnectivityList for x = " << dimX << ", y = " << dimY << ", z = " << dimZ << endl;
-    for (int c : connectivityList) {
-        cerr << "[" << i << "] " << c << endl;
-        ++i;
-    }
 }
 
 ReadNek::~ReadNek() {

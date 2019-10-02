@@ -9,8 +9,13 @@
 
 namespace nek5000 {
 
+typedef std::array<int, 2> Edge;
+typedef std::array<int, 4> Plane;
+
 class PartitionReader : public ReaderBase{
+
 public:
+
     PartitionReader(ReaderBase &base);
 
     bool fillMesh(float* x, float* y, float* z);
@@ -30,6 +35,7 @@ public:
 //setter
     bool setPartition(int partition, bool useMap = true); //also starts mapping the block ids
 private:
+
     //variables
     
     int myPartition;
@@ -96,31 +102,34 @@ private:
 
     int getFileID(int block);
     bool CheckOpenFile(std::unique_ptr<OpenFile>& file, int timestep, int fileID);
-    void makeConnectivityList();
+    bool makeConnectivityList();
+    //checks if the current point is equal to the already cached point 
+    bool checkPointInGridGrid(const std::array<std::vector<float>, 3> & currGrid, int currGridIndex, int gridIndex);
 
-    std::map<int, int> findAlreadyWrittenPoints(const size_t& currBlock, const std::map<int, int>& writtenCorners, std::map < std::array<int, 2>, std::vector<int>>& writtenEdges, std::map < std::array<int, 4>, std::vector<int>>& writtenPlanes);
-    
-    void addToConnectivityList(int index, int start, int x, int y, int z);
-    void addToBlockConnectivityList(std::vector<vistle::Index>& block, int index, int start, int xx, int yy, int zz);
+    std::vector<int> getMatchingPlanePoints(const Plane &plane, const std::vector<Edge> &reversedEdges);
+    std::map<int, int> findAlreadyWrittenPoints(const size_t& currBlock, 
+        const std::map<int, int>& writtenCorners, 
+        const std::map<Edge, std::pair<bool, std::vector<int>>> writtenEdges,
+        const std::map<Plane, std::pair< Plane, std::vector<int>>>& writtenPlanes,
+        const std::array<std::vector<float>, 3> &currGrid);
+
     //returns the local block indices that belong to the corner/edge/plane given by the corner indices (c1 - c4 from 1 - 8). c1 < c2 <c3 <c4 must be true;
-    std::vector<int> getIndicesBetweenCorners(std::vector<int> corners);
+    std::vector<int> getIndicesBetweenCorners(std::vector<int> corners, const std::array<bool, 3> &invertAxis = { false, false, false });
     //returns the local index of a node in a block depending on its xyz block position (no coordinates!)
     int getLocalBlockIndex(int x, int y, int z);
     //return the local block index to corner index (1 - 8);
     int cornerIndexToBlockIndex(int cornerIndex); 
     //return all edges in corner indices
-    std::vector<std::array<int, 2>> getAllEdgesInCornerIndices();
+    std::vector<Edge> getAllEdgesInCornerIndices();
     //return all planes in corner indices
-    std::vector<std::array<int, 4>> getAllPlanesInCornerIndices();
+    std::vector<Plane> getAllPlanesInCornerIndices();
     //fills the connectivity list for a block, converting the already written points with localToGlobal
-    void fillConnectivityList(const std::map<int, int>& localToGloabl);
-    void fillConnectivityList2(const std::map<int, int>& localToGloabl, int startIndexInMesh);
-    void fillConnectivityList3(const std::map<int, int>& localToGloabl, int startIndexInMesh);
+    void fillConnectivityList(const std::map<int, int>& localToGloabl, int startIndexInMesh);
     void constructBlockIndexToConnectivityIndex();
     //add the connectivityList entries of corners of a block(0 - myBlocksToRead.size()) to the global cornerID (from map file)
     void addNewCorners(std::map<int, int>& allCorners, int localBlock);
-    void addNewEdges(std::map<std::array<int, 2>, std::vector<int>>& allEdges, int localBlock);
-    void addNewPlanes(std::map<std::array<int, 4>, std::vector<int>>& allEdges, int localBlock);
+    void addNewEdges(std::map<Edge, std::pair<bool, std::vector<int>>>& allEdges, int localBlock);
+    void addNewPlanes(std::map<Plane, std::pair< Plane, std::vector<int>>>& allEdges, int localBlock);
 
 };
 

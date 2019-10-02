@@ -20,20 +20,9 @@ PartitionReader::PartitionReader(ReaderBase &base)
 
 bool PartitionReader::fillMesh(float *x, float *y, float *z)
 {
-    for (size_t b = 0; b < myBlocksToRead.size(); b++) {
-        array<vector<float>, 3> grid{ vector<float> (blockSize), vector<float>(blockSize) , vector<float>(blockSize) };
-        if (!ReadMesh(timestepToUseForMesh, myBlocksToRead[b], grid[0].data(), grid[1].data(), grid[2].data())) {
-            return false;
-        }
-        int numCon = numCorners * hexesPerBlock;
-        for (size_t i = 0; i < numCon; i++) {
-
-            x[connectivityList[i + b * numCon]] = grid[0][connectivityList[i]];
-            y[connectivityList[i + b * numCon]] = grid[1][connectivityList[i]];
-            z[connectivityList[i + b * numCon]] = grid[2][connectivityList[i]];
-        }
-
-    }
+    memcpy(x, myGrid[0].data(), sizeof(float) * gridSize);
+    memcpy(y, myGrid[1].data(), sizeof(float) * gridSize);
+    memcpy(z, myGrid[2].data(), sizeof(float) * gridSize);
     return true;
 }
 
@@ -63,10 +52,9 @@ bool PartitionReader::fillScalarData(std::string varName, int timestep, float *d
     int numCon = numCorners * hexesPerBlock;
     for (int b = 0; b < myBlocksToRead.size(); b++) {
         vector<float> scalar(blockSize);
-        fill(scalar.begin(), scalar.end(), b % (blockSize / 10));
-        //if (!ReadVar(varName, timestep, myBlocksToRead[b], scalar.data())) {
-        //    return false;
-        //}
+        if (!ReadVar(varName, timestep, myBlocksToRead[b], scalar.data())) {
+            return false;
+        }
         for (size_t i = 0; i < numCon; i++) {
 
             data[connectivityList[i + b * numCon]] = scalar[connectivityList[i]];
@@ -114,11 +102,10 @@ bool PartitionReader::setPartition(int partition, bool useMap)
     myPartition = partition;
     int lower = mapFileHeader[3] / numPartitions * partition; //toDo: what if thre is a rest?
     int upper = lower + mapFileHeader[3] / numPartitions;
-
-    int num = numBlocksToRead / numPartitions;
-    int oneMore = numBlocksToRead % numPartitions;
-    num += partition < oneMore ? 1 : 0;
-    for (size_t i = 0; i < num; i++) { //may not work if not all blocks to read on multiple partitions
+    if (partition == numPartitions -1) {
+        upper = mapFileHeader[3];
+    }
+    for (size_t i = 0; i < numBlocksToRead; i++) { //may not work if not all blocks to read on multiple partitions
         if (mapFileData[i][0] >= lower && mapFileData[i][0] < upper) {
             myBlocksToRead.push_back(i);
         }
@@ -596,13 +583,13 @@ bool PartitionReader::CheckOpenFile(std::unique_ptr<OpenFile>& file, int timeste
     return true;
 }
 
-void PartitionReader::makeConnectivityList() {
+bool PartitionReader::makeConnectivityList() {
 
     //maps from  (sorted) global (from map file) cornerid(s) to cornerindex(indices) in connectivity list
     
     map<int, int> writtenCorners;
-    map<array<int, 2>, vector<int>> writtenEdges; //sort vector by corner id from map file
-    map<array<int, 4>, vector<int>> writtenPlanes; //sort vector by corner id from map file
+    map<Edge, pair<bool, vector<int>>> writtenEdges; //key is sorted global indices, bool is wehter it had to be sorted, vector contains the indices to the coordinates in mesh file
+    map<Plane, pair< Plane, vector<int>>> writtenPlanes; //key is sorted global indices, pair contains unsorted globl indices and a vector containing the indices to the coordinates in mesh file
 
     connectivityList.clear();
     connectivityList.reserve(getNumConn());
@@ -610,11 +597,19 @@ void PartitionReader::makeConnectivityList() {
     int numDoublePoints = 0;
     //construct a map from blockIndex to a corresponding index in the connectivity list
     constructBlockIndexToConnectivityIndex();
-    //process other blocks
+
+    for (size_t i = 0; i < 3; i++) {
+        myGrid[i].resize(myBlocksToRead.size() * blockSize);
+    }
     for (size_t currBlock = 0; currBlock < myBlocksToRead.size(); currBlock++) {
+        //preRead the grid to verify overlapping corners. The is necessary beacause the mapfile also contains not physically (logically) linked blocks
+        array<vector<float>, 3> grid{ vector<float>(blockSize), vector<float>(blockSize) , vector<float>(blockSize) };
+        if (!ReadMesh(timestepToUseForMesh, myBlocksToRead[currBlock], grid[0].data(), grid[1].data(), grid[2].data())) {
+            return false;
+        }
         //contains the points, that are already written(in local block indices) and where to find them in the coordinate list
-        map<int, int> localToGloabl = findAlreadyWrittenPoints(currBlock, writtenCorners, writtenEdges, writtenPlanes);
-        fillConnectivityList3(localToGloabl, currBlock * blockSize - numDoublePoints);
+        map<int, int> localToGloabl = findAlreadyWrittenPoints(currBlock, writtenCorners, writtenEdges, writtenPlanes, grid);
+        fillConnectivityList(localToGloabl, currBlock * blockSize - numDoublePoints);
         numDoublePoints += localToGloabl.size();
 
         //add my corners/edges/planes to the "already written" maps
@@ -622,6 +617,13 @@ void PartitionReader::makeConnectivityList() {
         addNewEdges(writtenEdges, currBlock);
         if (dim == 3) {
             addNewPlanes(writtenPlanes, currBlock);
+        }
+        //add the new connectivityList entries to my grid
+        int numCon = numCorners * hexesPerBlock;
+        for (size_t i = 0; i < numCon; i++) {
+            for (size_t j = 0; j < 3; j++) {
+                myGrid[j][connectivityList[i + currBlock * numCon]] = grid[j][connectivityList[i]];
+            }
         }
     }
     gridSize -= numDoublePoints;
@@ -633,37 +635,94 @@ void PartitionReader::makeConnectivityList() {
     //    }
     //}
 
-
+    return true;
 }
 
-std::map<int, int> PartitionReader::findAlreadyWrittenPoints(const size_t& currBlock, const std::map<int, int>& writtenCorners, std::map < std::array<int, 2>, std::vector<int>>& writtenEdges, std::map < std::array<int, 4>, std::vector<int>>& writtenPlanes) {
+bool PartitionReader::checkPointInGridGrid(const array<vector<float>, 3> &currGrid, int currGridIndex, int gridIndex)     {
+    for (size_t i = 0; i < 3; i++) {
+        float diff = currGrid[i][currGridIndex] - myGrid[i][gridIndex];
+        if (diff * diff > 0.00001) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<int> PartitionReader::getMatchingPlanePoints(const Plane& plane, const vector<Edge>& reversedEdges) {
+//find edges that form a plane
+    vector<Edge> myReversedEdges;
+    int matches = 0;
+    for (Edge edge : reversedEdges) {
+        if (find(plane.begin(), plane.end(), edge[0]) != plane.end() && find(plane.begin(), plane.end(), edge[1]) != plane.end()) {
+            myReversedEdges.push_back(edge);
+        }
+    }
+    array<bool, 3>invertedAxes{ false, false, false };
+    if (myReversedEdges.size() == 2)  {
+        int diff = myReversedEdges[0][1] - myReversedEdges[0][0];
+        switch (diff) {
+        case 1: //x inverted
+            invertedAxes[0] = true;
+            break;
+        case 2://y inverted
+            invertedAxes[1] = true;
+            break;
+        case 4://z inverted
+            invertedAxes[2] = true;
+            break;
+        default:
+            break;
+        }
+    }
+    vector<int> p(4);
+    copy(plane.begin(), plane.end(), p.begin());
+
+    return getIndicesBetweenCorners(p, invertedAxes);
+}
+
+std::map<int, int> PartitionReader::findAlreadyWrittenPoints(const size_t& currBlock,
+    const std::map<int, int>& writtenCorners,
+    const map<Edge, pair<bool, vector<int>>> writtenEdges,
+    const map<Plane, pair< Plane, vector<int>>>& writtenPlanes,
+    const std::array<std::vector<float>, 3> & currGrid) {
+    
     std::map<int, int> localToGloabl;
     int numWrittenEdges = 0;
     auto corners = mapFileData[myBlocksToRead[currBlock]]; //corner info starts at index 1
     //Lookup if a corner of this block has already been written
     for (size_t i = 1; i < corners.size(); i++) {
         auto ci = writtenCorners.find(corners[i]);
-        if (ci != writtenCorners.end()) { //corner already written
-            localToGloabl[cornerIndexToBlockIndex(i)] = ci->second;
+        int blockIndex = cornerIndexToBlockIndex(i);
+        if (ci != writtenCorners.end() && checkPointInGridGrid(currGrid, blockIndex, ci->second)) { //corner already written
+            localToGloabl[blockIndex] = ci->second;
         }
     }
+    vector<Edge> reversedEdges;
     if (localToGloabl.size() > 1) {
         //check for edges
         auto allEdges = getAllEdgesInCornerIndices();
-        for (array<int, 2> edge : allEdges) {
-            array<int, 2> globalEdge;
+        for (Edge edge : allEdges) {
+            Edge globalEdge;
             vector<int> localEdge(2);
             for (size_t i = 0; i < 2; i++) {
                 globalEdge[i] = corners[edge[i]];
                 localEdge[i] = edge[i];
             }
+            auto unsortedEdge = globalEdge;
             sort(globalEdge.begin(), globalEdge.end());
+            bool sorted = unsortedEdge == globalEdge ? false : true;
             auto it = writtenEdges.find(globalEdge);
             if (it != writtenEdges.end()) {
-                auto globalPoints = it->second;
+                auto globalPoints = it->second.second;
                 auto localPoints = getIndicesBetweenCorners(localEdge);
+                if (it->second.first != sorted) {//keep the points sorted
+                    reverse(localPoints.begin(), localPoints.end());
+                    reversedEdges.push_back(edge);
+                }
                 for (size_t i = 0; i < globalPoints.size(); i++) {
-                    localToGloabl[localPoints[i]] = globalPoints[i];
+                    if (checkPointInGridGrid(currGrid, localPoints[i], globalPoints[i])) {
+                        localToGloabl[localPoints[i]] = globalPoints[i];
+                    }
                 }
                 ++numWrittenEdges;
             }
@@ -672,20 +731,26 @@ std::map<int, int> PartitionReader::findAlreadyWrittenPoints(const size_t& currB
     if (dim == 3 && numWrittenEdges > 3) {
         //check for planes
         auto allPlanes = getAllPlanesInCornerIndices();
-        for (array<int, 4> plane : allPlanes)             {
-            array<int, 4> globalPlane;
+        for (Plane plane : allPlanes)             {
+            Plane globalPlane;
             vector<int> localPlane(4);
             for (size_t i = 0; i < 4; i++) {
                 globalPlane[i] = corners[plane[i]];
                 localPlane[i] = plane[i];
             }
+            auto unsortedPlane = globalPlane;
             sort(globalPlane.begin(), globalPlane.end());
             auto it = writtenPlanes.find(globalPlane);
             if (it != writtenPlanes.end()) {
-                auto globalPoints =it->second;
+                auto globalPoints =it->second.second;
                 auto localPoints = getIndicesBetweenCorners(localPlane);
+                if (reversedEdges.size() > 0) {
+                    localPoints = getMatchingPlanePoints(plane, reversedEdges);
+                }
                 for (size_t i = 0; i < globalPoints.size(); i++) {
-                    localToGloabl[localPoints[i]] = globalPoints[i];
+                    if (checkPointInGridGrid(currGrid, localPoints[i], globalPoints[i])) {
+                        localToGloabl[localPoints[i]] = globalPoints[i];
+                    }
                 }
             }
         }
@@ -694,79 +759,7 @@ std::map<int, int> PartitionReader::findAlreadyWrittenPoints(const size_t& currB
     return localToGloabl;
 }
 
-void PartitionReader::addToConnectivityList(int index, int start, int xx, int yy, int zz)     {
-    switch (index) {
-    case 1:
-        connectivityList.push_back(zz * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + start);
-        break;
-    case 2:
-        connectivityList.push_back(zz * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + 1 + start);
-        break;
-    case 3:
-        connectivityList.push_back(zz * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + 1 + start);
-        break;
-    case 4:
-        connectivityList.push_back(zz * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + start);
-        break;
-    case 5:
-        connectivityList.push_back((zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + start);
-        break;
-    case 6:
-        connectivityList.push_back((zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + 1 + start);
-        break;
-    case 7:
-        connectivityList.push_back((zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + 1 + start);
-        break;
-    case 8:
-        connectivityList.push_back((zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + start);
-        break;
-    }
-
-
-
-
-
-
-
-}
-
-void PartitionReader::addToBlockConnectivityList(vector<vistle::Index> &block, int index, int start, int xx, int yy, int zz) {
-    switch (index) {
-    case 1:
-        block[index - 1] = zz * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + start;
-        break;
-    case 2:
-        block[index - 1] = zz * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + 1 + start;
-        break;
-    case 3:
-        block[index - 1] = zz * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + 1 + start;
-        break;
-    case 4:
-        block[index - 1] = zz * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + start;
-        break;
-    case 5:
-        block[index - 1] = (zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + start;
-        break;
-    case 6:
-        block[index - 1] = (zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + yy * (blockDimensions[0]) + xx + 1 + start;
-        break;
-    case 7:
-        block[index - 1] = (zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + 1 + start;
-        break;
-    case 8:
-        block[index - 1] = (zz + 1) * (blockDimensions[1]) * (blockDimensions[0]) + (yy + 1) * (blockDimensions[0]) + xx + start;
-        break;
-    }
-
-
-
-
-
-
-
-}
-
-vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners)     {
+vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners, const std::array<bool, 3> & invertAxis)     {
     if (corners.size() == 1) {
         return vector<int>{cornerIndexToBlockIndex(corners[0])};
     }
@@ -792,22 +785,83 @@ vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners) 
     if (corners.size() == 4) {
         vector<int> indices;
         if (corners[3] - corners[0] == 3) { //xy plane
-            for (size_t i = cornerIndexToBlockIndex(corners[0]); i <= cornerIndexToBlockIndex(corners[3]); i++) {
+            vector<int> in;
+            for (int i = cornerIndexToBlockIndex(corners[0]); i <= cornerIndexToBlockIndex(corners[3]); i++) {
                 indices.push_back(i);
+            }
+            if (invertAxis[0]) {
+                for (int i = 0; i < blockDimensions[1]; i++) {
+                    vector<int> inv;
+                    inv.reserve(blockDimensions[0]);
+                    for (int j = blockDimensions[0] - 1; j >= 0; --j) {
+                        inv.push_back(indices[i * blockDimensions[0] + j]);
+                    }
+                    copy(inv.begin(), inv.end(), indices.begin() + i * blockDimensions[0]);
+                }
+            }
+            if (invertAxis[1]) {
+                int dim1 = blockDimensions[0];
+                int dim2 = blockDimensions[1];
+                for (int i = 0; i <dim2 / 2; i++) {
+                    vector<int> tmp(dim1);
+                    copy(indices.begin() + i *dim1, indices.begin() + (i + 1) *dim1, tmp.begin());
+                    copy(indices.end() - (i + 1) *dim1, indices.end() - i *dim1, indices.begin() + i * dim1);
+                    copy(tmp.begin(), tmp.end(), indices.end() - (i + 1) *dim1);
+                }
             }
         }
         else if (corners[3] - corners[0] == 5) { //xz plane
             int start = cornerIndexToBlockIndex(corners[0]);
-            for (size_t i = 0; i < blockDimensions[2]; i++) {
-                for (size_t j = 0; j < blockDimensions[1]; j++) {
+            for (int i = 0; i < blockDimensions[2]; i++) {
+                for (int j = 0; j < blockDimensions[1]; j++) {
                     indices.push_back(start + j);
                 }
                 start += blockDimensions[0] * blockDimensions[1];
             }
+            if (invertAxis[0]) {
+                for (int i = 0; i < blockDimensions[2]; i++) {
+                    vector<int> inv;
+                    inv.reserve(blockDimensions[0]);
+                    for (int j = blockDimensions[0] - 1; j >= 0; --j) {
+                        inv.push_back(indices[i * blockDimensions[0] + j]);
+                    }
+                    copy(inv.begin(), inv.end(), indices.begin() + i * blockDimensions[0]);
+                }
+            }
+            if (invertAxis[2]) {
+                int dim1 = blockDimensions[0];
+                int dim2 = blockDimensions[2];
+                for (int i = 0; i < dim2 / 2; i++) {
+                    vector<int> tmp(dim1);
+                    copy(indices.begin() + i * dim1, indices.begin() + (i + 1) * dim1, tmp.begin());
+                    copy(indices.end() - (i + 1) * dim1, indices.end() - i * dim1, indices.begin() + i * dim1);
+                    copy(tmp.begin(), tmp.end(), indices.end() - (i + 1) * dim1);
+                }
+            }
         }
         else if (corners[3] - corners[0] == 6) {//yz plane
-            for (size_t i = cornerIndexToBlockIndex(corners[0]); i <= cornerIndexToBlockIndex(corners[3]); i += blockDimensions[0]) {
+            for (int i = cornerIndexToBlockIndex(corners[0]); i <= cornerIndexToBlockIndex(corners[3]); i += blockDimensions[0]) {
                 indices.push_back(i);
+            }
+            if (invertAxis[1]) {
+                for (int i = 0; i < blockDimensions[2]; i++) {
+                    vector<int> inv;
+                    inv.reserve(blockDimensions[1]);
+                    for (int j = blockDimensions[1] - 1; j >= 0; j--) {
+                        inv.push_back(indices[i * blockDimensions[1] + j]);
+                    }
+                    copy(inv.begin(), inv.end(), indices.begin() + i * blockDimensions[1]);
+                }
+            }
+            if (invertAxis[2]) {
+                int dim1 = blockDimensions[1];
+                int dim2 = blockDimensions[2];
+                for (int i = 0; i < dim2 / 2; i++) {
+                    vector<int> tmp(dim1);
+                    copy(indices.begin() + i * dim1, indices.begin() + (i + 1) * dim1, tmp.begin());
+                    copy(indices.end() - (i + 1) * dim1, indices.end() - i * dim1, indices.begin() + i * dim1);
+                    copy(tmp.begin(), tmp.end(), indices.end() - (i + 1) * dim1);
+                }
             }
         }
         return indices;
@@ -847,8 +901,8 @@ int PartitionReader::cornerIndexToBlockIndex(int cornerIndex)     {
     }
 }
 
-vector<array<int, 2>> PartitionReader::getAllEdgesInCornerIndices()     {
-    vector < array<int, 2>> edges;
+vector<Edge> PartitionReader::getAllEdgesInCornerIndices()     {
+    vector < Edge> edges;
     edges.push_back({ 1,2 });
     edges.push_back({ 1,3 });
     edges.push_back({ 2,4 });
@@ -857,7 +911,7 @@ vector<array<int, 2>> PartitionReader::getAllEdgesInCornerIndices()     {
         edges.push_back({ 1,5 });
         edges.push_back({ 2,6 });
         edges.push_back({ 3,7 });
-        edges.push_back({ 4,6 });
+        edges.push_back({ 4,8 });
         edges.push_back({ 5,6 });
         edges.push_back({ 5,7 });
         edges.push_back({ 6,8 });
@@ -866,8 +920,8 @@ vector<array<int, 2>> PartitionReader::getAllEdgesInCornerIndices()     {
     return edges;
 }
 
-vector<array<int, 4>> PartitionReader::getAllPlanesInCornerIndices() {
-    vector < array<int, 4>> planes;
+vector<Plane> PartitionReader::getAllPlanesInCornerIndices() {
+    vector < Plane> planes;
     planes.push_back({ 1, 2, 3, 4 });
     planes.push_back({ 1, 2, 5, 6 });
     planes.push_back({ 1, 3, 5, 7 });
@@ -878,71 +932,7 @@ vector<array<int, 4>> PartitionReader::getAllPlanesInCornerIndices() {
     return planes;
 }
 
-void PartitionReader::fillConnectivityList(const map<int, int> &localToGloabl) {
-    int start = connectivityList.size() / numCorners / hexesPerBlock * blockSize;
-    int numDoublePoints = 0;
-    int numLocalEntries = 0;
-    int dimZ = dim == 2 ? 1 : blockDimensions[2] - 1;
-
-    for (int xx = 0; xx < blockDimensions[0] - 1; xx++) {
-        for (int yy = 0; yy < blockDimensions[1] - 1; yy++) {
-            for (int zz = 0; zz < dimZ; zz++) {
-                for (size_t index = 1; index <= numCorners; index++) {
-                    bool added = false;
-                    if (localToGloabl.size() > 1) {
-                        int curIndex = connectivityList[numLocalEntries];
-                        auto it = localToGloabl.find(curIndex);
-                        if (it != localToGloabl.end()) {
-                            connectivityList.push_back(it->second);
-                            ++numDoublePoints;
-                            added = true;
-                        }
-                    }
-                    if (!added) {
-                        addToConnectivityList(index, start - numDoublePoints, xx, yy, zz);
-                    }
-                    ++numLocalEntries;
-                }
-            }
-        }
-    }
-}
-
-void PartitionReader::fillConnectivityList2(const map<int, int>& localToGloabl, int startIndexInMesh) {
-
-    set<int>doublePoints;
-    int currBlock = 0;
-    int dimZ = dim == 2 ? 1 : blockDimensions[2] - 1;
-    vector<int> writeOrder = { 1, 2, 4, 3, 5, 6, 8, 7 };
-    for (int xx = 0; xx < blockDimensions[0] - 1; xx++) {
-        for (int yy = 0; yy < blockDimensions[1] - 1; yy++) {
-            for (int zz = 0; zz < dimZ; zz++) {
-                vector<vistle::Index> block(numCorners);
-                for (size_t i = 0; i < numCorners; ++i) {
-                    int index = writeOrder[i];
-                    bool added = false;
-                    if (localToGloabl.size() > 1) {
-                        int curIndex = connectivityList[currBlock*numCorners + index - 1];
-                        auto it = localToGloabl.find(curIndex);
-                        if (it != localToGloabl.end()) {
-                            block[index - 1] = it->second;
-                            doublePoints.insert(it->second);
-                            added = true;
-                        }
-                    }
-                    if (!added) {
-                        addToBlockConnectivityList(block, index, startIndexInMesh - doublePoints.size(), xx, yy, zz);
-                    }
-
-                }
-                connectivityList.insert(connectivityList.end(), block.begin(), block.end());
-                ++currBlock;
-            }
-        }
-    }
-}
-
-void PartitionReader::fillConnectivityList3(const map<int, int>& localToGloabl, int startIndexInMesh) {
+void PartitionReader::fillConnectivityList(const map<int, int>& localToGloabl, int startIndexInMesh) {
 
     vector<vistle::Index> connList(numCorners * hexesPerBlock);
     int numDoubles = 0;
@@ -994,10 +984,10 @@ void PartitionReader::addNewCorners(map<int, int> &allCorners, int localBlock)  
     }
 }
 
-void PartitionReader::addNewEdges(map<array<int, 2>, vector<int>> &allEdges, int localBlock) {
+void PartitionReader::addNewEdges(map<Edge, pair<bool, vector<int>>>& allEdges, int localBlock) {
     
     auto corners = mapFileData[myBlocksToRead[localBlock]];
-    vector<array<int, 2>> edges = getAllEdgesInCornerIndices();
+    vector<Edge> edges = getAllEdgesInCornerIndices();
     for (auto edge : edges) {
         vector<int> blockIndices = getIndicesBetweenCorners({ edge[0], edge[1] });
         vector<int> gridIndices;
@@ -1007,16 +997,19 @@ void PartitionReader::addNewEdges(map<array<int, 2>, vector<int>> &allEdges, int
         }
         
         
-        array<int, 2> e = { corners[edge[0]], corners[edge[1]] };
+        Edge e = { corners[edge[0]], corners[edge[1]] };
+        auto unsortedE = e;
         sort(e.begin(), e.end());
-        allEdges[e] = gridIndices;
+        bool s = unsortedE == e ? false : true;
+        auto p = make_pair(s, gridIndices);
+        allEdges[e] = p;
     }
 }
 
-void PartitionReader::addNewPlanes(map<array<int, 4>, vector<int>>& allEdges, int localBlock) {
+void PartitionReader::addNewPlanes(map<Plane, pair< Plane, vector<int>>>& allEdges, int localBlock) {
 
     auto corners = mapFileData[myBlocksToRead[localBlock]];
-    vector<array<int, 4>> planes = getAllPlanesInCornerIndices();
+    vector<Plane> planes = getAllPlanesInCornerIndices();
     for (auto plane : planes) {
         vector<int> blockIndices = getIndicesBetweenCorners({ plane[0], plane[1], plane[2], plane[3] });
         vector<int> gridIndices;
@@ -1026,9 +1019,10 @@ void PartitionReader::addNewPlanes(map<array<int, 4>, vector<int>>& allEdges, in
         }
 
 
-        array<int, 4> e = { corners[plane[0]], corners[plane[1]], corners[plane[2]], corners[plane[3]] };
+        Plane e = { corners[plane[0]], corners[plane[1]], corners[plane[2]], corners[plane[3]] };
+        auto unsortedE = e;
         sort(e.begin(), e.end());
-        allEdges[e] = gridIndices;
+        allEdges[e] = make_pair(unsortedE, gridIndices);
     }
 }
 
