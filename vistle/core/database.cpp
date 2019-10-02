@@ -161,6 +161,7 @@ void DataBase::setValue(Index idx, int component, const double &value) {
 
 double DataBase::value(Index idx, int component) const {
     assert("should never be called" == NULL);
+    return 0;
 }
 
 V_OBJECT_TYPE(DataBase, Object::DATABASE)
