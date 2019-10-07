@@ -449,11 +449,11 @@ void Shm::markAsRemoved(const std::string &name) {
 
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
       if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t))) {
-         //assert((*s_shmdebug)[i].deleted == 0);
           if ((*s_shmdebug)[i].deleted > 0) {
               std::cerr << "Shm: MULTIPLE deletion of " << name << " (count=" << (int)(*s_shmdebug)[i].deleted << ")" << std::endl;
           }
-         ++(*s_shmdebug)[i].deleted;
+          assert((*s_shmdebug)[i].deleted == 0);
+          ++(*s_shmdebug)[i].deleted;
       }
    }
 
@@ -465,6 +465,15 @@ void Shm::addObject(const std::string &name, const shm_handle_t &handle) {
 #ifdef SHMDEBUG
    s_shmdebugMutex->lock();
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', name, handle));
+   s_shmdebugMutex->unlock();
+#endif
+}
+
+void Shm::addArray(const std::string &name, const ShmData *array) {
+#ifdef SHMDEBUG
+   s_shmdebugMutex->lock();
+   auto handle = getHandleFromArray(array);
+   Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', name, handle));
    s_shmdebugMutex->unlock();
 #endif
 }
@@ -490,6 +499,20 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 #else
    try {
       return m_shm->get_handle_from_address(object->d());
+
+   } catch (interprocess_exception &) { }
+
+   return 0;
+#endif
+}
+
+shm_handle_t Shm::getHandleFromArray(const ShmData *array) const {
+
+#ifdef NO_SHMEM
+   return array;
+#else
+   try {
+      return m_shm->get_handle_from_address(array);
 
    } catch (interprocess_exception &) { }
 

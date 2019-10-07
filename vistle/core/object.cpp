@@ -149,7 +149,7 @@ void Object::publish(const Object::Data *d) {
 
 #if defined(SHMDEBUG) || defined(SHMPUBLISH)
 #ifdef NO_SHMEM
-   shm_handle_t handle = (void *)d;
+   shm_handle_t handle = d;
 #else
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(d);
 #endif

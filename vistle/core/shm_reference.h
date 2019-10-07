@@ -34,6 +34,9 @@ class shm_array_ref {
     : m_name(other.m_name)
     , m_p(other.m_p)
     {
+        if (m_p) {
+            assert(other->refcount() > 0);
+        }
         ref();
     }
 
@@ -41,12 +44,16 @@ class shm_array_ref {
     : m_name(name)
     , m_p(name.empty() ? nullptr : shm<T>::find_and_ref(name))
     {
+        assert(!m_p || refcount() > 0);
     }
 
     explicit shm_array_ref(const std::vector<typename T::value_type> &data);
     shm_array_ref(const typename T::value_type *data, size_t size);
 
    ~shm_array_ref() {
+        if (m_p) {
+            assert(refcount() > 0);
+        }
         unref();
     }
 
@@ -62,6 +69,9 @@ class shm_array_ref {
         if (!m_p) {
             m_p = shm<T>::find_and_ref(m_name);
         }
+        if (m_p) {
+            assert(refcount() > 0);
+        }
         return valid();
     }
 
@@ -75,6 +85,8 @@ class shm_array_ref {
         assert(!m_name.empty());
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
         ref();
+        assert(m_p->refcount() == 1);
+        Shm::the().addArray(m_name, m_p.get());
     }
 
     const shm_array_ref &operator=(const shm_array_ref &rhs) {

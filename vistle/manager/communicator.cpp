@@ -57,8 +57,6 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
    vassert(s_singleton == NULL);
    s_singleton = this;
 
-   CERR << "started" << std::endl;
-
    message::DefaultSender::init(m_hubId, m_rank);
 
    // post requests for length of next MPI message

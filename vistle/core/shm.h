@@ -155,6 +155,7 @@ class V_COREEXPORT Shm {
    std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t &handle) const;
    shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
+   shm_handle_t getHandleFromArray(const ShmData *array) const;
    ObjectData *getObjectDataFromName(const std::string &name) const;
    ObjectData *getObjectDataFromHandle(const shm_handle_t &handle) const;
    std::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
@@ -166,6 +167,7 @@ class V_COREEXPORT Shm {
 
    void markAsRemoved(const std::string &name);
    void addObject(const std::string &name, const shm_handle_t &handle);
+   void addArray(const std::string &name, const ShmData *array);
 #ifdef SHMDEBUG
 #ifdef NO_SHMEM
    static std::vector<ShmDebugInfo, vistle::shm<ShmDebugInfo>::allocator> *s_shmdebug;
@@ -231,8 +233,10 @@ T *shm<T>::find_and_ref(const std::string &name) {
 #else
    Shm::the().lockObjects();
    T *t = shm<T>::find(name);
-   if (t)
+   if (t) {
        t->ref();
+       assert(t->refcount() > 0);
+   }
    Shm::the().unlockObjects();
    return t;
 #endif
@@ -282,7 +286,6 @@ bool shm<T>::destroy_array(const std::string &name, shm<T>::array_ptr arr) {
     assert(arr->refcount() == 0);
     bool ret = shm<shm<T>::array>::destroy(name);
     Shm::the().unlockObjects();
-    Shm::the().markAsRemoved(name);
     return ret;
 #endif
 }
