@@ -456,7 +456,9 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
    auto species = vgr.species();
    if (!species.empty()) {
+       VistleGeometryGenerator::lock();
        m_colormaps[species];
+       VistleGeometryGenerator::unlock();
    }
    vgr.setColorMaps(&m_colormaps);
    m_delayedObjects.push_back(DelayedObject(pro, vgr));
@@ -545,6 +547,7 @@ bool OsgRenderer::render() {
 
 bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
 
+    VistleGeometryGenerator::lock();
     auto &cmap = m_colormaps[species];
     cmap.setName(species);
     cmap.setRange(texture->getMin(), texture->getMax());
@@ -554,6 +557,7 @@ bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr t
     cmap.image->dirty();
 
     cmap.setBlendWithMaterial(texture->hasAttribute("_blend_with_material"));
+    VistleGeometryGenerator::unlock();
 
     std::string plugin = texture->getAttribute("_plugin");
     if (!plugin.empty())
@@ -597,6 +601,7 @@ bool OsgRenderer::removeColorMap(const std::string &species) {
     if (it == m_colormaps.end())
         return false;
 
+    VistleGeometryGenerator::lock();
     auto &cmap = it->second;
     cmap.setRange(0.f, 1.f);
 
@@ -605,6 +610,7 @@ bool OsgRenderer::removeColorMap(const std::string &species) {
     cmap.image->setImage(2, 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, red_green, osg::Image::NO_DELETE);
     cmap.image->dirty();
     //m_colormaps.erase(species);
+    VistleGeometryGenerator::unlock();
     return true;
 }
 

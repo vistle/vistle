@@ -261,6 +261,14 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
    }
 }
 
+void VistleGeometryGenerator::lock() {
+    s_coverMutex.lock();
+}
+
+void VistleGeometryGenerator::unlock() {
+    s_coverMutex.unlock();
+}
+
 template<class Geometry, class Array, class Mapped, bool normalize>
 struct DataAdapter;
 
@@ -698,12 +706,14 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            debug << "NoIndex: tex/data ";
        }
 
+       s_coverMutex.lock();
        if (m_colormaps && !m_species.empty()) {
            auto it = m_colormaps->find(m_species);
            if (it != m_colormaps->end()) {
                colormap = &it->second;
            }
        }
+       s_coverMutex.unlock();
    }
 
    switch (m_geo->getType()) {

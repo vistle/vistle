@@ -51,6 +51,9 @@ class VistleGeometryGenerator {
 
       static bool isSupported(vistle::Object::Type t);
 
+      static void lock();
+      static void unlock();
+
    private:
       std::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
