@@ -125,6 +125,8 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             blocked = false;
             while (!blockedMessages.empty()) {
                 auto &mpl = blockedMessages.front();
+                assert((mpl.buf.payloadSize()==0 && !mpl.payload)
+                       || (mpl.buf.payloadSize()>0 && mpl.payload));
                 mpl.payload.ref();
                 if (mpl.payload)
                     mpl.buf.setPayloadName(mpl.payload.name());
@@ -135,6 +137,8 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             const auto &uuid = blockers.front().uuid();
             while (blockedMessages.front().buf.uuid() != uuid) {
                 auto &mpl = blockedMessages.front();
+                assert((mpl.buf.payloadSize()==0 && !mpl.payload)
+                       || (mpl.buf.payloadSize()>0 && mpl.payload));
                 mpl.payload.ref();
                 if (mpl.payload)
                     mpl.buf.setPayloadName(mpl.payload.name());
@@ -165,14 +169,16 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
 
 bool ClusterManager::Module::send(const message::Message &msg, const MessagePayload &payload) const {
    message::Buffer buf(msg);
-   if (payload) {
+   if (msg.payloadSize()>0 && payload) {
        buf.setPayloadName(payload.name());
+   } else {
+       buf.setPayloadName(std::string());
    }
    if (blocked) {
       blockedMessages.emplace_back(buf, payload);
       return true;
    } else if (sendQueue) {
-      if (payload)
+       if (msg.payloadSize()>0 && payload)
           payload->ref();
       return sendQueue->send(buf);
    }

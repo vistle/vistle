@@ -57,6 +57,15 @@ class shm_array_ref {
         unref();
     }
 
+    void reset() {
+        if (m_p) {
+            assert(refcount() > 0);
+        }
+        unref();
+        m_p = nullptr;
+        m_name = std::string();
+    }
+
     template<typename... Args>
     static shm_array_ref create(const Args&... args) {
        shm_array_ref result;

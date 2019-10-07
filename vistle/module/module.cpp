@@ -1056,8 +1056,11 @@ bool Module::dispatch(bool *messageReceived) {
 
       message::Buffer buf;
       getNextMessage(buf);
-      MessagePayload pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-      pl.unref();
+      MessagePayload pl;
+      if (buf.payloadSize() > 0) {
+          pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+          pl.unref();
+      }
 
       if (syncMessageProcessing()) {
          int sync = needsSync(buf) ? 1 : 0;
@@ -1071,8 +1074,12 @@ bool Module::dispatch(bool *messageReceived) {
 
             if (allsync && !sync) {
                 getNextMessage(buf);
-                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-                pl.unref();
+                if (buf.payloadSize() > 0) {
+                    pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                    pl.unref();
+                } else {
+                    pl.reset();
+                }
             }
 
          } while(allsync && !sync);

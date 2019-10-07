@@ -205,8 +205,11 @@ bool Renderer::dispatch(bool *messageReceived) {
             if (messageReceived)
                *messageReceived = true;
 
-            MessagePayload pl = Shm::the().getArrayFromName<char>(buf.payloadName());
-            pl.unref();
+            MessagePayload pl;
+            if (buf.payloadSize() > 0) {
+                pl = Shm::the().getArrayFromName<char>(buf.payloadName());
+                pl.unref();
+            }
             quit = !handleMessage(&message, pl);
             if (quit) {
                 std::cerr << "Quitting: " << message << std::endl;

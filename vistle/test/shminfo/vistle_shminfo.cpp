@@ -105,8 +105,8 @@ int main(int argc, char ** argv) {
 #else
                        const void *p = Shm::the().shm().get_address_from_handle(info.handle);
 #endif
-                       const ShmVector<int> *v = static_cast<const ShmVector<int> *>(p);
-                       std::cout << " ref " << (*v)->refcount() << std::endl;
+                       const ShmData *d = static_cast<const ShmData *>(p);
+                       std::cout << " ref " << d->refcount() << std::endl;
                    } else {
                        std::cout << " no handle" << std::endl;
                    }

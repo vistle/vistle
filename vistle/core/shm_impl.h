@@ -46,7 +46,7 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    }
 
    auto ref = vistle::shm_array_ref<array>(name, arr);
-   ref->unref();
+   arr->unref();
    return ref;
 }
 
