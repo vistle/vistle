@@ -286,6 +286,9 @@ void Module::prepareQuit() {
         m_cache.clear();
         m_cache.clearOld();
 
+        inputPorts.clear();
+        outputPorts.clear();
+
         vistle::message::ModuleExit m;
         m.setDestId(Id::ForBroadcast);
         sendMessage(m);
