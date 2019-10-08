@@ -41,6 +41,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (Star)
                                     (ITSM)
                                     (Rainbow)
+                                    (Earth)
                                     )
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
@@ -265,6 +266,12 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins[0.00] = RGBA(25,25,25,255)/255.;
    pins[1.00] = RGBA(230,230,230,255)/255.;
    transferFunctions[Grays] = pins;
+   pins.clear();
+
+   pins[0.00] = RGBA(189,79,6,255)/255.;
+   pins[0.50] = RGBA(219, 205, 94,255)/255.;
+   pins[1.00] = RGBA(5,31,232,255)/255.;
+   transferFunctions[Earth] = pins;
    pins.clear();
 
    float d = 0.2;
