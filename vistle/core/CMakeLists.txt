@@ -37,6 +37,7 @@ set(core_SOURCES
    messages.cpp
    messagequeue.cpp
    messagerouter.cpp
+   messagesender.cpp
    messagepayload.cpp
    tcpmessage.cpp
    filequery.cpp

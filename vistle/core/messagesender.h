@@ -8,6 +8,7 @@ namespace vistle {
 
 class V_COREEXPORT MessageSender {
 public:
+    virtual ~MessageSender();
     virtual bool sendMessage(const message::Message &msg, const std::vector<char> *payload=nullptr) const = 0;
 };
 
