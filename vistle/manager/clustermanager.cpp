@@ -121,7 +121,9 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         blockedMessages.pop_front();
         sendQueue->send(msg);
         if (blockers.empty()) {
-            //std::cerr << "UNBLOCK: completely unblocked" << std::endl;
+#ifdef DEBUG
+            std::cerr << "UNBLOCK: completely unblocked" << std::endl;
+#endif
             blocked = false;
             while (!blockedMessages.empty()) {
                 auto &mpl = blockedMessages.front();
@@ -165,8 +167,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         vassert (it2 != blockedMessages.end());
         if (it2 != blockedMessages.end()) {
             //std::cerr << "UNBLOCK: updating message" << std::endl;
-            *it = message::Buffer(msg);
-            it->setPayloadName(it2->payload.name());
+            it2->buf = msg;
             it2->buf.setPayloadName(it2->payload.name());
         }
     }
@@ -180,7 +181,10 @@ bool ClusterManager::Module::send(const message::Message &msg, const MessagePayl
        buf.setPayloadName(std::string());
    }
    if (blocked) {
-      blockedMessages.emplace_back(buf, payload);
+      if (msg.payloadSize()>0)
+          blockedMessages.emplace_back(buf, payload);
+      else
+          blockedMessages.emplace_back(buf);
       return true;
    } else if (sendQueue) {
        if (msg.payloadSize()>0 && payload)
