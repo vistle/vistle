@@ -151,8 +151,13 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         std::cerr << "UNBLOCK: " << blockers.size() << " blockers, frontmost: " << blockers.front() << ", received " << msg << std::endl;
 #endif
         auto it = std::find_if(blockers.begin(), blockers.end(), isSame);
-        vassert(it != blockers.end());
-        if (it != blockers.end()) {
+        if (it == blockers.end()) {
+            std::cerr << "UNBLOCK: " << msg << " not found in blockers:" << std::endl;
+            for (const auto &b: blockers) {
+                std::cerr << "   " << b << std::endl;
+            }
+            vassert(it != blockers.end());
+        } else {
             //std::cerr << "UNBLOCK: found in blockers" << std::endl;
             blockers.erase(it);
         }
@@ -1330,7 +1335,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
                    auto obj = addObj.getObject();
                    assert(obj);
                    assert(obj->getName() == newobj->getName());
-                   addObj2.setObject(obj);
+                   addObj2.setObject(newobj);
                    obj.reset();
                    // unblock receiving module
                    addObj2.setUnblocking();
