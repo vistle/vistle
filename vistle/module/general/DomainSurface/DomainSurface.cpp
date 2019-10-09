@@ -6,14 +6,13 @@
 #include <core/unstr.h>
 #include <core/polygons.h>
 #include <core/structuredgrid.h>
-#include "ctime"
 
 #include "DomainSurface.h"
 
 using namespace vistle;
 
 DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("DomainSurface", name, moduleID, comm) {
+   : Module("show surface of grid", name, moduleID, comm) {
    createInputPort("data_in");
    createOutputPort("data_out");
    addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean);
