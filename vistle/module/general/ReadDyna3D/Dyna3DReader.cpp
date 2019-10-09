@@ -1455,23 +1455,19 @@ int Dyna3DReader<wordsize,INTEGER,REAL>::rdstate_(vistle::Reader::Token &token, 
         {
             ExistingStates++;
             fprintf(stderr, "* read state: %2d   time: %12.6f\n", istate, TimestepTime);
-        }
-    }
 
-    {
-        // This line has been commented out and modified because in case that
-        // the files contain more than 1 time step, it may produce wrong
-        // informations.
-        // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
+            // This line has been commented out and modified because in case that
+            // the files contain more than 1 time step, it may produce wrong
+            // informations.
+            // sprintf(buf, "Timestep =  %2d \t with time = %6.3f \n", istate, TimestepTime);
 #ifdef SENDINFO
-        if (m_module->rank() == 0)
-            m_module->sendInfo("Timestep with time = %6.3f \n", TimestepTime);
+            if (m_module->rank() == 0)
+                m_module->sendInfo("Timestep %d with time %6.3f", istate, TimestepTime);
 #endif
-
-        createStateObjects(token, istate-1, block);
-
-
+        }
     } // end of if (CEndin == 'N') ???
+
+    createStateObjects(token, istate-1, block);
 
     return 0;
 } /* rdstate_ */
