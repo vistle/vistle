@@ -632,7 +632,7 @@ public:
       (Error)
    )
 
-   struct Payload {
+   struct V_COREEXPORT Payload {
        Payload();
        Payload(const std::string &text);
 
