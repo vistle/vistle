@@ -40,6 +40,7 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    if (!arr) {
        return vistle::shm_array_ref<array>();
    }
+   assert(arr->shmtype == ShmData::ARRAY);
    if (array::typeId() != arr->type()) {
        arr->unref();
        return vistle::shm_array_ref<array>();

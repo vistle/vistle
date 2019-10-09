@@ -549,6 +549,7 @@ ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const
 #else
     try {
         Object::Data *od = static_cast<Object::Data *>(m_shm->get_address_from_handle(handle));
+        assert(od->shmtype == ShmData::OBJECT);
         return od;
     } catch (interprocess_exception &) {
         std::cerr << "Shm::getObjectDataFromHandle: invalid handle " << handle << std::endl;
