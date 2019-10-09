@@ -70,7 +70,6 @@ protected:
     //contains the data from the .map file
     std::vector < std::array<int, 9>> mapFileData; //toDo: sort out blocks that do not belong to this partition
 
-    std::vector<int>all_element_list;
     //methods
 
     //      This method is called as part of initialization.  It parses the text
@@ -81,11 +80,9 @@ protected:
     //      metadata is written in the header of each timestep, and this method
     //      reads and parses that metadata.
     bool ParseNekFileHeader();
-    //if there is a .map file, use it to partition the grid
+    //if there is a .map file, use it to partition the grid and to connect blocks
     bool ParseGridMap();
 
-    std::array<int, 27> getSurroundingBlocks(int block);
-    static std::array<std::vector<int>, 27> getCornersSharedWithNeighbors();
     //      Parses the characters in a binary Nek header file that indicate which
     //  fields are present.  Tags can be separated by 0 or more spaces.  Parsing
     //  stops when an unknown character is encountered, or when the file pointer

@@ -229,9 +229,6 @@ bool ReaderBase::ParseGridMap(){
           map_elements[i] = line[0] + 1;
       }
       mptr.close();
-
-      all_element_list = map_elements;
-
       map<int, vector<int>> matches;
       int line = 1;
       for (auto entry : mapFileData)           {
@@ -261,95 +258,6 @@ bool ReaderBase::ParseGridMap(){
     }
 return false;
 }
-
-
-array<int, 27> ReaderBase::getSurroundingBlocks(int block)     {
-    
-    map<vector<int>, int> SharedEdges; //maps the shared corners to the block
-    int edges = dim == 2 ? 4 : 8;
-    auto myCorners = mapFileData[block];
-    for (size_t i = 0; i < totalNumBlocks; i++) {
-        auto otherCorners = mapFileData[i];
-        vector<int> se;
-        for (size_t j = 1; j <= edges; ++j) {
-            int hits = 0;
-            for (size_t k = 1; k <= edges; k++) {
-                if (myCorners[j] == otherCorners[k]) {
-                    se.push_back(j);
-                }
-            }
-        }
-        SharedEdges[se] = i;
-    }
-    array<int, 27> neighbors;
-    
-    int numNeighbors = dim == 2 ? 9 : 29;
-    for (size_t i = 0; i < numNeighbors; i++) {
-        auto it = SharedEdges.find(getCornersSharedWithNeighbors()[i]);
-        if (it != SharedEdges.end()) {
-            neighbors[i] = it->second;
-        }
-        else {
-            neighbors[i] = -1;
-        }
-
-    }
-
-    return neighbors;
-}
-
-
- std::array<std::vector<int>, 27> ReaderBase::getCornersSharedWithNeighbors() {
- /*
- 
-     __________
-    7         8
-   /         /|
-  /         / |
- /_________/  |
- 5         6  |
- |    _____|__|
- |   3     |  4
- |  /      | /
- | /       |/
- 1_________2
- */
-  
-    std::array<std::vector<int>, 27> a;
-    a[0] = vector<int>{ 1 };
-    a[1] = vector<int>{ 1, 2 };
-    a[2] = vector<int>{ 2 };
-    a[3] = vector<int>{ 1, 3 };
-    a[4] = vector<int>{ 1,2,3,4 };
-    a[5] = vector<int>{ 2,4 };
-    a[6] = vector<int>{ 3 };
-    a[7] = vector<int>{ 3,4 };
-    a[8] = vector<int>{ 4 };
-
-    a[9] = vector<int>{ 1, 5 };
-    a[10] = vector<int>{ 1, 2, 5, 6 };
-    a[11] = vector<int>{ 2, 6 };
-    a[12] = vector<int>{ 1, 3, 5, 7 };
-    a[13] = vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8}; //itself
-    a[14] = vector<int>{ 2, 4, 6, 8 };
-    a[15] = vector<int>{ 3, 7 };
-    a[16] = vector<int>{ 3, 4, 7, 8 };
-    a[17] = vector<int>{ 4, 8 };
-
-    a[18] = vector<int>{ 5 };
-    a[19] = vector<int>{ 5, 6 };
-    a[20] = vector<int>{ 6 };
-    a[21] = vector<int>{ 5, 7 };
-    a[22] = vector<int>{ 5, 6, 7, 8 };
-    a[23] = vector<int>{ 6, 8 };
-    a[24] = vector<int>{ 7 };
-    a[25] = vector<int>{ 7, 8 };
-    a[26] = vector<int>{ 8 };
-
-    return a;
-}
-
-
 
 bool ReaderBase::ParseNekFileHeader() {
     string buf2, tag;

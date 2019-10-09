@@ -40,9 +40,8 @@
 #include <vector>
 #include <map>
 #include <string>
-#include <iostream>    
-#include <fstream>
-#include <cstdio>
+
+#include <mutex>
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ByteSwap, (Off)(On)(Auto))
 
@@ -59,11 +58,14 @@ private:
 
     int numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid);
 
+    std::mutex readerMapMutex, gridMapMutex;
+
     // Ports
     vistle::Port* p_grid = nullptr;
     vistle::Port* p_velocity = nullptr;
     vistle::Port* p_pressure = nullptr;
     vistle::Port* p_temperature = nullptr;
+    vistle::Port* p_blockNumber = nullptr;
 
     std::vector<vistle::Port*> pv_misc;
     // Parameters
@@ -75,12 +77,13 @@ private:
     vistle::IntParameter* p_duplicateData = nullptr;
     vistle::IntParameter* p_numBlocks = nullptr;
     vistle::IntParameter* p_numPartitions = nullptr;
+    vistle::IntParameter* p_numGhostLayers = nullptr;
     float minVeclocity = 0, maxVelocity = 0;
     int numReads = 0;
     std::unique_ptr<nek5000::ReaderBase> readerBase;
     std::map<int, nek5000::PartitionReader> readers;
     //maps the grids to the blocks
-    std::map<int, vistle::UnstructuredGrid::ptr> mGrids;
+    std::vector<vistle::UnstructuredGrid::const_ptr> mGrids;
 
 
 public:
