@@ -883,10 +883,12 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
     for (auto &r: m_remotes) {
         auto &remote = r.second;
         bool dead = !remote->isRunning() || !remote->isConnected();
-        bool add = !dead && remote->requestBounds();
-        if (add) {
-            remotes.emplace(remote);
-            //CERR << "expandBoundingSphere: checking with " << remote->name() << std::endl;
+        if (!dead) {
+            if (remote->boundsCurrent()) {
+                bs.expandBy(remote->getBounds());
+            } else if (remote->requestBounds()) {
+                remotes.emplace(remote);
+            }
         }
     }
     //CERR << "expandBoundingSphere: checking with " << remotes.size() << " remotes" << std::endl;

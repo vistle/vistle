@@ -53,7 +53,8 @@ class RemoteConnection {
 
     RhrClient *plugin = nullptr;
     //! store results of server bounding sphere query
-    bool m_boundsUpdated = false;
+    bool m_boundsUpdated = false, m_boundsCurrent = false;
+    uint32_t m_modificationCount = 0, m_boundsModificationCount = 0;
     osg::ref_ptr<osg::Node> m_boundsNode;
     const osg::BoundingSphere &getBounds() const;
 
@@ -139,6 +140,7 @@ class RemoteConnection {
     }
 
     bool requestBounds();
+    bool boundsCurrent() const;
     void lock();
     void unlock();
 

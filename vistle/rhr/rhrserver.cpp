@@ -41,8 +41,12 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const std::vector<char> *pa
     if (!m_clientSocket)
         return false;
 
+    message::Buffer buf(msg);
+    auto &rem = buf.as<RemoteRenderMessage>();
+    rem.rhr().modificationCount = m_modificationCount;
+
     message::error_code ec;
-    if (!message::send(*m_clientSocket, msg, ec, payload)) {
+    if (!message::send(*m_clientSocket, buf, ec, payload)) {
         if (ec) {
             CERR << "client error: " << ec.message() << ", disconnecting" << std::endl;
         } else {
@@ -742,7 +746,12 @@ RhrServer::preFrame() {
 void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, RhrServer::ViewParameters param, bool lastView) {
 
    if (m_clientSocket)
-      encodeAndSend(viewNum, x, y, w, h, param, lastView);
+       encodeAndSend(viewNum, x, y, w, h, param, lastView);
+}
+
+void RhrServer::updateModificationCount() {
+
+    ++m_modificationCount;
 }
 
 namespace {

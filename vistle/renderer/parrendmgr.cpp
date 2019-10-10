@@ -595,6 +595,9 @@ void ParallelRemoteRenderManager::addObject(std::shared_ptr<RenderObject> ro) {
    if (!ro->variant.empty()) {
        m_updateVariants = 1;
    }
+   auto rhr = m_rhrControl.server();
+   if (rhr)
+       rhr->updateModificationCount();
 }
 
 void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro) {
@@ -602,6 +605,9 @@ void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro)
    if (!ro->variant.empty()) {
        m_updateVariants = 1;
    }
+   auto rhr = m_rhrControl.server();
+   if (rhr)
+       rhr->updateModificationCount();
 }
 
 }

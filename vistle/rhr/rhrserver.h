@@ -72,6 +72,7 @@ public:
    struct ViewParameters;
    ViewParameters getViewParameters(int viewNum) const;
    void invalidate(int viewNum, int x, int y, int w, int h, ViewParameters param, bool lastView);
+   void updateModificationCount();
 
    void setColorCodec(CompressionParameters::ColorCodec value);
    void setColorCompression(message::CompressionMode mode);
@@ -325,6 +326,7 @@ private:
    void resetClient();
    int m_framecount = 0;
    bool m_dumpImages = false;
+   size_t m_modificationCount = 0;
 };
 
 } // namespace vistle

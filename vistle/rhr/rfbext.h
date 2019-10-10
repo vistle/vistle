@@ -36,9 +36,11 @@ struct V_RHREXPORT rfbMsg
 {
    rfbMsg(uint8_t type)
    : type(type)
+   , modificationCount(0)
    {}
 
    uint8_t type; //!< type of RFB message
+   uint32_t modificationCount; //!< number of remote scenegraph modifications
 };
 
 enum {

@@ -358,6 +358,7 @@ void RemoteConnection::operator()() {
         {
             auto &msg = buf.as<RemoteRenderMessage>();
             auto &rhr = msg.rhr();
+            m_modificationCount = rhr.modificationCount;
             switch (rhr.type) {
             case rfbTile: {
                 handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
@@ -624,6 +625,7 @@ bool RemoteConnection::handleBounds(const RemoteRenderMessage &msg, const bounds
 
     m_boundsUpdated = true;
     m_boundsNode->setInitialBound(osg::BoundingSphere(osg::Vec3(bound.center[0], bound.center[1], bound.center[2]), bound.radius));
+    m_boundsModificationCount = bound.modificationCount;
 
     //osg::BoundingSphere bs = boundsNode->getBound();
     //CERR << "server bounds: " << bs.center() << ", " << bs.radius() << std::endl;
@@ -780,6 +782,7 @@ bool RemoteConnection::boundsUpdated() {
     lock_guard locker(*m_mutex);
     bool ret = m_boundsUpdated;
     m_boundsUpdated = false;
+    m_boundsCurrent = true;
     return ret;
 }
 
@@ -799,11 +802,18 @@ bool RemoteConnection::requestBounds() {
     if (!isConnected())
         return false;
     m_boundsUpdated = false;
+    m_boundsCurrent = false;
 
     boundsMsg msg;
     msg.type = rfbBounds;
     msg.sendreply = 1;
     return send(msg);
+}
+
+bool RemoteConnection::boundsCurrent() const {
+
+    lock_guard locker(*m_mutex);
+    return m_boundsCurrent && m_modificationCount == m_boundsModificationCount;
 }
 
 void RemoteConnection::lock() {
