@@ -12,7 +12,9 @@
 #include <core/object.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#if BOOST_VERSION >= 106600
 #include <boost/asio/executor_work_guard.hpp>
+#endif
 #include <boost/mpi/request.hpp>
 #include <boost/mpi/communicator.hpp>
 
