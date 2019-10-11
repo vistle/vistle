@@ -118,9 +118,12 @@ bool IsoSurface::reduce(int timestep) {
     if ((m_pointOrValue->getValue() == PointInFirstStep && !m_performedPointSearch && timestep <= 0)
         || m_pointOrValue->getValue() == PointPerTimestep) {
         int found = 0;
-        for (const auto &b: blocks) {
+        const int numBlocks = blocks.size();
+#pragma omp parallel for
+        for (int i=0; i<numBlocks; ++i) {
+            const auto &b = blocks[i];
             auto gi = b.grid->getInterface<GridInterface>();
-            Index cell = gi->findCell(point);
+            Index cell = gi->findCell(point, InvalidIndex, GridInterface::ForceCelltree);
             if (cell != InvalidIndex) {
                 ++found;
                 auto interpol = gi->getInterpolator(cell, point);
