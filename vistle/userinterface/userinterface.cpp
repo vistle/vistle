@@ -150,8 +150,7 @@ bool UserInterface::dispatch() {
 bool UserInterface::sendMessage(const message::Message &message, const std::vector<char> *payload) {
 
    if (m_locked && message.type() != message::IDENTIFY) {
-      assert(!payload);
-      m_sendQueue.emplace_back(message);
+      m_sendQueue.emplace_back(message, payload);
       return true;
    }
 
@@ -201,7 +200,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
          m_locked = lock->locked();
          if (!m_locked) {
             for (auto &m: m_sendQueue) {
-               sendMessage(m);
+               sendMessage(m.buf, m.payload.get());
             }
             m_sendQueue.clear();
          }

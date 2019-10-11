@@ -98,7 +98,17 @@ class V_UIEXPORT UserInterface {
    MessageMap m_messageMap;
    std::mutex m_messageMutex; //< protect access to m_messageMap
    bool m_locked = false;
-   std::vector<message::Buffer> m_sendQueue;
+   struct MessageWithPayload {
+       MessageWithPayload(const message::Message &msg, const std::vector<char> *payload=nullptr)
+       : buf(msg)
+       {
+           if (payload)
+               this->payload.reset(new std::vector<char>(*payload));
+       }
+       message::Buffer buf;
+       std::unique_ptr<const std::vector<char>> payload;
+   };
+   std::vector<MessageWithPayload> m_sendQueue;
    mutable std::mutex m_mutex;
    bool m_initialized = false;
 
