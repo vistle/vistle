@@ -1,6 +1,6 @@
 use_openmp()
 
-set(PREFER_TBB TRUE)
+set(PREFER_TBB FALSE)
 set(USE_TBB FALSE)
 
 set(SOURCES
