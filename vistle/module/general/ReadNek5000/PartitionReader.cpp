@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstring>
 #include <array>
+#include <algorithm>
 
 using namespace std;
 
