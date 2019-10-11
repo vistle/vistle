@@ -5,16 +5,22 @@
 #include <map>
 #include <memory>
 #include <array>
+#include <set>
 
 #include <util/byteswap.h>
 #include<core/index.h>
 
 namespace nek5000 {
+typedef std::array<int, 2> Edge;
+typedef std::array<int, 4> Plane;
+
+//this class reads and stores general data that is independent of timesteps and partitions 
 class ReaderBase
 {
 public:
     ReaderBase(std::string file, int numPartitions, int blocksToRead);
     virtual ~ReaderBase();
+    //reads metadata file, a datafile header and mapfile. Returns false on failure
     bool init();
 //getter
     size_t getNumTimesteps() const;
@@ -33,20 +39,28 @@ protected:
     int numBlocksToRead = 0; //blocks to read given by user input
     int firstTimestep = 1;
     int numTimesteps = 1;
-    int blockDimensions[3];
+    int blockDimensions[3] = { 1,1,1 };
     int blockSize = 0;
     int dim = 1;
     int numCorners = 0;
     int hexesPerBlock = 0;
     int totalNumBlocks = 0; //total number of blocks per timestep
     int iNumberOfRanks = 1;
-    std::vector<vistle::Index> baseConnList;
     bool isBinary = false;         //binary or ascii
     int numOutputDirs = 1;  //number of parallel files per timestep
     bool isParalellFormat = false;
 
     int numberOfTimePeriods = 1;
     double gapBetweenTimePeriods = 0.0;
+
+    //connectivity list of a single isolated block
+    std::vector<vistle::Index> baseConnList;
+    std::map<int, std::vector<int>> blockIndexToConnectivityIndex;
+    std::set<Edge> allEdgesInCornerIndices;
+    std::set<Plane> allPlanesInCornerIndices;
+
+
+
 
     // This info is embedded in, or derived from, the file header
     bool bSwapEndian = false;
@@ -66,11 +80,32 @@ protected:
     int curTimestep = 1;
     int timestepToUseForMesh = 0;
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
-    std::array<int, 7> mapFileHeader;
+    std::array<int, 7> mapFileHeader{ 0,0,0,0,0,0,0 };
     //contains the data from the .map file
     std::vector < std::array<int, 9>> mapFileData; //toDo: sort out blocks that do not belong to this partition
+//methods
 
+    template<class T>
+    void ByteSwapArray(T* val, int size) {
+        for (int i = 0; i < size; i++) {
+            val[i] = vistle::byte_swap<vistle::endianness::little_endian, vistle::endianness::big_endian>(val[i]);
+        }
+    }
+    //      Create a filename from the template and other info.
+    std::string GetFileName(int rawTimestep, int pardir);
+
+    void sendError(const std::string& msg);
+
+    void UpdateCyclesAndTimes();
+private:
     //methods
+        //creates a list of all possible corners in edge indices
+    void setAllEdgesInCornerIndices();
+    //creates a list of all possible planes in edge indices
+    void setAllPlanesInCornerIndices();
+    //creates a map that contains all 
+    void setBlockIndexToConnectivityIndex();
+
 
     //      This method is called as part of initialization.  It parses the text
     //      file which is a companion to the series of .fld files that make up a
@@ -95,24 +130,7 @@ protected:
     //  1 2 3 or S03  indicate 3 other scalar fields
     void ParseFieldTags(std::ifstream& f);
 
-    void UpdateCyclesAndTimes();
-
-    //      Create a filename from the template and other info.
-    std::string GetFileName(int rawTimestep, int pardir);
-
-    template<class T>
-    void ByteSwapArray(T* val, int size)
-    {
-        for (int i = 0; i < size; i++)
-        {
-            val[i] = vistle::byte_swap<vistle::endianness::little_endian, vistle::endianness::big_endian>(val[i]);
-        }
-    }
-
-    void sendError(const std::string &msg);
-
-    private:
-        void makeBaseConnList(); 
+    void makeBaseConnList(); 
 };
 }//nek5000
 

@@ -11,9 +11,6 @@
 
 namespace nek5000 {
 
-typedef std::array<int, 2> Edge;
-typedef std::array<int, 4> Plane;
-
 class PartitionReader : public ReaderBase{
 
 public:
@@ -24,15 +21,13 @@ public:
     bool fillVelocity(int timestep, float* x, float* y, float* z);
     bool fillScalarData(std::string varName, int timestep, float* data);
     bool fillBlockNumbers(vistle::Index* data);
+    void fillConnectivityList(vistle::Index* connectivityList);
 //getter
     size_t getBlocksToRead() const;
     size_t getHexes()const;
     size_t getNumConn() const;
     size_t getGridSize() const;
     size_t getNumGhostHexes() const;
-    void getConnectivityList(vistle::Index* connectivityList);
-
-
 
 //setter
     bool setPartition(int partition, int numGhostLayers, bool useMap = true); //also starts mapping the block ids
@@ -43,16 +38,11 @@ private:
     int myPartition;
     std::vector<int> myBlocksToRead; //number of blocks to read for this partition
     size_t numGhostBlocks = 0;
-    // This info is for managing which blocks are read on which processors
-    // and caching blocks that have been read.
-    std::vector<int> myBlockIDs;
-    std::vector<int> myBlockPositions;
+
     std::vector<vistle::Index>connectivityList;
     std::array<std::vector<float>, 3> myGrid;
     int gridSize = 0;
-    std::map<int, std::vector<int>> blockIndexToConnectivityIndex;
-    std::set<Edge> allEdgesInCornerIndices;
-    std::set<Plane> allPlanesInCornerIndices;
+
     //only used in parallel binary
     std::vector<int> vBlocksPerFile;
 
@@ -60,30 +50,19 @@ private:
     //maps the local block-id to the rank <local blockID, fileID, position in file>
     std::map<int, std::pair<int, int>> blockMap;
 
-    // This info is for managing which blocks are read on which processors
-    // and caching blocks that have been read.
-    //    std::vector<int> myBlockIDs;
-    //    std::map<PointerKey, float*, KeyCompare> cachedData;
-    //    std::map<int, avtIntervalTree*> boundingBoxes;
-    //    std::map<PointerKey, avtIntervalTree*, KeyCompare>dataExtents;
-
-    // Cached data describing how to read data out of the file.
+    // currently open file descriptors
     std::unique_ptr<OpenFile> curOpenMeshFile, curOpenVarFile;
 
     //methods
 
-    //      Gets the mesh associated with this file.  The mesh is returned as a
-    //      derived type of vtkDataSet (ie vtkRectilinearGrid, vtkStructuredGrid,
-    //      vtkUnstructuredGrid, etc).
+    //read the mesh for the given timestep and block in x, y and z
     bool ReadMesh(int timestep, int block, float* x, float* y, float* z);
     //read velocity in x, y and z
     bool ReadVelocity(int timestep, int block, float* x, float* y, float* z);
     //read var with varname in data
     bool ReadVar(const std::string &varname, int timestep, int block, float* data);
-
-    std::vector<std::vector<float>>ReadBlock(int block);
     //parses data files with mesh and stores the information about the block positions. If it finds a .map file use its info and returns true
-    bool ReadBlockLocations(bool useMap);
+    bool ReadBlockLocations();
 
 
     //      If the data is ascii format, there is a certain amount of deprecated
@@ -98,17 +77,20 @@ private:
         bool timestepHasMesh = 0;
     };
     DomainParams GetDomainSizeAndVarOffset(int iTimestep, const std::string& varname);
-
+    //return the file index for paralell files. 
     int getFileID(int block);
+
     bool CheckOpenFile(std::unique_ptr<OpenFile>& file, int timestep, int fileID);
-    
+    //adds numGhostLayers of block layers atound this partition and adds them to myBlocksToRead. 
     void addGhostBlocks(std::vector<int> &blocksNotToRead, int numGhostLayers);
-    
+    //construct the connectivity list out of the .map file(if available).
+    //Reads the mesh during construction to check for "mistakes" (e.g. logical connected blocks) in the .map file
     bool makeConnectivityList();
     //checks if the current point is equal to the already cached point 
     bool checkPointInGridGrid(const std::array<std::vector<float>, 3> & currGrid, int currGridIndex, int gridIndex);
-
+    //returns a vector with the local block indices of the given plane in a order that matches the globalWrittenPlane's order
     std::vector<int> getMatchingPlanePoints(int block, const Plane &plane, const Plane & globalWrittenPlane);
+    //maps the local block indices that also belong to already handled blocks to their corresponding position in the mesh array
     std::map<int, int> findAlreadyWrittenPoints(const size_t& currBlock, 
         const std::map<int, int>& writtenCorners, 
         const std::map<Edge, std::pair<bool, std::vector<int>>> writtenEdges,
@@ -121,13 +103,10 @@ private:
     int getLocalBlockIndex(int x, int y, int z);
     //return the local block index to corner index (1 - 8);
     int cornerIndexToBlockIndex(int cornerIndex); 
-    //return all edges in corner indices
-    void setAllEdgesInCornerIndices();
-    //return all planes in corner indices
-    void setAllPlanesInCornerIndices();
+
     //fills the connectivity list for a block, converting the already written points with localToGlobal
     void fillConnectivityList(const std::map<int, int>& localToGloabl, int startIndexInMesh);
-    void constructBlockIndexToConnectivityIndex();
+
     //add the connectivityList entries of corners of a block(0 - myBlocksToRead.size()) to the global cornerID (from map file)
     void addNewCorners(std::map<int, int>& allCorners, int localBlock);
     void addNewEdges(std::map<Edge, std::pair<bool, std::vector<int>>>& allEdges, int localBlock);

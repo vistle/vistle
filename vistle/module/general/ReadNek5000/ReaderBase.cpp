@@ -34,6 +34,11 @@ bool ReaderBase::init()
     if(numBlocksToRead < 1 || numBlocksToRead > totalNumBlocks)
         numBlocksToRead = totalNumBlocks;
     UpdateCyclesAndTimes();
+    //create basic structures to later create connectivity lists
+    makeBaseConnList();
+    setAllPlanesInCornerIndices();
+    setAllEdgesInCornerIndices();
+    setBlockIndexToConnectivityIndex();
 
     return true;
 }
@@ -42,14 +47,17 @@ size_t ReaderBase::getNumTimesteps() const
 {
     return numTimesteps;
 }
+
 size_t ReaderBase::getNumScalarFields() const
 {
     return numScalarFields;
 }
+
 int ReaderBase::getDim() const
 {
     return dim;
 }
+
 bool ReaderBase::hasVelocity() const
 {
     return bHasVelocity;
@@ -66,6 +74,163 @@ bool ReaderBase::hasTemperature() const
 }
 
 //protected methods
+std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
+    int timestep = rawTimestep + firstTimestep;
+    int nPrintfTokens = 0;
+
+    for (size_t ii = 0; ii < fileTemplate.size() - 1; ii++) {
+
+        if (fileTemplate[ii] == '%' && fileTemplate[ii + 1] != '%')
+            nPrintfTokens++;
+    }
+
+    if (nPrintfTokens > 1) {
+        isBinary = true;
+        isParalellFormat = true;
+    }
+
+    if (!isParalellFormat && nPrintfTokens != 1) {
+        sendError("Nek: The filetemplate tag must receive only one printf token for serial Nek files.");
+    } else if (isParalellFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
+        sendError("Nek: The filetemplate tag must receive either 2 or 3 printf tokens for parallel Nek files.");
+    }
+    int bufSize = fileTemplate.size();
+    int len;
+    string s;
+    do
+    {
+        bufSize += 64;
+        char *outFileName = new char[bufSize];
+        if (!isParalellFormat)
+            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), timestep);
+        else if (nPrintfTokens == 2)
+            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, timestep);
+        else
+            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, pardir, timestep);
+        s = string(outFileName, len);
+        delete[]outFileName;
+    } while (len >= bufSize);
+    return s;
+}
+
+void ReaderBase::sendError(const std::string &msg)
+{
+    cerr << msg << endl;
+}
+
+void ReaderBase::UpdateCyclesAndTimes() {
+    if (aTimes.size() != (size_t)numTimesteps) {
+        aTimes.resize(numTimesteps);
+        aCycles.resize(numTimesteps);
+        vTimestepsWithMesh.resize(numTimesteps, false);
+        vTimestepsWithMesh[0] = true;
+        readTimeInfoFor.resize(numTimesteps, false);
+    }
+    ifstream f;
+    char dummy[64];
+    double t;
+    int    c;
+    string v;
+    t = 0.0;
+    c = 0;
+
+    string meshfilename = GetFileName(curTimestep, 0);
+    f.open(meshfilename.c_str());
+
+    if (!isParalellFormat) {
+        string tString, cString;
+        f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v;  //skip #blocks and block size
+        t = atof(tString.c_str());
+        c = atoi(cString.c_str());
+    } else {
+        f >> dummy >> dummy >> dummy >> dummy >> dummy >> dummy >> dummy;
+        f >> t >> c >> dummy;
+
+        //I do this to skip the num directories token, because it may abut
+        //the field tags without a whitespace separator.
+        while (f.peek() == ' ')
+            f.get();
+        while (f.peek() >= '0' && f.peek() <= '9')
+            f.get();
+
+        char tmpTags[32];
+        f.read(tmpTags, 32);
+        tmpTags[31] = '\0';
+
+        v = tmpTags;
+    }
+    f.close();
+
+    aTimes[curTimestep] = t;
+    aCycles[curTimestep] = c;
+    //if (metadata != nullptr) {
+    //    metadata->SetTime(curTimestep + timeSliceOffset, t);
+    //    metadata->SetTimeIsAccurate(true, curTimestep + timeSliceOffset);
+    //    metadata->SetCycle(curTimestep + timeSliceOffset, c);
+    //    metadata->SetCycleIsAccurate(true, curTimestep + timeSliceOffset);
+    //}
+
+    // If this file contains a mesh, the first variable codes after the
+    // cycle number will be X Y
+    if (v.find("X") != string::npos)
+        vTimestepsWithMesh[curTimestep] = true;
+
+    // Nek has a bug where the time and cycle sometimes run together (e.g. 2.52000E+0110110 for
+    // time 25.2, cycle 10110).  If that happens, then v will be Y
+    if (v.find("Y") != string::npos)
+        vTimestepsWithMesh[curTimestep] = true;
+
+    readTimeInfoFor[curTimestep] = true;
+}
+//private methods
+void ReaderBase::setAllEdgesInCornerIndices() {
+    allEdgesInCornerIndices.insert({ 1,2 });
+    allEdgesInCornerIndices.insert({ 1,3 });
+    allEdgesInCornerIndices.insert({ 2,4 });
+    allEdgesInCornerIndices.insert({ 3,4 });
+    if (dim == 3) {
+        allEdgesInCornerIndices.insert({ 1,5 });
+        allEdgesInCornerIndices.insert({ 2,6 });
+        allEdgesInCornerIndices.insert({ 3,7 });
+        allEdgesInCornerIndices.insert({ 4,8 });
+        allEdgesInCornerIndices.insert({ 5,6 });
+        allEdgesInCornerIndices.insert({ 5,7 });
+        allEdgesInCornerIndices.insert({ 6,8 });
+        allEdgesInCornerIndices.insert({ 7,8 });
+    }
+}
+
+void ReaderBase::setAllPlanesInCornerIndices() {
+    vector < Plane> planes;
+    allPlanesInCornerIndices.insert({ 1, 2, 3, 4 });
+    allPlanesInCornerIndices.insert({ 1, 2, 5, 6 });
+    allPlanesInCornerIndices.insert({ 1, 3, 5, 7 });
+    allPlanesInCornerIndices.insert({ 2, 4, 6, 8 });
+    allPlanesInCornerIndices.insert({ 3, 4, 7, 8 });
+    allPlanesInCornerIndices.insert({ 5, 6, 7, 8 });
+
+
+}
+
+void ReaderBase::setBlockIndexToConnectivityIndex() {
+    blockIndexToConnectivityIndex.clear();
+    for (size_t j = 0; j < blockSize; j++) {
+        vector<int> connectivityIndices;
+        auto index = baseConnList.begin(), end = baseConnList.end();
+        while (index != end) {
+            index = std::find(index, end, j);
+            if (index != end) {
+                int i = index - baseConnList.begin();
+                connectivityIndices.push_back(i);
+                ++index;
+            }
+        }
+        blockIndexToConnectivityIndex[j] = connectivityIndices;
+    }
+}
+
+
+
 bool ReaderBase::parseMetaDataFile() {
     string tag;
     char buf[2048];
@@ -202,7 +367,7 @@ bool ReaderBase::parseMetaDataFile() {
     return true;
 }
 
-bool ReaderBase::ParseGridMap(){
+bool ReaderBase::ParseGridMap() {
     string map_filename = file;
     size_t ext = map_filename.find_last_of('.') + 1;
     map_filename.erase(ext);
@@ -210,53 +375,51 @@ bool ReaderBase::ParseGridMap(){
 
 
     ifstream  mptr(map_filename);
-    if(mptr.is_open())
-    {
+    if (mptr.is_open()) {
 
-      for (size_t i = 0; i < 7; i++) {
-          mptr >> mapFileHeader[i];
-      }
-      std::vector<int> map_elements(mapFileHeader[0]);
-      mapFileData.reserve(mapFileHeader[0]);
-      int columns = dim == 2 ? 5 : 9;
-      for(int i=0; i< mapFileHeader[0]; ++i)
-      {
-          array<int, 9> line;
-          for (size_t j = 0; j < columns; j++) {
-              mptr >> line[j];
-          }
-          mapFileData.emplace_back(line);
-          map_elements[i] = line[0] + 1;
-      }
-      mptr.close();
-      map<int, vector<int>> matches;
-      int line = 1;
-      for (auto entry : mapFileData)           {
-          for (size_t i = 1; i <= numCorners; i++) {
-              matches[entry[i]].push_back(line);
-          }
-          ++line;
-      }
-      //map<int, vector<pair<int, vector<int>>>> points;
-      //for (auto point : matches)           {
-      //    points[point.second.size()].push_back(make_pair( point.first, point.second ));
-      //}
-      //cerr << "___________number of corner apperences_____________" << endl;
-      //for (auto p : points)           {
-      //    cerr << "[" << p.first << "] ";
-      //    for (auto n : p.second)               {
-      //        cerr << n.first << " (";
-      //        for (auto l : n.second)                   {
-      //            cerr << l << ", ";
-      //        }
-      //        cerr << "); ";
-      //    }
-      //    cerr << endl;
-      //}
+        for (size_t i = 0; i < 7; i++) {
+            mptr >> mapFileHeader[i];
+        }
+        std::vector<int> map_elements(mapFileHeader[0]);
+        mapFileData.reserve(mapFileHeader[0]);
+        int columns = dim == 2 ? 5 : 9;
+        for (int i = 0; i < mapFileHeader[0]; ++i) {
+            array<int, 9> line;
+            for (size_t j = 0; j < columns; j++) {
+                mptr >> line[j];
+            }
+            mapFileData.emplace_back(line);
+            map_elements[i] = line[0] + 1;
+        }
+        mptr.close();
+        map<int, vector<int>> matches;
+        int line = 1;
+        for (auto entry : mapFileData) {
+            for (size_t i = 1; i <= numCorners; i++) {
+                matches[entry[i]].push_back(line);
+            }
+            ++line;
+        }
+        //map<int, vector<pair<int, vector<int>>>> points;
+        //for (auto point : matches)           {
+        //    points[point.second.size()].push_back(make_pair( point.first, point.second ));
+        //}
+        //cerr << "___________number of corner apperences_____________" << endl;
+        //for (auto p : points)           {
+        //    cerr << "[" << p.first << "] ";
+        //    for (auto n : p.second)               {
+        //        cerr << n.first << " (";
+        //        for (auto l : n.second)                   {
+        //            cerr << l << ", ";
+        //        }
+        //        cerr << "); ";
+        //    }
+        //    cerr << endl;
+        //}
 
-      return true;
+        return true;
     }
-return false;
+    return false;
 }
 
 bool ReaderBase::ParseNekFileHeader() {
@@ -267,7 +430,7 @@ bool ReaderBase::ParseNekFileHeader() {
     ifstream  f(blockfilename, ifstream::binary);
 
     if (!f.is_open()) {
-        sendError("Could not open file " + file +", which should exist according to header file " + blockfilename + ".");
+        sendError("Could not open file " + file + ", which should exist according to header file " + blockfilename + ".");
         return false;
     }
 
@@ -363,12 +526,11 @@ bool ReaderBase::ParseNekFileHeader() {
 
     }
     dim = blockDimensions[2] == 1 ? 2 : 3;
-    numCorners = dim == 2 ?  4 : 8;
+    numCorners = dim == 2 ? 4 : 8;
     blockSize = blockDimensions[0] * blockDimensions[1] * blockDimensions[2];
     hexesPerBlock = (blockDimensions[0] - 1) * (blockDimensions[1] - 1);
-    if(dim==3)
+    if (dim == 3)
         hexesPerBlock *= (blockDimensions[2] - 1);
-    makeBaseConnList();
     if (isBinary) {
         // Determine endianness and whether we need to swap bytes.
         // If this machine's endian matches the file's, the read will
@@ -449,114 +611,6 @@ void ReaderBase::ParseFieldTags(ifstream& f) {
     }
 }
 
-void ReaderBase::UpdateCyclesAndTimes() {
-    if (aTimes.size() != (size_t)numTimesteps) {
-        aTimes.resize(numTimesteps);
-        aCycles.resize(numTimesteps);
-        vTimestepsWithMesh.resize(numTimesteps, false);
-        vTimestepsWithMesh[0] = true;
-        readTimeInfoFor.resize(numTimesteps, false);
-    }
-    ifstream f;
-    char dummy[64];
-    double t;
-    int    c;
-    string v;
-    t = 0.0;
-    c = 0;
-
-    string meshfilename = GetFileName(curTimestep, 0);
-    f.open(meshfilename.c_str());
-
-    if (!isParalellFormat) {
-        string tString, cString;
-        f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v;  //skip #blocks and block size
-        t = atof(tString.c_str());
-        c = atoi(cString.c_str());
-    } else {
-        f >> dummy >> dummy >> dummy >> dummy >> dummy >> dummy >> dummy;
-        f >> t >> c >> dummy;
-
-        //I do this to skip the num directories token, because it may abut
-        //the field tags without a whitespace separator.
-        while (f.peek() == ' ')
-            f.get();
-        while (f.peek() >= '0' && f.peek() <= '9')
-            f.get();
-
-        char tmpTags[32];
-        f.read(tmpTags, 32);
-        tmpTags[31] = '\0';
-
-        v = tmpTags;
-    }
-    f.close();
-
-    aTimes[curTimestep] = t;
-    aCycles[curTimestep] = c;
-    //if (metadata != nullptr) {
-    //    metadata->SetTime(curTimestep + timeSliceOffset, t);
-    //    metadata->SetTimeIsAccurate(true, curTimestep + timeSliceOffset);
-    //    metadata->SetCycle(curTimestep + timeSliceOffset, c);
-    //    metadata->SetCycleIsAccurate(true, curTimestep + timeSliceOffset);
-    //}
-
-    // If this file contains a mesh, the first variable codes after the
-    // cycle number will be X Y
-    if (v.find("X") != string::npos)
-        vTimestepsWithMesh[curTimestep] = true;
-
-    // Nek has a bug where the time and cycle sometimes run together (e.g. 2.52000E+0110110 for
-    // time 25.2, cycle 10110).  If that happens, then v will be Y
-    if (v.find("Y") != string::npos)
-        vTimestepsWithMesh[curTimestep] = true;
-
-    readTimeInfoFor[curTimestep] = true;
-}
-
-std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
-    int timestep = rawTimestep + firstTimestep;
-    int nPrintfTokens = 0;
-
-    for (size_t ii = 0; ii < fileTemplate.size() - 1; ii++) {
-
-        if (fileTemplate[ii] == '%' && fileTemplate[ii + 1] != '%')
-            nPrintfTokens++;
-    }
-
-    if (nPrintfTokens > 1) {
-        isBinary = true;
-        isParalellFormat = true;
-    }
-
-    if (!isParalellFormat && nPrintfTokens != 1) {
-        sendError("Nek: The filetemplate tag must receive only one printf token for serial Nek files.");
-    } else if (isParalellFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
-        sendError("Nek: The filetemplate tag must receive either 2 or 3 printf tokens for parallel Nek files.");
-    }
-    int bufSize = fileTemplate.size();
-    int len;
-    string s;
-    do
-    {
-        bufSize += 64;
-        char *outFileName = new char[bufSize];
-        if (!isParalellFormat)
-            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), timestep);
-        else if (nPrintfTokens == 2)
-            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, timestep);
-        else
-            len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, pardir, timestep);
-        s = string(outFileName, len);
-        delete[]outFileName;
-    } while (len >= bufSize);
-    return s;
-}
-
-void ReaderBase::sendError(const std::string &msg)
-{
-    cerr << msg << endl;
-}
 void ReaderBase::makeBaseConnList() {
     using vistle::Index;
     baseConnList.resize(numCorners * hexesPerBlock);

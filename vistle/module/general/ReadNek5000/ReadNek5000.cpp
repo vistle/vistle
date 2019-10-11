@@ -90,7 +90,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
             std::fill_n(grid->tl().data(), hexes - ghostHexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON);
             std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON|UnstructuredGrid::GHOST_BIT);
         }
-        pReader->getConnectivityList(grid->cl().data());
+        pReader->fillConnectivityList(grid->cl().data());
 
         for (int i = 0; i < hexes + 1; i++) {
             if (pReader->getDim() == 2) {

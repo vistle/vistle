@@ -1,7 +1,6 @@
 #include "PartitionReader.h"
 
 #include <set>
-#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cstring>
@@ -14,18 +13,15 @@ namespace nek5000 {
 PartitionReader::PartitionReader(const ReaderBase &base)
     :ReaderBase((base))
 {
-    setAllPlanesInCornerIndices();
-    setAllEdgesInCornerIndices();
+
 }
-
-
-
 
 bool PartitionReader::fillMesh(float *x, float *y, float *z)
 {
     memcpy(x, myGrid[0].data(), sizeof(float) * gridSize);
     memcpy(y, myGrid[1].data(), sizeof(float) * gridSize);
     memcpy(z, myGrid[2].data(), sizeof(float) * gridSize);
+    myGrid.fill(vector<float>());
     return true;
 }
 
@@ -33,12 +29,12 @@ bool PartitionReader::fillVelocity(int timestep, float *x, float *y, float *z)
 {
     if (bHasVelocity) {
         int numCon = numCorners * hexesPerBlock;
-        for (size_t b = 0; b < myBlocksToRead.size(); b++) {
+        for (size_t b = 0; b < myBlocksToRead.size(); ++b) {
             array<vector<float>, 3> velocity{ vector<float>(blockSize), vector<float>(blockSize) , vector<float>(blockSize) };
             if (!ReadVelocity(timestep, myBlocksToRead[b], velocity[0].data(), velocity[1].data(), velocity[2].data())) {
                 return false;
             }
-            for (size_t i = 0; i < numCon; i++) {
+            for (size_t i = 0; i < numCon; ++i) {
 
                 x[connectivityList[i + b * numCon]] = velocity[0][connectivityList[i]];
                 y[connectivityList[i + b * numCon]] = velocity[1][connectivityList[i]];
@@ -76,6 +72,9 @@ bool PartitionReader::fillBlockNumbers(vistle::Index* data) {
     return true;;
 }
 
+void PartitionReader::fillConnectivityList(vistle::Index* connList) {
+    memcpy(connList, connectivityList.data(), connectivityList.size() * sizeof(vistle::Index));
+}
 
 //getter
 size_t PartitionReader::getBlocksToRead() const
@@ -87,6 +86,7 @@ size_t PartitionReader::getHexes()const
 {
     return hexesPerBlock * myBlocksToRead.size();
 }
+
 size_t PartitionReader::getNumConn() const
 {
         return numCorners * getHexes();
@@ -100,12 +100,6 @@ size_t PartitionReader::getGridSize() const
 size_t PartitionReader::getNumGhostHexes() const {
     return numGhostBlocks * hexesPerBlock;
 }
-
-void PartitionReader::getConnectivityList(vistle::Index* connList) {
-    memcpy(connList, connectivityList.data(), connectivityList.size() * sizeof(vistle::Index));
-}
-
-
 
 
 //setter
@@ -138,7 +132,7 @@ bool PartitionReader::setPartition(int partition, int numGhostLayers, bool useMa
         }
     }
     addGhostBlocks(blocksNotToRead, numGhostLayers);
-    if(!ReadBlockLocations(useMap))
+    if(!ReadBlockLocations())
         return false;
     makeConnectivityList();
     return true;
@@ -362,16 +356,7 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
     return true;
 }
 
-std::vector<std::vector<float>> PartitionReader::ReadBlock(int block) {
-    std::vector<std::vector<float>> blockData;
-    int numData = dim + dim * bHasVelocity ? 1 : 0 + bHasPressure ? 1 : 0 + bHasTemperature ? 1 : 0 + numScalarFields;
-    for (size_t i = 0; i < numData; i++) {
-
-    }
-    return blockData;
-}
-
-bool PartitionReader::ReadBlockLocations(bool useMap) {
+bool PartitionReader::ReadBlockLocations() {
     // In each parallel file, in the header, there's a table that maps
     // each local block to a global id which starts at 1.  Here, I make
     // an inverse map, from a zero-based global id to a proc num and local
@@ -439,7 +424,6 @@ bool PartitionReader::ReadBlockLocations(bool useMap) {
     return true;
 
 }
-
 
 void PartitionReader::FindAsciiDataStart(FILE* fd, int& outDataStart, int& outLineLen) {
     //Skip the header, then read a float for each block.  Then skip beyond the
@@ -559,28 +543,26 @@ void PartitionReader::addGhostBlocks(std::vector<int>& blocksNotToRead, int numG
     if (myBlocksToRead.size() == numBlocksToRead) {
         return;
     }
-
+    numGhostBlocks = 0;
     for (size_t iterations = 0; iterations < numGhostLayers; iterations++) {
-        set<int> ghostBlocks;
-        for (int myBlock : myBlocksToRead) {
-            for (auto i = mapFileData[myBlock].begin() + 1; i < mapFileData[myBlock].end(); i++) {
-                for (auto notMyBlock = blocksNotToRead.begin(); notMyBlock != blocksNotToRead.end();++notMyBlock) {
-                    if (find(mapFileData[*notMyBlock].begin() + 1, mapFileData[*notMyBlock].end(), *i) != mapFileData[*notMyBlock].end()) {
-                        ghostBlocks.insert(*notMyBlock);
-                        notMyBlock = blocksNotToRead.erase(notMyBlock);
-                        break;
+    int oldNumBlocks = myBlocksToRead.size();
+    for (int myBlock = 0; myBlock < oldNumBlocks;++myBlock) {
+            for (auto i = mapFileData[myBlocksToRead[myBlock]].begin() + 1; i < mapFileData[myBlocksToRead[myBlock]].end(); i++) {
+                {
+                    auto notMyBlock = blocksNotToRead.begin();
+                    while (notMyBlock != blocksNotToRead.end()) {
+                        if (find(mapFileData[*notMyBlock].begin() + 1, mapFileData[*notMyBlock].end(), *i) != mapFileData[*notMyBlock].end()) {
+                            myBlocksToRead.push_back(*notMyBlock);
+                            notMyBlock = blocksNotToRead.erase(notMyBlock);
+                        }
+                        else {
+                            ++notMyBlock;
+                        }
                     }
                 }
             }
         }
-        //for (size_t i = 0; i < numBlocksToRead; i++) {
-        //    if (find(myBlocksToRead.begin(), myBlocksToRead.end(), i) == myBlocksToRead.end()) {
-        //        ghostBlocks.insert(i);
-        //    }
-        //}
-
-        numGhostBlocks = ghostBlocks.size();
-        myBlocksToRead.insert(myBlocksToRead.end(), ghostBlocks.begin(), ghostBlocks.end());
+        numGhostBlocks += myBlocksToRead.size() -  oldNumBlocks;
     }
 }
 
@@ -609,8 +591,7 @@ bool PartitionReader::makeConnectivityList() {
     connectivityList.reserve(getNumConn());
     gridSize = blockSize * myBlocksToRead.size();
     int numDoublePoints = 0;
-    //construct a map from blockIndex to a corresponding index in the connectivity list
-    constructBlockIndexToConnectivityIndex();
+
 
     for (size_t i = 0; i < 3; i++) {
         myGrid[i].resize(myBlocksToRead.size() * blockSize);
@@ -932,35 +913,6 @@ int PartitionReader::cornerIndexToBlockIndex(int cornerIndex)     {
     }
 }
 
-void PartitionReader::setAllEdgesInCornerIndices()     {
-    allEdgesInCornerIndices.insert({ 1,2 });
-    allEdgesInCornerIndices.insert({ 1,3 });
-    allEdgesInCornerIndices.insert({ 2,4 });
-    allEdgesInCornerIndices.insert({ 3,4 });
-    if (dim == 3) {
-        allEdgesInCornerIndices.insert({ 1,5 });
-        allEdgesInCornerIndices.insert({ 2,6 });
-        allEdgesInCornerIndices.insert({ 3,7 });
-        allEdgesInCornerIndices.insert({ 4,8 });
-        allEdgesInCornerIndices.insert({ 5,6 });
-        allEdgesInCornerIndices.insert({ 5,7 });
-        allEdgesInCornerIndices.insert({ 6,8 });
-        allEdgesInCornerIndices.insert({ 7,8 });
-    }
-}
-
-void PartitionReader::setAllPlanesInCornerIndices() {
-    vector < Plane> planes;
-    allPlanesInCornerIndices.insert({ 1, 2, 3, 4 });
-    allPlanesInCornerIndices.insert({ 1, 2, 5, 6 });
-    allPlanesInCornerIndices.insert({ 1, 3, 5, 7 });
-    allPlanesInCornerIndices.insert({ 2, 4, 6, 8 });
-    allPlanesInCornerIndices.insert({ 3, 4, 7, 8 });
-    allPlanesInCornerIndices.insert({ 5, 6, 7, 8 });
-
-
-}
-
 void PartitionReader::fillConnectivityList(const map<int, int>& localToGloabl, int startIndexInMesh) {
 
     vector<vistle::Index> connList(numCorners * hexesPerBlock);
@@ -984,24 +936,6 @@ void PartitionReader::fillConnectivityList(const map<int, int>& localToGloabl, i
         }
     }
     connectivityList.insert(connectivityList.end(), connList.begin(), connList.end());
-}
-
-
-void PartitionReader::constructBlockIndexToConnectivityIndex()     {
-    blockIndexToConnectivityIndex.clear();
-    for (size_t j = 0; j < blockSize; j++) {
-        vector<int> connectivityIndices;
-        auto index = baseConnList.begin(), end = baseConnList.end();
-        while (index != end) {
-            index = std::find(index, end, j);
-            if (index != end) {
-                int i = index - baseConnList.begin();
-                connectivityIndices.push_back(i);
-                ++index;
-            }
-        }
-        blockIndexToConnectivityIndex[j] = connectivityIndices;
-    }
 }
 
 void PartitionReader::addNewCorners(map<int, int> &allCorners, int localBlock)     {
