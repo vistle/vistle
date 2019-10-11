@@ -532,13 +532,13 @@ bool Cache::prepare() {
             continue;
         }
 
-        if (timestep>=0 && timestep%step != 0)
-            continue;
-
         if (timestep>=0 && timestep<start)
             continue;
 
         if (timestep>=0 && timestep>stop)
+            continue;
+
+        if (timestep>=0 && (timestep-start)%step != 0)
             continue;
 
         ++numObjects;
@@ -552,13 +552,13 @@ bool Cache::prepare() {
         timesteps.push_back(-1);
         for (int timestep=0; timestep<numTime; ++timestep) {
 
-            if (timestep%step != 0)
-                continue;
-
             if (timestep<start)
                 continue;
 
             if (timestep>stop)
+                continue;
+
+            if ((timestep-start)%step != 0)
                 continue;
 
             timesteps.push_back(timestep);
