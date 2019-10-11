@@ -570,8 +570,6 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
     return nullptr;
 }
 
-
-
 osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
    if (m_ro)
@@ -1106,6 +1104,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    vistle::Coords::const_ptr coords = vistle::Coords::as(m_geo);
    vistle::Indexed::const_ptr indexed = vistle::Indexed::as(m_geo);
    vistle::Triangles::const_ptr triangles = vistle::Triangles::as(m_geo);
+   vistle::Quads::const_ptr quads = vistle::Quads::as(m_geo);
    vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
    vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
 #ifdef COVER_PLUGIN
@@ -1146,7 +1145,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                debug << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
            } else {
                osg::ref_ptr<osg::FloatArray> tc;
-               if (!triangles && !polygons) {
+               if (!triangles && !polygons && !quads) {
                    tc = new osg::FloatArray;
                    if (mapping == vistle::DataBase::Vertex) {
                        const Index *cl = nullptr;
@@ -1209,7 +1208,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                image->setName(nodename+".img");
                image->setImage(tex->getWidth(), 1, 1, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, &tex->pixels()[0], osg::Image::NO_DELETE);
                osgTex->setImage(image);
-               if (tc || (tex && triangles) || (tex && polygons)) {
+               if (tc || (tex && triangles) || (tex && polygons) || (tex && quads)) {
                    state->setTextureAttributeAndModes(0, osgTex, osg::StateAttribute::ON);
                    osgTex->setFilter(osg::Texture1D::MIN_FILTER, osg::Texture1D::NEAREST);
                    osgTex->setFilter(osg::Texture1D::MAG_FILTER, osg::Texture1D::NEAREST);
@@ -1227,7 +1226,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                debug << "VistleGeometryGenerator: Coords: data size mismatch, expected: " << coords->getNumCoords() << ", have: " << data->getSize() << std::endl;
            } else {
                osg::ref_ptr<osg::FloatArray> fl;
-               if (!triangles && !polygons) {
+               if (!triangles && !polygons && !quads) {
                    fl = new osg::FloatArray;
                    if (mapping == vistle::DataBase::Vertex) {
                        const Index *cl = nullptr;
@@ -1280,6 +1279,72 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                    }
                    if (!fl->empty() && geom) {
                        std::cerr << "VistleGeometryGenerator: setting VertexAttribArray " << mapping << " for Vec<Scalar> of size " << fl->size() << std::endl;
+                       geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+                   }
+               }
+           }
+       } else if (vistle::Vec<Scalar,3>::const_ptr data = vistle::Vec<Scalar,3>::as(m_tex)) {
+           const auto *xx = &data->x()[0], *yy = &data->y()[0], *zz = &data->z()[0];
+           auto l = [xx,yy,zz](Index v){ return sqrt(xx[v]*xx[v]+yy[v]*yy[v]+zz[v]*zz[v]); };
+           vistle::DataBase::Mapping mapping = data->guessMapping();
+           if (mapping == vistle::DataBase::Unspecified) {
+               std::cerr << "VistleGeometryGenerator: Coords: data size mismatch, expected: " << coords->getNumCoords() << ", have: " << data->getSize() << std::endl;
+               debug << "VistleGeometryGenerator: Coords: data size mismatch, expected: " << coords->getNumCoords() << ", have: " << data->getSize() << std::endl;
+           } else {
+               osg::ref_ptr<osg::FloatArray> fl;
+               if (!triangles && !polygons && !quads) {
+                   fl = new osg::FloatArray;
+                   if (mapping == vistle::DataBase::Vertex) {
+                       const Index *cl = nullptr;
+                       if (indexed && indexed->getNumCorners() > 0)
+                           cl =  &indexed->cl()[0];
+                       if (indexGeom || !cl)
+                       {
+                           const auto numCoords = coords->getNumCoords();
+                           const auto numData = data->getSize();
+                           if (numCoords == numData) {
+                               for (Index index = 0; index < numCoords; ++index) {
+                                   fl->push_back(l(index));
+                               }
+                           } else {
+                               std::cerr << "VistleGeometryGenerator: data mismatch: #coord=" << numCoords << ", #data=" << numData << std::endl;
+                               debug << "VistleGeometryGenerator: data mismatch: #coord=" << numCoords << ", #data=" << numData << std::endl;
+                           }
+                       }
+                       else if (indexed && cl) {
+                           const auto el = &indexed->el()[0];
+                           const auto numElements = indexed->getNumElements();
+                           for (Index index = 0; index < numElements; ++index) {
+                               const Index num = el[index + 1] - el[index];
+                               for (Index n = 0; n < num; n ++) {
+                                   Index v = cl[el[index] + n];
+                                   fl->push_back(l(v));
+                               }
+                           }
+                       }
+                   } else if (mapping == vistle::DataBase::Element) {
+                       if (indexed) {
+                           const auto el = &indexed->el()[0];
+                           const auto numElements = indexed->getNumElements();
+                           for (Index index = 0; index < numElements; ++index) {
+                               const Index num = el[index + 1] - el[index];
+                               for (Index n = 0; n < num; n ++) {
+                                   Index v = el[index];
+                                   fl->push_back(l(v));
+                               }
+                           }
+                       } else {
+                           const auto numCoords = coords->getNumCoords();
+                           for (Index index = 0; index < numCoords; ++index) {
+                               fl->push_back(l(index));
+                           }
+                       }
+                   } else {
+                       std::cerr << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Vec<Scalar,3>" << std::endl;
+                       debug << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Vec<Scalar,3>" << std::endl;
+                   }
+                   if (!fl->empty() && geom) {
+                       std::cerr << "VistleGeometryGenerator: setting VertexAttribArray " << mapping << " for Vec<Scalar,3> of size " << fl->size() << std::endl;
                        geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
                    }
                }
