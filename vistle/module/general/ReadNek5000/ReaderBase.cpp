@@ -18,7 +18,6 @@ ReaderBase::ReaderBase(std::string file, int numPartitions, int blocksToRead)
     ,numPartitions(numPartitions)
     ,numBlocksToRead(blocksToRead)
 {
-
 }
 
 ReaderBase::~ReaderBase()

@@ -80,7 +80,7 @@ protected:
     int curTimestep = 1;
     int timestepToUseForMesh = 0;
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
-    std::array<int, 7> mapFileHeader{ 0,0,0,0,0,0,0 };
+    std::array<int, 7> mapFileHeader;
     //contains the data from the .map file
     std::vector < std::array<int, 9>> mapFileData; //toDo: sort out blocks that do not belong to this partition
 //methods
