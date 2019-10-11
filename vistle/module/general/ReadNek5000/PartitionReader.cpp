@@ -1,7 +1,7 @@
 #include "PartitionReader.h"
 
 #include <set>
-//#include <algorithm>
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <cstring>
