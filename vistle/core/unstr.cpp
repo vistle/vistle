@@ -306,6 +306,13 @@ Index UnstructuredGrid::findCell(const Vector &point, Index hint, int flags) con
       return hint;
    }
 
+   const auto bounds = getBounds();
+   const auto &min = bounds.first, &max = bounds.second;
+   if (point.x() < min.x() || point.y() < min.y() || point.z() < min.z()
+       || point.x() > max.x() || point.y() > max.y() || point.z() > max.z()) {
+       return InvalidIndex;
+   }
+
    if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
