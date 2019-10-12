@@ -95,7 +95,7 @@ class shm_array_ref {
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
         ref();
         assert(m_p->refcount() == 1);
-        Shm::the().addArray(m_name, m_p.get());
+        Shm::the().addArray(m_name, &*m_p);
     }
 
     const shm_array_ref &operator=(const shm_array_ref &rhs) {

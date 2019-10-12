@@ -418,11 +418,6 @@ std::string Shm::createObjectId(const std::string &id) {
 }
 
 std::string Shm::createArrayId(const std::string &id) {
-#ifdef MODULE_THREAD
-   vassert(m_id < 0 || !id.empty());
-#else
-   //vassert(m_id > 0 || !id.empty());
-#endif
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;
@@ -509,7 +504,7 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 shm_handle_t Shm::getHandleFromArray(const ShmData *array) const {
 
 #ifdef NO_SHMEM
-   return array;
+   return const_cast<ShmData *>(array);
 #else
    try {
       return m_shm->get_handle_from_address(array);
@@ -538,7 +533,11 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
 ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
 
+#ifdef NO_SHMEM
+    return static_cast<Object::Data *>(vistle::shm<void>::find(name));
+#else
     return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+#endif
 }
 
 ObjectData *Shm::getObjectDataFromHandle(const shm_handle_t &handle) const

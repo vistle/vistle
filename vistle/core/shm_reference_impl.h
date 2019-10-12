@@ -222,7 +222,7 @@ shm_array_ref<T>::shm_array_ref(const std::vector<typename T::value_type> &data)
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     {
         ref();
-        Shm::the().addArray(m_name, m_p.get());
+        Shm::the().addArray(m_name, &*m_p);
         (*this)->resize(data.size());
         std::copy(data.begin(), data.end(), (*this)->begin());
     }
@@ -233,7 +233,7 @@ shm_array_ref<T>::shm_array_ref(const typename T::value_type *data, size_t size)
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     {
         ref();
-        Shm::the().addArray(m_name, m_p.get());
+        Shm::the().addArray(m_name, &*m_p);
         (*this)->resize(size);
         std::copy(data, data+size, (*this)->begin());
     }
