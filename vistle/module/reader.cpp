@@ -401,7 +401,7 @@ bool Reader::Token::result()
 bool Reader::Token::waitDone()
 {
 //#ifdef DEBUG
-    std::cerr << "Reader::Token: finishing " << id() << "..." << std::endl;
+    std::cerr << "Reader::Token: finishing " << id() << ", meta: " << m_meta << "..." << std::endl;
 //#endif
     {
         std::lock_guard<std::mutex> locker(m_mutex);
