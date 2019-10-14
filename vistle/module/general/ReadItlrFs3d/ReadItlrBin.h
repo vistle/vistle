@@ -34,6 +34,7 @@ private:
 
    vistle::StringParameter *m_gridFilename, *m_filename[NumPorts];
    vistle::IntParameter *m_numPartitions;
+   vistle::IntParameter *m_incrementFilename;
    std::string m_species[NumPorts];
 #if 0
    vistle::IntParameter *m_distributeTimesteps;
@@ -53,6 +54,7 @@ private:
    Block computeBlock(int part) const;
 
    bool m_haveListFile = false;
+   bool m_haveFileList = false;
    std::string m_scalarFile[NumPorts];
    vistle::filesystem::path m_directory[NumPorts];
    std::vector<std::string> m_fileList[NumPorts];

@@ -55,7 +55,7 @@ struct File {
     }
 
     bool isHdf5() {
-        return name.length() >=4 && name.substr(name.length()-4)==".hdf";
+        return boost::algorithm::ends_with(name, ".lst");
     }
 
     std::string format() {
@@ -352,6 +352,8 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
     , m_nparts(size())
     , m_dims{0,0,0} {
 
+    m_incrementFilename = addIntParameter("increment_filename", "replace digits in filename with timestep", false, Parameter::Boolean);
+
     m_gridFilename = addStringParameter("grid_filename", ".bin file for grid", "/data/itlr/itlmer-Case11114_VISUS/netz_xyz.bin", Parameter::ExistingFilename);
     setParameterFilters(m_gridFilename, "FS3D Binary Files (*.bin)/FS3D HDF5 Files (*.hdf)/All Files (*)");
     for (int i=0; i<NumPorts; ++i) {
@@ -405,11 +407,11 @@ bool ReadItlrBin::prepareRead()
 {
     int numFiles = -1;
     m_haveListFile = false;
+    m_haveFileList = false;
     for (int port=0; port<NumPorts; ++port) {
         m_scalarFile[port] = m_filename[port]->getValue();
         if (m_scalarFile[port].empty())
             continue;
-
 
         m_fileList[port].push_back(m_scalarFile[port]);
         bool haveList = false;
@@ -419,13 +421,6 @@ bool ReadItlrBin::prepareRead()
         }
         filesystem::path listFilePath(m_scalarFile[port]);
         m_directory[port] = listFilePath.parent_path();
-
-        auto species = listFilePath.leaf().string();
-        auto pos = species.find_last_of('.');
-        if (pos != species.npos) {
-            species = species.substr(0, pos);
-        }
-        m_species[port] = species;
 
         if (numFiles < 0) {
             m_haveListFile = haveList;
@@ -441,6 +436,58 @@ bool ReadItlrBin::prepareRead()
         } else {
             numFiles = std::min<int>(numFiles, m_fileList[port].size());
         }
+
+        auto species = listFilePath.leaf().string();
+        auto pos = species.find_last_of('.');
+        if (pos != species.npos) {
+            species = species.substr(0, pos);
+        }
+        m_species[port] = species;
+    }
+
+    if (!m_haveListFile && m_incrementFilename->getValue()) {
+        int first = m_first->getValue();
+        int last = m_last->getValue();
+        int step = m_increment->getValue();
+        for (int port=0; port<NumPorts; ++port) {
+            auto file = m_scalarFile[port];
+            if (file.empty())
+                continue;
+            auto len = file.length();
+            std::string::size_type digitbegin=std::string::npos;
+            std::string::size_type digitend=std::string::npos;
+            for (size_t i=len; i>0; --i) {
+                auto &c = file[i-1];
+                if (std::isdigit(c)) {
+                    if (digitend == std::string::npos)
+                        digitend = i;
+                    digitbegin = i-1;
+                }
+                else if (digitend != std::string::npos) {
+                    break;
+                }
+            }
+            if (digitbegin != std::string::npos) {
+                auto numdigits = digitend - digitbegin;
+                for (int i=0; i<=last; i+=1) {
+                    std::stringstream str;
+                    str << std::setfill('0') << std::setw(numdigits) << i;
+                    for (std::string::size_type i=0; i<numdigits; ++i) {
+                        file[digitbegin+i] = str.str()[i];
+                    }
+                    std::cerr << "file: " << file << std::endl;
+                    m_fileList[port].emplace_back(file);
+                }
+            }
+
+            if (numFiles < 0) {
+                numFiles = m_fileList[port].size();
+            } else {
+                numFiles = std::min<int>(numFiles, m_fileList[port].size());
+            }
+        }
+
+        m_haveFileList = true;
     }
 
     std::string gridFile = m_gridFilename->getValue();
@@ -456,7 +503,7 @@ bool ReadItlrBin::prepareRead()
 bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
 {
     if (timestep < 0) {
-        if (m_haveListFile)
+        if (m_haveListFile || m_haveFileList)
             return true;
 
         timestep = 0;
@@ -467,6 +514,8 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
 
     for (int port=0; port<NumPorts; ++port) {
         if (m_scalarFile[port].empty())
+            continue;
+        if (m_fileList[port].size() <= timestep)
             continue;
         auto file = m_fileList[port][timestep];
         filesystem::path filename;
