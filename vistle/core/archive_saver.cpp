@@ -12,6 +12,7 @@ void DeepArchiveSaver::saveArray(const std::string & name, int type, const void 
 
     vecostreambuf<char> vb;
     oarchive ar(vb);
+    ar.setCompressionSettings(m_compressionSettings);
     ar.setSaver(shared_from_this());
     ArraySaver as(name, type, ar, array);
     if (as.save()) {
@@ -26,6 +27,7 @@ void vistle::DeepArchiveSaver::saveObject(const std::string & name, Object::cons
 
     vecostreambuf<char> vb;
     oarchive ar(vb);
+    ar.setCompressionSettings(m_compressionSettings);
     ar.setSaver(shared_from_this());
     obj->saveObject(ar);
     m_objects.emplace(name, std::move(vb.get_vector()));
@@ -97,6 +99,11 @@ void DeepArchiveSaver::setSavedObjects(const std::set<std::string> &objs) {
 void DeepArchiveSaver::setSavedArrays(const std::set<std::string> &arrs) {
 
     m_archivedArrays = arrs;
+}
+
+void DeepArchiveSaver::setCompressionSettings(const CompressionSettings &settings) {
+
+    m_compressionSettings = settings;
 }
 
 }

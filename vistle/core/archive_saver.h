@@ -71,7 +71,10 @@ public:
     void setSavedObjects(const std::set<std::string> &objs);
     void setSavedArrays(const std::set<std::string> &arrs);
 
+    void setCompressionSettings(const CompressionSettings &settings);
+
 private:
+    CompressionSettings m_compressionSettings;
     std::map<std::string,std::vector<char>> m_objects;
     std::map<std::string,std::vector<char>> m_arrays;
     std::set<std::string> m_archivedObjects;

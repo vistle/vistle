@@ -237,52 +237,78 @@ void Message::setNotify(bool enable) {
     m_notification = enable;
 }
 
-std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vector<char> &raw, int speed) {
+std::vector<char> compressPayload(CompressionMode &mode, const std::vector<char> &raw, int speed) {
+    return compressPayload(mode, raw.data(), raw.size(), speed);
+}
 
+std::vector<char> compressPayload(CompressionMode &mode, const char *raw, size_t size, int speed) {
+
+    auto m = mode;
+    mode = message::CompressionNone;
     std::vector<char> compressed;
-    msg.setPayloadRawSize(raw.size());
-    msg.setPayloadCompression(CompressionNone);
-    switch (mode) {
+    switch (m) {
 #ifdef HAVE_SNAPPY
     case CompressionSnappy: {
-        size_t maxsize = snappy::MaxCompressedLength(raw.size());
+        size_t maxsize = snappy::MaxCompressedLength(size);
         compressed.resize(maxsize);
         size_t compressedSize = 0;
-        snappy::RawCompress(raw.data(), raw.size(), compressed.data(), &compressedSize);
-        if (compressedSize<raw.size()) {
+        snappy::RawCompress(raw, size, compressed.data(), &compressedSize);
+        if (compressedSize<size) {
             compressed.resize(compressedSize);
-            msg.setPayloadCompression(CompressionSnappy);
+            mode = CompressionSnappy;
         }
         break;
     }
 #endif
 #ifdef HAVE_ZSTD
     case CompressionZstd: {
-        size_t maxsize = ZSTD_compressBound(raw.size());
+        size_t maxsize = ZSTD_compressBound(size);
         compressed.resize(maxsize);
-        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), raw.data(), raw.size(), speed);
-        if (!ZSTD_isError(compressedSize) && compressedSize<raw.size()) {
+        size_t compressedSize = ZSTD_compress(compressed.data(), compressed.size(), raw, size, speed);
+        if (ZSTD_isError(compressedSize)) {
+            std::cerr << "Zstd compression failed: " << ZSTD_getErrorName(compressedSize) << std::endl;
+        } else if (compressedSize > size) {
+            std::cerr << "Zstd compression without size reduction: " << size << " -> " << compressedSize << std::endl;
+        } else {
             compressed.resize(compressedSize);
-            msg.setPayloadCompression(CompressionZstd);
+            mode = CompressionZstd;
         }
         break;
     }
 #endif
 #ifdef HAVE_LZ4
     case CompressionLz4: {
-        size_t maxsize = LZ4_compressBound(raw.size());
+        size_t maxsize = LZ4_compressBound(size);
         compressed.resize(maxsize);
-        size_t compressedSize = LZ4_compress_fast(raw.data(), compressed.data(), raw.size(), compressed.size(), speed);
-        if (compressedSize > 0 && compressedSize<raw.size()) {
+        size_t compressedSize = LZ4_compress_fast(raw, compressed.data(), size, compressed.size(), speed);
+        if (compressedSize > 0 && compressedSize<size) {
             compressed.resize(compressedSize);
-            msg.setPayloadCompression(CompressionLz4);
+            mode = CompressionLz4;
         }
         break;
     }
 #endif
     default:
+        mode = CompressionNone;
         break;
     }
+
+    if (mode != CompressionNone) {
+        std::cerr << "compressed from " << size << " to " << compressed.size() << std::endl;
+        assert(size >= compressed.size());
+    }
+
+    return compressed;
+}
+
+std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vector<char> &raw, int speed) {
+
+    CompressionMode m = mode;
+    msg.setPayloadRawSize(raw.size());
+    msg.setPayloadCompression(CompressionNone);
+
+    std::vector<char> compressed = compressPayload(m, raw, speed);
+    msg.setPayloadCompression(m);
 
     if (msg.payloadCompression() == CompressionNone) {
         compressed = std::move(raw);
@@ -293,19 +319,22 @@ std::vector<char> compressPayload(CompressionMode mode, Message &msg, std::vecto
     return compressed;
 }
 
-std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed) {
+std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t rawsize, std::vector<char> &compressed) {
 
-    if (msg.payloadCompression() == CompressionNone)
+    if (mode == CompressionNone)
         return std::move(compressed);
 
-    assert(compressed.size() >= msg.payloadSize());
+    assert(compressed.size() >= size);
+    return decompressPayload(mode, size, rawsize, compressed.data());
+}
 
-    std::vector<char> decompressed(msg.payloadRawSize());
-    switch (msg.payloadCompression()) {
+std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t rawsize, const char *compressed) {
+    std::vector<char> decompressed(rawsize);
+
+    switch (mode) {
     case CompressionSnappy: {
 #ifdef HAVE_SNAPPY
-
-        snappy::RawUncompress(compressed.data(), compressed.size(), decompressed.data());
+        snappy::RawUncompress(compressed, size, decompressed.data());
 #else
         throw vistle::exception("cannot decompress Snappy");
 #endif
@@ -313,12 +342,17 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
     }
     case CompressionZstd: {
 #ifdef HAVE_ZSTD
-        size_t n = ZSTD_decompress(decompressed.data(), decompressed.size(), compressed.data(), msg.payloadSize());
-        if (ZSTD_isError(n)) {
-            throw vistle::exception("Zstd decompression failed");
+        size_t n = ZSTD_decompress(decompressed.data(), decompressed.size(), compressed, size);
+        if (n != rawsize) {
+            std::cerr << "Zstd decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
         }
-        if (n != msg.payloadRawSize()) {
-            std::cerr << "Zstd decompression WARNING: decompressed size " << n << " does not match raw size " << msg.payloadRawSize() << std::endl;
+        if (ZSTD_isError(n)) {
+            std::string err;
+            if (const char *e = ZSTD_getErrorName(n)) {
+                err = e;
+            }
+            std::cerr << "Zstd decompression ERROR: " << err << std::endl;
+            throw vistle::exception("Zstd decompression failed: "+err);
         }
         //assert(n == msg.payloadRawSize());
 #else
@@ -328,12 +362,12 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
     }
     case CompressionLz4: {
 #ifdef HAVE_LZ4
-        int n = LZ4_decompress_safe(compressed.data(), decompressed.data(), msg.payloadSize(), decompressed.size());
+        int n = LZ4_decompress_safe(compressed, decompressed.data(), rawsize, decompressed.size());
+        if (n != rawsize) {
+            std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
+        }
         if (n < 0) {
             throw vistle::exception("LZ4 decompression failed");
-        }
-        if (n != msg.payloadRawSize()) {
-            std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << msg.payloadRawSize() << std::endl;
         }
         //assert(n == msg.payloadRawSize());
 #else
@@ -347,6 +381,16 @@ std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compr
     }
 
     return decompressed;
+}
+
+std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed) {
+
+    if (msg.payloadCompression() == CompressionNone)
+        return std::move(compressed);
+
+    assert(compressed.size() >= msg.payloadSize());
+
+    return decompressPayload(msg.payloadCompression(), msg.payloadSize(), msg.payloadRawSize(), compressed);
 }
 
 MessageFactory::MessageFactory(int id, int rank)

@@ -11,6 +11,7 @@
 #include <memory>
 #include <iostream>
 #include <util/vecstreambuf.h>
+#include "message.h"
 
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/archive/binary_oarchive.hpp>
@@ -45,6 +46,14 @@
 #include "object.h"
 
 namespace vistle {
+
+struct CompressionSettings {
+
+    FieldCompressionMode m_compress = Uncompressed;
+    double m_zfpRate = 8.;
+    int m_zfpPrecision = 8;
+    double m_zfpAccuracy = 1e-20;
+};
 
 template<class T>
 class shm_obj_ref;
@@ -88,9 +97,10 @@ typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
 struct SubArchiveDirectoryEntry {
     std::string name;
     bool is_array = false;
-    size_t size = 0;
+    size_t size = 0, compressedSize = 0;
     char *data = nullptr;
     std::unique_ptr<std::vector<char>> storage;
+    message::CompressionMode compression = message::CompressionNone;
 
     SubArchiveDirectoryEntry(): is_array(false), size(0), data(nullptr) {}
     SubArchiveDirectoryEntry(const std::string &name, bool is_array, size_t size, char *data)
@@ -188,7 +198,7 @@ struct yas_binary_oarchive
     }
 };
 
-class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<char>> {
+class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<char>>, public CompressionSettings {
 
     typedef vecostreambuf<char> Stream;
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
@@ -209,6 +219,8 @@ public:
     double zfpAccuracy() const;
     void setZfpPrecision(int precision);
     int zfpPrecision() const;
+
+    void setCompressionSettings(const CompressionSettings &other);
 
     yas_oarchive(Stream &mo, unsigned int flags=0);
 

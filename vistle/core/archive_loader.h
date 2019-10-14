@@ -74,7 +74,8 @@ struct V_COREEXPORT ArrayLoader {
 
 class V_COREEXPORT DeepArchiveFetcher: public Fetcher, public std::enable_shared_from_this<DeepArchiveFetcher> {
 public:
-    DeepArchiveFetcher(const std::map<std::string, std::vector<char>> &objects, const std::map<std::string, std::vector<char>> &arrays);
+    DeepArchiveFetcher(const std::map<std::string, std::vector<char>> &objects, const std::map<std::string, std::vector<char>> &arrays,
+                       const std::map<std::string, message::CompressionMode> &compressions, const std::map<std::string,size_t> &sizes);
 
     void requestArray(const std::string &name, int type, const ArrayCompletionHandler &completeCallback) override;
     void requestObject(const std::string &name, const ObjectCompletionHandler &completeCallback) override;
@@ -99,6 +100,8 @@ private:
 
     const std::map<std::string,std::vector<char>> &m_objects;
     const std::map<std::string,std::vector<char>> &m_arrays;
+    const std::map<std::string,message::CompressionMode> &m_compression;
+    const std::map<std::string,size_t> &m_rawSize;
 
     std::set<std::shared_ptr<ArrayLoader::ArrayOwner>> m_ownedArrays;
 };

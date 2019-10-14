@@ -153,6 +153,14 @@ int yas_oarchive::zfpPrecision() const {
     return m_zfpPrecision;
 }
 
+void yas_oarchive::setCompressionSettings(const CompressionSettings &other) {
+
+    m_compress = other.m_compress;
+    m_zfpRate = other.m_zfpRate;
+    m_zfpPrecision = other.m_zfpPrecision;
+    m_zfpAccuracy = other.m_zfpAccuracy;
+}
+
 yas_oarchive::yas_oarchive(yas_oarchive::Stream &mo, unsigned int flags)
 : yas_oarchive::Base(mo)
 , m_os(mo)

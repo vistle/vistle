@@ -6,8 +6,13 @@
 
 namespace vistle {
 
-DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, std::vector<char> > &objects, const std::map<std::string, std::vector<char> > &arrays)
-    : m_objects(objects), m_arrays(arrays) {}
+DeepArchiveFetcher::DeepArchiveFetcher(const std::map<std::string, std::vector<char> > &objects, const std::map<std::string, std::vector<char> > &arrays,
+                       const std::map<std::string, message::CompressionMode> &compressions, const std::map<std::string,size_t> &sizes)
+: m_objects(objects)
+, m_arrays(arrays)
+, m_compression(compressions)
+, m_rawSize(sizes)
+{}
 
 void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const ArrayCompletionHandler& completeCallback) {
     //std::cerr << "DeepArchiveFetcher: trying array " << arname << std::endl;
@@ -16,7 +21,26 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
         std::cerr << "DeepArchiveFetcher: did not find array " << arname << std::endl;
         return;
     }
-    vecistreambuf<char> vb(it->second);
+    message::CompressionMode comp = message::CompressionNone;
+    auto itc = m_compression.find(arname);
+    if (itc != m_compression.end()) {
+        comp = itc->second;
+    }
+    size_t size = 0;
+    auto its = m_rawSize.find(arname);
+    if (its != m_rawSize.end()) {
+        size = its->second;
+    }
+    std::vector<char> raw;
+    if (comp != message::CompressionNone) {
+        try {
+            raw = message::decompressPayload(comp, it->second.size(), size, it->second.data());
+        } catch (const std::exception &ex) {
+            std::cerr << "DeepArchiveFetcher: failed to decompress array " << arname << ": " << ex.what() << std::endl;
+            return;
+        }
+    }
+    vecistreambuf<char> vb(comp==message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     ArrayLoader loader(arname, type, ar);
@@ -24,8 +48,7 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
         //std::cerr << "DeepArchiveFetcher: success array " << arname << std::endl;
         m_ownedArrays.emplace(loader.owner());
         completeCallback(ar.translateArrayName(arname));
-    }
-    else {
+    } else {
         std::cerr << "DeepArchiveFetcher: failed to load array " << arname << std::endl;
     }
 }
@@ -37,15 +60,33 @@ void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCo
         std::cerr << "DeepArchiveFetcher: did not find object " << arname << std::endl;
         return;
     }
-    vecistreambuf<char> vb(it->second);
+    message::CompressionMode comp = message::CompressionNone;
+    auto itc = m_compression.find(arname);
+    if (itc != m_compression.end()) {
+        comp = itc->second;
+    }
+    size_t size = 0;
+    auto its = m_rawSize.find(arname);
+    if (its != m_rawSize.end()) {
+        size = its->second;
+    }
+    std::vector<char> raw;
+    if (comp != message::CompressionNone) {
+        try {
+            raw = message::decompressPayload(comp, it->second.size(), size, it->second.data());
+        } catch (const std::exception &ex) {
+            std::cerr << "DeepArchiveFetcher: failed to decompress object " << arname << ": " << ex.what() << std::endl;
+            return;
+        }
+    }
+    vecistreambuf<char> vb(comp==message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     Object::ptr obj(Object::loadObject(ar));
     if (obj && obj->isComplete()) {
         //std::cerr << "DeepArchiveFetcher: success object " << arname << ", created as " << obj->getName() << std::endl;
         completeCallback(obj);
-    }
-    else {
+    } else {
         std::cerr << "DeepArchiveFetcher: failed to load object " << arname << std::endl;
     }
 }

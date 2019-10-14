@@ -587,6 +587,8 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     comm.recv(sourceRank, 0, mem);
     vistle::SubArchiveDirectory dir;
     std::map<std::string, std::vector<char>> objects, arrays;
+    std::map<std::string, message::CompressionMode> comp;
+    std::map<std::string, size_t> rawsizes;
     comm.recv(sourceRank, 0, dir);
     for (auto &ent: dir) {
         if (ent.is_array) {
@@ -600,7 +602,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     }
     vecistreambuf<char> membuf(mem);
     vistle::iarchive memar(membuf);
-    auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+    auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
     memar.setFetcher(fetcher);
     Object::ptr p(Object::loadObject(memar));
     //std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
@@ -631,6 +633,8 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         mpi::broadcast(comm, mem, root);
         vistle::SubArchiveDirectory dir;
         std::map<std::string, std::vector<char>> objects, arrays;
+        std::map<std::string, message::CompressionMode> comp;
+        std::map<std::string, size_t> rawsizes;
         mpi::broadcast(comm, dir, root);
         for (auto &ent: dir) {
             if (ent.is_array) {
@@ -644,7 +648,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
         }
         vecistreambuf<char> membuf(mem);
         vistle::iarchive memar(membuf);
-        auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays);
+        auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);
         obj.reset(Object::loadObject(memar));
         //std::cerr << "broadcastObject recv " << obj->getName() << ": refcount=" << obj->refcount() << std::endl;
