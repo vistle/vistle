@@ -219,8 +219,18 @@ hid_t maptype<float>() {
 }
 
 template<>
+hid_t maptype<double>() {
+    return H5T_NATIVE_DOUBLE;
+}
+
+template<>
 hid_t maptype<unsigned int>() {
     return H5T_NATIVE_UINT;
+}
+
+template<>
+hid_t maptype<unsigned long>() {
+    return H5T_NATIVE_ULONG;
 }
 #endif
 
@@ -450,6 +460,7 @@ bool ReadItlrBin::prepareRead()
         int last = m_last->getValue();
         int step = m_increment->getValue();
         for (int port=0; port<NumPorts; ++port) {
+            m_fileList[port].clear();
             auto file = m_scalarFile[port];
             if (file.empty())
                 continue;
