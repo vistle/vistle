@@ -49,6 +49,7 @@ private:
     bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const;
     StructuredGrid::ptr generateGrid(Block *b) const;
 
+    std::map<int, StructuredGrid::ptr> outDataGrid;
 
     std::vector<std::string> fileList;
     int numFiles = 0;
@@ -60,6 +61,9 @@ private:
     StringParameter *m_filedir;
     StringParameter *m_gridChoiceX, *m_gridChoiceY, *m_gridChoiceZ;
     StringParameter *m_variables[NUMPARAMS];
+    StringParameter *m_varDim;
+
+    std::vector<std::string> varDimList = {"2D","3D","other"};
 
     IntParameter *m_numPartitions, *m_numPartitionsLat, *m_numPartitionsVer;
 

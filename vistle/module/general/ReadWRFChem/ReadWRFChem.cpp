@@ -24,13 +24,10 @@
 using namespace vistle;
 namespace bf = boost::filesystem;
 
-std::vector<std::string> AxisChoices;
-std::vector<std::string> VarDisplayList;
 
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)
     : vistle::Reader ("Read WRF Chem data files", name, moduleID, comm)
 {
-    //TODO: axisChoices should be set on start up (if dir given)
     ncFirstFile = NULL;
 
     m_gridOut = createOutputPort("grid_out", "grid");
@@ -38,6 +35,9 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
 
     m_numPartitionsLat = addIntParameter("num_partitions_lat", "number of partitions in lateral", 1);
     m_numPartitionsVer = addIntParameter("num_partitions_ver", "number of partitions in vertical", 1);
+
+    m_varDim = addStringParameter("var_dim","Dimension of variables","",Parameter::Choice);
+    setParameterChoices(m_varDim, varDimList);
     /*
     m_gridChoiceX = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
     m_gridChoiceY = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
@@ -72,14 +72,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParallelizationMode(Serial);
 
     observeParameter(m_filedir);
-    observeParameter(m_numPartitionsLat);
-    observeParameter(m_numPartitionsVer);
-    /*observeParameter(m_gridChoiceX);
-    observeParameter(m_gridChoiceY);
-    observeParameter(m_gridChoiceZ);*/
-
+    observeParameter(m_varDim);
 }
-
 
 
 ReadWRFChem::~ReadWRFChem() {
@@ -90,7 +84,7 @@ ReadWRFChem::~ReadWRFChem() {
 }
 
 
-
+// inspectDir: check validity of path and create list of files in directory
 bool ReadWRFChem::inspectDir() {
     //TODO :: check if file is NC format!
     std::string sFileDir = m_filedir->getValue();
@@ -104,16 +98,26 @@ bool ReadWRFChem::inspectDir() {
     fileList.clear();
     numFiles = 0;
 
-    if (!bf::is_directory(dir)) {
+    if (bf::is_directory(dir)) {
+        sendInfo("Locating files in %s", dir.string().c_str());
+        for (bf::directory_iterator it(dir) ; it != bf::directory_iterator(); ++it) {
+            if (bf::is_regular_file(it->path())) {
+                   // std::string fName = it->path().filename().string();
+                   std::string fPath = it->path().string();
+                   fileList.push_back(fPath);
+                   ++numFiles;
+            }
+        }
+    }else if (bf::is_regular_file(dir)) {
+        std::string fName = dir.string();
+        sendInfo("Loading file %s", fName.c_str());
+        fileList.push_back(fName);
+        ++numFiles;
+    }else {
         sendInfo("Could not find given directory. Please specify a valid path");
         return false;
     }
-    sendInfo("Locating files in %s", dir.string().c_str());
-    for (bf::directory_iterator it(dir) ; it != bf::directory_iterator(); ++it) {
-        std::string fName = it->path().filename().string();
-        fileList.push_back(fName);
-        ++numFiles;
-    }
+
     if (numFiles > 1) {
         std::sort(fileList.begin(), fileList.end(), [](std::string a, std::string b) {return a<b;}) ;
     }
@@ -125,19 +129,45 @@ bool ReadWRFChem::inspectDir() {
 
 bool ReadWRFChem::prepareRead() {
     if (!ncFirstFile) {
-        sendError("Please specify a valid directory");
-        return false;
+        ReadWRFChem::examine(nullptr);
     }
+
+ /*   if (ncFirstFile->is_valid()) {
+        for (int vi=0; vi<NUMPARAMS; ++vi) {
+            std::string name = "";
+            int nDim = 0;
+            NcToken refDim[4]={"","","",""};
+
+            name = m_variables[vi]->getValue();
+            if ((name != "") && (name != "NONE")) {
+                NcVar* var = ncFirstFile->get_var(name.c_str());
+                nDim = var->num_dims();
+                if (strcmp(refDim[0],"")!=0) {
+                    for(int di=0; di<nDim;++di) {
+                         NcDim *dim = var->get_dim(di);
+                         if (dim->name() != refDim[di]) {
+                             sendInfo("Variables rely on different dimensions. Please select matching variables");
+                             return false;
+                         }
+                    }
+                }else {
+                    for(int di=0; di<nDim;++di) {
+                        refDim[di]=var->get_dim(di)->name();
+                    }
+                }
+            }
+        }
+    }
+*/
     int N_p = static_cast<int>( m_numPartitionsLat->getValue() * m_numPartitionsLat->getValue() * m_numPartitionsVer->getValue());
     setPartitions(N_p);
    return true;
 }
 
 
-
 bool ReadWRFChem::examine(const vistle::Parameter *param) {
 
-    if (!param || param == m_filedir) {
+    if (!param || param == m_filedir || param == m_varDim) {
        if (!inspectDir())
            return false;
        sendInfo("File %s is used as base", fileList.front().c_str());
@@ -146,31 +176,75 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
            delete ncFirstFile;
            ncFirstFile = nullptr;
        }
-       std::string sDir = m_filedir->getValue() + "/" + fileList.front();
+       std::string sDir =/* m_filedir->getValue() + "/" + */fileList.front();
        ncFirstFile = new NcFile(sDir.c_str(), NcFile::ReadOnly, NULL, 0, NcFile::Offset64Bits);
 
        if (ncFirstFile->is_valid()) {
+
+            std::vector<std::string> AxisChoices;
+            std::vector<std::string> Axis2dChoices;
+
             NcVar *var;
             AxisChoices.clear();
+            Axis2dChoices.clear();
 
-            if (!ncFirstFile->is_valid()) {
+            /*if (!ncFirstFile->is_valid()) {
                 sendInfo("Failed to access file");
                 return false;
-            }
+            }*/
+            int num3dVars = 0;
             int num2dVars = 0;
             int nVar = ncFirstFile->num_vars();
+
+            char *newEntry = new char[50];
+            bool is_fav = false;
+            std::vector<std::string> favVars = {"co","no2","PM10","o3","U","V","W"};
+
             for (int i = 0; i < nVar; ++i) {
                 var = ncFirstFile->get_var(i);
-                if (var->num_dims() > 3) {          //currently: only 3D (in space) can be read, as o.w. issues in further modules
-                    char *newEntry = new char[50];
-                    strcpy(newEntry, var->name());
-                    AxisChoices.push_back(newEntry);
+                strcpy(newEntry, var->name());
+
+                if (var->num_dims() > 3) {
+                    for (std::string fav : favVars) {
+                        if (strcmp(var->name(), fav.c_str()) == 0) {
+                            AxisChoices.insert(AxisChoices.begin(), newEntry);
+                            is_fav = true;
+                            break;
+                        }
+                    }
+                    if (is_fav == false)
+                        AxisChoices.push_back(newEntry);
+                    num3dVars++;
+                    is_fav = false;
+                }else if (var->num_dims() > 2) {
+                    for (std::string fav : favVars) {
+                        if (strcmp(newEntry, fav.c_str()) == 0) {
+                            Axis2dChoices.insert(Axis2dChoices.begin(), newEntry);
+                            break;
+                        }
+                    }
+                    if (is_fav == false)
+                        Axis2dChoices.push_back(newEntry);
                     num2dVars++;
+                    is_fav = false;
                 }
             }
-            AxisChoices.push_back("NONE");
-            for (int i = 0; i < NUMPARAMS; i++)
-                setParameterChoices(m_variables[i], AxisChoices);
+            delete [] newEntry;
+
+            AxisChoices.insert(AxisChoices.begin(),"NONE");
+            Axis2dChoices.insert(Axis2dChoices.begin(),"NONE");
+
+            if (strcmp(m_varDim->getValue().c_str(),varDimList[1].c_str())==0) {//3D
+                sendInfo("Variable dimension: 3D");
+                for (int i = 0; i < NUMPARAMS; i++)
+                    setParameterChoices(m_variables[i], AxisChoices);
+            }else if (strcmp(m_varDim->getValue().c_str(),varDimList[0].c_str())==0) { //2D
+                sendInfo("Variable dimension: 2D");
+                for (int i = 0; i < NUMPARAMS; i++)
+                    setParameterChoices(m_variables[i], Axis2dChoices);
+            }else {
+                sendInfo("Please select the dimension of variables");
+            }
 
             /*setParameterChoices(m_gridChoiceX, AxisChoices);
             setParameterChoices(m_gridChoiceY, AxisChoices);
@@ -183,27 +257,23 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
         }
     }
 
-
-    /*if ((param == m_numPartitionsLat) || (param == m_numPartitionsVer)) {
-       int N_p = static_cast<int>( m_numPartitionsLat->getValue() * m_numPartitionsLat->getValue() * m_numPartitionsVer->getValue());
-       setPartitions(N_p);
-    }*/
     return true;
 }
 
-
+//setMeta: set the meta data
 void ReadWRFChem::setMeta(Object::ptr obj, int blockNr, int totalBlockNr, int timestep) const {
     if(!obj)
         return;
 
     obj->setTimestep(timestep);
-    obj->setNumTimesteps(numFiles);
+    //obj->setNumTimesteps(numFiles);
     obj->setRealTime(0);
 
     obj->setBlock(blockNr);
     obj->setNumBlocks(totalBlockNr == 0 ? 1 : totalBlockNr);
 }
 
+//emptyValue: check if variable selction is empty
 bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) const {
     std::string name = "";
     name = ch->getValue();
@@ -212,40 +282,37 @@ bool ReadWRFChem::emptyValue(vistle::StringParameter *ch) const {
     else return false;
 }
 
-
+//computeBlock: compute indices of current block and ghost cells
 ReadWRFChem::Block ReadWRFChem::computeBlock(int part, int nBlocks, long blockBegin, long cellsPerBlock, long numCellTot) const {
-    int partIdx = (blockBegin == 0 ? 0 : (blockBegin/cellsPerBlock));
+    int partIdx = blockBegin/cellsPerBlock;
+    int begin = blockBegin, end = blockBegin + cellsPerBlock + 1;
+    int numGhostBeg = 0, numGhostEnd = 0;
 
-    int begin = 0, end = nBlocks;
-    int beginghost = 0, endghost = 0;
-    if (part >= 0)  {
-        begin = blockBegin;
-        end = begin + cellsPerBlock;
-        if (partIdx > 0) {
-            --begin;
-            beginghost = 1;
-        }
-        if (partIdx < nBlocks-1) {
-            ++end;
-            endghost = 1;
-        } else {
-            end = numCellTot;
-        }
+    if (begin > 0) {
+        --begin;
+        numGhostBeg = 1;
+    }
+
+    if (partIdx == nBlocks - 1) {
+        end = numCellTot;
+    }else if (end < numCellTot - 1) {
+        ++end;
+        numGhostEnd = 1;
     }
 
     Block block;
     block.part = part;
     block.begin = begin;
     block.end = end;
-    block.ghost[0] = beginghost;
-    block.ghost[1] = endghost;
+    block.ghost[0] = numGhostBeg;
+    block.ghost[1] = numGhostEnd;
 
     return block;
 }
 
+//generateGrid: set grid coordinates for block b and attach ghosts
 StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
-
     StructuredGrid::ptr outGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
     outGrid->setGrid(outGrid);
     auto ptrOnXcoords = outGrid->x().data();
@@ -269,8 +336,10 @@ StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
 
     outGrid->updateInternals();
     return outGrid;
+
 }
 
+//addDataToPort: read and set values for variable and add them to the output port
 bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const {
 
     NcVar *varData = ncDataFile->get_var(m_variables[vi]->getValue().c_str());
@@ -278,15 +347,15 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Struct
     long *curs = varData->edges();
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
 
-    curs[numDimElem-1] = b[2].begin;
-    curs[numDimElem-2] = b[1].begin;
     curs[numDimElem-3] = b[0].begin;
+    curs[numDimElem-2] = b[1].begin;
+    curs[numDimElem-1] = b[2].begin;
     curs[0] = 0;
 
     long *numElem = varData->edges();
-    numElem[numDimElem-1] = bSizeZ;
-    numElem[numDimElem-2] = bSizeY;
     numElem[numDimElem-3] = bSizeX;
+    numElem[numDimElem-2] = bSizeY;
+    numElem[numDimElem-1] = bSizeZ;
     numElem[0] = 1;
 
     Vec<Scalar>::ptr obj(new Vec<Scalar>(bSizeX*bSizeY*bSizeZ));
@@ -307,9 +376,6 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Struct
 
 
 bool ReadWRFChem::read(Token &token, int timestep, int block) {
-    /*TODO:
-     *  x better use uniform grid?
-    */
     int numBlocksLat = m_numPartitionsLat->getValue();
     int numBlocksVer = m_numPartitionsVer->getValue();
     if ((numBlocksLat <= 0) || (numBlocksVer <= 0)) {
@@ -324,7 +390,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             long *edges;
             int numdims = 0;
 
-            //find number of dimensions and sizes
+            //TODO: number of dimensions can be set by any variable, when check in prepareRead is used to ensure matching dimensions of all variables
             for (int vi = 0; vi < NUMPARAMS; vi++) {
                std::string name = "";
                name = m_variables[vi]->getValue();
@@ -343,7 +409,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             }
 
             int nx = edges[numdims - 3] /*Bottom_Top*/, ny = edges[numdims - 2] /*South_North*/, nz = edges[numdims - 1]/*East_West*/;//, nTime = edges[0] /*TIME*/ ;
-            long blockSizeVer = nx/numBlocksVer, blockSizeLat = ny/numBlocksLat;
+            long blockSizeVer = (nx)/numBlocksVer, blockSizeLat = (ny)/numBlocksLat;
             if (numdims <= 3) {
                 nx = 1;
                 blockSizeVer = 1;
@@ -360,58 +426,42 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             int blockYbegin = ((static_cast<long>((block % (numBlocksLat*numBlocksLat)) / numBlocksLat)) * blockSizeLat);
             int blockZbegin = (block % numBlocksLat)*blockSizeLat;
 
-
-            //set the ghost cells
             Block b[3];
-            for (int d = 0; d < 3; ++d) {
 
-                int nBlocks = numBlocksLat;
-                int cellsPerBlock = blockSizeLat;
-                int blockBegin;
-                long numCellTot;
+            b[0] = computeBlock(block, numBlocksVer, blockXbegin, blockSizeVer, nx );
+            b[1] = computeBlock(block, numBlocksLat, blockYbegin, blockSizeLat, ny );
+            b[2] = computeBlock(block, numBlocksLat, blockZbegin, blockSizeLat, nz );
 
-                if ( d == 0) {
-                    nBlocks = numBlocksVer;
-                    blockBegin = blockXbegin;
-                    cellsPerBlock = blockSizeVer;
-                    numCellTot = nx;
-                } else if ( d == 1) {
-                    blockBegin = blockYbegin;
-                    numCellTot = ny;
-                } else {
-                    blockBegin = blockZbegin;
-                    numCellTot = nz;
-                }
-
-                b[d] = computeBlock(block, nBlocks, blockBegin, cellsPerBlock, numCellTot);
-            }
-
-            //********* GRID *************
-            StructuredGrid::ptr outDataGrid = generateGrid(b);
-            setMeta(outDataGrid, block, numBlocks, -1);
-            outDataGrid->setNumTimesteps(-1);
-            token.addObject(m_gridOut, outDataGrid);
-
-            // ******** DATA *************
-            for (int t = 0; t < numFiles; ++t) {
-                std::string sDir = m_filedir->getValue() + "/" + fileList.at(t);
+            if (timestep < 0) {
+                //********* GRID *************
+                outDataGrid[block] = generateGrid(b);
+                setMeta(outDataGrid[block], block, numBlocks, -1);
+                //outDataGrid->setNumTimesteps(-1);
+                token.addObject(m_gridOut, outDataGrid[block]);
+            }else {
+                // ******** DATA *************
+                std::string sDir = /*m_filedir->getValue() + "/" + */ fileList.at(timestep);
                 NcFile *ncDataFile = new NcFile(sDir.c_str(), NcFile::ReadOnly, NULL, 0, NcFile::Offset64Bits);
+
                 if (! ncDataFile->is_valid()) {
-                    sendError("Could not open data file at time %i", t);
+                    sendError("Could not open data file at time %i", timestep);
                     return false;
                 }
 
                 for (int vi = 0; vi < NUMPARAMS; ++vi) {
                     if (emptyValue(m_variables[vi])) {
-                        continue;
+                        sendInfo("No data for variable found");
+                        return false;
                     }
-                    addDataToPort(token, ncDataFile, vi, outDataGrid, b,  block, t);
+                    addDataToPort(token, ncDataFile, vi, outDataGrid[block], b,  block, timestep);
                 }
                 delete ncDataFile;
+                ncDataFile = nullptr;
             }
-
+            return true;
         }
-    return true;
+    return false;
+
 }
 
 bool ReadWRFChem::finishRead() {
