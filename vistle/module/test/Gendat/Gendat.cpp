@@ -470,37 +470,55 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         }
     }
 
-    Vec<Scalar,1>::ptr scalar(new Vec<Scalar,1>(numVert));
-    scalar->setBlock(block);
-    if (time >= 0)
-        scalar->setTimestep(time);
-    Vec<Scalar,3>::ptr vector(new Vec<Scalar,3>(numVert));
-    vector->setBlock(block);
-    if (time >= 0)
-        vector->setTimestep(time);
+    Vec<Scalar,1>::ptr scalar;
+    if (isConnected("data_out0")) {
+        scalar.reset(new Vec<Scalar,1>(numVert));
+        scalar->setBlock(block);
+        if (time >= 0)
+            scalar->setTimestep(time);
+    }
+    Vec<Scalar,3>::ptr vector;
+    if (isConnected("data_out1")) {
+        vector.reset(new Vec<Scalar,3>(numVert));
+        vector->setBlock(block);
+        if (time >= 0)
+            vector->setTimestep(time);
+    }
 
     const int dtime = time<0 ? 0 : time;
     if (m_elementData->getValue()) {
 
         const GridInterface *grid = geoOut->getInterface<GridInterface>();
-        setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCells(vector->x().data(), grid, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCells(vector->y().data(), grid, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCells(vector->z().data(), grid, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        if (scalar) {
+            setDataCells(scalar->x().data(), grid, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
+        if (vector) {
+            setDataCells(vector->x().data(), grid, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(vector->y().data(), grid, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCells(vector->z().data(), grid, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
     } else if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
         const Scalar *yy = coord->y().data();
         const Scalar *zz = coord->z().data();
 
-        setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        if (scalar) {
+            setDataCoords(scalar->x().data(), numVert, xx, yy, zz, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
+        if (vector) {
+            setDataCoords(vector->x().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(vector->y().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataCoords(vector->z().data(), numVert, xx, yy, zz, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
     } else {
-        setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
-        setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        if (scalar) {
+            setDataUniform(scalar->x().data(), dim, min, max, (DataMode)m_dataModeScalar->getValue(), m_dataScaleScalar->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
+        if (vector) {
+            setDataUniform(vector->x().data(), dim, min, max, (DataMode)m_dataMode[0]->getValue(), m_dataScale[0]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(vector->y().data(), dim, min, max, (DataMode)m_dataMode[1]->getValue(), m_dataScale[1]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+            setDataUniform(vector->z().data(), dim, min, max, (DataMode)m_dataMode[2]->getValue(), m_dataScale[2]->getValue(), (AnimDataMode)m_animData->getValue(), dtime);
+        }
     }
 
     if (geoOut) {
@@ -509,14 +527,22 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         if (time >= 0)
             geoOut->setTimestep(time);
         token.addObject("grid_out", geoOut);
-        scalar->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
-        scalar->setGrid(geoOut);
-        vector->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
-        vector->setGrid(geoOut);
+        if (scalar) {
+            scalar->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
+            scalar->setGrid(geoOut);
+        }
+        if (vector) {
+            vector->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
+            vector->setGrid(geoOut);
+        }
     }
 
-    scalar->addAttribute("_species", "scalar");
-    token.addObject("data_out0", scalar);
-    vector->addAttribute("_species", "vector");
-    token.addObject("data_out1", vector);
+    if (scalar) {
+        scalar->addAttribute("_species", "scalar");
+        token.addObject("data_out0", scalar);
+    }
+    if (vector) {
+        vector->addAttribute("_species", "vector");
+        token.addObject("data_out1", vector);
+    }
 }
