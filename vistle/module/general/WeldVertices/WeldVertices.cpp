@@ -5,6 +5,7 @@
 #include <core/normals.h>
 #include <core/grid.h>
 #include <core/database.h>
+#include <core/unstr.h>
 
 class WeldVertices: public vistle::Module {
   static const int NumPorts = 3;
@@ -122,6 +123,12 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         }
     }
 
+    auto coord = Coords::as(grid);
+    if (!coord) {
+        sendError("did not receive Coords as input");
+        return true;
+    }
+
     Object::ptr ogrid;
     std::vector<Index> remap;
     std::map<Point, Index> indexMap;
@@ -136,7 +143,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
 
         Triangles::ptr ntri(new Triangles(num, 0));
         Index *ncl = ntri->cl().data();
-        auto &nx=ntri->x(), &ny=ntri->y(), &nz=ntri->z();
 
         if (cl) {
             Index count = 0;
@@ -148,9 +154,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[i] = idx-1;
             }
@@ -164,9 +167,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[v] = idx-1;
             }
@@ -185,7 +185,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
 
         Quads::ptr nquad(new Quads(num, 0));
         Index *ncl = nquad->cl().data();
-        auto &nx=nquad->x(), &ny=nquad->y(), &nz=nquad->z();
 
         if (cl) {
             Index count = 0;
@@ -197,9 +196,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[i] = idx-1;
             }
@@ -213,9 +209,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[v] = idx-1;
             }
@@ -231,13 +224,12 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
         const Scalar *x=idx->x(), *y=idx->y(), *z=idx->z();
         remap.reserve(num);
 
-        auto nidx = idx->clone();
+        Indexed::ptr nidx = idx->clone();
         nidx->resetArrays();
         nidx->resetCorners();
         nidx->cl().resize(num);
 
         Index *ncl = nidx->cl().data();
-        auto &nx=nidx->x(), &ny=nidx->y(), &nz=nidx->z();
 
         if (cl) {
             Index count = 0;
@@ -249,9 +241,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[i] = idx-1;
             }
@@ -265,9 +254,6 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
                 if (idx == 0) {
                     remap.push_back(v);
                     idx = ++count;
-                    nx.push_back(x[v]);
-                    ny.push_back(y[v]);
-                    nz.push_back(z[v]);
                 }
                 ncl[v] = idx-1;
             }
@@ -279,6 +265,24 @@ bool WeldVertices::compute(std::shared_ptr<PortTask> task) const {
 
     if (ogrid) {
         ogrid->copyAttributes(grid);
+    }
+    auto ncoord = Coords::as(ogrid);
+    if (!ncoord) {
+        sendError("did not create Coords");
+        return true;
+    }
+
+    const auto ix = &coord->x()[0];
+    const auto iy = &coord->y()[0];
+    const auto iz = &coord->z()[0];
+    ncoord->setSize(remap.size());
+    auto nx = &ncoord->x()[0];
+    auto ny = &ncoord->y()[0];
+    auto nz = &ncoord->z()[0];
+    for (Index i=0; i<remap.size(); ++i) {
+        nx[i] = ix[remap[i]];
+        ny[i] = iy[remap[i]];
+        nz[i] = iz[remap[i]];
     }
 
     if (normals) {
