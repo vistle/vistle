@@ -108,6 +108,8 @@ Cache::~Cache() {
 
 #define CERR std::cerr << "Cache: "
 
+namespace {
+
 struct Header {
     endianness endian = file_endian;
     char Vistle[7] = "vistle";
@@ -117,7 +119,7 @@ struct Header {
 };
 
 ssize_t swrite(int fd, const void *buf, size_t n) {
-    size_t tot = 0;
+    ssize_t tot = 0;
     while (tot < n) {
         ssize_t result = write(fd, static_cast<const char *>(buf)+tot, n-tot);
         if (result < 0) {
@@ -131,7 +133,7 @@ ssize_t swrite(int fd, const void *buf, size_t n) {
 }
 
 ssize_t sread(int fd, void *buf, size_t n) {
-    size_t tot = 0;
+    ssize_t tot = 0;
     while (tot < n) {
         ssize_t result = read(fd, static_cast<char *>(buf)+tot, n-tot);
         if (result < 0) {
@@ -139,6 +141,8 @@ ssize_t sread(int fd, void *buf, size_t n) {
             return result;
         }
         tot += result;
+        if (result == 0)
+            break;
     }
 
     return tot;
@@ -401,6 +405,8 @@ bool Read<SubArchiveDirectoryEntry>(int fd, SubArchiveDirectoryEntry &ent) {
 #endif
 
     return true;
+}
+
 }
 
 bool Cache::compute() {
