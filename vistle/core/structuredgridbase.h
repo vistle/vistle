@@ -88,24 +88,22 @@ public:
        assert(coords[2] < dims[2]-1 || coords[2]==0);
        return coords;
    }
-   static inline std::vector<Index> cellVertices(Index el, const Index dims[3]) {
+   static inline std::array<Index,8> cellVertices(Index el, const Index dims[3]) {
        auto &H = HexahedronIndices;
        std::array<Index,3> n = cellCoordinates(el, dims);
-       std::vector<Index> cl;
+       std::array<Index,8> cl;
        if (dims[2] > 1) {
-           cl.resize(8);
            for (int i=0; i<8; ++i) {
                cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
            }
        } else if (dims[1] > 1) {
-           cl.resize(4);
+           // return same index several times for lower-dimensional cells
            for (int i=0; i<4; ++i) {
-               cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
+               cl[i+4] = cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
            }
        } else if (dims[0] > 1) {
-           cl.resize(2);
            for (int i=0; i<2; ++i) {
-               cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
+               cl[i+6] = cl[i+4] = cl[i+2] = cl[i] = vertexIndex(n[0]+H[0][i], n[1]+H[1][i], n[2]+H[2][i], dims);
            }
        }
        return cl;

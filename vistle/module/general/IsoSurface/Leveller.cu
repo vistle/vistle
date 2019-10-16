@@ -679,8 +679,9 @@ struct ComputeOutput {
       } else {
 
           auto cl = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
+          assert(cl.size() <= 8);
           Scalar field[8];
-          for (int idx = 0; idx < 8; idx ++) {
+          for (int idx = 0; idx < cl.size(); idx ++) {
               field[idx] = m_data.m_isoFunc(cl[idx]);
           }
 
@@ -1028,7 +1029,8 @@ struct ComputeOutputSizes {
            numVerts = vertcounter + vertcounter/2;
        } else {
            auto verts = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
-           for (int idx = 0; idx < 8; ++idx) {
+           assert(verts.size() <= 8);
+           for (int idx = 0; idx < verts.size(); ++idx) {
                tableIndex += (((int) (m_data.m_isoFunc(verts[idx]) > m_data.m_isovalue)) << idx);
            }
            numVerts = hexaNumVertsTable[tableIndex];
