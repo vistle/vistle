@@ -362,7 +362,7 @@ std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t ra
     }
     case CompressionLz4: {
 #ifdef HAVE_LZ4
-        int n = LZ4_decompress_safe(compressed, decompressed.data(), rawsize, decompressed.size());
+        int n = LZ4_decompress_safe(compressed, decompressed.data(), size, decompressed.size());
         if (n != rawsize) {
             std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
         }
@@ -384,9 +384,6 @@ std::vector<char> decompressPayload(CompressionMode mode, size_t size, size_t ra
 }
 
 std::vector<char> decompressPayload(const Message &msg, std::vector<char> &compressed) {
-
-    if (msg.payloadCompression() == CompressionNone)
-        return std::move(compressed);
 
     assert(compressed.size() >= msg.payloadSize());
 
