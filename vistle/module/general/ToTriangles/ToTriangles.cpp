@@ -99,7 +99,7 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem=0, Ind
    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
    if (auto tex = Texture1D::as(src)) {
-       auto vec1 = Vec<Scalar, 1>::as(Object::as(result));
+       auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
        vassert(vec1);
        auto result2 = tex->clone();
        result2->d()->x[0] = vec1->d()->x[0];

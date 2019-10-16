@@ -138,10 +138,8 @@ public:
    virtual bool isEmpty() const;
    virtual bool isEmpty();
 
-   template<class ObjectType>
-   static std::shared_ptr<const Object> as(std::shared_ptr<const ObjectType> ptr) { return std::static_pointer_cast<const Object>(ptr); }
-   template<class ObjectType>
-   static std::shared_ptr<Object> as(std::shared_ptr<ObjectType> ptr) { return std::static_pointer_cast<Object>(ptr); }
+   static std::shared_ptr<Object> as(std::shared_ptr<Object> ptr) { return ptr; }
+   static std::shared_ptr<const Object> as(std::shared_ptr<const Object> ptr) { return ptr; }
 
    shm_handle_t getHandle() const;
 
