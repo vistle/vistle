@@ -412,6 +412,8 @@ bool Read<SubArchiveDirectoryEntry>(int fd, SubArchiveDirectoryEntry &ent) {
 bool Cache::compute() {
 
     if (m_fromDisk) {
+        for (int i=0; i<NumPorts; ++i) {
+            accept<Object>(m_inPort[i]);
         return true;
     }
 
