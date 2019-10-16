@@ -21,8 +21,8 @@ DomainSurface::DomainSurface(const std::string &name, int moduleID, mpi::communi
    addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
    addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean);
    addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean);
-   addIntParameter("triangle", "Show triangle", 1, Parameter::Boolean);
-   addIntParameter("quad", "Show quad", 1, Parameter::Boolean);
+   addIntParameter("triangle", "Show triangle", 0, Parameter::Boolean);
+   addIntParameter("quad", "Show quad", 0, Parameter::Boolean);
    addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0, Parameter::Boolean);
 }
 
