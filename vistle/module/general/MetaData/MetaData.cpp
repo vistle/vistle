@@ -5,6 +5,7 @@
 #include <core/triangles.h>
 #include <core/geometry.h>
 #include <core/vec.h>
+#include <core/unstr.h>
 #include <util/math.h>
 
 #include "MetaData.h"
@@ -14,6 +15,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(MetaAttribute,
       (BlockNumber)
       (TimestepNumber)
       (VertexIndex)
+      (ElementIndex)
+      (ElementType)
 )
 
 using namespace vistle;
@@ -47,8 +50,6 @@ bool MetaData::compute() {
    DataBase::const_ptr data;
    if (grid) {
        data = DataBase::as(obj);
-       if (!data)
-           return true;
    } else {
       data = DataBase::as(obj);
       if (!data) {
@@ -61,13 +62,59 @@ bool MetaData::compute() {
       }
    }
 
-   Index N = data->getSize();
+   auto indexed = Indexed::as(grid);
+   auto unstr = UnstructuredGrid::as(grid);
+   auto geoif = grid->getInterface<GeometryInterface>();
+   assert(geoif);
+
+   std::string species;
+   const unsigned char *tl = nullptr;
+   const Index kind = m_kind->getValue();
+   DataBase::Mapping mapping = DataBase::Vertex;
+   switch (kind) {
+   case MpiRank:
+       species = "rank";
+       break;
+   case BlockNumber:
+       species = "block";
+       break;
+   case TimestepNumber:
+       species = "timestep";
+       break;
+   case VertexIndex:
+       species = "vertex";
+       break;
+   case ElementIndex:
+       species = "elem_index";
+       if (indexed) {
+           mapping = DataBase::Element;
+       } else {
+           sendError("ElementIndex requires Indexed as input");
+           return true;
+       }
+       break;
+   case ElementType:
+       species = "elem_type";
+       if (unstr) {
+           mapping = DataBase::Element;
+           tl = &unstr->tl()[0];
+       } else {
+           sendError("ElementType requires UnstructuredGrid as input");
+           return true;
+       }
+       break;
+   default:
+       species = "zero";
+       break;
+   }
+
+   Index N = mapping==DataBase::Element ? indexed->getNumElements() : geoif->getNumVertices();
+
    Vec<Index>::ptr out(new Vec<Index>(N));
    auto val = out->x().data();
 
-   const Index kind = m_kind->getValue();
-   const Index block = data->getBlock();
-   const Index timestep = data->getTimestep();
+   const Index block = data ? data->getBlock() : grid->getBlock();
+   const Index timestep = getTimestep(obj);
 
    const Index min = m_range->getValue()[0];
    const Index max = m_range->getValue()[1];
@@ -78,6 +125,9 @@ bool MetaData::compute() {
          case BlockNumber: val[i] = block; break;
          case TimestepNumber: val[i] = timestep; break;
          case VertexIndex: val[i] = i; break;
+         case ElementIndex: val[i] = i; break;
+         case ElementType: val[i] = tl[i]; break;
+
          default: val[i] = 0; break;
       }
       if (mod > 0)
@@ -85,17 +135,11 @@ bool MetaData::compute() {
       val[i] = clamp(val[i], min, max);
    }
 
-   std::string species;
-   switch(kind) {
-   case MpiRank: species = "rank"; break;
-   case BlockNumber: species = "block"; break;
-   case TimestepNumber: species = "timestep"; break;
-   case VertexIndex: species = "vertex"; break;
-   default: species = "zero"; break;
-   }
 
    out->addAttribute("_species", species);
-   out->setMeta(data->meta());
+   if (data)
+       out->setMeta(data->meta());
+   out->setMapping(mapping);
    out->setGrid(grid);
    addObject("data_out", out);
 
