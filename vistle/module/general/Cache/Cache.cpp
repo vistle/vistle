@@ -389,7 +389,7 @@ bool Read<SubArchiveDirectoryEntry>(int fd, SubArchiveDirectoryEntry &ent) {
         return false;
     }
 
-#if 0
+#if 0 // decompression occurs on demand
     if (comp != message::CompressionNone) {
         CERR << "trying to decompress " << ent.compressedSize << " bytes to " << ent.size << " for " << ent.name << std::endl;
         try {
@@ -414,6 +414,7 @@ bool Cache::compute() {
     if (m_fromDisk) {
         for (int i=0; i<NumPorts; ++i) {
             accept<Object>(m_inPort[i]);
+        }
         return true;
     }
 
