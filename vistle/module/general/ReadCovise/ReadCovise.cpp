@@ -211,17 +211,10 @@ bool ReadCovise::prepareRead()
         }
 
         if (port > 0) {
-            if (m_numObj[port] != m_numObj[0]) {
-                sendError("number of objects in %s and %s do not match",
-                          m_filename[0].c_str(),
-                          m_filename[port].c_str());
-                finishRead();
-                return false;
-            }
             if (m_numTime[port] != m_numTime[0]) {
-                sendError("number of timesteps in %s and %s do not match",
-                          m_filename[0].c_str(),
-                          m_filename[port].c_str());
+                sendError("number of timesteps in %s (%d) and %s (%d) do not match",
+                          m_filename[0].c_str(), m_numTime[0],
+                          m_filename[port].c_str(), m_numTime[port]);
                 finishRead();
                 return false;
             }
@@ -792,7 +785,7 @@ Object::ptr ReadCovise::readGEOTEX(Token &token, const int port, int fd, const b
 
    vassert(elem);
    vassert(port == 0);
-   // XXX: handle sets in GEOTEX
+   // FIXME: handle sets in GEOTEX
 
    const size_t ncomp = 4;
    int contains[ncomp] = { 0, 0, 0, 0 };
@@ -864,7 +857,7 @@ vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd,
     }
 
     if (!elem->referenced->obj) {
-        //std::cerr << "ReadCovise: OBJREF to SETELE - not supported" << std::endl;
+        std::cerr << "ReadCovise: OBJREF to SETELE - not supported" << std::endl;
     }
     return elem->referenced->obj;
 }
