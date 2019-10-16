@@ -375,7 +375,7 @@ bool GenIsoDat::compute() {
           numVert = 4;
           numShift = 2;
           numElements = 1;
-       };
+       }
 
        cl.push_back(3);
        cl.push_back(1);
@@ -423,7 +423,7 @@ bool GenIsoDat::compute() {
        el.push_back(16);
 
        for(Index i = 0; i < numElements; i++){
-          tl.push_back(UnstructuredGrid::POLYHEDRON);
+          tl.push_back(UnstructuredGrid::VPOLYHEDRON);
        }
 
        std::bitset<4> newdata;

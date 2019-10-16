@@ -348,7 +348,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
       if (!showgho && ghost)
           continue;
       unsigned char t = tl[i] & UnstructuredGrid::TYPE_MASK;
-      if (t == UnstructuredGrid::POLYHEDRON) {
+      if (t == UnstructuredGrid::VPOLYHEDRON) {
           if (showpol) {
               Index j=elStart;
               while (j<elEnd) {
@@ -367,6 +367,30 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
               }
               if (j != elEnd) {
                   std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
+              }
+          }
+      } else if (t == UnstructuredGrid::CPOLYHEDRON) {
+          if (showpol) {
+              Index facestart = InvalidIndex;
+              Index term = 0;
+              for (Index j=elStart; j<elEnd; ++j) {
+                  if (facestart == InvalidIndex) {
+                      facestart = j;
+                      term = cl[j];
+                  } else if (cl[j] == term) {
+                      Index numVert = j - facestart;
+                      if (numVert >= 3) {
+                          auto face = &cl[facestart];
+                          Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
+                          if (neighbour == InvalidIndex) {
+                              const Index *begin = &face[0], *end=&face[numVert];
+                              auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
+                              std::copy(rbegin, rend, std::back_inserter(pcl));
+                              pl.push_back(pcl.size());
+                          }
+                      }
+                      facestart = InvalidIndex;
+                  }
               }
           }
       } else {

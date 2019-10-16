@@ -104,7 +104,8 @@ bool ShowGrid::compute() {
               if (!showpri) { continue; } break;
           case UnstructuredGrid::HEXAHEDRON:
               if (!showhex) { continue; } break;
-          case UnstructuredGrid::POLYHEDRON:
+          case UnstructuredGrid::VPOLYHEDRON:
+          case UnstructuredGrid::CPOLYHEDRON:
               if (!showpol) { continue; } break;
           case UnstructuredGrid::QUAD:
               if (!showqua) { continue; } break;
@@ -131,13 +132,28 @@ bool ShowGrid::compute() {
               }
               break;
           }
-          case UnstructuredGrid::POLYHEDRON: {
-              for (Index i = begin; i < end; i += icl[i]) {
+          case UnstructuredGrid::VPOLYHEDRON: {
+              for (Index i = begin; i < end; i += icl[i]+1) {
                   const Index numFaceVert = icl[i];
                   for (Index k=i+1; k<i+numFaceVert+1; ++k)
                       ocl.push_back(icl[k]);
                   ocl.push_back(icl[i+1]);
                   oel.push_back(ocl.size());
+              }
+              break;
+          }
+          case UnstructuredGrid::CPOLYHEDRON: {
+              Index facestart = InvalidIndex;
+              Index term = 0;
+              for (Index i = begin; i < end; ++i) {
+                  ocl.push_back(icl[i]);
+                  if (facestart == InvalidIndex) {
+                      facestart = i;
+                      term = icl[i];
+                  } else if (term == icl[i]) {
+                      oel.push_back(ocl.size());
+                      facestart = InvalidIndex;
+                  }
               }
               break;
           }

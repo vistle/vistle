@@ -1483,7 +1483,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex) {
             vtkIdType npts = 0;
             vtkIdType *pts = nullptr;
             vcellarray->GetNextCell(npts, pts);
-            if (typelist[i] == UnstructuredGrid::POLYHEDRON) {
+            if (typelist[i] == UnstructuredGrid::VPOLYHEDRON) {
                 Index j = 0;
                 Index nface = pts[j];
                 ++j;
@@ -1497,6 +1497,22 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex) {
                         ++k;
                         ++j;
                     }
+                }
+            } else if (typelist[i] == UnstructuredGrid::CPOLYHEDRON) {
+                Index j = 0;
+                Index nface = pts[j];
+                ++j;
+                for (Index f=0; f<nface; ++f) {
+                    Index nvert = pts[j];
+                    ++j;
+                    Index first = pts[j];
+                    for (Index v=0; v<nvert; ++v) {
+                        connlist[k] = pts[j];
+                        ++k;
+                        ++j;
+                    }
+                    connlist[k] = first;
+                    ++k;
                 }
             } else {
                 for (int j = 0; j < npts; ++j) {

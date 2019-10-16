@@ -92,6 +92,7 @@ set(core_HEADERS
    celltree_impl.h
    vertexownerlist.h
    vertexownerlist_impl.h
+   celltypes.h
    coords.h
    coords_impl.h
    coordswradius.h

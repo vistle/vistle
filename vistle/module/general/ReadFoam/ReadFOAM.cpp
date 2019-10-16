@@ -609,7 +609,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                }
                break;
 
-               case UnstructuredGrid::POLYHEDRON: {
+               case UnstructuredGrid::VPOLYHEDRON: {
                   for (index_t j=0;j<cellfaces.size();j++) {
                      index_t ia=cellfaces[j];
                      const auto &a = faces[ia];
@@ -619,6 +619,21 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                          std::copy(a.begin(), a.end(), inserter);
                      } else {
                          std::copy(a.rbegin(), a.rend(), inserter);
+                     }
+                  }
+               }
+
+               case UnstructuredGrid::CPOLYHEDRON: {
+                  for (index_t j=0;j<cellfaces.size();j++) {
+                     index_t ia=cellfaces[j];
+                     const auto &a = faces[ia];
+
+                     if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
+                         std::copy(a.rbegin(), a.rend(), inserter);
+                         connectivities.push_back(*a.rbegin());
+                     } else {
+                         std::copy(a.begin(), a.end(), inserter);
+                         connectivities.push_back(*a.begin());
                      }
                   }
                }
@@ -1052,7 +1067,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          for (const Index cell: procGhostCellCandidates) {
             Index elementStart = el[cell];
             Index elementEnd = el[cell + 1];
-            if ((tl[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+            if ((tl[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
                 Index i = elementStart;
                 while (i < elementEnd) {
                     Index nvert = cl[i];
@@ -1064,6 +1079,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
                     i += nvert;
                 }
             } else {
+                // also CPOLYHEDRON
                 for (Index j=elementStart; j<elementEnd; ++j) {
                     clOut.push_back(mapIndex(cl[j]));
                 }
@@ -1240,7 +1256,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
                      return point + pointsSize;
                  }
              };
-             if ((tlIn[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+             if ((tlIn[cell]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
                  Index i = elementStart;
                  while (i < elementEnd) {
                      Index nvert = clIn[i];
@@ -1252,6 +1268,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
                      i += nvert;
                  }
              } else {
+                 // also CPOLYHEDRON
                  for (Index i = elementStart; i < elementEnd; ++i) {
                      cl.push_back(mapIndex(clIn[i]));
                  }

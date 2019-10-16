@@ -5,6 +5,7 @@
 #include "shm.h"
 #include "indexed.h"
 #include "grid.h"
+#include "celltypes.h"
 #include <util/enum.h>
 
 namespace vistle {
@@ -14,39 +15,36 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 
  public:
    typedef Indexed Base;
-
-   // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
    enum Type {
-      GHOST_BIT   = 0x80,
-      CONVEX_BIT  = 0x40, //<! cell was checked to be convex
-      TYPE_MASK   = 0x3f,
+       GHOST_BIT   = cell::GHOST_BIT,
+       CONVEX_BIT  = cell::CONVEX_BIT,
+       TYPE_MASK   = cell::TYPE_MASK,
 
-      NONE        =  0,
-      BAR         =  1,
-      TRIANGLE    =  2,
-      QUAD        =  3,
-      TETRAHEDRON =  4,
-      PYRAMID     =  5,
-      PRISM       =  6,
-      HEXAHEDRON  =  7,
-      POINT       = 10,
-      POLYHEDRON  = 11,
+       POLYHEDRON  = cell::POLYHEDRON,
 
-      GHOST_TETRAHEDRON = TETRAHEDRON|GHOST_BIT,
-      GHOST_PYRAMID     =     PYRAMID|GHOST_BIT,
-      GHOST_PRISM       =       PRISM|GHOST_BIT,
-      GHOST_HEXAHEDRON  =  HEXAHEDRON|GHOST_BIT,
-      GHOST_POLYHEDRON  =  POLYHEDRON|GHOST_BIT
+       NONE        = cell::NONE,
+       BAR         = cell::BAR,
+       TRIANGLE    = cell::TRIANGLE,
+       QUAD        = cell::QUAD,
+       TETRAHEDRON = cell::TETRAHEDRON,
+       PYRAMID     = cell::PYRAMID,
+       PRISM       = cell::PRISM,
+       HEXAHEDRON  = cell::HEXAHEDRON,
+       POLYGON     = cell::POLYGON,
+       VPOLYHEDRON = cell::VPOLYHEDRON,
+       POINT       = cell::POINT,
+       CPOLYHEDRON = cell::CPOLYHEDRON,
+       NUM_TYPES   = cell::NUM_TYPES,
    };
 
    static const Index MaxNumVertices = 4;
    static const Index MaxNumFaces = 6;
 
-   static const int Dimensionality[POLYHEDRON+1];
-   static const int NumVertices[POLYHEDRON+1];
-   static const int NumFaces[POLYHEDRON+1];
-   static const unsigned FaceSizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces];
-   static const int FaceVertices[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces][MaxNumVertices];
+   static const int Dimensionality[NUM_TYPES];
+   static const int NumVertices[NUM_TYPES];
+   static const int NumFaces[NUM_TYPES];
+   static const unsigned FaceSizes[NUM_TYPES][MaxNumFaces];
+   static const int FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices];
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,
