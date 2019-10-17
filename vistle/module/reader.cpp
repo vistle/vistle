@@ -60,6 +60,10 @@ int Reader::rankForTimestepAndPartition(int t, int p) const {
     int np = m_numPartitions;
     if (np < 1)
         np = 1;
+    if (np == comm().size()) {
+        // ensure that consecutive timesteps of one partition do not map onto same rank with m_distributeTime
+        ++np;
+    }
 
     return (t*np+p+baseRank) % comm().size();
 }

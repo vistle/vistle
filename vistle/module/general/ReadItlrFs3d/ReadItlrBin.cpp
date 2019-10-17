@@ -391,7 +391,7 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
     }
 
    setParallelizationMode(ParallelizeBlocks);
-   //setAllowTimestepDistribution(true);
+   setAllowTimestepDistribution(true);
    observeParameter(m_numPartitions);
 }
 
