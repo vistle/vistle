@@ -29,8 +29,6 @@
 #include <hdf5.h>
 #endif
 
-const int SplitDim = 0;
-
 MODULE_MAIN(ReadItlrBin)
 
 struct File {
@@ -377,15 +375,6 @@ ReadItlrBin::ReadItlrBin(const std::string &name, int moduleID, mpi::communicato
     m_numPartitions = addIntParameter("num_partitions", "number of partitions (-1: MPI ranks)", -1);
     setParameterRange(m_numPartitions, (Integer)-1, std::numeric_limits<Integer>::max());
 
-#if 0
-    m_firstStep = addIntParameter("first_step", "first timestep to read", 0);
-    setParameterRange(m_firstStep, (Integer)0, std::numeric_limits<Integer>::max());
-    m_lastStep = addIntParameter("last_step", "last timestep to read", -1);
-    setParameterRange(m_lastStep, (Integer)-1, std::numeric_limits<Integer>::max());
-    m_stepSkip = addIntParameter("skip_step", "number of steps to skip", 99);
-    setParameterRange(m_stepSkip, (Integer)0, std::numeric_limits<Integer>::max());
-#endif
-
     for (int i=0; i<NumPorts; ++i) {
         m_dataOut[i] = createOutputPort("data"+std::to_string(i), "data output");
     }
@@ -502,7 +491,7 @@ bool ReadItlrBin::prepareRead()
     }
 
     std::string gridFile = m_gridFilename->getValue();
-    if (m_numPartitions->getValue() < 0)
+    if (m_numPartitions->getValue() <= 0)
         m_nparts = size();
     else
         m_nparts = m_numPartitions->getValue();
@@ -567,6 +556,7 @@ ReadItlrBin::Block ReadItlrBin::computeBlock(int part) const {
 
     int begin = 0, end = nslices;
     int beginghost = 0, endghost = 0;
+
     if (part >= 0)  {
         begin = part*perpart;
         end = begin+perpart+1;
@@ -663,6 +653,12 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
 
     const std::string axis[3]{"xval", "yval", "zval"};
 
+    if (file.isHdf5()) {
+        SplitDim = 2;
+    } else {
+        SplitDim = 0;
+    }
+
     // read coordinates and prepare for transformation avoiding transposition
     std::vector<float> coords[3];
     for (int i=0; i<3; ++i) {
@@ -674,10 +670,6 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             sendError("failed to read grid coordinates %d from %s", i, filename.c_str());
             return result;
         }
-        if (i==2) {
-            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](float z){return -z;});
-            std::reverse(coords[i].begin(), coords[i].end());
-        }
         if (file.isHdf5()) {
             // per-cell data was read, map to dual grid
             for (size_t j=0; j<coords[i].size()-1; ++j) {
@@ -685,9 +677,14 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
                 coords[i][j] *= 0.5;
             }
             coords[i].resize(dims[i]);
+        } else if (i==2) {
+            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](float z){return -z;});
+            std::reverse(coords[i].begin(), coords[i].end());
         }
     }
-    std::swap(coords[0], coords[2]);
+    if (!file.isHdf5()) {
+        std::swap(coords[0], coords[2]);
+    }
     for (int i=0; i<3; ++i) {
         m_dims[i] = coords[i].size();
     }
@@ -699,7 +696,9 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
         std::cerr << "reading block " << part << ", slices " << b.begin << " to " << b.end << std::endl;
 
         //RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
-        RectilinearGrid::ptr grid(new RectilinearGrid(b.end-b.begin, coords[1].size(), coords[2].size()));
+        RectilinearGrid::ptr grid(new RectilinearGrid(SplitDim==0 ? b.end-b.begin : coords[0].size(),
+                                                      SplitDim==1 ? b.end-b.begin : coords[1].size(),
+                                                      SplitDim==2 ? b.end-b.begin : coords[2].size()));
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Bottom, b.ghost[0]);
         grid->setNumGhostLayers(SplitDim, RectilinearGrid::Top, b.ghost[1]);
         grid->setGlobalIndexOffset(SplitDim, b.begin);
@@ -711,9 +710,11 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             }
         }
 
-        Matrix4 t;
-        t << Vector4(0,0,-1,0), Vector4(0,1,0,0), Vector4(1,0,0,0), Vector4(0,0,0,1);
-        grid->setTransform(t);
+        if (!file.isHdf5()) {
+            Matrix4 t;
+            t << Vector4(0,0,-1,0), Vector4(0,1,0,0), Vector4(1,0,0,0), Vector4(0,0,0,1);
+            grid->setTransform(t);
+        }
 
         result.push_back(grid);
     }

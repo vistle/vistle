@@ -22,11 +22,7 @@ class ReadItlrBin: public vistle::Reader {
 
 private:
    static const int NumPorts = 3;
-
-#if 0
-   bool compute() override;
-   int rankForBlockAndTimestep(int block, int timestep);
-#endif
+   int SplitDim = 0;
 
    std::vector<vistle::RectilinearGrid::ptr> readGridBlocks(const std::string &filename, int npart=1);
    std::vector<std::string> readListFile(const std::string &filename) const;
