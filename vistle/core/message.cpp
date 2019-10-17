@@ -294,7 +294,7 @@ std::vector<char> compressPayload(CompressionMode &mode, const char *raw, size_t
     }
 
     if (mode != CompressionNone) {
-        std::cerr << "compressed from " << size << " to " << compressed.size() << std::endl;
+        //std::cerr << "compressed from " << size << " to " << compressed.size() << std::endl;
         assert(size >= compressed.size());
     }
 

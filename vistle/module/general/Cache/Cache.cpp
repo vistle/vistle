@@ -27,6 +27,9 @@ class Cache: public vistle::Module {
    Cache(const std::string &name, int moduleID, mpi::communicator comm);
    ~Cache();
 
+   message::CompressionMode archiveCompression() const;
+   int archiveCompressionSpeed() const;
+
  private:
    bool compute() override;
    bool prepare() override;
@@ -106,17 +109,19 @@ Cache::~Cache() {
 
 }
 
+message::CompressionMode Cache::archiveCompression() const {
+
+    return message::CompressionMode(m_archiveCompression->getValue());
+}
+
+int Cache::archiveCompressionSpeed() const {
+
+    return message::CompressionMode(m_archiveCompression->getValue());
+}
+
 #define CERR std::cerr << "Cache: "
 
 namespace {
-
-struct Header {
-    endianness endian = file_endian;
-    char Vistle[7] = "vistle";
-    uint32_t version = 1;
-    int16_t indexSize = sizeof(Index);
-    int16_t scalarSize = sizeof(Scalar);
-};
 
 ssize_t swrite(int fd, const void *buf, size_t n) {
     ssize_t tot = 0;
@@ -175,51 +180,254 @@ bool Read(int fd, T &t) {
     return true;
 }
 
+bool Skip(int fd, size_t skip) {
+    off_t n = lseek(fd, skip, SEEK_CUR);
+    if (n == off_t(-1)) {
+            CERR << "failed to skip " << skip << " bytes, result was " << n << ", errno=" << strerror(errno) << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 template<>
-bool Write<Header>(int fd, const Header &h) {
+bool Write<shm_name_t>(int fd, const shm_name_t &name) {
+    ssize_t n = swrite(fd, &name[0], sizeof(name));
+    if (n == -1) {
+        CERR << "failed to write " << sizeof(name) << " bytes, result was " << n << ", errno=" << strerror(errno) << std::endl;
+        return false;
+    }
+    return true;
+}
+
+template<>
+bool Read<shm_name_t>(int fd, shm_name_t &name) {
+    ssize_t n = sread(fd, &name[0], sizeof(name));
+    if (n == -1) {
+        CERR << "failed to read " << sizeof(name) << " bytes, result was " << n << ", errno=" << strerror(errno) << std::endl;
+        return false;
+    }
+    return true;
+}
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ChunkType, (Invalid)(Directory)(PortObject)(Archive))
+
+struct ChunkHeader {
+    char Vistle[7] = "Vistle";
+    char type = '\0';
+    uint32_t version = 1;
+    uint64_t size = 0;
+};
+
+std::ostream &operator<<(std::ostream &os, const ChunkHeader &ch) {
+    os << "type " << toString(ChunkType(ch.type)) << "=" << int(ch.type);
+    os << " version " << ch.version;
+    os << " size " << ch.size;
+
+    return os;
+}
+
+template<>
+bool Write<ChunkHeader>(int fd, const ChunkHeader &h) {
     ssize_t n = swrite(fd, h.Vistle, sizeof(h.Vistle));
     if (n != sizeof (h.Vistle))
         return false;
-    char endianbyte = '0';
-    if (h.endian == little_endian)
-        endianbyte = 'L';
-    if (h.endian == big_endian)
-        endianbyte = 'B';
-    if (!Write(fd, endianbyte))
+
+    if (!Write(fd, h.type))
         return false;
+
     if (!Write(fd, h.version))
         return false;
-    if (!Write(fd, h.indexSize))
-        return false;
-    if (!Write(fd, h.scalarSize))
+
+    if (!Write(fd, h.size))
         return false;
 
     return true;
 }
 
 template<>
-bool Read<Header>(int fd, Header &h) {
-    Header hgood;
+bool Read<ChunkHeader>(int fd, ChunkHeader &h) {
+    const ChunkHeader hgood;
     ssize_t n = sread(fd, h.Vistle, sizeof(h.Vistle));
     if (n != sizeof (h.Vistle))
         return false;
     if (strncmp(h.Vistle, hgood.Vistle, sizeof(h.Vistle)) != 0)
         return false;
-    char endianbyte;
-    if (!Read(fd, endianbyte))
+
+    if (!Read(fd, h.type))
         return false;
-    if (endianbyte == 'B')
-        h.endian = big_endian;
-    else if (endianbyte == 'L')
-        h.endian = little_endian;
-    else
-        return false;
+
     if (!Read(fd, h.version))
         return false;
+
+    if (!Read(fd, h.size))
+        return false;
+
+    return true;
+}
+
+struct ChunkFooter {
+    uint64_t size = 0;
+    char type = '\0';
+    char Vistle[7] = "vistle";
+
+    ChunkFooter() = default;
+    ChunkFooter(const ChunkHeader &cheader)
+    : size(cheader.size)
+    , type(cheader.type)
+    {}
+};
+
+std::ostream &operator<<(std::ostream &os, const ChunkFooter &cf) {
+    os << "type " << toString(ChunkType(cf.type)) << "=" << int(cf.type);
+    os << " size " << cf.size;
+
+    return os;
+}
+
+template<>
+bool Write<ChunkFooter>(int fd, const ChunkFooter &f) {
+    if (!Write(fd, f.size))
+        return false;
+    if (!Write(fd, f.type))
+        return false;
+    ssize_t n = swrite(fd, f.Vistle, sizeof(f.Vistle));
+    if (n != sizeof (f.Vistle))
+        return false;
+
+    return true;
+}
+
+template<>
+bool Read<ChunkFooter>(int fd, ChunkFooter &f) {
+    const ChunkFooter fgood;
+    if (!Read(fd, f.size))
+        return false;
+
+    if (!Read(fd, f.type))
+        return false;
+    ssize_t n = sread(fd, f.Vistle, sizeof(f.Vistle));
+    if (n != sizeof (f.Vistle))
+        return false;
+    if (strncmp(f.Vistle, fgood.Vistle, sizeof(f.Vistle)) != 0)
+        return false;
+
+    return true;
+}
+
+struct PortObjectHeader {
+    uint32_t version = 1;
+    int32_t port = 0;
+    int32_t timestep = -1;
+    int32_t block = -1;
+    shm_name_t object;
+
+    PortObjectHeader() = default;
+    PortObjectHeader(int port, int timestep, int block, const std::string &object)
+    : port(port)
+    , timestep(timestep)
+    , block(block)
+    , object(object)
+    {}
+};
+
+std::ostream &operator<<(std::ostream &os, const PortObjectHeader &poh) {
+
+    os << "version " << poh.port;
+    os << " port " << poh.port;
+    os << " time " << poh.timestep;
+    os << " block " << poh.block;
+    os << " object " << poh.object.str();
+
+    return os;
+}
+
+template<>
+bool Write<PortObjectHeader>(int fd, const PortObjectHeader &h) {
+    if (!Write(fd, h.version))
+        return false;
+    if (!Write(fd, h.port))
+        return false;
+    if (!Write(fd, h.timestep))
+        return false;
+    if (!Write(fd, h.block))
+        return false;
+    if (!Write(fd, h.object))
+        return false;
+
+    return true;
+}
+
+template<>
+bool Read<PortObjectHeader>(int fd, PortObjectHeader &h) {
+    const PortObjectHeader hgood;
+    if (!Read(fd, h.version))
+        return false;
+    if (hgood.version != h.version)
+        return false;
+    if (!Read(fd, h.port))
+        return false;
+    if (!Read(fd, h.timestep))
+        return false;
+    if (!Read(fd, h.block))
+        return false;
+    if (!Read(fd, h.object))
+        return false;
+    return true;
+}
+
+
+struct ArchiveHeader {
+    uint32_t version = 1;
+    int16_t indexSize = sizeof(Index);
+    int16_t scalarSize = sizeof(Scalar);
+    shm_name_t object;
+
+    ArchiveHeader() = default;
+    ArchiveHeader(const std::string &object)
+    : object(object)
+    {}
+};
+
+template<>
+bool Write<ArchiveHeader>(int fd, const ArchiveHeader &h) {
+    if (!Write(fd, h.version))
+        return false;
+    if (!Write(fd, h.indexSize))
+        return false;
+    if (!Write(fd, h.scalarSize))
+        return false;
+    if (!Write(fd, h.object))
+        return false;
+
+    return true;
+}
+
+template<>
+bool Read<ArchiveHeader>(int fd, ArchiveHeader &h) {
+    const ArchiveHeader hgood;
+    if (!Read(fd, h.version))
+        return false;
+    if (hgood.version != h.version) {
+        CERR << "Archive header version mismatch: expecting " << hgood.version << ", found " << h.version << std::endl;
+        return false;
+    }
     if (!Read(fd, h.indexSize))
         return false;
+    if (hgood.indexSize != h.indexSize) {
+        CERR << "Archive header Index size mismatch: expecting " << hgood.indexSize << ", found " << h.indexSize << std::endl;
+        return false;
+    }
     if (!Read(fd, h.scalarSize))
         return false;
+    if (hgood.scalarSize != h.scalarSize) {
+        CERR << "Archive header Scalar size mismatch: expecting " << hgood.scalarSize << ", found " << h.scalarSize << std::endl;
+        return false;
+    }
+    if (!Read(fd, h.object)) {
+        CERR << "Archive header: failed to read entity name" << std::endl;
+        return false;
+    }
     return true;
 }
 
@@ -292,36 +500,126 @@ bool Read<std::vector<char>>(int fd, std::vector<char> &v) {
     return true;
 }
 
-bool Write(int fd, const SubArchiveDirectoryEntry &ent, message::CompressionMode comp, int speed) {
+template<class Chunk>
+struct ChunkTypeMap;
 
-    if (!Write(fd, ent.name)) {
-        CERR << "failed to write entry name" << std::endl;
+template<>
+struct ChunkTypeMap<SubArchiveDirectoryEntry> {
+    static const ChunkType type = Archive;
+};
+
+template<>
+struct ChunkTypeMap<PortObjectHeader> {
+    static const ChunkType type = PortObject;
+};
+
+template<class Module, class Chunk>
+bool WriteChunk(Module *mod, int fd, const Chunk &chunk) {
+    ChunkHeader cheader;
+    cheader.type = ChunkTypeMap<Chunk>::type;
+    cheader.size = sizeof(ChunkHeader) + sizeof(Chunk) + sizeof(ChunkFooter);
+
+    if (!Write(fd, cheader))
+        return false;
+    CERR << "WriteChunk: header=" << cheader << std::endl;
+    if (!Write(fd, chunk))
+        return false;
+    ChunkFooter cfooter(cheader);
+    if (!Write(fd, cfooter))
+        return false;
+    return true;
+}
+
+template<class Module, class Chunk>
+bool ReadChunk(Module *mod, int fd, const ChunkHeader &cheader, Chunk &chunk) {
+    ChunkHeader chgood;
+    if (cheader.type != ChunkTypeMap<Chunk>::type) {
+        CERR << "ReadChunk: chunk type mismatch" << std::endl;
         return false;
     }
-
-    char flag = ent.is_array ? 1 : 0;
-    if (!Write(fd, flag)) {
-        CERR << "failed to write entry array flag" << std::endl;
+    if (!Read(fd, chunk))
+        return false;
+    ChunkFooter cfgood(cheader), cfooter;
+    if (!Read(fd, cfooter))
+        return false;
+    if (cfgood.size != cfooter.size) {
+        CERR << "ReadChunk: chunk size mismatch in footer" << std::endl;
         return false;
     }
-
-    uint64_t length = ent.size;
-    if (!Write(fd, length)) {
-        CERR << "failed to write entry length" << std::endl;
+    if (cheader.type != cfooter.type) {
+        CERR << "ReadChunk: chunk type mismatch between footer (type " << toString(ChunkType(cfooter.type)) << "=" << int(cfooter.type) << ") and header (type " << toString(ChunkType(cheader.type)) << "=" << int(cheader.type) << ")" << std::endl;
         return false;
     }
+    return true;
+}
+
+template<class Module>
+bool SkipChunk(Module *mod, int fd, const ChunkHeader &cheader) {
+    ChunkHeader chgood;
+    if (!Skip(fd, cheader.size-sizeof(cheader)-sizeof(ChunkFooter)))
+        return false;
+    ChunkFooter cfgood(cheader), cfooter;
+    if (!Read(fd, cfooter))
+        return false;
+    if (cfgood.size != cfooter.size) {
+        CERR << "SkipChunk: chunk size mismatch in footer" << std::endl;
+        return false;
+    }
+    if (cheader.type != cfooter.type) {
+        CERR << "SkipChunk: chunk type mismatch between footer (type " << toString(ChunkType(cfooter.type)) << "=" << int(cfooter.type) << ") and header (type " << toString(ChunkType(cheader.type)) << "=" << int(cheader.type) << ")" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+template<>
+bool WriteChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const SubArchiveDirectoryEntry &ent) {
+
+    message::CompressionMode comp = message::CompressionMode(mod->archiveCompression());
+    int speed = mod->archiveCompressionSpeed();
 
     std::vector<char> compressed;
     if (comp != message::CompressionNone) {
         compressed = message::compressPayload(comp, ent.data, ent.size, speed);
     }
+
+    ChunkHeader cheader;
+    cheader.type = ChunkTypeMap<SubArchiveDirectoryEntry>::type;
+    cheader.size = sizeof(cheader);
+    ArchiveHeader aheader(ent.name);
+    cheader.size += sizeof(aheader);
+    char flag = ent.is_array ? 1 : 0;
+    cheader.size += sizeof(flag);
+    uint64_t length = ent.size;
+    cheader.size += sizeof(length);
     uint32_t compMode = comp;
+    cheader.size += sizeof(compMode);
+    uint64_t compLength = comp==message::CompressionNone ? ent.size : compressed.size();
+    cheader.size += sizeof(compLength);
+    cheader.size += compLength;
+    cheader.size += sizeof(ChunkFooter);
+    CERR << "WriteChunk: header=" << cheader << std::endl;
+    if (!Write(fd, cheader))
+        return false;
+
+    if (!Write(fd, aheader))
+        return false;
+
+    if (!Write(fd, flag)) {
+        CERR << "failed to write entry array flag" << std::endl;
+        return false;
+    }
+
+    if (!Write(fd, length)) {
+        CERR << "failed to write entry length" << std::endl;
+        return false;
+    }
+
     if (!Write(fd, compMode)) {
         CERR << "failed to write compression mode" << std::endl;
         return false;
     }
 
-    uint64_t compLength = comp==message::CompressionNone ? ent.size : compressed.size();
     if (!Write(fd, compLength)) {
         CERR << "failed to write entry compressed length" << std::endl;
         return false;
@@ -340,16 +638,27 @@ bool Write(int fd, const SubArchiveDirectoryEntry &ent, message::CompressionMode
         return false;
     }
 
+    ChunkFooter cfooter(cheader);
+    if (!Write(fd, cfooter))
+        return false;
+
     return true;
 }
 
 template<>
-bool Read<SubArchiveDirectoryEntry>(int fd, SubArchiveDirectoryEntry &ent) {
+bool ReadChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const ChunkHeader &cheader, SubArchiveDirectoryEntry &ent) {
 
-    if (!Read(fd, ent.name)) {
-        CERR << "failed to read entry name" << std::endl;
+    if (cheader.type != ChunkTypeMap<SubArchiveDirectoryEntry>::type) {
+        CERR << "failed to read entry type" << std::endl;
         return false;
     }
+
+    ArchiveHeader aheader;
+    if (!Read(fd, aheader)) {
+        CERR << "failed to read archive header" << std::endl;
+        return false;
+    }
+    ent.name = aheader.object.str();
 
     char flag;
     if (!Read(fd, flag)) {
@@ -404,6 +713,16 @@ bool Read<SubArchiveDirectoryEntry>(int fd, SubArchiveDirectoryEntry &ent) {
     }
 #endif
 
+    ChunkFooter cfooter;
+    if (!Read(fd, cfooter)) {
+        CERR << "failed to read chunk footer for archive" << std::endl;
+        return false;
+    }
+    if (cfooter.size != cheader.size) {
+        CERR << "size mismatch in chunk header and footer, expecting " << cheader.size << ", got " << cfooter.size << std::endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -426,46 +745,32 @@ bool Cache::compute() {
             if (m_toDisk) {
                 assert(m_fd != -1);
 
+                // serialialize object and all not-yet-serialized sub-objects to memory
                 vecostreambuf<char> memstr;
                 vistle::oarchive memar(memstr);
                 memar.setCompressionSettings(m_compressionSettings);
                 memar.setSaver(m_saver);
                 obj->saveObject(memar);
-                message::CompressionMode comp = message::CompressionMode(m_archiveCompression->getValue());
-                int speed = m_archiveCompressionSpeed->getValue();
-                const std::vector<char> &mem = memstr.get_vector();
 
-                Header header;
-                if (!Write(m_fd, header))
-                    return false;
-
-                uint32_t port(i);
-                if (!Write(m_fd, port))
-                    return false;
-
-                int32_t timestep(obj->getTimestep());
-                if (!Write(m_fd, timestep))
-                    return false;
-
-                uint32_t block(obj->getBlock());
-                if (!Write(m_fd, block))
-                    return false;
-
+                // copy serialized sub-objects to disk
                 auto dir = m_saver->getDirectory();
-                uint32_t num = dir.size() + 1;
-                if (!Write(m_fd, num))
-                    return false;
-
-                SubArchiveDirectoryEntry ent{obj->getName(), false, mem.size(), const_cast<char *>(mem.data())};
-                if (!Write(m_fd, ent, comp, speed))
-                    return false;
-
                 for (const auto &ent: dir) {
-                    if (!Write(m_fd, ent, comp, speed))
+                    if (!WriteChunk(this, m_fd, ent))
                         return false;
                 }
-
                 m_saver->flushDirectory();
+
+                // copy serialized object to disk
+                const std::vector<char> &mem = memstr.get_vector();
+                SubArchiveDirectoryEntry ent{obj->getName(), false, mem.size(), const_cast<char *>(mem.data())};
+                if (!WriteChunk(this, m_fd, ent))
+                    return false;
+
+                // add reference to object to port
+                PortObjectHeader pheader(i, obj->getTimestep(), obj->getBlock(), obj->getName());
+                if (!WriteChunk(this, m_fd, pheader))
+                    return false;
+
             }
         }
     }
@@ -604,62 +909,28 @@ bool Cache::prepare() {
         fetcher->releaseArrays();
     };
 
-    for (;;) {
-        Header header, hgood;
-        if (!Read(m_fd, header)) {
+    std::string objectToRestore;
+    for (bool error = false; !error; ) {
+        ChunkHeader cheader, chgood;
+        if (!Read(m_fd, cheader)) {
             break;
         }
-        if (header.version != hgood.version) {
-            sendError("Cannot read Vistle files of version %d, only %d is supported", (int)header.version, hgood.version);
+        if (cheader.version != chgood.version) {
+            sendError("Cannot read Vistle files of version %d, only %d is supported", (int)cheader.version, chgood.version);
             break;
         }
-        if (header.endian != file_endian) {
-            sendError("Cannot read Vistle file, unsupported endianness");
-            break;
-        }
-        if (header.indexSize != hgood.indexSize) {
-            sendError("Cannot read Vistle file, its index size %d does not match mine of %d", (int)header.indexSize, hgood.indexSize);
-            break;
-        }
-        if (header.scalarSize != hgood.scalarSize) {
-            sendError("Cannot read Vistle file, its scalar size %d does not match mine of %d", (int)header.scalarSize, hgood.scalarSize);
-            break;
-        }
+        CERR << "ChunkHeader: " << cheader << std::endl;
+        CERR << "ChunkHeader: found type=" << cheader.type << std::endl;
 
-        uint32_t port;
-        if (!Read(m_fd, port)) {
-            ok = false;
-            break;
-        }
-        int32_t timestep;
-        if (!Read(m_fd, timestep)) {
-            ok = false;
-            break;
-        }
-        uint32_t block;
-        if (!Read(m_fd, block)) {
-            ok = false;
-            break;
-        }
-        uint32_t num;
-        if (!Read(m_fd, num)) {
-            ok = false;
-            break;
-        }
-
-        //CERR << "output to port " << port << ", " << num << " objects/subobjects/arrays" << std::endl;
-
-        std::string name0;
-        for (size_t i=0; i<num; ++i) {
+        switch (cheader.type) {
+        case ChunkType::Archive: {
             SubArchiveDirectoryEntry ent;
-            if (!Read(m_fd, ent)) {
-                return false;
+            if (!ReadChunk(this, m_fd, cheader, ent)) {
+                CERR << "failed to read Archive chunk" << std::endl;
+                error = true;
+                continue;
             }
             CERR << "entry " << ent.name << " of size " << ent.storage->size() << std::endl;
-            if (i==0) {
-                name0 = ent.name;
-                assert(!ent.is_array);
-            }
             compression[ent.name] = ent.compression;
             size[ent.name] = ent.size;
             if (ent.is_array) {
@@ -667,37 +938,61 @@ bool Cache::prepare() {
             } else {
                 objects[ent.name] = std::move(*ent.storage);
             }
+            break;
         }
+        case ChunkType::PortObject: {
+            PortObjectHeader poh;
+            if (!ReadChunk(this, m_fd, cheader, poh)) {
+                CERR << "failed to read PortObject chunk" << std::endl;
+                error = true;
+                continue;
+            }
 
-        int tplus = timestep+1;
-        assert(tplus >= 0);
-        if (numTime < tplus)
-            numTime = tplus;
-        if (portObjects[port].size() <= numTime) {
-            portObjects[port].resize(numTime+1);
+            int tplus = poh.timestep+1;
+            assert(tplus >= 0);
+            if (numTime < tplus)
+                numTime = tplus;
+            if (portObjects[poh.port].size() <= numTime) {
+                portObjects[poh.port].resize(numTime+1);
+            }
+            portObjects[poh.port][tplus].push_back(poh.object);
+            objectToRestore = poh.object.str();
+
+            if (reorder)
+                continue;
+
+            if (!m_outPort[poh.port]->isConnected()) {
+                //CERR << "skipping " << name0 << ", output " << port << " not connected" << std::endl;
+                continue;
+            }
+
+            if (poh.timestep>=0 && poh.timestep<start)
+                continue;
+
+            if (poh.timestep>=0 && poh.timestep>stop)
+                continue;
+
+            if (poh.timestep>=0 && (poh.timestep-start)%step != 0)
+                continue;
+
+            ++numObjects;
+
+            restoreObject(objectToRestore, poh.port);
+            break;
         }
-        portObjects[port][tplus].push_back(name0);
-
-        if (reorder)
-            continue;
-
-        if (!m_outPort[port]->isConnected()) {
-            //CERR << "skipping " << name0 << ", output " << port << " not connected" << std::endl;
-            continue;
+        case ChunkType::Directory: {
+            break;
         }
-
-        if (timestep>=0 && timestep<start)
-            continue;
-
-        if (timestep>=0 && timestep>stop)
-            continue;
-
-        if (timestep>=0 && (timestep-start)%step != 0)
-            continue;
-
-        ++numObjects;
-
-        restoreObject(name0, port);
+        default: {
+            CERR << "unknown chunk type " << cheader.type << std::endl;
+            if (!SkipChunk(this, m_fd, cheader)) {
+                CERR << "failed to skip unknown chunk" << std::endl;
+                error = true;
+                continue;
+            }
+            break;
+        }
+        }
     }
 
     if (reorder) {
