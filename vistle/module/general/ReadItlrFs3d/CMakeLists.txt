@@ -7,15 +7,15 @@ find_package(HDF5 COMPONENTS C)
 #
 #add_definitions(-DH5_HAVE_PARALLEL)
 
-include_directories(SYSTEM
-	${HDF5_INCLUDE_DIRS}
-)
-
-link_directories(
-        ${HDF5_LIBRARY_DIRS}
-)
-
 if (HDF5_FOUND)
+    include_directories(SYSTEM
+        ${HDF5_INCLUDE_DIRS}
+    )
+
+    link_directories(
+        ${HDF5_LIBRARY_DIRS}
+    )
+
     add_definitions(-DHAVE_HDF5)
 endif()
 
