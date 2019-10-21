@@ -119,7 +119,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
 
     } else if (!p_only_geometry->getValue()) {
         {//velocities
-            if (pReader->hasVelocity()) {
+            if (pReader->hasVelocity() && p_velocity->isConnected()) {
                 auto grid = mGrids[partition];
                 if (!grid) {
                     sendError(".nek5000 did not find a matching grid for partition %d", partition);
@@ -140,21 +140,23 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
                 token.addObject(p_velocity, velocity);
             }
         }
-        if (pReader->hasPressure()) {
+        if (pReader->hasPressure() && p_pressure->isConnected()) {
 
 
             if (!ReadScalarData(token, p_pressure, "pressure", timestep, partition)) {
                 return false;
             }
         }
-        if (pReader->hasTemperature()) {
+        if (pReader->hasTemperature() && p_temperature->isConnected()) {
             if (!ReadScalarData(token, p_temperature, "temperature", timestep, partition)) {
                 return false;
             }
         }
         for (size_t i = 0; i < pReader->getNumScalarFields(); i++) {
-            if (!ReadScalarData(token, pv_misc[i], "s" + std::to_string(i + 1), timestep, partition)) {
-                return false;
+            if (pv_misc[i]->isConnected()) {
+                if (!ReadScalarData(token, pv_misc[i], "s" + std::to_string(i + 1), timestep, partition)) {
+                    return false;
+                }
             }
         }
     }
