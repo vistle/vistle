@@ -57,7 +57,7 @@
  <customwidgets>
   <customwidget>
    <class>ModuleListWidget</class>
-   <extends>QListWidget</extends>
+   <extends>QTreeWidget</extends>
    <header>modulebrowser.h</header>
   </customwidget>
  </customwidgets>

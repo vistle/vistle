@@ -79,6 +79,8 @@ public:
 
     DataFlowNetwork *scene() const;
 
+    static QColor hubColor(int hub);
+
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);

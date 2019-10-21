@@ -3,10 +3,10 @@
 
 #include <QDockWidget>
 #include <QStringList>
-#include <QListWidget>
+#include <QTreeWidget>
 
 class QMimeData;
-class QListWidgetItem;
+class QTreeWidgetItem;
 
 namespace gui {
 
@@ -15,7 +15,7 @@ class ModuleBrowser;
 
 } //namespace Ui
 
-class ModuleListWidget: public QListWidget {
+class ModuleListWidget: public QTreeWidget {
    Q_OBJECT
 
 public:
@@ -23,10 +23,10 @@ public:
 
 public slots:
    void setFilter(QString filter);
-   void filterItem(QListWidgetItem *item) const;
+   void filterItem(QTreeWidgetItem *item) const;
 
 protected:
-   QMimeData *mimeData(const QList<QListWidgetItem *> dragList) const;
+   QMimeData *mimeData(const QList<QTreeWidgetItem *> dragList) const;
 
    QString m_filter;
 };
@@ -48,6 +48,9 @@ public slots:
    void setFilter(QString filter);
 
 private:
+   std::map<int, QTreeWidgetItem *> hubItems;
+
+
    QLineEdit *filterEdit() const;
 
    Ui::ModuleBrowser *ui;

@@ -375,12 +375,7 @@ int Module::hub() const
 void Module::setHub(int hub)
 {
    m_hub = hub;
-
-   int h = std::abs(m_hub - vistle::message::Id::MasterHub);
-   const int r = h%2;
-   const int g = 1-(h>>2)%2;
-   const int b = 1-(h>>1)%2;
-   m_color = QColor(100+r*100, 100+g*100, 100+b*100);
+   m_color = hubColor(hub);
 }
 
 boost::uuids::uuid Module::spawnUuid() const
@@ -424,7 +419,16 @@ const vistle::Port *Module::getVistlePort(Port *port) const {
 
 DataFlowNetwork *Module::scene() const {
 
-   return static_cast<DataFlowNetwork *>(Base::scene());
+    return static_cast<DataFlowNetwork *>(Base::scene());
+}
+
+QColor Module::hubColor(int hub)
+{
+   int h = std::abs(hub - vistle::message::Id::MasterHub);
+   const int r = h%2;
+   const int g = 1-(h>>2)%2;
+   const int b = 1-(h>>1)%2;
+   return QColor(100+r*100, 100+g*100, 100+b*100);
 }
 
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event) {

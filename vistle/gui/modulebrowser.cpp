@@ -1,28 +1,37 @@
 #include "modulebrowser.h"
 #include "ui_modulebrowser.h"
+#include "module.h"
 
 #include <QMimeData>
 #include <QDebug>
 
 namespace gui {
 
+enum ItemTypes {
+    Hub,
+    Module,
+};
+
 ModuleListWidget::ModuleListWidget(QWidget *parent)
-   : QListWidget(parent)
+   : QTreeWidget(parent)
 {
+    header()->setVisible(false);
 }
 
-QMimeData *ModuleListWidget::mimeData(const QList<QListWidgetItem *> dragList) const
+QMimeData *ModuleListWidget::mimeData(const QList<QTreeWidgetItem *> dragList) const
 {
    if (dragList.empty())
       return nullptr;
 
-   QMimeData *md = QListWidget::mimeData(dragList);
+   QMimeData *md = QTreeWidget::mimeData(dragList);
 
    QByteArray encodedData;
    QDataStream stream(&encodedData, QIODevice::WriteOnly);
-   for(QListWidgetItem *item: dragList) {
-      stream << item->data(ModuleBrowser::hubRole()).toInt();
-      stream << item->text();
+   for(QTreeWidgetItem *item: dragList) {
+       if (item->type() != Module)
+           continue;
+       stream << item->data(0, ModuleBrowser::hubRole()).toInt();
+       stream << item->text(0);
    }
    md->setData(ModuleBrowser::mimeFormat(), encodedData);
    return md;
@@ -30,21 +39,29 @@ QMimeData *ModuleListWidget::mimeData(const QList<QListWidgetItem *> dragList) c
 
 void ModuleListWidget::setFilter(QString filter) {
 
-   m_filter = filter.trimmed();
+    m_filter = filter.trimmed();
 
-   for (int idx=0; idx<count(); ++idx) {
+    for (int idx=0; idx<topLevelItemCount(); ++idx) {
 
-      const auto i = item(idx);
-      filterItem(i);
-   }
+        auto ti = topLevelItem(idx);
+        for (int i=0; i<ti->childCount(); ++i) {
+            auto item = ti->child(i);
+            filterItem(item);
+        }
+    }
 }
 
 
-void ModuleListWidget::filterItem(QListWidgetItem *item) const {
+void ModuleListWidget::filterItem(QTreeWidgetItem *item) const {
 
-   const auto name = item->data(ModuleBrowser::nameRole()).toString();
-   const bool match = name.contains(m_filter, Qt::CaseInsensitive);
-   item->setHidden(!match);
+    if (item->type() != Module) {
+        item->setHidden(false);
+        return;
+    }
+
+    const auto name = item->data(0, ModuleBrowser::nameRole()).toString();
+    const bool match = name.contains(m_filter, Qt::CaseInsensitive);
+    item->setHidden(!match);
 }
 
 
@@ -85,14 +102,24 @@ ModuleBrowser::~ModuleBrowser()
 
 void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path) {
 
-    auto item = new QListWidgetItem(module);
-    item->setData(hubRole(), hub);
-    QString tt = hubName;
-    tt += "(" + QString::number(hub) + ")";
-    tt += ": ";
-    tt += path;
-    item->setData(Qt::ToolTipRole, tt);
-    ui->moduleListWidget->addItem(item);
+    auto it = hubItems.find(hub);
+    if (it == hubItems.end()) {
+        it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
+        ui->moduleListWidget->addTopLevelItem(it->second);
+        it->second->setExpanded(hubItems.size() <= 1);
+        it->second->setBackgroundColor(0, Module::hubColor(hub));
+        it->second->setForeground(0, QColor(0,0,0));
+        QString tt = hubName;
+        tt += " (" + QString::number(hub) + ")";
+        it->second->setToolTip(0, tt);
+    }
+    auto &hubItem = it->second;
+
+    auto item = new QTreeWidgetItem(hubItem, {module}, Module);
+    item->setData(0, hubRole(), hub);
+    QString tt = path;
+    tt += " - " + hubName + " (" + QString::number(hub) + ")";
+    item->setData(0, Qt::ToolTipRole, tt);
     ui->moduleListWidget->filterItem(item);
 }
 
