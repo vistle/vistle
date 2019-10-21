@@ -376,7 +376,7 @@ void Module::setHub(int hub)
 {
    m_hub = hub;
 
-   int h = m_hub - vistle::message::Id::MasterHub;
+   int h = std::abs(m_hub - vistle::message::Id::MasterHub);
    const int r = h%2;
    const int g = 1-(h>>2)%2;
    const int b = 1-(h>>1)%2;
