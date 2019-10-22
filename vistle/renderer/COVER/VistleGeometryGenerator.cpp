@@ -1203,6 +1203,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setName(nodename+".tex");
                osgTex->setDataVariance(osg::Object::DYNAMIC);
+               osgTex->setResizeNonPowerOfTwoHint(false);
 
                osg::ref_ptr<osg::Image> image = new osg::Image();
                image->setName(nodename+".img");
@@ -1364,6 +1365,7 @@ OsgColorMap::OsgColorMap()
     texture->setInternalFormat(GL_RGBA8);
 
     texture->setBorderWidth(0);
+    texture->setResizeNonPowerOfTwoHint(false);
     texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
     texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::NEAREST);
     texture->setWrap(osg::Texture1D::WRAP_S, osg::Texture::CLAMP_TO_EDGE);
