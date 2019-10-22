@@ -890,6 +890,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    master.setPort(m_port);
                    master.setDataPort(m_dataProxy->port());
                    m_stateTracker.handle(master, nullptr);
+                   sendUi(master);
                }
 
                if (m_hubId != Id::Invalid) {
@@ -951,6 +952,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             slaveReady(slave);
             m_dataProxy->connectRemoteData(mm);
             m_stateTracker.handle(mm, nullptr, true);
+            sendUi(mm);
          } else {
             if (mm.id() == Id::MasterHub) {
                CERR << "received AddHub for master with " << mm.numRanks() << " ranks" << std::endl;
@@ -958,9 +960,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_dataProxy->connectRemoteData(m);
                m_stateTracker.handle(m, nullptr, true);
+               sendUi(m);
             } else {
                 m_dataProxy->connectRemoteData(mm);
                 m_stateTracker.handle(mm, nullptr, true);
+               sendUi(mm);
             }
          }
          break;

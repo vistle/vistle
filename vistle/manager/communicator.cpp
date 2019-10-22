@@ -499,7 +499,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
          message::DefaultSender::init(m_hubId, m_rank);
          Shm::the().setId(m_hubId);
          m_clusterManager->init();
-         scanModules(m_moduleDir);
+         //scanModules(m_moduleDir);
          return connectData();
          break;
       }
@@ -512,7 +512,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
              ident.setNumRanks(m_size);
              sendHub(ident);
          }
-         //scanModules(m_moduleDir);
+         scanModules(m_moduleDir);
          break;
       }
       default: {
