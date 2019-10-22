@@ -41,7 +41,7 @@ struct Flatten {
       , result(result)
       {
       }
-   Flatten(Quads::const_ptr wq, DataBase::const_ptr obj, DataBase::ptr result)
+   Flatten(Quads::const_ptr quad, DataBase::const_ptr obj, DataBase::ptr result)
       : quad(quad)
       , object(obj)
       , result(result)
