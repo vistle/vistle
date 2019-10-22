@@ -14,6 +14,7 @@
 #include "matplotlib.h"
 #include "fake_parula.h"
 #include "turbo_colormap.h"
+#include "etopo1_modified.h"
 
 MODULE_MAIN(Color)
 
@@ -42,6 +43,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (ITSM)
                                     (Rainbow)
                                     (Earth)
+                                    (Topography)
                                     )
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
@@ -51,7 +53,9 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, f
    data.resize(width*4);
 
    TF::iterator current = pins.begin();
-   TF::iterator next = ++pins.begin();
+   TF::iterator next = current;
+   if (next != pins.end())
+       ++next;
 
    for (size_t index = 0; index < width; index ++) {
 
@@ -78,25 +82,26 @@ ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, f
        }
 
       if (next == pins.end()) {
-         data[index * 4] = current->second[0];
-         data[index * 4 + 1] = current->second[1];
-         data[index * 4 + 2] = current->second[2];
-         data[index * 4 + 3] = current->second[3];
+          data[index * 4] = clamp(current->second[0]*255.99, 0., 255.);
+          data[index * 4 + 1] = clamp(current->second[1]*255.99, 0., 255.);
+          data[index * 4 + 2] = clamp(current->second[2]*255.99, 0., 255.);
+          data[index * 4 + 3] = clamp(current->second[3]*255.99, 0., 255.);
       } else {
 
-         vistle::Scalar a = current->first;
-         vistle::Scalar b = next->first;
+          vistle::Scalar a = current->first;
+          vistle::Scalar b = next->first;
 
-         vistle::Scalar t = (x-a)/(b-a);
+          vistle::Scalar t = (x-a)/(b-a);
+          t = vistle::clamp(t, Scalar(0), Scalar(1));
 
-         data[index * 4] =
-            (lerp(current->second[0], next->second[0], t) * 255.99);
-         data[index * 4 + 1] =
-            (lerp(current->second[1], next->second[1], t) * 255.99);
-         data[index * 4 + 2] =
-            (lerp(current->second[2], next->second[2], t) * 255.99);
-         data[index * 4 + 3] =
-            (lerp(current->second[3], next->second[3], t) * 255.99);
+          data[index * 4] =
+              clamp(lerp(current->second[0], next->second[0], t) * 255.99, 0., 255.);
+          data[index * 4 + 1] =
+              clamp(lerp(current->second[1], next->second[1], t) * 255.99, 0., 255.);
+          data[index * 4 + 2] =
+              clamp(lerp(current->second[2], next->second[2], t) * 255.99, 0., 255.);
+          data[index * 4 + 3] =
+              clamp(lerp(current->second[3], next->second[3], t) * 255.99, 0., 255.);
       }
    }
 }
@@ -115,6 +120,22 @@ ColorMap::TF pinsFromArray(const float *data, size_t n) {
     return tf;
 }
 
+ColorMap::TF pinsFromArrayWithCoord(const float *data, size_t n, float scale=1., float coordRangeMin=0.f, float coordRangeMax=1.f) {
+
+    ColorMap::TF tf;
+    for (size_t i=0; i<n; ++i) {
+        float x = data[i*4];
+        x -= coordRangeMin;
+        x /= coordRangeMax-coordRangeMin;
+        assert(x >= 0 && x <= 1);
+        tf[x] = Vector4(clamp(data[i*4+1]*scale,Scalar(0),Scalar(1)),
+                        clamp(data[i*4+2]*scale,Scalar(0),Scalar(1)),
+                        clamp(data[i*4+3]*scale,Scalar(0),Scalar(1)), 1);
+    }
+
+    return tf;
+}
+
 
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("Color", name, moduleID, comm) {
@@ -127,6 +148,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
 
    m_minPara = addFloatParameter("min", "minimum value of range to map", 0.0);
    m_maxPara = addFloatParameter("max", "maximum value of range to map", 0.0);
+   m_constrain = addIntParameter("constrain_range", "constrain range for min/max to data", true, Parameter::Boolean);
    m_center = addFloatParameter("center", "center of colormap range", 0.5);
    setParameterRange(m_center, 0., 1.);
    m_centerAbsolute = addIntParameter("center_absolute", "absolute value for center", false, Parameter::Boolean);
@@ -137,7 +159,7 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
    V_ENUM_SET_CHOICES(map, TransferFunction);
    auto steps = addIntParameter("steps", "number of color map steps", 32);
-   setParameterRange(steps, (Integer)1, (Integer)1024);
+   setParameterRange(steps, (Integer)1, (Integer)0x1000);
    m_blendWithMaterialPara = addIntParameter("blend_with_material", "use alpha for blending with diffuse material", false, Parameter::Boolean);
 
    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
@@ -152,9 +174,9 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    auto inset_map = addIntParameter("inset_map", "transfer function to inset", COVISE, Parameter::Choice);
    V_ENUM_SET_CHOICES(inset_map, TransferFunction);
    auto inset_steps = addIntParameter("inset_steps", "number of color map steps for inset (0: as outer map)", 0);
-   setParameterRange(inset_steps, (Integer)0, (Integer)1024);
+   setParameterRange(inset_steps, (Integer)0, (Integer)0x1000);
    auto res = addIntParameter("resolution", "number of steps to compute", 1024);
-   setParameterRange(res, (Integer)1, (Integer)1024);
+   setParameterRange(res, (Integer)1, (Integer)0x1000);
    setParameterRange(m_insetCenterPara, (Float)0, (Float)1);
    setParameterRange(m_insetWidthPara, (Float)0, (Float)1);
    m_insetOpacity = addFloatParameter("inset_opacity_factor", "multiplier for opacity of inset color", 1.0);
@@ -168,6 +190,11 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins.insert(std::make_pair(1.0, RGBA(1.0, 1.0, 0.0, 1.0)));
    transferFunctions[COVISE] = pins;
    pins.clear();
+
+   transferFunctions[Topography] = pinsFromArrayWithCoord(&etopo1_modified_data[0][0],
+                                                          sizeof(etopo1_modified_data)/sizeof(etopo1_modified_data[0]),
+                                                          1.f/255.f,
+                                                          -8000, 8000);
 
 #define TF(a) pinsFromArray(&a[0][0], sizeof(a)/sizeof(a[0]))
 
@@ -413,7 +440,16 @@ bool Color::changeParameter(const Parameter *p) {
 
     bool newMap = false;
 
-    if (p == m_autoRangePara) {
+    if (p == m_constrain) {
+        if (m_constrain->getValue()) {
+            auto diff = m_dataMax - m_dataMin;
+            setParameterRange<Float>(m_minPara, m_dataMin - diff*0.5, m_dataMax);
+            setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff*0.5);
+        } else {
+            setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+            setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+        }
+    } else if (p == m_autoRangePara) {
         m_autoRange = m_autoRangePara->getValue();
         newMap = true;
     } else if (p == m_autoInsetCenterPara) {
@@ -584,6 +620,14 @@ void Color::computeMap() {
        }
    }
 
+   if (m_reverse) {
+       for (size_t i=0; i<m_colors->width; ++i) {
+           for (int c=0; c<4; ++c) {
+               std::swap(m_colors->data[(m_colors->width-1-i)*4+c], m_colors->data[i*4+c]);
+           }
+       }
+   }
+
    m_colorMapSent = false;
    sendColorMap();
 }
@@ -606,8 +650,8 @@ void Color::sendColorMap() {
        std::stringstream buffer;
        buffer << tex->getName() << '\n'
               << m_species << '\n'
-              << m_min << '\n'
-              << m_max << '\n'
+              << (m_reverse?m_max:m_min) << '\n'
+              << (m_reverse?m_min:m_max) << '\n'
               << m_colors->width << '\n'
               << '0';
 
@@ -633,11 +677,14 @@ bool Color::prepare() {
    m_dataRangeValid = false;
 
    if (!m_autoRange) {
-      m_min = getFloatParameter("min");
-      m_max = getFloatParameter("max");
-      if (m_min >= m_max)
-          m_max = m_min + 1.;
+       m_min = m_minPara->getValue();
+       m_max = m_maxPara->getValue();
+       if (m_min == m_max)
+           m_max = m_min + 1.;
    }
+   m_reverse = m_min>m_max;
+   if (m_reverse)
+       std::swap(m_min, m_max);
    m_inputQueue.clear();
 
    computeMap();
@@ -690,17 +737,27 @@ bool Color::reduce(int timestep) {
     m_dataMin = boost::mpi::all_reduce(comm(), m_dataMin, boost::mpi::minimum<Scalar>());
     m_dataMax = boost::mpi::all_reduce(comm(), m_dataMax, boost::mpi::maximum<Scalar>());
     m_dataRangeValid = true;
-    auto diff = m_dataMax - m_dataMin;
-    setParameterRange<Float>("min", m_dataMin - diff*0.5, m_dataMax);
-    setParameterRange<Float>("max", m_dataMin, m_dataMax + diff*0.5);
+    if (m_constrain->getValue()) {
+        auto diff = m_dataMax - m_dataMin;
+        setParameterRange<Float>(m_minPara, m_dataMin - diff*0.5, m_dataMax);
+        setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff*0.5);
+    } else {
+        setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+        setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
+    }
 
     if (m_autoRange) {
-        setFloatParameter("min", m_dataMin);
-        setFloatParameter("max", m_dataMax);
+        setParameter<Float>(m_minPara, m_dataMin);
+        setParameter<Float>(m_maxPara, m_dataMax);
     }
 
     m_min = getFloatParameter("min");
     m_max = getFloatParameter("max");
+    if (m_min == m_max)
+        m_max = m_min + 1.;
+    m_reverse = m_min>m_max;
+   if (m_reverse)
+       std::swap(m_min, m_max);
 
     if (m_nest && m_autoInsetCenter) {
         std::vector<unsigned long> bins(getIntParameter("resolution"));
