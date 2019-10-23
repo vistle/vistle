@@ -46,3 +46,8 @@ include_directories(
 
 add_subdirectory(test)
 add_subdirectory(general)
+
+if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/vistle/module/univiz")
+    set(UNIVIZ_VISTLE TRUE)
+    add_subdirectory(univiz)
+endif()

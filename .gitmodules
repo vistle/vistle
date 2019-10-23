@@ -45,3 +45,6 @@
 [submodule "3rdparty/boost-mpi-1.70"]
 	path = 3rdparty/boost-mpi-1.70
 	url = git://github.com/boostorg/mpi.git
+[submodule "vistle/module/univiz"]
+	path = vistle/module/univiz
+	url = git://github.com/vistle/univiz.git
