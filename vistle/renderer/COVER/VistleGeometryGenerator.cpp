@@ -960,7 +960,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          debug << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]";
 
          const Index *el = &lines->el()[0];
-         const Index *cl = &lines->cl()[0];
+         const Index *cl = numCorners>0 ? &lines->cl()[0] : nullptr;
          const vistle::Scalar *x = &lines->x()[0];
          const vistle::Scalar *y = &lines->y()[0];
          const vistle::Scalar *z = &lines->z()[0];
@@ -981,7 +981,9 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
             primitives->push_back(num);
 
             for (Index n = 0; n < num; n ++) {
-               Index v = cl[start + n];
+               Index v = start + n;
+               if (cl)
+                   v = cl[v];
                vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
             }
          }

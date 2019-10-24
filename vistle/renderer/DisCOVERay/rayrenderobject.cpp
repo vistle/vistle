@@ -282,7 +282,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       data->spheres = new ispc::Sphere[nPoints];
 
       auto el = &line->el()[0];
-      auto cl = &line->cl()[0];
+      auto cl = nPoints>0 ? &line->cl()[0] : nullptr;
       auto x = &line->x()[0];
       auto y = &line->y()[0];
       auto z = &line->z()[0];
@@ -293,7 +293,9 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
          const Index begin = el[strip], end = el[strip+1];
          for (Index c=begin; c<end; ++c) {
             
-            Index i = cl[c];
+            Index i = c;
+            if (cl)
+                i = cl[i];
             s[idx].p.x = x[i];
             s[idx].p.y = y[i];
             s[idx].p.z = z[i];
