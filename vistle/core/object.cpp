@@ -489,6 +489,9 @@ void Object::setAttributeList(const std::string &key, const std::vector<std::str
 
 void Object::copyAttributes(Object::const_ptr src, bool replace) {
 
+   if (!src)
+       return;
+
    if (replace) {
       auto &m = d()->meta;
       auto &sm = src->meta();
