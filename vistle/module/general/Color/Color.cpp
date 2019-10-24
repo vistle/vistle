@@ -442,9 +442,11 @@ bool Color::changeParameter(const Parameter *p) {
 
     if (p == m_constrain) {
         if (m_constrain->getValue()) {
-            auto diff = m_dataMax - m_dataMin;
-            setParameterRange<Float>(m_minPara, m_dataMin - diff*0.5, m_dataMax);
-            setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff*0.5);
+            if (m_dataRangeValid) {
+                auto diff = m_dataMax - m_dataMin;
+                setParameterRange<Float>(m_minPara, m_dataMin - diff*0.5, m_dataMax);
+                setParameterRange<Float>(m_maxPara, m_dataMin, m_dataMax + diff*0.5);
+            }
         } else {
             setParameterRange<Float>(m_minPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
             setParameterRange<Float>(m_maxPara, std::numeric_limits<Scalar>::lowest(), std::numeric_limits<Scalar>::max());
