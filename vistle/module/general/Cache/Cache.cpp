@@ -849,7 +849,31 @@ bool Cache::prepare() {
     int numObjects = 0;
     int numTime = 0;
 
-    auto restoreObject = [this, &compression, &size, &objects, &fetcher, start, stop, step, renumber](const std::string &name0, int port) {
+    std::set<std::string> renumberedObjects;
+
+    auto renumberObject = [&renumberedObjects, renumber, start, stop, step](Object::ptr obj) {
+        if (!renumber)
+            return;
+        if (renumberedObjects.find(obj->getName()) != renumberedObjects.end())
+            return;
+        renumberedObjects.insert(obj->getName());
+
+        auto t = obj->getTimestep();
+        if (t >= 0) {
+            assert(t >= start);
+            t -= start;
+            t /= step;
+            obj->setTimestep(t);
+        }
+        auto nt = obj->getNumTimesteps();
+        if (nt >= 0) {
+            nt = (stop - start + step - 1)/step;
+            assert(t < nt);
+            obj->setNumTimesteps(nt);
+        }
+    };
+
+    auto restoreObject = [this, &renumberObject, &compression, &size, &objects, &fetcher](const std::string &name0, int port) {
         //CERR << "output to port " << port << ", " << num << " objects/arrays read" << std::endl;
         //CERR << "output to port " << port << ", initial " << name0 << " of size " << objects[name0].size() << std::endl;
 
@@ -872,37 +896,11 @@ bool Cache::prepare() {
         //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;
         Object::ptr obj(Object::loadObject(memar));
         updateMeta(obj);
-        auto t = obj->getTimestep();
-        if (renumber && t >= 0) {
-            t -= start;
-            t /= step;
-            obj->setTimestep(t);
-        }
-        auto nt = obj->getNumTimesteps();
-        if (renumber && nt >= 0) {
-            if (nt > stop)
-                nt = stop;
-            nt -= start;
-            nt = (nt+step-1)/step;
-            obj->setNumTimesteps(nt);
-        }
+        renumberObject(obj);
         if (auto db = DataBase::as(obj)) {
             if (auto cgrid = db->grid()) {
                 auto grid = std::const_pointer_cast<Object>(cgrid);
-                auto t = grid->getTimestep();
-                if (renumber && t >= 0) {
-                    t -= start;
-                    t /= step;
-                    grid->setTimestep(t);
-                }
-                auto nt = grid->getNumTimesteps();
-                if (renumber && nt >= 0) {
-                    if (nt > stop)
-                        nt = stop;
-                    nt -= start;
-                    nt = (nt+step-1)/step;
-                    grid->setNumTimesteps(nt);
-                }
+                renumberObject(grid);
             }
         }
         passThroughObject(m_outPort[port], obj);
