@@ -40,7 +40,7 @@ typename Type::const_ptr PortTask::expect(const Port *port) {
     if (it == m_input.end()) {
         if (m_module->schedulingPolicy() == message::SchedulingPolicy::Single) {
             std::stringstream str;
-            str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+            str << "no object available at " << port->getName() << ", but " << Type::typeName() << " is required" << std::endl;
             m_module->sendError(str.str());
         }
         return nullptr;
@@ -101,7 +101,7 @@ typename Type::const_ptr Module::expect(Port *port) {
    if (port->objects().empty()) {
       if (schedulingPolicy() == message::SchedulingPolicy::Single) {
           std::stringstream str;
-          str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+          str << "no object available at " << port->getName() << ", but " << Type::typeName() << " is required" << std::endl;
           sendError(str.str());
       }
       return nullptr;
@@ -111,14 +111,14 @@ typename Type::const_ptr Module::expect(Port *port) {
    port->objects().pop_front();
    if (!obj) {
       std::stringstream str;
-      str << "did not receive valid object at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+      str << "did not receive valid object at " << port->getName() << ", but " << Type::typeName() << " is required" << std::endl;
       sendError(str.str());
       return ret;
    }
    vassert(obj->check());
    if (!ret) {
       std::stringstream str;
-      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Type::typeName() << " is required" << std::endl;
       sendError(str.str());
    }
    return ret;
