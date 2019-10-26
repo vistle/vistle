@@ -335,14 +335,18 @@ bool Indexed::validateCelltree() const {
 
 std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const {
    const Index *el = &this->el()[0];
-   const Index *cl = &this->cl()[0];
+   const Index *cl = nullptr;
+   if (getNumCorners() > 0)
+       cl = &this->cl()[0];
    const Index begin = el[elem], end = el[elem+1];
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
    for (Index i=begin; i<end; ++i) {
-       Index v=cl[i];
+       Index v=i;
+       if (cl)
+           v = cl[i];
        for (int c=0; c<3; ++c) {
            min[c] = std::min(min[c], x[c][v]);
            max[c] = std::max(max[c], x[c][v]);

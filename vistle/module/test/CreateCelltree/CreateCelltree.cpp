@@ -31,12 +31,18 @@ CreateCelltree::~CreateCelltree() {
 
 bool CreateCelltree::compute() {
 
-   UnstructuredGrid::const_ptr unstr = expect<UnstructuredGrid>("grid_in");
-   if (!unstr)
-      return false;
+   Object::const_ptr obj = expect<Object>("grid_in");
+   if (!obj)
+      return true;
+   auto cti = obj->getInterface<CelltreeInterface<3>>();
+   if (!cti) {
+       sendError("CelltreeInterface is required on grid_in");
+       return true;
+   }
 
-   unstr->getCelltree();
-   passThroughObject("grid_out", unstr);
+   cti->getCelltree();
+
+   passThroughObject("grid_out", obj);
 
    return true;
 }

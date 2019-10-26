@@ -68,6 +68,63 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
 };
 
 template<typename Scalar, typename Index>
+class LineVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
+   typedef vistle::Celltree<Scalar, Index> Celltree;
+   typedef typename Celltree::VisitFunctor VisitFunctor;
+   typedef typename VisitFunctor::Order Order;
+ public:
+   LineVisitationFunctor(const Vector &p0, const Vector &p1)
+   : m_p0(p0)
+   , m_p1(p1)
+   {
+   }
+
+   bool checkBounds(const Scalar *min, const Scalar *max) {
+#ifdef CT_DEBUG
+      std::cerr << "checkBounds: min: "
+         << min[0] << " " << min[1] << " " << min[2]
+         << ", max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
+#endif
+      for (int i=0; i<3; ++i) {
+         if (min[i] > m_p0[i] && min[i] > m_p1[i])
+            return false;
+         if (max[i] < m_p0[i] && max[i] < m_p1[i])
+            return false;
+      }
+      return true;
+   }
+
+   Order operator()(const typename Celltree::Node &node) {
+
+#ifdef CT_DEBUG
+      std::cerr << "visit subtree: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin << std::endl;
+#endif
+
+      const Scalar c0 = m_p0[node.dim];
+      const Scalar c1 = m_p1[node.dim];
+      if (c0 > node.Lmax && c0 < node.Rmin && c1 > node.Lmax && c1 < node.Rmin)
+         return VisitFunctor::None;
+      if (c0 < node.Rmin && c1 < node.Rmin) {
+         return VisitFunctor::Left;
+      }
+      if (c0 > node.Lmax && c1 > node.Lmax) {
+         return VisitFunctor::Right;
+      }
+
+      const Scalar mean = Scalar(0.5) * (node.Lmax + node.Rmin);
+      const Scalar c = Scalar(0.5) * (c0 + c1);
+      if (c < mean) {
+         return VisitFunctor::LeftRight;
+      } else {
+         return VisitFunctor::RightLeft;
+      }
+   }
+
+ private:
+   Vector m_p0, m_p1;
+};
+
+template<typename Scalar, typename Index>
 struct CellBoundsFunctor: public Celltree<Scalar, Index>::CellBoundsFunctor {
 
    CellBoundsFunctor(const GridInterface *grid)
@@ -115,6 +172,41 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
    }
    const Grid *m_grid;
    Vector m_point;
+   bool m_acceptGhost;
+   Index cell;
+
+};
+
+template<class Grid, typename Scalar, typename Index>
+class LineIntersectionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
+
+ public:
+   LineIntersectionFunctor(const Grid *grid, const Vector &p0, const Vector &p1, bool acceptGhost=false)
+      : m_grid(grid)
+      , m_p0(p0)
+      , m_p1(p1)
+      , m_acceptGhost(acceptGhost)
+      , cell(InvalidIndex)
+   {
+   }
+
+   bool operator()(Index elem) {
+#ifdef CT_DEBUG
+      std::cerr << "LineIntersectionFunctor: checking cell: " << elem << std::endl;
+#endif
+      if (m_acceptGhost || !m_grid->isGhostCell(elem)) {
+          if (m_grid->inside(elem, m_p0)) {
+#ifdef CT_DEBUG
+              std::cerr << "LineIntersectionFunctor: found cell: " << elem << std::endl;
+#endif
+              cell = elem;
+              return false; // stop traversal
+          }
+      }
+      return true;
+   }
+   const Grid *m_grid;
+   Vector m_p0, m_p1;
    bool m_acceptGhost;
    Index cell;
 
