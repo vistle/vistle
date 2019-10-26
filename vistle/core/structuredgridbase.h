@@ -136,6 +136,9 @@ public:
    virtual Scalar cellDiameter(Index elem) const override;
    virtual Vector cellCenter(Index elem) const override;
    virtual std::vector<Index> getNeighborElements(Index elem) const override;
+
+   Index cellNumFaces(Index elem) const override { return 6; }
+   std::vector<Index> cellVertices(Index elem) const override;
 };
 
 ARCHIVE_ASSUME_ABSTRACT(StructuredGridBase)

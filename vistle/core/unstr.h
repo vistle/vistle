@@ -71,6 +71,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    Scalar cellDiameter(Index elem) const override;
    Vector cellCenter(Index elem) const override;
    std::vector<Index> getNeighborElements(Index elem) const override;
+   Index cellNumFaces(Index elem) const override;
 
  private:
    mutable const unsigned char *m_tl;

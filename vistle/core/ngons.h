@@ -33,6 +33,9 @@ class V_COREEXPORT Ngons: public Coords, virtual public CelltreeInterface<3> {
    bool validateCelltree() const override;
 
    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
+
+   Index cellNumFaces(Index elem) const override { return 1; }
+   std::vector<Index> cellVertices(Index elem) const override;
  private:
    void createCelltree(Index nelem, const Index *cl) const;
 

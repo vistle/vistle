@@ -70,6 +70,23 @@ std::pair<Vector, Vector> Ngons<N>::elementBounds(Index elem) const {
 }
 
 template<int N>
+std::vector<Index> Ngons<N>::cellVertices(Index elem) const {
+    std::vector<Index> result;
+    result.reserve(N);
+    const Index *cl = nullptr;
+    if (getNumCorners() > 0)
+        cl = &this->cl()[0];
+    const Index begin = elem*N, end = begin+N;
+    for (Index i=begin; i<end; ++i) {
+        Index v=i;
+        if (cl)
+            v = cl[i];
+        result.emplace_back(v);
+    }
+    return result;
+}
+
+template<int N>
 bool Ngons<N>::hasCelltree() const {
    if (m_celltree)
        return true;

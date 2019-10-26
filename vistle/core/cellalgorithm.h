@@ -11,6 +11,7 @@ namespace vistle {
 V_COREEXPORT Vector trilinearInverse(const Vector &p0, const Vector p[8]);
 V_COREEXPORT bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
 V_COREEXPORT bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
+V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nCorners, const Vector *corners);
 V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z);
 V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z);
 
@@ -184,32 +185,53 @@ class LineIntersectionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
    LineIntersectionFunctor(const Grid *grid, const Vector &p0, const Vector &p1, bool acceptGhost=false)
       : m_grid(grid)
       , m_p0(p0)
-      , m_p1(p1)
+      , m_dir(p1-p0)
       , m_acceptGhost(acceptGhost)
-      , cell(InvalidIndex)
    {
    }
 
    bool operator()(Index elem) {
 #ifdef CT_DEBUG
-      std::cerr << "LineIntersectionFunctor: checking cell: " << elem << std::endl;
+       std::cerr << "LineIntersectionFunctor: checking cell: " << elem << std::endl;
 #endif
-      if (m_acceptGhost || !m_grid->isGhostCell(elem)) {
-          if (m_grid->inside(elem, m_p0)) {
-#ifdef CT_DEBUG
-              std::cerr << "LineIntersectionFunctor: found cell: " << elem << std::endl;
-#endif
-              cell = elem;
-              return false; // stop traversal
-          }
-      }
-      return true;
+       if (m_acceptGhost || !m_grid->isGhostCell(elem)) {
+           if (m_grid->cellNumFaces() != 1)
+               return true;
+           auto verts = m_grid->cellVertices(elem);
+           Index nCorners = verts.size();
+           std::vector<Vector> corners;
+           corners.reserve(nCorners);
+           for (auto v: verts) {
+               corners.emplace_back(m_grid->getVertex(v));
+           }
+           auto nc = faceNormalAndCenter(corners.size(), &corners[0]);
+           auto normal = nc.first;
+           auto center = nc.second;
+
+           const Scalar cosa = normal.dot(m_dir);
+           if (std::abs(cosa) <= 1e-7) {
+               return true;
+           }
+           const Scalar t = normal.dot(center-m_p0)/cosa;
+           if (t < 0 || t > 1) {
+               return true;
+           }
+           const auto isect = m_p0 + t*m_dir;
+           if (insidePolygon(isect, corners.data(), nCorners, normal)) {
+               intersections.emplace_back(isect, elem);
+           }
+       }
+       return true;
    }
    const Grid *m_grid;
-   Vector m_p0, m_p1;
-   bool m_acceptGhost;
-   Index cell;
-
+   const Vector m_p0;
+   const Vector m_dir;
+   const bool m_acceptGhost;
+   struct Intersection {
+       Vector point;
+       Index cell;
+   };
+   std::vector<Intersection> intersections;
 };
 
 }

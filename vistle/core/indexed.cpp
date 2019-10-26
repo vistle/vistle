@@ -362,6 +362,11 @@ std::vector<Index> Indexed::cellVertices(Index elem) const {
     return std::vector<Index>(&cl[begin], &cl[end]);
 }
 
+Index Indexed::cellNumFaces(Index elem) const {
+
+    return 1;
+}
+
 void Indexed::refreshImpl() const {
 
     const Data *d = static_cast<Data *>(m_data);

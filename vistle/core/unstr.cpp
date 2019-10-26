@@ -8,6 +8,8 @@
 
 namespace vistle {
 
+static const Scalar Epsilon = 1e-7;
+
 /* cell types:
  NONE        =  0,
  BAR         =  1,
@@ -476,6 +478,33 @@ std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
     return getNeighborFinder().getNeighborElements(elem);
 }
 
+Index UnstructuredGrid::cellNumFaces(Index elem) const {
+
+    auto t =  tl()[elem] & TYPE_MASK;
+    switch (t) {
+    case NONE:
+    case BAR:
+        return 0;
+    case TRIANGLE:
+    case QUAD:
+    case POLYGON:
+        return 1;
+    case TETRAHEDRON:
+        return 4;
+    case PYRAMID:
+        return 5;
+    case PRISM:
+        return 5;
+    case HEXAHEDRON:
+        return 6;
+    case CPOLYHEDRON:
+    case VPOLYHEDRON:
+        return 0;
+    }
+
+    return -1;
+}
+
 
 bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
@@ -559,7 +588,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
             auto center = nc.second;
 
             const Scalar cosa = normal.dot(raydir);
-            if (std::abs(cosa) <= 1e-7) {
+            if (std::abs(cosa) <= Epsilon) {
                 continue;
             }
             const Scalar t = normal.dot(center-point)/cosa;
@@ -592,7 +621,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
                 auto center = nc.second;
 
                 const Scalar cosa = normal.dot(raydir);
-                if (std::abs(cosa) <= 1e-7) {
+                if (std::abs(cosa) <= Epsilon) {
                     continue;
                 }
                 const Scalar t = normal.dot(center-point)/cosa;
@@ -621,7 +650,7 @@ Scalar UnstructuredGrid::exitDistance(Index elem, const Vector &point, const Vec
             auto center = nc.second;
 
             const Scalar cosa = normal.dot(raydir);
-            if (std::abs(cosa) <= 1e-7) {
+            if (std::abs(cosa) <= Epsilon) {
                 continue;
             }
             const Scalar t = normal.dot(center-point)/cosa;
@@ -677,7 +706,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 auto center = nc.second;
 
                 const Scalar cosa = normal.dot(raydir);
-                if (std::abs(cosa) <= 1e-7) {
+                if (std::abs(cosa) <= Epsilon) {
                     continue;
                 }
                 const Scalar t = normal.dot(center-point)/cosa;
@@ -730,7 +759,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 auto center = nc.second;
 
                 const Scalar cosa = normal.dot(raydir);
-                if (std::abs(cosa) <= 1e-7) {
+                if (std::abs(cosa) <= Epsilon) {
                     continue;
                 }
                 const Scalar t = normal.dot(center-point)/cosa;
@@ -778,7 +807,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                     auto center = nc.second;
 
                     const Scalar cosa = normal.dot(raydir);
-                    if (std::abs(cosa) <= 1e-7) {
+                    if (std::abs(cosa) <= Epsilon) {
                         continue;
                     }
                     const Scalar t = normal.dot(center-point)/cosa;

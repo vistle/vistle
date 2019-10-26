@@ -63,7 +63,8 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    const NeighborFinder &getNeighborFinder() const;
 
    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
-   virtual std::vector<Index> cellVertices(Index elem) const;
+   std::vector<Index> cellVertices(Index elem) const override;
+   Index cellNumFaces(Index elem) const override;
 
  private:
    mutable Index m_numEl = InvalidIndex, m_numCl = InvalidIndex;

@@ -85,4 +85,13 @@ std::vector<Index> StructuredGridBase::getNeighborElements(Index elem) const {
     return elems;
 }
 
+std::vector<Index> StructuredGridBase::cellVertices(Index elem) const {
+    const Index dims[3] = { getNumDivisions(0), getNumDivisions(1), getNumDivisions(2) };
+    auto vert = StructuredGridBase::cellVertices(elem, dims);
+    Index nvert = 1 << dimensionality(dims);
+    std::vector<Index> result(nvert);
+    std::copy(vert.begin(), vert.begin()+nvert, result.begin());
+    return result;
+}
+
 } // namespace vistle
