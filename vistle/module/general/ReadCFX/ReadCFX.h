@@ -102,7 +102,7 @@ class ReadCFX: public vistle::Module {
 
  private:
    bool changeParameter(const vistle::Parameter *p) override;
-   bool m_ExportDone; // m_addToPortResfileVolumeData, m_addToPortResfile2dData;
+   bool m_ExportDone = true; // m_addToPortResfileVolumeData, m_addToPortResfile2dData;
 
    //Parameter
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_2dAreaSelection, *m_particleSelection;

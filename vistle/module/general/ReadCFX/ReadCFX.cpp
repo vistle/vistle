@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
+#include <mutex>
 
 
 #include <core/object.h>
@@ -47,10 +48,40 @@ namespace bf = boost::filesystem;
 
 MODULE_MAIN(ReadCFX)
 
+namespace {
+std::mutex cfxMutex;
+vistle::Module *cfxModule = nullptr;
+
+void cfxError(char *msg) {
+    if (cfxModule) {
+        cfxModule->sendError("%s", msg);
+    } else {
+        std::cerr << "CFX error: " << msg << std::endl;
+    }
+}
+
+int wrapCfxInit(vistle::Module *mod, char *resultfilename, int counts[])
+{
+    cfxMutex.lock();
+    cfxModule = mod;
+    int nzones = cfxExportInit(resultfilename, counts);
+    cfxExportError(cfxError);
+    return nzones;
+}
+
+void wrapCfxDone() {
+    cfxExportDone();
+    cfxMutex.unlock();
+}
+
+}
+
 using namespace vistle;
 
 ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm)
    : Module("read ANSYS CFX data", name, moduleID, comm) {
+
+    m_ExportDone = true;
 
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfile", ".res file with absolute path","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
@@ -147,7 +178,8 @@ ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm)
 }
 
 ReadCFX::~ReadCFX() {
-    cfxExportDone();
+    if (!m_ExportDone)
+        wrapCfxDone();
     m_ExportDone = true;
 }
 
@@ -478,27 +510,25 @@ int ReadCFX::trackStartandEndForRank(int rank, int *firstTrackForRank, int *last
 bool ReadCFX::initializeResultfile() {
     //call cfxExportInit again in order to access data out of resfile again
 
-    std::string c = m_resultfiledir->getValue();
-    const char *resultfiledir;
-    resultfiledir = c.c_str();
+    assert(m_ExportDone);
 
-    char *resultfileName = strdup(resultfiledir);
-    m_nzones = cfxExportInit(resultfileName, counts);
+    char *resultfileName = strdup(m_resultfiledir->getValue().c_str());
+    m_nzones = wrapCfxInit(this, resultfileName, counts);
+    m_ExportDone = false;
+    free(resultfileName);
     m_nnodes = counts[cfxCNT_NODE];
     m_nregions = counts[cfxCNT_REGION];
     m_nvolumes = counts[cfxCNT_VOLUME];
 //    m_nelems = counts[cfxCNT_ELEMENT];
 //    m_nvars = counts[cfxCNT_VARIABLE];
-    m_ExportDone = false;
 
     if (m_nzones < 0) {
-        cfxExportDone();
-        sendError("cfxExportInit could not open %s", resultfileName);
+        wrapCfxDone();
         m_ExportDone = true;
+        sendError("cfxExportInit could not open %s", resultfileName);
         return false;
     }
 
-    free(resultfileName);
     return true;
 }
 
@@ -515,7 +545,8 @@ bool ReadCFX::changeParameter(const Parameter *p) {
         }
 
         if (m_nzones > 0) {
-            cfxExportDone();
+            if (!m_ExportDone)
+                wrapCfxDone();
             m_ExportDone = true;
         }
 
@@ -541,6 +572,8 @@ bool ReadCFX::changeParameter(const Parameter *p) {
             //fill choice parameter
             m_case.parseResultfile();
             m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
+            wrapCfxDone();
+            m_ExportDone = true;
             initializeResultfile();
             m_case.getFieldList();
             for (auto out: m_fieldOut) {
@@ -828,8 +861,8 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
         std::cerr << "invalid zone number" << std::endl;
     }
     cfxExportZoneMotionAction(m_2dAreasSelected[area2d].idWithZone.zoneFlag,ignoreZoneMotionForGrid);
-    int *nodeListOf2dArea;
-    index_t nNodesIn2dArea, nFacesIn2dArea;
+    int *nodeListOf2dArea = nullptr;
+    index_t nNodesIn2dArea=0, nFacesIn2dArea=0;
 
     if(m_2dAreasSelected[area2d].boundary) {
         nNodesIn2dArea = cfxExportBoundarySize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_NODES);
@@ -842,7 +875,6 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
         nFacesIn2dArea = cfxExportRegionSize(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES);
     }
 
-    index_t nNodesInZone = cfxExportNodeCount();
     index_t nConnectIn2dArea = 4*nFacesIn2dArea; //maximum of conncectivities. If there are 3 vertices faces, it is corrected with resize at the end of the function
 
     Polygons::ptr polygon(new Polygons(nFacesIn2dArea,nConnectIn2dArea,nNodesIn2dArea)); //initialize Polygon with numFaces, numCorners, numVertices
@@ -852,6 +884,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
     auto ptrOnYcoords = polygon->y().data();
     auto ptrOnZcoords = polygon->z().data();
 
+    index_t nNodesInZone = cfxExportNodeCount();
     std::vector<std::int32_t> nodeListOf2dAreaVec;
     nodeListOf2dAreaVec.resize(nNodesInZone+1);
 
@@ -876,7 +909,7 @@ Polygons::ptr ReadCFX::loadPolygon(int area2d) {
 
     //attention: cfxExportBoundary/RegionList(cfxREG_FACES) has to be called AFTER cfxExportBoundary/RegionList(cfxREG_NODES) and free2dArea
     //if not, cfxExportBoundary/RegionList(cfxREG_NODES) gives unreasonable values for node id's
-    int *faceListOf2dArea;
+    int *faceListOf2dArea = nullptr;
     if(m_2dAreasSelected[area2d].boundary) {
         faceListOf2dArea = cfxExportBoundaryList(m_2dAreasSelected[area2d].idWithZone.ID,cfxREG_FACES); //query the faces that define the 2dArea
     }
@@ -1347,37 +1380,35 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
     //calles for each port the loadGrid and loadField function and the setDataObject function to get the object ready to be added to port
 
     for (int i=0; i<NumPorts; ++i) {
-      std::string field = m_fieldOut[i]->getValue();
-      std::vector<Variable> allParam = m_case.getCopyOfAllParam();
-      std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
-      auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
-          return obj.varName == field;});
-      if (it == allParam.end()) {
-              m_currentVolumedata[i]= DataBase::ptr();
-      }
-      else {
-          auto index = std::distance(allParam.begin(), it);
-          DataBase::ptr obj = loadField(area3d, allParam[index]);
+        std::string field = m_fieldOut[i]->getValue();
+        std::vector<Variable> allParam = m_case.getCopyOfAllParam();
+        std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
+        auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
+            return obj.varName == field;});
+        if (it == allParam.end()) {
+            m_currentVolumedata[i]= DataBase::ptr();
+        } else {
+            auto index = std::distance(allParam.begin(), it);
+            DataBase::ptr obj = loadField(area3d, allParam[index]);
 
-          if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
-              //variable exists only in resfile --> timestep = -1
-              Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
-              setMeta(obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile,t);
-              obj->setGrid(m_gridsInTimestepForResfile[area3d]);
-              obj->setMapping(DataBase::Vertex);
-          }
-          else {
-              //variable exists in resfile and in transient files --> timestep = last
-              Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
-              setMeta(obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile,t);
-              obj->setGrid(grid);
-              obj->setMapping(DataBase::Vertex);
-          }
-          obj->addAttribute("_species", field);
-          m_currentVolumedata[i]= obj;
-      }
-   }
-   return true;
+            if(std::find(trnVars.begin(), trnVars.end(), allParam[index].varName) == trnVars.end()) {
+                //variable exists only in resfile --> timestep = -1
+                Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
+                setMeta(obj,area3d,setMetaTimestep,-1,numTimesteps,numSel3dArea,readTransientFile,t);
+                obj->setGrid(m_gridsInTimestepForResfile[area3d]);
+            }
+            else {
+                //variable exists in resfile and in transient files --> timestep = last
+                Matrix4 t = getTransformationMatrix(m_3dAreasSelected[area3d].zoneFlag,timestep,ignoreZoneMotionForData);
+                setMeta(obj,area3d,setMetaTimestep,timestep,numTimesteps,numSel3dArea,readTransientFile,t);
+                obj->setGrid(grid);
+            }
+            obj->setMapping(DataBase::Vertex);
+            obj->addAttribute("_species", field);
+            m_currentVolumedata[i]= obj;
+        }
+    }
+    return true;
 }
 
 bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep, int timestep, int numTimesteps, index_t numSel2dArea, bool readTransientFile) {
@@ -1731,7 +1762,7 @@ bool ReadCFX::prepare() {
                 }
                 setMetaTimestep++;
             }
-            cfxExportDone();
+            wrapCfxDone();
             m_ExportDone = true;
         }
     }
