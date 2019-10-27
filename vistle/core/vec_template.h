@@ -141,7 +141,8 @@ bool Vec<T,Dim>::checkImpl() const {
 
 template <class T, int Dim>
 void Vec<T,Dim>::updateInternals() {
-    d()->updateBounds();
+    if (!d()->boundsValid())
+        d()->updateBounds();
 }
 
 template <class T, int Dim>
