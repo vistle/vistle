@@ -30,30 +30,39 @@ bool VecToScalar::compute() {
       return true;
    }
 
+   std::string spec = data_in->getAttribute("_species");
+   if (!spec.empty())
+       spec += "_";
+
    Vec<Scalar>::ptr out;
    switch(m_caseParam->getValue()) {
    case X: {
+      spec += "x";
       out = extract(data_in,0);
       break;
    }
 
    case Y: {
+      spec += "y";
       out = extract(data_in,1);
       break;
    }
 
    case Z: {
+      spec += "z";
       out = extract(data_in,2);
       break;
    }
 
    case AbsoluteValue: {
+      spec += "magnitude";
       out = calculateAbsolute(data_in);
       break;
    }
    }
 
    out->copyAttributes(data_in);
+   out->addAttribute("_species", spec);
    out->setGrid(data_in->grid());
    addObject("data_out", out);
 

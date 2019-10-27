@@ -510,87 +510,84 @@ bool ReadCFX::changeParameter(const Parameter *p) {
         resultfiledir = c.c_str();
         m_case.m_valid = m_case.checkFile(resultfiledir);
         if (!m_case.m_valid) {
-            std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
+            sendError("%s is not a valid CFX .res file", resultfiledir);
             return false;
         }
-        else {
-            sendInfo("Please wait...");
 
-            if (m_nzones > 0) {
-                cfxExportDone();
-                m_ExportDone = true;
+        if (m_nzones > 0) {
+            cfxExportDone();
+            m_ExportDone = true;
+        }
+
+        if(initializeResultfile()) {
+            if (cfxExportTimestepNumGet(1) < 0) {
+                sendInfo("no timesteps");
+            }
+            m_ntimesteps = cfxExportTimestepCount();
+            if(m_ntimesteps > 0) {
+                setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
+                setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
+                setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps-1);
+                setParameterMaximum<Integer>(m_timeskip, m_ntimesteps-1);
+            }
+            else {
+                setParameterMaximum<Integer>(m_lasttimestep, 0);
+                setParameter<Integer>(m_lasttimestep,0);
+                setParameterMaximum<Integer>(m_firsttimestep, 0);
+                setParameter<Integer>(m_firsttimestep,0);
+                setParameterMaximum<Integer>(m_timeskip, 0);
             }
 
-            if(initializeResultfile()) {
-                if (cfxExportTimestepNumGet(1) < 0) {
-                    sendInfo("no timesteps");
+            //fill choice parameter
+            m_case.parseResultfile();
+            m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
+            initializeResultfile();
+            m_case.getFieldList();
+            for (auto out: m_fieldOut) {
+                setParameterChoices(out, m_case.m_field_param);
+            }
+            for (auto out: m_2dOut) {
+                setParameterChoices(out, m_case.m_boundary_param);
+            }
+            for (auto out: m_particleOut) {
+                setParameterChoices(out, m_case.m_particle_types);
+            }
+            if(rank() == 0) {
+                //print out zone names
+                sendInfo("Found %d zones", m_nzones);
+                for(index_t i=1;i<=m_nzones;i++) {
+                    cfxExportZoneSet(i,NULL);
+                    sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
+                    cfxExportZoneFree();
                 }
-                m_ntimesteps = cfxExportTimestepCount();
-                if(m_ntimesteps > 0) {
-                    setParameterMaximum<Integer>(m_lasttimestep, m_ntimesteps-1);
-                    setParameter<Integer>(m_lasttimestep,m_ntimesteps-1);
-                    setParameterMaximum<Integer>(m_firsttimestep, m_ntimesteps-1);
-                    setParameterMaximum<Integer>(m_timeskip, m_ntimesteps-1);
+                //print out 2D area names (boundaries and regions)
+                sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
+                std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
+                for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
+                    sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].boundName).c_str());
                 }
-                else {
-                    setParameterMaximum<Integer>(m_lasttimestep, 0);
-                    setParameter<Integer>(m_lasttimestep,0);
-                    setParameterMaximum<Integer>(m_firsttimestep, 0);
-                    setParameter<Integer>(m_firsttimestep,0);
-                    setParameterMaximum<Integer>(m_timeskip, 0);
+                std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
+                for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
+                    sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
+                }
+                //print variable names in .trn file
+                std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
+                sendInfo("Found %d variables in transient files", (int)trnVars.size());
+                int j=1;
+                for(std::vector<std::string>::iterator it = trnVars.begin(); it != trnVars.end(); ++it, ++j) {
+                    sendInfo("%d. %s",j,(*it).c_str());
+                }
+                //print particle type names
+                index_t nParticleTypes = cfxExportGetNumberOfParticleTypes();
+                for(index_t i=1;i<=nParticleTypes;++i) {
+                    sendInfo("particle type no. %d: %s",i,cfxExportGetParticleName(i));
                 }
 
-                //fill choice parameter
-                m_case.parseResultfile();
-                m_case.checkWhichVariablesAreInTransientFile(m_ntimesteps);
-                initializeResultfile();
-                m_case.getFieldList();
-                for (auto out: m_fieldOut) {
-                    setParameterChoices(out, m_case.m_field_param);
-                }
-                for (auto out: m_2dOut) {
-                    setParameterChoices(out, m_case.m_boundary_param);
-                }
-                for (auto out: m_particleOut) {
-                    setParameterChoices(out, m_case.m_particle_types);
-                }
-                if(rank() == 0) {
-                    //print out zone names
-                    sendInfo("Found %d zones", m_nzones);
-                    for(index_t i=1;i<=m_nzones;i++) {
-                        cfxExportZoneSet(i,NULL);
-                        sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
-                        cfxExportZoneFree();
-                    }
-                    //print out 2D area names (boundaries and regions)
-                    sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
-                    std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
-                    for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-                        sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].boundName).c_str());
-                    }
-                    std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
-                    for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
-                        sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
-                    }
-                    //print variable names in .trn file
-                    std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
-                    sendInfo("Found %d variables in transient files", (int)trnVars.size());
-                    int j=1;
-                    for(std::vector<std::string>::iterator it = trnVars.begin(); it != trnVars.end(); ++it, ++j) {
-                        sendInfo("%d. %s",j,(*it).c_str());
-                    }
-                    //print particle type names
-                    index_t nParticleTypes = cfxExportGetNumberOfParticleTypes();
-                    for(index_t i=1;i<=nParticleTypes;++i) {
-                        sendInfo("particle type no. %d: %s",i,cfxExportGetParticleName(i));
-                    }
-
-                }
-                cfxExportZoneFree();
+            }
+            cfxExportZoneFree();
 #ifdef CFX_DEBUG
-                sendInfo("The initialisation was successfully done");
+            sendInfo("The initialisation was successfully done");
 #endif
-            }
         }
     }
     if(p == m_readDataTransformed) {
@@ -1376,6 +1373,7 @@ bool ReadCFX::loadFields(UnstructuredGrid::ptr grid, int area3d, int setMetaTime
               obj->setGrid(grid);
               obj->setMapping(DataBase::Vertex);
           }
+          obj->addAttribute("_species", field);
           m_currentVolumedata[i]= obj;
       }
    }
@@ -1412,6 +1410,7 @@ bool ReadCFX::load2dFields(Polygons::ptr polyg, int area2d, int setMetaTimestep,
                 obj->setGrid(polyg);
                 obj->setMapping(DataBase::Vertex);
             }
+            obj->addAttribute("_species", area2dField);
             m_current2dData[i]= obj;
         }
     }
