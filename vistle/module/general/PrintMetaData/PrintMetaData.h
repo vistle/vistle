@@ -109,7 +109,9 @@ class PrintMetaData : public vistle::Module {
    int m_numParsedTimesteps;
    int m_numAnimationSteps;
    double m_realTime;
+   vistle::Matrix4 m_transform;
    bool m_isFirstComputeCall;
+
 
    // private constants
    const int M_ROOT_NODE = 0;

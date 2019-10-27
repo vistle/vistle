@@ -145,6 +145,7 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data) {
     m_numParsedTimesteps = (data->getTimestep() + 1 > m_numParsedTimesteps) ? data->getTimestep() + 1 : m_numParsedTimesteps;
     m_numTotalTimesteps = data->meta().numTimesteps();
     m_realTime = data->meta().realTime();
+    m_transform = data->meta().transform();
 
     m_attributesVector = data->getAttributeList();
 }
@@ -319,6 +320,13 @@ void PrintMetaData::reduce_printData() {
          message += "\n   Number of Parsed Time Steps: " + std::to_string(m_numParsedTimesteps);
          message += "\n   Number of Total Time Steps: " + std::to_string(m_numTotalTimesteps);
          message += "\n   Real Time: " + std::to_string(m_realTime);
+         if (m_transform == Matrix4::Identity()) {
+             message += "\n   Transform: identity";
+         } else {
+             std::stringstream str;
+             str << m_transform;
+             message += "\n   Transform: " + str.str();
+         }
 
          message += "\n\nAttributes: ";
          for (unsigned i = 0; i < m_attributesVector.size(); i++) {
