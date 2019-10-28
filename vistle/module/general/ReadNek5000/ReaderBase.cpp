@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <algorithm>
 
 
 #ifdef _WIN32
