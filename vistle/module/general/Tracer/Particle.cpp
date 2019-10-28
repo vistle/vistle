@@ -101,7 +101,10 @@ bool Particle::isMoving() {
     }
 
     bool moving = m_v.norm() > m_global.min_vel;
-    if(std::abs(m_dist) > m_global.trace_len || std::abs(m_time) > m_global.trace_time || m_stp > m_global.max_step || !moving){
+    if((m_global.trace_len>=0 && std::abs(m_dist) > m_global.trace_len)
+        || (m_global.trace_time>=0 && std::abs(m_time) > m_global.trace_time)
+        || (m_stp > m_global.max_step)
+        || !moving) {
 
        if (std::abs(m_dist) > m_global.trace_len)
            this->Deactivate(DistanceLimitReached);
@@ -300,18 +303,20 @@ void Particle::fetchSegments(Particle &other) {
 
 inline Scalar interp(Scalar f, const Scalar f0, const Scalar f1) {
 
-    const Scalar EPSILON = 1e-6;
+    const Scalar EPSILON = 1e-12;
     const Scalar diff = (f1 - f0);
     const Scalar d0 = f - f0;
     if (fabs(diff) < EPSILON) {
         const Scalar d1 = f1 - f;
-        return fabs(d0) < fabs(d1) ? 1 : 0;
+        return fabs(d0) < fabs(d1) ? 0 : 1;
     }
 
-    return std::min(vistle::Scalar(1), std::max(vistle::Scalar(0), d0 / diff));
+    return clamp(d0/diff, Scalar(0), Scalar(1));
 }
 
 void Particle::addToOutput() {
+
+   const bool second_order=true;
 
    if (m_segments.empty())
        return;
@@ -319,38 +324,44 @@ void Particle::addToOutput() {
    if (m_global.task_type == MovingPoints) {
 
        std::lock_guard<std::mutex> locker(m_global.mutex);
-       Scalar prevTime(0), nextTime(m_global.dt_step);
-       std::shared_ptr<Segment> lastSeg;
-       Index lastIdx = 0;
-       Index timestep = 0;
        for (auto &ent: m_segments) {
            const auto &seg = *ent.second;
            if (seg.m_num < 0) {
                continue;
            }
+           Scalar prevTime(0);
+           Scalar time(0);
            auto N = seg.m_xhist.size();
+           //std::cerr << "particle " << seg.m_id << ", N=" << N << " steps" << std::endl;
+           Index timestep = 0;
+           Index prevIdx = 0;
            for (Index i=0; i<N; ++i) {
-               auto time = seg.m_times[i];
-               prevTime = time;
+               auto nextTime = seg.m_times[i];
 
-               if (time < nextTime) {
-                   lastSeg = ent.second;
-                   continue;
-               }
+               //std::cerr << "particle " << seg.m_id << " time=" << time << ", prev=" << prevTime << ", next=" << nextTime << std::endl;
 
-               while (nextTime < time) {
-                   Scalar t = interp(nextTime, prevTime, time);
+               while (time <= nextTime) {
+                   Scalar t = interp(time, prevTime, nextTime);
+                   //std::cerr << "particle " << seg.m_id << " interpolation weight=" << t << std::endl;
 
+                   const auto vel1 = seg.m_vhist[i];
+                   const auto vel0 = seg.m_vhist[prevIdx];
                    const auto pos1 = seg.m_xhist[i];
-                   const auto pos0 = lastSeg ? lastSeg->m_xhist[lastIdx] : pos1;
+                   const auto pos0 = seg.m_xhist[prevIdx];
+                   Vector pos;
+                   if (second_order) {
+                       Scalar dt0 = time-prevTime, dt1 = nextTime-time;
+                       const Vector pos0p = pos0+dt0*vel0;
+                       const Vector pos1p = pos1-dt1*vel1;
+                       pos = lerp(pos0p, pos1p, t);
+                   } else {
+                       pos = lerp(pos0, pos1, t);
+                   }
                    auto points = m_global.points[timestep];
-                   Vector pos = lerp(pos0, pos1, t);
                    points->x().push_back(pos[0]);
                    points->y().push_back(pos[1]);
                    points->z().push_back(pos[2]);
 
-                   const auto vel1 = seg.m_vhist[i];
-                   const auto vel0 = lastSeg ? lastSeg->m_vhist[lastIdx] : vel1;
                    Vector vel = lerp(vel0, vel1, t);
                    auto vout = m_global.vecField[timestep];
                    vout->x().push_back(vel[0]);
@@ -358,25 +369,25 @@ void Particle::addToOutput() {
                    vout->z().push_back(vel[2]);
 
                    const auto pres1 = seg.m_pressures[i];
-                   const auto pres0 = lastSeg ? lastSeg->m_pressures[lastIdx] : pres1;
+                   const auto pres0 = seg.m_pressures[prevIdx];
                    Scalar pres = lerp(pres0, pres1, t);
                    m_global.scalField[timestep]->x().push_back(pres);
 
                    const auto dist1 = seg.m_dists[i];
-                   const auto dist0 = lastSeg ? lastSeg->m_dists[lastIdx] : dist1;
+                   const auto dist0 = seg.m_dists[prevIdx];
                    Scalar dist = lerp(dist0, dist1, t);
                    m_global.distField[timestep]->x().push_back(dist);
 
                    m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
-                   m_global.timeField[timestep]->x().push_back(nextTime);
+                   m_global.timeField[timestep]->x().push_back(time);
                    m_global.idField[timestep]->x().push_back(m_startId);
                    m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
 
-                   nextTime += m_global.dt_step;
+                   time += m_global.dt_step;
                    ++timestep;
                }
-               lastSeg = ent.second;
-               lastIdx = i;
+               prevTime = nextTime;
+               prevIdx = i;
            }
        }
    } else {

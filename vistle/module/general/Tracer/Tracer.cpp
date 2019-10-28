@@ -595,15 +595,15 @@ bool Tracer::reduce(int timestep) {
        maxTime = std::max(p->time(), maxTime);
    }
    maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
+   int numout = 1;
    if (taskType == MovingPoints) {
-       numtime = maxTime / global.dt_step;
+       numtime = maxTime / global.dt_step + 1;
        if (numtime < 1)
            numtime = 1;
+       numout = numtime;
    }
 
-   for (int i=0; i<numtime; ++i) {
-       if (timestep != i && timestep != -1)
-           continue;
+   while (global.points.size() < numout && global.lines.size() < numout) {
        if (taskType == MovingPoints) {
            global.points.emplace_back(new Points(Index(0)));
            applyAttributes(global.points.back(), m_gridAttr[timestep+1]);
@@ -638,12 +638,11 @@ bool Tracer::reduce(int timestep) {
    Meta meta;
    meta.setNumTimesteps(numtime);
    meta.setNumBlocks(size());
-   Index i = 0;
-   for (int t=0; t<numtime; ++t) {
-       if (timestep != t && timestep != -1)
+   for (int i=0; i<numtime; ++i) {
+       if (timestep != i && timestep != -1)
            continue;
        meta.setBlock(rank());
-       meta.setTimeStep(t);
+       meta.setTimeStep(i);
 
        Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);
@@ -675,8 +674,6 @@ bool Tracer::reduce(int timestep) {
        global.stopReasonField[i]->setGrid(geo);
        global.stopReasonField[i]->setMeta(meta);
        addObject("stop_reason", global.stopReasonField[i]);
-
-       ++t;
    }
 
    if (rank() == 0) {
