@@ -59,8 +59,10 @@ struct File {
     std::string format() {
         if (fp)
             return "plain";
+#ifdef HAVE_HDF5
         if (file >= 0)
             return "hdf5";
+#endif
         if (isHdf5())
             return "hdf5";
         return "plain";
