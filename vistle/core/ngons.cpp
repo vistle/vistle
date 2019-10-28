@@ -168,9 +168,11 @@ void Ngons<N>::createCelltree(Index nelem, const Index *cl) const {
    typename Celltree::ptr ct(new Celltree(nelem));
    ct->init(min.data(), max.data(), gmin, gmax);
    addAttachment("celltree", ct);
+#ifndef NDEBUG
    if (!validateCelltree()) {
        std::cerr << "ERROR: Celltree validation failed." << std::endl;
    }
+#endif
 }
 
 template<int N>
@@ -200,7 +202,7 @@ bool Ngons<N>::validateCelltree() const {
    CellBoundsFunctor<N> boundFunc(this);
    auto ct = getCelltree();
    if (!ct->validateTree(boundFunc)) {
-       std::cerr << "Indexed: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
+       std::cerr << "Ngons<N=" << N << ">: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
        return false;
    }
    return true;

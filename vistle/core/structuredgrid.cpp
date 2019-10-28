@@ -183,6 +183,11 @@ void StructuredGrid::createCelltree(Index dims[3]) const {
    typename Celltree::ptr ct(new Celltree(nelem));
    ct->init(min.data(), max.data(), gmin, gmax);
    addAttachment("celltree", ct);
+#ifndef NDEBUG
+   if (!validateCelltree()) {
+       std::cerr << "ERROR: Celltree validation failed." << std::endl;
+   }
+#endif
 }
 
 Index StructuredGrid::getNumVertices() const {
