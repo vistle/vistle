@@ -11,6 +11,8 @@ class ToTriangles: public vistle::Module {
 
  private:
    virtual bool compute();
+
+   vistle::IntParameter *p_transformSpheres = nullptr;
 };
 
 #endif

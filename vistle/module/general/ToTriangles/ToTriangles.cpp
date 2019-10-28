@@ -26,6 +26,8 @@ ToTriangles::ToTriangles(const std::string &name, int moduleID, mpi::communicato
 
    createInputPort("grid_in");
    createOutputPort("grid_out");
+
+   p_transformSpheres = addIntParameter("transform_spheres", "also generate triangles for sphere impostors", false, Parameter::Boolean);
 }
 
 ToTriangles::~ToTriangles() {
@@ -132,6 +134,7 @@ bool ToTriangles::compute() {
    // transform the rest, if possible
    Triangles::ptr tri;
    DataBase::ptr ndata;
+   auto sphere = Spheres::as(obj);
 
    if (auto poly = Polygons::as(obj)) {
 
@@ -181,7 +184,7 @@ bool ToTriangles::compute() {
          }
       }
       vassert(i == 3*ntri);
-   }  else  if (auto sphere = Spheres::as(obj)) {
+   }  else if (sphere && p_transformSpheres->getValue()) {
 
       const int NumLat = 8;
       const int NumLong = 13;
@@ -578,6 +581,9 @@ bool ToTriangles::compute() {
       } else {
          addObject("grid_out", tri);
       }
+   } else {
+       auto out = obj->clone();
+       addObject("grid_out", out);
    }
 
    return true;
