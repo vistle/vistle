@@ -73,7 +73,9 @@ bool ToTubes::compute() {
    }
 
    Tubes::ptr tubes;
-   auto cl = &lines->cl()[0];
+   const Index *cl = nullptr;
+   if (lines->getNumCorners() > 0)
+       cl = &lines->cl()[0];
    // set coordinates
    if (lines->getNumCorners() == 0) {
       tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
@@ -87,7 +89,9 @@ bool ToTubes::compute() {
       auto ty = tubes->y().data();
       auto tz = tubes->z().data();
       for (Index i=0; i<lines->getNumCorners(); ++i) {
-         const Index l = cl[i];
+         Index l = i;
+         if (cl)
+             l = cl[l];
          tx[i] = lx[l];
          ty[i] = ly[l];
          tz[i] = lz[l];
@@ -103,7 +107,9 @@ bool ToTubes::compute() {
    const Scalar rmin = m_range->getValue()[0];
    const Scalar rmax = m_range->getValue()[1];
    for (Index i=0; i<lines->getNumCorners(); ++i) {
-      const Index l = cl[i];
+      Index l = i;
+      if (cl)
+          l = cl[l];
       const Scalar rad = (radx && rady && radz) ? Vector3(radx[l], rady[l], radz[l]).norm() : radx ? radx[l] : Scalar(1.);
       switch (mode) {
          case Fixed:
