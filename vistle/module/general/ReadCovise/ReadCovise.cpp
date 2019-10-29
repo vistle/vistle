@@ -985,10 +985,6 @@ bool ReadCovise::readSkeleton(const int port, Element *elem) {
 
 bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep) {
 
-   if (cancelRequested()) {
-      return true;
-   }
-
    if (timestep != -1 && timestep != targetTimestep) {
        return true;
    }
