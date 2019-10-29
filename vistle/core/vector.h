@@ -3,6 +3,7 @@
 
 #include "scalar.h"
 #include <cmath>
+#include <util/math.h>
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
@@ -73,6 +74,12 @@ Vector3 transformPoint(const FourColMat &t, const Vector3 &v) {
     v4 << v, 1;
     v4 = t * v4;
     return v4.block<3,1>(0,0) / v4[3];
+}
+
+inline Vector3 cross(const Vector &a, const Vector &b) {
+    return Vector3(difference_of_products(a[1], b[2], a[2], b[1]),
+            difference_of_products(a[2], b[0], a[0], b[2]),
+            difference_of_products(a[0], b[1], a[1], b[0]));
 }
 
 } // namespace vistle

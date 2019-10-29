@@ -914,7 +914,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             const Vector first(coord[1] - coord[0]);
             Vector normal(0, 0, 0);
             for (int i=2; i<4; ++i) {
-               normal += first.cross(coord[i]-coord[i-1]);
+               normal += cross(first, coord[i]-coord[i-1]);
             }
             const Vector top = coord[4] - coord[0];
             const Scalar h = normal.dot(top);

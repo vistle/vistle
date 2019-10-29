@@ -293,7 +293,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
         for (unsigned i=2; i<sizes[f]; ++i) {
             Vector edge = corners[faces[f][i]];
             edge -= v0;
-            n += edge1.cross(edge);
+            n += cross(edge1, edge);
         }
 
         //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;

@@ -123,31 +123,59 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
    }
    Vector2 point2;
    point2 << point[c1], point[c2];
-   std::vector<Vector2> corners2(nCorners);
-   for (Index i=0; i<nCorners; ++i) {
-      corners2[i] << corners[i][c1], corners[i][c2];
-      corners2[i] -= point2;
-   }
-
-   // count intersections of edges with positive x-axis
    int nisect = 0;
-   for (Index i=0; i<nCorners; ++i) {
-      Vector2 c0 = corners2[i];
-      Vector2 c1 = corners2[(i+1)%nCorners];
-      if (c0[1]<0 && c1[1]<0)
-          continue;
-      if (c0[1]>0 && c1[1]>0)
-          continue;
-      if (c0[0] < 0 && c1[0] < 0)
-          continue;
-      if (c0[0]>=0 && c1[0]>=0) {
-          ++nisect;
-          continue;
-      }
-      Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
-      Scalar x=c0[1]*mInv+c0[0];
-      if (x >= 0)
-          ++nisect;
+   if (nCorners <= 4) {
+       std::array<Vector2,4> corners2;
+       for (Index i=0; i<nCorners; ++i) {
+           corners2[i] << corners[i][c1], corners[i][c2];
+           corners2[i] -= point2;
+       }
+
+       // count intersections of edges with positive x-axis
+       for (Index i=0; i<nCorners; ++i) {
+           Vector2 c0 = corners2[i];
+           Vector2 c1 = corners2[(i+1)%nCorners];
+           if (c0[1]<0 && c1[1]<0)
+               continue;
+           if (c0[1]>0 && c1[1]>0)
+               continue;
+           if (c0[0] < 0 && c1[0] < 0)
+               continue;
+           if (c0[0]>=0 && c1[0]>=0) {
+               ++nisect;
+               continue;
+           }
+           Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
+           Scalar x=c0[1]*mInv+c0[0];
+           if (x >= 0)
+               ++nisect;
+       }
+   } else {
+       std::vector<Vector2> corners2(nCorners);
+       for (Index i=0; i<nCorners; ++i) {
+           corners2[i] << corners[i][c1], corners[i][c2];
+           corners2[i] -= point2;
+       }
+
+       // count intersections of edges with positive x-axis
+       for (Index i=0; i<nCorners; ++i) {
+           Vector2 c0 = corners2[i];
+           Vector2 c1 = corners2[(i+1)%nCorners];
+           if (c0[1]<0 && c1[1]<0)
+               continue;
+           if (c0[1]>0 && c1[1]>0)
+               continue;
+           if (c0[0] < 0 && c1[0] < 0)
+               continue;
+           if (c0[0]>=0 && c1[0]>=0) {
+               ++nisect;
+               continue;
+           }
+           Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
+           Scalar x=c0[1]*mInv+c0[0];
+           if (x >= 0)
+               ++nisect;
+       }
    }
 
    return (nisect%2) == 1;
@@ -167,7 +195,7 @@ std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const 
         Index v = cl[face[i]];
         Vector c1(x[v], y[v], z[v]);
         center += c1;
-        normal += c0.cross(c1);
+        normal += cross(c0, c1);
         c0 = c1;
     }
     return std::make_pair(normal.normalized(), center/N);
@@ -186,7 +214,7 @@ std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, co
         Index v = verts[i];
         Vector c1(x[v], y[v], z[v]);
         center += c1;
-        normal += c0.cross(c1);
+        normal += cross(c0, c1);
         c0 = c1;
     }
 
