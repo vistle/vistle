@@ -45,12 +45,21 @@ private:
 
     vistle::Index max_step;
 
+    bool computeVector = true;
+    bool computeScalar = true;
+    bool computeId = true;
+    bool computeStep = true;
+    bool computeStopReason = true;
+    bool computeTime = true;
+    bool computeDist = true;
+    bool computeStepWidth = true;
+
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> vecField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> scalField;
     std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField, stopReasonField;
-    std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField;
+    std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
     std::mutex mutex;
 };
 
@@ -81,5 +90,8 @@ public:
     bool m_havePressure;
 
     bool m_haveTimeSteps = false;
+
+    bool m_numStartpointsPrinted = false;
+
 };
 #endif

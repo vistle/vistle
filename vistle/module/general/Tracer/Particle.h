@@ -89,6 +89,7 @@ private:
         vistle::Index m_startStep;
         std::vector<vistle::Vector3> m_xhist; //!< trajectory
         std::vector<vistle::Vector3> m_vhist; //!< previous velocities
+        std::vector<vistle::Scalar> m_stepWidth; //!< previous integration stepwidths
         std::vector<vistle::Scalar> m_pressures; //!< previous pressures
         std::vector<vistle::Index> m_steps; //!< previous steps
         std::vector<vistle::Scalar> m_times; //!< previous times
@@ -108,6 +109,7 @@ private:
             ar & m_num;
             ar & m_xhist;
             ar & m_vhist;
+            ar & m_stepWidth;
             ar & m_pressures;
             ar & m_steps;
             ar & m_times;
@@ -120,6 +122,7 @@ private:
             m_num = 0;
             m_xhist.clear();
             m_vhist.clear();
+            m_stepWidth.clear();
             m_pressures.clear();
             m_steps.clear();
             m_times.clear();

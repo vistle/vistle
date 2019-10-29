@@ -187,10 +187,15 @@ void Particle::EmitData() {
 
    m_currentSegment->m_xhist.push_back(transformPoint(m_block->transform(), m_xold));
    m_currentSegment->m_vhist.push_back(m_v);
-   m_currentSegment->m_steps.push_back(m_stp);
-   m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
    m_currentSegment->m_times.push_back(m_time);
-   m_currentSegment->m_dists.push_back(m_dist);
+   if (m_global.computeStep)
+       m_currentSegment->m_steps.push_back(m_stp);
+   if (m_global.computeScalar)
+       m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
+   if (m_global.computeStepWidth)
+       m_currentSegment->m_stepWidth.push_back(m_integrator.h());
+   if (m_global.computeDist)
+       m_currentSegment->m_dists.push_back(m_dist);
 }
 
 void Particle::Deactivate(StopReason reason) {
@@ -362,26 +367,38 @@ void Particle::addToOutput() {
                    points->y().push_back(pos[1]);
                    points->z().push_back(pos[2]);
 
-                   Vector vel = lerp(vel0, vel1, t);
-                   auto vout = m_global.vecField[timestep];
-                   vout->x().push_back(vel[0]);
-                   vout->y().push_back(vel[1]);
-                   vout->z().push_back(vel[2]);
+                   if (m_global.computeVector) {
+                       Vector vel = lerp(vel0, vel1, t);
+                       auto vout = m_global.vecField[timestep];
+                       vout->x().push_back(vel[0]);
+                       vout->y().push_back(vel[1]);
+                       vout->z().push_back(vel[2]);
+                   }
 
-                   const auto pres1 = seg.m_pressures[i];
-                   const auto pres0 = seg.m_pressures[prevIdx];
-                   Scalar pres = lerp(pres0, pres1, t);
-                   m_global.scalField[timestep]->x().push_back(pres);
+                   if (m_global.computeScalar) {
+                       const auto pres1 = seg.m_pressures[i];
+                       const auto pres0 = seg.m_pressures[prevIdx];
+                       Scalar pres = lerp(pres0, pres1, t);
+                       m_global.scalField[timestep]->x().push_back(pres);
+                   }
 
-                   const auto dist1 = seg.m_dists[i];
-                   const auto dist0 = seg.m_dists[prevIdx];
-                   Scalar dist = lerp(dist0, dist1, t);
-                   m_global.distField[timestep]->x().push_back(dist);
+                   if (m_global.computeDist) {
+                       const auto dist1 = seg.m_dists[i];
+                       const auto dist0 = seg.m_dists[prevIdx];
+                       Scalar dist = lerp(dist0, dist1, t);
+                       m_global.distField[timestep]->x().push_back(dist);
+                   }
 
-                   m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
-                   m_global.timeField[timestep]->x().push_back(time);
-                   m_global.idField[timestep]->x().push_back(m_startId);
-                   m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
+                   if (m_global.computeStep)
+                       m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
+                   if (m_global.computeTime)
+                       m_global.timeField[timestep]->x().push_back(time);
+                   if (m_global.computeStepWidth)
+                       m_global.stepWidthField[timestep]->x().push_back(seg.m_stepWidth[i]);
+                   if (m_global.computeId)
+                       m_global.idField[timestep]->x().push_back(m_startId);
+                   if (m_global.computeStopReason)
+                       m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
 
                    time += m_global.dt_step;
                    ++timestep;
@@ -412,23 +429,52 @@ void Particle::addToOutput() {
        z.reserve(nsz);
        cl.reserve(nsz);
 
-       auto &vec_x = m_global.vecField[t]->x(), &vec_y = m_global.vecField[t]->y(), &vec_z = m_global.vecField[t]->z();
-       auto &scal = m_global.scalField[t]->x();
-       auto &step = m_global.stepField[t]->x(), &id = m_global.idField[t]->x();
-       auto &time = m_global.timeField[t]->x(), &dist = m_global.distField[t]->x();
-       auto &stopReason = m_global.stopReasonField[t]->x();
+       shm<Scalar>::array *vec_x=nullptr, *vec_y=nullptr, *vec_z=nullptr;
+       if (m_global.computeVector) {
+           vec_x = &m_global.vecField[t]->x();
+           vec_y = &m_global.vecField[t]->y();
+           vec_z = &m_global.vecField[t]->z();
+           vec_x->reserve(nsz);
+           vec_y->reserve(nsz);
+           vec_z->reserve(nsz);
+       }
+       shm<Scalar>::array *scal=nullptr;
+       if (m_global.computeScalar) {
+           scal = &m_global.scalField[t]->x();
+           scal->reserve(nsz);
+       }
+       shm<Scalar>::array *stepwidth=nullptr;
+       if (m_global.computeStepWidth) {
+           stepwidth = &m_global.stepWidthField[t]->x();
+           stepwidth->reserve(nsz);
+       }
+       shm<Index>::array *id=nullptr;
+       if (m_global.computeId) {
+           id = &m_global.idField[t]->x();
+           id->reserve(nsz);
+       }
+       shm<Index>::array *step=nullptr;
+       if (m_global.computeStep) {
+           step = &m_global.stepField[t]->x();
+           step->reserve(nsz);
+       }
+       shm<Scalar>::array *time=nullptr;
+       if (m_global.computeTime) {
+           time = &m_global.timeField[t]->x();
+           time->reserve(nsz);
+       }
+       shm<Scalar>::array *dist=nullptr;
+       if (m_global.computeDist) {
+           auto &dist = m_global.distField[t]->x();
+           dist.reserve(nsz);
+       }
+       shm<Index>::array *stopReason=nullptr;
+       if (m_global.computeStopReason) {
+           stopReason = &m_global.stopReasonField[t]->x();
+           stopReason->reserve(nsz);
+       }
 
-       vec_x.reserve(nsz);
-       vec_y.reserve(nsz);
-       vec_z.reserve(nsz);
-       scal.reserve(nsz);
-       id.reserve(nsz);
-       step.reserve(nsz);
-       time.reserve(nsz);
-       dist.reserve(nsz);
-       stopReason.reserve(nsz);
-
-       auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist, &stopReason](const Segment &seg, Index i){
+       auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scal, id, step, stepwidth, time, dist, stopReason](const Segment &seg, Index i){
            const auto &vec = seg.m_xhist[i];
            x.push_back(vec[0]);
            y.push_back(vec[1]);
@@ -436,15 +482,26 @@ void Particle::addToOutput() {
            cl.push_back(cl.size());
 
            const auto &vel = seg.m_vhist[i];
-           vec_x.push_back(vel[0]);
-           vec_y.push_back(vel[1]);
-           vec_z.push_back(vel[2]);
-           scal.push_back(seg.m_pressures[i]);
-           step.push_back(seg.m_steps[i]);
-           time.push_back(seg.m_times[i]);
-           dist.push_back(seg.m_dists[i]);
-           id.push_back(m_startId);
-           stopReason.push_back(m_stopReason);
+           if (vec_x)
+               vec_x->push_back(vel[0]);
+           if (vec_y)
+               vec_y->push_back(vel[1]);
+           if (vec_z)
+               vec_z->push_back(vel[2]);
+           if (scal)
+               scal->push_back(seg.m_pressures[i]);
+           if (stepwidth)
+               stepwidth->push_back(seg.m_stepWidth[i]);
+           if (step)
+               step->push_back(seg.m_steps[i]);
+           if (time)
+               time->push_back(seg.m_times[i]);
+           if (dist)
+               dist->push_back(seg.m_dists[i]);
+           if (id)
+               id->push_back(m_startId);
+           if (stopReason)
+               stopReason->push_back(m_stopReason);
        };
 
        for (auto &ent: m_segments) {

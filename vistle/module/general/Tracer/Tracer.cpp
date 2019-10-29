@@ -74,6 +74,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     createOutputPort("particle_id");
     createOutputPort("step");
     createOutputPort("time");
+    createOutputPort("stepwidth");
     createOutputPort("distance");
     createOutputPort("stop_reason");
 
@@ -150,6 +151,8 @@ bool Tracer::prepare(){
     m_gridAttr.clear();
     m_data0Attr.clear();
     m_data1Attr.clear();
+
+    m_numStartpointsPrinted = false;
 
     return true;
 }
@@ -332,8 +335,10 @@ bool Tracer::reduce(int timestep) {
                n1 = 2;
        }
        //setIntParameter("no_startp", numpoints);
-       if (rank() == 0 && numpoints != n0*n1)
+       if (rank() == 0 && numpoints != n0*n1 && !m_numStartpointsPrinted) {
            sendInfo("actually using %d*%d=%d start points", n0, n1, n0*n1);
+           m_numStartpointsPrinted = true;
+       }
        numpoints = n0*n1;
        startpoints.resize(numpoints);
 
@@ -390,6 +395,15 @@ bool Tracer::reduce(int timestep) {
    global.cell_relative = getIntParameter("cell_relative");
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
+
+   global.computeVector = isConnected("data_out0");
+   global.computeScalar = isConnected("data_out1");
+   global.computeId = isConnected("particle_id");
+   global.computeStep = isConnected("step");
+   global.computeStopReason = isConnected("stop_reason");
+   global.computeTime = isConnected("time");
+   global.computeDist = isConnected("distance");
+   global.computeStepWidth = isConnected("stepwidth");
 
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    std::vector<std::shared_ptr<Particle>> allParticles;
@@ -612,15 +626,26 @@ bool Tracer::reduce(int timestep) {
            applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
        }
 
-       global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
-       applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
-       global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
-       applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
-       global.idField.emplace_back(new Vec<Index>(Index(0)));
-       global.stepField.emplace_back(new Vec<Index>(Index(0)));
-       global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
-       global.distField.emplace_back(new Vec<Scalar>(Index(0)));
-       global.stopReasonField.emplace_back(new Vec<Index>(Index(0)));
+       if (global.computeVector) {
+           global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
+           applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
+       }
+       if (global.computeScalar) {
+           global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
+           applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
+       }
+       if (global.computeId)
+           global.idField.emplace_back(new Vec<Index>(Index(0)));
+       if (global.computeStep)
+           global.stepField.emplace_back(new Vec<Index>(Index(0)));
+       if (global.computeTime)
+           global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
+       if (global.computeStepWidth)
+           global.stepWidthField.emplace_back(new Vec<Scalar>(Index(0)));
+       if (global.computeDist)
+           global.distField.emplace_back(new Vec<Scalar>(Index(0)));
+       if (global.computeStopReason)
+           global.stopReasonField.emplace_back(new Vec<Index>(Index(0)));
    }
 
    for (auto &p: allParticles) {
@@ -638,42 +663,70 @@ bool Tracer::reduce(int timestep) {
    Meta meta;
    meta.setNumTimesteps(numtime);
    meta.setNumBlocks(size());
-   for (int i=0; i<numtime; ++i) {
-       if (timestep != i && timestep != -1)
+   for (int t=0; t<numtime; ++t) {
+       if (timestep != t && timestep != -1)
            continue;
        meta.setBlock(rank());
-       meta.setTimeStep(i);
+       meta.setTimeStep(t);
+
+       Index i = taskType==MovingPoints ? t : 0;
 
        Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);
 
-       global.idField[i]->setGrid(geo);
-       global.idField[i]->setMeta(meta);
-       addObject("particle_id", global.idField[i]);
+       if (global.computeId) {
+           global.idField[i]->setGrid(geo);
+           global.idField[i]->setMeta(meta);
+           global.idField[i]->addAttribute("_species", "particle_id");
+           addObject("particle_id", global.idField[i]);
+       }
 
-       global.stepField[i]->setGrid(geo);
-       global.stepField[i]->setMeta(meta);
-       addObject("step", global.stepField[i]);
+       if (global.computeStep) {
+           global.stepField[i]->setGrid(geo);
+           global.stepField[i]->setMeta(meta);
+           global.stepField[i]->addAttribute("_species", "step");
+           addObject("step", global.stepField[i]);
+       }
 
-       global.timeField[i]->setGrid(geo);
-       global.timeField[i]->setMeta(meta);
-       addObject("time", global.timeField[i]);
+       if (global.computeTime) {
+           global.timeField[i]->setGrid(geo);
+           global.timeField[i]->setMeta(meta);
+           global.timeField[i]->addAttribute("_species", "time");
+           addObject("time", global.timeField[i]);
+       }
 
-       global.distField[i]->setGrid(geo);
-       global.distField[i]->setMeta(meta);
-       addObject("distance", global.distField[i]);
+       if (global.computeDist) {
+           global.distField[i]->setGrid(geo);
+           global.distField[i]->setMeta(meta);
+           global.distField[i]->addAttribute("_species", "distance");
+           addObject("distance", global.distField[i]);
+       }
 
-       global.vecField[i]->setGrid(geo);
-       global.vecField[i]->setMeta(meta);
-       addObject("data_out0", global.vecField[i]);
+       if (global.computeStepWidth) {
+           global.stepWidthField[i]->setGrid(geo);
+           global.stepWidthField[i]->setMeta(meta);
+           global.stepWidthField[i]->addAttribute("_species", "stepwidth");
+           addObject("stepwidth", global.stepWidthField[i]);
+       }
 
-       global.scalField[i]->setGrid(geo);
-       global.scalField[i]->setMeta(meta);
-       addObject("data_out1", global.scalField[i]);
+       if (global.computeVector) {
+           global.vecField[i]->setGrid(geo);
+           global.vecField[i]->setMeta(meta);
+           addObject("data_out0", global.vecField[i]);
+       }
 
-       global.stopReasonField[i]->setGrid(geo);
-       global.stopReasonField[i]->setMeta(meta);
-       addObject("stop_reason", global.stopReasonField[i]);
+       if (global.computeScalar) {
+           global.scalField[i]->setGrid(geo);
+           global.scalField[i]->setMeta(meta);
+           addObject("data_out1", global.scalField[i]);
+       }
+
+       if (global.computeStopReason) {
+           global.stopReasonField[i]->setGrid(geo);
+           global.stopReasonField[i]->setMeta(meta);
+           global.stopReasonField[i]->addAttribute("_species", "stop_reason");
+           addObject("stop_reason", global.stopReasonField[i]);
+       }
    }
 
    if (rank() == 0) {
