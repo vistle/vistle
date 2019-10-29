@@ -461,7 +461,7 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
        VistleGeometryGenerator::unlock();
    }
    vgr.setColorMaps(&m_colormaps);
-   m_delayedObjects.push_back(DelayedObject(pro, vgr));
+   m_delayedObjects.emplace_back(pro, vgr);
    //updateStatus();
    osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
 
