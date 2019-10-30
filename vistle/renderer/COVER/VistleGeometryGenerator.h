@@ -42,7 +42,7 @@ class VistleGeometryGenerator {
       VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr normal,
-            vistle::Object::const_ptr tex);
+            vistle::Object::const_ptr mapped);
 
       const std::string &species() const;
       void setColorMaps(const OsgColorMapMap *colormaps);
@@ -58,7 +58,7 @@ class VistleGeometryGenerator {
       std::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
       vistle::Object::const_ptr m_normal;
-      vistle::Object::const_ptr m_tex;
+      vistle::Object::const_ptr m_mapped;
 
       std::string m_species;
 
