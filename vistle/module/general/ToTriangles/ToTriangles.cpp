@@ -256,8 +256,8 @@ bool ToTriangles::compute() {
             // indices for ring around south pole
             Index ci = i*CoordPerSphere+1;
             for (Index k=0; k<NumLong; ++k) {
-               ti[ii++] = ci+(k+1)%NumLong;
                ti[ii++] = ci+k;
+               ti[ii++] = ci+(k+1)%NumLong;
                ti[ii++] = i*CoordPerSphere;
             }
 
@@ -266,11 +266,11 @@ bool ToTriangles::compute() {
                for (Index k=0; k<NumLong; ++k) {
 
                   ti[ii++] = ci+k;
-                  ti[ii++] = ci+(k+1)%NumLong;
                   ti[ii++] = ci+k+NumLong;
                   ti[ii++] = ci+(k+1)%NumLong;
+                  ti[ii++] = ci+(k+1)%NumLong;
+                  ti[ii++] = ci+k+NumLong;
                   ti[ii++] = ci+NumLong+(k+1)%NumLong;
-                  ti[ii++] = ci+k+NumLong;
                }
                ci += NumLong;
             }
@@ -279,8 +279,8 @@ bool ToTriangles::compute() {
 
             // indices for ring around north pole
             for (Index k=0; k<NumLong; ++k) {
-               ti[ii++] = ci+k;
                ti[ii++] = ci+(k+1)%NumLong;
+               ti[ii++] = ci+k;
                ti[ii++] = (i+1)*CoordPerSphere-1;
             }
             vassert(ii == (i+1)*3*TriPerSphere);
