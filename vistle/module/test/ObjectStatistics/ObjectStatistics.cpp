@@ -17,6 +17,8 @@
 
 using namespace vistle;
 
+static const int NumDim = 4;
+
 class ObjectStatistics: public vistle::Module {
 
  public:
@@ -30,7 +32,8 @@ class ObjectStatistics: public vistle::Module {
       Index elements; //! no. of elements
       Index vertices; //! no. of vertices
       Index coords; //! no. of coordinates
-      Index data[4]; //! no. of data values of corresponding dim
+      Index data[NumDim+1]; //! no. of Scalar data values of corresponding dim
+      Index idata[NumDim+1]; //! no. of Index data values of corresponding dim
 
       stats()
       : blocks(0)
@@ -40,7 +43,10 @@ class ObjectStatistics: public vistle::Module {
       , vertices(0)
       , coords(0)
       {
-         data[0] = data[1] = data[2] = data[3] = 0;
+          for (int d=0; d<=NumDim; ++d) {
+              data[d] = 0;
+              idata[d] = 0;
+          }
       }
 
       template<class Archive>
@@ -51,8 +57,11 @@ class ObjectStatistics: public vistle::Module {
          ar & elements;
          ar & vertices;
          ar & coords;
-         for (int i=0; i<4; ++i) {
+         for (int i=0; i<=NumDim; ++i) {
             ar & data[i];
+         }
+         for (int i=0; i<=NumDim; ++i) {
+            ar & idata[i];
          }
       }
 
@@ -65,8 +74,11 @@ class ObjectStatistics: public vistle::Module {
          elements = op(elements, rhs.elements);
          vertices = op(vertices, rhs.vertices);
          coords = op(coords, rhs.coords);
-         for (int i=0; i<4; ++i) {
+         for (int i=0; i<=NumDim; ++i) {
             data[i] = op(data[i], rhs.data[i]);
+         }
+         for (int i=0; i<=NumDim; ++i) {
+            idata[i] = op(idata[i], rhs.idata[i]);
          }
       }
 
@@ -109,7 +121,8 @@ std::ostream &operator<<(std::ostream &str, const ObjectStatistics::stats &s) {
       << ", vertices: " << s.vertices
       << ", coords: " << s.coords
       << ", 1-dim data: " << s.data[1]
-      << ", 3-dim data: " << s.data[3];
+      << ", 3-dim data: " << s.data[3]
+      << ", index data: " << s.idata[1];
 
    return str;
 }
@@ -197,10 +210,23 @@ bool ObjectStatistics::compute() {
    } else if (auto d = DataBase::as(obj)) {
       if (d->grid())
          ++s.grids;
-      if(auto v = Vec<Scalar, 3>::as(obj)) {
+      if(auto v = Vec<Scalar, 4>::as(obj)) {
+         s.data[4] = v->getSize();
+      } else if(auto v = Vec<Scalar, 3>::as(obj)) {
          s.data[3] = v->getSize();
+      } else if(auto v = Vec<Scalar, 2>::as(obj)) {
+         s.data[2] = v->getSize();
       } else if(auto v = Vec<Scalar, 1>::as(obj)) {
          s.data[1] = v->getSize();
+      }
+      if(auto v = Vec<Index, 4>::as(obj)) {
+         s.idata[4] = v->getSize();
+      } else if(auto v = Vec<Index, 3>::as(obj)) {
+         s.idata[3] = v->getSize();
+      } else if(auto v = Vec<Index, 2>::as(obj)) {
+         s.idata[2] = v->getSize();
+      } else if(auto v = Vec<Index, 1>::as(obj)) {
+         s.idata[1] = v->getSize();
       }
    }
    s.blocks = 1;
