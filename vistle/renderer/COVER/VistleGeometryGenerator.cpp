@@ -19,6 +19,7 @@
 #include <osg/LineWidth>
 #include <osg/MatrixTransform>
 
+#include <util/math.h>
 #include <core/polygons.h>
 #include <core/points.h>
 #include <core/spheres.h>
@@ -775,7 +776,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          const vistle::Scalar *r = &spheres->r()[0];
          sphere->setCoords(numVertices, x, y, z, r);
          sphere->setColorBinding(opencover::Bind::OverAll);
-         float rgba[] = { 1., 0., 0., 1. };
+         float rgba[] = { 0., 1., 0., 1. };
          sphere->updateColors(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
@@ -1110,29 +1111,26 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
    vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
 #ifdef COVER_PLUGIN
-   if (spheres && sphere) {
-       if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
-           vistle::DataBase::Mapping mapping = tex->guessMapping();
-           if (mapping == vistle::DataBase::Vertex) {
-               const auto numCoords = spheres->getNumCoords();
-               auto pix = tex->pixels().data();
-               std::vector<float> rgba[4];
+   if (spheres && sphere && tex) {
+       vistle::DataBase::Mapping mapping = tex->guessMapping();
+       if (mapping == vistle::DataBase::Vertex) {
+           const auto numCoords = spheres->getNumCoords();
+           auto pix = tex->pixels().data();
+           auto width = tex->getWidth();
+           std::vector<float> rgba[4];
+           for (int c=0; c<4; ++c)
+               rgba[c].resize(numCoords);
+           for (Index index = 0; index < numCoords; ++index) {
+               Index tc = clamp<Index>(tex->coords()[index]*width, 0, width-1);
+               Vector4 col(pix[tc*4], pix[tc*4+1], pix[tc*4+2], pix[tc*4+3]);
                for (int c=0; c<4; ++c)
-                   rgba[c].resize(numCoords);
-               for (Index index = 0; index < numCoords; ++index) {
-                   Index tc = tex->coords()[index];
-                   Vector4 col = Vector4(pix[tc*4], pix[tc*4+1], pix[tc*4+2], pix[tc*4+3]);
-                   for (int c=0; c<4; ++c)
-                       rgba[c][index] = col[c];
-                   for (int c=0; c<4; ++c)
-                       rgba[c][index] = c<=1 ? 1.f : 0.f;
-               }
-               sphere->setColorBinding(opencover::Bind::PerVertex);
-               sphere->updateColors(rgba[0].data(), rgba[1].data(), rgba[2].data(), rgba[3].data());
-           } else {
-               std::cerr << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
-               debug << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
+                   rgba[c][index] = clamp<float>(pix[tc*4+c]/255., 0., 1.);
            }
+           sphere->setColorBinding(opencover::Bind::PerVertex);
+           sphere->updateColors(rgba[0].data(), rgba[1].data(), rgba[2].data(), rgba[3].data());
+       } else {
+           std::cerr << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
+           debug << "VistleGeometryGenerator: Spheres: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
        }
    } else
 #endif
