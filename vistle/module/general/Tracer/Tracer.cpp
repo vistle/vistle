@@ -661,13 +661,13 @@ bool Tracer::reduce(int timestep) {
    }
 
    Meta meta;
-   meta.setNumTimesteps(numtime);
+   meta.setNumTimesteps(numtime > 1 ? numtime : -1);
    meta.setNumBlocks(size());
    for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
            continue;
        meta.setBlock(rank());
-       meta.setTimeStep(t);
+       meta.setTimeStep(numtime > 1 ? t : -1);
 
        Index i = taskType==Streamlines ? 0 : t;
 
