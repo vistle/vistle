@@ -610,7 +610,7 @@ bool Tracer::reduce(int timestep) {
    }
    maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
    int numout = 1;
-   if (taskType == MovingPoints) {
+   if (taskType != Streamlines) {
        numtime = maxTime / global.dt_step + 1;
        if (numtime < 1)
            numtime = 1;
@@ -669,7 +669,7 @@ bool Tracer::reduce(int timestep) {
        meta.setBlock(rank());
        meta.setTimeStep(t);
 
-       Index i = taskType==MovingPoints ? t : 0;
+       Index i = taskType==Streamlines ? 0 : t;
 
        Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);

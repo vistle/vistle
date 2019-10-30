@@ -15,8 +15,11 @@
 #include "Integrator.h"
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,
+      // this order is expected by COVER's TracerInteraction
       (Streamlines)
       (MovingPoints)
+      (Pathlines)
+      (Streaklines)
 )
 
 class BlockData;
