@@ -78,28 +78,23 @@ bool Thicken::compute() {
    auto points = Points::as(obj);
    auto radius = Vec<Scalar, 1>::as(obj);
    auto radius3 = Vec<Scalar, 3>::as(obj);
+   auto iradius = Vec<Index>::as(obj);
+   auto basedatain = DataBase::as(obj);
 
    DataBase::ptr basedata;
-   if (!points && !lines && radius) {
-      lines = Lines::as(radius->grid());
-      points = Points::as(radius->grid());
+   if (!points && !lines && basedatain) {
+      lines = Lines::as(basedatain->grid());
+      points = Points::as(basedatain->grid());
       if (isConnected("grid_out"))
-          basedata = radius->clone();
-   }
-   if (!points && !lines && radius3) {
-      lines = Lines::as(radius3->grid());
-      points = Points::as(radius3->grid());
-      if (isConnected("grid_out"))
-          basedata = radius3->clone();
+          basedata = basedatain->clone();
    }
    if (!lines && !points) {
       sendError("no Lines and no Points object");
       return true;
    }
 
-   if (mode != Fixed && !radius && !radius3) {
-      sendError("data input required for varying radius");
-      return true;
+   if (mode != Fixed && !radius && !radius3 && !iradius) {
+      sendInfo("data input required for varying radius");
    }
 
    if (lines && mode == InvVolume) {
@@ -115,17 +110,15 @@ bool Thicken::compute() {
    Tubes::ptr tubes;
    Spheres::ptr spheres;
    CoordsWithRadius::ptr cwr;
-   const Index *cl = nullptr;
-   if (lines && lines->getNumCorners()>0) {
-       cl = &lines->cl()[0];
-   }
 
+   const Index *cl = nullptr;
    if (lines) {
        // set coordinates
        if (lines->getNumCorners() == 0) {
            tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
            tubes->components().resize(lines->getNumElements()+1);
        } else {
+           cl = &lines->cl()[0];
            tubes.reset(new Tubes(lines->getNumElements(), lines->getNumCorners()));
            auto lx = &lines->x()[0];
            auto ly = &lines->y()[0];
@@ -134,9 +127,7 @@ bool Thicken::compute() {
            auto ty = tubes->y().data();
            auto tz = tubes->z().data();
            for (Index i=0; i<lines->getNumCorners(); ++i) {
-               Index l = i;
-               if (cl)
-                   l = cl[l];
+               Index l = cl[i];
                tx[i] = lx[l];
                ty[i] = ly[l];
                tz[i] = lz[l];
@@ -162,15 +153,15 @@ bool Thicken::compute() {
    auto radx = radius3 ? &radius3->x()[0] : radius ? &radius->x()[0] : nullptr;
    auto rady = radius3 ? &radius3->y()[0] : nullptr;
    auto radz = radius3 ? &radius3->z()[0] : nullptr;
-   const Scalar scale = spheres ? m_radius->getValue()*m_sphereScale->getValue() : m_radius->getValue();
-   const Scalar rmin = m_range->getValue()[0];
-   const Scalar rmax = m_range->getValue()[1];
+   auto irad = iradius ? &iradius->x()[0] : nullptr;
+   const Scalar extraScale = spheres ? m_sphereScale->getValue() : 1.;
+   const Scalar scale = m_radius->getValue() * extraScale;
+   const Scalar rmin = m_range->getValue()[0] * extraScale;
+   const Scalar rmax = m_range->getValue()[1] * extraScale;
    Index nv = lines ? lines->getNumCorners() : points->getNumPoints();
    for (Index i=0; i<nv; ++i) {
-      Index l = i;
-      if (cl)
-          l = cl[l];
-      const Scalar rad = (radx && rady && radz) ? Vector3(radx[l], rady[l], radz[l]).norm() : radx ? radx[l] : Scalar(1.);
+      Index l = cl ? cl[i] : i;
+      const Scalar rad = (radx && rady && radz) ? Vector3(radx[l], rady[l], radz[l]).norm() : radx ? radx[l] : irad ? Scalar(irad[l]) : Scalar(1.);
       switch (mode) {
          case DoNothing:
             break;
