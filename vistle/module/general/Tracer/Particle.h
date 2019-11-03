@@ -6,6 +6,8 @@
 
 #include <boost/mpi/communicator.hpp>
 
+#include <boost/serialization/split_free.hpp>
+
 #include <util/enum.h>
 #include <core/vector.h>
 #include <core/scalars.h>
@@ -60,28 +62,6 @@ public:
     void addToOutput();
     vistle::Scalar time() const;
 
-private:
-    bool findCell(double time);
-
-    GlobalData &m_global;
-    vistle::Index m_id; //!< particle id
-    vistle::Index m_startId; //!< id of start point;
-    int m_rank; //! MPI rank where resulting geometry is assembled
-    vistle::Index m_timestep; //! timestep of particle for streamlines
-    std::future<bool> m_progressFuture; //!< future on whether particle has made progress during trace()
-    bool m_progress;
-    bool m_tracing; //!< particle is currently tracing on this node
-    bool m_forward; //!< trace direction
-    vistle::Vector3 m_x; //!< current position
-    vistle::Vector3 m_xold; //!< previous position
-    vistle::Vector3 m_v; //!< current velocity
-    vistle::Scalar m_p; //!< current pressure
-    vistle::Index m_stp; //!< current integration step
-    vistle::Scalar m_time; //! current time
-    vistle::Scalar m_dist; //!< total distance travelled
-    int m_segment; //!< number of segment being traced on this rank
-    vistle::Index m_segmentStart; //! number of step where this segment started
-
     struct Segment {
         vistle::Index m_id = vistle::InvalidIndex; //! id of particle that was traced
         int m_rank;
@@ -130,8 +110,31 @@ private:
         }
     };
 
-    std::shared_ptr<Segment> m_currentSegment, m_sendingSegment;
-    std::map<int, std::shared_ptr<Segment>> m_segments;
+    typedef std::map<int, std::shared_ptr<Segment>> SegmentMap;
+private:
+    bool findCell(double time);
+
+    GlobalData &m_global;
+    vistle::Index m_id; //!< particle id
+    vistle::Index m_startId; //!< id of start point;
+    int m_rank; //! MPI rank where resulting geometry is assembled
+    vistle::Index m_timestep; //! timestep of particle for streamlines
+    std::future<bool> m_progressFuture; //!< future on whether particle has made progress during trace()
+    bool m_progress;
+    bool m_tracing; //!< particle is currently tracing on this node
+    bool m_forward; //!< trace direction
+    vistle::Vector3 m_x; //!< current position
+    vistle::Vector3 m_xold; //!< previous position
+    vistle::Vector3 m_v; //!< current velocity
+    vistle::Scalar m_p; //!< current pressure
+    vistle::Index m_stp; //!< current integration step
+    vistle::Scalar m_time; //! current time
+    vistle::Scalar m_dist; //!< total distance travelled
+    int m_segment; //!< number of segment being traced on this rank
+    vistle::Index m_segmentStart; //! number of step where this segment started
+
+    std::shared_ptr<Segment> m_currentSegment;
+    SegmentMap m_segments;
 
     BlockData *m_block; //!< current block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position

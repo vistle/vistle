@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include "serialize.h"
+#include "archives_config.h"
 
 namespace vistle {
 

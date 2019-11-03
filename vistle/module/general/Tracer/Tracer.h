@@ -86,10 +86,12 @@ public:
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
 
     std::vector<AttributeMap> m_gridAttr, m_data0Attr, m_data1Attr;
+    std::vector<vistle::Meta> m_gridTime, m_data0Time, m_data1Time;
 
     vistle::IntParameter *m_taskType;
     vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
     vistle::IntParameter *m_useCelltree;
+    vistle::IntParameter *m_particlePlacement = nullptr;
     bool m_havePressure;
 
     bool m_haveTimeSteps = false;

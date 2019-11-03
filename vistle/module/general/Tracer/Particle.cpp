@@ -76,6 +76,9 @@ int Particle::startTracing(boost::mpi::communicator mpi_comm) {
     }
 
     rank = boost::mpi::all_reduce(mpi_comm, rank, boost::mpi::maximum<int>());
+    if (m_rank == -1) {
+        m_rank = rank;
+    }
     if (rank == mpi_comm.rank()) {
         assert(inGrid());
         m_tracing = true;
@@ -285,11 +288,7 @@ bool Particle::trace() {
 void Particle::finishSegment(boost::mpi::communicator mpi_comm) {
 
     if (m_currentSegment) {
-        if (rank() == mpi_comm.rank()) {
-            m_segments[m_currentSegment->m_num] = m_currentSegment;
-        } else {
-            m_sendingSegment = m_currentSegment;
-        }
+        m_segments[m_currentSegment->m_num] = m_currentSegment;
         m_currentSegment.reset();
     }
     UpdateBlock(nullptr);
@@ -345,7 +344,7 @@ void Particle::addToOutput() {
 
                //std::cerr << "particle " << seg.m_id << " time=" << time << ", prev=" << prevTime << ", next=" << nextTime << std::endl;
 
-               while (time <= nextTime) {
+               while (time < nextTime) {
                    Scalar t = interp(time, prevTime, nextTime);
                    //std::cerr << "particle " << seg.m_id << " interpolation weight=" << t << std::endl;
 
@@ -543,28 +542,57 @@ void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
     m_progress = false;
 }
 
+namespace boost {
+namespace serialization {
+
+template<class Archive>
+void save(Archive & ar, const Particle::SegmentMap &segments, const unsigned int version) {
+    int numsegs = segments.size();
+    ar & numsegs;
+    for (auto &seg: segments)
+        ar & *seg.second;
+}
+
+template<class Archive>
+void load(Archive & ar, Particle::SegmentMap &segments, const unsigned int version) {
+    int numsegs = 0;
+    ar & numsegs;
+    for (int i=0; i<numsegs; ++i) {
+        Particle::Segment seg;
+        ar & seg;
+        segments.emplace(seg.m_num, std::make_shared<Particle::Segment>(std::move(seg)));
+    }
+}
+
+} // namespace serialization
+} // namespace boost
+
+BOOST_SERIALIZATION_SPLIT_FREE(Particle::SegmentMap)
+
 void Particle::startSendData(boost::mpi::communicator mpi_comm) {
 
     assert(rank() != mpi_comm.rank());
-    m_sendingSegment->m_rank = mpi_comm.rank();
-    m_requests.emplace_back(mpi_comm.isend(rank(), id(), *m_sendingSegment));
+    m_requests.emplace_back(mpi_comm.isend(rank(), id(), m_segments));
 }
 
 void Particle::finishSendData() {
     mpi::wait_all(m_requests.begin(), m_requests.end());
     m_requests.clear();
-    m_sendingSegment.reset();
+    m_segments.clear();
 }
 
 void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {
 
-    auto seg = std::make_shared<Segment>();
-    mpi_comm.recv(rank, id(), *seg);
-    m_segments[seg->m_num] = seg;
-    if (seg->m_id != id()) {
-        std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size() << " points for particle " << seg->m_id  << std::endl;
+    SegmentMap segments;
+    mpi_comm.recv(rank, id(), segments);
+    for (auto &segpair: segments) {
+        auto &seg = segpair.second;
+        m_segments[seg->m_num] = seg;
+        if (seg->m_id != id()) {
+            std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size() << " points for particle " << seg->m_id  << std::endl;
+        }
+        assert(seg->m_id == id());
     }
-    assert(seg->m_id == id());
 }
 
 void Particle::UpdateBlock(BlockData *block) {

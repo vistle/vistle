@@ -34,6 +34,11 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceDirection,
       (Backward)
 )
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParticlePlacement,
+      (InitialRank)
+      (RankById)
+)
+
 template<class Value>
 bool agree(const boost::mpi::communicator &comm, const Value &value) {
     int mismatch = 0;
@@ -132,6 +137,9 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
     auto num_active = addIntParameter("num_active", "number of particles to trace simultaneously on each node (0: no. of cores)", 0);
     setParameterRange(num_active, (Integer)0, (Integer)10000);
+
+    m_particlePlacement = addIntParameter("particle_placement", "where a particle's data shall be collected", RankById, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_particlePlacement, ParticlePlacement);
 }
 
 Tracer::~Tracer() {
@@ -152,12 +160,16 @@ bool Tracer::prepare(){
     m_data0Attr.clear();
     m_data1Attr.clear();
 
+    m_gridTime.clear();
+    m_data0Time.clear();
+    m_data1Time.clear();
+
     m_numStartpointsPrinted = false;
 
     return true;
 }
 
-void collectAttributes(std::map<std::string, std::string> &attrs, vistle::Object::const_ptr obj) {
+void collectAttributes(std::map<std::string, std::string> &attrs, Meta &meta, vistle::Object::const_ptr obj) {
 
     if (!obj)
         return;
@@ -166,6 +178,10 @@ void collectAttributes(std::map<std::string, std::string> &attrs, vistle::Object
     for (auto &a: al) {
         attrs[a] = obj->getAttribute(a);
     }
+
+    meta.setNumTimesteps(obj->getNumTimesteps());
+    meta.setTimeStep(obj->getTimestep());
+    meta.setRealTime(obj->getRealTime());
 }
 
 
@@ -209,6 +225,10 @@ bool Tracer::compute() {
        m_gridAttr.resize(numSteps+1);
        m_data0Attr.resize(numSteps+1);
        m_data1Attr.resize(numSteps+1);
+
+       m_gridTime.resize(numSteps+1);
+       m_data0Time.resize(numSteps+1);
+       m_data1Time.resize(numSteps+1);
     }
 
     if (useCelltree) {
@@ -226,9 +246,9 @@ bool Tracer::compute() {
         }
     }
 
-    collectAttributes(m_gridAttr[t+1], grid);
-    collectAttributes(m_data0Attr[t+1], data0);
-    collectAttributes(m_data1Attr[t+1], data1);
+    collectAttributes(m_gridAttr[t+1], m_gridTime[t+1], grid);
+    collectAttributes(m_data0Attr[t+1], m_data0Time[t+1], data0);
+    collectAttributes(m_data1Attr[t+1], m_data1Time[t+1], data1);
 
     grid_in[t+1].push_back(grid);
     data_in0[t+1].push_back(data0);
@@ -257,6 +277,16 @@ void applyAttributes(vistle::Object::ptr obj, const Tracer::AttributeMap &attrs)
     }
 }
 
+void applyTime(vistle::Object::ptr obj, const Meta &time) {
+
+    if (!obj)
+        return;
+
+    obj->setRealTime(time.realTime());
+    obj->setTimestep(time.timeStep());
+    obj->setNumTimesteps(time.numTimesteps());
+}
+
 bool Tracer::reduce(int timestep) {
 
    if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep)
@@ -267,6 +297,10 @@ bool Tracer::reduce(int timestep) {
        m_gridAttr.resize(minsize);
        m_data0Attr.resize(minsize);
        m_data1Attr.resize(minsize);
+
+       m_gridTime.resize(minsize);
+       m_data0Time.resize(minsize);
+       m_data1Time.resize(minsize);
    }
 
    if (timestep == -1) {
@@ -283,12 +317,18 @@ bool Tracer::reduce(int timestep) {
    attrGridRank = mpi::all_reduce(comm(), attrGridRank, mpi::minimum<int>());
    attrData0Rank = mpi::all_reduce(comm(), attrData0Rank, mpi::minimum<int>());
    attrData1Rank = mpi::all_reduce(comm(), attrData1Rank, mpi::minimum<int>());
-   if (attrGridRank != size())
+   if (attrGridRank != size()) {
        mpi::broadcast(comm(), m_gridAttr[timestep+1], attrGridRank);
-   if (attrData0Rank != size())
+       mpi::broadcast(comm(), m_gridTime[timestep+1], attrGridRank);
+   }
+   if (attrData0Rank != size()) {
        mpi::broadcast(comm(), m_data0Attr[timestep+1], attrData0Rank);
-   if (attrData1Rank != size())
-       mpi::broadcast(comm(), m_data0Attr[timestep+1], attrData1Rank);
+       mpi::broadcast(comm(), m_data0Time[timestep+1], attrData0Rank);
+   }
+   if (attrData1Rank != size()) {
+       mpi::broadcast(comm(), m_data1Attr[timestep+1], attrData1Rank);
+       mpi::broadcast(comm(), m_data1Time[timestep+1], attrData1Rank);
+   }
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
@@ -436,6 +476,7 @@ bool Tracer::reduce(int timestep) {
    }
 
    // create particles
+   bool initialrank = m_particlePlacement->getValue() == InitialRank;
    Index id=0;
    for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
@@ -460,11 +501,12 @@ bool Tracer::reduce(int timestep) {
        allParticles.reserve(allParticles.size()+numparticles);
        Index i = 0;
        for(; i<numpoints; i++) {
+           int rank = initialrank ? -1 : i%size();
            if (traceDirection != Backward) {
-               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], true, global, t));
+               allParticles.emplace_back(new Particle(id++, rank, i, startpoints[i], true, global, t));
            }
            if (traceDirection != Forward) {
-               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], false, global, t));
+               allParticles.emplace_back(new Particle(id++, rank, i, startpoints[i], false, global, t));
            }
        }
    }
@@ -490,14 +532,16 @@ bool Tracer::reduce(int timestep) {
        return started;
    };
 
+   std::vector<Index> datasendlist;
+   std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
    const int mpisize = comm().size();
    Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
    do {
+      std::vector<Index> sendlist;
       Index numStart = numActiveMin>maxNumActive ? maxNumActive : maxNumActive-numActiveMin;
       startParticles(numStart);
 
       bool first = true;
-      std::vector<Index> sendlist;
       // build list of particles to send to their owner
       for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
           next = it;
@@ -526,7 +570,6 @@ bool Tracer::reduce(int timestep) {
       // communicate
       checkActivity(comm());
 
-      std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
       Index num_send = sendlist.size();
       std::vector<Index> num_transmit(mpisize);
       mpi::all_gather(comm(), num_send, num_transmit);
@@ -543,10 +586,8 @@ bool Tracer::reduce(int timestep) {
                   assert(!p->isTracing(false));
                   p->broadcast(comm(), mpirank);
                   checkSet.insert(p_index);
-                  if (p->rank() == rank()) {
-                      if (rank() != mpirank) {
-                          datarecvlist.emplace_back(p->id(), mpirank);
-                      }
+                  if (p->rank() == rank() && rank() != mpirank) {
+                      datarecvlist.emplace_back(p->id(), mpirank);
                   }
                   p->finishSegment(comm());
                   if (p->startTracing(comm()) >= 0) {
@@ -556,14 +597,23 @@ bool Tracer::reduce(int timestep) {
           }
       }
 
+      std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
+
       numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
       numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
       //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << ", #check=" << checkSet.size() << std::endl;
+   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
+
+   if (mpisize == 1) {
+       for (auto p: allParticles) {
+           p->finishSegment(comm());
+       }
+   } else {
       // iterate over all other ranks
       for(int i=1; i<mpisize; ++i) {
           // start sending particles to owning rank
           int dst = (rank()+i)%size();
-          for (auto id: sendlist) {
+          for (auto id: datasendlist) {
               auto p = allParticles[id];
               if (p->rank() == dst) {
                   //std::cerr << "initiate sending " << p->id() << " to " << dst << std::endl;
@@ -588,7 +638,7 @@ bool Tracer::reduce(int timestep) {
       for(int i=1; i<mpisize; ++i) {
           // finish sending particles to owning rank
           int dst = (rank()+i)%size();
-          for (auto id: sendlist) {
+          for (auto id: datasendlist) {
               auto p = allParticles[id];
               if (p->rank() == dst) {
                   //std::cerr << "finish sending " << p->id() << " to " << dst << std::endl;
@@ -596,12 +646,6 @@ bool Tracer::reduce(int timestep) {
               }
           }
       }
-   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
-
-   if (mpisize == 1) {
-       for (auto p: allParticles) {
-           p->finishSegment(comm());
-       }
    }
 
    Scalar maxTime = 0;
@@ -624,15 +668,24 @@ bool Tracer::reduce(int timestep) {
        } else {
            global.lines.emplace_back(new Lines(0,0,0));
            applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
+           if (taskType == Streamlines) {
+               applyTime(global.lines.back(), m_gridTime[timestep+1]);
+           }
        }
 
        if (global.computeVector) {
            global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
            applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
+           if (taskType == Streamlines) {
+               applyTime(global.vecField.back(), m_data0Time[timestep+1]);
+           }
        }
        if (global.computeScalar) {
            global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
            applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
+           if (taskType == Streamlines) {
+               applyTime(global.scalField.back(), m_data1Time[timestep+1]);
+           }
        }
        if (global.computeId)
            global.idField.emplace_back(new Vec<Index>(Index(0)));
@@ -661,15 +714,23 @@ bool Tracer::reduce(int timestep) {
    }
 
    Meta meta;
-   meta.setNumTimesteps(numtime > 1 ? numtime : -1);
    meta.setNumBlocks(size());
+   meta.setBlock(rank());
    for (int t=0; t<numtime; ++t) {
+       Index i = taskType==Streamlines ? 0 : t;
+
        if (timestep != t && timestep != -1)
            continue;
-       meta.setBlock(rank());
-       meta.setTimeStep(numtime > 1 ? t : -1);
 
-       Index i = taskType==Streamlines ? 0 : t;
+       if (taskType == Streamlines) {
+           meta.setNumTimesteps(m_gridTime[timestep+1].numTimesteps());
+           meta.setTimeStep(m_gridTime[timestep+1].timeStep());
+           meta.setRealTime(m_gridTime[timestep+1].realTime());
+       } else {
+           meta.setNumTimesteps(numtime > 1 ? numtime : -1);
+           meta.setTimeStep(numtime > 1 ? t : -1);
+       }
+
 
        Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);
@@ -709,6 +770,13 @@ bool Tracer::reduce(int timestep) {
            addObject("stepwidth", global.stepWidthField[i]);
        }
 
+       if (global.computeStopReason) {
+           global.stopReasonField[i]->setGrid(geo);
+           global.stopReasonField[i]->setMeta(meta);
+           global.stopReasonField[i]->addAttribute("_species", "stop_reason");
+           addObject("stop_reason", global.stopReasonField[i]);
+       }
+
        if (global.computeVector) {
            global.vecField[i]->setGrid(geo);
            global.vecField[i]->setMeta(meta);
@@ -719,13 +787,6 @@ bool Tracer::reduce(int timestep) {
            global.scalField[i]->setGrid(geo);
            global.scalField[i]->setMeta(meta);
            addObject("data_out1", global.scalField[i]);
-       }
-
-       if (global.computeStopReason) {
-           global.stopReasonField[i]->setGrid(geo);
-           global.stopReasonField[i]->setMeta(meta);
-           global.stopReasonField[i]->addAttribute("_species", "stop_reason");
-           addObject("stop_reason", global.stopReasonField[i]);
        }
    }
 
