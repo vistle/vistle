@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-static const Scalar Epsilon = 1e-7;
+static const Scalar Epsilon = 1e-17;
 
 /* cell types:
  NONE        =  0,
@@ -680,13 +680,9 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
     if (isConvex(elem))
         return insideConvex(elem, point);
 
-    std::array<Vector,3> raydirs{Vector(1,1,1).normalized(), Vector(1,-1,0).normalized(), Vector(-1,1,-3).normalized()};
     const auto type = tl()[elem] & TYPE_MASK;
     switch (type) {
     case TETRAHEDRON:
-        return insideConvex(elem, point);
-        assert("already handled in insideConvex"==0);
-        break;
     case PYRAMID:
     case PRISM:
     case HEXAHEDRON: {
@@ -695,52 +691,47 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         const Scalar *x = &this->x()[0];
         const Scalar *y = &this->y()[0];
         const Scalar *z = &this->z()[0];
-        unsigned insideCount = 0;
-        for (auto raydir: raydirs) {
-            int nisect = 0;
-            const auto numFaces = NumFaces[type];
-            Vector corners[4];
-            for (int f=0; f<numFaces; ++f) {
-                auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-                auto normal = nc.first;
-                auto center = nc.second;
 
-                const Scalar cosa = normal.dot(raydir);
-                if (std::abs(cosa) <= Epsilon) {
-                    continue;
-                }
-                const Scalar t = normal.dot(center-point)/cosa;
-                if (t < 0 || !std::isfinite(t)) {
-                    continue;
-                }
-                const int nCorners = FaceSizes[type][f];
-                for (int i=0; i<nCorners; ++i) {
-                    const Index v = cl[FaceVertices[type][f][i]];
-                    corners[i] = Vector(x[v], y[v], z[v]);
-                }
-                const Vector isect = point + t*raydir;
-#if !defined(NDEBUG) || defined(INTERPOL_DEBUG)
-                //assert(std::abs(normal.dot(isect - center)) < 1e-3);
-                auto d = std::abs(normal.dot(isect - center));
-                if (d >= 1e-3) {
-                    std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): bad intersection, deviation=" << d << std::endl;
-                }
-#endif
-                if (insidePolygon(isect, corners, nCorners, normal)) {
-                    ++nisect;
+        unsigned insideCount = 0;
+        const auto numFaces = NumFaces[type];
+
+        // count intersections of ray from origin along positive z-axis with polygon translated by -point
+
+        Vector corners[4];
+        for (int f=0; f<numFaces; ++f) {
+            Vector min, max;
+            const int nCorners = FaceSizes[type][f];
+            for (int i=0; i<nCorners; ++i) {
+                const Index v = cl[FaceVertices[type][f][i]];
+                corners[i] = Vector(x[v], y[v], z[v]) - point;
+                if (i == 0) {
+                    min = max = corners[0];
+                } else {
+                    for (int c=0; c<3; ++c) {
+                        min[c] = std::min(min[c], corners[i][c]);
+                        max[c] = std::max(max[c], corners[i][c]);
+                    }
                 }
             }
-            insideCount += nisect%2;
-            if (nisect > 2) {
-                std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): " << nisect << " intersections" << std::endl;
-            }
+
+            if (max[2] < 0)
+                continue;
+            if (max[0] < 0)
+                continue;
+            if (min[0] > 0)
+                continue;
+            if (max[1] < 0)
+                continue;
+            if (min[1] > 0)
+                continue;
+
+            if (originInsidePolygonZ2D(corners, nCorners))
+                ++insideCount;
         }
-        if (insideCount > 0 && insideCount != raydirs.size()) {
-            std::cerr << "UnstructuredGrid::inside(elem=" << elem << "): disagreement: " << insideCount << " of " << raydirs.size() << std::endl;
-        }
-        return insideCount >= raydirs.size();
+
+        return insideCount % 2;
         break;
-        }
+    }
     case VPOLYHEDRON: {
         const Index begin=el()[elem], end=el()[elem+1];
         const Index *cl = &this->cl()[0];
@@ -748,39 +739,43 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         const Scalar *y = &this->y()[0];
         const Scalar *z = &this->z()[0];
 
+        std::vector<Vector> corners;
+
         int insideCount = 0;
-        for (auto raydir: raydirs) {
-            int nisect = 0;
-            for (Index i=begin; i<end; i+=cl[i]+1) {
-                const Index nCorners = cl[i];
+        for (Index i=begin; i<end; i+=cl[i]+1) {
+            const Index nCorners = cl[i];
 
-                auto nc = faceNormalAndCenter(nCorners, &cl[i+1], x, y, z);
-                auto normal = nc.first;
-                auto center = nc.second;
-
-                const Scalar cosa = normal.dot(raydir);
-                if (std::abs(cosa) <= Epsilon) {
-                    continue;
-                }
-                const Scalar t = normal.dot(center-point)/cosa;
-                if (t < 0 || !std::isfinite(t)) {
-                    continue;
-                }
-                std::vector<Vector> corners(nCorners);
-                for (Index k=0; k<nCorners; ++k) {
-                    const Index v = cl[i+1+k];
-                    corners[k] = Vector(x[v], y[v], z[v]);
-                }
-                const Vector isect = point + t*raydir;
-                //assert(std::abs(normal.dot(isect - center)) < 1e-3);
-                if (insidePolygon(isect, corners.data(), nCorners, normal)) {
-                    ++nisect;
+            Vector min, max;
+            corners.resize(nCorners);
+            for (Index k=0; k<nCorners; ++k) {
+                const Index v = cl[i+1+k];
+                corners[k] = Vector(x[v], y[v], z[v]) - point;
+                if (k == 0) {
+                    min = max = corners[0];
+                } else {
+                    for (int c=0; c<3; ++c) {
+                        min[c] = std::min(min[c], corners[k][c]);
+                        max[c] = std::max(max[c], corners[k][c]);
+                    }
                 }
             }
 
-            insideCount += nisect%2;
+            if (max[2] < 0)
+                continue;
+            if (max[0] < 0)
+                continue;
+            if (min[0] > 0)
+                continue;
+            if (max[1] < 0)
+                continue;
+            if (min[1] > 0)
+                continue;
+
+            if (originInsidePolygonZ2D(corners.data(), nCorners))
+                ++insideCount;
         }
-        return insideCount >= raydirs.size()/2;
+
+        return insideCount % 2;
         break;
     }
     case CPOLYHEDRON: {
@@ -790,47 +785,51 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
         const Scalar *y = &this->y()[0];
         const Scalar *z = &this->z()[0];
 
+        std::vector<Vector> corners;
+
         int insideCount = 0;
-        for (auto raydir: raydirs) {
-            int nisect = 0;
-            Index facestart = InvalidIndex;
-            Index term = 0;
-            for (Index i=begin; i<end; ++i) {
-                if (facestart == InvalidIndex) {
-                    facestart = i;
-                    term = cl[i];
-                } else if (cl[i] == term) {
-                    const Index nCorners = i - facestart;
+        Index facestart = InvalidIndex;
+        Index term = 0;
+        for (Index i=begin; i<end; ++i) {
+            if (facestart == InvalidIndex) {
+                facestart = i;
+                term = cl[i];
+            } else if (cl[i] == term) {
+                const Index nCorners = i - facestart;
 
-                    auto nc = faceNormalAndCenter(nCorners, &cl[facestart], x, y, z);
-                    auto normal = nc.first;
-                    auto center = nc.second;
-
-                    const Scalar cosa = normal.dot(raydir);
-                    if (std::abs(cosa) <= Epsilon) {
-                        continue;
+                corners.resize(nCorners);
+                Vector min, max;
+                for (Index k=0; k<nCorners; ++k) {
+                    const Index v = cl[facestart+k];
+                    corners[k] = Vector(x[v], y[v], z[v]) - point;
+                    if (k == 0) {
+                        min = max = corners[0];
+                    } else {
+                        for (int c=0; c<3; ++c) {
+                            min[c] = std::min(min[c], corners[k][c]);
+                            max[c] = std::max(max[c], corners[k][c]);
+                        }
                     }
-                    const Scalar t = normal.dot(center-point)/cosa;
-                    if (t < 0 || !std::isfinite(t)) {
-                        continue;
-                    }
-                    std::vector<Vector> corners(nCorners);
-                    for (Index k=0; k<nCorners; ++k) {
-                        const Index v = cl[facestart+k];
-                        corners[k] = Vector(x[v], y[v], z[v]);
-                    }
-                    const Vector isect = point + t*raydir;
-                    //assert(std::abs(normal.dot(isect - center)) < 1e-3);
-                    if (insidePolygon(isect, corners.data(), nCorners, normal)) {
-                        ++nisect;
-                    }
-                    facestart = InvalidIndex;
                 }
-            }
+                facestart = InvalidIndex;
 
-            insideCount += nisect%2;
+                if (max[2] < 0)
+                    continue;
+                if (max[0] < 0)
+                    continue;
+                if (min[0] > 0)
+                    continue;
+                if (max[1] < 0)
+                    continue;
+                if (min[1] > 0)
+                    continue;
+
+                if (originInsidePolygonZ2D(corners.data(), nCorners))
+                    ++insideCount;
+            }
         }
-        return insideCount >= raydirs.size()/2;
+
+        return insideCount % 2;
         break;
     }
     default:

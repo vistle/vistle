@@ -9,6 +9,7 @@
 namespace vistle {
 
 V_COREEXPORT Vector trilinearInverse(const Vector &p0, const Vector p[8]);
+V_COREEXPORT bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners);
 V_COREEXPORT bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
 V_COREEXPORT bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
 V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nCorners, const Vector *corners);

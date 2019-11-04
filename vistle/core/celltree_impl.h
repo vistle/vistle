@@ -8,6 +8,8 @@ namespace vistle {
 
 //const Scalar Epsilon = std::numeric_limits<Scalar>::epsilon();
 
+const unsigned MaxLeafSize = 8;
+
 template<typename Scalar, typename Index, int NumDimensions>
 Object::Type Celltree<Scalar, Index, NumDimensions>::type() {
 
@@ -66,7 +68,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
    Node *node = &(nodes()[curNode]);
 
    // only split node if necessary
-   if (node->size <= 8)
+   if (node->size <= MaxLeafSize)
       return;
 
    // cell index array, contains runs of cells belonging to nodes

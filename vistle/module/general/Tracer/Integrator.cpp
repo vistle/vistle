@@ -172,6 +172,7 @@ bool Integrator::StepRK32() {
    k[0] = sign*m_ptcl->m_v;
    auto grid = m_ptcl->m_block->getGrid();
    Scalar cellSize = grid->cellDiameter(m_ptcl->m_el);
+   const Scalar third(1./3.);
 
    for (;;) {
       const Vector x1 = m_ptcl->m_x + 0.5*m_h*k[0];
@@ -200,7 +201,7 @@ bool Integrator::StepRK32() {
       }
 
       k[2] = m_velTransform*sign*Interpolator(m_ptcl->m_block,el2, x2);
-      Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
+      Vector3 x3rd = m_ptcl->m_x + m_h*(0.5*k[0]*third + 2*k[1]*third + 0.5*k[2]*third);
       m_hact = m_h;
 
       bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k[0], cellSize);

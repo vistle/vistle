@@ -108,6 +108,33 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
    return true;
 }
 
+/* return whether origin is left (<0), on (=0), or right (>0) of infinite line through p0 and p1 */
+static Scalar originSideOfLineZ2D(const Vector3 &p0, const Vector3 &p1) {
+
+    return p0[0] * (p1[1] - p0[1]) - p0[1] * (p1[0] - p0[0]);
+}
+
+bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners) {
+
+    int    wn = 0;    // the  winding number counter
+
+    // loop through all edges of the polygon
+    for (int i=0; i<nCorners; i++) {   // edge from V[i] to  V[i+1]
+        int next = i+1<nCorners ? i+1 : 0;
+        if (corners[i][1] <= 0) {          // start y <= P.y
+            if (corners[next][1] > 0)      // an upward crossing
+                if (originSideOfLineZ2D(corners[i], corners[next]) > 0)  // P left of  edge
+                    ++wn;            // have  a valid up intersect
+        }
+        else {                        // start y > P.y (no test needed)
+            if (corners[next][1] <= 0)     // a downward crossing
+                if (originSideOfLineZ2D(corners[i], corners[next]) < 0)  // P right of  edge
+                    --wn;            // have  a valid down intersect
+        }
+    }
+    return wn > 0;
+}
+
 bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
 
    // project into 2D and transform point into origin
@@ -125,16 +152,15 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
    point2 << point[c1], point[c2];
    int nisect = 0;
    if (nCorners <= 4) {
-       std::array<Vector2,4> corners2;
+       Vector2 corners2[4];
        for (Index i=0; i<nCorners; ++i) {
-           corners2[i] << corners[i][c1], corners[i][c2];
-           corners2[i] -= point2;
+           corners2[i] = Vector2(corners[i][c1], corners[i][c2]) - point2;
        }
 
        // count intersections of edges with positive x-axis
        for (Index i=0; i<nCorners; ++i) {
-           Vector2 c0 = corners2[i];
-           Vector2 c1 = corners2[(i+1)%nCorners];
+           const auto &c0 = corners2[i];
+           const auto &c1 = corners2[(i+1)%nCorners];
            if (c0[1]<0 && c1[1]<0)
                continue;
            if (c0[1]>0 && c1[1]>0)
@@ -145,16 +171,18 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
                ++nisect;
                continue;
            }
-           Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
-           Scalar x=c0[1]*mInv+c0[0];
-           if (x >= 0)
-               ++nisect;
+           if (c1[1] > c0[1]) {
+               if (c0[0] * (c1[0] - c0[0]) > -c0[0]*(c1[1]-c0[1]))
+                   ++nisect;
+           } else {
+               if (c0[0] * (c1[0] - c0[0]) < -c0[0]*(c1[1]-c0[1]))
+                   ++nisect;
+           }
        }
    } else {
        std::vector<Vector2> corners2(nCorners);
        for (Index i=0; i<nCorners; ++i) {
-           corners2[i] << corners[i][c1], corners[i][c2];
-           corners2[i] -= point2;
+           corners2[i] = Vector2(corners[i][c1], corners[i][c2]) - point2;
        }
 
        // count intersections of edges with positive x-axis
@@ -171,10 +199,13 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
                ++nisect;
                continue;
            }
-           Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
-           Scalar x=c0[1]*mInv+c0[0];
-           if (x >= 0)
-               ++nisect;
+           if (c1[1] > c0[1]) {
+               if (c0[0] * (c1[0] - c0[0]) > -c0[0]*(c1[1]-c0[1]))
+                   ++nisect;
+           } else {
+               if (c0[0] * (c1[0] - c0[0]) < -c0[0]*(c1[1]-c0[1]))
+                   ++nisect;
+           }
        }
    }
 
