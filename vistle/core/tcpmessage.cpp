@@ -163,12 +163,13 @@ struct SendRequest {
         handler(ec);
 
         std::lock_guard<std::mutex> locker(sendQueueMutex);
-        assert(!sendQueues[&sock].empty());
-        auto This = sendQueues[&sock].front();
-        sendQueues[&sock].pop_front();
+        auto &sq = sendQueues[&sock];
+        assert(!sq.empty());
+        auto This = sq.front();
+        sq.pop_front();
 
-        if (!sendQueues[&sock].empty()) {
-            auto &req = sendQueues[&sock].front();
+        if (!sq.empty()) {
+            auto &req = sq.front();
             submitSendRequest(req);
         }
     }
@@ -244,18 +245,19 @@ struct RecvRequest {
             if (!recv_payload(sock, msg, ec, payload.get())) {
                 error = true;
                 handler(ec, std::shared_ptr<std::vector<char>>());
-            };
+            }
         }
         if (!error) {
             handler(ec, payload);
         }
 
         std::lock_guard<std::mutex> locker(recvQueueMutex);
-        assert(!recvQueues[&sock].empty());
-        auto This = recvQueues[&sock].front();
-        recvQueues[&sock].pop_front();
-        if (!recvQueues[&sock].empty()) {
-            auto &req = recvQueues[&sock].front();
+        auto &rq = recvQueues[&sock];
+        assert(!rq.empty());
+        auto This = rq.front();
+        rq.pop_front();
+        if (!rq.empty()) {
+            auto &req = rq.front();
             submitRecvRequest(req);
         }
     }
@@ -338,11 +340,11 @@ bool recv(socket_t &sock, message::Buffer &msg, error_code &ec, bool block, std:
 
 void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, std::shared_ptr<std::vector<char>>)> handler) {
 
-   std::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, handler));
+   auto req = std::make_shared<RecvRequest>(sock, msg, handler);
 
    std::lock_guard<std::mutex> locker(recvQueueMutex);
    bool submit = recvQueues[&sock].empty();
-   recvQueues[&sock].push_back(req);
+   recvQueues[&sock].emplace_back(req);
    //std::cerr << "message::async_recv: " << recvQueues[&sock].size() << " requests queued for " << &sock << std::endl;
 
    if (submit) {
@@ -355,12 +357,12 @@ void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(
    auto h = [handler](boost::system::error_code ec, std::shared_ptr<std::vector<char>>){
        handler(ec);
    };
-   std::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, h));
+   auto req = std::make_shared<RecvRequest>(sock, msg, h);
    req->no_payload = true;
 
    std::lock_guard<std::mutex> locker(recvQueueMutex);
    bool submit = recvQueues[&sock].empty();
-   recvQueues[&sock].push_back(req);
+   recvQueues[&sock].emplace_back(req);
    //std::cerr << "message::async_recv: " << recvQueues[&sock].size() << " requests queued for " << &sock << std::endl;
 
    if (submit) {
@@ -446,11 +448,11 @@ void async_send(socket_t &sock, const message::Message &msg,
                 const std::function<void(error_code ec)> handler)
 {
    assert(check(msg, payload.get()));
-   std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
+   auto req = std::make_shared<SendRequest>(sock, msg, payload, handler);
 
    std::lock_guard<std::mutex> locker(sendQueueMutex);
    bool submit = sendQueues[&sock].empty();
-   sendQueues[&sock].push_back(req);
+   sendQueues[&sock].emplace_back(req);
    //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
 
    if (submit) {
@@ -462,12 +464,12 @@ void async_forward(socket_t &sock, const message::Message &msg,
                 std::shared_ptr<socket_t> payloadSock,
                 const std::function<void(error_code ec)> handler)
 {
-   std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payloadSock, handler));
+   auto req = std::make_shared<SendRequest>(sock, msg, payloadSock, handler);
 
    std::lock_guard<std::mutex> locker(sendQueueMutex);
    bool submit = sendQueues[&sock].empty();
-   sendQueues[&sock].push_back(req);
-   //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+   sendQueues[&sock].emplace_back(req);
+   //std::cerr << "message::async_forward: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
 
    if (submit) {
        submitSendRequest(req);

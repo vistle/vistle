@@ -22,6 +22,9 @@
 
 //#define DEBUG
 
+// don't wait for message sends to complete
+#define ASYNC_SEND
+
 namespace asio = boost::asio;
 namespace mpi = boost::mpi;
 
@@ -153,7 +156,7 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<std::vec
        }
        return true;
    } else {
-#if 1
+#ifdef ASYNC_SEND
        message::async_send(m_dataSocket, message, payload, [this, message](boost::system::error_code ec){
            if (ec) {
                CERR << "async send " << message << " failed: " << ec.message() << std::endl;
