@@ -38,6 +38,9 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
 
     m_varDim = addStringParameter("var_dim","Dimension of variables","",Parameter::Choice);
     setParameterChoices(m_varDim, varDimList);
+
+    m_trueHGT = addStringParameter("true_height", "Use real ground topology", "", Parameter::Choice);
+
     /*
     m_gridChoiceX = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
     m_gridChoiceY = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
@@ -69,6 +72,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
         m_dataOut[i] = createOutputPort(s_var.str(), "scalar data");
 
     }
+    setParameterChoices(m_trueHGT, varChoices);
+
     setParallelizationMode(Serial);
 
     observeParameter(m_filedir);
@@ -89,7 +94,7 @@ bool ReadWRFChem::inspectDir() {
     //TODO :: check if file is NC format!
     std::string sFileDir = m_filedir->getValue();
 
-    if (sFileDir.empty()) {
+     if (sFileDir.empty()) {
         sendInfo("WRFChem filename is empty!");
         return false;
     }
@@ -101,7 +106,7 @@ bool ReadWRFChem::inspectDir() {
     if (bf::is_directory(dir)) {
         sendInfo("Locating files in %s", dir.string().c_str());
         for (bf::directory_iterator it(dir) ; it != bf::directory_iterator(); ++it) {
-            if (bf::is_regular_file(it->path())) {
+            if (bf::is_regular_file(it->path()) &&(bf::extension(it->path().filename())==".nc")) {
                    // std::string fName = it->path().filename().string();
                    std::string fPath = it->path().string();
                    fileList.push_back(fPath);
@@ -109,10 +114,14 @@ bool ReadWRFChem::inspectDir() {
             }
         }
     }else if (bf::is_regular_file(dir)) {
-        std::string fName = dir.string();
-        sendInfo("Loading file %s", fName.c_str());
-        fileList.push_back(fName);
-        ++numFiles;
+        if (bf::extension(dir.filename())==".nc") {
+            std::string fName = dir.string();
+            sendInfo("Loading file %s", fName.c_str());
+            fileList.push_back(fName);
+            ++numFiles;
+        }else {
+            sendError("File does not end with '.nc' ");
+        }
     }else {
         sendInfo("Could not find given directory. Please specify a valid path");
         return false;
@@ -245,14 +254,14 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             }else {
                 sendInfo("Please select the dimension of variables");
             }
-
+            setParameterChoices(m_trueHGT,Axis2dChoices);
             /*setParameterChoices(m_gridChoiceX, AxisChoices);
             setParameterChoices(m_gridChoiceY, AxisChoices);
             setParameterChoices(m_gridChoiceZ, AxisChoices);*/
             setTimesteps(numFiles);
 
         } else {
-            std::cerr << "Could not open NC file" << std::endl;
+            sendError( "Could not open NC file" );
             return false;
         }
     }
@@ -318,17 +327,38 @@ StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
     auto ptrOnXcoords = outGrid->x().data();
     auto ptrOnYcoords = outGrid->y().data();
     auto ptrOnZcoords = outGrid->z().data();
-    int n = 0;
-    for (int i = 0; i < bSizeX; i++) {
-        for (int j = 0; j < bSizeY; j++) {
-            for (int k = 0; k < bSizeZ; k++, n++) {
-                ptrOnXcoords[n] = i+b[0].begin;
-                ptrOnYcoords[n] = j+b[1].begin;
-                ptrOnZcoords[n] = k+b[2].begin;
+
+    if (!emptyValue(m_trueHGT)) {
+        //add real ground height to grid
+        NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
+        float * hgt = new float[bSizeY*bSizeZ];
+
+        varHGT->set_cur(0,b[1].begin,b[2].begin);
+        varHGT->get(hgt, 1,bSizeY, bSizeZ);
+
+        int n = 0;
+        for (int i = 0; i < bSizeX; i++) {
+            for (int j = 0; j < bSizeY; j++) {
+                for (int k = 0; k < bSizeZ; k++, n++) {
+                    ptrOnXcoords[n] = -(i+b[0].begin+hgt[k+bSizeZ*j]/50);  //divide by 50m (=dx of grid cell)
+                    ptrOnYcoords[n] = j+b[1].begin;
+                    ptrOnZcoords[n] = k+b[2].begin;
+                }
+            }
+        }
+        delete [] hgt;
+    }else {
+        int n = 0;
+        for (int i = 0; i < bSizeX; i++) {
+            for (int j = 0; j < bSizeY; j++) {
+                for (int k = 0; k < bSizeZ; k++, n++) {
+                    ptrOnXcoords[n] = -(i+b[0].begin);
+                    ptrOnYcoords[n] = j+b[1].begin;
+                    ptrOnZcoords[n] = k+b[2].begin;
+                }
             }
         }
     }
-
     for (int d = 0; d < 3; ++d) {
         outGrid->setNumGhostLayers(d, StructuredGrid::Bottom, b[d].ghost[0] );
         outGrid->setNumGhostLayers(d, StructuredGrid::Top, b[d].ghost[1]);

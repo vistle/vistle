@@ -62,6 +62,7 @@ private:
     StringParameter *m_gridChoiceX, *m_gridChoiceY, *m_gridChoiceZ;
     StringParameter *m_variables[NUMPARAMS];
     StringParameter *m_varDim;
+    StringParameter *m_trueHGT;
 
     std::vector<std::string> varDimList = {"2D","3D","other"};
 
