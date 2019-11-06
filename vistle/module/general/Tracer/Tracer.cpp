@@ -664,6 +664,9 @@ bool Tracer::reduce(int timestep) {
    while (global.points.size() < numout && global.lines.size() < numout) {
        if (taskType == MovingPoints) {
            global.points.emplace_back(new Points(Index(0)));
+           global.points.back()->x().reserve(allParticles.size());
+           global.points.back()->y().reserve(allParticles.size());
+           global.points.back()->z().reserve(allParticles.size());
            applyAttributes(global.points.back(), m_gridAttr[timestep+1]);
        } else {
            global.lines.emplace_back(new Lines(0,0,0));
@@ -678,6 +681,10 @@ bool Tracer::reduce(int timestep) {
            applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
            if (taskType == Streamlines) {
                applyTime(global.vecField.back(), m_data0Time[timestep+1]);
+           } else if (taskType == MovingPoints) {
+               global.vecField.back()->x().reserve(allParticles.size());
+               global.vecField.back()->y().reserve(allParticles.size());
+               global.vecField.back()->z().reserve(allParticles.size());
            }
        }
        if (global.computeScalar) {
@@ -685,20 +692,46 @@ bool Tracer::reduce(int timestep) {
            applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
            if (taskType == Streamlines) {
                applyTime(global.scalField.back(), m_data1Time[timestep+1]);
+           } else if (taskType == MovingPoints) {
+               global.scalField.back()->x().reserve(allParticles.size());
            }
        }
-       if (global.computeId)
+       if (global.computeId) {
            global.idField.emplace_back(new Vec<Index>(Index(0)));
-       if (global.computeStep)
+           if (taskType == MovingPoints) {
+               global.idField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeStep) {
            global.stepField.emplace_back(new Vec<Index>(Index(0)));
-       if (global.computeTime)
+           if (taskType == MovingPoints) {
+               global.stepField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeTime) {
            global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
-       if (global.computeStepWidth)
+           if (taskType == MovingPoints) {
+               global.timeField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeStepWidth) {
            global.stepWidthField.emplace_back(new Vec<Scalar>(Index(0)));
-       if (global.computeDist)
+           if (taskType == MovingPoints) {
+               global.stepWidthField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeDist) {
            global.distField.emplace_back(new Vec<Scalar>(Index(0)));
-       if (global.computeStopReason)
+           if (taskType == MovingPoints) {
+               global.distField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeStopReason) {
            global.stopReasonField.emplace_back(new Vec<Index>(Index(0)));
+           if (taskType == MovingPoints) {
+               global.stopReasonField.back()->x().reserve(allParticles.size());
+           }
+       }
    }
 
    for (auto &p: allParticles) {

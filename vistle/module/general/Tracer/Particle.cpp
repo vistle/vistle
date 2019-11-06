@@ -330,7 +330,6 @@ void Particle::addToOutput() {
 
    if (m_global.task_type == MovingPoints) {
 
-       std::lock_guard<std::mutex> locker(m_global.mutex);
        Scalar prevTime(0);
        Scalar time(0);
        Index timestep = 0;
@@ -368,6 +367,8 @@ void Particle::addToOutput() {
                    } else {
                        pos = lerp(pos0, pos1, t);
                    }
+
+                   std::lock_guard<std::mutex> locker(m_global.mutex);
                    auto points = m_global.points[timestep];
                    points->x().push_back(pos[0]);
                    points->y().push_back(pos[1]);
