@@ -101,7 +101,7 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     m_numStartpoints = addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange(m_numStartpoints, (Integer)1, max_no_startp);
     m_maxStartpoints = addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
-    setParameterRange(m_maxStartpoints, (Integer)2, (Integer)10000);
+    setParameterRange(m_maxStartpoints, (Integer)2, (Integer)1000000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     setParameterRange("steps_max", (Integer)1, (Integer)1000000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
