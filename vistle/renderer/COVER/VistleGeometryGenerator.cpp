@@ -871,13 +871,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          const vistle::Scalar *z = &spheres->z()[0];
          const vistle::Scalar *r = &spheres->r()[0];
          sphere->setCoords(numVertices, x, y, z, r);
-         sphere->setColorBinding(opencover::Bind::OverAll);
-         float rgba[] = { 0., 1., 0., 1. };
-         sphere->updateColors(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 
          colormap = nullptr; // has to use its own shader
-
-         //sphere->setStateSet(state.get());
 
          break;
       }
@@ -1216,10 +1211,11 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            for (int c=0; c<4; ++c)
                rgba[c].resize(numCoords);
            for (Index index = 0; index < numCoords; ++index) {
-               Index tc = clamp<Index>(tex->coords()[index]*width, 0, width-1);
-               Vector4 col(pix[tc*4], pix[tc*4+1], pix[tc*4+2], pix[tc*4+3]);
+               auto tc = clamp<Scalar>(tex->coords()[index], 0, 1);
+               Index idx = clamp<Index>(tc*width, 0, width-1);
+               Vector4 col(pix[idx*4], pix[idx*4+1], pix[idx*4+2], pix[idx*4+3]);
                for (int c=0; c<4; ++c)
-                   rgba[c][index] = clamp<float>(pix[tc*4+c]/255., 0., 1.);
+                   rgba[c][index] = clamp<float>(col[c]/255.f, 0., 1.);
            }
            sphere->setColorBinding(opencover::Bind::PerVertex);
            sphere->updateColors(rgba[0].data(), rgba[1].data(), rgba[2].data(), rgba[3].data());
