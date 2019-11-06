@@ -510,44 +510,33 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
                   // bottom face
                   std::copy(a.begin(), a.end(), inserter);
-#if 0
-                  int idx2Common = -1, idxDisjoint = -1;
-                  int commonIndMy[2] = { -1, -1}, commonIndOther[2] = { -1, -1};
-                  Index commonVerts[2];
-                  for (int f=1; f<6; ++f) {
-                      const auto &face = faces[cellfaces[f]];
-                      int numCommon = 0;
-                      for (int i=0; i<4; ++i) {
-                          for (int j=0; j<4; ++j) {
-                              if (a[j] == face[i] && numCommon < 2) {
-                                  commonVerts[numCommon] = a[j];
-                                  commonIndOther[numCommon] = i;
-                                  commonIndMy[numCommon] = j;
-                                  ++numCommon;
+#if 1
+                  for (auto v: a) {
+                      bool found = false;
+                      for (int f=1; f<6; ++f) {
+                          const auto &face = faces[cellfaces[f]];
+                          for (int i=0; i<4; ++i) {
+                              if (face[i] == v) {
+                                  found = true;
+                                  if (i == 0) {
+                                      connectivities.push_back(face[1]);
+                                  } else if (i == 3) {
+                                      connectivities.push_back(face[2]);
+                                  } else {
+                                      auto it = std::find(a.begin(), a.end(), face[i-1]);
+                                      if (it == a.end()) {
+                                          connectivities.push_back(face[i-1]);
+                                      } else {
+                                          connectivities.push_back(face[i+1]);
+                                      }
+                                  }
+                                  break;
                               }
                           }
-                      }
-                      vassert(numCommon == 0 || numCommon == 2);
-                      if (numCommon == 0) {
-                          idxDisjoint = f;
-                          if (idx2Common >= 0)
-                              break;
-                      } else if (numCommon == 2) {
-                          idx2Common = f;
-                          if (idxDisjoint >= 0)
+                          if (found)
                               break;
                       }
-                  }
-                  const auto &adjoining_face = faces[cellfaces[idx2Common]];
-                  // top face - bring into correct order
-                  const auto &opposite_face = faces[cellfaces[idxDisjoint]];
-                  int otherVerts[2] = { -1, -1 };
-                  bool reverse = false;
-                  int startIdx = -1;
-                  if (commonIndOther[0]+1 == commonIndOther[1]) {
-                  } else if (commonIndOther[1]+3 == commonIndOther[0]) {
-                  } else if (commonIndOther[0]+3 == commonIndOther[1]) {
-                  } else {
+                      assert(found);
                   }
 #else
                   connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
