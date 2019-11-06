@@ -450,15 +450,15 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             const std::vector<Index> &cellfaces=cellfacemap[i];
 
             bool onlySimpleFaces = !m_onlyPolyhedra; // only faces with 3 or 4 corners
-            std::vector<Index> threeVert, fourVert;
+            int threeVert=0, fourVert=0;
             for (index_t j=0; j<cellfaces.size(); ++j) {
                if (faces[cellfaces[j]].size() == 4) {
-                   fourVert.push_back(j);
-                   if (fourVert.size() > 6)
+                   ++fourVert;
+                   if (fourVert > 6)
                       break;
                } else if (faces[cellfaces[j]].size() == 3) {
-                   threeVert.push_back(j);
-                   if (threeVert.size() > 4)
+                   ++threeVert;
+                   if (threeVert > 4)
                       break;
                } else {
                    onlySimpleFaces = false;
@@ -467,16 +467,16 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             }
             const Index num_faces = cellfaces.size();
             Index num_verts = 0;
-            if (num_faces==6 && fourVert.size()==6 && threeVert.size() == 0 && onlySimpleFaces) {
+            if (num_faces==6 && fourVert==6 && threeVert== 0 && onlySimpleFaces) {
                types[i]=UnstructuredGrid::HEXAHEDRON;
                num_verts = 8;
-            } else if (num_faces==5 && fourVert.size()==3 && threeVert.size()==2 && onlySimpleFaces) {
+            } else if (num_faces==5 && fourVert==3 && threeVert==2 && onlySimpleFaces) {
                types[i]=UnstructuredGrid::PRISM;
                num_verts = 6;
-            } else if (num_faces==5 && fourVert.size()==1 && threeVert.size()==4 && onlySimpleFaces) {
+            } else if (num_faces==5 && fourVert==1 && threeVert==4 && onlySimpleFaces) {
                types[i]=UnstructuredGrid::PYRAMID;
                num_verts = 5;
-            } else if (num_faces==4 && fourVert.size()==0 && threeVert.size()==4 && onlySimpleFaces) {
+            } else if (num_faces==4 && fourVert==0 && threeVert==4 && onlySimpleFaces) {
                types[i]=UnstructuredGrid::TETRAHEDRON;
                num_verts = 4;
             } else {
