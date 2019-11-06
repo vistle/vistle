@@ -447,25 +447,7 @@ bool Tracer::reduce(int timestep) {
 
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    std::vector<std::shared_ptr<Particle>> allParticles;
-   std::set<std::shared_ptr<Particle>> activeParticles;
-
-   std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
-   int checkActivityCounter = 0;
-   auto checkActivity = [&checkActivityCounter, &checkSet, &allParticles](const mpi::communicator &comm) -> Index {
-       agree(comm, checkActivityCounter);
-       ++checkActivityCounter;
-       for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
-           ++next;
-
-           auto particle = allParticles[*it];
-           const bool active = mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
-           if (!active) {
-               particle->Deactivate(Particle::OutOfDomain);
-               checkSet.erase(it);
-           }
-       }
-       return checkSet.size();
-   };
+   std::set<std::shared_ptr<Particle>> localParticles, activeParticles;
 
    Index numconstant = grid_in.size() ? grid_in[0].size() : 0;
    for (Index i=0; i<numconstant; ++i) {
@@ -512,7 +494,7 @@ bool Tracer::reduce(int timestep) {
    }
 
    Index nextParticleToStart = 0;
-   auto startParticles = [this, &nextParticleToStart, &allParticles, &activeParticles, &checkSet](int toStart) -> int {
+   auto startParticles = [this, &nextParticleToStart, &allParticles, &activeParticles, &localParticles, maxNumActive](int toStart) -> int {
        int started = 0;
        while (nextParticleToStart < allParticles.size()) {
            if (started >= toStart)
@@ -521,10 +503,17 @@ bool Tracer::reduce(int timestep) {
            Index idx = nextParticleToStart;
            ++nextParticleToStart;
            auto particle = allParticles[idx];
-           if (particle->startTracing(comm()) >= 0) {
-               activeParticles.insert(particle);
-               checkSet.insert(particle->id());
+           int r = particle->searchRank(comm());
+           if (r >= 0) {
                ++started;
+               if (rank() == r) {
+                   if (activeParticles.size() < maxNumActive) {
+                       activeParticles.emplace(particle);
+                       particle->startTracing();
+                   } else {
+                       localParticles.emplace(particle);
+                   }
+               }
            } else {
                particle->Deactivate(Particle::InitiallyOutOfDomain);
            }
@@ -543,7 +532,8 @@ bool Tracer::reduce(int timestep) {
 
       bool first = true;
       // build list of particles to send to their owner
-      for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
+      for(auto it = activeParticles.begin(), next=it; it != activeParticles.end(); it=next) {
+
           next = it;
           ++next;
 
@@ -558,18 +548,21 @@ bool Tracer::reduce(int timestep) {
                   sendlist.push_back(particle->id());
               }
               activeParticles.erase(it);
+              if (!localParticles.empty()) {
+                  auto p = *localParticles.begin();
+                  activeParticles.emplace(p);
+                  p->startTracing();
+                  localParticles.erase(localParticles.begin());
+              }
           }
       }
 
       if (mpisize==1) {
-          checkSet.clear();
           numActiveMax = numActiveMin = activeParticles.size();
           continue;
       }
 
       // communicate
-      checkActivity(comm());
-
       Index num_send = sendlist.size();
       std::vector<Index> num_transmit(mpisize);
       mpi::all_gather(comm(), num_send, num_transmit);
@@ -585,13 +578,20 @@ bool Tracer::reduce(int timestep) {
                   auto p = allParticles[p_index];
                   assert(!p->isTracing(false));
                   p->broadcast(comm(), mpirank);
-                  checkSet.insert(p_index);
                   if (p->rank() == rank() && rank() != mpirank) {
                       datarecvlist.emplace_back(p->id(), mpirank);
                   }
                   p->finishSegment(comm());
-                  if (p->startTracing(comm()) >= 0) {
-                      activeParticles.insert(p);
+                  int r = p->searchRank(comm());
+                  if (r < 0) {
+                      p->Deactivate(Particle::OutOfDomain);
+                  } else if (r == rank()) {
+                      if (activeParticles.size() < maxNumActive) {
+                          activeParticles.emplace(p);
+                          p->startTracing();
+                      } else {
+                          localParticles.emplace(p);
+                      }
                   }
               }
           }
@@ -599,10 +599,10 @@ bool Tracer::reduce(int timestep) {
 
       std::copy(sendlist.begin(), sendlist.end(), std::back_inserter(datasendlist));
 
-      numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
-      numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
-      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << ", #check=" << checkSet.size() << std::endl;
-   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
+      numActiveMin = mpi::all_reduce(comm(), activeParticles.size()+localParticles.size(), mpi::minimum<Index>());
+      numActiveMax = mpi::all_reduce(comm(), activeParticles.size()+localParticles.size(), mpi::maximum<Index>());
+      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << ", #active="<<activeParticles.size() << std::endl;
+   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size());
 
    if (mpisize == 1) {
        for (auto p: allParticles) {

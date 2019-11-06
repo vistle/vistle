@@ -62,7 +62,7 @@ void Particle::enableCelltree(bool value) {
     m_integrator.enableCelltree(value);
 }
 
-int Particle::startTracing(boost::mpi::communicator mpi_comm) {
+int Particle::searchRank(boost::mpi::communicator mpi_comm) {
 
     assert(!m_tracing);
     assert(!m_currentSegment);
@@ -79,12 +79,15 @@ int Particle::startTracing(boost::mpi::communicator mpi_comm) {
     if (m_rank == -1) {
         m_rank = rank;
     }
-    if (rank == mpi_comm.rank()) {
-        assert(inGrid());
-        m_tracing = true;
-        m_progressFuture =  std::async(std::launch::async, [this]() -> bool { return trace(); });
-    }
+
     return rank;
+}
+
+void Particle::startTracing() {
+
+    assert(inGrid());
+    m_tracing = true;
+    m_progressFuture =  std::async(std::launch::async, [this]() -> bool { return trace(); });
 }
 
 bool Particle::isActive() const {
@@ -328,17 +331,21 @@ void Particle::addToOutput() {
    if (m_global.task_type == MovingPoints) {
 
        std::lock_guard<std::mutex> locker(m_global.mutex);
+       Scalar prevTime(0);
+       Scalar time(0);
+       Index timestep = 0;
+       Index prevIdx = 0;
+       std::shared_ptr<const Segment> prevSeg;
        for (auto &ent: m_segments) {
            const auto &seg = *ent.second;
            if (seg.m_num < 0) {
                continue;
            }
-           Scalar prevTime(0);
-           Scalar time(0);
+           if (!prevSeg)
+               prevSeg = ent.second;
+
            auto N = seg.m_xhist.size();
            //std::cerr << "particle " << seg.m_id << ", N=" << N << " steps" << std::endl;
-           Index timestep = 0;
-           Index prevIdx = 0;
            for (Index i=0; i<N; ++i) {
                auto nextTime = seg.m_times[i];
 
@@ -349,9 +356,9 @@ void Particle::addToOutput() {
                    //std::cerr << "particle " << seg.m_id << " interpolation weight=" << t << std::endl;
 
                    const auto vel1 = seg.m_vhist[i];
-                   const auto vel0 = seg.m_vhist[prevIdx];
+                   const auto vel0 = prevSeg->m_vhist[prevIdx];
                    const auto pos1 = seg.m_xhist[i];
-                   const auto pos0 = seg.m_xhist[prevIdx];
+                   const auto pos0 = prevSeg->m_xhist[prevIdx];
                    Vector pos;
                    if (second_order) {
                        Scalar dt0 = time-prevTime, dt1 = nextTime-time;
@@ -376,14 +383,14 @@ void Particle::addToOutput() {
 
                    if (m_global.computeScalar) {
                        const auto pres1 = seg.m_pressures[i];
-                       const auto pres0 = seg.m_pressures[prevIdx];
+                       const auto pres0 = prevSeg->m_pressures[prevIdx];
                        Scalar pres = lerp(pres0, pres1, t);
                        m_global.scalField[timestep]->x().push_back(pres);
                    }
 
                    if (m_global.computeDist) {
                        const auto dist1 = seg.m_dists[i];
-                       const auto dist0 = seg.m_dists[prevIdx];
+                       const auto dist0 = prevSeg->m_dists[prevIdx];
                        Scalar dist = lerp(dist0, dist1, t);
                        m_global.distField[timestep]->x().push_back(dist);
                    }
@@ -403,6 +410,7 @@ void Particle::addToOutput() {
                    ++timestep;
                }
                prevTime = nextTime;
+               prevSeg = ent.second;
                prevIdx = i;
            }
        }

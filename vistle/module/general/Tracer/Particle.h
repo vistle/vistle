@@ -53,7 +53,8 @@ public:
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
-    int startTracing(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
+    int searchRank(boost::mpi::communicator mpi_comm); //< returns MPI rank of node where tracing occurs
+    void startTracing();
     bool isTracing(bool wait);
     bool madeProgress() const;
     bool trace();
