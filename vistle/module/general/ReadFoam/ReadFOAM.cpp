@@ -518,17 +518,13 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                           for (int i=0; i<4; ++i) {
                               if (face[i] == v) {
                                   found = true;
-                                  if (i == 0) {
-                                      connectivities.push_back(face[1]);
-                                  } else if (i == 3) {
-                                      connectivities.push_back(face[2]);
+                                  const int next = (i+1)%4;
+                                  auto it = std::find(a.begin(), a.end(), face[next]);
+                                  if (it == a.end()) {
+                                      connectivities.push_back(face[next]);
                                   } else {
-                                      auto it = std::find(a.begin(), a.end(), face[i-1]);
-                                      if (it == a.end()) {
-                                          connectivities.push_back(face[i-1]);
-                                      } else {
-                                          connectivities.push_back(face[i+1]);
-                                      }
+                                      const int prev = (i+4-1)%4;
+                                      connectivities.push_back(face[prev]);
                                   }
                                   break;
                               }
