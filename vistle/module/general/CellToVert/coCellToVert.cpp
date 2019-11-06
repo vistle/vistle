@@ -135,8 +135,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                Index begin = elem_list[i], end = elem_list[i+1];
                std::vector<Index> verts;
                verts.reserve(end-begin);
-               Index j=begin;
-               while(j<end) {
+               for (Index j=begin; j<end; ++j) {
                    verts.push_back(conn_list[j]);
                }
                std::sort(verts.begin(), verts.end());
