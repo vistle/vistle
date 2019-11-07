@@ -45,6 +45,7 @@ private:
     double trace_time;
     double trace_len;
     bool cell_relative, velocity_relative;
+    int cell_index_modulus = -1;
 
     vistle::Index max_step;
 
@@ -56,12 +57,15 @@ private:
     bool computeTime = true;
     bool computeDist = true;
     bool computeStepWidth = true;
+    bool computeCellIndex = true;
+    bool computeBlockIndex = true;
 
     std::vector<vistle::Points::ptr> points; // points objects for each timestep (MovingPoints)
     std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep (other modes)
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> vecField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> scalField;
     std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField, stopReasonField;
+    std::vector<vistle::Vec<vistle::Index>::ptr> blockField, cellField;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField, stepWidthField;
     std::mutex mutex;
 };

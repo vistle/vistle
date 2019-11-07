@@ -82,6 +82,8 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
     createOutputPort("stepwidth");
     createOutputPort("distance");
     createOutputPort("stop_reason");
+    createOutputPort("cell_index");
+    createOutputPort("block_index");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";
@@ -140,6 +142,9 @@ Tracer::Tracer(const std::string &name, int moduleID, mpi::communicator comm)
 
     m_particlePlacement = addIntParameter("particle_placement", "where a particle's data shall be collected", RankById, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_particlePlacement, ParticlePlacement);
+
+    auto modulus = addIntParameter("cell_index_modulus", "modulus for cell number output", -1);
+    setParameterMinimum<Integer>(modulus, -1);
 }
 
 Tracer::~Tracer() {
@@ -435,12 +440,15 @@ bool Tracer::reduce(int timestep) {
    global.cell_relative = getIntParameter("cell_relative");
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
+   global.cell_index_modulus = getIntParameter("cell_index_modulus");
 
    global.computeVector = isConnected("data_out0");
    global.computeScalar = isConnected("data_out1");
    global.computeId = isConnected("particle_id");
    global.computeStep = isConnected("step");
    global.computeStopReason = isConnected("stop_reason");
+   global.computeCellIndex = isConnected("cell_index");
+   global.computeBlockIndex = isConnected("block_index");
    global.computeTime = isConnected("time");
    global.computeDist = isConnected("distance");
    global.computeStepWidth = isConnected("stepwidth");
@@ -732,6 +740,18 @@ bool Tracer::reduce(int timestep) {
                global.stopReasonField.back()->x().reserve(allParticles.size());
            }
        }
+       if (global.computeCellIndex) {
+           global.cellField.emplace_back(new Vec<Index>(Index(0)));
+           if (taskType == MovingPoints) {
+               global.cellField.back()->x().reserve(allParticles.size());
+           }
+       }
+       if (global.computeBlockIndex) {
+           global.blockField.emplace_back(new Vec<Index>(Index(0)));
+           if (taskType == MovingPoints) {
+               global.blockField.back()->x().reserve(allParticles.size());
+           }
+       }
    }
 
    for (auto &p: allParticles) {
@@ -808,6 +828,18 @@ bool Tracer::reduce(int timestep) {
            global.stopReasonField[i]->setMeta(meta);
            global.stopReasonField[i]->addAttribute("_species", "stop_reason");
            addObject("stop_reason", global.stopReasonField[i]);
+       }
+       if (global.computeCellIndex) {
+           global.cellField[i]->setGrid(geo);
+           global.cellField[i]->setMeta(meta);
+           global.cellField[i]->addAttribute("_species", "cell_index");
+           addObject("cell_index", global.cellField[i]);
+       }
+       if (global.computeBlockIndex) {
+           global.blockField[i]->setGrid(geo);
+           global.blockField[i]->setMeta(meta);
+           global.blockField[i]->addAttribute("_species", "block_index");
+           addObject("block_index", global.blockField[i]);
        }
 
        if (global.computeVector) {

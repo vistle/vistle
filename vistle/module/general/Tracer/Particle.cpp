@@ -173,6 +173,7 @@ bool Particle::findCell(double time) {
                 m_currentSegment->m_id = id();
                 m_currentSegment->m_startStep = m_stp;
                 m_currentSegment->m_num = m_segment;
+                m_currentSegment->m_blockIndex = block->m_grid->getBlock();
                 if (m_forward)
                     ++m_segment;
                 else
@@ -202,6 +203,14 @@ void Particle::EmitData() {
        m_currentSegment->m_stepWidth.push_back(m_integrator.h());
    if (m_global.computeDist)
        m_currentSegment->m_dists.push_back(m_dist);
+   if (m_global.computeCellIndex) {
+       auto m = m_global.cell_index_modulus;
+       if (m > 0) {
+           m_currentSegment->m_cellIndex.push_back(m_el % m);
+       } else {
+           m_currentSegment->m_cellIndex.push_back(m_el);
+       }
+   }
 }
 
 void Particle::Deactivate(StopReason reason) {
@@ -406,6 +415,10 @@ void Particle::addToOutput() {
                        m_global.idField[timestep]->x().push_back(m_startId);
                    if (m_global.computeStopReason)
                        m_global.stopReasonField[timestep]->x().push_back(m_stopReason);
+                   if (m_global.computeCellIndex)
+                       m_global.cellField[timestep]->x().push_back(seg.m_cellIndex[i]);
+                   if (m_global.computeBlockIndex)
+                       m_global.blockField[timestep]->x().push_back(seg.m_blockIndex);
 
                    time += m_global.dt_step;
                    ++timestep;
@@ -481,8 +494,18 @@ void Particle::addToOutput() {
            stopReason = &m_global.stopReasonField[t]->x();
            stopReason->reserve(nsz);
        }
+       shm<Index>::array *cellIndex=nullptr;
+       if (m_global.computeCellIndex) {
+           cellIndex = &m_global.cellField[t]->x();
+           cellIndex->reserve(nsz);
+       }
+       shm<Index>::array *blockIndex=nullptr;
+       if (m_global.computeBlockIndex) {
+           blockIndex = &m_global.blockField[t]->x();
+           blockIndex->reserve(nsz);
+       }
 
-       auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scal, id, step, stepwidth, time, dist, stopReason](const Segment &seg, Index i){
+       auto addStep = [this, &x, &y, &z, &cl, vec_x, vec_y, vec_z, scal, id, step, stepwidth, time, dist, stopReason, cellIndex, blockIndex](const Segment &seg, Index i){
            const auto &vec = seg.m_xhist[i];
            x.push_back(vec[0]);
            y.push_back(vec[1]);
@@ -510,6 +533,10 @@ void Particle::addToOutput() {
                id->push_back(m_startId);
            if (stopReason)
                stopReason->push_back(m_stopReason);
+           if (cellIndex)
+               cellIndex->push_back(seg.m_cellIndex[i]);
+           if (blockIndex)
+               blockIndex->push_back(seg.m_blockIndex);
        };
 
        for (auto &ent: m_segments) {
