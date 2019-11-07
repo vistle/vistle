@@ -5,10 +5,11 @@
 #include <set>
 
 //#define INTERPOL_DEBUG
+//#define INSIDE_DEBUG
 
 namespace vistle {
 
-static const Scalar Epsilon = 1e-17;
+static const Scalar Epsilon = 1e-7;
 
 /* cell types:
  NONE        =  0,
@@ -680,6 +681,8 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
     if (isConvex(elem))
         return insideConvex(elem, point);
 
+    const Vector zaxis(0,0,1);
+
     const auto type = tl()[elem] & TYPE_MASK;
     switch (type) {
     case TETRAHEDRON:
@@ -697,13 +700,19 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
         // count intersections of ray from origin along positive z-axis with polygon translated by -point
 
+#ifdef INSIDE_DEBUG
+        std::cerr << "POINT: " << point.transpose() << ", #faces=" << numFaces << ", type=" << type << std::endl;
+#endif
         Vector corners[4];
         for (int f=0; f<numFaces; ++f) {
             Vector min, max;
-            const int nCorners = FaceSizes[type][f];
-            for (int i=0; i<nCorners; ++i) {
+            const unsigned nCorners = FaceSizes[type][f];
+            for (unsigned i=0; i<nCorners; ++i) {
                 const Index v = cl[FaceVertices[type][f][i]];
                 corners[i] = Vector(x[v], y[v], z[v]) - point;
+#ifdef INSIDE_DEBUG
+                std::cerr << "   " << corners[i].transpose() << std::endl;
+#endif
                 if (i == 0) {
                     min = max = corners[0];
                 } else {
@@ -714,8 +723,16 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 }
             }
 
-            if (max[2] < 0)
+#ifdef INSIDE_DEBUG
+            std::cerr << "bbox: " << min.transpose() << " -> " << max.transpose() << std::endl;
+            std::cerr << "thick: " << (max-min).transpose() << std::endl;
+#endif
+
+            if (max[2] < 0) {
+                // face is in negative z-axis direction
                 continue;
+            }
+            // z-axis-ray does not intersect bounding rectangle of face
             if (max[0] < 0)
                 continue;
             if (min[0] > 0)
@@ -725,9 +742,41 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
             if (min[1] > 0)
                 continue;
 
-            if (originInsidePolygonZ2D(corners, nCorners))
-                ++insideCount;
+            if (originInsidePolygonZ2D(corners, nCorners)) {
+
+                if (min[2] > 0) {
+                    ++insideCount;
+                    continue;
+                } else {
+                    const auto nc = faceNormalAndCenter(nCorners, corners);
+                    auto &normal = nc.first;
+                    auto &center = nc.second;
+
+                    auto ndz = normal.dot(zaxis);
+                    if (std::abs(ndz) < Epsilon) {
+#ifdef INSIDE_DEBUG
+                        std::cerr << "  SKIP" << f << ": parallel" << std::endl;
+#endif
+                        continue;
+                    }
+
+                    auto d = normal.dot(center) / ndz;
+                    if (d > 0)
+                        ++insideCount;
+
+#ifdef INSIDE_DEBUG
+                    std::cerr << "normal: " << normal.transpose() << ", d: " << d << ", insideCount: " << insideCount << std::endl;
+#endif
+                }
+#ifdef INSIDE_DEBUG
+            } else {
+                std::cerr << "  SKIP" << f << ": not inside" << std::endl;
+#endif
+            }
         }
+#ifdef INSIDE_DEBUG
+        std::cerr << "INSIDECOUNT: " << insideCount << std::endl;
+#endif
 
         return insideCount % 2;
         break;
@@ -771,8 +820,27 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
             if (min[1] > 0)
                 continue;
 
-            if (originInsidePolygonZ2D(corners.data(), nCorners))
-                ++insideCount;
+            if (originInsidePolygonZ2D(corners.data(), nCorners)) {
+                if (min[2] > 0) {
+                    ++insideCount;
+                    continue;
+                } else {
+                    const auto nc = faceNormalAndCenter(nCorners, corners.data());
+                    auto &normal = nc.first;
+                    auto &center = nc.second;
+
+                    auto ndz = normal.dot(zaxis);
+                    if (std::abs(ndz) < Epsilon) {
+                        continue;
+                    }
+
+                    auto d = normal.dot(center) / ndz;
+                    if (d > 0)
+                        ++insideCount;
+
+                    ++insideCount;
+                }
+            }
         }
 
         return insideCount % 2;
@@ -824,8 +892,27 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                 if (min[1] > 0)
                     continue;
 
-                if (originInsidePolygonZ2D(corners.data(), nCorners))
-                    ++insideCount;
+                if (originInsidePolygonZ2D(corners.data(), nCorners)) {
+                    if (min[2] > 0) {
+                        ++insideCount;
+                        continue;
+                    } else {
+                        const auto nc = faceNormalAndCenter(nCorners, corners.data());
+                        auto &normal = nc.first;
+                        auto &center = nc.second;
+
+                        auto ndz = normal.dot(zaxis);
+                        if (std::abs(ndz) < Epsilon) {
+                            continue;
+                        }
+
+                        auto d = normal.dot(center) / ndz;
+                        if (d > 0)
+                            ++insideCount;
+
+                        ++insideCount;
+                    }
+                }
             }
         }
 

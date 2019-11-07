@@ -111,10 +111,13 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
 /* return whether origin is left (<0), on (=0), or right (>0) of infinite line through p0 and p1 */
 static Scalar originSideOfLineZ2D(const Vector3 &p0, const Vector3 &p1) {
 
-    return p0[0] * (p1[1] - p0[1]) - p0[1] * (p1[0] - p0[0]);
+    //return p0[0] * (p1[1] - p0[1]) - p0[1] * (p1[0] - p0[0]);
+    return difference_of_products(p0[0], p1[1]-p0[1], p0[1], p1[0]-p0[0]);
 }
 
 bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners) {
+
+    // based on http://geomalgorithms.com/a03-_inclusion.html
 
     int    wn = 0;    // the  winding number counter
 
@@ -132,7 +135,7 @@ bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners) {
                     --wn;            // have  a valid down intersect
         }
     }
-    return wn > 0;
+    return wn != 0;
 }
 
 bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
@@ -250,6 +253,26 @@ std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, co
     }
 
     return std::make_pair(normal.normalized(), center/nVert);
+}
+
+std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Vector *corners) {
+
+    Vector normal(0,0,0);
+    Vector center(0,0,0);
+    assert(nVert >= 3);
+    if (nVert < 3)
+        return std::make_pair(normal, center);
+
+    Vector c0(corners[nVert-1]);
+    for (Index i=0; i<nVert; ++i) {
+        Vector c1(corners[i]);
+        center += c1;
+        normal += cross(c0, c1);
+        c0 = c1;
+    }
+
+    return std::make_pair(normal.normalized(), center/nVert);
+
 }
 
 }
