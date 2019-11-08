@@ -524,37 +524,37 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
       const Index begin=el[elem], end=el[elem+1];
       const Index nvert = end-begin;
       for (Index i=0; i<nvert; i+=cl[i]+1) {
-          auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
-          auto normal = nc.first;
-          auto center = nc.second;
+          const auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
+          auto &normal = nc.first;
+          auto &center = nc.second;
           if (normal.dot(point-center) > Tolerance)
               return false;
       }
       return true;
    } else if (type == UnstructuredGrid::CPOLYHEDRON) {
-      const Index begin=el[elem], end=el[elem+1];
-      const Index nvert = end-begin;
-      Index facestart = InvalidIndex;
-      Index term = 0;
-     for (Index i=0; i<nvert; ++i) {
-         if (facestart == InvalidIndex) {
-             term = cl[i];
-         } else if (cl[i] == term) {
-             auto nc = faceNormalAndCenter(i-facestart, &cl[facestart], x, y, z);
-             auto normal = nc.first;
-             auto center = nc.second;
-             if (normal.dot(point-center) > Tolerance)
-                 return false;
-             facestart = InvalidIndex;
-         }
-      }
-      return true;
+       const Index begin=el[elem], end=el[elem+1];
+       const Index nvert = end-begin;
+       Index facestart = InvalidIndex;
+       Index term = 0;
+       for (Index i=0; i<nvert; ++i) {
+           if (facestart == InvalidIndex) {
+               term = cl[i];
+           } else if (cl[i] == term) {
+               const auto nc = faceNormalAndCenter(i-facestart, &cl[facestart], x, y, z);
+               auto &normal = nc.first;
+               auto &center = nc.second;
+               if (normal.dot(point-center) > Tolerance)
+                   return false;
+               facestart = InvalidIndex;
+           }
+       }
+       return true;
    } else {
       const auto numFaces = NumFaces[type];
       for (int f=0; f<numFaces; ++f) {
-         auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-         auto normal = nc.first;
-         auto center = nc.second;
+         const auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
+         auto &normal = nc.first;
+         auto &center = nc.second;
 
          //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
 
@@ -837,8 +837,6 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                     auto d = normal.dot(center) / ndz;
                     if (d > 0)
                         ++insideCount;
-
-                    ++insideCount;
                 }
             }
         }
@@ -909,8 +907,6 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
                         auto d = normal.dot(center) / ndz;
                         if (d > 0)
                             ++insideCount;
-
-                        ++insideCount;
                     }
                 }
             }
