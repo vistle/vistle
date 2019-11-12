@@ -56,6 +56,7 @@ fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
 export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
+export MV2_HOMOGENEOUS_CLUSTER=1 # faster start-up
 case $(uname) in
    Darwin)
       libpath=DYLD_LIBRARY_PATH
