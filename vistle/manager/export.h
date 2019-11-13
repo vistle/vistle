@@ -3,10 +3,10 @@
 
 #include <util/export.h>
 
-#if defined (run_on_main_thread_EXPORTS)
-#define V_MAINTHREADEXPORT V_EXPORT
+#if defined (vistle_manager_EXPORTS)
+#define V_MANAGEREXPORT V_EXPORT
 #else
-#define V_MAINTHREADEXPORT V_IMPORT
+#define V_MANAGEREXPORT V_IMPORT
 #endif
 
 #endif

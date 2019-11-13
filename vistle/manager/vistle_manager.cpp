@@ -9,11 +9,12 @@
 #include <exception>
 #include <cstdlib>
 #include <sstream>
-#include "run_on_main_thread.h"
+
 #include <util/directory.h>
 #include <core/objectmeta.h>
 #include <core/object.h>
 #include "executor.h"
+#include "vistle_manager.h"
 #include <util/hostname.h>
 #include <control/hub.h>
 #include <boost/mpi.hpp>
@@ -24,7 +25,6 @@
 #include <functional>
 #include <deque>
 #include <condition_variable>
-#include <mutex>
 
 #if defined(HAVE_QT) && defined(MODULE_THREAD)
 #include <QApplication>
@@ -63,6 +63,23 @@ class Vistle: public Executor {
    }
 };
 
+#ifdef COVER_ON_MAINTHREAD
+static std::mutex main_thread_mutex;
+static std::condition_variable main_thread_cv;
+static std::deque<std::function<void()>> main_func;
+static bool main_done = false;
+
+void run_on_main_thread(std::function<void()> &func) {
+
+    {
+       std::unique_lock<std::mutex> lock(main_thread_mutex);
+       main_func.emplace_back(func);
+    }
+    main_thread_cv.notify_all();
+    std::unique_lock<std::mutex> lock(main_thread_mutex);
+    main_thread_cv.wait(lock, []{ return main_done || main_func.empty(); });
+}
+#endif
 
 int main(int argc, char *argv[])
 {

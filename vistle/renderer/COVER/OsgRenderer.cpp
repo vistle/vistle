@@ -39,7 +39,7 @@
 #include <util/findself.h>
 #include <util/sysdep.h>
 
-#include <manager/run_on_main_thread.h>
+#include <manager/vistle_manager.h>
 
 #if defined(WIN32)
     const char libcover[] = "mpicover.dll";
