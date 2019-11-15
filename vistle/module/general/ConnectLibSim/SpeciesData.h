@@ -13,19 +13,19 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_SpeciesData_alloc(visit_handle *obj);
-SIMV2_API int simv2_SpeciesData_free(visit_handle obj);
-SIMV2_API int simv2_SpeciesData_addSpeciesName(visit_handle h, visit_handle);
-SIMV2_API int simv2_SpeciesData_setSpecies(visit_handle h, visit_handle);
-SIMV2_API int simv2_SpeciesData_setSpeciesMF(visit_handle h, visit_handle);
-SIMV2_API int simv2_SpeciesData_setMixedSpecies(visit_handle h, visit_handle);
+V_VISITXPORT int simv2_SpeciesData_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_SpeciesData_free(visit_handle obj);
+V_VISITXPORT int simv2_SpeciesData_addSpeciesName(visit_handle h, visit_handle);
+V_VISITXPORT int simv2_SpeciesData_setSpecies(visit_handle h, visit_handle);
+V_VISITXPORT int simv2_SpeciesData_setSpeciesMF(visit_handle h, visit_handle);
+V_VISITXPORT int simv2_SpeciesData_setMixedSpecies(visit_handle h, visit_handle);
 
 #ifdef __cplusplus
 };
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_SpeciesData_getData(visit_handle h, 
+V_VISITXPORT int simv2_SpeciesData_getData(visit_handle h, 
                   std::vector<visit_handle> &speciesNames,
                   visit_handle &species,
                   visit_handle &speciesMF,

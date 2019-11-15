@@ -1,5 +1,4 @@
 #include "Engine.h"
-
 #include <boost/mpi.hpp>
 
 #include <string>
@@ -24,12 +23,8 @@ bool Engine::initialize(int argC, char** argV) {
     std::string name(argV[0]);
     int moduleID = atoi(argV[1]);
     std::string shmName(argV[2]);
-
     boost::mpi::communicator c(comm, boost::mpi::comm_create_kind::comm_duplicate);
 
-    if (!m_module) {
-        m_module = new ConnectLibSim(name, moduleID, c, shmName);
-    }
     
     return true;
 }
@@ -43,9 +38,39 @@ return true;
 
 }
 
-ConnectLibSim* Engine::module() {
-    return m_module;
+
+bool Engine::sendData() {
+    if (!m_module) {
+        return false;
+    }
+    if (!m_module->sendData()) {
+        return false;
+    }
+    return true;
 }
+
+void Engine::SimulationTimeStepChanged() {
+}
+
+void Engine::SimulationInitiateCommand(const char* command) {
+}
+
+
+
+void Engine::DeleteData() {
+    if (m_module) {
+        m_module->DeleteData();
+    }
+}
+
+
+
+void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
+    simulationCommandCallback = sc;
+    simulationCommandCallbackData = scdata;
+}
+
+
 
 Engine::~Engine() {
     delete instance;

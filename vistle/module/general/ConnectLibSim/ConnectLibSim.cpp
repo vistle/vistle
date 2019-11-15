@@ -85,24 +85,9 @@ int ConnectLibSim::updateParameter(const char* info) {
     return true;
 }
 
-bool ConnectLibSim::sendData() {
-    
-    for (size_t i = 0; i < m_dataObjects.size(); ++i) {
-        if (!addObject(m_portsList[i], m_dataObjects[i])) {
-            std::cerr << "ConnectLibSim: failed to addObject(" << m_portsList[i]->getName() << ", " << m_dataObjects[i]->typeName() << std::endl;
-            return false;
-        }
-    }
-    return true;
+
+ConnectLibSim::~ConnectLibSim() {
 }
-
-void ConnectLibSim::SimulationTimeStepChanged() {
-}
-
-void ConnectLibSim::SimulationInitiateCommand(const char* command) {
-}
-
-
 
 void ConnectLibSim::DeleteData() {
     for (size_t i = 0; i < m_dataObjects.size(); ++i) {
@@ -111,13 +96,23 @@ void ConnectLibSim::DeleteData() {
     sendData();
 }
 
-ConnectLibSim::~ConnectLibSim() {
+bool ConnectLibSim::sendData() {
+    
+    for (size_t i = 0; i < m_dataObjects.size(); ++i) {
+        if (!addObject(m_portsList[i], m_dataObjects[i])) {
+            std::cerr << "ConnectLibSim: failed to addObject(" << m_portsList[i]->getName() << ", " << m_dataObjects[i]->typeName() << std::endl;
+            return false;
+        }
+    }
 }
 
-void ConnectLibSim::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
-    simulationCommandCallback = sc;
-    simulationCommandCallbackData = scdata;
+void ConnectLibSim::SimulationTimeStepChanged() {
 }
+void ConnectLibSim::SimulationInitiateCommand(const char* command) {
+}
+void ConnectLibSim::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
+}
+
 
 MODULE_MAIN(ConnectLibSim)
 

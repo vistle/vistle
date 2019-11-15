@@ -13,10 +13,10 @@ extern "C"
 {
 #endif
 
-SIMV2_API int simv2_DomainList_alloc(visit_handle*);
-SIMV2_API int simv2_DomainList_free(visit_handle);
+V_VISITXPORT int simv2_DomainList_alloc(visit_handle*);
+V_VISITXPORT int simv2_DomainList_free(visit_handle);
 
-SIMV2_API int simv2_DomainList_setDomains(visit_handle obj, int alldoms,
+V_VISITXPORT int simv2_DomainList_setDomains(visit_handle obj, int alldoms,
                                           visit_handle mydoms);
 
 #ifdef __cplusplus
@@ -24,10 +24,10 @@ SIMV2_API int simv2_DomainList_setDomains(visit_handle obj, int alldoms,
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_DomainList_getData(visit_handle h, 
+V_VISITXPORT int simv2_DomainList_getData(visit_handle h, 
                                        int &alldoms,
                                        visit_handle &mydoms);
 
-SIMV2_API int simv2_DomainList_check(visit_handle h);
+V_VISITXPORT int simv2_DomainList_check(visit_handle h);
 
 #endif

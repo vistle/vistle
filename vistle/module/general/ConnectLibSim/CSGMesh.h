@@ -13,29 +13,29 @@ extern "C"
 {
 #endif
 
-SIMV2_API int simv2_CSGMesh_alloc(visit_handle*);
-SIMV2_API int simv2_CSGMesh_free(visit_handle);
+V_VISITXPORT int simv2_CSGMesh_alloc(visit_handle*);
+V_VISITXPORT int simv2_CSGMesh_free(visit_handle);
 
-SIMV2_API int simv2_CSGMesh_setRegions(visit_handle h, visit_handle typeflags,
+V_VISITXPORT int simv2_CSGMesh_setRegions(visit_handle h, visit_handle typeflags,
                                        visit_handle left, visit_handle right);
 
-SIMV2_API int simv2_CSGMesh_setZonelist(visit_handle h, visit_handle zl);
-SIMV2_API int simv2_CSGMesh_setBoundaryTypes(visit_handle h, visit_handle cshtypes);
-SIMV2_API int simv2_CSGMesh_setBoundaryCoeffs(visit_handle h, visit_handle coeffs);
-SIMV2_API int simv2_CSGMesh_setExtents(visit_handle h, double min[3], double max[3]);
+V_VISITXPORT int simv2_CSGMesh_setZonelist(visit_handle h, visit_handle zl);
+V_VISITXPORT int simv2_CSGMesh_setBoundaryTypes(visit_handle h, visit_handle cshtypes);
+V_VISITXPORT int simv2_CSGMesh_setBoundaryCoeffs(visit_handle h, visit_handle coeffs);
+V_VISITXPORT int simv2_CSGMesh_setExtents(visit_handle h, double min[3], double max[3]);
 
-SIMV2_API int simv2_CSGMesh_getRegions(visit_handle h, visit_handle *typeflags,
+V_VISITXPORT int simv2_CSGMesh_getRegions(visit_handle h, visit_handle *typeflags,
                                        visit_handle *left, visit_handle *right);
-SIMV2_API int simv2_CSGMesh_getZonelist(visit_handle h, visit_handle *zl);
-SIMV2_API int simv2_CSGMesh_getBoundaryTypes(visit_handle h, visit_handle *cshtypes);
-SIMV2_API int simv2_CSGMesh_getBoundaryCoeffs(visit_handle h, visit_handle *coeffs);
-SIMV2_API int simv2_CSGMesh_getExtents(visit_handle h, double min[3], double max[3]);
+V_VISITXPORT int simv2_CSGMesh_getZonelist(visit_handle h, visit_handle *zl);
+V_VISITXPORT int simv2_CSGMesh_getBoundaryTypes(visit_handle h, visit_handle *cshtypes);
+V_VISITXPORT int simv2_CSGMesh_getBoundaryCoeffs(visit_handle h, visit_handle *coeffs);
+V_VISITXPORT int simv2_CSGMesh_getExtents(visit_handle h, double min[3], double max[3]);
 
 #ifdef __cplusplus
 }
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_CSGMesh_check(visit_handle h);
+V_VISITXPORT int simv2_CSGMesh_check(visit_handle h);
 
 #endif

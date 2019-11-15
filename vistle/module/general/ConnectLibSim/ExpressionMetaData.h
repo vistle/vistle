@@ -12,20 +12,20 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_ExpressionMetaData_alloc(visit_handle *obj);
-SIMV2_API int simv2_ExpressionMetaData_free(visit_handle obj);
-SIMV2_API int simv2_ExpressionMetaData_setName(visit_handle h, const char *);
-SIMV2_API int simv2_ExpressionMetaData_getName(visit_handle h, char **);
-SIMV2_API int simv2_ExpressionMetaData_setDefinition(visit_handle h, const char *);
-SIMV2_API int simv2_ExpressionMetaData_getDefinition(visit_handle h, char **);
-SIMV2_API int simv2_ExpressionMetaData_setType(visit_handle h, int);
-SIMV2_API int simv2_ExpressionMetaData_getType(visit_handle h, int*);
+V_VISITXPORT int simv2_ExpressionMetaData_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_ExpressionMetaData_free(visit_handle obj);
+V_VISITXPORT int simv2_ExpressionMetaData_setName(visit_handle h, const char *);
+V_VISITXPORT int simv2_ExpressionMetaData_getName(visit_handle h, char **);
+V_VISITXPORT int simv2_ExpressionMetaData_setDefinition(visit_handle h, const char *);
+V_VISITXPORT int simv2_ExpressionMetaData_getDefinition(visit_handle h, char **);
+V_VISITXPORT int simv2_ExpressionMetaData_setType(visit_handle h, int);
+V_VISITXPORT int simv2_ExpressionMetaData_getType(visit_handle h, int*);
 
 #ifdef __cplusplus
 };
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_ExpressionMetaData_check(visit_handle);
+V_VISITXPORT int simv2_ExpressionMetaData_check(visit_handle);
 
 #endif

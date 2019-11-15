@@ -12,11 +12,11 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_NameList_alloc(visit_handle *obj);
-SIMV2_API int simv2_NameList_free(visit_handle obj);
-SIMV2_API int simv2_NameList_addName(visit_handle h, const char *);
-SIMV2_API int simv2_NameList_getNumName(visit_handle h, int *);
-SIMV2_API int simv2_NameList_getName(visit_handle h, int, char **);
+V_VISITXPORT int simv2_NameList_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_NameList_free(visit_handle obj);
+V_VISITXPORT int simv2_NameList_addName(visit_handle h, const char *);
+V_VISITXPORT int simv2_NameList_getNumName(visit_handle h, int *);
+V_VISITXPORT int simv2_NameList_getName(visit_handle h, int, char **);
 
 #ifdef __cplusplus
 };

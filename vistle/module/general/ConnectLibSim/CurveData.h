@@ -13,20 +13,20 @@ extern "C"
 {
 #endif
 
-SIMV2_API int simv2_CurveData_alloc(visit_handle*);
-SIMV2_API int simv2_CurveData_free(visit_handle);
+V_VISITXPORT int simv2_CurveData_alloc(visit_handle*);
+V_VISITXPORT int simv2_CurveData_free(visit_handle);
 
-SIMV2_API int simv2_CurveData_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
+V_VISITXPORT int simv2_CurveData_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
 
 #ifdef __cplusplus
 }
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_CurveData_getData(visit_handle h, 
+V_VISITXPORT int simv2_CurveData_getData(visit_handle h, 
                                       visit_handle &x,
                                       visit_handle &y);
 
-SIMV2_API int simv2_CurveData_check(visit_handle h);
+V_VISITXPORT int simv2_CurveData_check(visit_handle h);
 
 #endif

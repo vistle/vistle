@@ -12,16 +12,16 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_MessageMetaData_alloc(visit_handle *obj);
-SIMV2_API int simv2_MessageMetaData_free(visit_handle obj);
-SIMV2_API int simv2_MessageMetaData_setName(visit_handle h, const char *);
-SIMV2_API int simv2_MessageMetaData_getName(visit_handle h, char **);
+V_VISITXPORT int simv2_MessageMetaData_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_MessageMetaData_free(visit_handle obj);
+V_VISITXPORT int simv2_MessageMetaData_setName(visit_handle h, const char *);
+V_VISITXPORT int simv2_MessageMetaData_getName(visit_handle h, char **);
 
 #ifdef __cplusplus
 };
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_MessageMetaData_check(visit_handle);
+V_VISITXPORT int simv2_MessageMetaData_check(visit_handle);
 
 #endif

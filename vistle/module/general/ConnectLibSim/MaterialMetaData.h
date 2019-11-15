@@ -12,21 +12,21 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_MaterialMetaData_alloc(visit_handle *obj);
-SIMV2_API int simv2_MaterialMetaData_free(visit_handle obj);
-SIMV2_API int simv2_MaterialMetaData_setName(visit_handle h, const char *);
-SIMV2_API int simv2_MaterialMetaData_getName(visit_handle h, char **);
-SIMV2_API int simv2_MaterialMetaData_setMeshName(visit_handle h, const char *);
-SIMV2_API int simv2_MaterialMetaData_getMeshName(visit_handle h, char **);
-SIMV2_API int simv2_MaterialMetaData_addMaterialName(visit_handle h, const char *);
-SIMV2_API int simv2_MaterialMetaData_getNumMaterialNames(visit_handle h, int *);
-SIMV2_API int simv2_MaterialMetaData_getMaterialName(visit_handle h, int, char **);
+V_VISITXPORT int simv2_MaterialMetaData_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_MaterialMetaData_free(visit_handle obj);
+V_VISITXPORT int simv2_MaterialMetaData_setName(visit_handle h, const char *);
+V_VISITXPORT int simv2_MaterialMetaData_getName(visit_handle h, char **);
+V_VISITXPORT int simv2_MaterialMetaData_setMeshName(visit_handle h, const char *);
+V_VISITXPORT int simv2_MaterialMetaData_getMeshName(visit_handle h, char **);
+V_VISITXPORT int simv2_MaterialMetaData_addMaterialName(visit_handle h, const char *);
+V_VISITXPORT int simv2_MaterialMetaData_getNumMaterialNames(visit_handle h, int *);
+V_VISITXPORT int simv2_MaterialMetaData_getMaterialName(visit_handle h, int, char **);
 
 #ifdef __cplusplus
 };
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_MaterialMetaData_check(visit_handle);
+V_VISITXPORT int simv2_MaterialMetaData_check(visit_handle);
 
 #endif

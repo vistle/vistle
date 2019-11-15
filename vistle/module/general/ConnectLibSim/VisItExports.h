@@ -1,34 +1,30 @@
-// Copyright (c) Lawrence Livermore National Security, LLC and other VisIt
-// Project developers.  See the top-level LICENSE file for dates and other
-// details.  No copyright assignment is required to contribute to VisIt.
+#ifndef VISIT_RUNNTIME_EXPORT_H
+#define VISIT_RUNNTIME_EXPORT_H
 
-#ifndef SIMV2_EXPORTS_H
-#define SIMV2_EXPORTS_H
+#if defined (_WIN32) && !defined (NODLL)
+#define V_IMPORT __declspec(dllimport)
+#define V_EXPORT __declspec(dllexport)
 
-#if defined(_WIN32)
-# if defined(simV2runtime_ser_EXPORTS) || defined(simV2runtime_par_EXPORTS)
-#   define SIMV2_API  __declspec(dllexport)
-# else
-#   define SIMV2_API  __declspec(dllimport)
-# endif
-# if defined(_MSC_VER)
-/* Turn off warning about lack of DLL interface */
-#   pragma warning(disable:4251)
-/* Turn off warning non-dll class is base for dll-interface class. */
-#   pragma warning(disable:4275)
-/* Turn off warning about identifier truncation */
-#   pragma warning(disable:4786)
-# endif
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define V_EXPORT __attribute__ ((visibility("default")))
+#define V_IMPORT V_EXPORT
 #else
-# if __GNUC__ >= 4
-#    if defined(simV2runtime_ser_EXPORTS) || defined(simV2runtime_par_EXPORTS)
-#      define SIMV2_API __attribute__ ((visibility("default")))
-#    else
-#      define SIMV2_API /* hidden by default */
-#    endif
-# else
-#   define SIMV2_API  /* hidden by default */
-# endif
+#define V_IMPORT
+#define V_EXPORT
+#endif
+
+#if defined (libsimV2runntime_par_EXPORTS)
+#define V_VISITXPORT V_EXPORT
+#else
+#define V_VISITXPORT V_IMPORT
+#endif
+
+#if defined (TEMPLATES_IN_HEADERS)
+#define V_TEMPLATE_IMPORT
+#define V_TEMPLATE_EXPORT
+#else
+#define V_TEMPLATE_IMPORT V_EXPORT
+#define V_TEMPLATE_EXPORT V_IMPORT
 #endif
 
 #endif

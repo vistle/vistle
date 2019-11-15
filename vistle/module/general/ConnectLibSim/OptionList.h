@@ -12,15 +12,15 @@
 extern "C" {
 #endif
 
-SIMV2_API int simv2_OptionList_alloc(visit_handle *obj);
-SIMV2_API int simv2_OptionList_free(visit_handle obj);
-SIMV2_API int simv2_OptionList_setValue(visit_handle obj, const char *name, int type, void *value);
+V_VISITXPORT int simv2_OptionList_alloc(visit_handle *obj);
+V_VISITXPORT int simv2_OptionList_free(visit_handle obj);
+V_VISITXPORT int simv2_OptionList_setValue(visit_handle obj, const char *name, int type, void *value);
 
-SIMV2_API int simv2_OptionList_getNumValues(visit_handle h, int *);
-SIMV2_API int simv2_OptionList_getIndex(visit_handle h, const char *, int *);
-SIMV2_API int simv2_OptionList_getType(visit_handle h, int, int *);
-SIMV2_API int simv2_OptionList_getName(visit_handle h, int, char **);
-SIMV2_API int simv2_OptionList_getValue(visit_handle h, int, void **);
+V_VISITXPORT int simv2_OptionList_getNumValues(visit_handle h, int *);
+V_VISITXPORT int simv2_OptionList_getIndex(visit_handle h, const char *, int *);
+V_VISITXPORT int simv2_OptionList_getType(visit_handle h, int, int *);
+V_VISITXPORT int simv2_OptionList_getName(visit_handle h, int, char **);
+V_VISITXPORT int simv2_OptionList_getValue(visit_handle h, int, void **);
 
 #ifdef __cplusplus
 };

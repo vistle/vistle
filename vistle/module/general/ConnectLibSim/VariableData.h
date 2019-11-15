@@ -11,29 +11,29 @@
 extern "C"
 {
 #endif
-SIMV2_API int simv2_VariableData_alloc(visit_handle *h);
-SIMV2_API int simv2_VariableData_free(visit_handle h);
+V_VISITXPORT int simv2_VariableData_alloc(visit_handle *h);
+V_VISITXPORT int simv2_VariableData_free(visit_handle h);
 
-SIMV2_API int simv2_VariableData_setData(visit_handle h, int owner, int dataType,
+V_VISITXPORT int simv2_VariableData_setData(visit_handle h, int owner, int dataType,
                                          int nComps, int nTuples, void *data);
 
-SIMV2_API int simv2_VariableData_setDataEx(visit_handle h, int owner,
+V_VISITXPORT int simv2_VariableData_setDataEx(visit_handle h, int owner,
                                            int dataType, int nComps,
                                            int nTuples, void *data,
                                            void(*callback)(void*),
                                            void *callbackData);
 
-SIMV2_API int simv2_VariableData_setArrayData(visit_handle h, 
+V_VISITXPORT int simv2_VariableData_setArrayData(visit_handle h, 
                                               int arrIndex,
                                               int owner, int dataType,
                                               int nTuples, int offset, int stride,
                                               void *data);
 
-SIMV2_API int simv2_VariableData_setDeletionCallback(visit_handle h, 
+V_VISITXPORT int simv2_VariableData_setDeletionCallback(visit_handle h, 
                                                      void(*callback)(void*),
                                                      void *callbackData);
 
-SIMV2_API int simv2_VariableData_getData2(visit_handle h, int *owner,
+V_VISITXPORT int simv2_VariableData_getData2(visit_handle h, int *owner,
                                           int *dataType, int *nComps,
                                           int *nTuples, void **data);
 
@@ -42,28 +42,28 @@ SIMV2_API int simv2_VariableData_getData2(visit_handle h, int *owner,
 #endif
 
 // These functions are only available in the runtime.
-SIMV2_API int simv2_VariableData_getData(visit_handle h, int &owner,
+V_VISITXPORT int simv2_VariableData_getData(visit_handle h, int &owner,
                                          int &dataType, int &nComps,
                                          int &nTuples, void *&data);
 
-SIMV2_API int simv2_VariableData_getDataEx(visit_handle h, int &owner,
+V_VISITXPORT int simv2_VariableData_getDataEx(visit_handle h, int &owner,
                                            int &dataType, int &nComps,
                                            int &nTuples, void *&data,
                                            void(*&callback)(void*),
                                            void *&callbackData);
 
-SIMV2_API int simv2_VariableData_getNumArrays(visit_handle h, int *nArrays);
+V_VISITXPORT int simv2_VariableData_getNumArrays(visit_handle h, int *nArrays);
 
-SIMV2_API int simv2_VariableData_getArrayData(visit_handle h, 
+V_VISITXPORT int simv2_VariableData_getArrayData(visit_handle h, 
                                               int arrIndex, int &memory,
                                               int &owner,   int &dataType,
                                               int &nComps,  int &nTuples,
                                               int &offset,  int &stride,
                                               void *&data);
 
-SIMV2_API int simv2_VariableData_getDeletionCallback(visit_handle h,
+V_VISITXPORT int simv2_VariableData_getDeletionCallback(visit_handle h,
                                                      void(*&callback)(void*),
                                                      void *&callbackData);
 
-SIMV2_API int simv2_VariableData_nullData(visit_handle h);
+V_VISITXPORT int simv2_VariableData_nullData(visit_handle h);
 #endif

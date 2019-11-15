@@ -13,14 +13,14 @@ extern "C"
 {
 #endif
 
-SIMV2_API int simv2_PointMesh_alloc(visit_handle*);
-SIMV2_API int simv2_PointMesh_free(visit_handle);
+V_VISITXPORT int simv2_PointMesh_alloc(visit_handle*);
+V_VISITXPORT int simv2_PointMesh_free(visit_handle);
 
-SIMV2_API int simv2_PointMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
-SIMV2_API int simv2_PointMesh_setCoordsXYZ(visit_handle obj, visit_handle x, visit_handle y, visit_handle z);
-SIMV2_API int simv2_PointMesh_setCoords(visit_handle obj, visit_handle xyz);
+V_VISITXPORT int simv2_PointMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
+V_VISITXPORT int simv2_PointMesh_setCoordsXYZ(visit_handle obj, visit_handle x, visit_handle y, visit_handle z);
+V_VISITXPORT int simv2_PointMesh_setCoords(visit_handle obj, visit_handle xyz);
 
-SIMV2_API int simv2_PointMesh_getCoords(visit_handle h,
+V_VISITXPORT int simv2_PointMesh_getCoords(visit_handle h,
     int *ndims, int *coordMode,
     visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *coords);
 
@@ -29,6 +29,6 @@ SIMV2_API int simv2_PointMesh_getCoords(visit_handle h,
 #endif
 
 // Callable from within the runtime and SimV2
-SIMV2_API int simv2_PointMesh_check(visit_handle h);
+V_VISITXPORT int simv2_PointMesh_check(visit_handle h);
 
 #endif

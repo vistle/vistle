@@ -17,6 +17,7 @@
 #include "OptionList.h"
 #include "View2D.h"
 #include "View3D.h"
+#include <iostream>
 
 extern void DataCallbacksCleanup(void);
 
@@ -181,7 +182,7 @@ int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
 
-    engine->module()->sendData();
+    engine->sendData();
 
     return 1;
 }
@@ -209,7 +210,7 @@ int simv2_process_input(void *e)
 void simv2_time_step_changed(void *e)
 {
     Engine *engine = (Engine*)(e);
-    engine->module()->SimulationTimeStepChanged();
+    engine->SimulationTimeStepChanged();
 }
 
 // ****************************************************************************
@@ -237,7 +238,7 @@ void simv2_execute_command(void *e, const char *command)
 {
     if (command != NULL) {
         Engine* engine = (Engine*)(e);
-        engine->module()->SimulationInitiateCommand(command);
+        engine->SimulationInitiateCommand(command);
     }
 }
 
@@ -317,7 +318,7 @@ void simv2_set_command_callback(void *e,void(*sc)(const char*,const char*,void*)
     void *scdata)
 {
     Engine *engine = (Engine*)(e);
-    engine->module()->SetSimulationCommandCallback(sc, scdata);
+    engine->SetSimulationCommandCallback(sc, scdata);
 }
 
 // ****************************************************************************
@@ -524,7 +525,7 @@ int
 simv2_draw_plots(void *e)
 {
     Engine *engine = (Engine*)(e);
-    return engine->module()->sendData();
+    return engine->sendData();
 }
 
 // ****************************************************************************
@@ -551,7 +552,7 @@ int
 simv2_delete_active_plots(void *e)
 {
     Engine *engine = (Engine*)(e);
-    engine->module()->DeleteData();
+    engine->DeleteData();
     return true;
 }
 
