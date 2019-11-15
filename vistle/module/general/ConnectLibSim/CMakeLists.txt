@@ -80,7 +80,7 @@ VisItExports.h
 
 
 
-target_link_libraries(vistle_module
+target_link_libraries(ConnectLibSim
         vistle_util
         vistle_core
         vistle_boost_mpi
