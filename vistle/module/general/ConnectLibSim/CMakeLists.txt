@@ -1,0 +1,92 @@
+# Copyright (c) Lawrence Livermore National Security, LLC and other VisIt
+# Project developers.  See the top-level LICENSE file for dates and other
+# details.  No copyright assignment is required to contribute to VisIt.
+
+#****************************************************************************
+# Modifications:
+#
+#****************************************************************************
+
+
+
+SET(SOURCES 
+VisItControlInterfaceRuntime.C 
+VisItDataInterfaceRuntime.C 
+VisItDataInterfaceRuntimeP.C 
+CommandMetaData.C
+ConnectLibSim.cpp
+CurveData.C
+CurveMetaData.C
+CurvilinearMesh.C
+CSGMesh.C
+#DomainBoundaries.C
+DomainList.C 
+#DomainNesting.C
+Engine.cpp
+ExpressionMetaData.C
+MaterialData.C
+MaterialMetaData.C
+MeshMetaData.C
+MessageMetaData.C
+NameList.C
+OptionList.C
+PointMesh.C
+RectilinearMesh.C
+SimulationMetaData.C
+SpeciesData.C
+SpeciesMetaData.C
+UnstructuredMesh.C
+VariableData.C
+VariableMetaData.C
+#View2D.C
+#View3D.C
+)
+
+SET(HEADERS 
+VisItControlInterfaceRuntime.h
+VisItDataInterfaceRuntime.h
+VisItDataInterfaceRuntimeP.h
+VisItDataTypes.h 
+CommandMetaData.h
+ConnectLibSim.h
+CurveData.h
+CurveMetaData.h
+CurvilinearMesh.h
+CSGMesh.h
+#DomainBoundaries.h
+DomainList.h 
+#DomainNesting.h
+Engine.h
+ExpressionMetaData.h
+MaterialData.h
+MaterialMetaData.h
+MeshMetaData.h
+MessageMetaData.h
+NameList.h
+OptionList.h
+PointMesh.h
+RectilinearMesh.h
+SimulationMetaData.h
+SpeciesData.h
+SpeciesMetaData.h
+UnstructuredMesh.h
+VariableData.h
+VariableMetaData.h
+Vectortypes.h
+#View2D.h
+#View3D.h
+VisItExports.h
+)
+
+
+
+target_link_libraries(vistle_module
+        vistle_util
+        vistle_core
+        vistle_boost_mpi
+        ${Boost_LIBRARIES}
+        ${MPI_C_LIBRARIES}
+)
+add_module(ConnectLibSim ${SOURCES} ${HEADERS})
+
+
