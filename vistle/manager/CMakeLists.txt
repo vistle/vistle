@@ -18,7 +18,10 @@ if (NOT VISTLE_MULTI_PROCESS)
             endif()
         endif()
     endif()
+
 endif()
+
+vistle_add_library(run_on_main_thread run_on_main_thread.h run_on_main_thread.cpp)
 
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
@@ -63,6 +66,10 @@ target_link_libraries(vistle_manager
         vistle_core
         vistle_boost_mpi
 )
+if(VISTLE_MULTI_PROCESS)
+	target_link_libraries(vistle_manager run_on_main_thread)
+endif()
+
 if(NOT VISTLE_MULTI_PROCESS)
    target_link_libraries(vistle_manager ${CMAKE_DL_LIBS} vistle_module)
    if (NOT VISTLE_MODULES_SHARED)
@@ -97,3 +104,4 @@ target_link_libraries(clean_vistle
         vistle_core
         vistle_boost_mpi
 )
+
