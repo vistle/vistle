@@ -78,15 +78,6 @@ Vectortypes.h
 VisItExports.h
 )
 
-
-
-target_link_libraries(ConnectLibSim
-        vistle_util
-        vistle_core
-        vistle_boost_mpi
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-)
 add_module(ConnectLibSim ${SOURCES} ${HEADERS})
 
 
