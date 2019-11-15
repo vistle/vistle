@@ -3,7 +3,6 @@
 
 #include "export.h"
 #include <functional>
-
 #ifdef MODULE_THREAD
 #define COVER_ON_MAINTHREAD
 #ifdef __APPLE__
@@ -15,6 +14,7 @@
 #ifdef COVER_ON_MAINTHREAD
 #include <mutex>
 #include <deque>
+#include <condition_variable>
 static  std::mutex main_thread_mutex;
 static  std::condition_variable main_thread_cv;
 static  std::deque<std::function<void()>> main_func;
