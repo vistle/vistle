@@ -25,7 +25,7 @@ V_VISITXPORT int simv2_SpeciesMetaData_getNumSpeciesName(visit_handle h, int *);
 V_VISITXPORT int simv2_SpeciesMetaData_getSpeciesName(visit_handle h, int, visit_handle *);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

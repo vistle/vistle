@@ -69,7 +69,7 @@ V_VISITXPORT int simv2_MeshMetaData_setLogicalBounds(visit_handle h, int[3]);
 V_VISITXPORT int simv2_MeshMetaData_getLogicalBounds(visit_handle h, int[3]);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

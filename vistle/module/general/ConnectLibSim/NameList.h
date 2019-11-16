@@ -19,7 +19,7 @@ V_VISITXPORT int simv2_NameList_getNumName(visit_handle h, int *);
 V_VISITXPORT int simv2_NameList_getName(visit_handle h, int, char **);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

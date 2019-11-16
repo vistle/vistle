@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstring>
 #include <float.h>
-#include "vectortypes.h"
+#include "VectorTypes.h"
 #include "VisItDataInterfaceRuntime.h"
 #include "VisItDataInterfaceRuntimeP.h"
 

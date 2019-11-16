@@ -5,7 +5,7 @@
 #ifndef SIM_ENGINE_H
 #define SIM_ENGINE_H
 #include <Engine.h>
-#include <vectortypes.h>
+#include "VectorTypes.h"
 
 #ifdef SIMV2_VIEWER_INTEGRATION
 #include <ViewerBase.h>

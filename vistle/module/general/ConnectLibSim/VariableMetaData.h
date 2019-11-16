@@ -52,7 +52,7 @@ V_VISITXPORT int simv2_VariableMetaData_setEnumAlwaysExcludeRange(visit_handle h
 V_VISITXPORT int simv2_VariableMetaData_getEnumAlwaysExcludeRange(visit_handle h, double *, double *);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

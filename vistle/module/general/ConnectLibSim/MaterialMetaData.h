@@ -23,7 +23,7 @@ V_VISITXPORT int simv2_MaterialMetaData_getNumMaterialNames(visit_handle h, int 
 V_VISITXPORT int simv2_MaterialMetaData_getMaterialName(visit_handle h, int, char **);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

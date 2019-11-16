@@ -3,7 +3,7 @@
 // details.  No copyright assignment is required to contribute to VisIt.
 
 #include <cstring>
-#include "vectortypes.h"
+#include "VectorTypes.h"
 #include "VisItDataInterfaceRuntime.h"
 #include "VisItDataInterfaceRuntimeP.h"
 

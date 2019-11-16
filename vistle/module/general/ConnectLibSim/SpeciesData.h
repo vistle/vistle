@@ -21,7 +21,7 @@ V_VISITXPORT int simv2_SpeciesData_setSpeciesMF(visit_handle h, visit_handle);
 V_VISITXPORT int simv2_SpeciesData_setMixedSpecies(visit_handle h, visit_handle);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

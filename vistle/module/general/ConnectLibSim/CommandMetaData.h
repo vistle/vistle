@@ -20,7 +20,7 @@ V_VISITXPORT int simv2_CommandMetaData_setEnabled(visit_handle h, int);
 V_VISITXPORT int simv2_CommandMetaData_getEnabled(visit_handle h, int*);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

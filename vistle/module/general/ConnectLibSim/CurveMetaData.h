@@ -26,7 +26,7 @@ V_VISITXPORT int simv2_CurveMetaData_setYLabel(visit_handle h, const char *);
 V_VISITXPORT int simv2_CurveMetaData_getYLabel(visit_handle h, char **);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

@@ -72,7 +72,7 @@ SET(RUNNTIME_HEADERS
   UnstructuredMesh.h
   VariableData.h
   VariableMetaData.h
-  Vectortypes.h
+  VectorTypes.h
   #View2D.h
   #View3D.h
   VisItExports.h
@@ -85,6 +85,11 @@ set(MODULE_SOURCES
 set(MODULE_HEADERS
   ConnectLibSim.h
 )
+
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
+endif()
+
 vistle_add_library(libsimV2runntime_par ${RUNNTIME_HEADERS} ${RUNNTIME_SOURCES})
 
 target_link_libraries(libsimV2runntime_par

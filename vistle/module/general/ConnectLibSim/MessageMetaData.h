@@ -18,7 +18,7 @@ V_VISITXPORT int simv2_MessageMetaData_setName(visit_handle h, const char *);
 V_VISITXPORT int simv2_MessageMetaData_getName(visit_handle h, char **);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

@@ -52,7 +52,7 @@ V_VISITXPORT int simv2_View3D_getWindowValid(visit_handle h, int*);
 V_VISITXPORT int simv2_View3D_copy(visit_handle dest, visit_handle src);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

@@ -22,7 +22,7 @@ V_VISITXPORT int simv2_ExpressionMetaData_setType(visit_handle h, int);
 V_VISITXPORT int simv2_ExpressionMetaData_getType(visit_handle h, int*);
 
 #ifdef __cplusplus
-};
+}
 #endif
 
 // Callable from within the runtime and SimV2

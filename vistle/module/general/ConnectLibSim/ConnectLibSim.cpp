@@ -40,7 +40,7 @@ ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communi
 int ConnectLibSim::updateParameter(const char* info) {
     constexpr int maxNameSize = 100;
     char name[maxNameSize];
-    sscanf(info, "%s:", &name);
+    sscanf(info, "%s:", name);
     info += strlen(name) + 2; //2 to remove the ":"
     auto param = findParameter(name);
     if (!param) {
@@ -65,16 +65,15 @@ int ConnectLibSim::updateParameter(const char* info) {
     break;
     case vistle::Parameter::Type::String:
     {
-        std::string val;
-        val.resize(maxNameSize);
+        std::vector<char> val(maxNameSize);
         sscanf(info, "%s:%d", val.data(), &enabled);
-        setParameter(name, val);
+        setParameter(name, std::string(val.data()));
     }
     break;
     case vistle::Parameter::Type::Vector:
     {
         vistle::ParamVector val;
-        sscanf(info, "%lf,%lf,%fl:%d", &val[0], &val[1], &val[2], &enabled);
+        sscanf(info, "%lf,%lf,%lf:%d", &val[0], &val[1], &val[2], &enabled);
         setParameter(name, val);
     }
     break;
@@ -104,6 +103,8 @@ bool ConnectLibSim::sendData() {
             return false;
         }
     }
+
+    return true;
 }
 
 void ConnectLibSim::SimulationTimeStepChanged() {

@@ -33,7 +33,7 @@ namespace {
 typedef std::vector<VisIt_ObjectBase*> VisItPointerVec;
 VisItPointerVec visit_pointers;
 
-};
+}
 
 VisIt_ObjectBase *
 VisItGetPointer(visit_handle h)

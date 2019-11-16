@@ -23,11 +23,11 @@ public:                                                         \
     typedef cppT cppType;                                       \
 };
 
-simV2_TypeTraits_Specialize(VISIT_DATATYPE_FLOAT, float);
-simV2_TypeTraits_Specialize(VISIT_DATATYPE_DOUBLE, double);
-simV2_TypeTraits_Specialize(VISIT_DATATYPE_INT, int);
-simV2_TypeTraits_Specialize(VISIT_DATATYPE_CHAR, unsigned char);
-simV2_TypeTraits_Specialize(VISIT_DATATYPE_LONG, long);
+simV2_TypeTraits_Specialize(VISIT_DATATYPE_FLOAT, float)
+simV2_TypeTraits_Specialize(VISIT_DATATYPE_DOUBLE, double)
+simV2_TypeTraits_Specialize(VISIT_DATATYPE_INT, int)
+simV2_TypeTraits_Specialize(VISIT_DATATYPE_CHAR, unsigned char)
+simV2_TypeTraits_Specialize(VISIT_DATATYPE_LONG, long)
 
 // The simV2TemplateMacro avoids duplication of long switch statement
 // case lists. It enumerates the "case" body for each datatype in
