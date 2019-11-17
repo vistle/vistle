@@ -160,11 +160,13 @@ void DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
     } else if (ident.identity() == Identify::REMOTEBULKDATA) {
         if (ident.boost_archive_version() != m_boost_archive_version) {
             std::cerr << "Boost.Archive version on hub " << m_hubId  << " is " << m_boost_archive_version << ", but hub " << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
+#ifndef USE_YAS
             if (m_boost_archive_version < ident.boost_archive_version()) {
                 std::cerr << "Receiving of remote objects from hub " << ident.senderId() << " will fail" << std::endl;
             } else {
                 std::cerr << "Receiving of objects sent to hub " << ident.senderId() << " will fail" << std::endl;
             }
+#endif
         }
     } else {
         CERR << "invalid identity " << ident.identity() << " connected to remote data port" << std::endl;
@@ -232,17 +234,23 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
          case Identify::REMOTEBULKDATA: {
              {
                  lock_guard lock(m_mutex);
-                 m_remoteDataSocket[id.senderId()].sockets.emplace_back(sock);
+                 auto &socks = m_remoteDataSocket[id.senderId()].sockets;
+                 if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
+                     return;
+                 }
+                 socks.emplace_back(sock);
                  std::cerr << "." << std::flush;
              }
 
              if (id.boost_archive_version() != m_boost_archive_version) {
                  std::cerr << "Boost.Archive version on hub " << m_hubId  << " is " << m_boost_archive_version << ", but hub " << id.senderId() << " connected with version " << id.boost_archive_version() << std::endl;
+#ifndef USE_YAS
                  if (m_boost_archive_version < id.boost_archive_version()) {
                      std::cerr << "Receiving of remote objects from hub " << id.senderId() << " will fail" << std::endl;
                  } else {
                      std::cerr << "Receiving of objects sent to hub " << id.senderId() << " will fail" << std::endl;
                  }
+#endif
              }
             auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
@@ -504,6 +512,19 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote) {
            }
            if (ec) {
                CERR << "could not establish bulk data connection to " << remote.address() << ":" << remote.dataPort() << ": " << ec.message() << std::endl;
+               return;
+           }
+
+           auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
+           async_send(*sock, ident, nullptr, [sock](error_code ec){
+               if (ec) {
+                   CERR << "send error" << std::endl;
+                   return;
+               }
+           });
+
+           auto &socks = m_remoteDataSocket[hubId].sockets;
+           if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
                return;
            }
 
