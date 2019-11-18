@@ -32,7 +32,7 @@ namespace vistle {
 
 using namespace message;
 
-Executor::Executor(int argc, char *argv[])
+Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
    : m_name("vistle")
      , m_rank(-1)
      , m_size(-1)
@@ -40,7 +40,6 @@ Executor::Executor(int argc, char *argv[])
      , m_argc(argc)
      , m_argv(argv)
 {
-   auto comm = mpi::communicator();
    m_size = comm.size();
    m_rank = comm.rank();
 
@@ -59,7 +58,7 @@ Executor::Executor(int argc, char *argv[])
 
    std::string hostname = vistle::hostname();
    std::vector<std::string> hostnames;
-   mpi::all_gather(mpi::communicator(), hostname, hostnames);
+   mpi::all_gather(comm, hostname, hostnames);
 
    // determine first rank on each host
    bool first = true;
@@ -78,7 +77,7 @@ Executor::Executor(int argc, char *argv[])
       vistle::Shm::attach(m_name, 0, m_rank, NULL);
    comm.barrier();
 
-   m_comm = new vistle::Communicator(m_rank, hostnames);
+   m_comm = new vistle::Communicator(m_rank, hostnames, comm);
    if (!m_comm->connectHub(argv[1], port, dataPort)) {
       std::stringstream err;
       err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
@@ -97,6 +96,7 @@ void Executor::setModuleDir(const std::string &dir) {
 
     return m_comm->setModuleDir(dir);
 }
+
 
 bool Executor::config(int argc, char *argv[]) {
 

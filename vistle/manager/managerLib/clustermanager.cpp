@@ -335,6 +335,7 @@ int ClusterManager::idToHub(int id) const {
    return m_stateTracker.getHub(id);
 }
 
+
 bool ClusterManager::isLocal(int id) const {
 
    if (id == Id::LocalHub)
@@ -843,7 +844,7 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
    if (spawn.spawnId() == Id::Invalid) {
       // ignore messages where master hub did not yet create an id
-      return true;
+       return true;
    }
 
    if (spawn.destId() == Id::Broadcast || spawn.destId() == Id::NextHop) {
@@ -855,7 +856,6 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    if (spawn.destId() != Communicator::the().hubId()) {
        return true;
    }
-
    int newId = spawn.spawnId();
    std::string name(spawn.getName());
 

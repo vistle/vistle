@@ -17,6 +17,7 @@ class Parameter;
 class PythonEmbed;
 class ClusterManager;
 class DataManager;
+class Module;
 
 class Communicator {
    friend class ClusterManager;
@@ -30,7 +31,7 @@ class Communicator {
        TagData,
    };
 
-   Communicator(int rank, const std::vector<std::string> &hosts);
+   Communicator(int rank, const std::vector<std::string> &hosts, boost::mpi::communicator comm);
    ~Communicator();
    static Communicator &the();
 
@@ -56,7 +57,6 @@ class Communicator {
 
    void lock();
    void unlock();
-
  private:
    bool sendHub(const message::Message &message, const MessagePayload &payload=MessagePayload());
    bool connectData();

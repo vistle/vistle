@@ -1,5 +1,5 @@
-#ifndef VISTLE_MANAGER_EXPORT_H
-#define VISTLE_MANAGER_EXPORT_H
+#ifndef RUN_ON_MAIN_THREAD_EXPORT_H
+#define RUN_ON_MAIN_THREAD_EXPORT_H
 
 #include <util/export.h>
 

@@ -200,6 +200,7 @@ class ClusterManager: public ParameterManager
    std::vector<int> m_numTransfering;
    long m_totalNumTransferring = 0;
    double m_lastStatusUpdateTime = 0.;
+
 };
 
 } // namespace vistle

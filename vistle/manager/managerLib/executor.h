@@ -9,6 +9,7 @@
 namespace vistle {
 
 class Communicator;
+class Module;
 
 namespace message {
 class Message;
@@ -18,7 +19,7 @@ class Executor {
 
    public:
 
-      Executor(int argc, char *argv[]);
+      Executor(int argc, char *argv[], boost::mpi::communicator comm);
       virtual ~Executor();
 
       virtual bool config(int argc, char *argv[]);
