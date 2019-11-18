@@ -1460,12 +1460,12 @@ void RemoteConnection::printStats() {
         fprintf(stderr, "depth bpp: %ld, depth bytes: %ld, rgb bytes: %ld\n",
                 (long)m_depthBppS, (long)m_depthBytesS, (long)m_rgbBytesS);
         if (m_remoteFrames + m_remoteSkipped > 0) {
-            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
+            fprintf(stderr, "RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
                     m_localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff,
                     m_remoteSkipped,
                     m_minDelay, m_maxDelay, m_accumDelay/m_remoteFrames);
         } else {
-            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f\n",
+            fprintf(stderr, "RHR: FPS: local %f, remote %f\n",
                     m_localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff);
         }
         fprintf(stderr, "    pixels: %ld, bandwidth: %.2f MB/s",
