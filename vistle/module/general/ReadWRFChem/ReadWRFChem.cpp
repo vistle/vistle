@@ -323,7 +323,6 @@ ReadWRFChem::Block ReadWRFChem::computeBlock(int part, int nBlocks, long blockBe
 StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
     StructuredGrid::ptr outGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
-    outGrid->setGrid(outGrid);
     auto ptrOnXcoords = outGrid->x().data();
     auto ptrOnYcoords = outGrid->y().data();
     auto ptrOnZcoords = outGrid->z().data();
