@@ -9,6 +9,10 @@ Coords::Coords(const Index numVertices,
     refreshImpl();
 }
 
+void Coords::resetCoords() {
+    resetArrays();
+}
+
 void Coords::refreshImpl() const {
 }
 

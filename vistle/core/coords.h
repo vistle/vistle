@@ -21,6 +21,8 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
    Coords(const Index numVertices,
              const Meta &meta=Meta());
 
+   void resetCoords(); //< remove reference to coordinates and create empty ones
+
    std::pair<Vector, Vector> getBounds() const override;
    Index getNumCoords();
    Index getNumCoords() const;
