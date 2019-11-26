@@ -19,6 +19,19 @@ void Coords::resetCoords()
 void Coords::refreshImpl() const
 {}
 
+std::set<Object::const_ptr> Coords::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+    }
+
+    return objs;
+}
+
 bool Coords::isEmpty()
 {
     return Base::isEmpty();
