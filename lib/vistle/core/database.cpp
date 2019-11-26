@@ -74,6 +74,19 @@ DataBase::Data *DataBase::Data::create(Type id, const Meta &meta)
     return NULL;
 }
 
+std::set<Object::const_ptr> DataBase::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    if (grid()) {
+        auto go = grid()->referencedObjects();
+        std::copy(go.begin(), go.end(), std::inserter(objs, objs.begin()));
+        objs.emplace(grid());
+    }
+
+    return objs;
+}
+
 void DataBase::resetArrays()
 {
     assert("should never be called" == NULL);

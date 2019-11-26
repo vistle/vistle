@@ -27,6 +27,8 @@ public:
     // constructor
     UniformGrid(size_t xdim, size_t ydim, size_t zdim, const Meta &meta = Meta());
 
+    std::set<Object::const_ptr> referencedObjects() const override;
+
     // get/set functions
     Index getNumDivisions(int c) override { return d()->numDivisions[c]; }
     Index getNumDivisions(int c) const override { return m_numDivisions[c]; }

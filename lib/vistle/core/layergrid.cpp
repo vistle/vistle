@@ -73,6 +73,19 @@ bool LayerGrid::isEmpty() const
     return Base::isEmpty();
 }
 
+std::set<Object::const_ptr> LayerGrid::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    auto norm = normals();
+    if (norm && objs.emplace(norm).second) {
+        auto no = norm->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+    }
+
+    return objs;
+}
+
 void LayerGrid::print(std::ostream &os) const
 {
     Base::print(os);

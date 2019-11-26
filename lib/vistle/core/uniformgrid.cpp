@@ -52,6 +52,19 @@ bool UniformGrid::checkImpl() const
     return true;
 }
 
+std::set<Object::const_ptr> UniformGrid::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    if (normals()) {
+        auto no = normals()->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+        objs.emplace(normals());
+    }
+
+    return objs;
+}
+
 // IS EMPTY
 //-------------------------------------------------------------------------
 bool UniformGrid::isEmpty()
