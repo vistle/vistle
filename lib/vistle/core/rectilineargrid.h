@@ -27,6 +27,8 @@ public:
     // constructor
     RectilinearGrid(const size_t numDivX, const size_t numDivY, const size_t numDivZ, const Meta &meta = Meta());
 
+    std::set<Object::const_ptr> referencedObjects() const override;
+
     // get functions for metadata
     Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
     Index getNumDivisions(int c) const override { return m_numDivisions[c]; }

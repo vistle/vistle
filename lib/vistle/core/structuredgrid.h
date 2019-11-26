@@ -61,6 +61,7 @@ public:
     void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
     void updateInternals() override;
+    std::set<Object::const_ptr> referencedObjects() const override;
 
 private:
     // mutable pointers to ShmVectors

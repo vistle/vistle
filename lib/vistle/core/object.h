@@ -133,6 +133,8 @@ public:
 
     bool isComplete() const; //! check whether all references have been resolved
 
+    virtual std::set<Object::const_ptr> referencedObjects() const;
+
     static const char *typeName() { return "Object"; }
     Object::ptr clone() const;
     virtual Object::ptr cloneInternal() const = 0;

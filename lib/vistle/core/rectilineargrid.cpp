@@ -21,6 +21,19 @@ RectilinearGrid::RectilinearGrid(const size_t numDivX, const size_t numDivY, con
     refreshImpl();
 }
 
+std::set<Object::const_ptr> RectilinearGrid::referencedObjects() const
+{
+    auto objs = Base::referencedObjects();
+
+    if (normals()) {
+        auto no = normals()->referencedObjects();
+        std::copy(no.begin(), no.end(), std::inserter(objs, objs.begin()));
+        objs.emplace(normals());
+    }
+
+    return objs;
+}
+
 // REFRESH IMPL
 //-------------------------------------------------------------------------
 void RectilinearGrid::refreshImpl() const
