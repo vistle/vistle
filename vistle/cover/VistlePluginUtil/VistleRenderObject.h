@@ -61,12 +61,21 @@ class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
 
    const char *getName() const override;
    bool isPlaceHolder() const;
+   bool isUniformGrid() const override;
    bool isGeometry() const override;
    RenderObject *getGeometry() const override;
    RenderObject *getColors() const override;
    RenderObject *getNormals() const override;
    RenderObject *getTexture() const override;
    RenderObject *getVertexAttribute() const override;
+
+   void getSize(int &nx, int &ny, int &nz) const override;
+   void getMinMax(float &xmin, float &xmax,
+         float &ymin, float &ymax,
+         float &zmin, float &zmax) const override;
+   float getMin(int channel) const override;
+   float getMax(int channel) const override;
+   const float *getFloat(opencover::Field::Id idx) const override;
 
    const char *getAttribute(const char *) const override;
 

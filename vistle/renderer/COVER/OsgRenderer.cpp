@@ -434,14 +434,16 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (!geometry)
        return nullptr;
 
-   if (geometry->getType() == vistle::Object::PLACEHOLDER) {
+   auto objType = geometry->getType();
+   if (objType == vistle::Object::PLACEHOLDER) {
       auto ph = vistle::PlaceHolder::as(geometry);
       assert(ph);
-      if (!VistleGeometryGenerator::isSupported(ph->originalType()))
-         return nullptr;
-   } else {
-       if (!VistleGeometryGenerator::isSupported(geometry->getType()))
-           return nullptr;
+      objType = ph->originalType();
+   }
+   if (objType == vistle::Object::UNIFORMGRID) {
+       cover->addPlugin("Volume");
+   } else if (!VistleGeometryGenerator::isSupported(objType)) {
+       return nullptr;
    }
 
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
@@ -453,16 +455,18 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    }
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    auto cro = pro->coverRenderObject;
-   auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
-   auto species = vgr.species();
-   if (!species.empty()) {
-       VistleGeometryGenerator::lock();
-       m_colormaps[species];
-       VistleGeometryGenerator::unlock();
+   if (VistleGeometryGenerator::isSupported(objType)) {
+       auto vgr = VistleGeometryGenerator(pro, geometry, normals, texture);
+       auto species = vgr.species();
+       if (!species.empty()) {
+           VistleGeometryGenerator::lock();
+           m_colormaps[species];
+           VistleGeometryGenerator::unlock();
+       }
+       vgr.setColorMaps(&m_colormaps);
+       m_delayedObjects.emplace_back(pro, vgr);
+       //updateStatus();
    }
-   vgr.setColorMaps(&m_colormaps);
-   m_delayedObjects.emplace_back(pro, vgr);
-   //updateStatus();
    osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
 
    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());

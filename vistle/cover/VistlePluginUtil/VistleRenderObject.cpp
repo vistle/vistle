@@ -3,6 +3,7 @@
 #include <cover/coVRPluginList.h>
 
 #include <core/placeholder.h>
+#include <core/uniformgrid.h>
 #include <core/message.h>
 
 using namespace opencover;
@@ -15,10 +16,10 @@ BaseRenderObject::~BaseRenderObject() {
 
 VistleRenderObject::VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro)
 : m_vistleRo(ro)
-, m_roGeo(NULL)
-, m_roCol(NULL)
-, m_roNorm(NULL)
-, m_roTex(NULL)
+, m_roGeo(ro->geometry ? new VistleRenderObject(ro->geometry) : nullptr)
+, m_roCol(ro->texture ? new VistleRenderObject(ro->texture) : ro->scalars ? new VistleRenderObject(ro->scalars) : nullptr)
+, m_roNorm(ro->normals ? new VistleRenderObject(ro->normals) : nullptr)
+, m_roTex(ro->texture ? new VistleRenderObject(ro->texture) : ro->scalars ? new VistleRenderObject(ro->scalars) : nullptr)
 {
 }
 
@@ -39,7 +40,7 @@ VistleRenderObject::~VistleRenderObject() {
    delete m_roTex;
 }
 
-std::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
+std::shared_ptr<const vistle::RenderObject> VistleRenderObject::renderObject() const {
 
    return m_vistleRo.lock();
 }
@@ -64,6 +65,13 @@ const char *VistleRenderObject::getName() const {
 bool VistleRenderObject::isPlaceHolder() const {
 
    if (vistle::PlaceHolder::as(m_obj))
+       return true;
+   return false;
+}
+
+bool VistleRenderObject::isUniformGrid() const {
+
+   if (vistle::UniformGrid::as(m_obj))
        return true;
    return false;
 }
@@ -131,12 +139,100 @@ RenderObject *VistleRenderObject::getVertexAttribute() const {
    return NULL;
 }
 
+void VistleRenderObject::getSize(int &nx, int &ny, int &nz) const {
+
+    nx = ny = nz = 0;
+
+    if (!m_obj)
+        return;
+
+    auto str = m_obj->getInterface<vistle::StructuredGridBase>();
+    if (!str)
+        return;
+
+    nx = str->getNumDivisions(0);
+    ny = str->getNumDivisions(1);
+    nz = str->getNumDivisions(2);
+}
+
+void VistleRenderObject::getMinMax(float &xmin, float &xmax, float &ymin, float &ymax, float &zmin, float &zmax) const {
+
+    xmin = 1; xmax = -1;
+    ymin = 1; ymax = -1;
+    zmin = 1; zmax = -1;
+
+    if (!m_obj)
+        return;
+
+    auto uni = vistle::UniformGrid::as(m_obj);
+    if (!uni)
+        return;
+
+    auto bounds = uni->getBounds();
+    xmin = bounds.first[0];
+    ymin = bounds.first[1];
+    zmin = bounds.first[2];
+    xmax = bounds.second[0];
+    ymax = bounds.second[1];
+    zmax = bounds.second[2];
+}
+
+float VistleRenderObject::getMin(int channel) const {
+
+    if (!m_obj)
+        return 0.;
+
+    if (auto scal = vistle::Vec<float>::as(m_obj)) {
+        if (channel == Field::X
+            || channel == Field::Channel0
+            || channel == Field::Red) {
+            auto mm = scal->getMinMax();
+            return mm.first[0];
+        }
+    }
+
+    return 0.;
+}
+
+float VistleRenderObject::getMax(int channel) const {
+
+    if (!m_obj)
+        return 0.;
+
+    if (auto scal = vistle::Vec<float>::as(m_obj)) {
+        if (channel == Field::X
+            || channel == Field::Channel0
+            || channel == Field::Red) {
+            auto mm = scal->getMinMax();
+            return mm.second[0];
+        }
+    }
+
+    return 0.;
+}
+
+const float *VistleRenderObject::getFloat(Field::Id idx) const {
+
+    if (!m_obj)
+        return nullptr;
+
+    if (auto scal = vistle::Vec<float>::as(m_obj)) {
+        if (idx == Field::X
+            || idx == Field::Channel0
+            || idx == Field::Red) {
+            return &scal->x()[0];
+        }
+    }
+
+    return nullptr;
+}
+
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
-   bool hasAttribute = false;
-   static std::string val;
-   val.clear();
-   if (m_obj) {
+    bool hasAttribute = false;
+    static std::string val;
+    val.clear();
+    if (m_obj) {
        if (m_obj->hasAttribute(attr)) {
            val = m_obj->getAttribute(attr);
            hasAttribute = true;
