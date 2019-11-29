@@ -7,7 +7,7 @@ notifications:
     - aumuell@reserv.at
 
 sudo: required
-dist: trusty
+dist: bionic
 
 language: cpp
 os:
