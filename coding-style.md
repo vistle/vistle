@@ -6,17 +6,12 @@ Please follow the following guidelines.
 Compiler Compatibility
 ----------------------
 
-We use C++ 11, but we want to be able to compile Vistle with
+We use C++ 14, but we want to be able to compile Vistle with
 
-* Visual Studio 2013,
-* GCC 4.6 and newer,
+* Visual Studio 2017
+* GCC 5.3 and newer,
 * Clang 3.0 and newer (Xcode 6 and newer).
 * Intel ICC 10 and newer
-
-So avoid the following:
-
-* non-static data member initializers
-* template aliases
 
 
 Source Code Formatting
@@ -47,7 +42,7 @@ Source Code Formatting
         if (condition) {
         } else {
         }
-
+    
         do {
         } while(true);
 
