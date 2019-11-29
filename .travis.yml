@@ -40,7 +40,7 @@ addons:
             - libqt5webkit5-dev
             - libxerces-c-dev
             - libpng12-dev
-            - libopenscenegraph-dev
+            - libopenscenegraph-3.4-dev
             - libtbb-dev
             - libmpich-dev
             - mpich
@@ -65,7 +65,7 @@ addons:
             - libboost-timer-dev
             - libboost-tools-dev
             - libboost-dev
-            - libvtk6-dev
+            - libvtk7-dev
             - libtinyxml2-dev
             - libturbojpeg
 
