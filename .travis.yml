@@ -15,6 +15,7 @@ os:
     - osx
 
 env:
+    PATH="/opt/python/3.7.1/bin:$PATH"
     matrix:
         - APP="vistle" BUILD_TYPE="Debug"
         - APP="vistle" BUILD_TYPE="Release"
