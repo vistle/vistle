@@ -39,11 +39,21 @@ bool MapDrape::compute() {
     if (!coords)
           return true;
 
-    Coords::ptr outGeo = coords->clone();
 
-    auto xc = outGeo->x().data();
-    auto yc = outGeo->y().data();
-    auto zc = outGeo->z().data();
+    Coords::ptr inGeo = coords->clone();
+    auto xc = inGeo->x().data();
+    auto yc = inGeo->y().data();
+    auto zc = inGeo->z().data();
+
+    Coords::ptr outGeo = coords->clone();
+    outGeo->resetCoords();
+    outGeo->x().resize(inGeo->getNumCoords());
+    outGeo->y().resize(inGeo->getNumCoords());
+    outGeo->z().resize(inGeo->getNumCoords());
+    auto xout = outGeo->x().data();
+    auto yout = outGeo->y().data();
+    auto zout = outGeo->z().data();
+
 
     projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
     projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
@@ -54,7 +64,7 @@ bool MapDrape::compute() {
     offset[1] = p_offset->getValue()[1];
     offset[2] = p_offset->getValue()[2];
 
-    int numCoords =  outGeo->getSize();
+    int numCoords =  inGeo->getSize();
 
     for (int i = 0; i < numCoords; ++i) {
         double x = xc[i] * DEG_TO_RAD;
@@ -63,9 +73,9 @@ bool MapDrape::compute() {
 
         pj_transform(pj_from, pj_to,1,1,&x,&y,&z);
 
-        xc[i] = x + offset[0];
-        yc[i] = y + offset[1];
-        zc[i] = z + offset[2];
+        xout[i] = x + offset[0];
+        yout[i] = y + offset[1];
+        zout[i] = z + offset[2];
     }
 
 
