@@ -15,7 +15,6 @@ os:
     - osx
 
 env:
-    PATH="/opt/python/3.7.1/bin:$PATH"
     matrix:
         - APP="vistle" BUILD_TYPE="Debug"
         - APP="vistle" BUILD_TYPE="Release"
@@ -85,6 +84,7 @@ before_install:
 
 script:
 
+    - export PATH="/opt/python/3.7.1/bin:$PATH"
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
