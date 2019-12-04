@@ -326,6 +326,7 @@ void RemoteConnection::operator()() {
     for (;;) {
         if (!m_sock.is_open())
         {
+            lock_guard locker(*m_mutex);
             m_connected = false;
             connectionClosed();
             break;
@@ -791,7 +792,10 @@ bool RemoteConnection::sendMessage(const message::Message &msg, const std::vecto
     if (!isConnected())
         return false;
     if (!message::send(m_sock, msg, payload)) {
-        m_sock.close();
+        if (m_sock.is_open()) {
+            boost::system::error_code ec;
+            m_sock.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+        }
         return false;
     }
     return true;

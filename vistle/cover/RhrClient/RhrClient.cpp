@@ -800,8 +800,12 @@ bool RhrClient::update()
 
    bool needUpdate = coVRMSController::instance()->syncBool(m_clientsChanged);
    m_clientsChanged = false;
-   if (numConnected == 0)
+   if (numConnected == 0) {
+      if (needUpdate) {
+          coVRAnimationManager::instance()->setNumTimesteps(-1, this);
+      }
       return needUpdate;
+   }
 
    bool render = false;
 
