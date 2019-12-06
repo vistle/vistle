@@ -21,7 +21,7 @@
 #include <netcdfcpp.h>
 #include <core/structuredgrid.h>
 
-#define NUMPARAMS 2
+#define NUMPARAMS 5
 
 using namespace vistle;
 
@@ -46,10 +46,10 @@ private:
     };
 
     bool inspectDir();
-    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const;
-    StructuredGrid::ptr generateGrid(Block *b) const;
+    bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi,  Object::ptr outGrid, Block *b, int block, int t) const;
+    Object::ptr generateGrid(Block *b) const;
 
-    std::map<int, StructuredGrid::ptr> outDataGrid;
+    std::map<int, Object::ptr> outObject;
 
     std::vector<std::string> fileList;
     int numFiles = 0;
@@ -59,7 +59,7 @@ private:
     Port *m_dataOut[NUMPARAMS];
 
     StringParameter *m_filedir;
-    StringParameter *m_gridChoiceX, *m_gridChoiceY, *m_gridChoiceZ;
+    StringParameter *m_gridLat, *m_gridLon;
     StringParameter *m_variables[NUMPARAMS];
     StringParameter *m_varDim;
     StringParameter *m_trueHGT;

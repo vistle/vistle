@@ -19,6 +19,7 @@
 #include <netcdfcpp.h>
 
 #include <core/structuredgrid.h>
+#include <core/uniformgrid.h>
 #include <boost/filesystem.hpp>
 
 using namespace vistle;
@@ -40,18 +41,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices(m_varDim, varDimList);
 
     m_trueHGT = addStringParameter("true_height", "Use real ground topology", "", Parameter::Choice);
-
-    /*
-    m_gridChoiceX = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
-    m_gridChoiceY = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
-    m_gridChoiceZ = addStringParameter("GridZ", "grid East-West axis", "", Parameter::Choice);
-
-    std::vector<std::string> choices;
-    choices.push_back("(NONE)");
-    setParameterChoices(m_gridChoiceX, choices);
-    setParameterChoices(m_gridChoiceY, choices);
-    setParameterChoices(m_gridChoiceZ, choices);
-    */
+    m_gridLat = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
+    m_gridLon = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
 
     char namebuf[50];
     std::vector<std::string> varChoices;
@@ -72,6 +63,9 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
         m_dataOut[i] = createOutputPort(s_var.str(), "scalar data");
 
     }
+
+    setParameterChoices(m_gridLat, varChoices);
+    setParameterChoices(m_gridLon, varChoices);
     setParameterChoices(m_trueHGT, varChoices);
 
     setParallelizationMode(Serial);
@@ -254,10 +248,9 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             }else {
                 sendInfo("Please select the dimension of variables");
             }
-            setParameterChoices(m_trueHGT,Axis2dChoices);
-            /*setParameterChoices(m_gridChoiceX, AxisChoices);
-            setParameterChoices(m_gridChoiceY, AxisChoices);
-            setParameterChoices(m_gridChoiceZ, AxisChoices);*/
+            setParameterChoices(m_trueHGT, Axis2dChoices);
+            setParameterChoices(m_gridLat, Axis2dChoices);
+            setParameterChoices(m_gridLon, Axis2dChoices);
             setTimesteps(numFiles);
 
         } else {
@@ -320,15 +313,40 @@ ReadWRFChem::Block ReadWRFChem::computeBlock(int part, int nBlocks, long blockBe
 }
 
 //generateGrid: set grid coordinates for block b and attach ghosts
-StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
+Object::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
-    StructuredGrid::ptr outGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
-    auto ptrOnXcoords = outGrid->x().data();
-    auto ptrOnYcoords = outGrid->y().data();
-    auto ptrOnZcoords = outGrid->z().data();
+    Object::ptr geoOut;
 
-    if (!emptyValue(m_trueHGT)) {
-        //add real ground height to grid
+    if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && !emptyValue(m_trueHGT)) {
+        //use geographic coordinates
+        StructuredGrid::ptr strGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
+        auto ptrOnXcoords = strGrid->x().data();
+        auto ptrOnYcoords = strGrid->y().data();
+        auto ptrOnZcoords = strGrid->z().data();
+        NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
+        NcVar *varLat = ncFirstFile->get_var(m_gridLat->getValue().c_str());
+        NcVar *varLon = ncFirstFile->get_var(m_gridLon->getValue().c_str());
+
+        varHGT->set_cur(0,b[1].begin,b[2].begin);
+        varHGT->get(ptrOnXcoords, 1,bSizeY, bSizeZ);
+        varLat->set_cur(0,b[1].begin,b[2].begin);
+        varLat->get(ptrOnYcoords, 1,bSizeY, bSizeZ);
+        varLon->set_cur(0,b[1].begin,b[2].begin);
+        varLon->get(ptrOnZcoords, 1,bSizeY, bSizeZ);
+
+        for (int i=0; i<3; ++i) {
+            strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
+            strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
+        }
+        strGrid->updateInternals();
+        geoOut = strGrid;
+    }else if (!emptyValue(m_trueHGT)) {
+        //use terrain height
+        StructuredGrid::ptr strGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
+        auto ptrOnXcoords = strGrid->x().data();
+        auto ptrOnYcoords = strGrid->y().data();
+        auto ptrOnZcoords = strGrid->z().data();
+
         NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
         float * hgt = new float[bSizeY*bSizeZ];
 
@@ -345,32 +363,40 @@ StructuredGrid::ptr ReadWRFChem::generateGrid(Block *b) const {
                 }
             }
         }
+        for (int i=0; i<3; ++i) {
+            strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
+            strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
+        }
+        strGrid->updateInternals();
+        geoOut = strGrid;
+
         delete [] hgt;
     }else {
-        int n = 0;
-        for (int i = 0; i < bSizeX; i++) {
-            for (int j = 0; j < bSizeY; j++) {
-                for (int k = 0; k < bSizeZ; k++, n++) {
-                    ptrOnXcoords[n] = -(i+b[0].begin);
-                    ptrOnYcoords[n] = j+b[1].begin;
-                    ptrOnZcoords[n] = k+b[2].begin;
-                }
-            }
+        //uniform coordinates
+        UniformGrid::ptr uniGrid(new UniformGrid(bSizeX, bSizeY, bSizeZ));
+
+        for (unsigned i = 0; i < 3; ++i) {
+            uniGrid->min()[i] = b[i].begin;
+            uniGrid->max()[i] = b[i].end;
+
+            uniGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0] );
+            uniGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
-    }
-    for (int d = 0; d < 3; ++d) {
-        outGrid->setNumGhostLayers(d, StructuredGrid::Bottom, b[d].ghost[0] );
-        outGrid->setNumGhostLayers(d, StructuredGrid::Top, b[d].ghost[1]);
+        uniGrid->updateInternals();
+        geoOut = uniGrid;
     }
 
-    outGrid->updateInternals();
-    return outGrid;
+    return geoOut;
 
 }
 
-//addDataToPort: read and set values for variable and add them to the output port
-bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, StructuredGrid::ptr outGrid, Block *b, int block, int t) const {
 
+
+//addDataToPort: read and set values for variable and add them to the output port
+bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object::ptr outGrid, Block *b, int block, int t) const {
+
+    if (!(StructuredGrid::as(outGrid) || UniformGrid::as(outGrid)))
+        return true;
     NcVar *varData = ncDataFile->get_var(m_variables[vi]->getValue().c_str());
     int numDimElem = varData->num_dims();
     long *curs = varData->edges();
@@ -445,11 +471,6 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
                 numBlocksVer = 1;
             }
 
-            /*if (emptyValue(m_gridChoiceX) || emptyValue(m_gridChoiceY) || emptyValue(m_gridChoiceZ)) {
-                sendInfo("Found empty grid variable -- stop reading");
-                return false;
-            }*/
-
             //set offsets for current block
             int blockXbegin = block /(numBlocksLat*numBlocksLat) * blockSizeVer;  //vertical direction (Bottom_Top)
             int blockYbegin = ((static_cast<long>((block % (numBlocksLat*numBlocksLat)) / numBlocksLat)) * blockSizeLat);
@@ -463,10 +484,10 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
 
             if (timestep < 0) {
                 //********* GRID *************
-                outDataGrid[block] = generateGrid(b);
-                setMeta(outDataGrid[block], block, numBlocks, -1);
-                //outDataGrid->setNumTimesteps(-1);
-                token.addObject(m_gridOut, outDataGrid[block]);
+               outObject[block] = generateGrid(b);
+               setMeta(outObject[block], block, numBlocks, -1);
+               //outDataGrid->setNumTimesteps(-1);
+               token.addObject(m_gridOut, outObject[block]);
             }else {
                 // ******** DATA *************
                 std::string sDir = /*m_filedir->getValue() + "/" + */ fileList.at(timestep);
@@ -482,7 +503,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
                         sendInfo("No data for variable found");
                         return false;
                     }
-                    addDataToPort(token, ncDataFile, vi, outDataGrid[block], b,  block, timestep);
+                    addDataToPort(token, ncDataFile, vi, outObject[block], b,  block, timestep);
                 }
                 delete ncDataFile;
                 ncDataFile = nullptr;
