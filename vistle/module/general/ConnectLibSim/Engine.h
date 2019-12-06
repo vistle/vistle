@@ -14,7 +14,7 @@
 #include <mutex>
 #include <thread>
 
-#include <manager/managerLib/manager.h>
+#include <manager/manager.h>
 #include <module/module.h>
 
 

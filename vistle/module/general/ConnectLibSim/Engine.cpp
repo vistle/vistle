@@ -2,7 +2,7 @@
 #include <boost/mpi.hpp>
 #include <control/hub.h>
 #include <util/directory.h>
-#include <manager/managerLib/manager.h>
+#include <manager/manager.h>
 
 #include <core/message.h>
 #include <core/tcpmessage.h>
@@ -276,7 +276,7 @@ bool Engine::initialize(int argC, char** argV) {
             args.push_back(argV[i]);
         }
         vistle::VistleManager manager;
-        manager.init(args.size(), args.data());
+        manager.run(args.size(), args.data());
         });
 
     m_initialized = true;

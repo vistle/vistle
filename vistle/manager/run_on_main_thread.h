@@ -19,7 +19,7 @@ static  std::mutex main_thread_mutex;
 static  std::condition_variable main_thread_cv;
 static  std::deque<std::function<void()>> main_func;
 static  bool main_done = false;
-void V_MAINTHREADEXPORT run_on_main_thread(std::function<void()> &func);
+void V_MANAGEREXPORT run_on_main_thread(std::function<void()> &func);
 #endif
 #endif
 

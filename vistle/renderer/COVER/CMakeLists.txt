@@ -31,7 +31,7 @@ target_link_libraries(vistle_cover ${EXTRA_LIBS} vistle_renderer vistle_util
    ${CMAKE_DL_LIBS} VistlePluginUtil ${COVER_PLUGINUTIL_LIBRARY})
 
 if(NOT VISTLE_MULTI_PROCESS)
-	target_link_libraries(vistle_cover run_on_main_thread)
+	target_link_libraries(vistle_cover vistle_clustermanager)
 endif()
 
 add_module(COVER coverwrapper.cpp)

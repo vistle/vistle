@@ -7,6 +7,11 @@
 #
 #****************************************************************************
 
+if (VISTLE_MULTI_PROCESS)
+    # not yet implemented
+    return()
+endif()
+
 
 SET(RUNTIME_SOURCES 
   VisItControlInterfaceRuntime.C 
@@ -92,7 +97,7 @@ vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
 target_link_libraries(${LIBNAME}
 		vistle_module
-		vistle_manager_lib
+		vistle_clustermanager
 		vistle_util
 		vistle_control
         vistle_core

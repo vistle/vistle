@@ -3,7 +3,7 @@
  */
 
 #include <mpi.h>
-#include <manager/managerLib/manager.h>
+#include "manager.h"
 
 #include <iostream>
 //#include <fstream>
@@ -37,8 +37,12 @@ int main(int argc, char *argv[])
 #else
    MPI_Init(&argc, &argv);
 #endif
-   vistle::VistleManager manager;
-   manager.init(argc, argv);
+
+   {
+       // ensure that manager is destroyed before MPI_Finalize
+       vistle::VistleManager manager;
+       manager.run(argc, argv);
+   }
 
    MPI_Finalize();
    return 0;

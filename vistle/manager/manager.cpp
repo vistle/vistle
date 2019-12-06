@@ -59,7 +59,7 @@ public:
     }
 };
 
-bool VistleManager::init(int argc, char* argv[]) {
+bool VistleManager::run(int argc, char* argv[]) {
     int rank = -1;
     int flag = 0;
     MPI_Initialized(&flag);
@@ -70,6 +70,7 @@ bool VistleManager::init(int argc, char* argv[]) {
     }
     else {
         //initialize mpi with single rank on local host?
+        std::cerr << "VistleManager: MPI not initialized" << std::endl;
         rank = 0;
         return false;
     }
