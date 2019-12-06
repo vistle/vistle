@@ -24,8 +24,8 @@
 int main(int argc, char *argv[])
 {
     std::string vr = "VISTLE_ROOT=" + vistle::directory::prefix(argc, argv);
-    char* vistleRoot = new char[vr.size()];
-    std::copy(vr.begin(), vr.end(), vistleRoot);
+    //std::cerr << "setting VISTLE_ROOT to " << vr << std::endl;
+    char* vistleRoot = strdup(vr.c_str());
     int retval = putenv(vistleRoot);
 #ifdef MODULE_THREAD
    int provided = MPI_THREAD_SINGLE;

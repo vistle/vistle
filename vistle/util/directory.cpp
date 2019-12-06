@@ -48,6 +48,8 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
    p = bf::canonical(p);
 
+   //std::cerr << "scanModules: looking for modules in " << p << std::endl;
+
    for (bf::directory_iterator it(p);
          it != bf::directory_iterator();
          ++it) {

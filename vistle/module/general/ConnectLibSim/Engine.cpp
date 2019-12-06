@@ -267,9 +267,15 @@ bool Engine::initialize(int argC, char** argV) {
     }
     printToConsole("_______________________________");
 
-    managerThread = std::thread([argC, argV]() {
-        std::string cmd{ getenv("VISTLE_ROOT") };
-        cmd += +"/bin/vistle_manager";
+    const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+    if (!VISTLE_ROOT) {
+        printToConsole("VISTLE_ROOT not set");
+        return false;
+    }
+
+    managerThread = std::thread([argC, argV, VISTLE_ROOT]() {
+        std::string cmd{VISTLE_ROOT};
+        cmd += "/bin/vistle_manager";
         std::vector<char*> args;
         args.push_back(const_cast<char*>(cmd.c_str()));
         for (int i = 1; i < argC; ++i) {
@@ -277,7 +283,7 @@ bool Engine::initialize(int argC, char** argV) {
         }
         vistle::VistleManager manager;
         manager.run(args.size(), args.data());
-        });
+    });
 
     m_initialized = true;
     return true;

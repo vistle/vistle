@@ -54,8 +54,11 @@ class Vistle : public Executor {
 public:
     Vistle(int argc, char* argv[], boost::mpi::communicator comm) : Executor(argc, argv, comm) {}
     bool config(int argc, char* argv[]) {
-        setModuleDir(dir::module(getenv("VISTLE_ROOT")));
-        return true;
+        if (const char *VISTLE_ROOT = getenv("VISTLE_ROOT")) {
+            setModuleDir(dir::module(VISTLE_ROOT));
+            return true;
+        }
+        return false;
     }
 };
 
