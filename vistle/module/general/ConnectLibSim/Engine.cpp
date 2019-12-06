@@ -1,11 +1,8 @@
 #include "Engine.h"
 #include <boost/mpi.hpp>
-#include <control/hub.h>
-#include <util/directory.h>
+
 #include <manager/manager.h>
 
-#include <core/message.h>
-#include <core/tcpmessage.h>
 #include <module/module.h>
 
 #include "VisItDataInterfaceRuntime.h"
@@ -19,8 +16,25 @@
 #include "CurveMetaData.h"
 #include "MessageMetaData.h"
 #include "CommandMetaData.h"
-
 #include "ExpressionMetaData.h"
+
+#include "RectilinearMesh.h"
+#include "VariableData.h"
+
+#include <boost/mpi.hpp>
+#include <control/hub.h>
+#include <util/directory.h>
+#include <manager/managerLib/manager.h>
+#include <module/module.h>
+
+#include <core/rectilineargrid.h>
+#include <core/message.h>
+#include <core/tcpmessage.h>
+
+
+
+
+
 
 using std::string; using std::vector;
 using std::cerr; using std::endl;
@@ -390,7 +404,7 @@ bool Engine::addPorts() {
     return true;
 }
 
-bool in_situ::Engine::makeAmrMesh(visit_handle h) {
+bool in_situ::Engine::makeCurvilinearMesh(visit_handle h) {
     char* name;
     int dim;
     if (simv2_MeshMetaData_getName(h, &name)) {
@@ -399,9 +413,53 @@ bool in_situ::Engine::makeAmrMesh(visit_handle h) {
     if (simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
         return false;
     }
+
+
+
+
 }
 
+bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
+    char* name;
+    int dim;
+    if (simv2_MeshMetaData_getName(h, &name)) {
+        return false;
+    }
+    if (simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
+        return false;
+    }
+    
+    return false;
+}
 
+bool in_situ::Engine::makeAmrMesh(visit_handle h) {
+    char* name;
+    int dim;
+    if (!simv2_MeshMetaData_getName(h, &name)) {
+        return false;
+    }
+    if (!simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
+        return false;
+    }
+    visit_handle coordHandles[3]; //handles to variable data
+    size_t dimensions[3]{ 0,0,0 };
+    int ndims;
+    if (!simv2_RectilinearMesh_getCoords(h, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
+        return false;
+    }
+    int memory[3]{}, owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{}, offset[3]{}, stride[3]{};
+    void* data[3]{};
+    for (int i = 0; i < dim; ++i) {
+        if (simv2_VariableData_getArrayData(coordHandles[i], 0, memory[i], owner[i], dataType[i],
+            nComps[i], nTuples[i], offset[i], stride[i], data[i]) == VISIT_ERROR) {
+            return false;
+        }
+        cerr << "coord " << i << "memory = " << memory[i] << "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << "offset = " << offset[i] <<
+            "stride = " << stride[i] << endl;
+    }
+
+    //vistle::RectilinearGrid::ptr vistleGrid(new vistle::RectilinearGrid());
+}
 bool in_situ::Engine::sendDataToModule() {
     int numMeshes = 0;
     if (!getNumObjects(SimulationDataTyp::mesh, numMeshes)) {

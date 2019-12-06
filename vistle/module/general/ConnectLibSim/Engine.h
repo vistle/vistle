@@ -86,6 +86,9 @@ private:
 
 
     bool addPorts();
+
+    bool makeCurvilinearMesh(visit_handle h);
+    bool makeUntructuredMesh(visit_handle h);
     bool makeAmrMesh(visit_handle h);
     bool sendDataToModule();
 
