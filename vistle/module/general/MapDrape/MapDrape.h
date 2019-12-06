@@ -17,6 +17,7 @@ class MapDrape: public vistle::Module {
  private:
    virtual bool compute();
    StringParameter *p_mapping_from_, *p_mapping_to_;
+   IntParameter *p_permutation;
    VectorParameter *p_offset;
    void transformCoordinates(int numCoords, float * xIn, float * yIn, float * zIn, float * xOut, float * yOut, float * zOut);
    float offset[3];

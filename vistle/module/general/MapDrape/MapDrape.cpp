@@ -5,6 +5,14 @@
 
 using namespace vistle;
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption,
+   (XYZ)
+   (XZY)
+   (YXZ)
+   (YZX)
+   (ZXY)
+   (ZYX)
+)
 MODULE_MAIN(MapDrape)
 
 MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm)
@@ -19,13 +27,19 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
    p_mapping_to_ = addStringParameter("to","","+proj=tmerc +lat_0=0 +lon_0=9 +k=1.000000 +x_0=3500000 +y_0=0");
 
    p_offset = addVectorParameter("offset","",ParamVector(0,0,0));
+
+   //std::vector<std::string> perList = {"xyz (default)","xzy","yxz","yzx","zxy","zyx"};
+
+   p_permutation = addIntParameter("Axis Permutation","permutation of the axis", XYZ, Parameter::Choice);
+   //setParameterChoices(p_permutation, perList);
+   V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
+
 }
 
 MapDrape::~MapDrape() {
 }
 
 bool MapDrape::compute() {
-
     Coords::const_ptr inGeo;
     Coords::ptr outGeo;
 
@@ -63,11 +77,50 @@ bool MapDrape::compute() {
             }
         } else {
             inGeo = coords;
+   	 float *xc, *yc, *zc, *xout, *yout, *zout;
+switch (p_permutation->getValue()) {
+    case XYZ: {
+        xc = &inGeo->x()[0];
+        yc = &inGeo->y()[0];
+        zc = &inGeo->z()[0];
+       break;
+    }
+    case XZY: {
+        xc = &inGeo->x()[0];
+        yc = &inGeo->z()[0];
+        zc = &inGeo->y()[0];
+       break;
+    }
+    case YXZ: {
+        xc = &inGeo->y()[0];
+        yc = &inGeo->x()[0];
+        zc = &inGeo->z()[0];
+       break;
+    }
+    case YZX: {
+       xc = &inGeo->y()[0];
+       yc = &inGeo->z()[0];
+       zc = &inGeo->x()[0];
+       break;
+    }
+    case ZXY: {
+       xc = &inGeo->z()[0];
+       yc = &inGeo->x()[0];
+       zc = &inGeo->y()[0];
+      break;
+    }
+    case ZYX: {
+       xc = &inGeo->z()[0];
+       yc = &inGeo->y()[0];
+       zc = &inGeo->x()[0];
+      break;
+    }
+    }
+    xout = outGeo->x()[0];
+    yout = outGeo->y()[0];
+    zout = outGeo->z()[0];
 
 
-            auto xc = &inGeo->x()[0];
-            auto yc = &inGeo->y()[0];
-            auto zc = &inGeo->z()[0];
 
             outGeo = coords->clone();
             outGeo->resetCoords();
