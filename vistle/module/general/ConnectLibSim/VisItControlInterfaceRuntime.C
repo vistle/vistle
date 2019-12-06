@@ -20,7 +20,7 @@
 #include <iostream>
 
 extern void DataCallbacksCleanup(void);
-
+using in_situ::Engine;
 // Engine creation callback.
 static Engine *
 simv2_create_engine(void *)
@@ -107,15 +107,14 @@ int simv2_initialize_batch(void *e, int argc, char *argv[])
 // Method: simv2_connect_viewer
 //
 // Purpose:
-//   SimV2 runtime function to connect to the viewer.
+//   Unnecessery, Vistle gui connects the renderer.
 //
 // Arguments:
 //   e    : The engine pointer.
 //   argc : The number of command line args.
 //   argv : The command line args.
 //
-// Returns:    1 on success, 0 on failure.
-//
+// Returns:    1 on success,
 // Note:       
 //
 // Programmer: Brad Whitlock
@@ -125,9 +124,9 @@ int simv2_initialize_batch(void *e, int argc, char *argv[])
 //
 // ****************************************************************************
 
-int simv2_connect_viewer(void *e, int argc, char *argv[])
+int simv2_connect_viewer(void *e, int argc, char *argv[]) 
 {
-    return 0;
+    return true;
 }
 
 // ****************************************************************************

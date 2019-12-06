@@ -3,39 +3,41 @@
 #include <vector>
 #include <memory>
 
-//MODULE_MAIN(ConnectLibSim)
+#include <boost/program_options.hpp>
+#include <boost/asio/ip/tcp.hpp>
+
+#include <fstream>
+#include <core/tcpmessage.h>
+#include "Engine.h"
+
+#include <util/sleep.h>
+
+using namespace vistle;
+using std::string;
+using std::cerr; using std::endl;
+namespace asio = boost::asio;
+using namespace in_situ;
 
 ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm)
-    :vistle::Module("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm) {
-    
+    : vistle::Reader("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm)
+{
+    if (Engine::createEngine()->isInitialized()) {
+        Engine::createEngine()->setModule(this);
+        Engine::createEngine()->SetTimestepChangedCb(std::bind(&ConnectLibSim::timestepChanged, this));
+        Engine::createEngine()->setDoReadMutex(&doReadMutex);
+        Engine::createEngine()->SetDisconnectCb([this]() {
+           std::lock_guard<std::mutex> g(doReadMutex);
+           doRead = false;
+           });
+       std::lock_guard<std::mutex> g(doReadMutex);
+       doRead = true;
+    }
+    setTimesteps(0);
+    int size = -1;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    setPartitions(size);
 }
 
-ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm, const std::string & shmname)
-    : vistle::Module("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm) {
-
-    vistle::registerTypes(); 
-    int rank=-1, size=-1; 
-
-    try { 
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
-    MPI_Comm_size(MPI_COMM_WORLD, &size); 
-
-    vistle::Module::setup(shmname, moduleID, rank); 
-    eventLoop();
-    MPI_Barrier(MPI_COMM_WORLD); 
-    } 
-    catch(vistle::exception &e) { 
-    std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
-    std::cerr << "  info: " << e.info() << std::endl; 
-    std::cerr << e.where() << std::endl; 
-    exit(1); 
-    } 
-    catch(std::exception &e) { 
-    std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
-    exit(1); 
-    } 
-}
 
 int ConnectLibSim::updateParameter(const char* info) {
     constexpr int maxNameSize = 100;
@@ -84,37 +86,45 @@ int ConnectLibSim::updateParameter(const char* info) {
     return true;
 }
 
-
 ConnectLibSim::~ConnectLibSim() {
 }
 
-void ConnectLibSim::DeleteData() {
-    for (size_t i = 0; i < m_dataObjects.size(); ++i) {
-        m_dataObjects[i].reset(vistle::Object::createEmpty());
-    }
-    sendData();
+bool ConnectLibSim::timestepChanged() {
+    metaData_.timestepChanged = true;
+    return doRead;
 }
 
-bool ConnectLibSim::sendData() {
-    
-    for (size_t i = 0; i < m_dataObjects.size(); ++i) {
-        if (!addObject(m_portsList[i], m_dataObjects[i])) {
-            std::cerr << "ConnectLibSim: failed to addObject(" << m_portsList[i]->getName() << ", " << m_dataObjects[i]->typeName() << std::endl;
-            return false;
+
+bool ConnectLibSim::read(Token& token, int timestep, int block) {
+    cerr << "ConnectLibSim::read called for timestep = " << timestep << " block = " << block << endl;
+    while (true) {
+
+        if (cancelRequested()) {
+            break;
         }
+        std::lock_guard<std::mutex> g(doReadMutex);
+        if (!doRead) {
+            break;
+        }
+        adaptive_wait(false, this);
     }
+    return true;
+}
+
+bool ConnectLibSim::examine(const vistle::Parameter* param) {
+
 
     return true;
 }
 
-void ConnectLibSim::SimulationTimeStepChanged() {
-}
-void ConnectLibSim::SimulationInitiateCommand(const char* command) {
-}
-void ConnectLibSim::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
-}
+
+
+
 
 
 MODULE_MAIN(ConnectLibSim)
+
+
+
 
 

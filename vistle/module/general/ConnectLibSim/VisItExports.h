@@ -1,5 +1,5 @@
-#ifndef VISIT_RUNNTIME_EXPORT_H
-#define VISIT_RUNNTIME_EXPORT_H
+#ifndef VISIT_RUNTIME_EXPORT_H
+#define VISIT_RUNTIME_EXPORT_H
 
 #if defined (_WIN32) && !defined (NODLL)
 #define V_IMPORT __declspec(dllimport)
@@ -13,7 +13,8 @@
 #define V_EXPORT
 #endif
 
-#if defined (libsimV2runntime_par_EXPORTS)
+
+#if defined (libsimV2runtime_par_EXPORTS)
 #define V_VISITXPORT V_EXPORT
 #else
 #define V_VISITXPORT V_IMPORT

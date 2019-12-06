@@ -1,0 +1,25 @@
+#ifndef CONNECT_LIB_SIM_EXPORT_H
+#define CONNECT_LIB_SIM_EXPORT_H
+
+#if defined (_WIN32) && !defined (NODLL)
+#define V_IMPORT __declspec(dllimport)
+#define V_EXPORT __declspec(dllexport)
+
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#define V_EXPORT __attribute__ ((visibility("default")))
+#define V_IMPORT V_EXPORT
+#else
+#define V_IMPORT
+#define V_EXPORT
+#endif
+
+
+#if defined (ConnectLibSim_EXPORTS)
+#define V_CONNECTLIBSIMEXPORT V_EXPORT
+#else
+#define V_CONNECTLIBSIMEXPORT V_IMPORT
+#endif
+
+
+
+#endif

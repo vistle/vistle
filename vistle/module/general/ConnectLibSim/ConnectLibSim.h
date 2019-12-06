@@ -1,41 +1,44 @@
 #ifndef CONNECT_LIB_SIM_H
 #define CONNECT_LIB_SIM_H
 
-#include <module/module.h>
-#include "ModuleInterface.h"
+#include <module/reader.h>
 
-class ConnectLibSim : public vistle::Module, public LibSimModuleInterface
+#include <memory>
+#include <string>
+#include <map>
+
+#include <boost/asio.hpp>
+#include "export.h"
+#include "MetaData.h"
+
+class V_CONNECTLIBSIMEXPORT ConnectLibSim : public vistle::Reader
 {
 public:
     ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm);
-    ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm, const std::string &shmArray);
+
     int updateParameter(const char* info);
 
     ~ConnectLibSim() override;
-
-    // Inherited via LibSimModuleInterface
-    virtual void DeleteData() override;
-
-    virtual bool sendData() override;
-
-    virtual void SimulationTimeStepChanged() override;
-
-    virtual void SimulationInitiateCommand(const char* command) override;
-
-    virtual void SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) override;
+    //called from the simulation to inform us that the next read has to do sth
+    bool timestepChanged();
+    //Parameter
+    vistle::StringParameter* sim2File = nullptr; //file with connection information to initialize the connection with the simulation
+    
 private:
+    in_situ::Metadata metaData_;
 
-    std::vector<vistle::Port*> m_portsList;
-    std::vector<vistle::Object::ptr> m_dataObjects;
+    std::mutex doReadMutex;
+    bool doRead = false;
+
+    // Inherited via Reader
+    virtual bool read(Token& token, int timestep = -1, int block = -1) override;
+    virtual bool examine(const vistle::Parameter* param) override;
 
 
+    
 
 
 
 };
-
-
-
-
 
 #endif // !CONNECT_LIB_SIM_H

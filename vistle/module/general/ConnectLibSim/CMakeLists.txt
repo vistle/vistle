@@ -8,8 +8,7 @@
 #****************************************************************************
 
 
-
-SET(RUNNTIME_SOURCES 
+SET(RUNTIME_SOURCES 
   VisItControlInterfaceRuntime.C 
   VisItDataInterfaceRuntime.C 
   VisItDataInterfaceRuntimeP.C 
@@ -42,7 +41,7 @@ SET(RUNNTIME_SOURCES
   #View3D.C
 )
 
-SET(RUNNTIME_HEADERS 
+SET(RUNTIME_HEADERS 
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h
   VisItDataInterfaceRuntimeP.h
@@ -61,6 +60,7 @@ SET(RUNNTIME_HEADERS
   MaterialMetaData.h
   MeshMetaData.h
   MessageMetaData.h
+  MetaData.h
   ModuleInterface.h
   NameList.h
   OptionList.h
@@ -78,29 +78,42 @@ SET(RUNNTIME_HEADERS
   VisItExports.h
 )
 
-set(MODULE_SOURCES
-  ConnectLibSim.cpp
-)
-
-set(MODULE_HEADERS
-  ConnectLibSim.h
-)
+set (LIBCORENAME simV2runtime_par)
+set(LIBNAME lib${LIBCORENAME}) #VisItExports has to be adopted if this changes
+if(NOT MSVC)
+	set(LIBNAME ${LIBCORENAME}) #to compensate the additional lib prefix from vistle_add_library
+endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 endif()
 
-vistle_add_library(libsimV2runntime_par ${RUNNTIME_HEADERS} ${RUNNTIME_SOURCES})
+vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
-target_link_libraries(libsimV2runntime_par
-        vistle_util
+target_link_libraries(${LIBNAME}
+		vistle_module
+		vistle_manager_lib
+		vistle_util
+		vistle_control
         vistle_core
         vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
 
-add_module(ConnectLibSim ${MODULE_SOURCES} ${MODULE_HEADERS})
-target_link_libraries(ConnectLibSim libsimV2runntime_par)
+set(MODULE_LIBRARY_SOURCES
+  ConnectLibSim.cpp
+)
+
+set(MODULE_LIBRARY_HEADERS
+  ConnectLibSim.h
+)
+
+add_module(ConnectLibSim ${MODULE_LIBRARY_SOURCES} ${MODULE_LIBRARY_HEADERS})
+target_link_libraries(ConnectLibSim
+        vistle_module
+		${LIBNAME}
+)
+
 
 
