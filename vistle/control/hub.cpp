@@ -276,8 +276,8 @@ bool Hub::init(int argc, char *argv[]) {
        args.push_back(port);
        args.push_back(dataport);
 #ifdef MODULE_THREAD
-       if (vm.count("insitu") > 0) {
-           std::string path = vm["insitu"].as<std::string>();
+       if (vm.count("libsim") > 0) {
+           std::string path = vm["libsim"].as<std::string>();
            CERR << "starting manager in simulation" << std::endl;
            if (!startManagerInSimulation(path, args)) {
                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
