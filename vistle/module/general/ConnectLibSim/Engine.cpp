@@ -450,12 +450,12 @@ bool in_situ::Engine::makeAmrMesh(visit_handle h) {
         int check = simv2_RectilinearMesh_check(meshHandle);
         printToConsole("invoking get mesh for domain " + std::to_string(i) + " with name " + name + " handle = " + std::to_string(meshHandle) + "check= " + std::to_string(check));
 
-        if (check) {
+        if (check == VISIT_OKAY) {
             printToConsole("handle ok");
             visit_handle coordHandles[3]; //handles to variable data
             size_t dimensions[3]{ 0,0,0 };
             int ndims;
-            if (!simv2_RectilinearMesh_getCoords(h, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
+            if (!simv2_RectilinearMesh_getCoords(meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
                 return false;
             }
             int memory[3]{}, owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{}, offset[3]{}, stride[3]{};
