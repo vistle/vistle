@@ -99,6 +99,16 @@ private:
     bool sendVarablesToModule();
     bool sendDataToModule();
 
+    template<typename T>
+    void sendVariableToModule(const std::string& name, int domain, const T* data, int size) {
+        vistle::Vec<T, 1>::ptr variable(new vistle::Vec<T, 1>(size));
+        memcpy(variable->x().data(), data, size * sizeof(T));
+        variable->setGrid(m_meshes.find(name)->second.grids[domain]);
+        //variable->setTimestep(timestep);
+        variable->setBlock(domain);
+        variable->addAttribute("_species", name);
+        m_module->addObject(name, variable);
+    }
 
 
     Engine();

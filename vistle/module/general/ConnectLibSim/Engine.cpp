@@ -577,12 +577,14 @@ bool in_situ::Engine::sendVarablesToModule()     {
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
-                vistle::Vec<char, 1>::ptr variable(new vistle::Vec<char, 1>(nTuples));
-                variable->setGrid(meshInfo->second.grids[j]);
-                //variable->setTimestep(timestep);
-                variable->setBlock(j);
-                variable->addAttribute("_species", name);
-                m_module->addObject(name, variable);
+                sendVariableToModule(name, j, (char*)data, nTuples);
+                //vistle::Vec<char, 1>::ptr variable(new vistle::Vec<char, 1>(nTuples));
+                //memcpy(variable->x().data(), data, nTuples * sizeof(char));
+                //variable->setGrid(meshInfo->second.grids[j]);
+                ////variable->setTimestep(timestep);
+                //variable->setBlock(j);
+                //variable->addAttribute("_species", name);
+                //m_module->addObject(name, variable);
             }
             break;
             case VISIT_DATATYPE_INT:
