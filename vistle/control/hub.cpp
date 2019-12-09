@@ -277,7 +277,6 @@ bool Hub::init(int argc, char *argv[]) {
        args.push_back(hostname());
        args.push_back(port);
        args.push_back(dataport);
-#ifdef MODULE_THREAD
        if (vm.count("libsim") > 0) {
            std::string path = vm["libsim"].as<std::string>();
            CERR << "starting manager in simulation" << std::endl;
@@ -287,21 +286,14 @@ bool Hub::init(int argc, char *argv[]) {
            }
 
        } else {
-#endif // MODULE_THREAD
-
-
            auto pid = launchProcess(args);
            if (!pid) {
                CERR << "failed to spawn Vistle manager " << std::endl;
                exit(1);
            }
            m_processMap[pid] = Process::Manager;
-#ifdef MODULE_THREAD
        }
-#endif // MODULE_THREAD
-
    }
-
    return true;
 }
 
