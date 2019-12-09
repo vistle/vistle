@@ -441,22 +441,31 @@ bool in_situ::Engine::makeAmrMesh(visit_handle h) {
     if (!simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
         return false;
     }
-    visit_handle coordHandles[3]; //handles to variable data
-    size_t dimensions[3]{ 0,0,0 };
-    int ndims;
-    if (!simv2_RectilinearMesh_getCoords(h, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
-        return false;
-    }
-    int memory[3]{}, owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{}, offset[3]{}, stride[3]{};
-    void* data[3]{};
-    for (int i = 0; i < dim; ++i) {
-        if (simv2_VariableData_getArrayData(coordHandles[i], 0, memory[i], owner[i], dataType[i],
-            nComps[i], nTuples[i], offset[i], stride[i], data[i]) == VISIT_ERROR) {
+    for (size_t i = 0; i < dim; i++) {
+        printToConsole("invoking get mesh for domain " + std::to_string(i) + " with name " + name);
+        visit_handle meshHandle = simv2_invoke_GetMesh(i, name);
+        if (meshHandle == VISIT_INVALID_HANDLE) {
             return false;
         }
-        cerr << "coord " << i << "memory = " << memory[i] << "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << "offset = " << offset[i] <<
-            "stride = " << stride[i] << endl;
+        visit_handle coordHandles[3]; //handles to variable data
+        size_t dimensions[3]{ 0,0,0 };
+        int ndims;
+        if (!simv2_RectilinearMesh_getCoords(h, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
+            return false;
+        }
+        int memory[3]{}, owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{}, offset[3]{}, stride[3]{};
+        void* data[3]{};
+        for (int i = 0; i < dim; ++i) {
+            if (simv2_VariableData_getArrayData(coordHandles[i], 0, memory[i], owner[i], dataType[i],
+                nComps[i], nTuples[i], offset[i], stride[i], data[i]) == VISIT_ERROR) {
+                return false;
+            }
+            cerr << "coord " << i << "memory = " << memory[i] << "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << "offset = " << offset[i] <<
+                "stride = " << stride[i] << endl;
+        }
     }
+
+
 
     //vistle::RectilinearGrid::ptr vistleGrid(new vistle::RectilinearGrid());
 }
