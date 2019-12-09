@@ -24,7 +24,7 @@
 #include <boost/mpi.hpp>
 #include <control/hub.h>
 #include <util/directory.h>
-#include <manager/managerLib/manager.h>
+#include <manager/manager.h>
 #include <module/module.h>
 
 #include <core/rectilineargrid.h>
