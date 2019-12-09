@@ -63,13 +63,13 @@ namespace vistle {
 #define REGISTER_TYPE(ObjType, id) \
 do { \
    ObjectTypeRegistry::registerType<ObjType>(id); \
-} while (true)
+} while (false)
 
 #define REGISTER_VEC_TYPE(t) \
 do { \
    ObjectTypeRegistry::registerType<Vec<t,1>>(Vec<t,1>::type()); \
    ObjectTypeRegistry::registerType<Vec<t,3>>(Vec<t,3>::type()); \
-} while (true)
+} while (false)
 
 void registerTypes() {
 
