@@ -16,7 +16,7 @@
 
 #include <manager/manager.h>
 #include <module/module.h>
-
+#include <core/vec.h>
 
 namespace in_situ {
 enum class SimulationDataTyp {
