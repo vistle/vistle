@@ -74,7 +74,12 @@ private:
     std::thread managerThread;
 
     std::map<std::string, vistle::Port*> m_portsList;
-    std::vector<vistle::Object::ptr> m_dataObjects;
+    struct MeshInfo {
+        int numDomains = 0;
+        std::vector<int> handles;
+        std::vector< vistle::obj_ptr> grids;
+    };
+    std::map<std::string, MeshInfo> m_meshes;
     //callbacks from ConnectLibSim module
     std::function<bool(void)> timestepChangedCb; //returns true, if module is ready to receive data;
     std::function<void(void)> disconnectCb;
@@ -87,9 +92,11 @@ private:
 
     bool addPorts();
 
-    bool makeCurvilinearMesh(visit_handle h);
-    bool makeUntructuredMesh(visit_handle h);
-    bool makeAmrMesh(visit_handle h);
+    bool makeCurvilinearMesh(visit_handle meshMetaHandle);
+    bool makeUntructuredMesh(visit_handle meshMetaHandle);
+    bool makeAmrMesh(visit_handle meshMetaHandle);
+    bool sendMeshesToModule();
+    bool sendVarablesToModule();
     bool sendDataToModule();
 
 

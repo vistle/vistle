@@ -42,6 +42,7 @@ V_VISITXPORT int simv2_VariableData_getData2(visit_handle h, int *owner,
 #endif
 
 // These functions are only available in the runtime.
+//owner: VISIT_OWNER_, dataType: VISIT_DATATYPE_ , nComps: ? , nTuples : dimension , data : nTuples * sizeof(dataType) 
 V_VISITXPORT int simv2_VariableData_getData(visit_handle h, int &owner,
                                          int &dataType, int &nComps,
                                          int &nTuples, void *&data);

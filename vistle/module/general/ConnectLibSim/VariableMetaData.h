@@ -23,6 +23,7 @@ V_VISITXPORT int simv2_VariableMetaData_getUnits(visit_handle h, char **);
 V_VISITXPORT int simv2_VariableMetaData_setCentering(visit_handle h, int);
 V_VISITXPORT int simv2_VariableMetaData_getCentering(visit_handle h, int*);
 V_VISITXPORT int simv2_VariableMetaData_setType(visit_handle h, int);
+//VISIT_VARTYPE_
 V_VISITXPORT int simv2_VariableMetaData_getType(visit_handle h, int*);
 V_VISITXPORT int simv2_VariableMetaData_setTreatAsASCII(visit_handle h, int);
 V_VISITXPORT int simv2_VariableMetaData_getTreatAsASCII(visit_handle h, int*);

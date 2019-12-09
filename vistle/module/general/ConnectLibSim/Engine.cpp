@@ -355,9 +355,7 @@ void Engine::SimulationInitiateCommand(const char* command) {
 }
 
 void Engine::DeleteData() {
-    for (size_t i = 0; i < m_dataObjects.size(); ++i) {
-        m_dataObjects[i].reset(vistle::Object::createEmpty());
-    }
+    m_meshes.clear();
     sendData();
 }
 
@@ -432,19 +430,22 @@ bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
     return false;
 }
 
-bool in_situ::Engine::makeAmrMesh(visit_handle h) {
+bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
     char* name;
     int dim;
-    if (!simv2_MeshMetaData_getName(h, &name)) {
+    if (!simv2_MeshMetaData_getName(meshMetaHandle, &name)) {
         return false;
     }
-    if (!simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
+    if (!simv2_MeshMetaData_getTopologicalDimension(meshMetaHandle, &dim)) {
         return false;
     }
     int numDomains = 0;
-    if (!simv2_MeshMetaData_getNumDomains(h, &numDomains)) {
+    if (!simv2_MeshMetaData_getNumDomains(meshMetaHandle, &numDomains)) {
         return false;
     }
+    MeshInfo mi;
+    mi.numDomains = numDomains;
+    m_meshes[name] = mi;
     for (size_t i = 0; i < numDomains; i++) {
         visit_handle meshHandle = simv2_invoke_GetMesh(i, name);
         int check = simv2_RectilinearMesh_check(meshHandle);
@@ -458,25 +459,36 @@ bool in_situ::Engine::makeAmrMesh(visit_handle h) {
             if (!simv2_RectilinearMesh_getCoords(meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
                 return false;
             }
-            int memory[3]{}, owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{}, offset[3]{}, stride[3]{};
+            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{};
             void* data[3]{};
             for (int i = 0; i < dim; ++i) {
-                if (simv2_VariableData_getArrayData(coordHandles[i], 0, memory[i], owner[i], dataType[i],
-                    nComps[i], nTuples[i], offset[i], stride[i], data[i]) == VISIT_ERROR) {
+                if (simv2_VariableData_getData(coordHandles[i], owner[i], dataType[i],
+                    nComps[i], nTuples[i], data[i]) == VISIT_ERROR) {
                     return false;
                 }
-                cerr << "coord " << i << "memory = " << memory[i] << "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << "offset = " << offset[i] <<
-                    "stride = " << stride[i] << endl;
+                cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
+                if (dataType[i] != VISIT_DATATYPE_FLOAT) {
+                    printToConsole("mesh coords must be floats");
+                    return false;
+                }
             }
+            vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
+            m_meshes[name].handles.push_back(meshHandle);
+            m_meshes[name].grids.push_back(grid);
+            for (size_t i = 0; i < dim; i++) {
+                memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
+            }
+            m_module->addObject(name, grid);
         }
-
+        return true;
     }
 
 
 
     //vistle::RectilinearGrid::ptr vistleGrid(new vistle::RectilinearGrid());
 }
-bool in_situ::Engine::sendDataToModule() {
+
+bool in_situ::Engine::sendMeshesToModule()     {
     int numMeshes = 0;
     if (!getNumObjects(SimulationDataTyp::mesh, numMeshes)) {
         return false;
@@ -525,6 +537,79 @@ bool in_situ::Engine::sendDataToModule() {
             return false;
             break;
         }
+    }
+    return true;
+}
+
+bool in_situ::Engine::sendVarablesToModule()     {
+    int numVars = 0;
+    if (!getNumObjects(SimulationDataTyp::variable, numVars)) {
+        return false;
+    }
+    for (size_t i = 0; i < numVars; i++) {
+        visit_handle varMetaHandle = VISIT_INVALID_HANDLE;
+        if (!getNthObject(SimulationDataTyp::variable, i, varMetaHandle)) {
+            return false;
+        }
+        char* name, *meshName;
+        if (!simv2_VariableMetaData_getName(varMetaHandle, &name)) {
+            return false;
+        }
+        if (!simv2_VariableMetaData_getMeshName(varMetaHandle, &meshName)) {
+            return false;
+        }
+        auto meshInfo = m_meshes.find(meshName);
+        if (meshInfo == m_meshes.end()) {
+            printToConsole(std::string("can't find mesh ") + meshName + " for variable " + name);
+            return false;
+        }
+
+
+        for (size_t j = 0; j < meshInfo->second.numDomains; j++) {
+            visit_handle varHandle = simv2_invoke_GetVariable(j, name);
+            int  owner, dataType, nComps, nTuples;
+            void* data;
+            if (!simv2_VariableData_getData(varHandle, owner, dataType,
+                nComps, nTuples, data)) {
+                return false;
+            }
+            cerr << "variable " << name << " domain " << j << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
+            switch (dataType) {
+            case VISIT_DATATYPE_CHAR:
+            {
+                vistle::Vec<char, 1>::ptr variable(new vistle::Vec<char, 1>(nTuples));
+                variable->setGrid(meshInfo->second.grids[j]);
+                //variable->setTimestep(timestep);
+                variable->setBlock(j);
+                variable->addAttribute("_species", name);
+                m_module->addObject(name, variable);
+            }
+            break;
+            case VISIT_DATATYPE_INT:
+            case VISIT_DATATYPE_FLOAT:
+            case VISIT_DATATYPE_DOUBLE:
+            case VISIT_DATATYPE_LONG:
+            case VISIT_DATATYPE_STRING:
+            default:
+                break;
+            }
+
+
+        }
+
+
+
+
+        
+    }
+}
+
+bool in_situ::Engine::sendDataToModule() {
+    if (!sendMeshesToModule()) {
+        return false;
+    }
+    if (!sendVarablesToModule()) {
+        return false;
     }
     return true;
 
