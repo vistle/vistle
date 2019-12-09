@@ -570,7 +570,7 @@ bool in_situ::Engine::sendVarablesToModule()     {
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
-                sendVariableToModule(name, meshInfo->second.grids[j], j, (char*)data, nTuples);
+                sendVariableToModule(name, meshInfo->second.grids[j], j, (unsigned char*)data, nTuples);
 
             }
             break;
