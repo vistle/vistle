@@ -443,9 +443,9 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
     if (!simv2_MeshMetaData_getNumDomains(meshMetaHandle, &numDomains)) {
         return false;
     }
-    MeshInfo mi;
-    mi.numDomains = numDomains;
-    m_meshes[name] = mi;
+    cerr << "making amr grid with " << numDomains << " domains" << endl;
+    auto meshInfo = m_meshes.insert(std::make_pair(name, MeshInfo{}));
+    meshInfo.first->second.numDomains = numDomains;
     for (size_t i = 0; i < numDomains; i++) {
         visit_handle meshHandle = simv2_invoke_GetMesh(i, name);
         int check = simv2_RectilinearMesh_check(meshHandle);
@@ -454,7 +454,6 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
         if (check == VISIT_OKAY) {
             printToConsole("handle ok");
             visit_handle coordHandles[3]; //handles to variable data
-            size_t dimensions[3]{ 0,0,0 };
             int ndims;
             if (!simv2_RectilinearMesh_getCoords(meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
                 return false;
@@ -473,19 +472,15 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
                 }
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            m_meshes[name].handles.push_back(meshHandle);
-            m_meshes[name].grids.push_back(grid);
+            meshInfo.first->second.handles.push_back(meshHandle);
+            meshInfo.first->second.grids.push_back(grid);
             for (size_t i = 0; i < dim; i++) {
                 memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
             }
             m_module->addObject(name, grid);
         }
-        return true;
     }
-
-
-
-    //vistle::RectilinearGrid::ptr vistleGrid(new vistle::RectilinearGrid());
+    return true;
 }
 
 bool in_situ::Engine::sendMeshesToModule()     {
@@ -528,7 +523,6 @@ bool in_situ::Engine::sendMeshesToModule()     {
         break;
         case VISIT_MESHTYPE_AMR:
         {
-            cerr << "making amr grid" << endl;
             if (!makeAmrMesh(meshHandle))
                 return false;
         }
