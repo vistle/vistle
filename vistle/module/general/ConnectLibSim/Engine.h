@@ -106,6 +106,7 @@ private:
         variable->setGrid(mesh);
         //variable->setTimestep(timestep);
         variable->setBlock(domain);
+        variable->setMapping(vistle::DataBase::Element);
         variable->addAttribute("_species", name);
         m_module->addObject(name, variable);
     }
