@@ -61,14 +61,15 @@
 namespace vistle {
 
 #define REGISTER_TYPE(ObjType, id) \
-{ \
+do { \
    ObjectTypeRegistry::registerType<ObjType>(id); \
-}
+} while (true)
 
-#define REGISTER_VEC_TYPE(t, d) \
-{ \
-   ObjectTypeRegistry::registerType<Vec<t,d>>(Vec<t,d>::type()); \
-}
+#define REGISTER_VEC_TYPE(t) \
+do { \
+   ObjectTypeRegistry::registerType<Vec<t,1>>(Vec<t,1>::type()); \
+   ObjectTypeRegistry::registerType<Vec<t,3>>(Vec<t,3>::type()); \
+} while (true)
 
 void registerTypes() {
 
@@ -87,26 +88,21 @@ void registerTypes() {
    REGISTER_TYPE(RectilinearGrid, Object::RECTILINEARGRID);
    REGISTER_TYPE(StructuredGrid, Object::STRUCTUREDGRID);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
-   REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
+   REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST);
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);
    REGISTER_TYPE(Celltree2, Object::CELLTREE2);
    REGISTER_TYPE(Celltree3, Object::CELLTREE3);
    REGISTER_TYPE(Normals, Object::NORMALS);
 
-   REGISTER_VEC_TYPE(unsigned char, 1);
-   REGISTER_VEC_TYPE(unsigned char, 3);
-   REGISTER_VEC_TYPE(int32_t, 1);
-   REGISTER_VEC_TYPE(int32_t, 3);
-   REGISTER_VEC_TYPE(uint32_t, 1);
-   REGISTER_VEC_TYPE(uint32_t, 3);
-   REGISTER_VEC_TYPE(int64_t, 1);
-   REGISTER_VEC_TYPE(int64_t, 3);
-   REGISTER_VEC_TYPE(uint64_t, 1);
-   REGISTER_VEC_TYPE(uint64_t, 3);
-   REGISTER_VEC_TYPE(float, 1);
-   REGISTER_VEC_TYPE(float, 3);
-   REGISTER_VEC_TYPE(double, 1);
-   REGISTER_VEC_TYPE(double, 3);
+   REGISTER_VEC_TYPE(char);
+   REGISTER_VEC_TYPE(signed char);
+   REGISTER_VEC_TYPE(unsigned char);
+   REGISTER_VEC_TYPE(int32_t);
+   REGISTER_VEC_TYPE(uint32_t);
+   REGISTER_VEC_TYPE(int64_t);
+   REGISTER_VEC_TYPE(uint64_t);
+   REGISTER_VEC_TYPE(float);
+   REGISTER_VEC_TYPE(double);
 }
 
 } // namespace vistle
