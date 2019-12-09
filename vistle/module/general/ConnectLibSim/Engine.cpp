@@ -567,17 +567,16 @@ bool in_situ::Engine::sendVarablesToModule()     {
 
         for (size_t j = 0; j < meshInfo->second.numDomains; j++) {
             visit_handle varHandle = simv2_invoke_GetVariable(j, name);
-            int  owner, dataType, nComps, nTuples;
-            void* data;
-            if (!simv2_VariableData_getData(varHandle, owner, dataType,
-                nComps, nTuples, data)) {
+            int  owner{}, dataType{}, nComps{}, nTuples{};
+            void* data = nullptr;
+            if (!simv2_VariableData_getData(varHandle, owner, dataType, nComps, nTuples, data)) {
                 return false;
             }
             cerr << "variable " << name << " domain " << j << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
-                sendVariableToModule(name, j, (char*)data, nTuples);
+                sendVariableToModule(name, meshInfo->second.grids[j], j, (char*)data, nTuples);
                 //vistle::Vec<char, 1>::ptr variable(new vistle::Vec<char, 1>(nTuples));
                 //memcpy(variable->x().data(), data, nTuples * sizeof(char));
                 //variable->setGrid(meshInfo->second.grids[j]);
