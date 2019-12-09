@@ -441,10 +441,14 @@ bool in_situ::Engine::makeAmrMesh(visit_handle h) {
     if (!simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
         return false;
     }
-    for (size_t i = 0; i < dim; i++) {
+    int numDomains = 0;
+    if (!simv2_MeshMetaData_getNumDomains(h, &numDomains)) {
+        return false;
+    }
+    for (size_t i = 0; i < numDomains; i++) {
         printToConsole("invoking get mesh for domain " + std::to_string(i) + " with name " + name);
         visit_handle meshHandle = simv2_invoke_GetMesh(i, name);
-        if (!meshHandle == VISIT_INVALID_HANDLE) {
+        if (!meshHandle == VISIT_INVALID_HANDLE && !meshHandle == VISIT_ERROR) {
             visit_handle coordHandles[3]; //handles to variable data
             size_t dimensions[3]{ 0,0,0 };
             int ndims;
