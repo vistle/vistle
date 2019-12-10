@@ -1499,7 +1499,7 @@ bool Hub::startCleaner() {
    return true;
 }
 
-#ifdef MODULE_THREAD
+
 bool Hub::startManagerInSimulation(const std::string& path, const std::vector<std::string>& args)     {
     int port;
     std::string host, key;
@@ -1615,7 +1615,7 @@ bool Hub::SendInitToSim(const std::vector<std::string> launchArgs, const std::st
     sendInfo("Successfully connected to simulation");
     return true;
 }
-#endif // MODULE_THREAD
+
 
 void Hub::sendInfo(const std::string &s) const {
     CERR << s << std::endl;

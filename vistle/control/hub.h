@@ -73,11 +73,11 @@ private:
    void slaveReady(Slave &slave);
    bool startCleaner();
    bool startManager();
-#ifdef MODULE_THREAD
+   //to connect a LibSim simulation
    bool startManagerInSimulation(const std::string& path, const std::vector<std::string>& args);
    bool readSim2File(const std::string& path, std::string& hostname, int& port, std::string& securityKey);
    bool SendInitToSim(const std::vector<std::string> launchArgs, const std::string& host, int port, const std::string& key);
-#endif // MODULE_THREAD
+
 
 
 
