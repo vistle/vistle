@@ -143,9 +143,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("dataport", po::value<unsigned short>(), "data port")
       ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
-#ifdef MODULE_THREAD
       ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation")
-#endif
       ;
    po::variables_map vm;
    try {
