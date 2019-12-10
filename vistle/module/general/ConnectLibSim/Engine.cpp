@@ -458,7 +458,7 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
             if (!simv2_RectilinearMesh_getCoords(meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
                 return false;
             }
-            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{};
+            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{1,1,1};
             void* data[3]{};
             for (int i = 0; i < dim; ++i) {
                 if (simv2_VariableData_getData(coordHandles[i], owner[i], dataType[i],
