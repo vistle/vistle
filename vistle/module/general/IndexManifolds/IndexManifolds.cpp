@@ -26,7 +26,7 @@ IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::commu
 
    p_coord = addIntVectorParameter("coord", "coordinates of point on surface/line", IntParamVector(0,0,0));
    setParameterMinimum(p_coord, IntParamVector(0,0,0));
-   p_direction = addIntParameter("direction", "normal on surface and direction of line", X, Parameter::Choice);
+   p_direction = addIntParameter("direction", "normal on surface and direction of line", Z, Parameter::Choice);
    V_ENUM_SET_CHOICES(p_direction, Direction);
 }
 
