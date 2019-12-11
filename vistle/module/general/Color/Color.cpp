@@ -316,7 +316,34 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
 
    const ssize_t numElements = object->getSize();
 
-   if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
+   if (Vec<Byte>::const_ptr scal = Vec<Byte>::as(object)) {
+      const vistle::Byte *x = &scal->x()[0];
+#ifdef USE_OPENMP
+#pragma omp parallel
+#endif
+      {
+         Byte tmin = std::numeric_limits<Byte>::max();
+         Byte tmax = std::numeric_limits<Byte>::min();
+#ifdef USE_OPENMP
+#pragma omp for
+#endif
+         for (ssize_t index = 0; index < numElements; index ++) {
+            if (x[index] < tmin)
+               tmin = x[index];
+            if (x[index] > tmax)
+               tmax = x[index];
+         }
+#ifdef USE_OPENMP
+#pragma omp critical
+#endif
+         {
+            if (tmin < min)
+               min = tmin;
+            if (tmax > max)
+               max = tmax;
+         }
+      }
+   } else if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
       const vistle::Index *x = &scal->x()[0];
 #ifdef USE_OPENMP
 #pragma omp parallel
@@ -411,7 +438,13 @@ void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned lon
    const Scalar w = m_max-m_min;
    unsigned long *bins = binsVec.data();
 
-   if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
+   if (Vec<Byte>::const_ptr scal = Vec<Byte>::as(object)) {
+      const vistle::Byte *x = &scal->x()[0];
+      for (ssize_t index = 0; index < numElements; index ++) {
+          const int bin = clamp<int>((x[index]-m_min)/w*numBins, 0, numBins-1);
+          ++bins[bin];
+      }
+   } else if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
       const vistle::Index *x = &scal->x()[0];
       for (ssize_t index = 0; index < numElements; index ++) {
           const int bin = clamp<int>((x[index]-m_min)/w*numBins, 0, numBins-1);
@@ -520,6 +553,15 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    } else if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
 
       const vistle::Index *x = &f->x()[0];
+
+#ifdef USE_OPENMP
+#pragma omp parallel for
+#endif
+      for (ssize_t index = 0; index < numElem; index ++)
+         tc[index] = (x[index] - min) * invRange;
+   } else if (Vec<Byte>::const_ptr f = Vec<Byte>::as(object)) {
+
+      const vistle::Byte *x = &f->x()[0];
 
 #ifdef USE_OPENMP
 #pragma omp parallel for
