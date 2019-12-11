@@ -15,6 +15,7 @@
 #include <core/lines.h>
 #include <core/unstr.h>
 #include <core/triangles.h>
+#include <core/quads.h>
 
 
 namespace vistle
@@ -160,10 +161,16 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
            }
        }
    } else {
-       // triangles
+       // triangles/quads
+       Index N = 0;
+       if (conn_list)
+           N = num_conn/num_elem;
+       else
+           N = num_point/num_elem;
+       assert(N == 3 || N == 4);
        for(Index elem=0; elem<num_elem; ++elem) {
-           for(Index j=0; j<3; ++j) {
-               const Index vertex = conn_list ? conn_list[elem*3+j] : elem*3+j;
+           for(Index j=0; j<N; ++j) {
+               const Index vertex = conn_list ? conn_list[elem*N+j] : elem*N+j;
                weight_num[vertex] += 1.0;
                for (Index c=0; c<numComp; ++c) {
                    out_data[c][vertex] += in_data[c][elem];
@@ -404,6 +411,14 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       ycoord = &tri->y()[0];
       zcoord = &tri->z()[0];
       conn_list = &tri->cl()[0];
+   } else if (auto qua = Quads::as(geo_in)) {
+      num_point = qua->getNumCoords();
+      num_conn = qua->getNumCorners();
+      num_elem = num_conn > 0 ? num_conn/4 : num_point/4;
+      xcoord = &qua->x()[0];
+      ycoord = &qua->y()[0];
+      zcoord = &qua->z()[0];
+      conn_list = &qua->cl()[0];
    }
 
    const Index dataSize = data_in->getSize();
