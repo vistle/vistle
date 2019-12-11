@@ -571,18 +571,39 @@ bool in_situ::Engine::sendVarablesToModule()     {
             case VISIT_DATATYPE_CHAR:
             {
                 sendVariableToModule(name, meshInfo->second.grids[j], j, (unsigned char*)data, nTuples);
-
             }
             break;
             case VISIT_DATATYPE_INT:
+            {
+                sendVariableToModule(name, meshInfo->second.grids[j], j, (int*)data, nTuples);
+            }
+            break;
             case VISIT_DATATYPE_FLOAT:
+            {
+                sendVariableToModule(name, meshInfo->second.grids[j], j, (float*)data, nTuples);
+            }
+            break;
             case VISIT_DATATYPE_DOUBLE:
+            {
+                sendVariableToModule(name, meshInfo->second.grids[j], j, (double*)data, nTuples);
+            }
+            break;
             case VISIT_DATATYPE_LONG:
+            {
+                printToConsole("variable data of type long not supported");
+            }
+            break;
             case VISIT_DATATYPE_STRING:
+            {
+                printToConsole("what are strings on a grid?");
+                return false;
+            }
+            break;
             default:
+                return false;
                 break;
             }
-
+            return true;
 
         }
 
