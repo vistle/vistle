@@ -29,11 +29,12 @@ inline double sqr(Scalar x)
 using namespace vistle;
 
 ////// workin' routines
+template<typename S>
 bool
-coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
+coCellToVert::interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-      Index numComp, Index dataSize, const Scalar *in_data[], Scalar *out_data[], Algorithm algo_option)
+      Index numComp, Index dataSize, const S *in_data[], S *out_data[], Algorithm algo_option)
 {
    // check for errors
    if (!xcoord || !ycoord || !zcoord) {
@@ -58,8 +59,8 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
    if( dataSize==num_point && dataSize!=num_elem )
    {
        for (Index c=0; c<numComp; ++c) {
-           const Scalar *in = in_data[c];
-           Scalar *out = out_data[c];
+           const S *in = in_data[c];
+           S *out = out_data[c];
            for(Index i=0; i<num_point; i++ )
            {
                out[i] = in[i];
@@ -92,14 +93,125 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
    return true;			       
 }
 
+template<typename S>
 bool
 coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
+      const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
+      Index numComp, const S *in_data[], S *out_data[])
+{
+    std::vector<unsigned char> weight(num_point);
+    unsigned char *weight_num = weight.data();
+
+    std::vector<Scalar> tmp;
+    Scalar *tmp_out[3]{nullptr};
+
+    tmp.resize(num_point*numComp);
+    for (Index c=0; c<numComp; ++c) {
+        tmp_out[c] = tmp.data()+c*num_point;
+    }
+
+    if (elem_list) {
+        for(Index i=0; i<num_elem; i++ )
+        {
+            if (type_list && (type_list[i]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
+                Index begin = elem_list[i], end = elem_list[i+1];
+                std::vector<Index> verts;
+                verts.reserve(end-begin);
+                Index j=begin;
+                while(j<end) {
+                    Index nvert = conn_list[j];
+                    assert(nvert < end-begin);
+                    ++j;
+                    for (Index k=j; k<j+nvert; ++k) {
+                        assert(conn_list[k] < num_point);
+                        verts.push_back(conn_list[k]);
+                    }
+                    j += nvert;
+                }
+                std::sort(verts.begin(), verts.end());
+                auto last = std::unique(verts.begin(), verts.end());
+                for (auto it = verts.begin(); it != last; ++it) {
+                    Index vertex = *it;
+                    ++weight_num[ vertex ];
+                    for (Index c=0; c<numComp; ++c) {
+                        tmp_out[c][vertex] += in_data[c][i];
+                    }
+                }
+            } else if (type_list && (type_list[i]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::CPOLYHEDRON) {
+                Index begin = elem_list[i], end = elem_list[i+1];
+                std::vector<Index> verts;
+                verts.reserve(end-begin);
+                for (Index j=begin; j<end; ++j) {
+                    verts.push_back(conn_list[j]);
+                }
+                std::sort(verts.begin(), verts.end());
+                auto last = std::unique(verts.begin(), verts.end());
+                for (auto it = verts.begin(); it != last; ++it) {
+                    Index vertex = *it;
+                    ++weight_num[ vertex ];
+                    for (Index c=0; c<numComp; ++c) {
+                        tmp_out[c][vertex] += in_data[c][i];
+                    }
+                }
+            } else {
+                const Index n = elem_list[i+1]-elem_list[i];
+                for(Index j=0; j<n; j++ )
+                {
+                    Index vertex = conn_list[ elem_list[i]+j ];
+                    ++weight_num[ vertex ];
+                    for (Index c=0; c<numComp; ++c) {
+                        tmp_out[c][vertex] += in_data[c][i];
+                    }
+                }
+            }
+        }
+    } else {
+        // triangles/quads
+        Index N = 0;
+        if (conn_list)
+            N = num_conn/num_elem;
+        else
+            N = num_point/num_elem;
+        assert(N == 3 || N == 4);
+        for(Index elem=0; elem<num_elem; ++elem) {
+            for(Index j=0; j<N; ++j) {
+                const Index vertex = conn_list ? conn_list[elem*N+j] : elem*N+j;
+                ++weight_num[vertex];
+                for (Index c=0; c<numComp; ++c) {
+                    tmp_out[c][vertex] += in_data[c][elem];
+                }
+            }
+        }
+        if (!conn_list) {
+            // all weights are 1
+            return true;
+        }
+    }
+
+    // divide value sum by 'weight' (# adjacent cells)
+    for(Index vertex=0; vertex<num_point; vertex++ ) {
+        if (weight_num[vertex]>=1) {
+            for (Index c=0; c<numComp; ++c) {
+                tmp_out[c][vertex] /= weight_num[vertex];
+            }
+        }
+        for (Index c=0; c<numComp; ++c) {
+            out_data[c][vertex] = tmp_out[c][vertex];
+        }
+    }
+
+    return true;
+}
+
+template<>
+bool
+coCellToVert::simpleAlgo<Scalar>( Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
       Index numComp, const Scalar *in_data[], Scalar *out_data[])
 {
    // reset everything to 0, != 0 to prevent div/0 errors
-   std::vector<Scalar> weight(num_point, 1.0e-30f);
-   Scalar *weight_num = weight.data();
+   std::vector<unsigned char> weight(num_point);
+   unsigned char *weight_num = weight.data();
 
    for (Index c=0; c<numComp; ++c) {
        memset(out_data[c], 0, sizeof(Scalar)*num_point);
@@ -127,7 +239,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                auto last = std::unique(verts.begin(), verts.end());
                for (auto it = verts.begin(); it != last; ++it) {
                    Index vertex = *it;
-                   weight_num[ vertex ] += 1.0;
+                   ++weight_num[ vertex ];
                    for (Index c=0; c<numComp; ++c) {
                        out_data[c][vertex] += in_data[c][i];
                    }
@@ -143,7 +255,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                auto last = std::unique(verts.begin(), verts.end());
                for (auto it = verts.begin(); it != last; ++it) {
                    Index vertex = *it;
-                   weight_num[ vertex ] += 1.0;
+                   ++weight_num[ vertex ];
                    for (Index c=0; c<numComp; ++c) {
                        out_data[c][vertex] += in_data[c][i];
                    }
@@ -153,7 +265,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
                for(Index j=0; j<n; j++ )
                {
                    Index vertex = conn_list[ elem_list[i]+j ];
-                   weight_num[ vertex ] += 1.0;
+                   ++weight_num[ vertex ];
                    for (Index c=0; c<numComp; ++c) {
                        out_data[c][vertex] += in_data[c][i];
                    }
@@ -171,7 +283,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
        for(Index elem=0; elem<num_elem; ++elem) {
            for(Index j=0; j<N; ++j) {
                const Index vertex = conn_list ? conn_list[elem*N+j] : elem*N+j;
-               weight_num[vertex] += 1.0;
+               ++weight_num[vertex];
                for (Index c=0; c<numComp; ++c) {
                    out_data[c][vertex] += in_data[c][elem];
                }
@@ -185,9 +297,9 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
 
    // divide value sum by 'weight' (# adjacent cells)
    for(Index vertex=0; vertex<num_point; vertex++ ) {
-       if (weight_num[vertex]>=1.0) {
+       if (weight_num[vertex]>=1) {
            for (Index c=0; c<numComp; ++c) {
-               out_data[c][vertex] /= weight_num[vertex];
+               out_data[c][vertex] /= (double)weight_num[vertex];
          }
        }
    }
@@ -195,11 +307,13 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
    return true;
 }
 
+
+template<typename S>
 bool
 coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-      Index numComp, const Scalar *in_data[], Scalar *out_data[])
+      Index numComp, const S *in_data[], S *out_data[])
 {
    if( !neighbour_cells || !neighbour_idx )
       return false;
@@ -352,12 +466,12 @@ coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
          weight_sum=1.0;
 
       if( numComp==1 )
-         out_data[0][vertex] = (Scalar)(value_sum_0 / weight_sum);
+         out_data[0][vertex] = (S)(value_sum_0 / weight_sum);
       else
       {
-         out_data[0][vertex] = (Scalar)(value_sum_0 / weight_sum);
-         out_data[1][vertex] = (Scalar)(value_sum_1 / weight_sum);
-         out_data[2][vertex] = (Scalar)(value_sum_2 / weight_sum);
+         out_data[0][vertex] = (S)(value_sum_0 / weight_sum);
+         out_data[1][vertex] = (S)(value_sum_1 / weight_sum);
+         out_data[2][vertex] = (S)(value_sum_2 / weight_sum);
       }
    }
 
@@ -410,7 +524,8 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       xcoord = &tri->x()[0];
       ycoord = &tri->y()[0];
       zcoord = &tri->z()[0];
-      conn_list = &tri->cl()[0];
+      if (num_conn > 0)
+          conn_list = &tri->cl()[0];
    } else if (auto qua = Quads::as(geo_in)) {
       num_point = qua->getNumCoords();
       num_conn = qua->getNumCorners();
@@ -418,7 +533,8 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       xcoord = &qua->x()[0];
       ycoord = &qua->y()[0];
       zcoord = &qua->z()[0];
-      conn_list = &qua->cl()[0];
+      if (num_conn > 0)
+          conn_list = &qua->cl()[0];
    }
 
    const Index dataSize = data_in->getSize();
@@ -426,10 +542,16 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       return DataBase::ptr();
    }
 
+   typedef unsigned char Byte;
    Index numComp = 0;
    DataBase::ptr data_return;
    const Scalar *in_data[3] = { nullptr, nullptr, nullptr };
    Scalar *out_data[3] = { nullptr, nullptr, nullptr };
+   const Index *in_data_i[3] = { nullptr, nullptr, nullptr };
+   Index *out_data_i[3] = { nullptr, nullptr, nullptr };
+   const Byte *in_data_b[3] = { nullptr, nullptr, nullptr };
+   Byte *out_data_b[3] = { nullptr, nullptr, nullptr };
+
    if(auto tex_in = Texture1D::as(data_in)) {
        numComp = 1;
        in_data[0] = &tex_in->x()[0];
@@ -457,14 +579,66 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       out_data[1] = vdata->y().data();
       out_data[2] = vdata->z().data();
       data_return = vdata;
+   } else if(auto s_data_in = Vec<Index>::as(data_in)) {
+       numComp = 1;
+       in_data_i[0] = &s_data_in->x()[0];
+
+       Vec<Index>::ptr sdata(new Vec<Index>(num_point));
+       out_data_i[0] = sdata->x().data();
+       data_return = sdata;
+   } else if(auto v_data_in = Vec<Index, 3>::as(data_in)) {
+      numComp = 3;
+      in_data_i[0] = &v_data_in->x()[0];
+      in_data_i[1] = &v_data_in->y()[0];
+      in_data_i[2] = &v_data_in->z()[0];
+
+      Vec<Index,3>::ptr vdata(new Vec<Index, 3>(num_point));
+      out_data_i[0] = vdata->x().data();
+      out_data_i[1] = vdata->y().data();
+      out_data_i[2] = vdata->z().data();
+      data_return = vdata;
+   } else if(auto s_data_in = Vec<Byte>::as(data_in)) {
+       numComp = 1;
+       in_data_b[0] = &s_data_in->x()[0];
+
+       Vec<Byte>::ptr sdata(new Vec<Byte>(num_point));
+       out_data_b[0] = sdata->x().data();
+       data_return = sdata;
+   } else if(auto v_data_in = Vec<Byte>::as(data_in)) {
+      numComp = 3;
+      in_data_b[0] = &v_data_in->x()[0];
+      in_data_b[1] = &v_data_in->y()[0];
+      in_data_b[2] = &v_data_in->z()[0];
+
+      Vec<Byte, 3>::ptr vdata(new Vec<Byte, 3>(num_point));
+      out_data_b[0] = vdata->x().data();
+      out_data_b[1] = vdata->y().data();
+      out_data_b[2] = vdata->z().data();
+      data_return = vdata;
    }
 
-   if(!interpolate( unstructured, num_elem, num_conn, num_point,
-            elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, xcoord, ycoord, zcoord,
-            numComp, dataSize, in_data, out_data, algo_option ) )
-   {
-      return DataBase::ptr();
+   if (in_data[0]) {
+       if(interpolate( unstructured, num_elem, num_conn, num_point,
+                        elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, xcoord, ycoord, zcoord,
+                        numComp, dataSize, in_data, out_data, algo_option ) )
+       {
+           return data_return;
+       }
+   } else if (in_data_i[0]) {
+       if(interpolate( unstructured, num_elem, num_conn, num_point,
+                        elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, xcoord, ycoord, zcoord,
+                        numComp, dataSize, in_data_i, out_data_i, algo_option ) )
+       {
+           return data_return;
+       }
+   } else if (in_data_b[0]) {
+       if(interpolate( unstructured, num_elem, num_conn, num_point,
+                        elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, xcoord, ycoord, zcoord,
+                        numComp, dataSize, in_data_b, out_data_b, algo_option ) )
+       {
+           return data_return;
+       }
    }
 
-   return data_return;			        
+   return DataBase::ptr();
 }

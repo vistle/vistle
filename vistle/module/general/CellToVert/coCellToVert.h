@@ -29,14 +29,15 @@ class coCellToVert
        //                                           surrounding center of elements.
        //
        //        - only implemented for unstructured grids    
-       //                    
+       //
        ////////////////////////////////////////////////////////////////////////////////////////////////////
-       
-       bool weightedAlgo(Index num_elem, Index num_conn, Index num_point,
+
+       template<typename S>
+       static bool weightedAlgo(Index num_elem, Index num_conn, Index num_point,
                              const Index *elem_list, const Index *conn_list, const unsigned char *type_list, 
 			     const Index *neighbour_cells, const Index *neighbour_idx,
-			     const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                             Index numComp, const Scalar *in_data[], Scalar *out_data[]);
+                             const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
+                             Index numComp, const S *in_data[], S *out_data[]);
 	
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        //
@@ -46,9 +47,10 @@ class coCellToVert
        //
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        			     
-       bool simpleAlgo(Index num_elem, Index num_conn, Index num_point,
+       template<typename S>
+       static bool simpleAlgo(Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
-                           Index numComp, const Scalar *in_data[], Scalar *out_data[]);
+                           Index numComp, const S *in_data[], S *out_data[]);
 
     public:
 
@@ -61,9 +63,10 @@ class coCellToVert
         //
 	//  returns false in case of an error
 	//
-        bool  interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
+        template<typename S>
+        static bool  interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
                const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                           Index numComp, Index dataSize, const Scalar *in_data[], Scalar *out_data[],  Algorithm algo_option=SIMPLE );
+                           Index numComp, Index dataSize, const S *in_data[], S *out_data[],  Algorithm algo_option=SIMPLE );
 };
 #endif
