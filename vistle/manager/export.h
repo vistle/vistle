@@ -1,6 +1,7 @@
 #ifndef VISTLE_MANAGER_EXPORT_H
 #define VISTLE_MANAGER_EXPORT_H
 
+#ifdef MODULE_THREAD
 #include <util/export.h>
 
 #if defined (vistle_clustermanager_EXPORTS)
@@ -8,5 +9,8 @@
 #else
 #define V_MANAGEREXPORT V_IMPORT
 #endif
+#endif // MODULE_THREAD
+
+
 
 #endif
