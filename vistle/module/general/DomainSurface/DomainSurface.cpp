@@ -127,30 +127,21 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    }
 
    DataBase::ptr data_obj_out;
-   if (haveElementData) {
-       if(auto data_in = Vec<Scalar, 3>::as(data)) {
-           data_obj_out = remapData<Scalar,3>(data_in, em);
-       } else if(auto data_in = Vec<Scalar,1>::as(data)) {
-           data_obj_out = remapData<Scalar,1>(data_in, em);
-       } else if(auto data_in = Vec<Index,3>::as(data)) {
-           data_obj_out = remapData<Index,3>(data_in, em);
-       } else if(auto data_in = Vec<Index,1>::as(data)) {
-           data_obj_out = remapData<Index,1>(data_in, em);
-       } else {
-           std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
-       }
+   const auto &dm = haveElementData ? em : vm;
+   if(auto data_in = Vec<Scalar, 3>::as(data)) {
+       data_obj_out = remapData<Scalar,3>(data_in, dm);
+   } else if(auto data_in = Vec<Scalar,1>::as(data)) {
+       data_obj_out = remapData<Scalar,1>(data_in, dm);
+   } else if(auto data_in = Vec<Index,3>::as(data)) {
+       data_obj_out = remapData<Index,3>(data_in, dm);
+   } else if(auto data_in = Vec<Index,1>::as(data)) {
+       data_obj_out = remapData<Index,1>(data_in, dm);
+   } else if(auto data_in = Vec<unsigned char,3>::as(data)) {
+       data_obj_out = remapData<unsigned char,3>(data_in, dm);
+   } else if(auto data_in = Vec<unsigned char,1>::as(data)) {
+       data_obj_out = remapData<unsigned char,1>(data_in, dm);
    } else {
-       if(auto data_in = Vec<Scalar, 3>::as(data)) {
-           data_obj_out = remapData<Scalar,3>(data_in, vm);
-       } else if(auto data_in = Vec<Scalar,1>::as(data)) {
-           data_obj_out = remapData<Scalar,1>(data_in, vm);
-       } else if(auto data_in = Vec<Index,3>::as(data)) {
-           data_obj_out = remapData<Index,3>(data_in, vm);
-       } else if(auto data_in = Vec<Index,1>::as(data)) {
-           data_obj_out = remapData<Index,1>(data_in, vm);
-       } else {
-           std::cerr << "WARNING: No valid 1D or 3D vertex data on input Port" << std::endl;
-       }
+       std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
    }
 
    if (data_obj_out) {
