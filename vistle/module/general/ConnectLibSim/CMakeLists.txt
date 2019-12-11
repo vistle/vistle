@@ -47,6 +47,7 @@ SET(RUNTIME_SOURCES
 )
 
 SET(RUNTIME_HEADERS 
+  Exeption.h
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h
   VisItDataInterfaceRuntimeP.h
