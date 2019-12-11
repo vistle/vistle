@@ -30,26 +30,6 @@ static  std::condition_variable main_thread_cv;
 static  std::deque<std::function<void()>> main_func;
 static  bool main_done = false;
 
-#if defined(HAVE_QT) && defined(MODULE_THREAD)
-#include <QApplication>
-#include <QCoreApplication>
-#include <QIcon>
-
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
-#include <xcb/xcb.h>
-#include <X11/ICE/ICElib.h>
-#endif
-#endif
-#endif
-
-#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
-namespace {
-void iceIOErrorHandler(IceConn conn) {
-    (void)conn;
-    std::cerr << "Vistle: ignoring ICE IO error" << std::endl;
-}
-}
-
 void run_on_main_thread(std::function<void()>& func) {
 
     {
@@ -60,7 +40,28 @@ void run_on_main_thread(std::function<void()>& func) {
     std::unique_lock<std::mutex> lock(main_thread_mutex);
     main_thread_cv.wait(lock, [] { return main_done || main_func.empty(); });
 }
+
+#if defined(HAVE_QT) && defined(MODULE_THREAD)
+#include <QApplication>
+#include <QCoreApplication>
+#include <QIcon>
 #endif
+#endif
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
+#include <xcb/xcb.h>
+#include <X11/ICE/ICElib.h>
+
+namespace {
+void iceIOErrorHandler(IceConn conn) {
+    (void)conn;
+    std::cerr << "Vistle: ignoring ICE IO error" << std::endl;
+}
+}
+#endif
+
+
+
 
 
 using namespace vistle;
