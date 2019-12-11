@@ -30,9 +30,9 @@ DomainSurface::~DomainSurface() {
 }
 
 template<class T, int Dim>
-typename Vec<T,Dim>::ptr remapData(typename Vec<T,Dim>::const_ptr in, const DomainSurface::VerticesMapping &vm) {
+typename Vec<T,Dim>::ptr remapData(typename Vec<T,Dim>::const_ptr in, const DomainSurface::DataMapping &dm) {
 
-    typename Vec<T,Dim>::ptr out(new Vec<T,Dim>(vm.size()));
+    typename Vec<T,Dim>::ptr out(new Vec<T,Dim>(dm.size()));
 
     const T *data_in[Dim];
     T *data_out[Dim];
@@ -41,7 +41,7 @@ typename Vec<T,Dim>::ptr remapData(typename Vec<T,Dim>::const_ptr in, const Doma
         data_out[d] = out->x(d).data();
     }
 
-    for (const auto &v: vm) {
+    for (const auto &v: dm) {
         Index f=v.first;
         Index s=v.second;
         for (int d=0; d<Dim; ++d) {
@@ -80,16 +80,22 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    Object::const_ptr grid_in = ugrid ? Object::as(ugrid) : std::dynamic_pointer_cast<const Object, const StructuredGridBase>(sgrid);
    assert(grid_in);
 
+   bool haveElementData = false;
+   if (data && data->guessMapping(grid_in) == DataBase::Element) {
+           haveElementData = true;
+   }
+
    Object::ptr surface;
-   VerticesMapping vm;
+   DataMapping vm;
+   DataMapping em;
    if (ugrid) {
-       auto poly = createSurface(ugrid);
+       auto poly = createSurface(ugrid, em, haveElementData);
        surface = poly;
        if (!poly)
            return true;
        renumberVertices(ugrid, poly, vm);
    } else if (sgrid) {
-       auto quad = createSurface(sgrid);
+       auto quad = createSurface(sgrid, em, haveElementData);
        surface = quad;
        if (!quad)
            return true;
@@ -108,12 +114,12 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
        return true;
    }
 
-   if (data->guessMapping(grid_in) != DataBase::Vertex) {
-       sendError("data mapping not per vertex");
+   if (!haveElementData && data->guessMapping(grid_in) != DataBase::Vertex) {
+       sendError("data mapping not per vertex and not per element");
        return true;
    }
 
-   if (vm.empty()) {
+   if (!haveElementData && vm.empty()) {
        DataBase::ptr dout = data->clone();
        dout->setGrid(surface);
        task->addObject("data_out", dout);
@@ -121,16 +127,30 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    }
 
    DataBase::ptr data_obj_out;
-   if(auto data_in = Vec<Scalar, 3>::as(data)) {
-       data_obj_out = remapData<Scalar,3>(data_in, vm);
-   } else if(auto data_in = Vec<Scalar,1>::as(data)) {
-       data_obj_out = remapData<Scalar,1>(data_in, vm);
-   } else if(auto data_in = Vec<Index,3>::as(data)) {
-       data_obj_out = remapData<Index,3>(data_in, vm);
-   } else if(auto data_in = Vec<Index,1>::as(data)) {
-       data_obj_out = remapData<Index,1>(data_in, vm);
+   if (haveElementData) {
+       if(auto data_in = Vec<Scalar, 3>::as(data)) {
+           data_obj_out = remapData<Scalar,3>(data_in, em);
+       } else if(auto data_in = Vec<Scalar,1>::as(data)) {
+           data_obj_out = remapData<Scalar,1>(data_in, em);
+       } else if(auto data_in = Vec<Index,3>::as(data)) {
+           data_obj_out = remapData<Index,3>(data_in, em);
+       } else if(auto data_in = Vec<Index,1>::as(data)) {
+           data_obj_out = remapData<Index,1>(data_in, em);
+       } else {
+           std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
+       }
    } else {
-         std::cerr << "WARNING: No valid 1D or 3D data on input Port" << std::endl;
+       if(auto data_in = Vec<Scalar, 3>::as(data)) {
+           data_obj_out = remapData<Scalar,3>(data_in, vm);
+       } else if(auto data_in = Vec<Scalar,1>::as(data)) {
+           data_obj_out = remapData<Scalar,1>(data_in, vm);
+       } else if(auto data_in = Vec<Index,3>::as(data)) {
+           data_obj_out = remapData<Index,3>(data_in, vm);
+       } else if(auto data_in = Vec<Index,1>::as(data)) {
+           data_obj_out = remapData<Index,1>(data_in, vm);
+       } else {
+           std::cerr << "WARNING: No valid 1D or 3D vertex data on input Port" << std::endl;
+       }
    }
 
    if (data_obj_out) {
@@ -143,7 +163,7 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
    return true;
 }
 
-Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid) const {
+Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr grid, DomainSurface::DataMapping &em, bool haveElementData) const {
 
    auto sgrid = std::dynamic_pointer_cast<const StructuredGrid, const StructuredGridBase>(grid);
 
@@ -151,6 +171,7 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
    auto &pcl = m_grid_out->cl();
    Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
 
+   Index el = 0;
    for (int d=0; d<3; ++d) {
        int d1 = d==0 ? 1 : 0;
        int d2 = d==d1+1 ? d1+2 : d1+1;
@@ -177,6 +198,9 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
                    Index idx[3]{0,0,0};
                    idx[d1] = i1;
                    idx[d2] = i2;
+                   if (haveElementData)
+                       em[el] = grid->cellIndex(idx, dims);
+                   ++el;
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1+1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
@@ -194,6 +218,9 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
                    idx[d] = grid->getNumDivisions(d)-1;
                    idx[d1] = i1;
                    idx[d2] = i2;
+                   if (haveElementData)
+                       em[el] = grid->cellIndex(idx, dims);
+                   ++el;
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1+1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
@@ -210,7 +237,7 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
    return m_grid_out;
 }
 
-void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, VerticesMapping &vm) const {
+void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, DataMapping &vm) const {
 
    const bool reuseCoord = getIntParameter("reuseCoordinates");
 
@@ -250,7 +277,7 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly
    }
 }
 
-void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, VerticesMapping &vm) const {
+void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, DataMapping &vm) const {
 
    const bool reuseCoord = getIntParameter("reuseCoordinates");
 
@@ -290,7 +317,7 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
    }
 }
 
-void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::ptr quad, VerticesMapping &vm) const {
+void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::ptr quad, DataMapping &vm) const {
 
     vm.clear();
     Index c=0;
@@ -320,7 +347,7 @@ void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::pt
     }
 }
 
-Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in) const {
+Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m_grid_in, DomainSurface::DataMapping &em, bool haveElementData) const {
 
    const bool showgho = getIntParameter("ghost");
    const bool showtet = getIntParameter("tetrahedron");
@@ -360,6 +387,8 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                           const Index *begin = &face[0], *end=&face[numVert];
                           auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                           std::copy(rbegin, rend, std::back_inserter(pcl));
+                          if (haveElementData)
+                              em[pl.size()] = i;
                           pl.push_back(pcl.size());
                       }
                   }
@@ -386,6 +415,8 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                               const Index *begin = &face[0], *end=&face[numVert];
                               auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                               std::copy(rbegin, rend, std::back_inserter(pcl));
+                              if (haveElementData)
+                                  em[pl.size()] = i;
                               pl.push_back(pcl.size());
                           }
                       }
@@ -431,6 +462,8 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                   for (unsigned j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);
                   }
+                  if (haveElementData)
+                      em[pl.size()] = i;
                   pl.push_back(pcl.size());
                }
             }
