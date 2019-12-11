@@ -1476,8 +1476,12 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    const bool localSender = idToHub(prog.senderId()) == Communicator::the().hubId();
    RunningMap::iterator i = runningMap.find(prog.senderId());
+   ClusterManager::Module* mod = nullptr;
    if (i == runningMap.end()) {
       vassert(localSender == false);
+   }
+   else {
+       mod = &i->second;
    }
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
@@ -1485,7 +1489,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       CERR << "handle ExecutionProgress: module " << prog.senderId() << " not found, msg=" << prog << std::endl;
       return false;
    }
-   auto &mod = i->second;
    auto &modState = i2->second;
 
    // initiate reduction if requested by module
@@ -1533,7 +1536,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    bool readyForPrepare = false, readyForReduce = false;
    bool unqueueExecute = false;
    if (localSender) {
-       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", before: #started=" << mod.ranksStarted << ", #fin=" << mod.ranksFinished << std::endl;
+       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", before: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
    } else {
        CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
    }
@@ -1541,9 +1544,9 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-             vassert(mod.ranksFinished < m_size);
-             ++mod.ranksStarted;
-             readyForPrepare = mod.ranksStarted==m_size;
+             vassert(mod->ranksFinished < m_size);
+             ++mod->ranksStarted;
+             readyForPrepare = mod->ranksStarted==m_size;
          }
          break;
       }
@@ -1551,14 +1554,14 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Finish: {
          readyForReduce = true;
          if (handleOnMaster && localSender) {
-             ++mod.ranksFinished;
-             if (mod.ranksFinished == m_size) {
-                if (mod.ranksStarted != m_size) {
-                   CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
+             ++mod->ranksFinished;
+             if (mod->ranksFinished == m_size) {
+                if (mod->ranksStarted != m_size) {
+                   CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod->ranksStarted << std::endl;
                 }
-                vassert(mod.ranksStarted >= m_size);
-                mod.ranksStarted -= m_size;
-                mod.ranksFinished = 0;
+                vassert(mod->ranksStarted >= m_size);
+                mod->ranksStarted -= m_size;
+                mod->ranksFinished = 0;
                 unqueueExecute = true;
              } else {
                 readyForReduce = false;
@@ -1569,7 +1572,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    if (localSender) {
-       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", after: #started=" << mod.ranksStarted << ", #fin=" << mod.ranksFinished << std::endl;
+       CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << ", after: #started=" << mod->ranksStarted << ", #fin=" << mod->ranksFinished << std::endl;
    }
 
    if (readyForPrepare || readyForReduce) {
@@ -1638,7 +1641,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                }
                if (allReadyForReduce) {
                   if (handleOnMaster && localSender) {
-                     vassert(mod.ranksFinished==0);
+                     vassert(mod->ranksFinished==0);
                   }
                   // process all objects which are still in the queue befor calling reduce()
                   if (isLocal(destId)) {
@@ -1695,7 +1698,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    if (unqueueExecute) {
-       mod.processDelayed();
+       mod->processDelayed();
    }
 
    return true;
