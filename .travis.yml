@@ -16,7 +16,7 @@ os:
 
 env:
     matrix:
-        - APP="vistle" BUILD_TYPE="Debug"
+        # - APP="vistle" BUILD_TYPE="Debug"
         - APP="vistle" BUILD_TYPE="Release"
 
 matrix:
