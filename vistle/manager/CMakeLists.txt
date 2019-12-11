@@ -54,7 +54,6 @@ set(LIB_SOURCES
    communicator.cpp
    executor.cpp
    portmanager.cpp
-   run_on_main_thread.cpp
 )
 
 set(LIB_HEADERS
