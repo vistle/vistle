@@ -388,7 +388,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             Index idx = 0;
             Index *cl = u->cl().data();
             Index *el = u->el().data();
-            unsigned char *tl = u->tl().data();
+            Byte *tl = u->tl().data();
 
             unsigned type = UnstructuredGrid::POINT;
             if (dim[2] > 1) {

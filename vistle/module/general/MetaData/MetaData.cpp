@@ -68,7 +68,7 @@ bool MetaData::compute() {
    assert(geoif);
 
    std::string species;
-   const unsigned char *tl = nullptr;
+   const Byte *tl = nullptr;
    const Index kind = m_kind->getValue();
    DataBase::Mapping mapping = DataBase::Vertex;
    switch (kind) {

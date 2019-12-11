@@ -171,7 +171,7 @@ bool ShowGrid::compute() {
            end = std::min(cellnrmax+1, (Integer)end);
 
        int d = StructuredGridBase::dimensionality(dims);
-       const unsigned char type = d==3 ? UnstructuredGrid::HEXAHEDRON : d==2 ? UnstructuredGrid::QUAD : d==1 ? UnstructuredGrid::BAR : UnstructuredGrid::POINT;
+       const Byte type = d==3 ? UnstructuredGrid::HEXAHEDRON : d==2 ? UnstructuredGrid::QUAD : d==1 ? UnstructuredGrid::BAR : UnstructuredGrid::POINT;
 
        for (Index index = begin; index < end; ++index) {
            if (type == UnstructuredGrid::HEXAHEDRON && !showhex)

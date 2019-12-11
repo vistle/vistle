@@ -40,7 +40,7 @@ struct HostData {
    IsoDataFunctor m_isoFunc;
    const Index *m_el = nullptr;
    const Index *m_cl = nullptr;
-   const unsigned char *m_tl = nullptr;
+   const Byte *m_tl = nullptr;
    std::vector<Index> m_caseNums;
    std::vector<Index> m_numVertices;
    std::vector<Index> m_LocationList;
@@ -61,7 +61,7 @@ struct HostData {
    bool m_haveCoords = false;
    bool m_computeNormals = false;
 
-   typedef const unsigned char *TypeIterator;
+   typedef const Byte *TypeIterator;
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
 
@@ -69,7 +69,7 @@ struct HostData {
    HostData(Scalar isoValue
             , IsoDataFunctor isoFunc
             , const Index *el
-            , const unsigned char *tl
+            , const Byte *tl
             , const Index *cl
             , const Scalar *x
             , const Scalar *y
@@ -247,7 +247,7 @@ struct DeviceData {
    IsoDataFunctor m_isoFunc;
    thrust::device_vector<Index> m_el;
    thrust::device_vector<Index> m_cl;
-   thrust::device_vector<unsigned char> m_tl;
+   thrust::device_vector<Byte> m_tl;
    thrust::device_vector<Index> m_caseNums;
    thrust::device_vector<Index> m_numVertices;
    thrust::device_vector<Index> m_LocationList;
@@ -272,15 +272,15 @@ struct DeviceData {
    //typedef const Index *IndexIterator;
    typedef thrust::device_vector<Index>::iterator IndexIterator;
 
-   //typedef const unsigned char *TypeIterator;
-   typedef thrust::device_vector<unsigned char>::iterator TypeIterator;
+   //typedef const Byte *TypeIterator;
+   typedef thrust::device_vector<Byte>::iterator TypeIterator;
    typedef thrust::device_vector<Index>::iterator VectorIndexIterator;
 
    DeviceData(Scalar isoValue
               , IsoDataFunctor isoFunc
               , Index nelem
               , const Index *el
-              , const unsigned char *tl
+              , const Byte *tl
               , Index nconn
               , const Index *cl
               , Index ncoord
@@ -755,13 +755,13 @@ struct SelectCells {
    SelectCells(Data &data) : m_data(data) {}
 
    // for unstructured grids
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index,unsigned char> iCell) const {
+   __host__ __device__ int operator()(const thrust::tuple<Index,Index,Byte> iCell) const {
 
       int havelower = 0;
       int havehigher = 0;
       Index Cell = iCell.get<0>();
       Index nextCell = iCell.get<1>();
-      unsigned char cellType = iCell.get<2>();
+      Byte cellType = iCell.get<2>();
       if (cellType & UnstructuredGrid::GHOST_BIT)
           return 0;
       if ((cellType & UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::VPOLYHEDRON) {
@@ -839,7 +839,7 @@ struct SelectCells2D {
    }
 
    // for polygons
-   __host__ __device__ int operator()(const thrust::tuple<Index,Index,unsigned char> iCell) const {
+   __host__ __device__ int operator()(const thrust::tuple<Index,Index,Byte> iCell) const {
 
       int havelower = 0;
       int havehigher = 0;
@@ -918,7 +918,7 @@ struct ComputeOutputSizes {
 
            Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
            Index nvert = end-begin;
-           unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
+           Byte CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
            if (CellType != UnstructuredGrid::VPOLYHEDRON && CellType != UnstructuredGrid::CPOLYHEDRON) {
                for (Index idx = 0; idx < nvert; idx ++) {
                    tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);

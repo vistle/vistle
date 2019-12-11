@@ -500,7 +500,7 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
             _x, _y, _z);
 
       Index *el = usg->el().data();
-      unsigned char *tl = &usg->tl()[0];
+      Byte *tl = &usg->tl()[0];
       for (int index = 0; index < numElements; index ++) {
          el[index] = _el[index];
          tl[index] = (UnstructuredGrid::Type) _tl[index];

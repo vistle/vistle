@@ -14,7 +14,7 @@ V_COREEXPORT bool insidePolygon(const Vector &point, const Vector *corners, Inde
 V_COREEXPORT bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal);
 V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nCorners, const Vector *corners);
 V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z);
-V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z);
+V_COREEXPORT std::pair<Vector,Vector> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z);
 
 template<typename Scalar, typename Index>
 class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {

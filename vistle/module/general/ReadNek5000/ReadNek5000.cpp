@@ -84,11 +84,11 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         int ghostHexes = pReader->getNumGhostHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
         if (pReader->getDim() == 2) {
-            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const unsigned char)UnstructuredGrid::QUAD);
-            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const unsigned char)UnstructuredGrid::QUAD|UnstructuredGrid::GHOST_BIT);
+            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const Byte)UnstructuredGrid::QUAD);
+            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const Byte)UnstructuredGrid::QUAD|UnstructuredGrid::GHOST_BIT);
         } else {
-            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON);
-            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const unsigned char)UnstructuredGrid::HEXAHEDRON|UnstructuredGrid::GHOST_BIT);
+            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const Byte)UnstructuredGrid::HEXAHEDRON);
+            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const Byte)UnstructuredGrid::HEXAHEDRON|UnstructuredGrid::GHOST_BIT);
         }
         pReader->fillConnectivityList(grid->cl().data());
 

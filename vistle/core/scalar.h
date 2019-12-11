@@ -5,7 +5,11 @@
 
 namespace vistle {
 
-typedef float Scalar;
+// used for mapped data
+typedef unsigned char Byte;
+typedef float Scalar; // also used for coordinates
+
+// used for parameters
 typedef double Float;
 typedef int64_t Integer;
 

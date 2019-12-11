@@ -86,7 +86,7 @@ bool ToUnstructured::compute() {
     const Index ny = dim[1]-1;
     const Index nz = dim[2]-1;
 
-    unsigned char CellType = UnstructuredGrid::POINT;
+    Byte CellType = UnstructuredGrid::POINT;
     if (nz > 0) {
         CellType = UnstructuredGrid::HEXAHEDRON;
     } else if (ny > 0) {

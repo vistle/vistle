@@ -65,7 +65,7 @@ public:
    GhostCells() {}
    std::vector<vistle::Index> el;
    std::vector<vistle::SIndex> cl;
-   std::vector<unsigned char> tl;
+   std::vector<vistle::Byte> tl;
    std::vector<vistle::Scalar> x;
    std::vector<vistle::Scalar> y;
    std::vector<vistle::Scalar> z;

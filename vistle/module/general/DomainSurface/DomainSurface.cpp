@@ -136,10 +136,10 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
        data_obj_out = remapData<Index,3>(data_in, dm);
    } else if(auto data_in = Vec<Index,1>::as(data)) {
        data_obj_out = remapData<Index,1>(data_in, dm);
-   } else if(auto data_in = Vec<unsigned char,3>::as(data)) {
-       data_obj_out = remapData<unsigned char,3>(data_in, dm);
-   } else if(auto data_in = Vec<unsigned char,1>::as(data)) {
-       data_obj_out = remapData<unsigned char,1>(data_in, dm);
+   } else if(auto data_in = Vec<Byte,3>::as(data)) {
+       data_obj_out = remapData<Byte,3>(data_in, dm);
+   } else if(auto data_in = Vec<Byte,1>::as(data)) {
+       data_obj_out = remapData<Byte,1>(data_in, dm);
    } else {
        std::cerr << "WARNING: No valid 1D or 3D element data on input Port" << std::endl;
    }
@@ -352,7 +352,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
    const Index num_elem = m_grid_in->getNumElements();
    const Index *el = &m_grid_in->el()[0];
    const Index *cl = &m_grid_in->cl()[0];
-   const unsigned char *tl = &m_grid_in->tl()[0];
+   const Byte *tl = &m_grid_in->tl()[0];
    UnstructuredGrid::VertexOwnerList::const_ptr vol=m_grid_in->getVertexOwnerList();
 
    Polygons::ptr m_grid_out(new Polygons(0, 0, 0));
@@ -365,7 +365,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
       bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT;
       if (!showgho && ghost)
           continue;
-      unsigned char t = tl[i] & UnstructuredGrid::TYPE_MASK;
+      Byte t = tl[i] & UnstructuredGrid::TYPE_MASK;
       if (t == UnstructuredGrid::VPOLYHEDRON) {
           if (showpol) {
               Index j=elStart;

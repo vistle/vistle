@@ -32,7 +32,7 @@
 
 struct Element
 {
-    unsigned char coType = vistle::UnstructuredGrid::NONE; // COVISE element type
+    vistle::Byte coType = vistle::UnstructuredGrid::NONE; // COVISE element type
     vistle::Index coElem = vistle::InvalidIndex; // COVISE element number
     int matNo = -1; // material number (of LS-DYNA plot file)
     //int node[8];        // node numbers (of LS-DYNA plot file) determining the element

@@ -215,7 +215,7 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
    return (nisect%2) == 1;
 }
 
-std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z) {
+std::pair<Vector,Vector> faceNormalAndCenter(Byte type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z) {
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     const auto &face = faces[f];

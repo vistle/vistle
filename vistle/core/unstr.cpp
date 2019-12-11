@@ -148,7 +148,7 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
 void UnstructuredGrid::resetElements() {
     Base::resetElements();
 
-    d()->tl = ShmVector<unsigned char>();
+    d()->tl = ShmVector<Byte>();
     d()->tl.construct(0);
 }
 

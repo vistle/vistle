@@ -49,18 +49,18 @@ bool ToPolyhedra::compute() {
 
    const Index *iel = &grid->el()[0];
    const Index *icl = &grid->cl()[0];
-   const unsigned char *itl = &grid->tl()[0];
+   const Byte *itl = &grid->tl()[0];
    const Index nel = grid->getNumElements();
    auto poly = std::make_shared<UnstructuredGrid>(nel, 0, 0);
    poly->d()->x[0] = grid->d()->x[0];
    poly->d()->x[1] = grid->d()->x[1];
    poly->d()->x[2] = grid->d()->x[2];
    Index *oel = &poly->el()[0];
-   unsigned char *otl = &poly->tl()[0];
+   Byte *otl = &poly->tl()[0];
    auto &ocl = poly->cl();
    for (Index elem=0; elem<nel; ++elem) {
        oel[elem] = ocl.size();
-       unsigned char t = itl[elem]&UnstructuredGrid::TYPE_MASK;
+       Byte t = itl[elem]&UnstructuredGrid::TYPE_MASK;
        if (facestream) {
            otl[elem] = UnstructuredGrid::VPOLYHEDRON | (itl[elem]&~UnstructuredGrid::TYPE_MASK);
            // create VTK polyhedra (lists of faces, where each face starts with the number of vertices followed by its vertices)

@@ -1418,7 +1418,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid, bool checkConvex) {
     float *zc = cugrid->z().data();
     Index *elems = cugrid->el().data();
     Index *connlist = cugrid->cl().data();
-    unsigned char *typelist = cugrid->tl().data();
+    Byte *typelist = cugrid->tl().data();
 
     for (Index i = 0; i < ncoord; ++i) {
         xc[i] = vugrid->GetPoint(i)[0];

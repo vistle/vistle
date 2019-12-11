@@ -32,7 +32,7 @@ using namespace vistle;
 template<typename S>
 bool
 coCellToVert::interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
-      const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
+      const Index *elem_list, const Index *conn_list, const Byte *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
       Index numComp, Index dataSize, const S *in_data[], S *out_data[], Algorithm algo_option)
 {
@@ -96,11 +96,11 @@ coCellToVert::interpolate(bool unstructured, Index num_elem, Index num_conn, Ind
 template<typename S>
 bool
 coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
-      const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
+      const Index *elem_list, const Index *conn_list, const Byte *type_list,
       Index numComp, const S *in_data[], S *out_data[])
 {
-    std::vector<unsigned char> weight(num_point);
-    unsigned char *weight_num = weight.data();
+    std::vector<Byte> weight(num_point);
+    Byte *weight_num = weight.data();
 
     std::vector<Scalar> tmp;
     Scalar *tmp_out[3]{nullptr};
@@ -206,7 +206,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
 template<>
 bool
 coCellToVert::simpleAlgo<Scalar>( Index num_elem, Index num_conn, Index num_point,
-      const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
+      const Index *elem_list, const Index *conn_list, const Byte *type_list,
       Index numComp, const Scalar *in_data[], Scalar *out_data[])
 {
    // reset everything to 0, != 0 to prevent div/0 errors
@@ -311,7 +311,7 @@ coCellToVert::simpleAlgo<Scalar>( Index num_elem, Index num_conn, Index num_poin
 template<typename S>
 bool
 coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
-      const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
+      const Index *elem_list, const Index *conn_list, const Byte *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
       Index numComp, const S *in_data[], S *out_data[])
 {
@@ -321,7 +321,7 @@ coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
    // now go through all elements and calculate their center
 
    Index *ePtr = (Index *) elem_list;
-   unsigned char *tPtr = (unsigned char *) type_list;
+   Byte *tPtr = (Byte *) type_list;
 
    Index el_type;
    Index elem, num_vert_elem;
@@ -490,7 +490,7 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
 
    Index num_elem=0, num_conn=0, num_point=0;
    const Index *elem_list=nullptr, *conn_list=nullptr;
-   const unsigned char *type_list=nullptr;
+   const Byte *type_list=nullptr;
    const Scalar *xcoord=nullptr, *ycoord=nullptr, *zcoord=nullptr;
 
    Index *neighbour_cells = nullptr;
@@ -542,7 +542,6 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       return DataBase::ptr();
    }
 
-   typedef unsigned char Byte;
    Index numComp = 0;
    DataBase::ptr data_return;
    const Scalar *in_data[3] = { nullptr, nullptr, nullptr };

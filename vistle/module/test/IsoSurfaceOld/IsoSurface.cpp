@@ -84,7 +84,7 @@ class Leveller {
    std::vector<Object::const_ptr> m_data;
    Scalar m_isoValue;
 
-   const unsigned char *tl;
+   const Byte *tl;
    const Index *el;
    const Index *cl;
    const Scalar *x;

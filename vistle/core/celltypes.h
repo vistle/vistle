@@ -1,5 +1,8 @@
 #ifndef VISTLE_CELLTYPES_H
 #define VISTLE_CELLTYPES_H
+
+#include "scalar.h"
+
 namespace vistle {
 
 namespace cell {
