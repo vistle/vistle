@@ -34,11 +34,9 @@ private:
     virtual bool read(Token& token, int timestep = -1, int block = -1) override;
     virtual bool examine(const vistle::Parameter* param) override;
 
-
-    
-
-
-
 };
+
+
+
 
 #endif // !CONNECT_LIB_SIM_H

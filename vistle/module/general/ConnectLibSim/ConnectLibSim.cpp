@@ -34,10 +34,9 @@ ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communi
     }
     setTimesteps(0);
     int size = -1;
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_size(comm, &size);
     setPartitions(size);
 }
-
 
 int ConnectLibSim::updateParameter(const char* info) {
     constexpr int maxNameSize = 100;
