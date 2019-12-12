@@ -598,7 +598,7 @@ bool WriteChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const SubAr
     cheader.size += sizeof(compLength);
     cheader.size += compLength;
     cheader.size += sizeof(ChunkFooter);
-    CERR << "WriteChunk: header=" << cheader << std::endl;
+    //CERR << "WriteChunk: header=" << cheader << std::endl;
     if (!Write(fd, cheader))
         return false;
 
@@ -917,8 +917,8 @@ bool Cache::prepare() {
             sendError("Cannot read Vistle files of version %d, only %d is supported", (int)cheader.version, chgood.version);
             break;
         }
-        CERR << "ChunkHeader: " << cheader << std::endl;
-        CERR << "ChunkHeader: found type=" << cheader.type << std::endl;
+        //CERR << "ChunkHeader: " << cheader << std::endl;
+        //CERR << "ChunkHeader: found type=" << cheader.type << std::endl;
 
         switch (cheader.type) {
         case ChunkType::Archive: {
@@ -928,7 +928,7 @@ bool Cache::prepare() {
                 error = true;
                 continue;
             }
-            CERR << "entry " << ent.name << " of size " << ent.storage->size() << std::endl;
+            //CERR << "entry " << ent.name << " of size " << ent.storage->size() << std::endl;
             compression[ent.name] = ent.compression;
             size[ent.name] = ent.size;
             if (ent.is_array) {
