@@ -1,13 +1,36 @@
 #ifndef VISIT_DATA_TYPES_H
 #define VISIT_DATA_TYPES_H
 
-typedef int visit_handle;
+//typedef int visit_handle;
 
-constexpr auto VISIT_INVALID_HANDLE = -1;
+class visit_handle {
+public:
+    visit_handle() = default;
+    constexpr visit_handle(int val)
+        :i(val) {
+    }
 
-constexpr auto VISIT_ERROR = 0;
-constexpr auto VISIT_OKAY = 1;
-constexpr auto VISIT_NODATA = 2;
+    constexpr bool operator==(const visit_handle other) const noexcept {
+        return i == other.i;
+    }
+    constexpr bool operator!=(const visit_handle other) const noexcept {
+        return i != other.i;
+    }
+
+    constexpr operator int() const noexcept {
+        return i;
+    }
+
+
+private:
+    int i = -1;
+};
+
+constexpr visit_handle VISIT_INVALID_HANDLE = -1;
+
+constexpr visit_handle VISIT_ERROR = 0;
+constexpr visit_handle VISIT_OKAY = 1;
+constexpr visit_handle VISIT_NODATA = 2;
 
 /* Mesh Types */
 typedef enum {
