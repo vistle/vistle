@@ -8,6 +8,7 @@ struct Metadata {
     int  simMode = VISIT_SIMMODE_UNKNOWN;
     int currentCycle = 0;
     double currentTime = 0;
+    visit_handle handle = VISIT_INVALID_HANDLE;
 };
 }
 

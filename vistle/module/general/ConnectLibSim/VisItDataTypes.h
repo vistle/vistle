@@ -23,7 +23,7 @@ public:
 
 
 private:
-    int i = -1;
+    int i = -1; //VISIT_INVALID_HANDLE
 };
 
 constexpr visit_handle VISIT_INVALID_HANDLE = -1;

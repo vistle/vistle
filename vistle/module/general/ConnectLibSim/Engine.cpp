@@ -121,10 +121,16 @@ int Engine::getNumObjects(SimulationDataTyp type) {
     }
 
     visit_handle metaData = VISIT_INVALID_HANDLE;
-    metaData = simv2_invoke_GetMetaData();
-    if (metaData == VISIT_INVALID_HANDLE) {
-        throw EngineExeption("Can't get meta data from simulation");
+    try {
+        metaData = v2check(simv2_invoke_GetMetaData);
+    } catch (const SimV2Exeption & ex) {
+        metaData = simv2_invoke_GetMetaData();
+        if (metaData == VISIT_INVALID_HANDLE) {
+            throw EngineExeption("Can't get meta data from simulation");
+        }
+        cerr << "metadata = " << metaData << " this should not be reached!!!!!!!!!" << endl;
     }
+
     int num = 0;
     if (getNum(metaData, num) == VISIT_ERROR) {
         throw EngineExeption("Can't get num from simulation metadata");
@@ -309,25 +315,19 @@ bool Engine::sendData() {
 }
 
 void Engine::SimulationTimeStepChanged() {
-    
+  
+    getMetaData();
     if (timestepChangedCb && m_doReadMutex) {
         std::lock_guard<std::mutex> g(*m_doReadMutex);
         
         if (timestepChangedCb())             {
             sendDataToModule();
+
         }
     }
     else {
         printToConsole("not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!");
     }
-}
-
-Metadata in_situ::Engine::getMetaData() {
-    visit_handle h = v2check(simv2_invoke_GetMetaData);
-    Metadata md;
-    v2check(simv2_SimulationMetaData_getData, h, md.simMode, md.currentCycle, md.currentTime);
-    cerr << "simMode = " << md.simMode << " currentCycle = " << md.currentCycle << " currentTime = " << md.currentTime << endl;
-    return md;
 }
 
 void Engine::SimulationInitiateCommand(const char* command) {
@@ -349,6 +349,12 @@ void in_situ::Engine::SetTimestepChangedCb(std::function<bool(void)> cb) {
 
 void in_situ::Engine::SetDisconnectCb(std::function<void(void)> cb) {
     disconnectCb = cb;
+}
+
+void in_situ::Engine::getMetaData() {
+    m_metaData.handle = v2check(simv2_invoke_GetMetaData);
+    v2check(simv2_SimulationMetaData_getData, m_metaData.handle, m_metaData.simMode, m_metaData.currentCycle, m_metaData.currentTime);
+    cerr << "simMode = " << m_metaData.simMode << " currentCycle = " << m_metaData.currentCycle << " currentTime = " << m_metaData.currentTime << endl;
 }
 
 void Engine::addPorts() {
@@ -405,12 +411,12 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
     int numDomains = 0;
     v2check(simv2_MeshMetaData_getNumDomains, meshMetaHandle, &numDomains);
     cerr << "making amr grid with " << numDomains << " domains" << endl;
-    auto meshInfo = m_meshes.insert(std::make_pair(name, MeshInfo{}));
-    meshInfo.first->second.numDomains = numDomains;
-    for (size_t i = 0; i < numDomains; i++) {
-        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,i, name);
+    MeshInfo meshInfo;
+    meshInfo.numDomains = numDomains;
+    for (size_t currDomain = 0; currDomain < numDomains; currDomain++) {
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,currDomain, name);
         int check = simv2_RectilinearMesh_check(meshHandle);
-        printToConsole("invoking get mesh for domain " + std::to_string(i) + " with name " + name + " handle = " + std::to_string(meshHandle) + "check= " + std::to_string(check));
+        printToConsole("invoking get mesh for domain " + std::to_string(currDomain) + " with name " + name + " handle = " + std::to_string(meshHandle) + "check= " + std::to_string(check));
 
         if (check == VISIT_OKAY) {
             visit_handle coordHandles[3]; //handles to variable data
@@ -427,14 +433,20 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
                 }
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            meshInfo.first->second.handles.push_back(meshHandle);
-            meshInfo.first->second.grids.push_back(grid);
+            grid->setTimestep(m_metaData.currentCycle);
+            grid->setBlock(currDomain);
+            meshInfo.handles.push_back(meshHandle);
+            meshInfo.grids.push_back(grid);
             for (size_t i = 0; i < dim; i++) {
                 memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
+            }
+            if (dim == 2) {
+                memset(grid->coords(2).begin(), 0, nTuples[2] * sizeof(float));
             }
             m_module->addObject(name, grid);
         }
     }
+    m_meshes[name]  = meshInfo;
     return true;
 }
 
@@ -494,31 +506,42 @@ void in_situ::Engine::sendVarablesToModule()     {
         if (meshInfo == m_meshes.end()) {
             throw EngineExeption(std::string("can't find mesh ") + meshName + " for variable " + name);
         }
-        for (size_t j = 0; j < meshInfo->second.numDomains; j++) {
-            visit_handle varHandle = v2check(simv2_invoke_GetVariable, j, name);
+        for (size_t currDomain = 0; currDomain < meshInfo->second.numDomains; currDomain++) {
+            visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, name);
             int  owner{}, dataType{}, nComps{}, nTuples{};
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
-            cerr << "variable " << name << " domain " << j << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
+            cerr << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
-                sendVariableToModule(name, meshInfo->second.grids[j], j, (unsigned char*)data, nTuples);
+                //sendVariableToModule(name, meshInfo->second.grids[j], j, (unsigned char*)data, nTuples);
+                vistle::Vec<vistle::Scalar , 1>::ptr variable(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
+                for (size_t i = 0; i < nTuples; i++) {
+                    variable->x().data()[i] = static_cast<vistle::Scalar>(static_cast<unsigned char*>(data)[i]);
+                }
+
+                variable->setGrid(meshInfo->second.grids[currDomain]);
+                variable->setTimestep(m_metaData.currentCycle);
+                variable->setBlock(currDomain);
+                variable->setMapping(vistle::DataBase::Element);
+                variable->addAttribute("_species", name);
+                m_module->addObject(name, variable);
             }
             break;
             case VISIT_DATATYPE_INT:
             {
-                sendVariableToModule(name, meshInfo->second.grids[j], j, (int*)data, nTuples);
+                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (int*)data, nTuples);
             }
             break;
             case VISIT_DATATYPE_FLOAT:
             {
-                sendVariableToModule(name, meshInfo->second.grids[j], j, (float*)data, nTuples);
+                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (float*)data, nTuples);
             }
             break;
             case VISIT_DATATYPE_DOUBLE:
             {
-                sendVariableToModule(name, meshInfo->second.grids[j], j, (double*)data, nTuples);
+                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (double*)data, nTuples);
             }
             break;
             case VISIT_DATATYPE_LONG:

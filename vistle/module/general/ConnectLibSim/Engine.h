@@ -57,8 +57,8 @@ public:
     //********************************
     //adds all available data to the according outputs to execute the pipeline
     bool sendData();
+    //called from simulation when a timestep changed
     void SimulationTimeStepChanged();
-    Metadata getMetaData();
     void SimulationInitiateCommand(const char* command);
     void DeleteData();
     //set callbacks (called from sim)
@@ -80,6 +80,7 @@ private:
         std::vector< vistle::obj_ptr> grids;
     };
     std::map<std::string, MeshInfo> m_meshes;
+    Metadata m_metaData;
     //callbacks from ConnectLibSim module
     std::function<bool(void)> timestepChangedCb; //returns true, if module is ready to receive data;
     std::function<void(void)> disconnectCb;
@@ -89,6 +90,8 @@ private:
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;
 
+    //retrieves metaData from simulation 
+    void getMetaData();
 
     void addPorts();
 
