@@ -36,4 +36,4 @@ int main(int argc, char *argv[]) {
 #endif
 #endif
 
-MODULE_MAIN(COVER)
+MODULE_MAIN_THREAD(COVER, MPI_THREAD_MULTIPLE)

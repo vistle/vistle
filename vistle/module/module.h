@@ -360,14 +360,14 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 #ifdef MODULE_THREAD
 #ifdef MODULE_STATIC
-#define MODULE_MAIN(X) \
+#define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, mpi::communicator comm) { \
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
     static vistle::ModuleRegistry::RegisterClass registerModule(VISTLE_MODULE_NAME, newModuleInstance);
 #else
-#define MODULE_MAIN(X) \
+#define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, mpi::communicator comm) { \
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
@@ -378,11 +378,11 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #define MODULE_DEBUG(X)
 #else
 // MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
-#define MODULE_MAIN(X) \
+#define MODULE_MAIN_THREAD(X, THREAD_MODE) \
    int main(int argc, char **argv) { \
       int provided = MPI_THREAD_SINGLE; \
-      MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided); \
-      if (provided == MPI_THREAD_SINGLE) { \
+      MPI_Init_thread(&argc, &argv, THREAD_MODE, &provided); \
+      if (provided == MPI_THREAD_SINGLE && THREAD_MODE != MPI_THREAD_SINGLE) { \
          std::cerr << "no thread support in MPI, continuing anyway" << std::endl; \
       } \
       vistle::registerTypes(); \
@@ -430,6 +430,8 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
    std::cerr << "   continuing..." << std::endl;
 #endif
 #endif
+
+#define MODULE_MAIN(X) MODULE_MAIN_THREAD(X, MPI_THREAD_FUNNELED)
 
 #ifdef VISTLE_IMPL
 #include "module_impl.h"
