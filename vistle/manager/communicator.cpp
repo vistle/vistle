@@ -451,6 +451,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
 
     MessagePayload pl = payload;
     if (m_size > 0) {
+        std::lock_guard<Communicator> guard(*this);
         std::vector<MPI_Request> s(m_size);
         for (int index = 0; index < m_size; ++index) {
             unsigned int size = buf.size();
