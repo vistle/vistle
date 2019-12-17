@@ -144,6 +144,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
       ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation")
+      ("gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
       ;
    po::variables_map vm;
    try {
@@ -165,6 +166,22 @@ bool Hub::init(int argc, char *argv[]) {
    if (vm.count("") > 0) {
       CERR << desc << std::endl;
       return false;
+   }
+
+   if (vm.count("exposed") > 0) {
+       m_exposedHost = vm["exposed"].as<std::string>();
+       boost::asio::ip::tcp::resolver resolver(m_ioService);
+       boost::asio::ip::tcp::resolver::query query(m_exposedHost, std::to_string(dataPort()));
+       boost::system::error_code ec;
+       boost::asio::ip::tcp::resolver::iterator iter = resolver.resolve(query, ec);
+       if (ec) {
+           CERR << "could not resolve gateway host " << m_exposedHost << ": " << ec.message() << std::endl;
+           return false;
+       } else {
+           auto endpoint = iter->endpoint();
+           m_exposedHostAddr = endpoint.address();
+           CERR << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
+       }
    }
 
    if (vm.count("port") > 0) {
@@ -781,45 +798,50 @@ int Hub::id() const {
 }
 
 void Hub::hubReady() {
-   vassert(m_managerConnected);
-   if (m_isMaster) {
-      m_ready = true;
+    vassert(m_managerConnected);
+    if (m_isMaster) {
+        m_ready = true;
 
-      for (auto s: m_slavesToConnect) {
-          auto set = make.message<message::SetId>(s->id);
-          sendMessage(s->sock, set);
-      }
-      m_slavesToConnect.clear();
+        for (auto s: m_slavesToConnect) {
+            auto set = make.message<message::SetId>(s->id);
+            sendMessage(s->sock, set);
+        }
+        m_slavesToConnect.clear();
 
-      processScript();
-   } else {
-      auto hub = make.message<message::AddHub>(m_hubId, m_name);
-      hub.setNumRanks(m_localRanks);
-      hub.setDestId(Id::ForBroadcast);
-      hub.setPort(m_port);
-      hub.setDataPort(m_dataProxy->port());
+        processScript();
+    } else {
+        auto hub = make.message<message::AddHub>(m_hubId, m_name);
+        hub.setNumRanks(m_localRanks);
+        hub.setDestId(Id::ForBroadcast);
+        hub.setPort(m_port);
+        hub.setDataPort(m_dataProxy->port());
 
-      for (auto &sock: m_sockets) {
-         if (sock.second == message::Identify::HUB) {
-            try {
-               auto addr = sock.first->local_endpoint().address();
-               if (addr.is_v6()) {
-                  hub.setAddress(addr.to_v6());
-               } else if (addr.is_v4()) {
-                  hub.setAddress(addr.to_v4());
-               }
-            } catch (std::bad_cast &except) {
-               CERR << "AddHub: failed to convert local address to v6" << std::endl;
-               return;
+        for (auto &sock: m_sockets) {
+            if (sock.second == message::Identify::HUB) {
+                if (m_exposedHost.empty())
+                    try {
+                        auto addr = sock.first->local_endpoint().address();
+                        if (addr.is_v6()) {
+                            hub.setAddress(addr.to_v6());
+                        } else if (addr.is_v4()) {
+                            hub.setAddress(addr.to_v4());
+                        } else {
+                            hub.setAddress(addr);
+                        }
+                    } catch (std::bad_cast &except) {
+                        CERR << "AddHub: failed to convert local address to v6: " << except.what() << std::endl;
+                        return;
+                    }
+            } else {
+                hub.setAddress(m_exposedHostAddr);
             }
-         }
-      }
+        }
 
-      m_stateTracker.handle(hub, nullptr, true);
+        m_stateTracker.handle(hub, nullptr, true);
 
-      sendMaster(hub);
-      m_ready = true;
-   }
+        sendMaster(hub);
+        m_ready = true;
+    }
 }
 
 bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const std::vector<char> *payload) {
@@ -899,6 +921,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    master.setNumRanks(m_localRanks);
                    master.setPort(m_port);
                    master.setDataPort(m_dataProxy->port());
+                   if (!m_exposedHost.empty()) {
+                       master.setAddress(m_exposedHostAddr);
+                   }
                    m_stateTracker.handle(master, nullptr);
                    sendUi(master);
                }

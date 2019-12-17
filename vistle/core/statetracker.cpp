@@ -647,6 +647,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    if (slave.hasAddress())
       m_hubs.back().address = slave.address();
 
+   // for per-hub parameters
    Module hub(slave.id(), slave.id());
    hub.name = slave.name();
    runningMap.emplace(slave.id(), hub);

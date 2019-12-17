@@ -88,6 +88,8 @@ private:
 
    unsigned short m_basePort = 31093;
    unsigned short m_port=0, m_dataPort=0, m_masterPort=m_basePort;
+   std::string m_exposedHost;
+   boost::asio::ip::address m_exposedHostAddr;
    std::string m_masterHost;
    boost::asio::io_service m_ioService;
    std::shared_ptr<acceptor> m_acceptor;
