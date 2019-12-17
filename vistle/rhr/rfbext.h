@@ -239,7 +239,7 @@ enum rfbTileFormats {
 
 enum rfbTileCompressions {
    rfbTileRaw = 0,
-   rfbTileSnappy = 1,
+   rfbTileDepthPredict = 1,
    rfbTileDepthQuantize = 2,
    rfbTileJpeg = 4,
    rfbTileDepthZfp = 8,

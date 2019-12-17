@@ -114,14 +114,9 @@ void RhrServer::setColorCodec(CompressionParameters::ColorCodec value) {
     }
 }
 
-void RhrServer::enableDepthZfp(bool value) {
+void RhrServer::setDepthCodec(CompressionParameters::DepthCodec value) {
 
-    m_imageParam.depthParam.depthZfp = value;
-}
-
-void RhrServer::enableQuantization(bool value) {
-
-   m_imageParam.depthParam.depthQuant = value;
+    m_imageParam.depthParam.depthCodec = value;
 }
 
 void RhrServer::setColorCompression(message::CompressionMode mode) {
@@ -139,7 +134,7 @@ void RhrServer::setDepthPrecision(int bits) {
     m_imageParam.depthParam.depthPrecision = bits;
 }
 
-void RhrServer::setZfpMode(DepthCompressionParameters::ZfpMode mode) {
+void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode) {
 
     m_imageParam.depthParam.depthZfpMode = mode;
 }
@@ -294,11 +289,10 @@ void RhrServer::init() {
 
    m_imageParam.rgbaParam.rgbaCompress = message::CompressionNone;
    m_imageParam.depthParam.depthPrecision = 32;
-   m_imageParam.depthParam.depthZfp = true;
-   m_imageParam.depthParam.depthQuant = true;
+   m_imageParam.depthParam.depthCodec = CompressionParameters::DepthRaw;;
    m_imageParam.depthParam.depthCompress = message::CompressionLz4;
    m_imageParam.depthParam.depthFloat = true;
-   m_imageParam.depthParam.depthZfpMode = DepthCompressionParameters::ZfpFixedRate;
+   m_imageParam.depthParam.depthZfpMode = CompressionParameters::ZfpFixedRate;
 
    m_resizeBlocked = false;
    m_resizeDeferred = false;
@@ -851,14 +845,16 @@ struct EncodeTask: public tbb::task {
         message->size = bpp * message->width * message->height;
 
 #ifdef HAVE_ZFP
-        if (param.depthParam.depthZfp) {
+        if (param.depthParam.depthCodec == CompressionParameters::DepthZfp) {
             message->format = rfbDepthFloat;
             message->compression |= rfbTileDepthZfp;
         } else
 #endif
-        if (param.depthParam.depthQuant) {
+        if (param.depthParam.depthCodec == CompressionParameters::DepthQuant) {
             message->format = param.depthParam.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
+        } else if (param.depthParam.depthCodec == CompressionParameters::DepthPredict) {
+            message->compression |= rfbTileDepthPredict;
         }
     }
 

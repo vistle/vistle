@@ -68,12 +68,10 @@ class V_RENDEREREXPORT RhrController {
 
    IntParameter *m_depthPrec;
    Integer m_prec;
-   IntParameter *m_depthQuant;
-   bool m_quant;
-   IntParameter *m_depthZfp;
-   bool m_zfp;
+   IntParameter *m_depthCodecParam = nullptr;
+   CompressionParameters::DepthCodec m_depthCodec = CompressionParameters::DepthRaw;
    IntParameter *m_depthZfpMode;
-   DepthCompressionParameters::ZfpMode m_zfpMode;
+   CompressionParameters::ZfpMode m_zfpMode;
    IntParameter *m_depthCompressMode;
    message::CompressionMode m_depthCompress;
 

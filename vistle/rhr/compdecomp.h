@@ -8,24 +8,6 @@
 
 namespace vistle {
 
-
-struct DepthCompressionParameters {
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
-    bool depthFloat = true; //!< whether depth should be retrieved as floating point
-    int depthPrecision = 24; //!< depth buffer read-back precision (bits) for integer formats
-    bool depthZfp = false; //!< whether depth should be compressed with floating point compressor zfp
-    bool depthQuant = false; //!< whether depth should be sent quantized
-    ZfpMode depthZfpMode = ZfpPrecision;
-    message::CompressionMode depthCompress = message::CompressionNone;
-};
-
-struct RgbaCompressionParameters {
-
-    bool rgbaJpeg = false;
-    bool rgbaChromaSubsamp = false;
-    message::CompressionMode rgbaCompress = message::CompressionNone;
-};
-
 struct CompressionParameters {
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
@@ -33,6 +15,29 @@ struct CompressionParameters {
                                         (Jpeg_YUV411)
                                         (Jpeg_YUV444)
                                         )
+
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DepthCodec, (DepthRaw)(DepthPredict)(DepthQuant)(DepthZfp))
+
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
+
+    struct DepthCompressionParameters {
+        bool depthFloat = true; //!< whether depth should be retrieved as floating point
+        int depthPrecision = 24; //!< depth buffer read-back precision (bits) for integer formats
+#if 0
+        bool depthZfp = false; //!< whether depth should be compressed with floating point compressor zfp
+        bool depthQuant = false; //!< whether depth should be sent quantized
+#endif
+        DepthCodec depthCodec = DepthRaw;
+        ZfpMode depthZfpMode = ZfpPrecision;
+        message::CompressionMode depthCompress = message::CompressionNone;
+    };
+
+    struct RgbaCompressionParameters {
+
+        bool rgbaJpeg = false;
+        bool rgbaChromaSubsamp = false;
+        message::CompressionMode rgbaCompress = message::CompressionNone;
+    };
 
     bool isDepth = false;
     DepthCompressionParameters depth;
@@ -51,11 +56,12 @@ struct CompressionParameters {
     CompressionParameters() = default;
 };
 
-
+using RgbaCompressionParameters = CompressionParameters::RgbaCompressionParameters;
 std::vector<char> V_RHREXPORT compressRgba(const unsigned char *rgba,
                                 int x, int y, int w, int h, int stride,
                                 RgbaCompressionParameters &param);
 
+using DepthCompressionParameters = CompressionParameters::DepthCompressionParameters;
 std::vector<char> V_RHREXPORT compressDepth(const float *depth,
                                 int x, int y, int w, int h, int stride,
                                 DepthCompressionParameters &param);

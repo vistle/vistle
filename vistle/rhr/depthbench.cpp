@@ -20,22 +20,33 @@ using vistle::DepthFloat;
 void measure(vistle::DepthCompressionParameters depthParam, const std::string &name, const float *depth, size_t w, size_t h, int precision, int num_runs) {
 
    std::string codec = "zfp";
-   if (depthParam.depthZfp) {
+   switch (depthParam.depthCodec) {
+   case vistle::CompressionParameters::DepthZfp: {
        switch (depthParam.depthZfpMode) {
-       case vistle::DepthCompressionParameters::ZfpAccuracy:
+       case vistle::CompressionParameters::ZfpAccuracy:
            codec += " accuracy";
            break;
-       case vistle::DepthCompressionParameters::ZfpFixedRate:
+       case vistle::CompressionParameters::ZfpFixedRate:
            codec += " fixed_rate";
            break;
-       case vistle::DepthCompressionParameters::ZfpPrecision:
+       case vistle::CompressionParameters::ZfpPrecision:
            codec += " precision";
            break;
        }
-   } else if (depthParam.depthQuant) {
+       break;
+   }
+   case vistle::CompressionParameters::DepthQuant: {
        codec = "quant";
-   } else {
+       break;
+   }
+   case vistle::CompressionParameters::DepthPredict: {
+       codec = "predict";
+       break;
+   }
+   case vistle::CompressionParameters::DepthRaw: {
        codec = "raw";
+       break;
+   }
    }
    std::cout << name << ", precision: " << precision << ", " << codec << std::endl;
 
@@ -155,21 +166,23 @@ int main(int argc, char *argv[]) {
    }
 
    vistle::DepthCompressionParameters depthParam;
+   depthParam.depthCodec = vistle::CompressionParameters::DepthRaw;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
-   depthParam.depthQuant = false;
-   depthParam.depthZfp = true;
-   depthParam.depthZfpMode = vistle::DepthCompressionParameters::ZfpPrecision;
+   depthParam.depthCodec = vistle::CompressionParameters::DepthZfp;
+   depthParam.depthZfpMode = vistle::CompressionParameters::ZfpPrecision;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
-   depthParam.depthZfpMode = vistle::DepthCompressionParameters::ZfpAccuracy;
+   depthParam.depthZfpMode = vistle::CompressionParameters::ZfpAccuracy;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
-   depthParam.depthZfpMode = vistle::DepthCompressionParameters::ZfpFixedRate;
+   depthParam.depthZfpMode = vistle::CompressionParameters::ZfpFixedRate;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
-   depthParam.depthZfp = false;
-   depthParam.depthQuant = true;
+   depthParam.depthCodec = vistle::CompressionParameters::DepthQuant;
+   measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
+
+   depthParam.depthCodec = vistle::CompressionParameters::DepthPredict;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
    return 0;

@@ -75,13 +75,12 @@ public:
    void updateModificationCount();
 
    void setColorCodec(CompressionParameters::ColorCodec value);
+   void setDepthCodec(CompressionParameters::DepthCodec value);
    void setColorCompression(message::CompressionMode mode);
-   void enableDepthZfp(bool value);
-   void enableQuantization(bool value);
    void setDepthPrecision(int bits);
    void setDepthCompression(message::CompressionMode mode);
    void setTileSize(int w, int h);
-   void setZfpMode(DepthCompressionParameters::ZfpMode mode);
+   void setZfpMode(CompressionParameters::ZfpMode mode);
    void setDumpImages(bool enable);
 
    int timestep() const;

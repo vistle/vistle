@@ -1,5 +1,6 @@
 #include "compdecomp.h"
 #include "depthquant.h"
+#include "predict.h"
 #include <iostream>
 #include <mutex>
 #include <memory>
@@ -68,7 +69,8 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
 
     const char *zbuf = reinterpret_cast<const char *>(depth);
 #ifdef HAVE_ZFP
-    if (param.depthZfp) {
+    switch (param.depthCodec) {
+    case vistle::CompressionParameters::DepthZfp: {
         std::vector<char> result;
         zfp_type type = zfp_type_float;
         zfp_field *field = zfp_field_2d(const_cast<float *>(depth+y*stride+x), type, w, h);
@@ -79,13 +81,13 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
         default:
             CERR << "invalid ZfpMode " << param.depthZfpMode << std::endl;
             // FALLTHRU
-        case DepthCompressionParameters::ZfpFixedRate:
+        case CompressionParameters::ZfpFixedRate:
             zfp_stream_set_rate(zfp, 6, type, 2, 0);
             break;
-        case DepthCompressionParameters::ZfpPrecision:
+        case CompressionParameters::ZfpPrecision:
             zfp_stream_set_precision(zfp, 16);
             break;
-        case DepthCompressionParameters::ZfpAccuracy:
+        case CompressionParameters::ZfpAccuracy:
             zfp_stream_set_accuracy(zfp, 1./1024.);
             break;
         }
@@ -99,11 +101,10 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
         size_t zfpsize = zfp_compress(zfp, field);
         if (zfpsize == 0) {
             CERR << "zfp compression failed" << std::endl;
-            param.depthZfp = false;
+            param.depthCodec = vistle::CompressionParameters::DepthRaw;
         } else {
             zfpbuf.resize(zfpsize);
             result = std::move(zfpbuf);
-            param.depthQuant = false;
         }
         zfp_field_free(field);
         zfp_stream_close(zfp);
@@ -111,7 +112,7 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
         return result;
     }
 #endif
-    if (param.depthQuant) {
+    case vistle::CompressionParameters::DepthQuant: {
         const int ds = 3; //msg.format == rfbDepth16Bit ? 2 : 3;
         size_t size = depthquant_size(DepthFloat, ds, w, h);
         std::vector<char> qbuf(size);
@@ -124,9 +125,15 @@ std::vector<char> compressDepth(const float *depth, int x, int y, int w, int h, 
 #endif
         return qbuf;
     }
+    case vistle::CompressionParameters::DepthPredict: {
+        size_t size = w*h*3;
+        std::vector<char> pbuf(size);
+        transform_predict((unsigned char *)pbuf.data(), depth+stride*y+x, w, h, stride);
+        return pbuf;
+    }
+    }
 
-    param.depthZfp = false;
-    param.depthQuant = false;
+    param.depthCodec = vistle::CompressionParameters::DepthRaw;
 
     return copyTile(reinterpret_cast<const char *>(depth), x, y, w, h, stride, sizeof(float));
 }
@@ -181,7 +188,7 @@ bool decompressTile(char *dest, const std::vector<char> &input, CompressionParam
     if (param.isDepth) {
         auto &p = param.depth;
 
-        if (p.depthZfp) {
+        if (p.depthCodec == vistle::CompressionParameters::DepthZfp) {
             if (!p.depthFloat) {
                 CERR << "zfp not in float format, cannot decompress" << std::endl;
                 return false;
@@ -222,8 +229,13 @@ bool decompressTile(char *dest, const std::vector<char> &input, CompressionParam
             return good;
         }
 
-        if (p.depthQuant) {
+        if (p.depthCodec == vistle::CompressionParameters::DepthQuant) {
             depthdequant(dest, input.data(), bpp==4 ? DepthFloat : DepthInteger, bpp, x, y, w, h, stride);
+            return true;
+        }
+
+        if (p.depthCodec == vistle::CompressionParameters::DepthPredict) {
+            transform_unpredict(reinterpret_cast<float *>(dest)+y*stride+x, (unsigned char *)input.data(), w, h, stride);
             return true;
         }
 

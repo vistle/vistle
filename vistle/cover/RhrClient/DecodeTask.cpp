@@ -65,10 +65,13 @@ bool DecodeTask::work() {
     auto &cp = param.rgba;
     auto &dp = param.depth;
     if (tile.compression & rfbTileDepthZfp) {
-        dp.depthZfp = true;
+        dp.depthCodec = vistle::CompressionParameters::DepthZfp;
     }
     if (tile.compression & rfbTileDepthQuantize) {
-        dp.depthQuant = true;
+        dp.depthCodec = vistle::CompressionParameters::DepthQuant;
+    }
+    if (tile.compression & rfbTileDepthPredict) {
+        dp.depthCodec = vistle::CompressionParameters::DepthPredict;
     }
     if (tile.format == rfbDepthFloat) {
         dp.depthFloat = true;
