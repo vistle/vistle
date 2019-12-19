@@ -1,6 +1,6 @@
 [submodule "3rdparty/IceT"]
 	path = 3rdparty/IceT
-	url = git://gitlab.kitware.com/icet/icet.git
+	url = https://gitlab.kitware.com/icet/icet.git
 [submodule "3rdparty/qt-solutions"]
 	path = 3rdparty/qt-solutions
 	url = git://github.com/qtproject/qt-solutions.git
