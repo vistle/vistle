@@ -40,7 +40,7 @@ void transform_predict(unsigned char *output, const float *input, unsigned width
 
 void transform_unpredict(float *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
-    const uint32_t F = 1<<24;
+    const uint32_t Max = 0xffffffU;
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -62,7 +62,7 @@ void transform_unpredict(float *output, const unsigned char *input, unsigned wid
             uint32_t I = prev[0] | (uint32_t(prev[1])<<8) | (uint32_t(prev[2])<<16);
 
             in += 3;
-            *out = (float)I / F;
+            *out = (float)I / Max;
             ++out;
         }
     }
