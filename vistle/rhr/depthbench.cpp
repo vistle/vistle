@@ -56,6 +56,7 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
 
    double slow = 0., dslow = 0.;
    double fast = std::numeric_limits<double>::max(), dfast = std::numeric_limits<double>::max();
+   double lz4fast = std::numeric_limits<double>::max(), zfast = std::numeric_limits<double>::max();
    double total = 0., dtotal = 0.;
 
    vistle::CompressionParameters param(depthParam);
@@ -66,13 +67,22 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
       size_t compressedSize = 0;
       auto comp = vistle::compressDepth(depth, 0, 0, w, h, w, depthParam);
       auto comp0 = comp;
+      double dur = Clock::time() - start;
+
       compressedSize = comp.size();
       vistle::message::Buffer msg;
       msg.setPayloadSize(compressedSize);
+      double t0 = Clock::time();
       auto comp2 = vistle::message::compressPayload(vistle::message::CompressionLz4, msg, comp);
+      double t1 = Clock::time();
       auto comp3 = vistle::message::compressPayload(vistle::message::CompressionZstd, msg, comp0);
-
-      double dur = Clock::time() - start;
+      double t2 = Clock::time();
+      double lz4dur = t1 - t0;
+      double zdur = t2 - t1;
+      if (lz4dur < lz4fast)
+          lz4fast = lz4dur;
+      if (zdur < zfast)
+          zfast = zdur;
 
       total += dur;
       if (dur < fast)
@@ -108,8 +118,8 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
       double psnr0 = depthcompare((const char *)&dequant[0], (const char *)&dequant0[0], DepthFloat, 4, 0, 0, w, h, w, false);
       if (i == 0)
          std::cout << "PSNR: " << psnr << " dB (recompressed: " << psnr0 << " dB): size=" << compressedSize << " " << compressedSize/osize*100 << "%"
-             << " +LZ4=" << comp2.size() << " " << comp2.size()/osize*100 << "%"
-             << " +Zstd=" << comp3.size() << " " << comp3.size()/osize*100 << "%"
+             << " +LZ4=" << comp2.size() << " " << comp2.size()/osize*100 << "%" << " (" << lz4fast << " s)"
+             << " +Zstd=" << comp3.size() << " " << comp3.size()/osize*100 << "%" << " (" << zfast << " s)"
              << std::endl;
    }
 
@@ -119,14 +129,18 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
 #if 0
    std::cout << "comp mean:   " << total/num_runs << " s, " << (mpix*num_runs)/total << " MPix/s" << std::endl;
    std::cout << "comp slow:   " << slow << " s, " << mpix/slow << " MPix/s" << std::endl;
-#endif
    std::cout << "comp fast:   " << fast << " s, " << mpix/fast << " MPix/s" << std::endl;
+#else
+   std::cout << "comp:   " << fast << " s, " << mpix/fast << " MPix/s" << std::endl;
+#endif
 
 #if 0
    std::cout << "decomp mean: " << dtotal/num_runs << " s, " << (mpix*num_runs)/dtotal << " MPix/s" << std::endl;
    std::cout << "decomp slow: " << dslow << " s, " << mpix/dslow << " MPix/s" << std::endl;
-#endif
    std::cout << "decomp fast: " << dfast << " s, " << mpix/dfast << " MPix/s" << std::endl;
+#else
+   std::cout << "decomp: " << dfast << " s, " << mpix/dfast << " MPix/s" << std::endl;
+#endif
    std::cout << std::endl;
 }
 
