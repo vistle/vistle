@@ -1,5 +1,5 @@
-if(NOT VISTLE_USE_SHARED_MEMORY)
-   return()
+if(NOT VISTLE_USE_SHARED_MEMORY AND NOT VISTLE_MULTI_PROCESS)
+    return()
 endif()
 
 include_directories(SYSTEM
@@ -10,8 +10,8 @@ include_directories(
         ../..
 )
 
-add_executable(shmperf shmperf.cpp)
-target_link_libraries(shmperf
+add_executable(vistle_shmperf shmperf.cpp)
+target_link_libraries(vistle_shmperf
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_core

@@ -10,12 +10,15 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include <mpi.h>
 
 #include <core/shm_array.h>
 #include <core/shm.h>
 #include <core/vec.h>
+
+#include <util/allocator.h>
 
 using namespace vistle;
 
@@ -30,6 +33,15 @@ struct DataClass {
 };
 
 //#define TWICE
+
+template<class container>
+void time_resize(container &v, const std::string &tag, Index size) {
+
+   clock_t start = clock();
+   v.resize(size);
+   clock_t elapsed = clock()-start;
+   std::cerr << size << " " << tag << ": " << (double)elapsed/CLOCKS_PER_SEC << std::endl;
+}
 
 template<class container>
 void time_pb(container &v, const std::string &tag, Index size) {
@@ -96,6 +108,10 @@ int main(int argc, char *argv[]) {
 
    {
       std::vector<DataType> v;
+      time_resize(v, "STL vector resize", size);
+   }
+   {
+      std::vector<DataType> v;
       time_pb(v, "STL vector push_back", size);
    }
    {
@@ -115,7 +131,36 @@ int main(int argc, char *argv[]) {
       time_eb(v, "STL vector emplace_back+reserve", size);
    }
 
-   { 
+   {
+      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
+      time_resize(v, "STL vector+default_init resize", size);
+   }
+   {
+      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
+      time_pb(v, "STL vector+default_init push_back", size);
+   }
+   {
+      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
+      v.reserve(size);
+      time_pb(v, "STL vector+default_init reserve+push_back", size);
+      time_arr(v, "STL vector+default_init arr", size);
+      time_ptr(&v[0], "STL vector+default_init arr ptr", size);
+#ifdef TWICE
+      time_arr(v, "STL vector arr", size);
+      time_ptr(&v[0], "STL vector arr ptr", size);
+#endif
+   }
+   {
+      std::vector<DataType, vistle::default_init_allocator<DataType>> v;
+      v.reserve(size);
+      time_eb(v, "STL vector+default_init emplace_back+reserve", size);
+   }
+
+   {
+      bi::vector<DataType> v;
+      time_resize(v, "B:I vector resize", size);
+   }
+   {
       bi::vector<DataType> v;
       time_pb(v, "B:I vector push_back", size);
    }
@@ -131,6 +176,10 @@ int main(int argc, char *argv[]) {
 #endif
    }
 
+   {
+      vistle::shm_array<DataType, std::allocator<DataType>> v;
+      time_resize(v, "uninit array resize", size);
+   }
    {
       vistle::shm_array<DataType, std::allocator<DataType>> v;
       time_pb(v, "uninit array push_back only", size);
@@ -227,6 +276,7 @@ int main(int argc, char *argv[]) {
       bi::shared_memory_object::remove(shmname.c_str());
    }
 
+#if 0
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 1, 0, NULL);
@@ -242,6 +292,7 @@ int main(int argc, char *argv[]) {
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
    }
+#endif
 
 #if 0
    bi::shared_memory_object::remove(shmname.c_str());
