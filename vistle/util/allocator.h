@@ -33,5 +33,7 @@ public:
     }
 };
 
+template<typename T>
+using allocator = default_init_allocator<T>;
 }
 #endif

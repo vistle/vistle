@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = default_init_allocator<CharT>>
+template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = allocator<CharT>>
 class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:
@@ -50,7 +50,7 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
    std::vector<CharT, allocator> m_vector;
 };
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = default_init_allocator<CharT>>
+template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = allocator<CharT>>
 class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:

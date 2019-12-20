@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-using buffer = std::vector<char, default_init_allocator<char>>;
+using buffer = std::vector<char, allocator<char>>;
 
 }
 #endif
