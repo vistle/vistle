@@ -8,6 +8,7 @@
 #include "VisItDataInterfaceRuntime.h"
 #include "SimulationMetaData.h"
 #include "VisItDataTypes.h"
+#include "Exeption.h"
 
 #include "MeshMetaData.h"
 #include "VariableMetaData.h"
@@ -28,6 +29,8 @@
 #include <module/module.h>
 
 #include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
+
 #include <core/message.h>
 #include <core/tcpmessage.h>
 
@@ -51,6 +54,10 @@ Engine* Engine::createEngine() {
 
 void in_situ::Engine::setModule(vistle::Module* module) {
     m_module = module;
+    if (!m_module) {
+        printToConsole("setModule was called with invalid module pointer(nullptr)");
+        return;
+    }
     addPorts();
 }
 
@@ -58,7 +65,7 @@ void in_situ::Engine::setDoReadMutex(std::mutex* m) {
     m_doReadMutex = m;
 }
 
-bool Engine::getNumObjects(SimulationDataTyp type, int& num) {
+int Engine::getNumObjects(SimulationDataTyp type) {
 
     std::function<bool(visit_handle, int&)> getNum;
     switch (type) {
@@ -116,20 +123,17 @@ bool Engine::getNumObjects(SimulationDataTyp type, int& num) {
     visit_handle metaData = VISIT_INVALID_HANDLE;
     metaData = simv2_invoke_GetMetaData();
     if (metaData == VISIT_INVALID_HANDLE) {
-        cerr << "Engine Can't get meta data from simulation" << endl;
-        return false;
+        throw EngineExeption("Can't get meta data from simulation");
     }
-    num = 0;
+    int num = 0;
     if (getNum(metaData, num) == VISIT_ERROR) {
-        cerr << "Engine Can't get num from simulation metadata" << endl;
-        simv2_FreeObject(metaData);
-        return false;
+        throw EngineExeption("Can't get num from simulation metadata");
     }
-    return true;
+    return num;
 }
 
-bool Engine::getNthObject(SimulationDataTyp type, int n, visit_handle& obj) {
-    std::function<bool(visit_handle, int, visit_handle&)> getObj;
+visit_handle Engine::getNthObject(SimulationDataTyp type, int n) {
+    std::function<int(visit_handle, int, visit_handle&)> getObj;
     switch (type) {
     case SimulationDataTyp::mesh:
     {
@@ -177,20 +181,16 @@ bool Engine::getNthObject(SimulationDataTyp type, int n, visit_handle& obj) {
     }
     break;
     default:
-        cerr << "getDataNames called with invalid type" << endl;
-        return false;
+        throw EngineExeption("getDataNames called with invalid type");
         break;
     }
-
-    if (getObj(simv2_invoke_GetMetaData(), n, obj) == VISIT_ERROR) {
-        cerr << "Engine Can't get obj" << n << "from simulation metadata" << endl;
-        return false;
-    }
-    return true;
+    visit_handle obj = v2check(simv2_invoke_GetMetaData);
+    v2check(getObj, obj, n, obj);
+    return obj;
 }
 
-bool Engine::getDataNames(SimulationDataTyp type, std::vector<std::string>& names) {
-    std::function<bool(visit_handle, char**)> getName;
+std::vector<std::string> in_situ::Engine::getDataNames(SimulationDataTyp type) {
+    std::function<int(visit_handle, char**)> getName;
     switch (type) {
     case SimulationDataTyp::mesh:
     {
@@ -238,35 +238,23 @@ bool Engine::getDataNames(SimulationDataTyp type, std::vector<std::string>& name
     }
     break;
     default:
-        cerr << "getDataNames called with invalid type" << endl;
-        return false;
+        throw new EngineExeption("getDataNames called with invalid type");
         break;
     }
 
-    int n = 0;
-    if (!getNumObjects(type, n)) {
-        printToConsole("getDataNames failed to get getNumObjects");
-        return false;
-    }
-    names.clear();
+    int n = getNumObjects(type);
+    std::vector<string> names;
     names.reserve(n);
     for (size_t i = 0; i < n; i++) {
-        visit_handle obj;
-        if (!getNthObject(type, i, obj)) {
-            printToConsole("getDataNames failed to get getNthObject");
-            return false;
-        }
+        visit_handle obj = getNthObject(type, i);
         char* name;
-        if (getName(obj, &name) == VISIT_ERROR) {
-            cerr << "getDataNames can't get mesh name for mesh" << i << "from simulation metadata" << endl;
-            return false;
-        }
+        v2check(getName, obj, &name);
         names.push_back(name);
     }
-    return true;
-
-
+    return names;
 }
+
+
 
 void Engine::DisconnectSimulation() {
 
@@ -301,7 +289,6 @@ bool Engine::initialize(int argC, char** argV) {
 
     m_initialized = true;
     return true;
-
 }
 
 bool Engine::isInitialized() const noexcept {
@@ -317,7 +304,7 @@ return true;
 
 bool Engine::sendData() {
 
-
+    printToConsole("sendData was called");
     return true;
 }
 
@@ -335,20 +322,12 @@ void Engine::SimulationTimeStepChanged() {
     }
 }
 
-bool in_situ::Engine::getMetaData(Metadata& md) {
-    visit_handle h = simv2_invoke_GetMetaData();
-    if (h == VISIT_INVALID_HANDLE) {
-        return false;
-    }
-    if (simv2_SimulationMetaData_getData(h, md.simMode, md.currentCycle,
-        md.currentTime) == VISIT_ERROR) {
-        cerr << "Engine Can't get data from simulation metadata" << endl;
-        simv2_FreeObject(h);
-        return false;
-    }
-    
+Metadata in_situ::Engine::getMetaData() {
+    visit_handle h = v2check(simv2_invoke_GetMetaData);
+    Metadata md;
+    v2check(simv2_SimulationMetaData_getData, h, md.simMode, md.currentCycle, md.currentTime);
     cerr << "simMode = " << md.simMode << " currentCycle = " << md.currentCycle << " currentTime = " << md.currentTime << endl;
-    return true;
+    return md;
 }
 
 void Engine::SimulationInitiateCommand(const char* command) {
@@ -372,34 +351,22 @@ void in_situ::Engine::SetDisconnectCb(std::function<void(void)> cb) {
     disconnectCb = cb;
 }
 
-bool Engine::addPorts() {
-    if (!m_module) {
-        return false;
+void Engine::addPorts() {
+    try {
+        std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
+
+        for (const auto name : names) {
+            auto port = m_module->createOutputPort(name, "mesh");
+            m_portsList[name] = port;
+        }
+        names = getDataNames(SimulationDataTyp::variable);
+        for (const auto name : names) {
+            auto port = m_module->createOutputPort(name, "variable");
+            m_portsList[name] = port;
+        }
+    } catch (const SimV2Exeption& ex) {
+        printToConsole(string("failed to add output ports: ") + ex.what());
     }
-    std::vector<string> names;
-    if (!getDataNames(SimulationDataTyp::mesh, names)) {
-        cerr << "ConnectLibSim failed to add mesh ports" << endl;
-        return false;
-    }
-    if (names.size() == 0) {
-        cerr << "ConnectLibSim did not find any mesh" << endl;
-    }
-    for (const auto name : names) {
-        auto port = m_module->createOutputPort(name, "mesh");
-        m_portsList[name] = port;
-    }
-    if (!getDataNames(SimulationDataTyp::variable, names)) {
-        cerr << "ConnectLibSim failed to add variable ports" << endl;
-        return false;
-    }
-    if (names.size() == 0) {
-        cerr << "ConnectLibSim did not find any variables" << endl;
-    }
-    for (const auto name : names) {
-        auto port = m_module->createOutputPort(name, "variable");
-        m_portsList[name] = port;
-    }
-    return true;
 }
 
 bool in_situ::Engine::makeCurvilinearMesh(visit_handle h) {
@@ -412,7 +379,7 @@ bool in_situ::Engine::makeCurvilinearMesh(visit_handle h) {
         return false;
     }
 
-
+    //vistle::StructuredGrid::ptr grid(new vistle::StructuredGrid());
 
 
 }
@@ -433,38 +400,26 @@ bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
 bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
     char* name;
     int dim;
-    if (!simv2_MeshMetaData_getName(meshMetaHandle, &name)) {
-        return false;
-    }
-    if (!simv2_MeshMetaData_getTopologicalDimension(meshMetaHandle, &dim)) {
-        return false;
-    }
+    v2check(simv2_MeshMetaData_getName, meshMetaHandle, &name);
+    v2check(simv2_MeshMetaData_getTopologicalDimension, meshMetaHandle, &dim);
     int numDomains = 0;
-    if (!simv2_MeshMetaData_getNumDomains(meshMetaHandle, &numDomains)) {
-        return false;
-    }
+    v2check(simv2_MeshMetaData_getNumDomains, meshMetaHandle, &numDomains);
     cerr << "making amr grid with " << numDomains << " domains" << endl;
     auto meshInfo = m_meshes.insert(std::make_pair(name, MeshInfo{}));
     meshInfo.first->second.numDomains = numDomains;
     for (size_t i = 0; i < numDomains; i++) {
-        visit_handle meshHandle = simv2_invoke_GetMesh(i, name);
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,i, name);
         int check = simv2_RectilinearMesh_check(meshHandle);
         printToConsole("invoking get mesh for domain " + std::to_string(i) + " with name " + name + " handle = " + std::to_string(meshHandle) + "check= " + std::to_string(check));
 
         if (check == VISIT_OKAY) {
-            printToConsole("handle ok");
             visit_handle coordHandles[3]; //handles to variable data
             int ndims;
-            if (!simv2_RectilinearMesh_getCoords(meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2])) {
-                return false;
-            }
+            v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
             int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{1,1,1};
             void* data[3]{};
             for (int i = 0; i < dim; ++i) {
-                if (simv2_VariableData_getData(coordHandles[i], owner[i], dataType[i],
-                    nComps[i], nTuples[i], data[i]) == VISIT_ERROR) {
-                    return false;
-                }
+                v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                 cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
                 if (dataType[i] != VISIT_DATATYPE_FLOAT) {
                     printToConsole("mesh coords must be floats");
@@ -483,18 +438,13 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
     return true;
 }
 
-bool in_situ::Engine::sendMeshesToModule()     {
-    int numMeshes = 0;
-    if (!getNumObjects(SimulationDataTyp::mesh, numMeshes)) {
-        return false;
-    }
+void in_situ::Engine::sendMeshesToModule()     {
+    int numMeshes = getNumObjects(SimulationDataTyp::mesh);
+
     for (size_t i = 0; i < numMeshes; i++) {
-        visit_handle meshHandle = VISIT_INVALID_HANDLE;
-        if (!getNthObject(SimulationDataTyp::mesh, i, meshHandle)) {
-            return false;
-        }
+        visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         VisIt_MeshType meshType = VisIt_MeshType::VISIT_MESHTYPE_UNKNOWN;
-        simv2_MeshMetaData_getMeshType(meshHandle, (int*)&meshType);
+        v2check(simv2_MeshMetaData_getMeshType, meshHandle, (int*)&meshType);
         switch (meshType) {
         case VISIT_MESHTYPE_RECTILINEAR:
         {
@@ -523,49 +473,32 @@ bool in_situ::Engine::sendMeshesToModule()     {
         break;
         case VISIT_MESHTYPE_AMR:
         {
-            if (!makeAmrMesh(meshHandle))
-                return false;
+            makeAmrMesh(meshHandle);
         }
         break;
         default:
-            return false;
+            throw EngineExeption("unknown meshtype");
             break;
         }
     }
-    return true;
 }
 
-bool in_situ::Engine::sendVarablesToModule()     {
-    int numVars = 0;
-    if (!getNumObjects(SimulationDataTyp::variable, numVars)) {
-        return false;
-    }
+void in_situ::Engine::sendVarablesToModule()     {
+    int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
-        visit_handle varMetaHandle = VISIT_INVALID_HANDLE;
-        if (!getNthObject(SimulationDataTyp::variable, i, varMetaHandle)) {
-            return false;
-        }
+        visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
         char* name, *meshName;
-        if (!simv2_VariableMetaData_getName(varMetaHandle, &name)) {
-            return false;
-        }
-        if (!simv2_VariableMetaData_getMeshName(varMetaHandle, &meshName)) {
-            return false;
-        }
+        v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
+        v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
         auto meshInfo = m_meshes.find(meshName);
         if (meshInfo == m_meshes.end()) {
-            printToConsole(std::string("can't find mesh ") + meshName + " for variable " + name);
-            return false;
+            throw EngineExeption(std::string("can't find mesh ") + meshName + " for variable " + name);
         }
-
-
         for (size_t j = 0; j < meshInfo->second.numDomains; j++) {
-            visit_handle varHandle = simv2_invoke_GetVariable(j, name);
+            visit_handle varHandle = v2check(simv2_invoke_GetVariable, j, name);
             int  owner{}, dataType{}, nComps{}, nTuples{};
             void* data = nullptr;
-            if (!simv2_VariableData_getData(varHandle, owner, dataType, nComps, nTuples, data)) {
-                return false;
-            }
+            v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
             cerr << "variable " << name << " domain " << j << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
@@ -590,21 +523,18 @@ bool in_situ::Engine::sendVarablesToModule()     {
             break;
             case VISIT_DATATYPE_LONG:
             {
-                printToConsole("variable data of type long not supported");
+                throw EngineExeption("not supported variable type: long");
             }
             break;
             case VISIT_DATATYPE_STRING:
             {
-                printToConsole("what are strings on a grid?");
-                return false;
+                throw EngineExeption("not supported variable type: string");
             }
             break;
             default:
-                return false;
+                throw EngineExeption("unexpected variable type");
                 break;
             }
-            return true;
-
         }
 
 
@@ -614,14 +544,25 @@ bool in_situ::Engine::sendVarablesToModule()     {
     }
 }
 
-bool in_situ::Engine::sendDataToModule() {
-    if (!sendMeshesToModule()) {
-        return false;
+void in_situ::Engine::sendDataToModule() {
+    try {
+        sendMeshesToModule();
+    } catch (const EngineExeption& exept) {
+        printToConsole(string("sendMeshesToModule failed: ") + exept.what());
+    } catch (const SimV2Exeption & exept)         {
+        printToConsole(string("sendMeshesToModule failed: ") + exept.what());
     }
-    if (!sendVarablesToModule()) {
-        return false;
+
+    try {
+        sendVarablesToModule();
+    } catch (const EngineExeption & exept) {
+        printToConsole(string("sendVarablesToModule failed: ") + exept.what());
+    } catch (const SimV2Exeption & exept) {
+        printToConsole(string("sendVarablesToModule failed: ") + exept.what());
     }
-    return true;
+    
+
+
 
 }
 

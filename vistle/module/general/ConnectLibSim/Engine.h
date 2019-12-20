@@ -46,9 +46,9 @@ public:
     //********************************
     void setModule(vistle::Module* module);
     void setDoReadMutex(std::mutex* m);
-    bool getNumObjects(SimulationDataTyp type, int& num);
-    bool getNthObject(SimulationDataTyp type, int n, visit_handle&);
-    bool getDataNames(SimulationDataTyp type, std::vector<std::string>& names);
+    int getNumObjects(SimulationDataTyp type);
+    visit_handle getNthObject(SimulationDataTyp type, int n);
+    std::vector<std::string> getDataNames(SimulationDataTyp type);
     //set callbacks (called from module)
     void SetTimestepChangedCb(std::function<bool(void)> cb);
     void SetDisconnectCb(std::function<void(void)> cb);
@@ -58,7 +58,7 @@ public:
     //adds all available data to the according outputs to execute the pipeline
     bool sendData();
     void SimulationTimeStepChanged();
-    bool getMetaData(Metadata& md);
+    Metadata getMetaData();
     void SimulationInitiateCommand(const char* command);
     void DeleteData();
     //set callbacks (called from sim)
@@ -90,14 +90,14 @@ private:
     void* simulationCommandCallbackData = nullptr;
 
 
-    bool addPorts();
+    void addPorts();
 
     bool makeCurvilinearMesh(visit_handle meshMetaHandle);
     bool makeUntructuredMesh(visit_handle meshMetaHandle);
     bool makeAmrMesh(visit_handle meshMetaHandle);
-    bool sendMeshesToModule();
-    bool sendVarablesToModule();
-    bool sendDataToModule();
+    void sendMeshesToModule();
+    void sendVarablesToModule();
+    void sendDataToModule();
 
     template<typename T>
     void sendVariableToModule(const std::string& name, vistle::obj_const_ptr mesh, int domain, const T* data, int size) {
