@@ -405,14 +405,14 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
             ArraySaver saver(req.objectId(), req.arrayType(), memar);
             if (!saver.save()) {
                 CERR << "failed to serialize array " << req.objectId() << std::endl;
-                return true;
+                return false;
             }
             snd.reset(new message::SendObject(req, mem.size()));
         } else {
             Object::const_ptr obj = Shm::the().getObjectFromName(req.objectId());
             if (!obj) {
                 CERR << "cannot find object with name " << req.objectId() << std::endl;
-                return true;
+                return false;
             }
             obj->saveObject(memar);
             snd.reset(new message::SendObject(req, obj, mem.size()));
@@ -594,7 +594,7 @@ void DataManager::sendLoop()
 
 void DataManager::cleanLoop()
 {
-    auto waitForTasks = [this](std::mutex &mutex, std::deque<std::future<bool>> &tasks, bool workDone) -> bool {
+    auto waitForTasks = [this](std::mutex &mutex, std::deque<std::future<bool>> &tasks, bool workDone, const std::string &kind) -> bool {
         std::unique_lock<std::mutex> lock(mutex);
         while (tasks.size() > 100 || (!workDone && !tasks.empty())) {
             auto front = std::move(tasks.front());
@@ -604,7 +604,7 @@ void DataManager::cleanLoop()
             workDone = true;
             bool result = front.get();
             if (!result) {
-                CERR << "asynchronous task failed" << std::endl;
+                CERR << "asynchronous " << kind << " task failed" << std::endl;
             }
             lock.lock();
         }
@@ -613,13 +613,13 @@ void DataManager::cleanLoop()
 
     for (;;) {
         bool work = false;
-        if (waitForTasks(m_sendTaskMutex, m_sendTasks, work)) {
+        if (waitForTasks(m_sendTaskMutex, m_sendTasks, work, "send")) {
             work = true;
             std::lock_guard<std::mutex> guard(m_recvMutex);
             if (m_quit)
                 break;
         }
-        if (waitForTasks(m_recvTaskMutex, m_recvTasks, work)) {
+        if (waitForTasks(m_recvTaskMutex, m_recvTasks, work, "receive")) {
             work = true;
             std::lock_guard<std::mutex> guard(m_recvMutex);
             if (m_quit)
