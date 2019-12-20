@@ -186,6 +186,7 @@ int main(int argc, char *argv[]) {
       time_ptr(&(v.x()[0]), "vistle vector arr ptr", size);
       bi::shared_memory_object::remove(shmname.c_str());
 #endif
+      vistle::Shm::remove(shmname, 1, 0);
    }
 
    { 
@@ -196,6 +197,7 @@ int main(int argc, char *argv[]) {
       vv.reserve(size);
       time_pb(vv, "vistle push_back+reserve", size);
       bi::shared_memory_object::remove(shmname.c_str());
+      vistle::Shm::remove(shmname, 1, 0);
    }
 
    { 
@@ -212,6 +214,7 @@ int main(int argc, char *argv[]) {
       time_ptr(&v[0], "vistle explicit arr ptr", size);
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
+      vistle::Shm::remove(shmname, 1, 0);
    }
 
 #if 0
@@ -229,6 +232,7 @@ int main(int argc, char *argv[]) {
       time_ptr(&v[0], "vistle explicit arr ptr", size);
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
+      vistle::Shm::remove(shmname, 1, 0);
    }
 #endif
 
@@ -244,6 +248,7 @@ int main(int argc, char *argv[]) {
    clock_t vi_dir = clock()-start;
    std::cerr << size << " vistle direct push_back: " << (double)vi_dir/CLOCKS_PER_SEC << std::endl;
    bi::shared_memory_object::remove(shmname.c_str());
+   vistle::Shm::remove(shmname, 1, 0);
 #endif
 
 #if 0 
