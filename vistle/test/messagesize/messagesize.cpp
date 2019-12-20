@@ -1,6 +1,7 @@
 #include <iostream>
 #include <core/message.h>
 #include <core/messages.h>
+#include <rhr/rfbext.h>
 
 using namespace vistle;
 using namespace vistle::message;
@@ -26,6 +27,7 @@ int main() {
 
          M(IDENTIFY, Identify)
          M(ADDHUB, AddHub)
+         //M(REMOVESLAVE, RemoveSlave)
          M(SETID, SetId)
          M(TRACE, Trace)
          M(SPAWN, Spawn)
@@ -43,6 +45,7 @@ int main() {
          M(CANCELEXECUTE, CancelExecute)
          M(ADDOBJECT, AddObject)
          M(ADDOBJECTCOMPLETED, AddObjectCompleted)
+         M(DATATRANSFERSTATE, DataTransferState)
          M(ADDPORT, AddPort)
          M(REMOVEPORT, AddPort)
          M(CONNECT, Connect)
@@ -56,6 +59,7 @@ int main() {
          M(BARRIER, Barrier)
          M(BARRIERREACHED, BarrierReached)
          M(SENDTEXT, SendText)
+         M(UPDATESTATUS, UpdateStatus)
          M(OBJECTRECEIVEPOLICY, ObjectReceivePolicy)
          M(SCHEDULINGPOLICY, SchedulingPolicy)
          M(REDUCEPOLICY, ReducePolicy)
@@ -65,9 +69,12 @@ int main() {
          M(REQUESTTUNNEL, RequestTunnel)
          M(REQUESTOBJECT, RequestObject)
          M(SENDOBJECT, SendObject)
+         M(REMOTERENDERING, RemoteRenderMessage)
+         M(FILEQUERY, FileQuery)
+         M(FILEQUERYRESULT, FileQueryResult)
 
          default: {
-            std::cerr << i << ": " << type << std::endl;
+            std::cerr << i << " unhandled: " << type << std::endl;
          }
       }
    }
