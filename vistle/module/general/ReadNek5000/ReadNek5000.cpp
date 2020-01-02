@@ -202,6 +202,7 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     if(r == readers.end())
     {
         sendError("nek: ReadScalar failed to find reader for partition " + std::to_string(partition));
+        guard.unlock();
         return false;
     }
     guard.unlock();
