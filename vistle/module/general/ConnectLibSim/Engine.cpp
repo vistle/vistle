@@ -1,7 +1,7 @@
 #include "Engine.h"
 #include <boost/mpi.hpp>
 
-#include <manager/manager.h>
+
 
 #include <module/module.h>
 
@@ -25,7 +25,7 @@
 #include <boost/mpi.hpp>
 #include <control/hub.h>
 #include <util/directory.h>
-#include <manager/manager.h>
+
 #include <module/module.h>
 
 #include <core/rectilineargrid.h>
@@ -268,6 +268,7 @@ void Engine::DisconnectSimulation() {
 }
 
 bool Engine::initialize(int argC, char** argV) {
+#ifdef MODULE_THREAD
     // start manager on cluster
     printToConsole("__________Engine args__________");
     for (size_t i = 0; i < argC; i++) {
@@ -294,6 +295,7 @@ bool Engine::initialize(int argC, char** argV) {
     });
 
     m_initialized = true;
+#endif
     return true;
 }
 

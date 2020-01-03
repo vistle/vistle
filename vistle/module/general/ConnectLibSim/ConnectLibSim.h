@@ -11,7 +11,7 @@
 #include "export.h"
 #include "MetaData.h"
 
-class V_CONNECTLIBSIMEXPORT ConnectLibSim : public vistle::Reader
+class ConnectLibSim : public vistle::Reader
 {
 public:
     ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm);
@@ -21,10 +21,10 @@ public:
     ~ConnectLibSim() override;
     //called from the simulation to inform us that the next read has to do sth
     bool timestepChanged();
-    //Parameter
-    vistle::StringParameter* sim2File = nullptr; //file with connection information to initialize the connection with the simulation
     
 private:
+    // Parameters
+    vistle::StringParameter* p_data_path = nullptr;
     in_situ::Metadata metaData_;
 
     std::mutex doReadMutex;

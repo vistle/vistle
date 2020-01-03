@@ -14,7 +14,11 @@
 #include <mutex>
 #include <thread>
 
+#ifdef MODULE_THREAD
 #include <manager/manager.h>
+#endif // MODULE_THREAD
+
+
 #include <module/module.h>
 #include <core/vec.h>
 

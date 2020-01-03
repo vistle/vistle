@@ -7,9 +7,14 @@
 #
 #****************************************************************************
 
+vistle_add_library(LibSim_Connect EstablishConnection.h EstablishConnectionExports.h EstablishConnection.cpp)
+target_link_libraries(LibSim_Connect
+		${Boost_LIBRARIES}
+		)
+		
 if (VISTLE_MULTI_PROCESS)
     # not yet implemented
-    return()
+    #return()
 endif()
 
 
@@ -98,7 +103,6 @@ vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
 target_link_libraries(${LIBNAME}
 		vistle_module
-		vistle_clustermanager
 		vistle_util
 		vistle_control
         vistle_core
@@ -106,6 +110,10 @@ target_link_libraries(${LIBNAME}
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
+if(NOT VISTLE_MULTI_PROCESS)
+target_link_libraries(${LIBNAME}
+		vistle_clustermanager)
+endif()
 
 set(MODULE_LIBRARY_SOURCES
   ConnectLibSim.cpp
@@ -118,6 +126,7 @@ set(MODULE_LIBRARY_HEADERS
 add_module(ConnectLibSim ${MODULE_LIBRARY_SOURCES} ${MODULE_LIBRARY_HEADERS})
 target_link_libraries(ConnectLibSim
         vistle_module
+		LibSim_Connect
 		${LIBNAME}
 )
 

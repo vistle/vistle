@@ -40,6 +40,11 @@ target_link_libraries(vistle_control
         vistle_core
         vistle_net
 )
+if(NOT VISTLE_MULTI_PROCESS)
+target_link_libraries(vistle_control
+		LibSim_Connect 
+)
+endif()
 if(UNIX)
         target_link_libraries(vistle_control ${CMAKE_DL_LIBS})
 endif()

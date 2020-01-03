@@ -11,6 +11,7 @@
 #include "Engine.h"
 
 #include <util/sleep.h>
+#include "EstablishConnection.h"
 
 using namespace vistle;
 using std::string;
@@ -112,6 +113,14 @@ bool ConnectLibSim::read(Token& token, int timestep, int block) {
 
 bool ConnectLibSim::examine(const vistle::Parameter* param) {
 
+    if (!Engine::createEngine()->isInitialized()) {
+        std::vector<std::string > args;
+        args.push_back("shm name");
+        args.push_back("module id");
+        if (attemptLibSImConnection(p_data_path->getValue(), args)) {
+            cerr << "successfully connected to simulation" << endl;
+        }
+    }
 
     return true;
 }
