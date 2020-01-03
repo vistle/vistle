@@ -195,8 +195,8 @@ void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 ma
    lmax[D] = cur.Lmax;
    Vector3 rmin = min;
    rmin[D] = cur.Rmin;
-   visit(nodes, nodes[L], min, lmax, lines, data, depth+1, maxdepth, show);
-   visit(nodes, nodes[R], rmin, max, lines, data, depth+1, maxdepth, show);
+   ::visit(nodes, nodes[L], min, lmax, lines, data, depth+1, maxdepth, show);
+   ::visit(nodes, nodes[R], rmin, max, lines, data, depth+1, maxdepth, show);
 }
 
 bool ShowCelltree::compute() {
@@ -239,7 +239,7 @@ bool ShowCelltree::compute() {
    if (!ct->nodes().empty()) {
       Vector3 min(ct->min()[0], ct->min()[1], ct->min()[2]);
       Vector3 max(ct->max()[0], ct->max()[1], ct->max()[2]);
-      visit(ct->nodes().data(), ct->nodes()[0], min, max, out, dataOut, 0, m_maxDepth->getValue(), show);
+      ::visit(ct->nodes().data(), ct->nodes()[0], min, max, out, dataOut, 0, m_maxDepth->getValue(), show);
    }
 
    out->copyAttributes(gridObj);
