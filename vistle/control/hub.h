@@ -141,6 +141,9 @@ private:
 
    std::string m_statusText;
 
+   std::string sim2FilePath;
+   bool m_inSitu = false;
+
    bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::CancelExecute &cancel);
    bool handlePriv(const message::Barrier &barrier);

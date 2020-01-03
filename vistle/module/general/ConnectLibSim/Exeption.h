@@ -3,27 +3,24 @@
 #include <exception>
 #include <string>
 #include <tuple>
+#include <functional>
 
 #include "VisItDataTypes.h"
+namespace in_situ {
 struct SimV2Exeption : public std::exception {
-
-    const char* what() const throw () {
-        return "a call to a simV2 runntime function failed!";
-    }
+    const char* what() const throw ();
 };
 
 
 class EngineExeption : public std::exception {
 public:
-    EngineExeption(const std::string& message)
-        :msg(message) {
-    }
+    EngineExeption(const std::string& message);
 
-    const char* what() const throw () {
-        return ("Engine error: " + msg).c_str();
-    }
+
+    const char* what() const throw ();
 private:
     const std::string msg;
+    int rank = -1, size = 0;
 
 };
 
@@ -90,7 +87,7 @@ inline visit_handle v2check(visit_handle(fnct)()) {
     return v2check(std::function<visit_handle()>(fnct));
 }
 
-
+}
 #endif // !SIMV2_EXEPTION
 
 

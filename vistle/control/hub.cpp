@@ -24,9 +24,7 @@
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
 
-#ifdef MODULE_THREAD
 #include <module/general/ConnectLibSim/EstablishConnection.h>
-#endif // MODULE_THREAD
 
 #include "uimanager.h"
 #include "uiclient.h"
@@ -283,7 +281,12 @@ bool Hub::init(int argc, char *argv[]) {
    if (vm.count("execute") > 0) {
        m_executeModules = true;
    }
-
+#ifndef MODULE_THREAD
+   if (vm.count("libsim") > 0) {
+       sim2FilePath = vm["libsim"].as<std::string>();
+       m_inSitu = true;
+   }
+#endif
    if (!m_inManager) {
        std::string port = boost::lexical_cast<std::string>(this->port());
        std::string dataport = boost::lexical_cast<std::string>(dataPort());
@@ -296,33 +299,34 @@ bool Hub::init(int argc, char *argv[]) {
        args.push_back(hostname());
        args.push_back(port);
        args.push_back(dataport);
+#ifdef MODULE_THREAD
        if (vm.count("libsim") > 0) {
-           std::string path = vm["libsim"].as<std::string>();
+           sim2FilePath = vm["libsim"].as<std::string>();
+
+
            CERR << "starting manager in simulation" << std::endl;
            bool success = false;
-#ifdef MODULE_THREAD
-           success = in_situ::attemptLibSImConnection(path, args);
-#endif // MODULE_THREAD
+
+           success = in_situ::attemptLibSImConnection(sim2FilePath, args);
            if (success) {
                sendInfo("Successfully connected to simulation");
            }
            else {
                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
-#ifndef MODULE_THREAD
-               CERR << "use the ConnectLibSim module to connect to a sumulation with a multi process Vistle" << std::endl;
-#endif // !MODULE_THREAD
-
                exit(1);
            }
 
        } else {
+#endif // MODULE_THREAD
            auto pid = launchProcess(args);
            if (!pid) {
                CERR << "failed to spawn Vistle manager " << std::endl;
                exit(1);
            }
            m_processMap[pid] = Process::Manager;
+#ifdef MODULE_THREAD
        }
+#endif // MODULE_THREAD
    }
    return true;
 }
@@ -1299,19 +1303,29 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                  argv.push_back(Shm::instanceName(hostname(), m_port));
                  argv.push_back(name);
                  argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
-
-                 auto pid = launchProcess(argv);
-                 if (pid) {
-                     //CERR << "started " << executable << " with PID " << pid << std::endl;
-                     m_processMap[pid] = spawn.spawnId();
-                 } else {
-                     std::stringstream str;
-                     str << "program " << argv[0] << " failed to start";
-                     sendError(str.str());
-                     auto ex = make.message<message::ModuleExit>();
-                     ex.setSenderId(spawn.spawnId());
-                     sendManager(ex);
+                 std::cerr << "starting module " << name << std::endl;
+                 if (m_inSitu && name == "ConnectLibSim"){ //tell the simulation to start the ConnectLibSim module
+                     if (in_situ::attemptLibSImConnection(sim2FilePath, argv)) {
+                         sendInfo("Successfully connected to simulation");
+                     } else {
+                         sendError("failed to connect to simulation");
+                     }
                  }
+                 else {
+                    auto pid = launchProcess(argv);
+                     if (pid) {
+                         //CERR << "started " << executable << " with PID " << pid << std::endl;
+                         m_processMap[pid] = spawn.spawnId();
+                     } else {
+                         std::stringstream str;
+                         str << "program " << argv[0] << " failed to start";
+                         sendError(str.str());
+                         auto ex = make.message<message::ModuleExit>();
+                         ex.setSenderId(spawn.spawnId());
+                         sendManager(ex);
+                     }
+                 }
+ 
 #endif
              }
              break;

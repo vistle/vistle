@@ -268,14 +268,14 @@ void Engine::DisconnectSimulation() {
 }
 
 bool Engine::initialize(int argC, char** argV) {
-#ifdef MODULE_THREAD
-    // start manager on cluster
+
     printToConsole("__________Engine args__________");
     for (size_t i = 0; i < argC; i++) {
         printToConsole(argV[i]);
     }
     printToConsole("_______________________________");
-
+#ifdef MODULE_THREAD
+    // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
         printToConsole("VISTLE_ROOT not set");
@@ -295,6 +295,36 @@ bool Engine::initialize(int argC, char** argV) {
     });
 
     m_initialized = true;
+#else
+    vistle::registerTypes(); 
+        int rank = -1, size = -1; 
+         
+        try {
+            if (argC != 4) {
+                    std::cerr << "simulation requires exactly 4 parameters" << std::endl; 
+                    return false;
+            } 
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
+            MPI_Comm_size(MPI_COMM_WORLD, &size); 
+
+            std::string shmname = argV[1];
+            const std::string name = argV[2];
+            int moduleID = atoi(argV[3]);
+            vistle::Module::setup(shmname, moduleID, rank);
+            m_module = new vistle::Module("", name, moduleID, boost::mpi::communicator());
+            managerThread = std::thread([argC, argV, rank, this]() {
+                m_module->eventLoop();
+                });
+            MPI_Barrier(MPI_COMM_WORLD); 
+    } catch (vistle::exception & e) {
+                    
+            std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
+            std::cerr << "  info: " << e.info() << std::endl; 
+            std::cerr << e.where() << std::endl; 
+    } catch (std::exception & e) {
+            std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
+    } 
+    addPorts();
 #endif
     return true;
 }
@@ -362,7 +392,6 @@ void in_situ::Engine::getMetaData() {
 void Engine::addPorts() {
     try {
         std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
-
         for (const auto name : names) {
             auto port = m_module->createOutputPort(name, "mesh");
             m_portsList[name] = port;
@@ -373,6 +402,8 @@ void Engine::addPorts() {
             m_portsList[name] = port;
         }
     } catch (const SimV2Exeption& ex) {
+        printToConsole(string("failed to add output ports: ") + ex.what());
+    } catch (const EngineExeption & ex) {
         printToConsole(string("failed to add output ports: ") + ex.what());
     }
 }
@@ -561,11 +592,6 @@ void in_situ::Engine::sendVarablesToModule()     {
                 break;
             }
         }
-
-
-
-
-        
     }
 }
 
@@ -595,6 +621,10 @@ Engine::Engine()
 { }
 
 Engine::~Engine() {
+#ifndef MODULE_THREAD
+    delete m_module;
+#endif // !MODULE_THREAD
+
     if (disconnectCb) {
         disconnectCb();
     }
@@ -604,8 +634,8 @@ Engine::~Engine() {
 void in_situ::Engine::printToConsole(const std::string& msg) const {
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank == 0) {
-        cerr << "LibSim::Engine: " << msg << endl;
+    if (rank != -1) {
+        cerr << "LibSim::Engine[" << rank << "]: " << msg << endl;
     }
 }
 

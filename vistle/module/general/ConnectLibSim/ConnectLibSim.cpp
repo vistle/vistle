@@ -37,6 +37,8 @@ ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communi
     int size = -1;
     MPI_Comm_size(comm, &size);
     setPartitions(size);
+    p_data_path = addStringParameter("path", "path to a .sim2 file", "", Parameter::Filename);
+    observeParameter(p_data_path);
 }
 
 int ConnectLibSim::updateParameter(const char* info) {
@@ -112,15 +114,28 @@ bool ConnectLibSim::read(Token& token, int timestep, int block) {
 }
 
 bool ConnectLibSim::examine(const vistle::Parameter* param) {
-
-    if (!Engine::createEngine()->isInitialized()) {
+#ifndef MODULE_THREAD
+    if (rank() == 0 && !Engine::createEngine()->isInitialized()) {
         std::vector<std::string > args;
-        args.push_back("shm name");
-        args.push_back("module id");
+
+        args.push_back(std::to_string(size()));
+        args.push_back(Shm::the().instanceName());
+        args.push_back(name());
+        args.push_back(std::to_string(id()));
+
         if (attemptLibSImConnection(p_data_path->getValue(), args)) {
-            cerr << "successfully connected to simulation" << endl;
+            sendInfo("successfully connected to simulation");
+            exit(1); //let the simulation overtake the module
+        }
+        else {
+            sendError("connection attempt to simulation failed");
         }
     }
+#endif // MODULE_THREAD
+
+
+
+
 
     return true;
 }

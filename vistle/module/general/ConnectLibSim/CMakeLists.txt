@@ -19,6 +19,7 @@ endif()
 
 
 SET(RUNTIME_SOURCES 
+  Exeption.cpp
   VisItControlInterfaceRuntime.C 
   VisItDataInterfaceRuntime.C 
   VisItDataInterfaceRuntimeP.C 
@@ -40,6 +41,7 @@ SET(RUNTIME_SOURCES
   NameList.C
   OptionList.C
   PointMesh.C
+  ProxyModule.cpp
   RectilinearMesh.C
   SimulationMetaData.C
   SpeciesData.C
@@ -76,6 +78,7 @@ SET(RUNTIME_HEADERS
   NameList.h
   OptionList.h
   PointMesh.h
+  ProxyModule.h
   RectilinearMesh.h
   SimulationMetaData.h
   SpeciesData.h
