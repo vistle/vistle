@@ -18,7 +18,7 @@
 #include "MessageMetaData.h"
 #include "CommandMetaData.h"
 #include "ExpressionMetaData.h"
-
+#include "DomainList.h"
 #include "RectilinearMesh.h"
 #include "VariableData.h"
 
@@ -34,7 +34,11 @@
 #include <core/message.h>
 #include <core/tcpmessage.h>
 
+#include <util/sleep.h>
 
+#ifndef MODULE_THREAD
+#include "ConnectLibSim.h"
+#endif // !MODULE_THREAD
 
 
 
@@ -293,29 +297,42 @@ bool Engine::initialize(int argC, char** argV) {
         vistle::VistleManager manager;
         manager.run(args.size(), args.data());
     });
-
     m_initialized = true;
+
 #else
     vistle::registerTypes(); 
         int rank = -1, size = -1; 
          
         try {
             if (argC != 4) {
-                    std::cerr << "simulation requires exactly 4 parameters" << std::endl; 
-                    return false;
+                std::cerr << "simulation requires exactly 4 parameters" << std::endl; 
+                return false;
             } 
             MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
             MPI_Comm_size(MPI_COMM_WORLD, &size); 
-
+            if (atoi(argV[0]) != size) {
+                printToConsole("mpi size of simulation must match viste's mpi size");
+                return false;
+            }
             std::string shmname = argV[1];
             const std::string name = argV[2];
             int moduleID = atoi(argV[3]);
-            vistle::Module::setup(shmname, moduleID, rank);
-            m_module = new vistle::Module("", name, moduleID, boost::mpi::communicator());
-            managerThread = std::thread([argC, argV, rank, this]() {
+
+            managerThread = std::thread([shmname, moduleID, name, rank, this]() {
+                while (true) {
+                    try {
+                        v2check(simv2_invoke_GetMetaData);
+                    } catch (const SimV2Exeption&) {
+                        vistle::adaptive_wait(false, this);
+                        continue;
+                    }
+                    m_initialized = true;
+                    break;
+                }
+                vistle::Module::setup(shmname, moduleID, rank);
+                m_module = new ConnectLibSim(name, moduleID, boost::mpi::communicator());
                 m_module->eventLoop();
                 });
-            MPI_Barrier(MPI_COMM_WORLD); 
     } catch (vistle::exception & e) {
                     
             std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
@@ -324,8 +341,8 @@ bool Engine::initialize(int argC, char** argV) {
     } catch (std::exception & e) {
             std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
     } 
-    addPorts();
 #endif
+
     return true;
 }
 
@@ -354,7 +371,7 @@ void Engine::SimulationTimeStepChanged() {
         
         if (timestepChangedCb())             {
             sendDataToModule();
-
+            //sendTestData();
         }
     }
     else {
@@ -436,21 +453,18 @@ bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
     return false;
 }
 
-bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
+bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle, const int* domainList, int numDomains) {
     char* name;
     int dim;
     v2check(simv2_MeshMetaData_getName, meshMetaHandle, &name);
     v2check(simv2_MeshMetaData_getTopologicalDimension, meshMetaHandle, &dim);
-    int numDomains = 0;
-    v2check(simv2_MeshMetaData_getNumDomains, meshMetaHandle, &numDomains);
-    cerr << "making amr grid with " << numDomains << " domains" << endl;
     MeshInfo meshInfo;
     meshInfo.numDomains = numDomains;
-    for (size_t currDomain = 0; currDomain < numDomains; currDomain++) {
+    meshInfo.domains = domainList;
+    for (size_t cd = 0; cd < numDomains; cd++) {
+        int currDomain = domainList[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh,currDomain, name);
         int check = simv2_RectilinearMesh_check(meshHandle);
-        printToConsole("invoking get mesh for domain " + std::to_string(currDomain) + " with name " + name + " handle = " + std::to_string(meshHandle) + "check= " + std::to_string(check));
-
         if (check == VISIT_OKAY) {
             visit_handle coordHandles[3]; //handles to variable data
             int ndims;
@@ -459,11 +473,14 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
             void* data[3]{};
             for (int i = 0; i < dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
-                cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
+                //cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
                 if (dataType[i] != VISIT_DATATYPE_FLOAT) {
                     printToConsole("mesh coords must be floats");
                     return false;
                 }
+            }
+            if (dim == 2 && nTuples[2] != 1) {
+                throw EngineExeption("2d rectilinier grids must have exactly one z coordinate");
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
             grid->setTimestep(m_metaData.currentCycle);
@@ -474,11 +491,12 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
                 memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
             }
             if (dim == 2) {
-                memset(grid->coords(2).begin(), 0, nTuples[2] * sizeof(float));
+                grid->coords(2)[0] = 0;
             }
             m_module->addObject(name, grid);
         }
     }
+    printToConsole("made amr mesh with " + std::to_string(numDomains) + " domains");
     m_meshes[name]  = meshInfo;
     return true;
 }
@@ -486,10 +504,34 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle) {
 void in_situ::Engine::sendMeshesToModule()     {
     int numMeshes = getNumObjects(SimulationDataTyp::mesh);
 
+
+
     for (size_t i = 0; i < numMeshes; i++) {
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
+        char* name;
+        v2check(simv2_MeshMetaData_getName, meshHandle, &name);
+        visit_handle domainListHandle = v2check(simv2_invoke_GetDomainList, name);
+        int allDoms = 0;
+        visit_handle myDoms;
+        v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
+        printToConsole("allDoms = " + std::to_string(allDoms) + " myDoms = " + std::to_string(myDoms));
+
+        int owner, dataType, nComps, numDomains;
+        void* data;
+        try {
+            v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, numDomains, data);
+        } catch (const SimV2Exeption&) {
+            printToConsole("failed to get domain list");
+        }
+        if (dataType != VISIT_DATATYPE_INT) {
+            printToConsole("expected domain list to be ints");
+        }
+        const int* domainList = static_cast<const int*>(data);
+  
+
         VisIt_MeshType meshType = VisIt_MeshType::VISIT_MESHTYPE_UNKNOWN;
         v2check(simv2_MeshMetaData_getMeshType, meshHandle, (int*)&meshType);
+
         switch (meshType) {
         case VISIT_MESHTYPE_RECTILINEAR:
         {
@@ -518,7 +560,7 @@ void in_situ::Engine::sendMeshesToModule()     {
         break;
         case VISIT_MESHTYPE_AMR:
         {
-            makeAmrMesh(meshHandle);
+            makeAmrMesh(meshHandle, domainList, numDomains);
         }
         break;
         default:
@@ -539,12 +581,13 @@ void in_situ::Engine::sendVarablesToModule()     {
         if (meshInfo == m_meshes.end()) {
             throw EngineExeption(std::string("can't find mesh ") + meshName + " for variable " + name);
         }
-        for (size_t currDomain = 0; currDomain < meshInfo->second.numDomains; currDomain++) {
+        for (size_t cd = 0; cd < meshInfo->second.numDomains; ++cd) {
+            int currDomain = meshInfo->second.domains[cd];
             visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, name);
             int  owner{}, dataType{}, nComps{}, nTuples{};
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
-            cerr << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
+            //cerr << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
@@ -554,7 +597,7 @@ void in_situ::Engine::sendVarablesToModule()     {
                     variable->x().data()[i] = static_cast<vistle::Scalar>(static_cast<unsigned char*>(data)[i]);
                 }
 
-                variable->setGrid(meshInfo->second.grids[currDomain]);
+                variable->setGrid(meshInfo->second.grids[cd]);
                 variable->setTimestep(m_metaData.currentCycle);
                 variable->setBlock(currDomain);
                 variable->setMapping(vistle::DataBase::Element);
@@ -592,6 +635,9 @@ void in_situ::Engine::sendVarablesToModule()     {
                 break;
             }
         }
+        int rank = -1;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        cerr << "rank " << rank << " sent variable " << i << " with " << meshInfo->second.numDomains << " domains" << endl;
     }
 }
 
@@ -615,6 +661,35 @@ void in_situ::Engine::sendDataToModule() {
 
 
 
+}
+
+void in_situ::Engine::sendTestData() {
+
+    int rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    std::array<int, 3> dims{ 5, 10, 1 };
+    vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
+    grid->setTimestep(m_metaData.currentCycle);
+    grid->setBlock(rank);
+    for (size_t i = 0; i < 3; i++) {
+        for (size_t j = 0; j < dims[i]; j++) {
+            switch (i) {
+            case 0:
+                grid->coords(i)[j] = j;
+                break;
+            case 1:
+                grid->coords(i)[j] = m_metaData.currentCycle * dims[i] + j;
+                break;
+            case 2:
+                grid->coords(i)[j] = rank * dims[i] + j;
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    printToConsole("sending test data for cycle " + std::to_string(m_metaData.currentCycle));
+    m_module->addObject("AMR_mesh", grid);
 }
 
 Engine::Engine()

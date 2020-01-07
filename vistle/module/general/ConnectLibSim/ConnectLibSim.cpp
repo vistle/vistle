@@ -20,25 +20,21 @@ namespace asio = boost::asio;
 using namespace in_situ;
 
 ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm)
-    : vistle::Reader("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm)
+    : vistle::Module("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm)
 {
     if (Engine::createEngine()->isInitialized()) {
         Engine::createEngine()->setModule(this);
         Engine::createEngine()->SetTimestepChangedCb(std::bind(&ConnectLibSim::timestepChanged, this));
-        Engine::createEngine()->setDoReadMutex(&doReadMutex);
+        Engine::createEngine()->setDoReadMutex(&isReadingMutex);
         Engine::createEngine()->SetDisconnectCb([this]() {
-           std::lock_guard<std::mutex> g(doReadMutex);
-           doRead = false;
+           std::lock_guard<std::mutex> g(isReadingMutex);
+           isReading = false;
            });
-       std::lock_guard<std::mutex> g(doReadMutex);
-       doRead = true;
+       std::lock_guard<std::mutex> g(isReadingMutex);
+       isReading = true;
     }
-    setTimesteps(0);
     int size = -1;
     MPI_Comm_size(comm, &size);
-    setPartitions(size);
-    p_data_path = addStringParameter("path", "path to a .sim2 file", "", Parameter::Filename);
-    observeParameter(p_data_path);
 }
 
 int ConnectLibSim::updateParameter(const char* info) {
@@ -93,52 +89,32 @@ ConnectLibSim::~ConnectLibSim() {
 
 bool ConnectLibSim::timestepChanged() {
     metaData_.timestepChanged = true;
-    return doRead;
+    return isReading;
 }
 
 
-bool ConnectLibSim::read(Token& token, int timestep, int block) {
-    cerr << "ConnectLibSim::read called for timestep = " << timestep << " block = " << block << endl;
+bool ConnectLibSim::prepare() {
+    isReadingMutex.lock();
+    isReading = true;
+    isReadingMutex.unlock();
+
     while (true) {
-
-        if (cancelRequested()) {
-            break;
-        }
-        std::lock_guard<std::mutex> g(doReadMutex);
-        if (!doRead) {
-            break;
-        }
         adaptive_wait(false, this);
+        std::lock_guard<std::mutex> g(isReadingMutex);
+        if (cancelRequested(true)) {
+            isReading = false;
+            break;
+        }
+
+        if (!isReading) {
+            break;
+        }
+
     }
     return true;
+    
 }
 
-bool ConnectLibSim::examine(const vistle::Parameter* param) {
-#ifndef MODULE_THREAD
-    if (rank() == 0 && !Engine::createEngine()->isInitialized()) {
-        std::vector<std::string > args;
-
-        args.push_back(std::to_string(size()));
-        args.push_back(Shm::the().instanceName());
-        args.push_back(name());
-        args.push_back(std::to_string(id()));
-
-        if (attemptLibSImConnection(p_data_path->getValue(), args)) {
-            sendInfo("successfully connected to simulation");
-            exit(1); //let the simulation overtake the module
-        }
-        else {
-            sendError("connection attempt to simulation failed");
-        }
-    }
-#endif // MODULE_THREAD
-
-
-
-
-
-    return true;
-}
 
 
 

@@ -12,14 +12,11 @@ target_link_libraries(LibSim_Connect
 		${Boost_LIBRARIES}
 		)
 		
-if (VISTLE_MULTI_PROCESS)
-    # not yet implemented
-    #return()
-endif()
 
 
 SET(RUNTIME_SOURCES 
   Exeption.cpp
+  ConnectLibSim.cpp
   VisItControlInterfaceRuntime.C 
   VisItDataInterfaceRuntime.C 
   VisItDataInterfaceRuntimeP.C 
@@ -55,6 +52,7 @@ SET(RUNTIME_SOURCES
 
 SET(RUNTIME_HEADERS 
   Exeption.h
+    ConnectLibSim.h
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h
   VisItDataInterfaceRuntimeP.h
@@ -110,6 +108,7 @@ target_link_libraries(${LIBNAME}
 		vistle_control
         vistle_core
         vistle_boost_mpi
+		LibSim_Connect
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
@@ -118,20 +117,10 @@ target_link_libraries(${LIBNAME}
 		vistle_clustermanager)
 endif()
 
-set(MODULE_LIBRARY_SOURCES
-  ConnectLibSim.cpp
-)
 
-set(MODULE_LIBRARY_HEADERS
-  ConnectLibSim.h
-)
-
-add_module(ConnectLibSim ${MODULE_LIBRARY_SOURCES} ${MODULE_LIBRARY_HEADERS})
+add_module(ConnectLibSim ConnectLibSimExec.cpp) 
 target_link_libraries(ConnectLibSim
-        vistle_module
-		LibSim_Connect
-		${LIBNAME}
+	${LIBNAME}
 )
-
 
 

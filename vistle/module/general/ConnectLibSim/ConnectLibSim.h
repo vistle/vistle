@@ -1,17 +1,18 @@
 #ifndef CONNECT_LIB_SIM_H
 #define CONNECT_LIB_SIM_H
 
-#include <module/reader.h>
+#include <module/module.h>
 
 #include <memory>
 #include <string>
 #include <map>
 
 #include <boost/asio.hpp>
-#include "export.h"
+#include "VisItExports.h"
 #include "MetaData.h"
 
-class ConnectLibSim : public vistle::Reader
+
+class V_VISITXPORT ConnectLibSim : public vistle::Module
 {
 public:
     ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm);
@@ -23,16 +24,14 @@ public:
     bool timestepChanged();
     
 private:
-    // Parameters
-    vistle::StringParameter* p_data_path = nullptr;
+
     in_situ::Metadata metaData_;
 
-    std::mutex doReadMutex;
-    bool doRead = false;
+    std::mutex isReadingMutex;
+    bool isReading = false;
 
     // Inherited via Reader
-    virtual bool read(Token& token, int timestep = -1, int block = -1) override;
-    virtual bool examine(const vistle::Parameter* param) override;
+    virtual bool prepare() override;
 
 };
 

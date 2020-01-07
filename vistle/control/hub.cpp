@@ -1305,6 +1305,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                  argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
                  std::cerr << "starting module " << name << std::endl;
                  if (m_inSitu && name == "ConnectLibSim"){ //tell the simulation to start the ConnectLibSim module
+                     argv[0] = std::to_string(m_localRanks);
                      if (in_situ::attemptLibSImConnection(sim2FilePath, argv)) {
                          sendInfo("Successfully connected to simulation");
                      } else {

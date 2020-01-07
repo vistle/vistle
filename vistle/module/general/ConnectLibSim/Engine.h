@@ -4,8 +4,8 @@
 #include <mpi.h>
 #include <boost/asio.hpp>
 
-#include "ModuleInterface.h"
 #include "MetaData.h"
+#include "VisItExports.h"
 
 #include <string>
 #include <vector>
@@ -80,6 +80,7 @@ private:
     std::map<std::string, vistle::Port*> m_portsList;
     struct MeshInfo {
         int numDomains = 0;
+        const int* domains = nullptr;
         std::vector<int> handles;
         std::vector< vistle::obj_ptr> grids;
     };
@@ -101,10 +102,11 @@ private:
 
     bool makeCurvilinearMesh(visit_handle meshMetaHandle);
     bool makeUntructuredMesh(visit_handle meshMetaHandle);
-    bool makeAmrMesh(visit_handle meshMetaHandle);
+    bool makeAmrMesh(visit_handle meshMetaHandle, const int* domainList, int numDomains);
     void sendMeshesToModule();
     void sendVarablesToModule();
     void sendDataToModule();
+    void sendTestData();
 
     template<typename T>
     void sendVariableToModule(const std::string& name, vistle::obj_const_ptr mesh, int domain, const T* data, int size) {
