@@ -2,11 +2,9 @@
 #define VISTLE_HUB_H
 
 #include <memory>
-#include <boost/asio.hpp>
-#include <core/porttracker.h>
+#include <boost/asio/ip/tcp.hpp>
 #include <core/statetracker.h>
 #include <util/spawnprocess.h>
-#include <util/directory.h>
 #include <util/buffer.h>
 #include "uimanager.h"
 #include <net/tunnel.h>

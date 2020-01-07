@@ -33,16 +33,19 @@ endif()
 
 vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 target_link_libraries(vistle_control
-        ${Boost_SYSTEM_LIBRARY}
-        ${Boost_PROGRAM_OPTIONS_LIBRARY}
-        ${EXTRA_LIBRARIES}
-        vistle_util
-        vistle_core
-        vistle_net
-		LibSim_Connect
+    PRIVATE ${Boost_SYSTEM_LIBRARY}
+    PRIVATE ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    PRIVATE ${EXTRA_LIBRARIES}
+    PRIVATE vistle_util
+    PRIVATE vistle_core
+    PRIVATE vistle_net
+    PRIVATE LibSim_Connect
+)
+target_link_libraries(vistle_control
+    PRIVATE Threads::Threads
 )
 if(UNIX)
-        target_link_libraries(vistle_control ${CMAKE_DL_LIBS})
+    target_link_libraries(vistle_control PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 add_custom_target(vistle_python ALL

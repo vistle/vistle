@@ -55,6 +55,13 @@ target_link_libraries(vistle_util
     PRIVATE Threads::Threads
 )
 
+find_library(LIBEXECINFO execinfo)
+if (LIBEXECINFO)
+    target_link_libraries(vistle_util
+        PRIVATE execinfo
+    )
+endif()
+
 include_directories(SYSTEM
         ${Boost_INCLUDE_DIRS}
 )

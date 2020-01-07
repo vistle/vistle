@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 #if [ -z "${OMP_NUM_THREADS}" ]; then
 #   APRUN_FLAGS="-j2 --cc none"

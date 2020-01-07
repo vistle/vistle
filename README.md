@@ -121,7 +121,7 @@ Vistle modules are run on clusters via MPI. You have to configure how they
 have to be spawned by providing a script named `spawn_vistle.sh` (or `spawn_vistle.bat`
 on Windows) somewhere in your `PATH`. It could be as simple as
 
-      #! /bin/bash
+      #! /usr/bin/env bash
       mpirun "$@"
 
 But it also might require invoking your batch system.

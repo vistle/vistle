@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 
 port=31093
 host=localhost

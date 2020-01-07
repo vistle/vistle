@@ -112,6 +112,7 @@ target_link_libraries(${gui_name}
   ${QT_LIBRARIES}
   ${Boost_LIBRARIES}
   ${PYTHON_LIBRARIES}
+  vistle_util
   vistle_core
   vistle_userinterface
   vistle_propertybrowser

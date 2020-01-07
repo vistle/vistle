@@ -12,8 +12,13 @@ set(net_HEADERS
 vistle_add_library(vistle_net ${VISTLE_LIB_TYPE} ${net_SOURCES} ${net_HEADERS})
 
 target_link_libraries(vistle_net
-        ${Boost_SYSTEM_LIBRARY}
-        vistle_core
+    PRIVATE ${Boost_SYSTEM_LIBRARY}
+    PRIVATE vistle_util
+    PRIVATE vistle_core
+)
+
+target_link_libraries(vistle_net
+    PRIVATE Threads::Threads
 )
 
 include_directories(SYSTEM

@@ -191,7 +191,7 @@ vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core
-		-lrt
+        PUBLIC -lrt
 	)
 endif()
 if (WIN32)
@@ -201,10 +201,14 @@ if (WIN32)
 endif()
 
 target_link_libraries(vistle_core
-        vistle_util
-        ${Boost_SYSTEM_LIBRARY}
-        ${Boost_SERIALIZATION_LIBRARY}
-        ${Boost_DATE_TIME_LIBRARY}
+        PRIVATE vistle_util
+        PRIVATE ${Boost_SYSTEM_LIBRARY}
+        PRIVATE ${Boost_SERIALIZATION_LIBRARY}
+        PRIVATE ${Boost_DATE_TIME_LIBRARY}
+)
+
+target_link_libraries(vistle_core
+    PRIVATE Threads::Threads
 )
 
 include_directories(SYSTEM
@@ -215,17 +219,17 @@ include_directories(
 )
 
 if (ZFP_FOUND)
-    target_link_libraries(vistle_core ${ZFP_LIBRARIES})
+    target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
 endif()
 
 if (ZSTD_FOUND)
-    target_link_libraries(vistle_core ${ZSTD_LIBRARIES})
+    target_link_libraries(vistle_core PRIVATE ${ZSTD_LIBRARIES})
 endif()
 
 if (LZ4_FOUND)
-    target_link_libraries(vistle_core ${LZ4_LIBRARIES})
+    target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
 endif()
 
 if (SNAPPY_FOUND)
-    target_link_libraries(vistle_core ${SNAPPY_LIBRARIES})
+    target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()

@@ -82,6 +82,7 @@ target_link_libraries(vistle_clustermanager
         vistle_util
         vistle_core
         vistle_boost_mpi
+        Threads::Threads
 )
 endif()
 
@@ -127,6 +128,7 @@ target_link_libraries(vistle_manager
         vistle_util
         vistle_core
         vistle_boost_mpi
+        Threads::Threads
 )
 
 if (NOT VISTLE_MULTI_PROCESS)

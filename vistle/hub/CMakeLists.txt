@@ -14,4 +14,5 @@ target_link_libraries(vistle
         vistle_util
         vistle_core
         vistle_net
+        Threads::Threads
 )
