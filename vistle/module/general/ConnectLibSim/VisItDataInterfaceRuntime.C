@@ -22,10 +22,11 @@
 #include <stdlib.h>
 #include <string>
 #include <iostream>
+#include <mutex>
 
 
 #define ALLOC(T) (T*)calloc(1, sizeof(T))
-#define FREE(PTR) if(PTR != NULL) free(PTR)
+#define FREE(PTR) if(PTR != nullptr) free(PTR)
 
 //
 // Define a structure that we can use to contain all of the callback function
@@ -82,11 +83,14 @@ typedef struct
 
 } data_callback_t;
 
-static data_callback_t *visit_data_callbacks = NULL;
+static std::mutex simv2_mutex;
+typedef std::lock_guard<std::mutex> Guard;
+
+static data_callback_t *visit_data_callbacks = nullptr;
 
 static data_callback_t *GetDataCallbacks()
 {
-    if(visit_data_callbacks == NULL)
+    if(visit_data_callbacks == nullptr)
         visit_data_callbacks = ALLOC(data_callback_t);
     return visit_data_callbacks;
 }
@@ -94,10 +98,10 @@ static data_callback_t *GetDataCallbacks()
 void
 DataCallbacksCleanup(void)
 {
-    if(visit_data_callbacks != NULL)
+    if(visit_data_callbacks != nullptr)
     {
         free(visit_data_callbacks);
-        visit_data_callbacks = NULL;
+        visit_data_callbacks = nullptr;
     }
 }
 
@@ -108,8 +112,9 @@ DataCallbacksCleanup(void)
 void
 simv2_set_ActivateTimestep(int (*cb) (void *), void *cbdata)
 {
+    Guard g(simv2_mutex);
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_ActivateTimestep = cb;
         callbacks->cbdata_ActivateTimestep = cbdata;
@@ -119,8 +124,9 @@ simv2_set_ActivateTimestep(int (*cb) (void *), void *cbdata)
 void
 simv2_set_GetMetaData(visit_handle (*cb) (void *), void *cbdata)
 {
+    Guard g(simv2_mutex);
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetMetaData = cb;
         callbacks->cbdata_GetMetaData = cbdata;
@@ -130,8 +136,9 @@ simv2_set_GetMetaData(visit_handle (*cb) (void *), void *cbdata)
 void
 simv2_set_GetMesh(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetMesh = cb;
         callbacks->cbdata_GetMesh = cbdata;
@@ -141,8 +148,9 @@ simv2_set_GetMesh(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 void
 simv2_set_GetMaterial(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex);
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetMaterial = cb;
         callbacks->cbdata_GetMaterial = cbdata;
@@ -152,8 +160,9 @@ simv2_set_GetMaterial(visit_handle (*cb) (int, const char *, void *), void *cbda
 void
 simv2_set_GetSpecies(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetSpecies = cb;
         callbacks->cbdata_GetSpecies = cbdata;
@@ -163,8 +172,9 @@ simv2_set_GetSpecies(visit_handle (*cb) (int, const char *, void *), void *cbdat
 void
 simv2_set_GetVariable(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetVariable = cb;
         callbacks->cbdata_GetVariable = cbdata;
@@ -174,8 +184,9 @@ simv2_set_GetVariable(visit_handle (*cb) (int, const char *, void *), void *cbda
 void
 simv2_set_GetMixedVariable(visit_handle (*cb) (int, const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetMixedVariable = cb;
         callbacks->cbdata_GetMixedVariable = cbdata;
@@ -185,8 +196,9 @@ simv2_set_GetMixedVariable(visit_handle (*cb) (int, const char *, void *), void 
 void
 simv2_set_GetCurve(visit_handle (*cb) (const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetCurve = cb;
         callbacks->cbdata_GetCurve = cbdata;
@@ -196,8 +208,9 @@ simv2_set_GetCurve(visit_handle (*cb) (const char *, void *), void *cbdata)
 void
 simv2_set_GetDomainList(visit_handle (*cb) (const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetDomainList = cb;
         callbacks->cbdata_GetDomainList = cbdata;
@@ -207,8 +220,9 @@ simv2_set_GetDomainList(visit_handle (*cb) (const char *, void *), void *cbdata)
 void
 simv2_set_GetDomainBoundaries(visit_handle (*cb) (const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetDomainBoundaries = cb;
         callbacks->cbdata_GetDomainBoundaries = cbdata;
@@ -218,8 +232,9 @@ simv2_set_GetDomainBoundaries(visit_handle (*cb) (const char *, void *), void *c
 void
 simv2_set_GetDomainNesting(visit_handle (*cb) (const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_GetDomainNesting = cb;
         callbacks->cbdata_GetDomainNesting = cbdata;
@@ -230,8 +245,9 @@ simv2_set_GetDomainNesting(visit_handle (*cb) (const char *, void *), void *cbda
 void
 simv2_set_WriteBegin(int (*cb)(const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_WriteBegin = cb;
         callbacks->cbdata_WriteBegin = cbdata;
@@ -241,8 +257,9 @@ simv2_set_WriteBegin(int (*cb)(const char *, void *), void *cbdata)
 void
 simv2_set_WriteEnd(int (*cb)(const char *, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_WriteEnd = cb;
         callbacks->cbdata_WriteEnd = cbdata;
@@ -252,8 +269,9 @@ simv2_set_WriteEnd(int (*cb)(const char *, void *), void *cbdata)
 void
 simv2_set_WriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_handle, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_WriteMesh = cb;
         callbacks->cbdata_WriteMesh = cbdata;
@@ -263,8 +281,9 @@ simv2_set_WriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_handle
 void
 simv2_set_WriteVariable(int (*cb)(const char *, const char *, int, visit_handle, visit_handle, void *), void *cbdata)
 {
+    Guard g(simv2_mutex); 
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL)
+    if(callbacks != nullptr)
     {
         callbacks->cb_WriteVariable = cb;
         callbacks->cbdata_WriteVariable = cbdata;
@@ -291,9 +310,10 @@ simv2_set_WriteVariable(int (*cb)(const char *, const char *, int, visit_handle,
 int
 simv2_invoke_ActivateTimestep(void)
 {
+    Guard g(simv2_mutex);
     int retval = VISIT_OKAY;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_ActivateTimestep != NULL)
+    if(callbacks != nullptr && callbacks->cb_ActivateTimestep != nullptr)
     {
         retval = (*callbacks->cb_ActivateTimestep)(callbacks->cbdata_ActivateTimestep);
     }
@@ -327,9 +347,10 @@ simv2_invoke_ActivateTimestep(void)
 visit_handle
 simv2_invoke_GetMetaData(void)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetMetaData != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetMetaData != nullptr)
     {
         h = (*callbacks->cb_GetMetaData)(callbacks->cbdata_GetMetaData);
 
@@ -354,9 +375,10 @@ simv2_invoke_GetMetaData(void)
 visit_handle
 simv2_invoke_GetMesh(int dom, const char *name)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetMesh != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetMesh != nullptr)
     {
         h = (*callbacks->cb_GetMesh)(dom, name, callbacks->cbdata_GetMesh);
 
@@ -403,9 +425,10 @@ simv2_invoke_GetMesh(int dom, const char *name)
 visit_handle
 simv2_invoke_GetMaterial(int dom, const char *name)
 {
+    Guard g(simv2_mutex);
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetMaterial != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetMaterial != nullptr)
     {
         h = (*callbacks->cb_GetMaterial)(dom, name, callbacks->cbdata_GetMaterial);
 
@@ -430,9 +453,10 @@ simv2_invoke_GetMaterial(int dom, const char *name)
 visit_handle
 simv2_invoke_GetSpecies(int dom, const char *name)
 {
+    Guard g(simv2_mutex);
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetSpecies != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetSpecies != nullptr)
     {
         h = (*callbacks->cb_GetSpecies)(dom, name, callbacks->cbdata_GetSpecies);
 
@@ -457,9 +481,10 @@ simv2_invoke_GetSpecies(int dom, const char *name)
 visit_handle
 simv2_invoke_GetVariable(int dom, const char *name)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetVariable != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetVariable != nullptr)
     {
         h = (*callbacks->cb_GetVariable)(dom, name, callbacks->cbdata_GetVariable);
 
@@ -478,9 +503,10 @@ simv2_invoke_GetVariable(int dom, const char *name)
 visit_handle
 simv2_invoke_GetMixedVariable(int dom, const char *name)
 {
+    Guard g(simv2_mutex);
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetMixedVariable != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetMixedVariable != nullptr)
     {
         h = (*callbacks->cb_GetMixedVariable)(dom, name, callbacks->cbdata_GetMixedVariable);
 
@@ -499,9 +525,10 @@ simv2_invoke_GetMixedVariable(int dom, const char *name)
 visit_handle
 simv2_invoke_GetCurve(const char *name)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetCurve != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetCurve != nullptr)
     {
         h = (*callbacks->cb_GetCurve)(name, callbacks->cbdata_GetCurve);
 
@@ -526,9 +553,10 @@ simv2_invoke_GetCurve(const char *name)
 visit_handle
 simv2_invoke_GetDomainList(const char *name)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetDomainList != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetDomainList != nullptr)
     {
         h = (*callbacks->cb_GetDomainList)(name, callbacks->cbdata_GetDomainList);
 
@@ -553,9 +581,10 @@ simv2_invoke_GetDomainList(const char *name)
 visit_handle 
 simv2_invoke_GetDomainBoundaries(const char *name)
 {
+    Guard g(simv2_mutex); 
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetDomainBoundaries != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetDomainBoundaries != nullptr)
     {
         h = (*callbacks->cb_GetDomainBoundaries)(name, callbacks->cbdata_GetDomainBoundaries);
     }
@@ -565,9 +594,10 @@ simv2_invoke_GetDomainBoundaries(const char *name)
 visit_handle 
 simv2_invoke_GetDomainNesting(const char *name)
 {
+    Guard g(simv2_mutex);
     visit_handle h = VISIT_INVALID_HANDLE;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_GetDomainNesting != NULL)
+    if(callbacks != nullptr && callbacks->cb_GetDomainNesting != nullptr)
     {
         h = (*callbacks->cb_GetDomainNesting)(name, callbacks->cbdata_GetDomainNesting);
     }
@@ -579,9 +609,10 @@ simv2_invoke_GetDomainNesting(const char *name)
 int
 simv2_invoke_WriteBegin(const char *name)
 {
+    Guard g(simv2_mutex);
     int ret = VISIT_ERROR;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_WriteBegin != NULL)
+    if(callbacks != nullptr && callbacks->cb_WriteBegin != nullptr)
         ret = (*callbacks->cb_WriteBegin)(name, callbacks->cbdata_WriteBegin);
     return ret;
 }
@@ -589,9 +620,10 @@ simv2_invoke_WriteBegin(const char *name)
 int
 simv2_invoke_WriteEnd(const char *name)
 {
+    Guard g(simv2_mutex); 
     int ret = VISIT_ERROR;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_WriteEnd != NULL)
+    if(callbacks != nullptr && callbacks->cb_WriteEnd != nullptr)
         ret = (*callbacks->cb_WriteEnd)(name, callbacks->cbdata_WriteEnd);
     return ret;
 }
@@ -599,9 +631,10 @@ simv2_invoke_WriteEnd(const char *name)
 int
 simv2_invoke_WriteMesh(const char *name, int chunk, int meshType, visit_handle md, visit_handle mmd)
 {
+    Guard g(simv2_mutex); 
     int ret = VISIT_ERROR;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_WriteMesh != NULL)
+    if(callbacks != nullptr && callbacks->cb_WriteMesh != nullptr)
         ret = (*callbacks->cb_WriteMesh)(name, chunk, meshType, md, mmd, callbacks->cbdata_WriteMesh);
     return ret;
 }
@@ -610,9 +643,10 @@ int
 simv2_invoke_WriteVariable(const char *name, const char *arrName, int chunk,
     visit_handle data, visit_handle smd)
 {
+    Guard g(simv2_mutex);
     int ret = VISIT_ERROR;
     data_callback_t *callbacks = GetDataCallbacks();
-    if(callbacks != NULL && callbacks->cb_WriteVariable != NULL)
+    if(callbacks != nullptr && callbacks->cb_WriteVariable != nullptr)
         ret = (*callbacks->cb_WriteVariable)(name, arrName, chunk, data, smd, callbacks->cbdata_WriteVariable);
     return ret;
 }
@@ -622,7 +656,7 @@ simv2_ObjectType(visit_handle h)
 {
     VisIt_ObjectBase *obj = VisItGetPointer(h);
     int t = -1;
-    if(obj != NULL)
+    if(obj != nullptr)
         t = obj->objectType();
     return t;
 }
@@ -632,7 +666,7 @@ simv2_FreeObject(visit_handle h)
 {
     int retval = VISIT_ERROR;
     VisIt_ObjectBase *obj = VisItGetPointer(h);
-    if(obj != NULL)
+    if(obj != nullptr)
     {
         // Rely on the virtual destructor
         delete obj;
