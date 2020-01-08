@@ -23,16 +23,20 @@ vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_H
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_module
-		-lrt
+        PRIVATE -lrt
 	)
 endif()
 
+if (OpenMP_CXX_FOUND)
+    target_link_libraries(vistle_module PUBLIC OpenMP::OpenMP_CXX)
+endif()
+
 target_link_libraries(vistle_module
-        vistle_util
-        vistle_core
-        vistle_boost_mpi
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
+    PUBLIC vistle_util
+    PUBLIC vistle_core
+    PUBLIC vistle_boost_mpi
+    PUBLIC ${Boost_LIBRARIES}
+    PUBLIC ${MPI_C_LIBRARIES}
 )
 
 include_directories(SYSTEM
