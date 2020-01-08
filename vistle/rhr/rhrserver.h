@@ -48,7 +48,6 @@ public:
    bool isConnecting() const;
 
    unsigned short port() const;
-   address listenAddress() const;
 
    unsigned short destinationPort() const;
    const std::string &destinationHost() const;
@@ -268,16 +267,15 @@ public:
 
 private:
    asio::io_service m_io;
-   asio::ip::tcp::acceptor m_acceptor;
+   asio::ip::tcp::acceptor m_acceptorv4, m_acceptorv6;
    bool m_listen;
    std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;
    unsigned short m_port;
-   asio::ip::address m_listenAddress;
    unsigned short m_destPort;
    std::string m_destHost;
 
-   bool startAccept();
-   void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
+   bool startAccept(asio::ip::tcp::acceptor &a);
+   void handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
 
    size_t m_updateCount = 0;
 

@@ -13,6 +13,7 @@
 #include <util/directory.h>
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
+#include <util/listenv4v6.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
@@ -64,7 +65,8 @@ Hub::Hub(bool inManager)
 , m_port(0)
 , m_masterPort(m_basePort)
 , m_masterHost("localhost")
-, m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
+, m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioService))
+, m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_stateTracker("Hub state")
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
@@ -406,54 +408,40 @@ bool Hub::startServer() {
    if (m_port) {
        port = m_port;
    }
-   while (!m_acceptor->is_open()) {
 
-      asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
-      try {
-         m_acceptor->open(endpoint.protocol());
-      } catch (const boost::system::system_error &err) {
-         if (err.code() == boost::system::errc::address_family_not_supported) {
-            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port);
-            m_acceptor->open(endpoint.protocol());
-         } else {
-            throw(err);
-         }
-      }
-      m_acceptor->set_option(acceptor::reuse_address(true));
-      try {
-         m_acceptor->bind(endpoint);
-      } catch(const boost::system::system_error &err) {
-         if (err.code() == boost::system::errc::address_in_use) {
-            m_acceptor->close();
-            if (!m_port) {
-                ++port;
-                if (port == m_dataPort)
-                    ++port;
-                continue;
-            }
-         }
-         throw(err);
-      }
-      m_acceptor->listen();
-      m_port = port;
-      CERR << "listening for connections on port " << m_port << std::endl;
-      startAccept();
+   boost::system::error_code ec;
+   while (!start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
+       if (ec == boost::system::errc::address_in_use) {
+           ++port;
+       } else if (ec) {
+           CERR << "failed to listen on port " << port << ": " << ec.message() << std::endl;
+           return false;
+       }
    }
+
+   m_port = port;
+
+   CERR << "listening for connections on port " << m_port << std::endl;
+   startAccept(m_acceptorv4);
+   startAccept(m_acceptorv6);
 
    return true;
 }
 
-bool Hub::startAccept() {
+bool Hub::startAccept(std::shared_ptr<acceptor> a) {
+
+    if (!a->is_open())
+        return false;
    
    shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_ioService));
    addSocket(sock);
-   m_acceptor->async_accept(*sock, [this, sock](boost::system::error_code ec) {
-         handleAccept(sock, ec);
+   a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
+         handleAccept(a, sock, ec);
          });
    return true;
 }
 
-void Hub::handleAccept(shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+void Hub::handleAccept(std::shared_ptr<acceptor> a, shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
    if (error) {
       removeSocket(sock);
@@ -465,7 +453,7 @@ void Hub::handleAccept(shared_ptr<asio::ip::tcp::socket> sock, const boost::syst
    auto ident = make.message<message::Identify>(message::Identify::REQUEST);
    sendMessage(sock, ident);
 
-   startAccept();
+   startAccept(a);
 }
 
 void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::Identity ident) {

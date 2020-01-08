@@ -1,6 +1,7 @@
 #include "tunnel.h"
 #include <thread>
 #include <boost/system/error_code.hpp>
+#include <util/listenv4v6.h>
 
 #include <core/messages.h>
 #include <core/assert.h>
@@ -135,32 +136,15 @@ Tunnel::Tunnel(TunnelManager &manager, unsigned short listenPort, Tunnel::addres
 : m_manager(manager)
 , m_destAddr(destAddr)
 , m_destPort(destPort)
-, m_acceptor(manager.io())
+, m_acceptorv4(manager.io())
+, m_acceptorv6(manager.io())
 {
-   asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), listenPort);
-   try {
-      m_acceptor.open(endpoint.protocol());
-   } catch (const boost::system::system_error &err) {
-      if (err.code() == boost::system::errc::address_family_not_supported) {
-         endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), listenPort);
-         m_acceptor.open(endpoint.protocol());
-      } else {
-         throw(err);
-      }
-   }
-   m_acceptor.set_option(acceptor::reuse_address(true));
-   try {
-      m_acceptor.bind(endpoint);
-   } catch(const boost::system::system_error &err) {
-      if (err.code() == boost::system::errc::address_in_use) {
-         m_acceptor.close();
-         CERR << "failed to listen on port " << listenPort << " - address already in use" << std::endl;
-      } else {
-         CERR << "listening on port " << listenPort << " failed" << std::endl;
-      }
-      throw(err);
-   }
-   m_acceptor.listen();
+    boost::system::error_code ec;
+    if (!start_listen(listenPort, m_acceptorv4, m_acceptorv6, ec)) {
+        CERR << "listening on port " << listenPort << " failed: " << ec.message() << std::endl;
+        boost::system::system_error err(ec);
+        throw(err);
+    }
    CERR << "forwarding connections on port " << listenPort  << " to " << m_destAddr << ":" << m_destPort << std::endl;
 }
 
@@ -170,18 +154,23 @@ Tunnel::~Tunnel() {
 
 void Tunnel::shutdown() {
 
-   if (m_listeningSocket) {
-       if (m_listeningSocket->is_open())
-           m_listeningSocket->close();
-       boost::system::error_code ec;
-       m_listeningSocket->shutdown(asio::socket_base::shutdown_both, ec);
-       if (ec) {
-           CERR << "error during socket shutdown: " << ec.message() << std::endl;
-       }
-       m_listeningSocket.reset();
-   }
+    for (auto &s: m_listeningSocket) {
+        auto &sock = s.second;
+        if (sock) {
+            if (sock->is_open())
+                sock->close();
+            boost::system::error_code ec;
+            sock->shutdown(asio::socket_base::shutdown_both, ec);
+            if (ec) {
+                CERR << "error during socket shutdown: " << ec.message() << std::endl;
+            }
+            sock.reset();
+        }
+    }
+    m_listeningSocket.clear();
 
-   m_acceptor.cancel();
+   m_acceptorv4.cancel();
+   m_acceptorv6.cancel();
 
    for (auto &s: m_streams) {
       if (std::shared_ptr<TunnelStream> p = s.lock())
@@ -216,25 +205,35 @@ unsigned short Tunnel::destPort() const {
 
 void Tunnel::startAccept(std::shared_ptr<Tunnel> self) {
 
-   m_listeningSocket.reset(new tcp_socket(m_manager.io()));
-   m_acceptor.async_accept(*m_listeningSocket, [this, self](boost::system::error_code ec){handleAccept(self, ec);});
+    if (m_acceptorv4.is_open())
+        startAccept(m_acceptorv4, self);
+    if (m_acceptorv6.is_open())
+        startAccept(m_acceptorv6, self);
 }
 
-void Tunnel::handleAccept(std::shared_ptr<Tunnel> self, const boost::system::error_code &error) {
+void Tunnel::startAccept(acceptor &a, std::shared_ptr<Tunnel> self) {
+
+   if (!a.is_open())
+       return;
+   m_listeningSocket[&a].reset(new tcp_socket(m_manager.io()));
+   a.async_accept(*m_listeningSocket[&a], [this, &a, self](boost::system::error_code ec){handleAccept(a, self, ec);});
+}
+
+void Tunnel::handleAccept(acceptor &a, std::shared_ptr<Tunnel> self, const boost::system::error_code &error) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
       return;
    }
 
-   std::shared_ptr<tcp_socket> sock0 = m_listeningSocket;
+   std::shared_ptr<tcp_socket> sock0 = m_listeningSocket[&a];
    std::shared_ptr<tcp_socket> sock1(new tcp_socket(m_manager.io()));
    boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
    CERR << "incoming connection from " << sock0->remote_endpoint() << ", forwarding to " << dest << std::endl;
    sock1->async_connect(dest,
          [this, self, sock0, sock1](boost::system::error_code ec){ handleConnect(self, sock0, sock1, ec); });
 
-   startAccept(self);
+   startAccept(a, self);
 }
 
 void Tunnel::handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<ip::tcp::socket> sock0, std::shared_ptr<ip::tcp::socket> sock1, const boost::system::error_code &error) {

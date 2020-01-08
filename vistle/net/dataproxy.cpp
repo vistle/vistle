@@ -5,6 +5,7 @@
 #include <core/statetracker.h>
 #include <condition_variable>
 #include <boost/asio/deadline_timer.hpp>
+#include <util/listenv4v6.h>
 
 #define CERR std::cerr << "DataProxy: "
 
@@ -31,42 +32,27 @@ DataProxy::DataProxy(StateTracker &state, unsigned short basePort, bool changePo
 : m_hubId(message::Id::Invalid)
 , m_stateTracker(state)
 , m_port(basePort)
-, m_acceptor(m_io)
+, m_acceptorv4(m_io)
+, m_acceptorv6(m_io)
 , m_boost_archive_version(0)
 {
    for (bool connected = false; !connected; ) {
-      asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
-      try {
-         m_acceptor.open(endpoint.protocol());
-      } catch (const boost::system::system_error &err) {
-         if (err.code() == boost::system::errc::address_family_not_supported) {
-            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
-            m_acceptor.open(endpoint.protocol());
-         } else {
-            throw(err);
-         }
-      }
-      m_acceptor.set_option(acceptor::reuse_address(true));
-      try {
-         m_acceptor.bind(endpoint);
-      } catch(const boost::system::system_error &err) {
-         connected = false;
-         if (err.code() == boost::system::errc::address_in_use) {
-            m_acceptor.close();
+       boost::system::error_code ec;
+       if (start_listen(m_port, m_acceptorv4, m_acceptorv6, ec)) {
+           connected = true;
+       } else if (ec == boost::system::errc::address_in_use) {
             if (changePort) {
                 ++m_port;
                 continue;
             }
-         } else {
-            CERR << "listening on port " << m_port << " failed" << std::endl;
-            throw(err);
-         }
-      }
-      connected = true;
+       } else {
+           CERR << "listening on port " << m_port << " failed" << std::endl;
+           boost::system::system_error err(ec);
+           throw(err);
+       }
    }
 
    CERR << "proxying data connections through port " << m_port << std::endl;
-   m_acceptor.listen();
 }
 
 DataProxy::~DataProxy() {
@@ -79,7 +65,9 @@ void DataProxy::setHubId(int id) {
    make.setId(m_hubId);
    make.setRank(0);
 
-   startAccept();
+   startAccept(m_acceptorv4);
+   startThread();
+   startAccept(m_acceptorv6);
    startThread();
 }
 
@@ -122,8 +110,10 @@ int DataProxy::idToHub(int id) const {
 void DataProxy::cleanUp() {
 
    if (io().stopped()) {
-      m_acceptor.cancel();
-      m_acceptor.close();
+      m_acceptorv4.cancel();
+      m_acceptorv4.close();
+      m_acceptorv6.cancel();
+      m_acceptorv6.close();
 
       boost::system::error_code ec;
       for (auto &ssv: m_remoteDataSocket) {
@@ -187,23 +177,23 @@ void DataProxy::startThread() {
    }
 }
 
-void DataProxy::startAccept() {
+void DataProxy::startAccept(acceptor &a) {
 
    //CERR << "(re-)starting accept" << std::endl;
    std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
-   m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
+   a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec){handleAccept(a, ec, sock);});
    startThread();
    startThread();
 }
 
-void DataProxy::handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock) {
+void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
       return;
    }
 
-   startAccept();
+   startAccept(a);
 
    auto ident = make.message<Identify>(Identify::REQUEST);
    if (message::send(*sock, ident)) {

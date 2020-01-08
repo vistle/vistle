@@ -13,6 +13,7 @@
 #include <cover/coVRConfig.h>
 #include <cover/VRViewer.h>
 
+#include <util/listenv4v6.h>
 #include <core/tcpmessage.h>
 
 #include <osg/io_utils>
@@ -244,7 +245,7 @@ void RemoteConnection::operator()() {
 
     if (m_listen) {
         boost::system::error_code ec;
-        asio::ip::tcp::acceptor acceptor(plugin->m_io);
+        asio::ip::tcp::acceptor acceptorv4(plugin->m_io), acceptorv6(plugin->m_io);
         int first = m_port, last = m_port;
         if (m_portFirst>0 && m_portLast>0) {
             first = m_portFirst;
@@ -252,11 +253,8 @@ void RemoteConnection::operator()() {
         }
         asio::ip::tcp::endpoint endpoint;
         for (m_port=first; m_port<=last; ++m_port) {
-            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v6(), m_port);
-            acceptor.open(endpoint.protocol(), ec);
-            if (ec == boost::system::errc::address_family_not_supported) {
-                endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
-                acceptor.open(endpoint.protocol(), ec);
+            if (start_listen(m_port, acceptorv4, acceptorv6, ec)) {
+                break;
             }
             if (ec != boost::system::errc::address_in_use) {
                 break;
@@ -266,37 +264,47 @@ void RemoteConnection::operator()() {
             NOTIFY_ERROR << "could not open port " << m_port << " for listening: " << ec.message() << std::endl;
             END;
         }
-        acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-        acceptor.bind(endpoint, ec);
-        if (ec) {
-            NOTIFY_ERROR << "could not bind port " << m_port << ": " << ec.message() << std::endl;
-            acceptor.close();
-            END;
+        ec.clear();
+        if (acceptorv4.is_open())
+            acceptorv4.non_blocking(true, ec);
+        if (!ec) {
+            if (acceptorv6.is_open())
+                acceptorv6.non_blocking(true, ec);
         }
-        acceptor.listen();
-        acceptor.non_blocking(true, ec);
         if (ec) {
             NOTIFY_ERROR << "could not make acceptor non-blocking: " << ec.message() << std::endl;
-            acceptor.close();
+            acceptorv4.close();
+            acceptorv6.close();
             END;
         }
         {
             lock_guard locker(*m_mutex);
             m_listening = true;
         }
+
         do {
-            acceptor.accept(m_sock, ec);
-            if (ec == boost::system::errc::operation_would_block || ec == boost::system::errc::resource_unavailable_try_again) {
-                {
-                    lock_guard locker(*m_mutex);
-                    if (m_interrupt) {
-                        break;
-                    }
+            if (acceptorv4.is_open()) {
+                acceptorv4.accept(m_sock, ec);
+                if (ec != boost::system::errc::operation_would_block && ec != boost::system::errc::resource_unavailable_try_again) {
+                    break;
                 }
-                usleep(1000);
             }
+            if (acceptorv6.is_open()) {
+                acceptorv6.accept(m_sock, ec);
+                if (ec != boost::system::errc::operation_would_block && ec != boost::system::errc::resource_unavailable_try_again) {
+                    break;
+                }
+            }
+            {
+                lock_guard locker(*m_mutex);
+                if (m_interrupt) {
+                    break;
+                }
+            }
+            usleep(1000);
         } while (ec == boost::system::errc::operation_would_block || ec == boost::system::errc::resource_unavailable_try_again);
-        acceptor.close();
+        acceptorv4.close();
+        acceptorv6.close();
         if (ec) {
             NOTIFY_ERROR << "failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
             END;

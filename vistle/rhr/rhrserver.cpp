@@ -24,6 +24,7 @@
 #include <util/stopwatch.h>
 #include <util/netpbmimage.h>
 #include <core/tcpmessage.h>
+#include <util/listenv4v6.h>
 
 //#define QUANT_ERROR
 //#define TIMING
@@ -60,7 +61,8 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
 
 //! called when plugin is loaded
 RhrServer::RhrServer()
-: m_acceptor(m_io)
+: m_acceptorv4(m_io)
+, m_acceptorv6(m_io)
 , m_listen(true)
 , m_port(0)
 , m_destPort(0)
@@ -147,11 +149,6 @@ void RhrServer::setDumpImages(bool enable) {
 unsigned short RhrServer::port() const {
 
     return m_port;
-}
-
-asio::ip::address RhrServer::listenAddress() const {
-
-    return m_listenAddress;
 }
 
 unsigned short RhrServer::destinationPort() const {
@@ -318,53 +315,36 @@ bool RhrServer::startServer(unsigned short port) {
 
     m_listen = true;
 
-    for (;;) {
-       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
-        try {
-           m_acceptor.open(endpoint.protocol());
-        } catch (const boost::system::system_error &err) {
-           if (err.code() == boost::system::errc::address_family_not_supported) {
-              CERR << "IPv6 not supported, retrying listening on port " << port << " with IPv4" << std::endl;
-              endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port);
-              m_acceptor.open(endpoint.protocol());
-           } else {
-              throw(err);
-           }
+    boost::system::error_code ec;
+    while (!start_listen(port, m_acceptorv4, m_acceptorv6, ec)) {
+        if (ec == boost::system::errc::address_in_use) {
+            ++port;
+        } else {
+            CERR << "listening on port " << port << " failed: " << ec.message() << std::endl;
+            return false;
         }
-        m_acceptor.set_option(acceptor::reuse_address(true));
-        try {
-            m_acceptor.bind(endpoint);
-        } catch(const boost::system::system_error &err) {
-            if (err.code() == boost::system::errc::address_in_use) {
-                m_acceptor.close();
-                CERR << "failed to listen on port " << port << " - address already in use" << std::endl;
-                ++port;
-                continue;
-            } else {
-                CERR << "listening on port " << port << " failed" << std::endl;
-            }
-            throw(err);
-        }
-        m_listenAddress = endpoint.address();
-        break;
     }
-    m_acceptor.listen();
-    CERR << "listening for connections on port " << port << std::endl;
 
     m_port = port;
+    CERR << "listening for connections on port " << port << std::endl;
 
-    return startAccept();
+    bool ret = true;
+    if (m_acceptorv4.is_open())
+        ret &= startAccept(m_acceptorv4);
+    if (m_acceptorv6.is_open())
+        ret &= startAccept(m_acceptorv6);
+    return ret;
 }
 
-bool RhrServer::startAccept() {
+bool RhrServer::startAccept(asio::ip::tcp::acceptor &a) {
 
    auto sock = std::make_shared<asio::ip::tcp::socket>(m_io);
 
-   m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(sock, ec);});
+   a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec){handleAccept(a, sock, ec);});
    return true;
 }
 
-void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
@@ -397,7 +377,7 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
 
    }
 
-   startAccept();
+   startAccept(a);
 }
 
 bool RhrServer::makeConnection(const std::string &host, unsigned short port, int secondsToTry) {

@@ -12,6 +12,7 @@ set(util_SOURCES
    sleep.cpp
    sysdep.cpp
    netpbmimage.cpp
+   listenv4v6.cpp
 )
 
 set(util_HEADERS
@@ -34,6 +35,7 @@ set(util_HEADERS
    sleep.h
    pybind.h
    netpbmimage.h
+   listenv4v6.h
 )
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "")

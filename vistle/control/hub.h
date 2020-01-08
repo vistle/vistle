@@ -64,9 +64,9 @@ private:
    bool startUi(const std::string &uipath);
    bool startPythonUi();
    bool startServer();
-   bool startAccept();
+   bool startAccept(std::shared_ptr<acceptor> a);
    void handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
-   void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
+   void handleAccept(std::shared_ptr<acceptor> a, std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
    void addSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
    bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
@@ -93,7 +93,7 @@ private:
    boost::asio::ip::address m_exposedHostAddr;
    std::string m_masterHost;
    boost::asio::io_service m_ioService;
-   std::shared_ptr<acceptor> m_acceptor;
+   std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
    std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
    std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;

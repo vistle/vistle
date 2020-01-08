@@ -37,10 +37,11 @@ private:
    address m_destAddr;
    unsigned short m_destPort;
 
-   acceptor m_acceptor;
-   std::shared_ptr<socket> m_listeningSocket;
+   acceptor m_acceptorv4, m_acceptorv6;
+   std::map<acceptor *, std::shared_ptr<socket>> m_listeningSocket;
    std::vector<std::weak_ptr<TunnelStream>> m_streams;
-   void handleAccept(std::shared_ptr<Tunnel> self, const boost::system::error_code &error);
+   void startAccept(acceptor &a, std::shared_ptr<Tunnel> self);
+   void handleAccept(acceptor &a, std::shared_ptr<Tunnel> self, const boost::system::error_code &error);
    void handleConnect(std::shared_ptr<Tunnel> self, std::shared_ptr<boost::asio::ip::tcp::socket> sock0, std::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
 };
 

@@ -50,7 +50,7 @@ private:
    StateTracker &m_stateTracker;
    unsigned short m_port;
    io_service m_io;
-   acceptor m_acceptor;
+   acceptor m_acceptorv4, m_acceptorv6;
    std::vector<std::thread> m_threads;
    std::map<int, std::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket
    struct ConnectionData {
@@ -59,8 +59,8 @@ private:
    };
    std::map<int, ConnectionData> m_remoteDataSocket; // hub id -> socket
    int m_boost_archive_version;
-   void startAccept();
-   void handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
+   void startAccept(acceptor &a);
+   void handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
    void handleConnect(std::shared_ptr<tcp_socket> sock0, std::shared_ptr<tcp_socket> sock1, const boost::system::error_code &error);
    void startThread();
    void cleanUp();
