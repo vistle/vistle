@@ -53,7 +53,7 @@ Vector StructuredGridBase::cellCenter(Index elem) const
     }
 
     auto verts = cellVertices(elem, dims);
-    Vector center(0);
+    Vector center(0,0,0);
     for (auto v: verts) {
         center += getVertex(v);
     }
