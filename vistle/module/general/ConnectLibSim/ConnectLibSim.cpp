@@ -11,7 +11,7 @@
 #include "Engine.h"
 
 #include <util/sleep.h>
-#include "EstablishConnection.h"
+#include <insitu/LibSim/EstablishConnection.h>
 
 using namespace vistle;
 using std::string;

@@ -7,13 +7,6 @@
 #
 #****************************************************************************
 
-vistle_add_library(LibSim_Connect EstablishConnection.h EstablishConnectionExports.h EstablishConnection.cpp)
-target_link_libraries(LibSim_Connect
-		${Boost_LIBRARIES}
-		)
-		
-
-
 SET(RUNTIME_SOURCES 
   Exeption.cpp
   ConnectLibSim.cpp
@@ -108,7 +101,7 @@ target_link_libraries(${LIBNAME}
 		vistle_control
         vistle_core
         vistle_boost_mpi
-		LibSim_Connect
+		libsim_connect
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )

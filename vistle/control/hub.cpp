@@ -24,9 +24,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
-
-#include <module/general/ConnectLibSim/EstablishConnection.h>
-
+#ifndef MODULE_THREAD
+#include <insitu/LibSim/EstablishConnection.h>
+#endif
 #include "uimanager.h"
 #include "uiclient.h"
 #include "hub.h"
