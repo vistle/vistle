@@ -196,7 +196,7 @@ if(UNIX AND NOT APPLE)
 endif()
 if (WIN32)
 	target_link_libraries(vistle_core
-	       	bcrypt.lib
+	      PUBLIC bcrypt.lib
 	)
 endif()
 
