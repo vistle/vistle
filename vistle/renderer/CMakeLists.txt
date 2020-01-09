@@ -51,11 +51,7 @@ if(TBB_FOUND)
 endif()
 
 include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-)
-include_directories(
-        ..
 )
 
 add_subdirectory(COVER)

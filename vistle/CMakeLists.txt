@@ -171,6 +171,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
+include_directories(.)
+
 add_subdirectory(util)
 add_subdirectory(core)
 add_subdirectory(net)

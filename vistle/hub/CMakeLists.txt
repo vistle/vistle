@@ -1,10 +1,3 @@
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-
 vistle_add_executable(vistle hubmain.cpp)
 target_link_libraries(vistle
         ${Boost_SYSTEM_LIBRARY}

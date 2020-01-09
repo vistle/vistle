@@ -20,11 +20,3 @@ target_link_libraries(vistle_net
 target_link_libraries(vistle_net
     PRIVATE Threads::Threads
 )
-
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-

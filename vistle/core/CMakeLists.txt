@@ -211,13 +211,6 @@ target_link_libraries(vistle_core
     PRIVATE Threads::Threads
 )
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-
 if (ZFP_FOUND)
     target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
 endif()

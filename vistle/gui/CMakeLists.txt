@@ -27,11 +27,9 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
 include_directories(SYSTEM
-  ${Boost_INCLUDE_DIRS}
   ${PYTHON_INCLUDE_PATH}
 )
 include_directories(
-  ..
   ${CMAKE_CURRENT_BINARY_DIR}
   .
 )

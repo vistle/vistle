@@ -41,13 +41,6 @@ if(TBB_FOUND)
    )
 endif()
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-
 set(RHR_CUDA_SOURCES
     ReadBackCuda.cu
 )

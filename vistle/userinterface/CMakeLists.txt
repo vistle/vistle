@@ -25,13 +25,6 @@ if (PYTHONLIBS_FOUND)
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 target_compile_definitions(vistle_userinterface PRIVATE -DEMBED_PYTHON)
 target_link_libraries(vistle_userinterface

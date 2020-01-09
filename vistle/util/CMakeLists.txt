@@ -61,10 +61,3 @@ if (LIBEXECINFO)
         PRIVATE execinfo
     )
 endif()
-
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)

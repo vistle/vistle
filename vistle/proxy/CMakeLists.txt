@@ -1,10 +1,3 @@
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-)
-include_directories(
-        ..
-)
-
 set(proxy_SOURCES
    proxy.cpp
    )
