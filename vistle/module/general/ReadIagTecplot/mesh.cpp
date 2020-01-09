@@ -17,7 +17,7 @@
 #include <cmath>
 
 // predicate to select which point is closer to a reference point given in the constructor
-struct NearPred : public std::binary_function<Position, Position, bool> {
+struct NearPred {
 	NearPred(Position const & iDest) : mDest(iDest) {}
 	bool operator()(Position const & lhs, Position const & rhs) const {
 		return (lhs-mDest).length()<(rhs-mDest).length();
