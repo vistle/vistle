@@ -20,7 +20,7 @@ typedef std::deque<obj_const_ptr> ObjectList;
 namespace detail {
 
 template <class T>
-struct deref_compare: std::binary_function<T*, T*, bool> {
+struct deref_compare {
    bool operator() (const T *x, const T *y) const {
       return *x < *y;
    }
