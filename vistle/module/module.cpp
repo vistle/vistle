@@ -408,7 +408,7 @@ void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
 }
 
 
-ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
+ObjectCache::CacheMode Module::cacheMode() const {
 
    return m_cache.cacheMode();
 }
@@ -878,8 +878,7 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
       return false;
    }
 
-   if (object)
-      vassert(object->check());
+   vassert(object->check());
 
    if (m_executionCount < object->getExecutionCounter()) {
       m_executionCount = object->getExecutionCounter();

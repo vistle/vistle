@@ -140,7 +140,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    int id() const;
 
    ObjectCache::CacheMode setCacheMode(ObjectCache::CacheMode mode, bool update=true);
-   ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
+   ObjectCache::CacheMode cacheMode() const;
 
    Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
