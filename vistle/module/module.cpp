@@ -1532,6 +1532,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 if (!isConnected(port.second))
                     continue;
                 port.second.objects() = m_cache.getObjects(port.first);
+                auto srcPort = *port.second.connections().begin();
+                for (const auto &o: port.second.objects()) {
+                    objectAdded(srcPort->getModuleID(), srcPort->getName(), &port.second);
+                }
                 ++numConnected;
                 if (numObject == 0) {
                     numObject = (vistle::Index)port.second.objects().size();
