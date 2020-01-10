@@ -41,11 +41,9 @@ typename Vec<T,Dim>::ptr remapData(typename Vec<T,Dim>::const_ptr in, const Doma
         data_out[d] = out->x(d).data();
     }
 
-    for (const auto &v: dm) {
-        Index f=v.first;
-        Index s=v.second;
+    for (Index i=0; i<dm.size(); ++i) {
         for (int d=0; d<Dim; ++d) {
-            data_out[d][s] = data_in[d][f];
+            data_out[d][i] = data_in[d][dm[i]];
         }
     }
 
@@ -82,7 +80,7 @@ bool DomainSurface::compute(std::shared_ptr<PortTask> task) const {
 
    bool haveElementData = false;
    if (data && data->guessMapping(grid_in) == DataBase::Element) {
-           haveElementData = true;
+       haveElementData = true;
    }
 
    Object::ptr surface;
@@ -162,7 +160,6 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
    auto &pcl = m_grid_out->cl();
    Index dims[3] = {grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2)};
 
-   Index el = 0;
    for (int d=0; d<3; ++d) {
        int d1 = d==0 ? 1 : 0;
        int d2 = d==d1+1 ? d1+2 : d1+1;
@@ -189,9 +186,9 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
                    Index idx[3]{0,0,0};
                    idx[d1] = i1;
                    idx[d2] = i2;
-                   if (haveElementData)
-                       em[el] = grid->cellIndex(idx, dims);
-                   ++el;
+                   if (haveElementData) {
+                       em.emplace_back(grid->cellIndex(idx, dims));
+                   }
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1+1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
@@ -209,9 +206,11 @@ Quads::ptr DomainSurface::createSurface(vistle::StructuredGridBase::const_ptr gr
                    idx[d] = grid->getNumDivisions(d)-1;
                    idx[d1] = i1;
                    idx[d2] = i2;
-                   if (haveElementData)
-                       em[el] = grid->cellIndex(idx, dims);
-                   ++el;
+                   if (haveElementData) {
+                       --idx[d];
+                       em.emplace_back(grid->cellIndex(idx, dims));
+                       idx[d] = grid->getNumDivisions(d)-1;
+                   }
                    pcl.push_back(grid->vertexIndex(idx,dims));
                    idx[d1] = i1+1;
                    pcl.push_back(grid->vertexIndex(idx,dims));
@@ -238,15 +237,18 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly
       poly->d()->x[2] = coords->d()->x[2];
    } else {
       vm.clear();
-      Index c=0;
+
+      std::map<Index, Index> mapped;
       for (Index &v: poly->cl()) {
-         if (vm.emplace(v,c).second) {
-            v=c;
-            ++c;
+         if (mapped.emplace(v, vm.size()).second) {
+            Index vv = vm.size();
+            vm.push_back(v);
+            v=vv;
          } else {
-            v=vm[v];
+            v=mapped[v];
          }
       }
+      mapped.clear();
 
       const Scalar *xcoord = &coords->x()[0];
       const Scalar *ycoord = &coords->y()[0];
@@ -254,16 +256,14 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly
       auto &px = poly->x();
       auto &py = poly->y();
       auto &pz = poly->z();
-      px.resize(c);
-      py.resize(c);
-      pz.resize(c);
+      px.resize(vm.size());
+      py.resize(vm.size());
+      pz.resize(vm.size());
 
-      for (const auto &v: vm) {
-         Index f=v.first;
-         Index s=v.second;
-         px[s] = xcoord[f];
-         py[s] = ycoord[f];
-         pz[s] = zcoord[f];
+      for (Index i=0; i<vm.size(); ++i) {
+         px[i] = xcoord[vm[i]];
+         py[i] = ycoord[vm[i]];
+         pz[i] = zcoord[vm[i]];
       }
    }
 }
@@ -278,15 +278,18 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
       quad->d()->x[2] = coords->d()->x[2];
    } else {
       vm.clear();
-      Index c=0;
+
+      std::map<Index, Index> mapped;
       for (Index &v: quad->cl()) {
-         if (vm.emplace(v,c).second) {
-            v=c;
-            ++c;
+         if (mapped.emplace(v,vm.size()).second) {
+            Index vv=vm.size();
+            vm.push_back(v);
+            v = vv;
          } else {
-            v=vm[v];
+            v=mapped[v];
          }
       }
+      mapped.clear();
 
       const Scalar *xcoord = &coords->x()[0];
       const Scalar *ycoord = &coords->y()[0];
@@ -294,16 +297,14 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
       auto &px = quad->x();
       auto &py = quad->y();
       auto &pz = quad->z();
-      px.resize(c);
-      py.resize(c);
-      pz.resize(c);
+      px.resize(vm.size());
+      py.resize(vm.size());
+      pz.resize(vm.size());
 
-      for (const auto &v: vm) {
-         Index f=v.first;
-         Index s=v.second;
-         px[s] = xcoord[f];
-         py[s] = ycoord[f];
-         pz[s] = zcoord[f];
+      for (Index i=0; i<vm.size(); ++i) {
+         px[i] = xcoord[vm[i]];
+         py[i] = ycoord[vm[i]];
+         pz[i] = zcoord[vm[i]];
       }
    }
 }
@@ -311,30 +312,30 @@ void DomainSurface::renumberVertices(Coords::const_ptr coords, Quads::ptr quad, 
 void DomainSurface::createVertices(StructuredGridBase::const_ptr grid, Quads::ptr quad, DataMapping &vm) const {
 
     vm.clear();
-    Index c=0;
+    std::map<Index, Index> mapped;
     for (Index &v: quad->cl()) {
-        if (vm.emplace(v,c).second) {
-            v=c;
-            ++c;
+        if (mapped.emplace(v,vm.size()).second) {
+            Index vv=vm.size();
+            vm.push_back(v);
+            v = vv;
         } else {
-            v=vm[v];
+            v=mapped[v];
         }
     }
+    mapped.clear();
 
     auto &px = quad->x();
     auto &py = quad->y();
     auto &pz = quad->z();
-    px.resize(c);
-    py.resize(c);
-    pz.resize(c);
+    px.resize(vm.size());
+    py.resize(vm.size());
+    pz.resize(vm.size());
 
-    for (const auto &v: vm) {
-        Index f=v.first;
-        Index s=v.second;
-        Vector p = grid->getVertex(f);
-        px[s] = p[0];
-        py[s] = p[1];
-        pz[s] = p[2];
+    for (Index i=0; i<vm.size(); ++i) {
+        Vector p = grid->getVertex(vm[i]);
+        px[i] = p[0];
+        py[i] = p[1];
+        pz[i] = p[2];
     }
 }
 
@@ -379,7 +380,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                           auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                           std::copy(rbegin, rend, std::back_inserter(pcl));
                           if (haveElementData)
-                              em[pl.size()] = i;
+                              em.emplace_back(pl.size());
                           pl.push_back(pcl.size());
                       }
                   }
@@ -407,7 +408,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                               auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                               std::copy(rbegin, rend, std::back_inserter(pcl));
                               if (haveElementData)
-                                  em[pl.size()] = i;
+                                  em.emplace_back(pl.size());
                               pl.push_back(pcl.size());
                           }
                       }
@@ -454,7 +455,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                      pcl.push_back(cl[elStart + face[j]]);
                   }
                   if (haveElementData)
-                      em[pl.size()] = i;
+                      em.emplace_back(pl.size());
                   pl.push_back(pcl.size());
                }
             }

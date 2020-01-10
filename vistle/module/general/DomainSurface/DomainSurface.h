@@ -12,7 +12,7 @@ class DomainSurface: public vistle::Module {
    DomainSurface(const std::string &name, int moduleID, mpi::communicator comm);
    ~DomainSurface();
 
-   typedef std::map<vistle::Index,vistle::Index> DataMapping;
+   typedef std::vector<vistle::Index> DataMapping;
 
 private:
    bool compute(std::shared_ptr<vistle::PortTask> task) const override;
