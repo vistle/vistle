@@ -1353,6 +1353,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
          if (ports && port && other) {
             if (inputConnection) {
                connectionRemoved(other, port);
+               m_cache.clear(port->getName());
             } else {
                connectionRemoved(port, other);
             }

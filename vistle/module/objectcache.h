@@ -27,6 +27,7 @@ class ObjectCache {
 
       void clear();
       void clearOld();
+      void clear(const std::string &portname);
       CacheMode cacheMode() const;
       void setCacheMode(CacheMode mode);
 

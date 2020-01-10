@@ -21,7 +21,13 @@ void ObjectCache::clear() {
 }
 
 void ObjectCache::clearOld() {
-   m_oldCache.clear();
+    m_oldCache.clear();
+}
+
+void ObjectCache::clear(const std::string &portname) {
+
+    m_cache.erase(portname);
+    m_oldCache.erase(portname);
 }
 
 ObjectCache::CacheMode ObjectCache::cacheMode() const {
