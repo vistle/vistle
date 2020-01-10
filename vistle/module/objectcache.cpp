@@ -53,7 +53,8 @@ void ObjectCache::addObject(const std::string &portname, Object::const_ptr objec
       const Meta &oldmeta = objs.front()->meta();
       const Meta &newmeta = object->meta();
       if (oldmeta.creator() != newmeta.creator()
-            || oldmeta.executionCounter() != newmeta.executionCounter()) {
+            || oldmeta.executionCounter() != newmeta.executionCounter()
+            || oldmeta.iteration() != newmeta.iteration()) {
          objs.clear();
       }
    }
