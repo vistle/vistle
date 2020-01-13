@@ -22,11 +22,11 @@
 #include <core/statetracker.h>
 #include <core/shm.h>
 
+#include <insitu/LibSim/EstablishConnection.h>
+
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
-#ifndef MODULE_THREAD
-#include <insitu/LibSim/EstablishConnection.h>
-#endif
+
 #include "uimanager.h"
 #include "uiclient.h"
 #include "hub.h"
