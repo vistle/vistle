@@ -107,7 +107,6 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         mGrids[partition] = grid;
         grid->setBlock(partition);
         grid->setTimestep(-1);
-        grid->applyDimensionHint(grid);
         token.addObject(p_grid, grid);
         //block numbers
         Vec<Index>::ptr blockNumbers(new Vec<Index>(pReader->getGridSize()));
@@ -126,12 +125,11 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
                     return false;
                 }
                 Vec<float, 3>::ptr velocity(new Vec<Scalar, 3>(pReader->getGridSize()));
+                velocity->setMapping(DataBase::Vertex);
                 velocity->setGrid(grid);
                 velocity->setTimestep(timestep);
                 velocity->setBlock(partition);
-                velocity->setMapping(DataBase::Vertex);
                 velocity->addAttribute("_species", "velocity");
-                velocity->applyDimensionHint(velocity);
                 auto x = velocity->x().data();
                 auto y = velocity->y().data();
                 auto z = velocity->z().data();
@@ -218,10 +216,10 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
         sendError("nek: ReadScalar failed to get data for " + varname + " for partition " + to_string(partition) + " in timestep " + to_string(timestep));
         return false;
     }
+    scal->setMapping(DataBase::Vertex);
     scal->setGrid(grid);
     scal->setTimestep(timestep);
     scal->setBlock(partition);
-    scal->setMapping(DataBase::Vertex);
     scal->addAttribute("_species", varname);
     token.addObject(p, scal);
     return true;
