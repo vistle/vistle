@@ -467,7 +467,13 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
        m_delayedObjects.emplace_back(pro, vgr);
        //updateStatus();
    }
-   osg::ref_ptr<osg::Group> parent = getParent(pro->coverRenderObject.get());
+   osg::ref_ptr<osg::Group> parent = getParent(cro.get());
+   const int t = pro->timestep;
+   if (t >= 0) {
+       int creatorId = cro->getCreator();
+       Creator &creator = getCreator(creatorId);
+       coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+   }
 
    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
    return pro;
