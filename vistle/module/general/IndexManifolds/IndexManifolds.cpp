@@ -55,6 +55,8 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
         return true;
     }
 
+    bool elementData = data->guessMapping()==DataBase::Element;
+
     Direction dir = static_cast<Direction>(p_direction->getValue());
     Direction dir1 = dir==X ? Y : X;
     Direction dir2 = dir==Z ? Y : Z;
@@ -87,7 +89,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
         DataBase::ptr outdata;
         if (data) {
             outdata = data->cloneType();
-            outdata->setSize(nvert);
+            outdata->setSize(elementData ? nquad : nvert);
             outdata->setGrid(surface);
             outdata->copyAttributes(data);
         }
@@ -105,6 +107,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
                 cl[ii++] = (i+1)*nvert2 + j;
                 cl[ii++] = (i+1)*nvert2 + j+1;
                 cl[ii++] = i*nvert2 + j+1;
+
             }
         }
         assert(ii == nquad*4);
@@ -112,6 +115,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
         Index cc[3]{c[0], c[1], c[2]};
         cc[dir1] = bghost[dir1];
         Index vv=0;
+        Index cell=0;
         for (Index i=0; i<nvert1; ++i) {
             cc[dir2] = bghost[dir2];
             for (Index j=0; j<nvert2; ++j) {
@@ -119,8 +123,17 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
                 auto p = str->getVertex(v);
                 for (int d=0; d<3; ++d)
                     x[d][vv] = p[d];
-                if (outdata)
-                    outdata->copyEntry(vv, data, v);
+                if (outdata) {
+                    if (elementData) {
+                        if (i+1<nvert1 && j+1<nvert2) {
+                            Index c = StructuredGridBase::cellIndex(cc[0], cc[1], cc[2], dims);
+                            outdata->copyEntry(cell, data, c);
+                            ++cell;
+                        }
+                    } else {
+                        outdata->copyEntry(vv, data, v);
+                    }
+                }
 
                 ++vv;
                 ++cc[dir2];
@@ -128,6 +141,7 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             ++cc[dir1];
         }
         assert(vv == nvert);
+        assert(cell == 0 || cell == nquad);
 
         if (outdata)
             task->addObject(p_surface_out, outdata);
@@ -147,11 +161,12 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
         DataBase::ptr outdata;
         if (data) {
             outdata = data->cloneType();
-            outdata->setSize(nvert);
+            outdata->setSize(elementData ? nvert-1 : nvert);
             outdata->setGrid(line);
             outdata->copyAttributes(data);
         }
 
+        Index cell = 0;
         Index cc[3]{c[0], c[1], c[2]};
         cc[dir] = bghost[dir];
         for (Index i=0; i<nvert; ++i) {
@@ -161,8 +176,17 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
             for (int d=0; d<3; ++d) {
                 line->x(d)[cc[dir]] = p[d];
             }
-            if (outdata)
-                outdata->copyEntry(cc[dir], data, v);
+            if (outdata) {
+                if (elementData) {
+                    if (i+1<nvert) {
+                        Index c = StructuredGridBase::cellIndex(cc[0], cc[1], cc[2], dims);
+                        outdata->copyEntry(cell, data, c);
+                        ++cell;
+                    }
+                } else {
+                    outdata->copyEntry(cc[dir], data, v);
+                }
+            }
             line->cl()[i] = i;
 
             ++cc[dir];
