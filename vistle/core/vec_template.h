@@ -84,8 +84,14 @@ double Vec<T,Dim>::value(Index idx, int component) const {
 template <class T, int Dim>
 void Vec<T,Dim>::applyDimensionHint(Object::const_ptr grid) {
     if (auto str = StructuredGridBase::as(grid)) {
-        for (int c=0; c<Dim; ++c)
-            d()->x[c]->setDimensionHint(str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2));
+        auto m = guessMapping(shared_from_this());
+        for (int c=0; c<Dim; ++c) {
+            if (m == DataBase::Vertex) {
+                d()->x[c]->setDimensionHint(str->getNumDivisions(0), str->getNumDivisions(1), str->getNumDivisions(2));
+            } else if (m == DataBase::Element) {
+                d()->x[c]->setDimensionHint(str->getNumDivisions(0)-1, std::max<Index>(1,str->getNumDivisions(1)-1), std::max<Index>(1,str->getNumDivisions(2)-1));
+            }
+        }
     } else {
         for (int c=0; c<Dim; ++c)
             d()->x[c]->clearDimensionHint();

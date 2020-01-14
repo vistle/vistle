@@ -252,6 +252,8 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0]*dim[1]*dim[2];
+    Index numCells = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
+    bool elementData = m_elementData->getValue();
 
     Object::ptr geoOut;
 
@@ -324,6 +326,7 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
         }
         numVert = dim[0]*dim[1]*dim[2];
+        numCells = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
 
         Index numCellVert = 1;
         int ndim = 0;
@@ -474,23 +477,25 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         }
     }
 
+    Index numData = elementData ? numCells : numVert;
+
     Vec<Scalar,1>::ptr scalar;
     if (isConnected("data_out0")) {
-        scalar.reset(new Vec<Scalar,1>(numVert));
+        scalar.reset(new Vec<Scalar,1>(numData));
         scalar->setBlock(block);
         if (time >= 0)
             scalar->setTimestep(time);
     }
     Vec<Scalar,3>::ptr vector;
     if (isConnected("data_out1")) {
-        vector.reset(new Vec<Scalar,3>(numVert));
+        vector.reset(new Vec<Scalar,3>(numData));
         vector->setBlock(block);
         if (time >= 0)
             vector->setTimestep(time);
     }
 
     const int dtime = time<0 ? 0 : time;
-    if (m_elementData->getValue()) {
+    if (elementData) {
 
         const GridInterface *grid = geoOut->getInterface<GridInterface>();
         if (scalar) {
@@ -532,11 +537,11 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             geoOut->setTimestep(time);
         token.addObject("grid_out", geoOut);
         if (scalar) {
-            scalar->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
+            scalar->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             scalar->setGrid(geoOut);
         }
         if (vector) {
-            vector->setMapping(m_elementData->getValue() ? DataBase::Element : DataBase::Vertex);
+            vector->setMapping(elementData ? DataBase::Element : DataBase::Vertex);
             vector->setGrid(geoOut);
         }
     }
