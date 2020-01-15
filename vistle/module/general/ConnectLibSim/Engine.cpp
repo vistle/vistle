@@ -20,6 +20,7 @@
 #include "ExpressionMetaData.h"
 #include "DomainList.h"
 #include "RectilinearMesh.h"
+#include "CurvilinearMesh.h"
 #include "VariableData.h"
 
 #include <boost/mpi.hpp>
@@ -282,7 +283,7 @@ bool Engine::initialize(int argC, char** argV) {
     // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
-        printToConsole("VISTLE_ROOT not set");
+        printToConsole("VISTLE_ROOT not set to the path of the Vistle build directory.");
         return false;
     }
 
@@ -453,17 +454,11 @@ bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
     return false;
 }
 
-bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle, const int* domainList, int numDomains) {
-    char* name;
-    int dim;
-    v2check(simv2_MeshMetaData_getName, meshMetaHandle, &name);
-    v2check(simv2_MeshMetaData_getTopologicalDimension, meshMetaHandle, &dim);
-    MeshInfo meshInfo;
-    meshInfo.numDomains = numDomains;
-    meshInfo.domains = domainList;
-    for (size_t cd = 0; cd < numDomains; cd++) {
-        int currDomain = domainList[cd];
-        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,currDomain, name);
+bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
+
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,currDomain, meshInfo.name);
         int check = simv2_RectilinearMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
             visit_handle coordHandles[3]; //handles to variable data
@@ -471,7 +466,7 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle, const int* domain
             v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
             int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{1,1,1};
             void* data[3]{};
-            for (int i = 0; i < dim; ++i) {
+            for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                 //cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
                 if (dataType[i] != VISIT_DATATYPE_FLOAT) {
@@ -479,7 +474,7 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle, const int* domain
                     return false;
                 }
             }
-            if (dim == 2 && nTuples[2] != 1) {
+            if (meshInfo.dim == 2 && nTuples[2] != 1) {
                 throw EngineExeption("2d rectilinier grids must have exactly one z coordinate");
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
@@ -487,17 +482,85 @@ bool in_situ::Engine::makeAmrMesh(visit_handle meshMetaHandle, const int* domain
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
-            for (size_t i = 0; i < dim; i++) {
+            for (size_t i = 0; i < meshInfo.dim; i++) {
                 memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
             }
-            if (dim == 2) {
+            if (meshInfo.dim == 2) {
                 grid->coords(2)[0] = 0;
             }
-            m_module->addObject(name, grid);
+            m_module->addObject(meshInfo.name, grid);
         }
     }
-    printToConsole("made amr mesh with " + std::to_string(numDomains) + " domains");
-    m_meshes[name]  = meshInfo;
+    printToConsole("made amr mesh with " + std::to_string(meshInfo.numDomains) + " domains");
+    m_meshes[meshInfo.name]  = meshInfo;
+    return true;
+}
+
+bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
+        int check = simv2_CurvilinearMesh_check(meshHandle);
+        if (check == VISIT_OKAY) {
+            visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
+            int dims[3]{ 1,1,1 }; //the x,y,z dimensions
+            int ndims, coordMode;
+            //no v2check because last visit_handle can be invalid
+            if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1], &coordHandles[2], &coordHandles[3]))                 {
+                throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
+            }
+            vistle::StructuredGrid::ptr grid(new vistle::StructuredGrid(dims[0], dims[1], dims[2]));
+            std::array<float*, 3> gridCoords{ grid->x().data() ,grid->y().data() ,grid->z().data() };
+            int owner{}, dataType{}, nComps{}, nTuples{};
+            void* data{};
+            switch (coordMode) {
+            case VISIT_COORD_MODE_INTERLEAVED:
+            {
+                v2check(simv2_VariableData_getData, coordHandles[3], owner, dataType, nComps, nTuples, data);
+                int numVals = dims[0] * dims[1] * dims[2] * ndims;
+                if (nTuples != numVals) {
+                    throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
+                }
+                if (dataType != VISIT_DATATYPE_FLOAT) {
+                    throw EngineExeption("gird " + std::string(meshInfo.name) + ": mesh coords must be floats");
+                }
+                size_t point = 0;
+                for (size_t entry = 0 ; entry < numVals; entry++) {
+                    for (size_t i = 0; i < ndims; i++) {
+                        gridCoords[i][point] = static_cast<float*>(data)[entry];
+                        ++entry;
+                    }
+                }
+            }
+            break;
+            case VISIT_COORD_MODE_SEPARATE:
+            {
+            for (int i = 0; i < meshInfo.dim; ++i) {
+                v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
+
+                if (dataType != VISIT_DATATYPE_FLOAT) {
+                    throw EngineExeption("gird " + std::string(meshInfo.name) + ": mesh coords must be floats");
+                }
+                if (nTuples != dims[i]) {
+                    throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
+                }
+                memcpy(gridCoords[i], data, nTuples * sizeof(float));
+            }
+            }
+            break;
+            default:
+                throw EngineExeption("coord mode must be interleaved separate, it is " + std::to_string(coordMode));
+            }
+
+            grid->setTimestep(m_metaData.currentCycle);
+            grid->setBlock(currDomain);
+            meshInfo.handles.push_back(meshHandle);
+            meshInfo.grids.push_back(grid);
+            m_module->addObject(meshInfo.name, grid);
+        }
+    }
+    printToConsole("made amr mesh with " + std::to_string(meshInfo.numDomains) + " domains");
+    m_meshes[meshInfo.name] = meshInfo;
     return true;
 }
 
@@ -507,6 +570,7 @@ void in_situ::Engine::sendMeshesToModule()     {
 
 
     for (size_t i = 0; i < numMeshes; i++) {
+        MeshInfo meshInfo;
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
@@ -516,21 +580,25 @@ void in_situ::Engine::sendMeshesToModule()     {
         v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
         printToConsole("allDoms = " + std::to_string(allDoms) + " myDoms = " + std::to_string(myDoms));
 
-        int owner, dataType, nComps, numDomains;
+        int owner, dataType, nComps;
         void* data;
         try {
-            v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, numDomains, data);
+            v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, meshInfo.numDomains, data);
         } catch (const SimV2Exeption&) {
             printToConsole("failed to get domain list");
         }
         if (dataType != VISIT_DATATYPE_INT) {
             printToConsole("expected domain list to be ints");
         }
-        const int* domainList = static_cast<const int*>(data);
+        meshInfo.domains = static_cast<const int*>(data);
   
 
         VisIt_MeshType meshType = VisIt_MeshType::VISIT_MESHTYPE_UNKNOWN;
         v2check(simv2_MeshMetaData_getMeshType, meshHandle, (int*)&meshType);
+
+
+        v2check(simv2_MeshMetaData_getName, meshHandle, &meshInfo.name);
+        v2check(simv2_MeshMetaData_getTopologicalDimension, meshHandle, &meshInfo.dim);
 
         switch (meshType) {
         case VISIT_MESHTYPE_RECTILINEAR:
@@ -541,6 +609,7 @@ void in_situ::Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_CURVILINEAR:
         {
             cerr << "making curvilinear grid" << endl;
+            makeStructuredMesh(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_UNSTRUCTURED:
@@ -560,7 +629,7 @@ void in_situ::Engine::sendMeshesToModule()     {
         break;
         case VISIT_MESHTYPE_AMR:
         {
-            makeAmrMesh(meshHandle, domainList, numDomains);
+            makeAmrMesh(meshInfo);
         }
         break;
         default:

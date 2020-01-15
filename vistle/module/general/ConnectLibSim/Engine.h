@@ -79,6 +79,8 @@ private:
 
     std::map<std::string, vistle::Port*> m_portsList;
     struct MeshInfo {
+        char* name = nullptr;
+        int dim = 0; //2D or 3D
         int numDomains = 0;
         const int* domains = nullptr;
         std::vector<int> handles;
@@ -102,7 +104,8 @@ private:
 
     bool makeCurvilinearMesh(visit_handle meshMetaHandle);
     bool makeUntructuredMesh(visit_handle meshMetaHandle);
-    bool makeAmrMesh(visit_handle meshMetaHandle, const int* domainList, int numDomains);
+    bool makeAmrMesh(MeshInfo meshInfo);
+    bool makeStructuredMesh(MeshInfo meshInfo);
     void sendMeshesToModule();
     void sendVarablesToModule();
     void sendDataToModule();
