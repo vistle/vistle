@@ -1,0 +1,81 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umGendat1 = spawnAsync(MasterHub, 'Gendat')
+umIsoSurface2 = spawnAsync(MasterHub, 'IsoSurface')
+umCOVER3 = spawnAsync(MasterHub, 'COVER')
+umBoundingBox4 = spawnAsync(MasterHub, 'BoundingBox')
+umColor5 = spawnAsync(MasterHub, 'Color')
+umCutGeometry6 = spawnAsync(MasterHub, 'CutGeometry')
+umIsoSurface7 = spawnAsync(MasterHub, 'IsoSurface')
+umCuttingSurface8 = spawnAsync(MasterHub, 'CuttingSurface')
+
+mGendat1 = waitForSpawn(umGendat1)
+setVectorParam(mGendat1, '_position', 15.0, -726.0, True)
+applyParameters(mGendat1)
+
+mIsoSurface2 = waitForSpawn(umIsoSurface2)
+setVectorParam(mIsoSurface2, '_position', 259.0, -605.0, True)
+setFloatParam(mIsoSurface2, 'isovalue', 1.0, True)
+applyParameters(mIsoSurface2)
+
+mCOVER3 = waitForSpawn(umCOVER3)
+setVectorParam(mCOVER3, '_position', 29.0, -404.0, True)
+setIntParam(mCOVER3, 'render_mode', 2, True)
+applyParameters(mCOVER3)
+
+mBoundingBox4 = waitForSpawn(umBoundingBox4)
+setVectorParam(mBoundingBox4, '_position', -98.0, -612.0, True)
+setVectorParam(mBoundingBox4, 'min', -1.0, -1.0, -1.0, True)
+setVectorParam(mBoundingBox4, 'max', 1.0, 1.0, 1.0, True)
+setIntVectorParam(mBoundingBox4, 'min_block', 0, 0, 0, True)
+setIntVectorParam(mBoundingBox4, 'max_block', 2, 6, 18, True)
+setIntVectorParam(mBoundingBox4, 'min_index', 4294967295, 4294967295, 4294967295, True)
+setIntVectorParam(mBoundingBox4, 'max_index', 4294967295, 4294967295, 4294967295, True)
+applyParameters(mBoundingBox4)
+
+mColor5 = waitForSpawn(umColor5)
+setVectorParam(mColor5, '_position', 39.0, -607.0, True)
+setFloatParam(mColor5, 'min', 5.1619135632563484e-08, True)
+setFloatParam(mColor5, 'max', 1.7320507764816284, True)
+setIntParam(mColor5, 'map', 8, True)
+applyParameters(mColor5)
+
+mCutGeometry6 = waitForSpawn(umCutGeometry6)
+setVectorParam(mCutGeometry6, '_position', 259.0, -523.0, True)
+setVectorParam(mCutGeometry6, 'vertex', 0.7071068286895752, -1.2989341566884322e-16, 0.7071068286895752, True)
+setIntParam(mCutGeometry6, 'flip', 1, True)
+applyParameters(mCutGeometry6)
+
+mIsoSurface7 = waitForSpawn(umIsoSurface7)
+setVectorParam(mIsoSurface7, '_position', 134.0, -604.0, True)
+setFloatParam(mIsoSurface7, 'isovalue', 0.5, True)
+applyParameters(mIsoSurface7)
+
+mCuttingSurface8 = waitForSpawn(umCuttingSurface8)
+setVectorParam(mCuttingSurface8, '_position', -231.0, -610.0, True)
+setVectorParam(mCuttingSurface8, 'point', 0.5732471346855164, 0.1972251683473587, 0.02162131480872631, True)
+setVectorParam(mCuttingSurface8, 'vertex', 1.0, 6.123234262925839e-17, 0.0, True)
+setFloatParam(mCuttingSurface8, 'scalar', 0.5732471346855164, True)
+applyParameters(mCuttingSurface8)
+
+# all local connections
+connect(mGendat1,'data_out0', mIsoSurface2,'data_in')
+connect(mGendat1,'data_out0', mBoundingBox4,'grid_in')
+connect(mGendat1,'data_out0', mColor5,'data_in')
+connect(mGendat1,'data_out0', mIsoSurface7,'data_in')
+connect(mGendat1,'data_out0', mIsoSurface7,'mapdata_in')
+connect(mGendat1,'data_out0', mCuttingSurface8,'data_in')
+connect(mIsoSurface2,'data_out', mCutGeometry6,'grid_in')
+connect(mBoundingBox4,'grid_out', mCOVER3,'data_in')
+connect(mColor5,'color_out', mCOVER3,'data_in')
+connect(mCutGeometry6,'grid_out', mCOVER3,'data_in')
+connect(mIsoSurface7,'data_out', mCOVER3,'data_in')
+connect(mCuttingSurface8,'data_out', mCOVER3,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote

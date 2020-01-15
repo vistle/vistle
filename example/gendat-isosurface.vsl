@@ -1,0 +1,44 @@
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umGendat1 = spawnAsync(MasterHub, 'Gendat')
+umIsoSurface2 = spawnAsync(MasterHub, 'IsoSurface')
+umCOVER3 = spawnAsync(MasterHub, 'COVER')
+umBoundingBox4 = spawnAsync(MasterHub, 'BoundingBox')
+
+mGendat1 = waitForSpawn(umGendat1)
+setVectorParam(mGendat1, '_position', 15.0, -726.0, True)
+applyParameters(mGendat1)
+
+mIsoSurface2 = waitForSpawn(umIsoSurface2)
+setVectorParam(mIsoSurface2, '_position', 61.0, -605.0, True)
+setFloatParam(mIsoSurface2, 'isovalue', 1.0, True)
+applyParameters(mIsoSurface2)
+
+mCOVER3 = waitForSpawn(umCOVER3)
+setVectorParam(mCOVER3, '_position', 29.0, -404.0, True)
+setIntParam(mCOVER3, 'render_mode', 2, True)
+applyParameters(mCOVER3)
+
+mBoundingBox4 = waitForSpawn(umBoundingBox4)
+setVectorParam(mBoundingBox4, '_position', -98.0, -612.0, True)
+setVectorParam(mBoundingBox4, 'min', -1.0, -1.0, -1.0, True)
+setVectorParam(mBoundingBox4, 'max', 1.0, 1.0, 1.0, True)
+setIntVectorParam(mBoundingBox4, 'min_block', 0, 0, 0, True)
+setIntVectorParam(mBoundingBox4, 'max_block', 2, 6, 18, True)
+setIntVectorParam(mBoundingBox4, 'min_index', 4294967295, 4294967295, 4294967295, True)
+setIntVectorParam(mBoundingBox4, 'max_index', 4294967295, 4294967295, 4294967295, True)
+applyParameters(mBoundingBox4)
+
+# all local connections
+connect(mGendat1,'data_out0', mIsoSurface2,'data_in')
+connect(mGendat1,'data_out0', mBoundingBox4,'grid_in')
+connect(mIsoSurface2,'data_out', mCOVER3,'data_in')
+connect(mBoundingBox4,'grid_out', mCOVER3,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
