@@ -131,6 +131,12 @@ buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride,
         transform_predict((unsigned char *)pbuf.data(), depth+stride*y+x, w, h, stride);
         return pbuf;
     }
+    case vistle::CompressionParameters::DepthPredictPlanar: {
+        size_t size = w*h*3;
+        buffer pbuf(size);
+        transform_predict_planar((unsigned char *)pbuf.data(), depth+stride*y+x, w, h, stride);
+        return pbuf;
+    }
     }
 
     param.depthCodec = vistle::CompressionParameters::DepthRaw;
@@ -236,6 +242,11 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
 
         if (p.depthCodec == vistle::CompressionParameters::DepthPredict) {
             transform_unpredict(reinterpret_cast<float *>(dest)+y*stride+x, (unsigned char *)input.data(), w, h, stride);
+            return true;
+        }
+
+        if (p.depthCodec == vistle::CompressionParameters::DepthPredictPlanar) {
+            transform_unpredict_planar(reinterpret_cast<float *>(dest)+y*stride+x, (unsigned char *)input.data(), w, h, stride);
             return true;
         }
 

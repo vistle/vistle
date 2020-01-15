@@ -835,6 +835,8 @@ struct EncodeTask: public tbb::task {
             message->compression |= rfbTileDepthQuantize;
         } else if (param.depthParam.depthCodec == CompressionParameters::DepthPredict) {
             message->compression |= rfbTileDepthPredict;
+        } else if (param.depthParam.depthCodec == CompressionParameters::DepthPredictPlanar) {
+            message->compression |= rfbTileDepthPredictPlanar;
         }
     }
 

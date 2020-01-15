@@ -17,7 +17,7 @@ struct CompressionParameters {
                                         (Jpeg_YUV444)
                                         )
 
-    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DepthCodec, (DepthRaw)(DepthPredict)(DepthQuant)(DepthZfp))
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(DepthCodec, (DepthRaw)(DepthPredict)(DepthPredictPlanar)(DepthQuant)(DepthZfp))
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
 

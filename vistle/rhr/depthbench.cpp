@@ -43,6 +43,10 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
        codec = "predict";
        break;
    }
+   case vistle::CompressionParameters::DepthPredictPlanar: {
+       codec = "predict_planar";
+       break;
+   }
    case vistle::CompressionParameters::DepthRaw: {
        codec = "raw";
        break;
@@ -197,6 +201,9 @@ int main(int argc, char *argv[]) {
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
    depthParam.depthCodec = vistle::CompressionParameters::DepthPredict;
+   measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
+
+   depthParam.depthCodec = vistle::CompressionParameters::DepthPredictPlanar;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
    return 0;

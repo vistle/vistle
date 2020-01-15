@@ -240,10 +240,11 @@ enum rfbTileFormats {
 enum rfbTileCompressions {
    rfbTileRaw = 0,
    rfbTileDepthPredict = 1,
-   rfbTileDepthQuantize = 2,
-   rfbTileJpeg = 4,
-   rfbTileDepthZfp = 8,
-   rfbTileClear = 16,
+   rfbTileDepthPredictPlanar = 2,
+   rfbTileDepthQuantize = 4,
+   rfbTileJpeg = 8,
+   rfbTileDepthZfp = 16,
+   rfbTileClear = 32,
 };
 
 //! send image tile from server to client
