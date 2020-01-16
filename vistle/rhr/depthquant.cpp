@@ -1,4 +1,6 @@
 #include "depthquant.h"
+#include "predict.h"
+#include <util/buffer.h>
 #include <algorithm>
 #include <iostream>
 #include <cmath>
@@ -30,6 +32,26 @@ template<>
 __device__ __host__
 #endif
 inline uint32_t getdepth<DepthQuantize24>(const DepthQuantize24 &q, int idx) {
+
+   const uint32_t value = (q.depth[idx][0]<<16) | (q.depth[idx][1]<<8) | q.depth[idx][2];
+   return value;
+}
+
+template<>
+#ifdef __CUDACC__
+__device__ __host__
+#endif
+inline uint32_t getdepth<MinMaxDepth16>(const MinMaxDepth16 &q, int idx) {
+
+   const uint32_t value = (q.depth[idx][0]<<16) | (q.depth[idx][1]<<8) | q.depth[idx][0];
+   return value;
+}
+
+template<>
+#ifdef __CUDACC__
+__device__ __host__
+#endif
+inline uint32_t getdepth<MinMaxDepth24>(const MinMaxDepth24 &q, int idx) {
 
    const uint32_t value = (q.depth[idx][0]<<16) | (q.depth[idx][1]<<8) | q.depth[idx][2];
    return value;
@@ -71,8 +93,8 @@ inline void set_z<float>(float &z, uint32_t val) {
    z = val/(float)0xffffff;
 }
 
-template<class Quant, typename ZType>
-static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, DepthFormat format, int dx, int dy, int width, int height, int stride)
+template<class Quant, class MinMaxDepth, typename ZType>
+static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, const MinMaxDepth *mmdepth, DepthFormat format, int dx, int dy, int width, int height, int stride)
 {
    const int edge = Quant::edge;
    const int size = edge*edge;
@@ -99,7 +121,8 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, DepthFormat forma
          //std::cerr << "tid: " << omp_get_thread_num() << std::endl;
          for (int x=0; x<width; x+=edge) {
             const Quant &quant = quantbuf[(y/edge)*((width+edge-1)/edge)+x/edge];
-            uint32_t d1 = getdepth(quant, 0), d2 = getdepth(quant, 1);
+            const MinMaxDepth &mmd = mmdepth[(y/edge)*((width+edge-1)/edge)+x/edge];
+            uint32_t d1 = getdepth(mmd, 0), d2 = getdepth(mmd, 1);
             uint64_t bits = dq_getbits(quant);
 
             if (d1 < d2) {
@@ -169,7 +192,8 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, DepthFormat forma
       for (int y=0; y<height; y+=edge) {
          for (int x=0; x<width; x+=edge) {
             const Quant &quant = quantbuf[(y/edge)*((width+edge-1)/edge)+x/edge];
-            uint32_t d1 = getdepth(quant, 0), d2 = getdepth(quant, 1);
+            const MinMaxDepth &mmd = mmdepth[(y/edge)*((width+edge-1)/edge)+x/edge];
+            uint32_t d1 = getdepth(mmd, 0), d2 = getdepth(mmd, 1);
             const int s1 = 1+(d1&scalemask), s2 = 1+(d2&scalemask);
             d1 &= depthmask;
             d2 &= depthmask;
@@ -262,15 +286,15 @@ void depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int dept
 
    if (format == DepthFloat) {
       if (depthps <= 2) {
-         depthdequant_t<DepthQuantize16, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), format, dx, dy, width, height, stride);
+         depthdequant_t<DepthQuantize16, DepthQuantize16, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), format, dx, dy, width, height, stride);
       } else {
-         depthdequant_t<DepthQuantize24, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), format, dx, dy, width, height, stride);
+         depthdequant_t<DepthQuantize24, DepthQuantize24, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), format, dx, dy, width, height, stride);
       }
    } else {
       if (depthps <= 2) {
-         depthdequant_t<DepthQuantize16, uint16_t>(reinterpret_cast<uint16_t *>(zbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), format, dx, dy, width, height, stride);
+         depthdequant_t<DepthQuantize16, DepthQuantize16, uint16_t>(reinterpret_cast<uint16_t *>(zbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), reinterpret_cast<const DepthQuantize16 *>(quantbuf), format, dx, dy, width, height, stride);
       } else {
-         depthdequant_t<DepthQuantize24, uint32_t>(reinterpret_cast<uint32_t *>(zbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), format, dx, dy, width, height, stride);
+         depthdequant_t<DepthQuantize24, DepthQuantize24, uint32_t>(reinterpret_cast<uint32_t *>(zbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), reinterpret_cast<const DepthQuantize24 *>(quantbuf), format, dx, dy, width, height, stride);
       }
    }
 
@@ -279,6 +303,59 @@ void depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int dept
    std::cerr << "depthdequant: " << t << " s, " << width*(height/1000.)/1000. << "MPix, " << 1./t*width*height/1000/1000 << " MPix/s" << std::endl;
 #endif
 }
+
+void depthdequant_planar(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int dx, int dy, int width, int height, int stride)
+{
+#ifdef TIMING
+   double start = Clock::time();
+#endif
+
+   size_t edge = 1, tile = depthps;
+   if (depthps <= 2) {
+      edge = DepthQuantize16::edge;
+      tile = sizeof(DepthQuantize16);
+   } else {
+      edge = DepthQuantize24::edge;
+      tile = sizeof(DepthQuantize24);
+   }
+   const size_t ntiles = ((width+edge-1)/edge) * ((height+edge-1)/edge);
+   size_t mmsize16 = ntiles*sizeof(MinMaxDepth16);
+   size_t mmsize24 = ntiles*sizeof(MinMaxDepth24);
+
+   if (stride < 0)
+      stride = width;
+
+   assert(dx+width <= stride);
+
+   vistle::buffer mmdepth;
+   if (depthps <= 2) {
+       mmdepth.resize(mmsize16);
+       transform_unpredict<sizeof(MinMaxDepth16), true, false>((unsigned char *)mmdepth.data(), (const unsigned char *)quantbuf, ntiles, 1, ntiles);
+   } else {
+       mmdepth.resize(mmsize24);
+       transform_unpredict<sizeof(MinMaxDepth24), true, false>((unsigned char *)mmdepth.data(), (const unsigned char *)quantbuf, ntiles, 1, ntiles);
+   }
+
+   if (format == DepthFloat) {
+      if (depthps <= 2) {
+         depthdequant_t<DepthQuantizeBits16, MinMaxDepth16, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<const MinMaxDepth16 *>(mmdepth.data()), format, dx, dy, width, height, stride);
+      } else {
+         depthdequant_t<DepthQuantizeBits24, MinMaxDepth24, float>(reinterpret_cast<float *>(zbuf), reinterpret_cast<const DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<const MinMaxDepth24 *>(mmdepth.data()), format, dx, dy, width, height, stride);
+      }
+   } else {
+      if (depthps <= 2) {
+         depthdequant_t<DepthQuantizeBits16, MinMaxDepth16, uint16_t>(reinterpret_cast<uint16_t *>(zbuf), reinterpret_cast<const DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<const MinMaxDepth16 *>(quantbuf), format, dx, dy, width, height, stride);
+      } else {
+         depthdequant_t<DepthQuantizeBits24, MinMaxDepth24, uint32_t>(reinterpret_cast<uint32_t *>(zbuf), reinterpret_cast<const DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<const MinMaxDepth24 *>(quantbuf), format, dx, dy, width, height, stride);
+      }
+   }
+
+#ifdef TIMING
+   double t = Clock::time() - start;
+   std::cerr << "depthdequant_planar: " << t << " s, " << width*(height/1000.)/1000. << "MPix, " << 1./t*width*height/1000/1000 << " MPix/s" << std::endl;
+#endif
+}
+
 
 template<int num>
 static inline void sort(const uint32_t *depths, uint32_t *orders, uint32_t Far, uint32_t &maxidx) {
@@ -320,8 +397,8 @@ static inline void findgap(const uint32_t *depths, uint32_t midval, uint32_t &lo
 }
 
 //! dxt-like compression for depth values
-template<int bpp, class Quant, DepthFormat format>
-static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, int w, int h, int stride)
+template<int bpp, class Quant, class MinMaxDepth, DepthFormat format>
+static void depthquant_t(const uchar *inimg, Quant *quantbuf, MinMaxDepth *mmdepth, int x0, int y0, int w, int h, int stride)
 {
    const int edge = Quant::edge;
    const int size = edge*edge;
@@ -405,6 +482,7 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
          const float qscale = haveFar ? mask-0.5f : mask+0.5f;
 
          Quant &sq = quantbuf[((yy-y0)/edge)*((w+edge-1)/edge)+(xx-x0)/edge];
+         MinMaxDepth &mmd = mmdepth[((yy-y0)/edge)*((w+edge-1)/edge)+(xx-x0)/edge];
 
          if (scalebits == 0) {
             const uint32_t range = maxdepth-mindepth;
@@ -545,11 +623,11 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
          }
 
          if (haveFar) {
-            setdepth(sq, 0, maxdepth);
-            setdepth(sq, 1, mindepth);
+            setdepth(mmd, 0, maxdepth);
+            setdepth(mmd, 1, mindepth);
          } else {
-            setdepth(sq, 0, mindepth);
-            setdepth(sq, 1, maxdepth);
+            setdepth(mmd, 0, mindepth);
+            setdepth(mmd, 1, maxdepth);
          }
       }
    }
@@ -572,27 +650,27 @@ void depthquant(char *quantbufS, const char *zbufS, DepthFormat format, int dept
    switch(format) {
       case DepthFloat:
          if (depthps <= 2) {
-            depthquant_t<4, DepthQuantize16, DepthFloat>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<4, DepthQuantize16, DepthQuantize16, DepthFloat>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
          } else {
-            depthquant_t<4, DepthQuantize24, DepthFloat>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<4, DepthQuantize24, DepthQuantize24, DepthFloat>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
          }
          break;
       case DepthRGBA:
          if (depthps <= 2) {
-            depthquant_t<4, DepthQuantize16, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<4, DepthQuantize16, DepthQuantize16, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
          } else {
-            depthquant_t<4, DepthQuantize24, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<4, DepthQuantize24, DepthQuantize24, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
          }
          break;
       case DepthInteger:
          if (depthps == 1) {
-            depthquant_t<1, DepthQuantize16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<1, DepthQuantize16, DepthQuantize16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
          } else if (depthps == 2) {
-            depthquant_t<2, DepthQuantize16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<2, DepthQuantize16, DepthQuantize16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize16 *>(quantbuf), reinterpret_cast<DepthQuantize16 *>(quantbuf), x, y, width, height, stride);
          } else if (depthps == 3) {
-            depthquant_t<3, DepthQuantize24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<3, DepthQuantize24, DepthQuantize24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
          } else if (depthps == 4) {
-            depthquant_t<4, DepthQuantize24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
+            depthquant_t<4, DepthQuantize24, DepthQuantize24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantize24 *>(quantbuf), reinterpret_cast<DepthQuantize24 *>(quantbuf), x, y, width, height, stride);
          }
          break;
       default:
@@ -602,6 +680,82 @@ void depthquant(char *quantbufS, const char *zbufS, DepthFormat format, int dept
 #ifdef TIMING
    double t = Clock::time() - start;
    std::cerr << "depthquant: " << t << " s, " << width*(height/1000.)/1000. << "MPix, " << 1./t*width*height/1000/1000 << " MPix/s" << std::endl;
+#endif
+}
+
+void depthquant_planar(char *quantbufS, const char *zbufS, DepthFormat format, int depthps, int x, int y, int width, int height, int stride) {
+
+#ifdef TIMING
+   double start = Clock::time();
+#endif
+
+   if (stride < 0)
+      stride = width;
+
+   assert(x+width <= stride);
+
+   uchar *quantbuf = (uchar *)quantbufS;
+   const uchar *zbuf = (const uchar *)zbufS;
+
+   size_t edge = 1, tile = depthps;
+   if (depthps <= 2) {
+      edge = DepthQuantize16::edge;
+      tile = sizeof(DepthQuantize16);
+   } else {
+      edge = DepthQuantize24::edge;
+      tile = sizeof(DepthQuantize24);
+   }
+   const size_t ntiles = ((width+edge-1)/edge) * ((height+edge-1)/edge);
+   size_t mmsize16 = ntiles*sizeof(MinMaxDepth16);
+   size_t mmsize24 = ntiles*sizeof(MinMaxDepth24);
+
+   vistle::buffer mmdepth;
+   if (depthps <= 2) {
+       mmdepth.resize(mmsize16);
+   } else {
+       mmdepth.resize(mmsize24);
+   }
+
+   switch(format) {
+      case DepthFloat:
+         if (depthps <= 2) {
+            depthquant_t<4, DepthQuantizeBits16, MinMaxDepth16, DepthFloat>(zbuf, reinterpret_cast<DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<MinMaxDepth16 *>(mmdepth.data()), x, y, width, height, stride);
+         } else {
+            depthquant_t<4, DepthQuantizeBits24, MinMaxDepth24, DepthFloat>(zbuf, reinterpret_cast<DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<MinMaxDepth24 *>(mmdepth.data()), x, y, width, height, stride);
+         }
+         break;
+      case DepthRGBA:
+         if (depthps <= 2) {
+            depthquant_t<4, DepthQuantizeBits16, MinMaxDepth16, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<MinMaxDepth16 *>(mmdepth.data()), x, y, width, height, stride);
+         } else {
+            depthquant_t<4, DepthQuantizeBits24, MinMaxDepth24, DepthRGBA>(zbuf, reinterpret_cast<DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<MinMaxDepth24 *>(mmdepth.data()), x, y, width, height, stride);
+         }
+         break;
+      case DepthInteger:
+         if (depthps == 1) {
+            depthquant_t<1, DepthQuantizeBits16, MinMaxDepth16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<MinMaxDepth16 *>(mmdepth.data()), x, y, width, height, stride);
+         } else if (depthps == 2) {
+            depthquant_t<2, DepthQuantizeBits16, MinMaxDepth16, DepthInteger>(zbuf, reinterpret_cast<DepthQuantizeBits16 *>(quantbuf+mmsize16), reinterpret_cast<MinMaxDepth16 *>(mmdepth.data()), x, y, width, height, stride);
+         } else if (depthps == 3) {
+            depthquant_t<3, DepthQuantizeBits24, MinMaxDepth24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<MinMaxDepth24 *>(mmdepth.data()), x, y, width, height, stride);
+         } else if (depthps == 4) {
+            depthquant_t<4, DepthQuantizeBits24, MinMaxDepth24, DepthInteger>(zbuf, reinterpret_cast<DepthQuantizeBits24 *>(quantbuf+mmsize24), reinterpret_cast<MinMaxDepth24 *>(mmdepth.data()), x, y, width, height, stride);
+         }
+         break;
+      default:
+         assert("unsupported combination of format and bytes/pixel" == NULL);
+   }
+
+   if (depthps <= 2) {
+       transform_predict<sizeof(MinMaxDepth16), true, false>(quantbuf, (const unsigned char *)mmdepth.data(), ntiles, 1, ntiles);
+   } else {
+       transform_predict<sizeof(MinMaxDepth24), true, false>(quantbuf, (const unsigned char *)mmdepth.data(), ntiles, 1, ntiles);
+   }
+
+
+#ifdef TIMING
+   double t = Clock::time() - start;
+   std::cerr << "depthquant_planar: " << t << " s, " << width*(height/1000.)/1000. << "MPix, " << 1./t*width*height/1000/1000 << " MPix/s" << std::endl;
 #endif
 }
 

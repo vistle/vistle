@@ -242,9 +242,10 @@ enum rfbTileCompressions {
    rfbTileDepthPredict = 1,
    rfbTileDepthPredictPlanar = 2,
    rfbTileDepthQuantize = 4,
-   rfbTileJpeg = 8,
-   rfbTileDepthZfp = 16,
-   rfbTileClear = 32,
+   rfbTileDepthQuantizePlanar = 8,
+   rfbTileJpeg = 16,
+   rfbTileDepthZfp = 32,
+   rfbTileClear = 64,
 };
 
 //! send image tile from server to client

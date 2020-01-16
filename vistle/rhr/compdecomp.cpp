@@ -125,6 +125,19 @@ buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride,
 #endif
         return qbuf;
     }
+    case vistle::CompressionParameters::DepthQuantPlanar: {
+        const int ds = 3; //msg.format == rfbDepth16Bit ? 2 : 3;
+        size_t size = depthquant_size(DepthFloat, ds, w, h);
+        buffer qbuf(size);
+        depthquant_planar(qbuf.data(), zbuf, DepthFloat, ds, x, y, w, h, stride);
+#ifdef QUANT_ERROR
+        buffer dequant(sizeof(float)*w*h);
+        depthdequant_planar(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
+        //depthquant_planar(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
+        depthcompare(zbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride);
+#endif
+        return qbuf;
+    }
     case vistle::CompressionParameters::DepthPredict: {
         size_t size = w*h*3;
         buffer pbuf(size);
@@ -237,6 +250,11 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
 
         if (p.depthCodec == vistle::CompressionParameters::DepthQuant) {
             depthdequant(dest, input.data(), bpp==4 ? DepthFloat : DepthInteger, bpp, x, y, w, h, stride);
+            return true;
+        }
+
+        if (p.depthCodec == vistle::CompressionParameters::DepthQuantPlanar) {
+            depthdequant_planar(dest, input.data(), bpp==4 ? DepthFloat : DepthInteger, bpp, x, y, w, h, stride);
             return true;
         }
 

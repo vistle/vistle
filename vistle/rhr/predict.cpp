@@ -139,4 +139,90 @@ void transform_unpredict_planar(float *output, const unsigned char *input, unsig
     }
 }
 
+template<int planes, bool planar, bool color>
+void transform_predict(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
+
+    const size_t plane_size = width*height;
+    unsigned char *out[planes];
+    for (int i=0; i<planes; ++i) {
+        out[i] = output + i*plane_size;
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+    for (unsigned y = 0; y < height; ++y) {
+
+        const unsigned char *in = input + y*stride*planes;
+
+        uint8_t prev[planes] = {};
+        for (unsigned x = 0; x < width; ++x) {
+            for (unsigned p=0; p<planes; ++p) {
+                uint8_t d = *in;
+                *out[p] = d - prev[p];
+                prev[p] = d;
+                ++in;
+                ++out[p];
+            }
+        }
+    }
+}
+
+template<int planes, bool planar, bool color>
+void transform_unpredict(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
+
+    const size_t plane_size = width*height;
+    const unsigned char *in[planes];
+    for (int i=0; i<planes; ++i) {
+        in[i] = input + i*plane_size;
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+    for (unsigned y = 0; y < height; ++y) {
+
+        unsigned char *out = output + y*stride*planes;
+
+        uint8_t prev[planes] = {};
+        for (unsigned x = 0; x < width; ++x) {
+
+            for (unsigned p = 0; p < planes; ++p) {
+
+                uint8_t a = prev[p] + *in[p];
+                ++in[p];
+                prev[p] = a;
+                *out = a;
+                ++out;
+            }
+        }
+    }
+}
+
+template
+void transform_predict<1,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_predict<2,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_predict<3,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_predict<4,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_predict<5,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_predict<6,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+
+template
+void transform_unpredict<1,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_unpredict<2,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_unpredict<3,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_unpredict<4,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_unpredict<5,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+template
+void transform_unpredict<6,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
+
 }

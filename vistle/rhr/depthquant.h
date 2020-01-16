@@ -25,17 +25,36 @@ enum DepthFormat {
 
 //! quantized depth data for a single 4x4 pixel tile
 template<int Precision, int BitsPerPixel, int ScaleBits=0>
-struct DepthQuantize {
+struct DepthQuantizeBits {
    enum {
+      precision = Precision,
+
       edge = 4, // only 4 works
       scale_bits = ScaleBits,
       bits_per_pixel = BitsPerPixel,
-      precision = Precision,
       num_bytes = (BitsPerPixel*edge*edge)/8
    };
 
-   uint8_t depth[2][precision/8]; //!< minimum and maximum depth data
    uint8_t bits[num_bytes]; //!< per-pixel interpolation weights
+};
+
+typedef DepthQuantizeBits<16, 4, 0> DepthQuantizeBits16;
+typedef DepthQuantizeBits<24, 3, 4> DepthQuantizeBits24;
+
+//! min/max depth for a single 4x4 pixel tile (when storing depths and interpolation bits seperately)
+template<int Precision>
+struct DepthQuantizeMinMaxDepth {
+   uint8_t depth[2][Precision/8]; //!< minimum and maximum depth data
+};
+
+typedef DepthQuantizeMinMaxDepth<16> MinMaxDepth16;
+typedef DepthQuantizeMinMaxDepth<24> MinMaxDepth24;
+
+//! quantized depth data for a single 4x4 pixel tile
+template<int Precision, int BitsPerPixel, int ScaleBits=0>
+struct DepthQuantize: public DepthQuantizeBits<Precision, BitsPerPixel, ScaleBits> {
+
+   uint8_t depth[2][Precision/8]; //!< minimum and maximum depth data
 };
 
 typedef DepthQuantize<16, 4, 0> DepthQuantize16;
@@ -231,12 +250,14 @@ inline uint32_t get_depth<DepthInteger, 4>(const unsigned char *img, int x, int 
 
 //! transform depth buffer into quantized values on 4x4 pixel tiles
 void V_RHREXPORT depthquant(char *quantbuf, const char *zbuf, DepthFormat format, int depthps, int x, int y, int width, int height, int stride=-1);
+void V_RHREXPORT depthquant_planar(char *quantbuf, const char *zbuf, DepthFormat format, int depthps, int x, int y, int width, int height, int stride=-1);
 
 //! return size required by depthquant for quantized image
 size_t V_RHREXPORT depthquant_size(DepthFormat format, int depthps, int width, int height);
 
 //! reverse transformation done by depthquant
 void V_RHREXPORT depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
+void V_RHREXPORT depthdequant_planar(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
 
 } // namespace vistle
 #endif

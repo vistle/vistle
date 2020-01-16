@@ -70,6 +70,9 @@ bool DecodeTask::work() {
     if (tile.compression & rfbTileDepthQuantize) {
         dp.depthCodec = vistle::CompressionParameters::DepthQuant;
     }
+    if (tile.compression & rfbTileDepthQuantizePlanar) {
+        dp.depthCodec = vistle::CompressionParameters::DepthQuantPlanar;
+    }
     if (tile.compression & rfbTileDepthPredict) {
         dp.depthCodec = vistle::CompressionParameters::DepthPredict;
     }

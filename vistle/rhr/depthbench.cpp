@@ -39,6 +39,10 @@ void measure(vistle::DepthCompressionParameters depthParam, const std::string &n
        codec = "quant";
        break;
    }
+   case vistle::CompressionParameters::DepthQuantPlanar: {
+       codec = "quant_planar";
+       break;
+   }
    case vistle::CompressionParameters::DepthPredict: {
        codec = "predict";
        break;
@@ -198,6 +202,9 @@ int main(int argc, char *argv[]) {
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
    depthParam.depthCodec = vistle::CompressionParameters::DepthQuant;
+   measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
+
+   depthParam.depthCodec = vistle::CompressionParameters::DepthQuantPlanar;
    measure(depthParam, name, &img.gray()[0], w, h, 4, num_runs);
 
    depthParam.depthCodec = vistle::CompressionParameters::DepthPredict;
