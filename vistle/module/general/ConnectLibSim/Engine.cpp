@@ -265,11 +265,10 @@ std::vector<std::string> in_situ::Engine::getDataNames(SimulationDataTyp type) {
     return names;
 }
 
-
-
 void Engine::DisconnectSimulation() {
 
     delete instance;
+    instance = nullptr;
 }
 
 bool Engine::initialize(int argC, char** argV) {
@@ -301,47 +300,22 @@ bool Engine::initialize(int argC, char** argV) {
     m_initialized = true;
 
 #else
-    vistle::registerTypes(); 
-        int rank = -1, size = -1; 
-         
-        try {
-            if (argC != 4) {
-                std::cerr << "simulation requires exactly 4 parameters" << std::endl; 
-                return false;
-            } 
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
-            MPI_Comm_size(MPI_COMM_WORLD, &size); 
-            if (atoi(argV[0]) != size) {
-                printToConsole("mpi size of simulation must match viste's mpi size");
-                return false;
-            }
-            std::string shmname = argV[1];
-            const std::string name = argV[2];
-            int moduleID = atoi(argV[3]);
 
-            managerThread = std::thread([shmname, moduleID, name, rank, this]() {
-                while (true) {
-                    try {
-                        v2check(simv2_invoke_GetMetaData);
-                    } catch (const SimV2Exeption&) {
-                        vistle::adaptive_wait(false, this);
-                        continue;
-                    }
-                    m_initialized = true;
-                    break;
-                }
-                vistle::Module::setup(shmname, moduleID, rank);
-                m_module = new ConnectLibSim(name, moduleID, boost::mpi::communicator());
-                m_module->eventLoop();
-                });
-    } catch (vistle::exception & e) {
-                    
-            std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
-            std::cerr << "  info: " << e.info() << std::endl; 
-            std::cerr << e.where() << std::endl; 
-    } catch (std::exception & e) {
-            std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; 
-    } 
+                
+        if (argC != 4) {
+            std::cerr << "simulation requires exactly 4 parameters" << std::endl;
+            return false;
+        }
+        MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
+        MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
+        if (atoi(argV[0]) != m_mpiSize) {
+            printToConsole("mpi size of simulation must match viste's mpi size");
+            return false;
+        }
+        m_shmName = argV[1];
+        m_moduleName = argV[2];
+        m_moduleID = atoi(argV[3]);
+        m_initialized = true;
 #endif
 
     return true;
@@ -365,8 +339,22 @@ bool Engine::sendData() {
 }
 
 void Engine::SimulationTimeStepChanged() {
+    if (!m_initialized) {
+        return;
+    }
   
     getMetaData();
+#ifndef MODULE_THREAD
+    vistle::registerTypes();
+    if (!m_moduleInitialized) {
+        vistle::Module::setup(m_shmName, m_moduleID, m_rank);
+        m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
+    }
+    runModule();
+#endif // !MODULE_THREAD
+
+
+
     if (timestepChangedCb && m_doReadMutex) {
         std::lock_guard<std::mutex> g(*m_doReadMutex);
         
@@ -759,6 +747,31 @@ void in_situ::Engine::sendTestData() {
     }
     printToConsole("sending test data for cycle " + std::to_string(m_metaData.currentCycle));
     m_module->addObject("AMR_mesh", grid);
+}
+
+void in_situ::Engine::runModule() {
+    if (!m_module) {
+        return;
+    }
+#ifndef NDEBUG
+    m_module->comm().barrier();
+#endif
+    bool messageReceived = true;;
+    try {
+        while (messageReceived) {
+            if (!m_module->dispatch(&messageReceived)) {
+                std::cerr << "Vistle requested ConnectLibSim to quit" << std::endl;
+                DisconnectSimulation();
+            }
+        }
+    } catch (boost::interprocess::interprocess_exception & e) {
+        std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
+        std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
+        throw(e);
+    } catch (std::exception & e) {
+        std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
+        throw(e);
+    }
 }
 
 Engine::Engine()

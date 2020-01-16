@@ -71,7 +71,10 @@ public:
 
 private:
     static Engine* instance;
-    bool m_initialized = false;
+    bool m_initialized = false, m_moduleInitialized = false;
+    std::string m_shmName, m_moduleName;
+    int m_moduleID = 0;
+    int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
     vistle::Module* m_module = nullptr;
     std::mutex* m_doReadMutex = nullptr;
@@ -122,7 +125,10 @@ private:
         variable->addAttribute("_species", name);
         m_module->addObject(name, variable);
     }
-
+#ifndef MODULE_THREAD
+    //executes the module's main loop
+    void runModule();
+#endif
 
     Engine();
     ~Engine();
