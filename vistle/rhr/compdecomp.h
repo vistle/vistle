@@ -13,6 +13,8 @@ struct CompressionParameters {
 
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
                                         (Raw)
+                                        (PredictRGB)
+                                        (PredictRGBA)
                                         (Jpeg_YUV411)
                                         (Jpeg_YUV444)
                                         )
@@ -24,10 +26,6 @@ struct CompressionParameters {
     struct DepthCompressionParameters {
         bool depthFloat = true; //!< whether depth should be retrieved as floating point
         int depthPrecision = 24; //!< depth buffer read-back precision (bits) for integer formats
-#if 0
-        bool depthZfp = false; //!< whether depth should be compressed with floating point compressor zfp
-        bool depthQuant = false; //!< whether depth should be sent quantized
-#endif
         DepthCodec depthCodec = DepthRaw;
         ZfpMode depthZfpMode = ZfpPrecision;
         message::CompressionMode depthCompress = message::CompressionNone;
@@ -35,8 +33,7 @@ struct CompressionParameters {
 
     struct RgbaCompressionParameters {
 
-        bool rgbaJpeg = false;
-        bool rgbaChromaSubsamp = false;
+        ColorCodec rgbaCodec = Raw;
         message::CompressionMode rgbaCompress = message::CompressionNone;
     };
 
