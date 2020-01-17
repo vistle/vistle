@@ -110,16 +110,7 @@ bool RhrServer::isConnecting() const {
 
 void RhrServer::setColorCodec(CompressionParameters::ColorCodec value) {
 
-    switch(value) {
-        case CompressionParameters::Raw:
-            m_imageParam.rgbaParam.rgbaJpeg = false;
-            break;
-        case CompressionParameters::Jpeg_YUV411:
-        case CompressionParameters::Jpeg_YUV444:
-            m_imageParam.rgbaParam.rgbaJpeg = true;
-            m_imageParam.rgbaParam.rgbaChromaSubsamp = value==CompressionParameters::Jpeg_YUV411;
-            break;
-    }
+    m_imageParam.rgbaParam.rgbaCodec = value;
 }
 
 void RhrServer::setDepthCodec(CompressionParameters::DepthCodec value) {
@@ -888,7 +879,7 @@ struct EncodeTask: public tbb::task {
     , h(h)
     , stride(vp.width)
     , bpp(4)
-    , subsamp(param.rgbaParam.rgbaChromaSubsamp)
+    , subsamp(param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411)
     , depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
@@ -899,8 +890,12 @@ struct EncodeTask: public tbb::task {
        message->size = message->width * message->height * bpp;
        message->format = rfbColorRGBA;
 
-        if (param.rgbaParam.rgbaJpeg) {
+        if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
             message->compression |= rfbTileJpeg;
+        } else if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::PredictRGB) {
+            message->compression |= rfbTilePredictRGB;
+        } else if (param.rgbaParam.rgbaCodec == vistle::CompressionParameters::PredictRGBA) {
+            message->compression |= rfbTilePredictRGBA;
         }
     }
 

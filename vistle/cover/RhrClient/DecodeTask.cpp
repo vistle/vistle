@@ -83,7 +83,13 @@ bool DecodeTask::work() {
         dp.depthFloat = true;
     }
     if (tile.compression == rfbTileJpeg) {
-        cp.rgbaJpeg = true;
+        cp.rgbaCodec = vistle::CompressionParameters::Jpeg_YUV444;
+    } else if (tile.compression == rfbTilePredictRGB) {
+        cp.rgbaCodec = vistle::CompressionParameters::PredictRGB;
+    } else if (tile.compression == rfbTilePredictRGBA) {
+        cp.rgbaCodec = vistle::CompressionParameters::PredictRGBA;
+    } else {
+        cp.rgbaCodec = vistle::CompressionParameters::Raw;
     }
     param.isDepth = tile.format != rfbColorRGBA;
 

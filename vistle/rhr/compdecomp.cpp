@@ -163,9 +163,9 @@ buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int s
     buffer result;
 
     const int bpp = 4;
+    if (param.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || param.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
 #ifdef HAVE_TURBOJPEG
-    if (param.rgbaJpeg) {
-        TJSAMP sampling = param.rgbaChromaSubsamp ? TJSAMP_420 : TJSAMP_444;
+        TJSAMP sampling = param.rgbaCodec==vistle::CompressionParameters::Jpeg_YUV411 ? TJSAMP_420 : TJSAMP_444;
         TjContext::reference tj = tjContexts.local();
         size_t maxsize = tjBufSize(w, h, sampling);
         buffer jpegbuf(maxsize);
@@ -174,7 +174,7 @@ buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int s
 #ifdef TIMING
         double start = vistle::Clock::time();
 #endif
-        int ret = tjCompress(tj.handle, const_cast<unsigned char *>(col), w, stride*bpp, h, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, param.rgbaChromaSubsamp, 90, TJ_BGR);
+        int ret = tjCompress(tj.handle, const_cast<unsigned char *>(col), w, stride*bpp, h, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, param.rgbaCodec==vistle::CompressionParameters::Jpeg_YUV411, 90, TJ_BGR);
         jpegbuf.resize(sz);
 #ifdef TIMING
         double dur = vistle::Clock::time() - start;
@@ -184,9 +184,19 @@ buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int s
             result = std::move(jpegbuf);
             return result;
         }
-    }
 #endif
-    param.rgbaJpeg = false;
+        param.rgbaCodec = vistle::CompressionParameters::PredictRGB;
+    }
+    if (param.rgbaCodec == vistle::CompressionParameters::PredictRGB) {
+        result.resize(w*h*3);
+        transform_predict<3, true, true>(reinterpret_cast<unsigned char *>(result.data()), rgba+(y*stride+x)*bpp, w, h, stride);
+        return result;
+    }
+    if (param.rgbaCodec == vistle::CompressionParameters::PredictRGBA) {
+        result.resize(w*h*4);
+        transform_predict<4, true, true>(reinterpret_cast<unsigned char *>(result.data()), rgba+(y*stride+x)*bpp, w, h, stride);
+        return result;
+    }
 
     return copyTile(reinterpret_cast<const char *>(rgba), x, y, w, h, stride, bpp);
 }
@@ -271,7 +281,7 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
     } else {
         auto &p = param.rgba;
 
-        if (p.rgbaJpeg) {
+        if (p.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || p.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
 #ifdef HAVE_TURBOJPEG
             std::shared_ptr<TjDecomp> tjc;
             {
@@ -299,6 +309,16 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
             CERR << "DecodeTask: no JPEG support" << std::endl;
             return false;
 #endif
+        }
+        if (p.rgbaCodec == vistle::CompressionParameters::PredictRGB) {
+            assert(bpp == 4);
+            transform_unpredict<3,true,true>(reinterpret_cast<unsigned char *>(dest)+(y*stride+x)*bpp, (unsigned char *)input.data(), w, h, stride);
+            return true;
+        }
+        if (p.rgbaCodec == vistle::CompressionParameters::PredictRGBA) {
+            assert(bpp == 4);
+            transform_unpredict<4,true,true>(reinterpret_cast<unsigned char *>(dest)+(y*stride+x)*bpp, (unsigned char *)input.data(), w, h, stride);
+            return true;
         }
     }
 
