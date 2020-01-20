@@ -1044,7 +1044,7 @@ bool Module::needsSync(const message::Message &m) const {
     return false;
 }
 
-bool Module::dispatch(bool *messageReceived) {
+bool Module::dispatch(bool block, bool *messageReceived) {
 
    bool again = true;
 
@@ -1058,7 +1058,11 @@ bool Module::dispatch(bool *messageReceived) {
          *messageReceived = true;
 
       message::Buffer buf;
-      getNextMessage(buf);
+      if (!getNextMessage(buf, block) && !block)           {
+          if (messageReceived)
+              *messageReceived = false;
+          return true;
+      }
       MessagePayload pl;
       if (buf.payloadSize() > 0) {
           pl = Shm::the().getArrayFromName<char>(buf.payloadName());

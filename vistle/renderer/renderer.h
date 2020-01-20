@@ -21,7 +21,7 @@ class V_RENDEREREXPORT Renderer: public Module {
             const int moduleID, mpi::communicator comm);
    virtual ~Renderer();
 
-   bool dispatch(bool *messageReceived=nullptr) override;
+   bool dispatch(bool block = true, bool *messageReceived=nullptr) override;
 
    int numTimesteps() const;
    void getBounds(Vector3 &min, Vector3 &max);

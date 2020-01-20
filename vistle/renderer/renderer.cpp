@@ -181,8 +181,8 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
     return true;
 }
 
-bool Renderer::dispatch(bool *messageReceived) {
-
+bool Renderer::dispatch(bool block, bool *messageReceived) {
+   (void)block;
    int quit = 0;
    bool checkAgain = false;
    int numSync = 0;

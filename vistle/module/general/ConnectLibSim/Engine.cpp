@@ -307,6 +307,8 @@ bool Engine::initialize(int argC, char** argV) {
     m_initialized = true;
     vistle::Module::setup(m_shmName, m_moduleID, m_rank);
     m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
+    m_module->initDone();
+    runModule();
 #endif
     if (m_rank == 0) {
         try {
@@ -366,7 +368,7 @@ void Engine::DeleteData() {
 
 void in_situ::Engine::passCommandToSim() {
     
-    if (simulationCommandCallback && simulationCommandCallbackData) {
+    if (simulationCommandCallback) {
         boost::system::error_code ec;
         boost::asio::streambuf streambuf;
         auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
@@ -385,6 +387,9 @@ void in_situ::Engine::passCommandToSim() {
         }
 
         simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
+    }
+    else {
+        printToConsole("passCommandToSim called, but required callback is not set");
     }
 }
 
@@ -785,7 +790,7 @@ void in_situ::Engine::runModule() {
     bool messageReceived = true;;
     try {
         while (messageReceived) {
-            if (!m_module->dispatch(&messageReceived)) {
+            if (!m_module->dispatch(false, &messageReceived)) {
                 std::cerr << "Vistle requested ConnectLibSim to quit" << std::endl;
                 DisconnectSimulation();
             }
@@ -824,6 +829,7 @@ Engine::~Engine() {
     delete m_module;
 #endif // !MODULE_THREAD
 
+    m_module->prepareQuit();
     delete m_module;
    
 }

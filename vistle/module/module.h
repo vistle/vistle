@@ -128,7 +128,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
 
-   virtual bool dispatch(bool *messageReived=nullptr);
+   virtual bool dispatch(bool block = true, bool *messageReived=nullptr);
 
    Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
    bool removeParameter(Parameter *param) override;
