@@ -269,11 +269,14 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
     if (elem == InvalidIndex)
         return false;
 
+    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
     auto cl = cellVertices(elem, m_numDivisions);
+
+#ifdef ASSUME_CONVEX
     Vector corners[8];
     for (int i=0; i<8; ++i) {
         corners[i][0] = x[cl[i]];
@@ -281,7 +284,6 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
         corners[i][2] = z[cl[i]];
     }
 
-    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
     const auto numFaces = UnstructuredGrid::NumFaces[type];
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
@@ -302,6 +304,9 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
             return false;
     }
     return true;
+#else
+    return insideCell(point, type, cl.size(), cl.data(), x, y, z);
+#endif
 }
 
 Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const Vec::Vector &dir) const {

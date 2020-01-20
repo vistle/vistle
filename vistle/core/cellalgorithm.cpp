@@ -1,8 +1,11 @@
 #include "cellalgorithm.h"
 #include "unstr.h"
+#include "celltypes.h"
 #include <util/math.h>
 
 namespace vistle {
+
+static const Scalar Epsilon = 1e-7;
 
 // cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
 Vector trilinearInverse(const Vector &pp0, const Vector pp[8]) {
@@ -273,6 +276,232 @@ std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Vector *corners)
 
     return std::make_pair(normal.normalized(), center/nVert);
 
+}
+
+bool insideCell(const Vector &point, Byte type, Index nverts, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z) {
+
+    const Vector zaxis(0,0,1);
+
+    type &= cell::TYPE_MASK;
+    switch (type) {
+    case cell::TETRAHEDRON:
+    case cell::PYRAMID:
+    case cell::PRISM:
+    case cell::HEXAHEDRON: {
+        unsigned insideCount = 0;
+        const auto numFaces = UnstructuredGrid::NumFaces[type];
+
+        // count intersections of ray from origin along positive z-axis with polygon translated by -point
+
+#ifdef INSIDE_DEBUG
+        std::cerr << "POINT: " << point.transpose() << ", #faces=" << numFaces << ", type=" << type << std::endl;
+#endif
+        Vector corners[4];
+        for (int f=0; f<numFaces; ++f) {
+            Vector min, max;
+            const unsigned nCorners = UnstructuredGrid::FaceSizes[type][f];
+            for (unsigned i=0; i<nCorners; ++i) {
+                const Index v = cl[UnstructuredGrid::FaceVertices[type][f][i]];
+                corners[i] = Vector(x[v], y[v], z[v]) - point;
+#ifdef INSIDE_DEBUG
+                std::cerr << "   " << corners[i].transpose() << std::endl;
+#endif
+                if (i == 0) {
+                    min = max = corners[0];
+                } else {
+                    for (int c=0; c<3; ++c) {
+                        min[c] = std::min(min[c], corners[i][c]);
+                        max[c] = std::max(max[c], corners[i][c]);
+                    }
+                }
+            }
+
+#ifdef INSIDE_DEBUG
+            std::cerr << "bbox: " << min.transpose() << " -> " << max.transpose() << std::endl;
+            std::cerr << "thick: " << (max-min).transpose() << std::endl;
+#endif
+
+            if (max[2] < 0) {
+                // face is in negative z-axis direction
+                continue;
+            }
+            // z-axis-ray does not intersect bounding rectangle of face
+            if (max[0] < 0)
+                continue;
+            if (min[0] > 0)
+                continue;
+            if (max[1] < 0)
+                continue;
+            if (min[1] > 0)
+                continue;
+
+            if (originInsidePolygonZ2D(corners, nCorners)) {
+
+                if (min[2] > 0) {
+                    ++insideCount;
+                    continue;
+                } else {
+                    const auto nc = faceNormalAndCenter(nCorners, corners);
+                    auto &normal = nc.first;
+                    auto &center = nc.second;
+
+                    auto ndz = normal.dot(zaxis);
+                    if (std::abs(ndz) < Epsilon) {
+#ifdef INSIDE_DEBUG
+                        std::cerr << "  SKIP" << f << ": parallel" << std::endl;
+#endif
+                        continue;
+                    }
+
+                    auto d = normal.dot(center) / ndz;
+                    if (d > 0)
+                        ++insideCount;
+
+#ifdef INSIDE_DEBUG
+                    std::cerr << "normal: " << normal.transpose() << ", d: " << d << ", insideCount: " << insideCount << std::endl;
+#endif
+                }
+#ifdef INSIDE_DEBUG
+            } else {
+                std::cerr << "  SKIP" << f << ": not inside" << std::endl;
+#endif
+            }
+        }
+#ifdef INSIDE_DEBUG
+        std::cerr << "INSIDECOUNT: " << insideCount << std::endl;
+#endif
+
+        return insideCount % 2;
+        break;
+    }
+    case UnstructuredGrid::VPOLYHEDRON: {
+        std::vector<Vector> corners;
+
+        int insideCount = 0;
+        for (Index i=0; i<nverts; i+=cl[i]+1) {
+            const Index nCorners = cl[i];
+
+            Vector min, max;
+            corners.resize(nCorners);
+            for (Index k=0; k<nCorners; ++k) {
+                const Index v = cl[i+1+k];
+                corners[k] = Vector(x[v], y[v], z[v]) - point;
+                if (k == 0) {
+                    min = max = corners[0];
+                } else {
+                    for (int c=0; c<3; ++c) {
+                        min[c] = std::min(min[c], corners[k][c]);
+                        max[c] = std::max(max[c], corners[k][c]);
+                    }
+                }
+            }
+
+            if (max[2] < 0)
+                continue;
+            if (max[0] < 0)
+                continue;
+            if (min[0] > 0)
+                continue;
+            if (max[1] < 0)
+                continue;
+            if (min[1] > 0)
+                continue;
+
+            if (originInsidePolygonZ2D(corners.data(), nCorners)) {
+                if (min[2] > 0) {
+                    ++insideCount;
+                    continue;
+                } else {
+                    const auto nc = faceNormalAndCenter(nCorners, corners.data());
+                    auto &normal = nc.first;
+                    auto &center = nc.second;
+
+                    auto ndz = normal.dot(zaxis);
+                    if (std::abs(ndz) < Epsilon) {
+                        continue;
+                    }
+
+                    auto d = normal.dot(center) / ndz;
+                    if (d > 0)
+                        ++insideCount;
+                }
+            }
+        }
+
+        return insideCount % 2;
+        break;
+    }
+    case UnstructuredGrid::CPOLYHEDRON: {
+        std::vector<Vector> corners;
+
+        int insideCount = 0;
+        Index facestart = InvalidIndex;
+        Index term = 0;
+        for (Index i=0; i<nverts; ++i) {
+            if (facestart == InvalidIndex) {
+                facestart = i;
+                term = cl[i];
+            } else if (cl[i] == term) {
+                const Index nCorners = i - facestart;
+
+                corners.resize(nCorners);
+                Vector min, max;
+                for (Index k=0; k<nCorners; ++k) {
+                    const Index v = cl[facestart+k];
+                    corners[k] = Vector(x[v], y[v], z[v]) - point;
+                    if (k == 0) {
+                        min = max = corners[0];
+                    } else {
+                        for (int c=0; c<3; ++c) {
+                            min[c] = std::min(min[c], corners[k][c]);
+                            max[c] = std::max(max[c], corners[k][c]);
+                        }
+                    }
+                }
+                facestart = InvalidIndex;
+
+                if (max[2] < 0)
+                    continue;
+                if (max[0] < 0)
+                    continue;
+                if (min[0] > 0)
+                    continue;
+                if (max[1] < 0)
+                    continue;
+                if (min[1] > 0)
+                    continue;
+
+                if (originInsidePolygonZ2D(corners.data(), nCorners)) {
+                    if (min[2] > 0) {
+                        ++insideCount;
+                        continue;
+                    } else {
+                        const auto nc = faceNormalAndCenter(nCorners, corners.data());
+                        auto &normal = nc.first;
+                        auto &center = nc.second;
+
+                        auto ndz = normal.dot(zaxis);
+                        if (std::abs(ndz) < Epsilon) {
+                            continue;
+                        }
+
+                        auto d = normal.dot(center) / ndz;
+                        if (d > 0)
+                            ++insideCount;
+                    }
+                }
+            }
+        }
+
+        return insideCount % 2;
+        break;
+    }
+    default:
+        std::cerr << "insideCell: unhandled cell type " << type << std::endl;
+        return false;
+    }
+
+    return false;
 }
 
 }
