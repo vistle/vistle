@@ -53,14 +53,10 @@ public:
     //********************************
     //***functions called by module***
     //********************************
-    void setModule(ConnectLibSim* module);
-    void setDoReadMutex(std::mutex* m);
     int getNumObjects(SimulationDataTyp type);
     visit_handle getNthObject(SimulationDataTyp type, int n);
     std::vector<std::string> getDataNames(SimulationDataTyp type);
-    //set callbacks (called from module)
-    void SetTimestepChangedCb(std::function<bool(void)> cb);
-    void SetDisconnectCb(std::function<void(void)> cb);
+
     //********************************
     //****functions called by sim****
     //********************************
@@ -113,9 +109,7 @@ private:
     std::map<std::string, MeshInfo> m_meshes;
     Metadata m_metaData;
     std::set<std::string> registeredGenericCommands;
-    //callbacks from ConnectLibSim module
-    std::function<bool(void)> timestepChangedCb; //returns true, if module is ready to receive data;
-    std::function<void(void)> disconnectCb;
+
 
 
     //callbacks from simulation

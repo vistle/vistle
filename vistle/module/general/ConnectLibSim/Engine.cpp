@@ -60,19 +60,6 @@ Engine* Engine::createEngine() {
     return instance;
 }
 
-void in_situ::Engine::setModule(ConnectLibSim* module) {
-    m_module = module;
-    if (!m_module) {
-        printToConsole("setModule was called with invalid module pointer(nullptr)");
-        return;
-    }
-    addPorts();
-}
-
-void in_situ::Engine::setDoReadMutex(std::mutex* m) {
-    m_doReadMutex = m;
-}
-
 int Engine::getNumObjects(SimulationDataTyp type) {
 
     std::function<bool(visit_handle, int&)> getNum;
@@ -318,9 +305,15 @@ bool Engine::initialize(int argC, char** argV) {
     m_moduleName = argV[2];
     m_moduleID = atoi(argV[3]);
     m_initialized = true;
+    vistle::Module::setup(m_shmName, m_moduleID, m_rank);
+    m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
 #endif
     if (m_rank == 0) {
-        initializeEngineSocket();
+        try {
+            initializeEngineSocket();
+        } catch (const EngineExeption& ex) {
+            return false;
+        }
     }
 
     return true;
@@ -344,7 +337,7 @@ bool Engine::sendData() {
 }
 
 void Engine::SimulationTimeStepChanged() {
-    if (!m_initialized) {
+    if (!m_initialized | !m_module) {
         printToConsole("not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!");
         return;
     }
@@ -352,8 +345,7 @@ void Engine::SimulationTimeStepChanged() {
     getMetaData();
     vistle::registerTypes();
     if (!m_moduleInitialized) {
-        vistle::Module::setup(m_shmName, m_moduleID, m_rank);
-        m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
+        addPorts();
     }
     runModule();
     if (m_module->timestepChanged()) {
@@ -402,15 +394,12 @@ void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, vo
 }
 
 int in_situ::Engine::GetInputSocket() {
-    return 0;
-}
-
-void in_situ::Engine::SetTimestepChangedCb(std::function<bool(void)> cb) {
-    timestepChangedCb = cb;
-}
-
-void in_situ::Engine::SetDisconnectCb(std::function<void(void)> cb) {
-    disconnectCb = cb;
+    if (m_rank == 0) {
+        return m_socket->native_handle();
+    }
+    else {
+        return 0;
+    }
 }
 
 void in_situ::Engine::getMetaData() {
@@ -835,9 +824,7 @@ Engine::~Engine() {
     delete m_module;
 #endif // !MODULE_THREAD
 
-    if (disconnectCb) {
-        disconnectCb();
-    }
+    delete m_module;
    
 }
 
