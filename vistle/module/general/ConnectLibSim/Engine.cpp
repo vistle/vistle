@@ -5,6 +5,7 @@
 
 #include <module/module.h>
 
+#include "ConnectLibSim.h"
 #include "VisItDataInterfaceRuntime.h"
 #include "SimulationMetaData.h"
 #include "VisItDataTypes.h"
@@ -37,6 +38,8 @@
 
 #include <util/sleep.h>
 
+
+#include <util/listenv4v6.h>
 #ifndef MODULE_THREAD
 #include "ConnectLibSim.h"
 #endif // !MODULE_THREAD
@@ -57,7 +60,7 @@ Engine* Engine::createEngine() {
     return instance;
 }
 
-void in_situ::Engine::setModule(vistle::Module* module) {
+void in_situ::Engine::setModule(ConnectLibSim* module) {
     m_module = module;
     if (!m_module) {
         printToConsole("setModule was called with invalid module pointer(nullptr)");
@@ -195,7 +198,7 @@ visit_handle Engine::getNthObject(SimulationDataTyp type, int n) {
         throw EngineExeption("getDataNames called with invalid type");
         break;
     }
-    visit_handle obj = v2check(simv2_invoke_GetMetaData);
+    visit_handle obj = m_metaData.handle;
     v2check(getObj, obj, n, obj);
     return obj;
 }
@@ -301,22 +304,24 @@ bool Engine::initialize(int argC, char** argV) {
 
 #else
 
-                
-        if (argC != 4) {
-            std::cerr << "simulation requires exactly 4 parameters" << std::endl;
-            return false;
-        }
-        MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-        MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
-        if (atoi(argV[0]) != m_mpiSize) {
-            printToConsole("mpi size of simulation must match viste's mpi size");
-            return false;
-        }
-        m_shmName = argV[1];
-        m_moduleName = argV[2];
-        m_moduleID = atoi(argV[3]);
-        m_initialized = true;
+    if (argC != 4) {
+        std::cerr << "simulation requires exactly 4 parameters" << std::endl;
+        return false;
+    }
+    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
+    if (atoi(argV[0]) != m_mpiSize) {
+        printToConsole("mpi size of simulation must match viste's mpi size");
+        return false;
+    }
+    m_shmName = argV[1];
+    m_moduleName = argV[2];
+    m_moduleID = atoi(argV[3]);
+    m_initialized = true;
 #endif
+    if (m_rank == 0) {
+        initializeEngineSocket();
+    }
 
     return true;
 }
@@ -340,31 +345,22 @@ bool Engine::sendData() {
 
 void Engine::SimulationTimeStepChanged() {
     if (!m_initialized) {
+        printToConsole("not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!");
         return;
     }
   
     getMetaData();
-#ifndef MODULE_THREAD
     vistle::registerTypes();
     if (!m_moduleInitialized) {
         vistle::Module::setup(m_shmName, m_moduleID, m_rank);
         m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
     }
     runModule();
-#endif // !MODULE_THREAD
-
-
-
-    if (timestepChangedCb && m_doReadMutex) {
-        std::lock_guard<std::mutex> g(*m_doReadMutex);
-        
-        if (timestepChangedCb())             {
-            sendDataToModule();
-            //sendTestData();
-        }
+    if (m_module->timestepChanged()) {
+        sendDataToModule();
     }
     else {
-        printToConsole("not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!");
+        printToConsole("ConnectLibSim is not ready to process data");
     }
 }
 
@@ -376,9 +372,37 @@ void Engine::DeleteData() {
     sendData();
 }
 
+void in_situ::Engine::passCommandToSim() {
+    
+    if (simulationCommandCallback && simulationCommandCallbackData) {
+        boost::system::error_code ec;
+        boost::asio::streambuf streambuf;
+        auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
+        if (ec) {
+            throw EngineExeption("failed to read from engine socket");
+        }
+        streambuf.commit(n);
+
+        std::istream is(&streambuf);
+        std::string msg;
+        is >> msg;
+        cerr << "received simulation command: " << msg << endl;
+        if (registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
+            cerr << "Engine received unknown command!" << endl;
+            return;
+        }
+
+        simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
+    }
+}
+
 void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
     simulationCommandCallback = sc;
     simulationCommandCallbackData = scdata;
+}
+
+int in_situ::Engine::GetInputSocket() {
+    return 0;
 }
 
 void in_situ::Engine::SetTimestepChangedCb(std::function<bool(void)> cb) {
@@ -393,8 +417,21 @@ void in_situ::Engine::getMetaData() {
     m_metaData.handle = v2check(simv2_invoke_GetMetaData);
     v2check(simv2_SimulationMetaData_getData, m_metaData.handle, m_metaData.simMode, m_metaData.currentCycle, m_metaData.currentTime);
     cerr << "simMode = " << m_metaData.simMode << " currentCycle = " << m_metaData.currentCycle << " currentTime = " << m_metaData.currentTime << endl;
+
+
 }
 
+void in_situ::Engine::getRegisteredGenericCommands() {
+    int numRegisteredCommands = getNumObjects(SimulationDataTyp::genericCommand);
+    bool found = false;
+    for (size_t i = 0; i < numRegisteredCommands; i++) {
+        visit_handle commandHandle = getNthObject(SimulationDataTyp::genericCommand, i);
+        char* name;
+        v2check(simv2_CommandMetaData_getName, commandHandle, &name);
+        cerr << "registerd generic command: " << name << endl;
+        registeredGenericCommands.insert(name);
+    }
+}
 void Engine::addPorts() {
     try {
         std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
@@ -771,6 +808,22 @@ void in_situ::Engine::runModule() {
     } catch (std::exception & e) {
         std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
         throw(e);
+    }
+}
+
+void in_situ::Engine::initializeEngineSocket() {
+
+    boost::system::error_code ec;
+    asio::ip::tcp::resolver resolver(m_ioService);
+    asio::ip::tcp::resolver::query query("localhost", boost::lexical_cast<std::string>(31251));
+    m_socket.reset(new boost::asio::ip::tcp::socket(m_ioService));
+    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
+    if (ec) {
+        throw EngineExeption("initializeEngineSocket failed to resolve connect socket");
+    }
+    asio::connect(*m_socket, endpoint_iterator, ec);
+    if (ec) {
+        throw EngineExeption("initializeEngineSocket failed to connect socket");
     }
 }
 

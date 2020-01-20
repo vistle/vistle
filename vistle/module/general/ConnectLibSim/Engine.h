@@ -2,7 +2,8 @@
 #define VISIT_VISTLE_ENGINE_H
 
 #include <mpi.h>
-#include <boost/asio.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/io_service.hpp>
 
 #include "MetaData.h"
 #include "VisItExports.h"
@@ -19,9 +20,9 @@
 #endif // MODULE_THREAD
 
 
-#include <module/module.h>
+#include "ConnectLibSim.h"
 #include <core/vec.h>
-
+class ConnectLibSim;
 namespace in_situ {
 enum class SimulationDataTyp {
      mesh
@@ -38,6 +39,10 @@ enum class SimulationDataTyp {
 
 class V_VISITXPORT Engine {
 public:
+    
+    typedef boost::asio::ip::tcp::socket socket;
+    typedef boost::asio::ip::tcp::acceptor acceptor;
+
     static Engine* createEngine();
     static void DisconnectSimulation();
     bool initialize(int argC, char** argV);
@@ -48,7 +53,7 @@ public:
     //********************************
     //***functions called by module***
     //********************************
-    void setModule(vistle::Module* module);
+    void setModule(ConnectLibSim* module);
     void setDoReadMutex(std::mutex* m);
     int getNumObjects(SimulationDataTyp type);
     visit_handle getNthObject(SimulationDataTyp type, int n);
@@ -65,22 +70,38 @@ public:
     void SimulationTimeStepChanged();
     void SimulationInitiateCommand(const char* command);
     void DeleteData();
+
+    void passCommandToSim();
+
     //set callbacks (called from sim)
     void SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata);
-
+    int GetInputSocket();
+#ifndef MODULE_THREAD
+    //executes the module's main loop 
+    void runModule();
+#endif
 
 private:
     static Engine* instance;
     bool m_initialized = false, m_moduleInitialized = false;
+    //module info
     std::string m_shmName, m_moduleName;
     int m_moduleID = 0;
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
-    vistle::Module* m_module = nullptr;
+    ConnectLibSim* m_module = nullptr;
     std::mutex* m_doReadMutex = nullptr;
+    std::map<std::string, vistle::Port*> m_portsList;
+    //thread to run the vistle manager in
     std::thread managerThread;
 
-    std::map<std::string, vistle::Port*> m_portsList;
+//Port info to send messages to the simulation
+    const unsigned short m_basePort = 31100;
+    unsigned short m_port = 0;
+    boost::asio::io_service m_ioService;
+    std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+    std::unique_ptr<socket> m_socket;
+
     struct MeshInfo {
         char* name = nullptr;
         int dim = 0; //2D or 3D
@@ -91,6 +112,7 @@ private:
     };
     std::map<std::string, MeshInfo> m_meshes;
     Metadata m_metaData;
+    std::set<std::string> registeredGenericCommands;
     //callbacks from ConnectLibSim module
     std::function<bool(void)> timestepChangedCb; //returns true, if module is ready to receive data;
     std::function<void(void)> disconnectCb;
@@ -102,6 +124,8 @@ private:
 
     //retrieves metaData from simulation 
     void getMetaData();
+
+    void getRegisteredGenericCommands();
 
     void addPorts();
 
@@ -125,10 +149,7 @@ private:
         variable->addAttribute("_species", name);
         m_module->addObject(name, variable);
     }
-#ifndef MODULE_THREAD
-    //executes the module's main loop
-    void runModule();
-#endif
+    void initializeEngineSocket();
 
     Engine();
     ~Engine();

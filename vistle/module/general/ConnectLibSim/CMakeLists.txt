@@ -7,6 +7,14 @@
 #
 #****************************************************************************
 
+#LibSimControlModule
+add_module(LibSimControlModule LibSimControlModule.h LibSimControlModule.cpp)
+target_link_libraries(LibSimControlModule
+	vistle_module
+	vistle_util
+	${Boost_LIBRARIES}
+	)
+
 SET(RUNTIME_SOURCES 
   Exeption.cpp
   ConnectLibSim.cpp

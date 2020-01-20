@@ -152,7 +152,7 @@ int simv2_connect_viewer(void *e, int argc, char *argv[])
 int simv2_get_descriptor(void *e)
 {
     Engine *engine = (Engine*)(e);
-    //return engine->GetInputSocket();
+    return engine->GetInputSocket();
     return -1;
 }
 
@@ -180,8 +180,11 @@ int simv2_get_descriptor(void *e)
 int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
+#ifndef MODULE_THREAD
+    engine->runModule();
+    engine->passCommandToSim();
+#endif
 
-    engine->sendData();
 
     return 1;
 }

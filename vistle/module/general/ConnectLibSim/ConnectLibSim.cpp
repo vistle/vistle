@@ -3,8 +3,6 @@
 #include <vector>
 #include <memory>
 
-#include <boost/program_options.hpp>
-#include <boost/asio/ip/tcp.hpp>
 
 #include <fstream>
 #include <core/tcpmessage.h>
@@ -13,28 +11,22 @@
 #include <util/sleep.h>
 #include <insitu/LibSim/EstablishConnection.h>
 
+
+
 using namespace vistle;
 using std::string;
 using std::cerr; using std::endl;
-namespace asio = boost::asio;
+
 using namespace in_situ;
 
 ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm)
     : vistle::Module("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm)
 {
-    if (Engine::createEngine()->isInitialized()) {
-        Engine::createEngine()->setModule(this);
-        Engine::createEngine()->SetTimestepChangedCb(std::bind(&ConnectLibSim::timestepChanged, this));
-        Engine::createEngine()->setDoReadMutex(&isReadingMutex);
-        Engine::createEngine()->SetDisconnectCb([this]() {
-           std::lock_guard<std::mutex> g(isReadingMutex);
-           isReading = false;
-           });
-       std::lock_guard<std::mutex> g(isReadingMutex);
-       isReading = true;
-    }
-    int size = -1;
-    MPI_Comm_size(comm, &size);
+    runMode = addIntParameter("runMode", "change what happens on execute with the simulation", keepRunning, Parameter::Choice);
+    V_ENUM_SET_CHOICES(runMode, RunMode);
+    fakeInputPort = createInputPort("fake");
+
+
 }
 
 int ConnectLibSim::updateParameter(const char* info) {
@@ -91,28 +83,50 @@ bool ConnectLibSim::timestepChanged() {
     metaData_.timestepChanged = true;
     return isReading;
 }
+#ifdef MODULE_TREAD
+std::mutex* ConnectLibSim::getIsExecutingMutex() {
+    return &isExecutingMutex;
+}
+#endif // MODULE_TREAD
 
+
+
+void ConnectLibSim::disconnect() {
+#ifdef MODULE_TREAD
+    std::lock_guard<std::mutex> g(isExecutingMutex);
+#endif // MODULE_TREAD
+
+    isReading = false;
+}
 
 bool ConnectLibSim::prepare() {
-    isReadingMutex.lock();
     isReading = true;
-    isReadingMutex.unlock();
 
-    while (true) {
-        adaptive_wait(false, this);
-        std::lock_guard<std::mutex> g(isReadingMutex);
-        if (cancelRequested(true)) {
-            isReading = false;
-            break;
-        }
 
-        if (!isReading) {
-            break;
-        }
+    //isExecutingMutex.lock();
+    //isReading = true;
+    //isExecutingMutex.unlock();
 
-    }
+    //while (true) {
+    //    adaptive_wait(false, this);
+    //    std::lock_guard<std::mutex> g(isExecutingMutex);
+    //    if (cancelRequested(true)) {
+    //        isReading = false;
+    //        break;
+    //    }
+
+    //    if (!isReading) {
+    //        break;
+    //    }
+
+    //}
     return true;
-    
+
+}
+
+bool ConnectLibSim::reduce(int timestep) {
+    isReading = false;
+    return true;
 }
 
 
