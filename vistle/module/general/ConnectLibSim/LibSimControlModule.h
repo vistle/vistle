@@ -1,11 +1,11 @@
 #ifndef LIBSIM_CONTROL_MODULE_H
 #define LIBSIM_CONTROL_MODULE_H
-#include <module/reader.h>
+#include <module/module.h>
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
 
-class ControllModule : public vistle::Reader
+class ControllModule : public vistle::Module
 {
 public:
 
@@ -19,11 +19,9 @@ public:
     bool sendCommandChanged = false;
 private:
 
-        void sendComandToSim();
-        bool examine(const vistle::Parameter* param) override;
 
         // Inherited via Reader
-        virtual bool read(Token& token, int timestep = -1, int block = -1) override;
+        virtual bool prepare() override;
 
 };
 

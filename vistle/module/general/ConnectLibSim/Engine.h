@@ -22,6 +22,8 @@
 
 #include "ConnectLibSim.h"
 #include <core/vec.h>
+#include <module/module.h>
+
 class ConnectLibSim;
 namespace in_situ {
 enum class SimulationDataTyp {
@@ -64,13 +66,14 @@ public:
     bool sendData();
     //called from simulation when a timestep changed
     void SimulationTimeStepChanged();
-    void SimulationInitiateCommand(const char* command);
+    void SimulationInitiateCommand(const std::string& command);
     void DeleteData();
 
     void passCommandToSim();
 
     //set callbacks (called from sim)
     void SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata);
+    void setSlaveComandCallback(void(*sc)(void));
     int GetInputSocket();
 #ifndef MODULE_THREAD
     //executes the module's main loop 
@@ -97,7 +100,6 @@ private:
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::unique_ptr<socket> m_socket;
-
     struct MeshInfo {
         char* name = nullptr;
         int dim = 0; //2D or 3D
@@ -115,6 +117,7 @@ private:
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;
+    void (*slaveCommandCallback)(void);
 
     //retrieves metaData from simulation 
     void getMetaData();
@@ -131,6 +134,8 @@ private:
     void sendVarablesToModule();
     void sendDataToModule();
     void sendTestData();
+    //if not already done, initializes the things that require the simulation callbacks
+    void finalizeInit();
 
     template<typename T>
     void sendVariableToModule(const std::string& name, vistle::obj_const_ptr mesh, int domain, const T* data, int size) {
@@ -147,9 +152,7 @@ private:
 
     Engine();
     ~Engine();
-
-
-    void printToConsole(const std::string& msg) const;
+    
 };
 
 

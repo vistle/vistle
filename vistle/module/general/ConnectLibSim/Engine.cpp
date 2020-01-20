@@ -1,7 +1,6 @@
 #include "Engine.h"
-#include <boost/mpi.hpp>
 
-
+#include <mpi.h>
 
 #include <module/module.h>
 
@@ -10,6 +9,7 @@
 #include "SimulationMetaData.h"
 #include "VisItDataTypes.h"
 #include "Exeption.h"
+#include "TransformArray.h"
 
 #include "MeshMetaData.h"
 #include "VariableMetaData.h"
@@ -45,10 +45,10 @@
 #endif // !MODULE_THREAD
 
 
-
+#define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
 
 using std::string; using std::vector;
-using std::cerr; using std::endl;
+using std::endl;
 using namespace in_situ;
 namespace asio = boost::asio;
 Engine* Engine::instance = nullptr;
@@ -62,7 +62,7 @@ Engine* Engine::createEngine() {
 
 int Engine::getNumObjects(SimulationDataTyp type) {
 
-    std::function<bool(visit_handle, int&)> getNum;
+    std::function<int(visit_handle, int&)> getNum;
     switch (type) {
     case SimulationDataTyp::mesh:
     {
@@ -110,26 +110,13 @@ int Engine::getNumObjects(SimulationDataTyp type) {
     }
     break;
     default:
-        cerr << "getDataNames called with invalid type" << (int)type << endl;
-        return false;
+        throw EngineExeption("getDataNames called with invalid type") << (int)type;
+
         break;
     }
 
-    visit_handle metaData = VISIT_INVALID_HANDLE;
-    try {
-        metaData = v2check(simv2_invoke_GetMetaData);
-    } catch (const SimV2Exeption & ex) {
-        metaData = simv2_invoke_GetMetaData();
-        if (metaData == VISIT_INVALID_HANDLE) {
-            throw EngineExeption("Can't get meta data from simulation");
-        }
-        cerr << "metadata = " << metaData << " this should not be reached!!!!!!!!!" << endl;
-    }
-
     int num = 0;
-    if (getNum(metaData, num) == VISIT_ERROR) {
-        throw EngineExeption("Can't get num from simulation metadata");
-    }
+    v2check(getNum, m_metaData.handle, num);
     return num;
 }
 
@@ -262,17 +249,18 @@ void Engine::DisconnectSimulation() {
 }
 
 bool Engine::initialize(int argC, char** argV) {
-
-    printToConsole("__________Engine args__________");
+    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
+    CERR<< "__________Engine args__________" << endl;
     for (size_t i = 0; i < argC; i++) {
-        printToConsole(argV[i]);
+        CERR << argV[i] << endl;
     }
-    printToConsole("_______________________________");
+    CERR << "_______________________________" << endl;
 #ifdef MODULE_THREAD
     // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
-        printToConsole("VISTLE_ROOT not set to the path of the Vistle build directory.");
+        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory.");
         return false;
     }
 
@@ -292,23 +280,24 @@ bool Engine::initialize(int argC, char** argV) {
 #else
 
     if (argC != 4) {
-        std::cerr << "simulation requires exactly 4 parameters" << std::endl;
+        CERR << "simulation requires exactly 4 parameters" << endl;
         return false;
     }
-    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
+
     if (atoi(argV[0]) != m_mpiSize) {
-        printToConsole("mpi size of simulation must match viste's mpi size");
+        CERR << "mpi size of simulation must match viste's mpi size" << endl;
         return false;
     }
     m_shmName = argV[1];
     m_moduleName = argV[2];
     m_moduleID = atoi(argV[3]);
-    m_initialized = true;
+
+    vistle::registerTypes();
     vistle::Module::setup(m_shmName, m_moduleID, m_rank);
-    m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator());
-    m_module->initDone();
+    boost::mpi::communicator c();
+    m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     runModule();
+    m_initialized = true;
 #endif
     if (m_rank == 0) {
         try {
@@ -334,31 +323,34 @@ return true;
 
 bool Engine::sendData() {
 
-    printToConsole("sendData was called");
+    CERR << "sendData was called" << endl;
     return true;
 }
 
 void Engine::SimulationTimeStepChanged() {
-    if (!m_initialized | !m_module) {
-        printToConsole("not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!");
+    if (!m_initialized || !m_module || !m_moduleInitialized) {
+        CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
   
-    getMetaData();
-    vistle::registerTypes();
-    if (!m_moduleInitialized) {
-        addPorts();
-    }
+
+
     runModule();
     if (m_module->timestepChanged()) {
         sendDataToModule();
     }
     else {
-        printToConsole("ConnectLibSim is not ready to process data");
+        CERR << "ConnectLibSim is not ready to process data" << endl;
     }
 }
 
-void Engine::SimulationInitiateCommand(const char* command) {
+void Engine::SimulationInitiateCommand(const std::string& command) {
+    if (command.substr(0, 12) == "INTERNALSYNC") { //need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
+        // Send the command back to the engine so it knows we're done syncing.
+        std::string cmd("INTERNALSYNC");
+        std::string args(command.substr(13, command.size() - 1));
+        simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
+    }
 }
 
 void Engine::DeleteData() {
@@ -367,35 +359,57 @@ void Engine::DeleteData() {
 }
 
 void in_situ::Engine::passCommandToSim() {
-    
+    runModule();
+    if (m_rank == 0) {
+        slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
+    }
+    finalizeInit();
+    std::string msg;
     if (simulationCommandCallback) {
-        boost::system::error_code ec;
-        boost::asio::streambuf streambuf;
-        auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
-        if (ec) {
-            throw EngineExeption("failed to read from engine socket");
-        }
-        streambuf.commit(n);
+        if (m_rank == 0) {
+            boost::system::error_code ec;
+            boost::asio::streambuf streambuf;
+            auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
+            if (ec) {
+                throw EngineExeption("failed to read from engine socket");
+            }
+            streambuf.commit(n);
 
-        std::istream is(&streambuf);
-        std::string msg;
-        is >> msg;
-        cerr << "received simulation command: " << msg << endl;
-        if (registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
-            cerr << "Engine received unknown command!" << endl;
-            return;
+            std::istream is(&streambuf);
+
+            is >> msg;
+            int l = msg.size();
+            MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
+            MPI_Bcast(msg.data(), l, MPI_CHARACTER, 0, comm);
+
+        }
+        else {
+            int l = msg.size();
+            MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
+            msg.resize(l);
+            MPI_Bcast(msg.data(), l, MPI_CHARACTER, 0, comm);
         }
 
         simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
+        CERR << "received simulation command: " << msg << endl;
+        if (registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
+            CERR << "Engine received unknown command!" << endl;
+            return;
+        }
     }
     else {
-        printToConsole("passCommandToSim called, but required callback is not set");
+
+        CERR << "passCommandToSim called, but required callback is not set" << endl;
     }
 }
 
 void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
     simulationCommandCallback = sc;
     simulationCommandCallbackData = scdata;
+}
+
+void in_situ::Engine::setSlaveComandCallback(void(*sc)(void)) {
+    slaveCommandCallback = sc;
 }
 
 int in_situ::Engine::GetInputSocket() {
@@ -408,9 +422,11 @@ int in_situ::Engine::GetInputSocket() {
 }
 
 void in_situ::Engine::getMetaData() {
-    m_metaData.handle = v2check(simv2_invoke_GetMetaData);
+    //m_metaData.handle = v2check(simv2_invoke_GetMetaData);
+    m_metaData.handle = simv2_invoke_GetMetaData(); //somehow 0 is valid
+    CERR << "getMetaData: handle = " << m_metaData.handle << endl;
     v2check(simv2_SimulationMetaData_getData, m_metaData.handle, m_metaData.simMode, m_metaData.currentCycle, m_metaData.currentTime);
-    cerr << "simMode = " << m_metaData.simMode << " currentCycle = " << m_metaData.currentCycle << " currentTime = " << m_metaData.currentTime << endl;
+    CERR << "simMode = " << m_metaData.simMode << " currentCycle = " << m_metaData.currentCycle << " currentTime = " << m_metaData.currentTime << endl;
 
 
 }
@@ -422,7 +438,7 @@ void in_situ::Engine::getRegisteredGenericCommands() {
         visit_handle commandHandle = getNthObject(SimulationDataTyp::genericCommand, i);
         char* name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
-        cerr << "registerd generic command: " << name << endl;
+        CERR << "registerd generic command: " << name << endl;
         registeredGenericCommands.insert(name);
     }
 }
@@ -439,9 +455,9 @@ void Engine::addPorts() {
             m_portsList[name] = port;
         }
     } catch (const SimV2Exeption& ex) {
-        printToConsole(string("failed to add output ports: ") + ex.what());
+        CERR << "failed to add output ports: " << ex.what() << endl;
     } catch (const EngineExeption & ex) {
-        printToConsole(string("failed to add output ports: ") + ex.what());
+        CERR << "failed to add output ports: " << ex.what() << endl;
     }
 }
 
@@ -487,22 +503,23 @@ bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
             void* data[3]{};
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
-                //cerr << "coord " << i <<  "owner = " << owner[i] << "dataType = " << dataType[i] << " ncomps = " << nComps[i] << "nTuples = " << nTuples[i] << endl;
-                if (dataType[i] != VISIT_DATATYPE_FLOAT) {
-                    printToConsole("mesh coords must be floats");
+                if (dataType[i] != dataType[0]) {
+                    CERR << "mesh data type must be consisten within a domain" << endl; 
                     return false;
                 }
-            }
-            if (meshInfo.dim == 2 && nTuples[2] != 1) {
-                throw EngineExeption("2d rectilinier grids must have exactly one z coordinate");
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
             grid->setTimestep(m_metaData.currentCycle);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
-            for (size_t i = 0; i < meshInfo.dim; i++) {
+            for (size_t i = 0; i < meshInfo.dim; ++i) {
+                transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataType[i]);
                 memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
+            }
+
+            if (meshInfo.dim == 2 && nTuples[2] != 1) {
+                throw EngineExeption("2d rectiliniar grids must have exactly one z coordinate");
             }
             if (meshInfo.dim == 2) {
                 grid->coords(2)[0] = 0;
@@ -510,7 +527,7 @@ bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
             m_module->addObject(meshInfo.name, grid);
         }
     }
-    printToConsole("made amr mesh with " + std::to_string(meshInfo.numDomains) + " domains");
+    CERR << "made amr mesh with " << meshInfo.numDomains << " domains" << endl;
     m_meshes[meshInfo.name]  = meshInfo;
     return true;
 }
@@ -540,35 +557,24 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
                 if (nTuples != numVals) {
                     throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
                 }
-                if (dataType != VISIT_DATATYPE_FLOAT) {
-                    throw EngineExeption("gird " + std::string(meshInfo.name) + ": mesh coords must be floats");
-                }
-                size_t point = 0;
-                for (size_t entry = 0 ; entry < numVals; entry++) {
-                    for (size_t i = 0; i < ndims; i++) {
-                        gridCoords[i][point] = static_cast<float*>(data)[entry];
-                        ++entry;
-                    }
-                }
+               
+                transformInterleavedArray(data, gridCoords, numVals, dataType, ndims);
+
             }
             break;
             case VISIT_COORD_MODE_SEPARATE:
             {
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
-
-                if (dataType != VISIT_DATATYPE_FLOAT) {
-                    throw EngineExeption("gird " + std::string(meshInfo.name) + ": mesh coords must be floats");
-                }
                 if (nTuples != dims[i]) {
                     throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
                 }
-                memcpy(gridCoords[i], data, nTuples * sizeof(float));
+                transformArray(data, gridCoords[i], nTuples, dataType);
             }
             }
             break;
             default:
-                throw EngineExeption("coord mode must be interleaved separate, it is " + std::to_string(coordMode));
+                throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
             }
 
             grid->setTimestep(m_metaData.currentCycle);
@@ -578,7 +584,7 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             m_module->addObject(meshInfo.name, grid);
         }
     }
-    printToConsole("made amr mesh with " + std::to_string(meshInfo.numDomains) + " domains");
+    CERR << "made amr mesh with " << meshInfo.numDomains << " domains" << endl;
     m_meshes[meshInfo.name] = meshInfo;
     return true;
 }
@@ -597,17 +603,17 @@ void in_situ::Engine::sendMeshesToModule()     {
         int allDoms = 0;
         visit_handle myDoms;
         v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
-        printToConsole("allDoms = " + std::to_string(allDoms) + " myDoms = " + std::to_string(myDoms));
+        CERR << "allDoms = " << allDoms << " myDoms = " << myDoms << endl;
 
         int owner, dataType, nComps;
         void* data;
         try {
             v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, meshInfo.numDomains, data);
         } catch (const SimV2Exeption&) {
-            printToConsole("failed to get domain list");
+            CERR << "failed to get domain list" << endl;
         }
         if (dataType != VISIT_DATATYPE_INT) {
-            printToConsole("expected domain list to be ints");
+            CERR << "expected domain list to be ints" << endl;
         }
         meshInfo.domains = static_cast<const int*>(data);
   
@@ -622,28 +628,28 @@ void in_situ::Engine::sendMeshesToModule()     {
         switch (meshType) {
         case VISIT_MESHTYPE_RECTILINEAR:
         {
-            cerr << "making rectilinear grid" << endl;
+            CERR << "making rectilinear grid" << endl;
         }
         break;
         case VISIT_MESHTYPE_CURVILINEAR:
         {
-            cerr << "making curvilinear grid" << endl;
+            CERR << "making curvilinear grid" << endl;
             makeStructuredMesh(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_UNSTRUCTURED:
         {
-            cerr << "making unstructured grid" << endl;
+            CERR << "making unstructured grid" << endl;
         }
         break;
         case VISIT_MESHTYPE_POINT:
         {
-            cerr << "making point grid" << endl;
+            CERR << "making point grid" << endl;
         }
         break;
         case VISIT_MESHTYPE_CSG:
         {
-            cerr << "making csg grid" << endl;
+            CERR << "making csg grid" << endl;
         }
         break;
         case VISIT_MESHTYPE_AMR:
@@ -675,7 +681,7 @@ void in_situ::Engine::sendVarablesToModule()     {
             int  owner{}, dataType{}, nComps{}, nTuples{};
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
-            //cerr << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples << endl;
+            //CERR << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples  << endl;
             switch (dataType) {
             case VISIT_DATATYPE_CHAR:
             {
@@ -723,32 +729,22 @@ void in_situ::Engine::sendVarablesToModule()     {
                 break;
             }
         }
-        int rank = -1;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        cerr << "rank " << rank << " sent variable " << i << " with " << meshInfo->second.numDomains << " domains" << endl;
+        CERR << "sent variable " << " with " << meshInfo->second.numDomains << " domains" << endl;
     }
 }
 
 void in_situ::Engine::sendDataToModule() {
     try {
         sendMeshesToModule();
-    } catch (const EngineExeption& exept) {
-        printToConsole(string("sendMeshesToModule failed: ") + exept.what());
-    } catch (const SimV2Exeption & exept)         {
-        printToConsole(string("sendMeshesToModule failed: ") + exept.what());
+    } catch (const VistleLibSimExeption & exept) {
+        CERR << "sendMeshesToModule failed: " << exept.what() << endl;
     }
 
     try {
         sendVarablesToModule();
-    } catch (const EngineExeption & exept) {
-        printToConsole(string("sendVarablesToModule failed: ") + exept.what());
-    } catch (const SimV2Exeption & exept) {
-        printToConsole(string("sendVarablesToModule failed: ") + exept.what());
+    } catch (const VistleLibSimExeption & exept) {
+        CERR << "sendVarablesToModule failed: " << exept.what() << endl;
     }
-    
-
-
-
 }
 
 void in_situ::Engine::sendTestData() {
@@ -776,8 +772,32 @@ void in_situ::Engine::sendTestData() {
             }
         }
     }
-    printToConsole("sending test data for cycle " + std::to_string(m_metaData.currentCycle));
+    CERR << "sending test data for cycle " << m_metaData.currentCycle << endl;
     m_module->addObject("AMR_mesh", grid);
+}
+
+void in_situ::Engine::finalizeInit()     {
+    if (!m_moduleInitialized) {
+        if (m_rank == 0) {
+            if (!slaveCommandCallback) {
+                CERR << "finalizeInit failed : slaveCommandCallback not set" << endl;
+                return;
+            }
+            slaveCommandCallback(); //let the slaves call passCommandToSim() and therefore finalizeInit if not already done
+        }
+
+        try {
+            getMetaData();
+            addPorts();
+            getRegisteredGenericCommands();
+            m_module->initDone();
+
+        } catch (const VistleLibSimExeption& ex) {
+            CERR << "finalizeInit failed: " << ex.what() << endl;
+            return;
+        }
+        m_moduleInitialized = true;
+    }
 }
 
 void in_situ::Engine::runModule() {
@@ -791,16 +811,16 @@ void in_situ::Engine::runModule() {
     try {
         while (messageReceived) {
             if (!m_module->dispatch(false, &messageReceived)) {
-                std::cerr << "Vistle requested ConnectLibSim to quit" << std::endl;
+                CERR << "Vistle requested ConnectLibSim to quit" << endl;
                 DisconnectSimulation();
             }
         }
     } catch (boost::interprocess::interprocess_exception & e) {
-        std::cerr << "Module::dispatch: interprocess_exception: " << e.what() << std::endl;
-        std::cerr << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << std::endl;
+        CERR << "Module::dispatch: interprocess_exception: " << e.what() << endl;
+        CERR << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << endl;
         throw(e);
     } catch (std::exception & e) {
-        std::cerr << "Module::dispatch: std::exception: " << e.what() << std::endl;
+        CERR << "Module::dispatch: std::exception: " << e.what() << endl;
         throw(e);
     }
 }
@@ -834,13 +854,7 @@ Engine::~Engine() {
    
 }
 
-void in_situ::Engine::printToConsole(const std::string& msg) const {
-    int rank = -1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    if (rank != -1) {
-        cerr << "LibSim::Engine[" << rank << "]: " << msg << endl;
-    }
-}
+
 
 
 

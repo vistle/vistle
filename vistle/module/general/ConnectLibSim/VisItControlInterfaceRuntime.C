@@ -181,7 +181,6 @@ int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
 #ifndef MODULE_THREAD
-    engine->runModule();
     engine->passCommandToSim();
 #endif
 
@@ -288,9 +287,7 @@ void simv2_disconnect()
 
 void simv2_set_slave_process_callback(void(*spic)())
 {
-#ifdef PARALLEL
-    MPIXfer::SetSlaveProcessInstructionCallback(spic);
-#endif
+    Engine::createEngine()->setSlaveComandCallback(spic);
 }
 
 // ****************************************************************************
