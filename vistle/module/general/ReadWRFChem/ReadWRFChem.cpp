@@ -320,6 +320,11 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
     if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && !emptyValue(m_trueHGT)) {
         //use geographic coordinates
         StructuredGrid::ptr strGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
+
+        float * hgt = new float[bSizeY*bSizeZ];
+        float * lat = new float[bSizeY*bSizeZ];
+        float * lon = new float[bSizeY*bSizeZ];
+
         auto ptrOnXcoords = strGrid->x().data();
         auto ptrOnYcoords = strGrid->y().data();
         auto ptrOnZcoords = strGrid->z().data();
@@ -328,17 +333,31 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         NcVar *varLon = ncFirstFile->get_var(m_gridLon->getValue().c_str());
 
         varHGT->set_cur(0,b[1].begin,b[2].begin);
-        varHGT->get(ptrOnXcoords, 1,bSizeY, bSizeZ);
+        varHGT->get(hgt, 1,bSizeY, bSizeZ);
         varLat->set_cur(0,b[1].begin,b[2].begin);
-        varLat->get(ptrOnYcoords, 1,bSizeY, bSizeZ);
+        varLat->get(lat, 1,bSizeY, bSizeZ);
         varLon->set_cur(0,b[1].begin,b[2].begin);
-        varLon->get(ptrOnZcoords, 1,bSizeY, bSizeZ);
+        varLon->get(lon, 1,bSizeY, bSizeZ);
 
+        int n = 0;
+        for (int i = 0; i < bSizeX; i++) {
+            for (int j = 0; j < bSizeY; j++) {
+                for (int k = 0; k < bSizeZ; k++, n++) {
+                    ptrOnXcoords[n] = (hgt[k+bSizeZ*j]+i*50);  //divide by 50m (=dx of grid cell)
+                    ptrOnYcoords[n] = lat[j*bSizeZ+k];;
+                    ptrOnZcoords[n] = lon[j*bSizeZ+k];
+                }
+            }
+        }
         for (int i=0; i<3; ++i) {
             strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
             strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
         strGrid->updateInternals();
+        delete [] hgt;
+        delete [] lat;
+        delete [] lon;
+
         geoOut = strGrid;
     }else if (!emptyValue(m_trueHGT)) {
         //use terrain height
@@ -357,7 +376,7 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         for (int i = 0; i < bSizeX; i++) {
             for (int j = 0; j < bSizeY; j++) {
                 for (int k = 0; k < bSizeZ; k++, n++) {
-                    ptrOnXcoords[n] = -(i+b[0].begin+hgt[k+bSizeZ*j]/50);  //divide by 50m (=dx of grid cell)
+                    ptrOnXcoords[n] = (i+b[0].begin+hgt[k+bSizeZ*j]/50);  //divide by 50m (=dx of grid cell)
                     ptrOnYcoords[n] = j+b[1].begin;
                     ptrOnZcoords[n] = k+b[2].begin;
                 }
@@ -486,7 +505,6 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
                 //********* GRID *************
                outObject[block] = generateGrid(b);
                setMeta(outObject[block], block, numBlocks, -1);
-               //outDataGrid->setNumTimesteps(-1);
                token.addObject(m_gridOut, outObject[block]);
             }else {
                 // ******** DATA *************
@@ -500,8 +518,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
 
                 for (int vi = 0; vi < NUMPARAMS; ++vi) {
                     if (emptyValue(m_variables[vi])) {
-                        sendInfo("No data for variable found");
-                        return false;
+                        continue;
                     }
                     addDataToPort(token, ncDataFile, vi, outObject[block], b,  block, timestep);
                 }
