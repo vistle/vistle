@@ -67,6 +67,9 @@ public:
    int timeIncrement() const;
    virtual int rankForTimestepAndPartition(int t, int p) const;
 
+   //! query into how many parts the data should be split
+   int numPartitions() const;
+
 protected:
    protected:
    enum ParallelizationMode {

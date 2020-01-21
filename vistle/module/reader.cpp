@@ -68,6 +68,11 @@ int Reader::rankForTimestepAndPartition(int t, int p) const {
     return (t*np+p+baseRank) % comm().size();
 }
 
+int Reader::numPartitions() const {
+
+    return m_numPartitions;
+}
+
 size_t Reader::waitForReaders(size_t maxRunning, bool &result) {
 
     while (m_tokens.size() > maxRunning) {
