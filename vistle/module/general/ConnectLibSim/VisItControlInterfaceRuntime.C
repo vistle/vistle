@@ -370,11 +370,7 @@ simv2_debug_logs(int level, const char *msg)
 int
 simv2_set_mpicomm(void *comm)
 {
-#ifdef PARALLEL
-    return PAR_SetComm(comm) ? VISIT_OKAY : VISIT_ERROR;
-#else
-    return VISIT_ERROR;
-#endif
+    return Engine::createEngine()->setMpiComm(comm);
 }
 
 // ****************************************************************************
