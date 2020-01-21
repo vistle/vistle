@@ -39,7 +39,8 @@ public:
 	virtual void dump(std::ostream & out);
 
 	virtual TopoState & getState(int n) = 0;
-	
+        virtual PointState & getPointState(int n) = 0;
+
 	virtual AcousticLineSources getLineSource(int iLine, Position const & iObserver, double iTime);
 	virtual AcousticSurfaceSources getSurfaceSource(int iCell, Position const & iObserver, double iTime);
 	virtual AcousticVolumeSources getVolumeSource(int iCell, Position const & iObserver, double iTime);
@@ -85,6 +86,7 @@ protected:
 	topology_t * mCells;
 	PointState * mPoints;
 	virtual TopoState & getState(int n);
+        virtual PointState & getPointState(int n);
 };
 
 template <class TOPO>

@@ -1,11 +1,11 @@
 #ifndef READIAGTECPLOT_H
 #define READIAGTECPLOT_H
 
-#include <module/module.h>
+#include <module/reader.h>
 
 #include "tecplotfile.h"
 
-class ReadIagTecplot: public vistle::Module {
+class ReadIagTecplot: public vistle::Reader {
 
  public:
    ReadIagTecplot(const std::string &name, int moduleID, mpi::communicator comm);
@@ -14,14 +14,20 @@ class ReadIagTecplot: public vistle::Module {
  private:
    static const int NumPorts = 3;
 
+#if 0
    bool changeParameter(const vistle::Parameter *p) override;
    bool prepare() override;
-   void setChoices();
+#endif
+
+   bool examine(const vistle::Parameter *param) override;
+   bool read(Token &token, int timestep, int block) override;
 
    vistle::StringParameter *m_filename;
-   vistle::StringParameter *m_cellDataChoice[NumPorts], *m_pointDataChoice[NumPorts];
-   vistle::Port *m_cellPort[NumPorts], *m_pointPort[NumPorts];
-
-   std::shared_ptr<TecplotFile> m_tecplot;
+   vistle::Port *m_grid = nullptr;
+   vistle::Port *m_p = nullptr;
+   vistle::Port *m_r = nullptr;
+   vistle::Port *m_n = nullptr;
+   vistle::Port *m_u = nullptr;
+   vistle::Port *m_v = nullptr;
 };
 #endif

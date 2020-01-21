@@ -127,6 +127,9 @@ template <class TOPO>
 TopoState & Mesh<TOPO>::getState(int n) { return mCells[n]; }
 
 template <class TOPO>
+PointState & Mesh<TOPO>::getPointState(int n) { return mPoints[n]; }
+
+template <class TOPO>
 void Mesh<TOPO>::cpToP(double iMachRef) {
 	// p=(1+k/2 MaRef^2 cp) p_inf
 	static double const KAPPA=1.4;
