@@ -3,22 +3,33 @@
 #include <mpi.h>
 using namespace in_situ;
 
-const char* in_situ::SimV2Exeption::what() const throw () {
-    int rank = -1, size = 0;
+
+in_situ::VistleLibSimExeption::VistleLibSimExeption() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    std::stringstream s;
-    s << "[" << rank << "/" << size << "] " << "a call to a simV2 runntime function failed!";
-    return s.str().c_str();
+    m_msg += "[" + std::to_string(rank) + "/" + std::to_string(size) + "] ";
+}
+
+VistleLibSimExeption& in_situ::VistleLibSimExeption::operator<<(const std::string& msg) {
+        m_msg += msg;
+        return *this;
+    }
+
+VistleLibSimExeption& in_situ::VistleLibSimExeption::operator<<(int msg) {
+    m_msg += std::to_string(msg);
+    return *this;
+}
+
+const char* in_situ::SimV2Exeption::what() const {
+    return ("LibSim error: " + m_msg + " a call to a simV2 runtime function failed!").c_str();
 }
 
 in_situ::EngineExeption::EngineExeption(const std::string& message)
-    :msg(message) {
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
-    MPI_Comm_size(MPI_COMM_WORLD, &size); 
+    {
+    m_msg += message;
 }
-const char* in_situ::EngineExeption::what() const throw () {
-    std::stringstream s;
-    s << "[" << rank << "/" << size << "] " << "Engine error: " << msg;
-    return s.str().c_str();
+const char* in_situ::EngineExeption::what() const {
+    return ("Engine error: " + m_msg).c_str();
 }
+
+

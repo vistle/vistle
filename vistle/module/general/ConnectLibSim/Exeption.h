@@ -2,25 +2,35 @@
 #define SIMV2_EXEPTION
 #include <exception>
 #include <string>
+
 #include <tuple>
 #include <functional>
 
 #include "VisItDataTypes.h"
 namespace in_situ {
-struct SimV2Exeption : public std::exception {
-    const char* what() const throw ();
+//base class that lets us catch all vistleLibSimExeptions
+struct VistleLibSimExeption : public std::exception {
+public:
+    VistleLibSimExeption();
+
+    VistleLibSimExeption& operator<< (const std::string& msg);
+    VistleLibSimExeption& operator<< (int msg);
+
+
+protected:
+    std::string m_msg;
+    int rank = -1, size = 0;
+};
+
+struct SimV2Exeption : public VistleLibSimExeption {
+    const char* what() const override;
 };
 
 
-class EngineExeption : public std::exception {
+class EngineExeption : public VistleLibSimExeption {
 public:
     EngineExeption(const std::string& message);
-
-
-    const char* what() const throw ();
-private:
-    const std::string msg;
-    int rank = -1, size = 0;
+    const char* what() const override;
 
 };
 
