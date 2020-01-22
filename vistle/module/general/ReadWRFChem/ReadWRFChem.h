@@ -63,6 +63,10 @@ private:
     StringParameter *m_variables[NUMPARAMS];
     StringParameter *m_varDim;
     StringParameter *m_trueHGT;
+    StringParameter *m_PHB;
+    StringParameter *m_PH;
+
+
 
     std::vector<std::string> varDimList = {"2D","3D","other"};
 

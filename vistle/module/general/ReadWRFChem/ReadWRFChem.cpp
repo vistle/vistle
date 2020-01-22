@@ -43,6 +43,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     m_trueHGT = addStringParameter("true_height", "Use real ground topology", "", Parameter::Choice);
     m_gridLat = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
     m_gridLon = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
+    m_PH = addStringParameter("pert_gp","perturbation geopotential", "", Parameter::Choice);
+    m_PHB = addStringParameter("base_gp", "base-state geopotential", "", Parameter::Choice);
 
     char namebuf[50];
     std::vector<std::string> varChoices;
@@ -67,7 +69,8 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices(m_gridLat, varChoices);
     setParameterChoices(m_gridLon, varChoices);
     setParameterChoices(m_trueHGT, varChoices);
-
+    setParameterChoices(m_PH, varChoices);
+    setParameterChoices(m_PHB, varChoices);
     setParallelizationMode(Serial);
 
     observeParameter(m_filedir);
@@ -251,6 +254,9 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             setParameterChoices(m_trueHGT, Axis2dChoices);
             setParameterChoices(m_gridLat, Axis2dChoices);
             setParameterChoices(m_gridLon, Axis2dChoices);
+            setParameterChoices(m_PHB, AxisChoices);
+            setParameterChoices(m_PH, AxisChoices);
+
             setTimesteps(numFiles);
 
         } else {
@@ -317,7 +323,7 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
     Object::ptr geoOut;
 
-    if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && !emptyValue(m_trueHGT)) {
+    if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && !emptyValue(m_trueHGT) && !emptyValue(m_PH) && !emptyValue(m_PHB)) {
         //use geographic coordinates
         StructuredGrid::ptr strGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
 
@@ -325,13 +331,19 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         float * lat = new float[bSizeY*bSizeZ];
         float * lon = new float[bSizeY*bSizeZ];
 
+        float * ph = new float[(bSizeX+1)*bSizeY*bSizeZ];
+        float * phb = new float[(bSizeX+1)*bSizeY*bSizeZ];
+
         auto ptrOnXcoords = strGrid->x().data();
         auto ptrOnYcoords = strGrid->y().data();
         auto ptrOnZcoords = strGrid->z().data();
         NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
         NcVar *varLat = ncFirstFile->get_var(m_gridLat->getValue().c_str());
         NcVar *varLon = ncFirstFile->get_var(m_gridLon->getValue().c_str());
+        NcVar *varPH = ncFirstFile->get_var(m_PH->getValue().c_str());
+        NcVar *varPHB = ncFirstFile->get_var(m_PHB->getValue().c_str());
 
+        //extract (2D) lat, lon, hgt
         varHGT->set_cur(0,b[1].begin,b[2].begin);
         varHGT->get(hgt, 1,bSizeY, bSizeZ);
         varLat->set_cur(0,b[1].begin,b[2].begin);
@@ -339,12 +351,37 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         varLon->set_cur(0,b[1].begin,b[2].begin);
         varLon->get(lon, 1,bSizeY, bSizeZ);
 
+        //extract (3D) geopotential for z-coord calculation
+        int numDimElem = 4;
+        long *curs = varPH->edges();
+        //int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
+
+        curs[numDimElem-3] = b[0].begin;
+        curs[numDimElem-2] = b[1].begin;
+        curs[numDimElem-1] = b[2].begin;
+        curs[0] = 0;
+
+        long *numElem = varPH->edges();
+        numElem[numDimElem-3] = bSizeX+1;
+        numElem[numDimElem-2] = bSizeY;
+        numElem[numDimElem-1] = bSizeZ;
+        numElem[0] = 1;
+
+        varPH->set_cur(curs);
+        varPH->get(ph, numElem);
+        varPHB->set_cur(curs);
+        varPHB->get(phb, numElem);
+
+
         int n = 0;
+        int idx = 0, idx1 = 0;
         for (int i = 0; i < bSizeX; i++) {
             for (int j = 0; j < bSizeY; j++) {
                 for (int k = 0; k < bSizeZ; k++, n++) {
-                    ptrOnXcoords[n] = (hgt[k+bSizeZ*j]+i*50);  //divide by 50m (=dx of grid cell)
-                    ptrOnYcoords[n] = lat[j*bSizeZ+k];;
+                    idx = i*bSizeY*bSizeZ + j*bSizeZ + k;
+                    idx1 = (i+1)*bSizeY*bSizeZ + j*bSizeZ + k;
+                    ptrOnXcoords[n] = (ph[idx]+phb[idx]+ph[idx1]+phb[idx1])/(2*9.81);//(hgt[k+bSizeZ*j]+i*50);  //divide by 50m (=dx of grid cell)
+                    ptrOnYcoords[n] = lat[j*bSizeZ+k];
                     ptrOnZcoords[n] = lon[j*bSizeZ+k];
                 }
             }
@@ -353,10 +390,13 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
             strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
             strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
+
         strGrid->updateInternals();
         delete [] hgt;
         delete [] lat;
         delete [] lon;
+        delete [] ph;
+        delete [] phb;
 
         geoOut = strGrid;
     }else if (!emptyValue(m_trueHGT)) {
