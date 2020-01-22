@@ -9,7 +9,7 @@ namespace in_situ{
 
 struct TransformArrayExeption: public VistleLibSimExeption {
     TransformArrayExeption(const std::string& msg) :m_msg(msg) {}
-     const char* what() const override {
+     const char* what() const noexcept override {
          return ("TransformArrayExeption" + m_msg).c_str();
 }
     std::string m_msg;

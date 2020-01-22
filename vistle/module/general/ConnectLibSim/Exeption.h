@@ -15,7 +15,7 @@ public:
 
     VistleLibSimExeption& operator<< (const std::string& msg);
     VistleLibSimExeption& operator<< (int msg);
-
+    virtual ~VistleLibSimExeption() = default;
 
 protected:
     std::string m_msg;
@@ -23,14 +23,14 @@ protected:
 };
 
 struct SimV2Exeption : public VistleLibSimExeption {
-    const char* what() const override;
+    const char* what() const noexcept override;
 };
 
 
 class EngineExeption : public VistleLibSimExeption {
 public:
     EngineExeption(const std::string& message);
-    const char* what() const override;
+    const char* what() const noexcept override;
 
 };
 

@@ -20,7 +20,7 @@ VistleLibSimExeption& in_situ::VistleLibSimExeption::operator<<(int msg) {
     return *this;
 }
 
-const char* in_situ::SimV2Exeption::what() const {
+const char* in_situ::SimV2Exeption::what() const noexcept {
     return ("LibSim error: " + m_msg + " a call to a simV2 runtime function failed!").c_str();
 }
 
@@ -28,7 +28,7 @@ in_situ::EngineExeption::EngineExeption(const std::string& message)
     {
     m_msg += message;
 }
-const char* in_situ::EngineExeption::what() const {
+const char* in_situ::EngineExeption::what() const noexcept {
     return ("Engine error: " + m_msg).c_str();
 }
 
