@@ -43,16 +43,6 @@ bool ReadIagTecplot::examine(const Parameter *param) {
 
 bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
 {
-   const int npart = std::max(1,numPartitions());
-
-   TecplotFile tecplot(m_filename->getValue());
-
-   size_t numZones = tecplot.NumZones();
-   size_t numZonesBlock = (numZones + npart - 1)/npart;
-   size_t begin = numZonesBlock*block;
-   size_t end = std::min(numZones, numZonesBlock*(block+1));
-   std::cerr << "reading zones "  << begin << " to " << end-1 << std::endl;
-
    auto unstr = std::make_shared<UnstructuredGrid>(0,0,0);
    auto &x = unstr->x();
    auto &y = unstr->y();
@@ -98,13 +88,33 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
        vz = &v->z();
    }
 
+   const int npart = std::max(1,numPartitions());
+
+   TecplotFile tecplot(m_filename->getValue());
+
+   size_t numZones = tecplot.NumZones();
+   size_t numZonesBlock = (numZones + npart - 1)/npart;
+   size_t begin = block>=0 ? numZonesBlock*block : 0;
+   size_t end = block>=0 ? std::min(numZones, numZonesBlock*(block+1)) : numZones;
+   std::cerr << "reading zones "  << begin << " to " << end-1 << std::endl;
+
+   for (size_t i=0; i<begin; ++i) {
+#if 1
+       tecplot.SkipZone(i);
+#else
+       auto mesh = tecplot.ReadZone(i);
+       delete mesh;
+#endif
+   }
+
    Index baseVertex = 0;
    for (size_t i=begin; i<end; ++i) {
        auto mesh = tecplot.ReadZone(i);
        if (auto hexmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
+#if 1
            hexmesh->SetupVolume();
            std::cerr << "hexmesh: #points=" << hexmesh->getNumPoints() << ", #cells=" << hexmesh->getNumCells() << std::endl;
-#if 1
+
            std::map<int, Index> vertMap;
            for (int c=0; c<hexmesh->getNumCells(); ++c) {
                const auto &cell = mesh->getState(c);

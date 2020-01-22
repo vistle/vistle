@@ -28,7 +28,8 @@ public:
     size_t NumZones() const;
     MeshBaseVec Read(std::string const & iZoneRindList="");
     MeshBase *ReadZone(size_t idx, std::string const &iZoneRindList="");
-	MeshPtsVec ReadInnerPts();
+    void SkipZone(size_t idx);
+        MeshPtsVec ReadInnerPts();
 private:
     bool checkDataSetType();
 	struct Impl;

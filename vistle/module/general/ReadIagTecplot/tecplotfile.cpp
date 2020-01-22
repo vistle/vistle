@@ -56,7 +56,8 @@ public:
 	void ReadHeader(TecplotFile::Impl * pimpl, int iNumVar);
 	void ReadDataHeader(TecplotFile::Impl * pimpl, int iNumVar);
 	MeshBase * ReadData(TecplotFile::Impl * pimpl, int iNumVar, RindSpec const & iRind);
-	MeshPts * ReadInnerPtsData(TecplotFile::Impl * pimpl, int iNumVar);
+        void SkipData(TecplotFile::Impl * pimpl, int iNumVar);
+        MeshPts * ReadInnerPtsData(TecplotFile::Impl * pimpl, int iNumVar);
 	enum DataFormat { FLOAT=1, DOUBLE=2, LONG=3, SHORT=4, BYTE=5, BIT=6 };
 	enum ZoneType { ORDERED=0, FELINESEG=1, FETRIANGLE=2, FEQUADRILATERAL=3,
 		FETETRAHEDRON=4, FEBRICK=5, FEPOLYGON=6, FEPOLYHEDRON=7 };
@@ -91,6 +92,7 @@ struct TecplotFile::Impl {
 
 	void skip32(int iNum=1);
 	void skip64(int iNum=1);
+        void skipReal(TecplotFile::Zone::DataFormat iFormat, int iNum=1);
 	int fetchInt32();
 	float fetchFloat();
 	double fetchDouble();
@@ -199,6 +201,18 @@ void TecplotFile::Impl::skip64(int iNum) {
 	mStream.seekg(8*iNum, std::istream::cur);
 }
 
+void TecplotFile::Impl::skipReal(TecplotFile::Zone::DataFormat iFormat, int iNum) {
+        if (iFormat==TecplotFile::Zone::FLOAT)
+        {
+            skip32(iNum);
+        }
+        else
+        {
+            assert(iFormat==TecplotFile::Zone::DOUBLE);
+            skip64(iNum);
+        }
+}
+
 int TecplotFile::Impl::fetchInt32() {
 	TEC_INT32 v;
 	FETCH(v);
@@ -245,7 +259,7 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 		//int strandId=
 		pimpl->fetchInt32();
 		//double solutionTime=
-		pimpl->fetchDouble();;
+                pimpl->fetchDouble();
 	}
 	//int zoneColor=
 	pimpl->fetchInt32();
@@ -816,6 +830,144 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 	return mesh;
 }
 
+void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
+        ReadDataHeader(pimpl, iNumVar);
+        RindSpec rind = { 0, 0, 0, 0, 0, 0, };
+        if (rind.mMinI) --rind.mMinI;
+        if (rind.mMinJ) --rind.mMinJ;
+        if (rind.mMinK) --rind.mMinK;
+        assert(rind.mMinI>=0 && rind.mMinJ>=0 && rind.mMinK>=0);
+        {
+                if (rind.mMaxI>mIMax) std::cerr << "Rind specification error: rindMaxI (" << rind.mMaxI
+                        << ") > realMaxI (" << mIMax << "), ignored\n", rind.mMaxI=mIMax;
+                if (rind.mMaxJ>mJMax) std::cerr << "Rind specification error: rindMaxJ (" << rind.mMaxJ
+                        << ") > realMaxJ (" << mJMax << "), ignored\n", rind.mMaxJ=mJMax;
+                if (rind.mMaxK>mKMax) std::cerr << "Rind specification error: rindMaxK (" << rind.mMaxK
+                        << ") > realMaxK (" << mKMax << "), ignored\n", rind.mMaxK=mKMax;
+        }
+        if (!rind.mMaxI) rind.mMaxI=mIMax;
+        else if (rind.mMaxI<0) rind.mMaxI=mIMax+rind.mMaxI;
+        if (!rind.mMaxJ) rind.mMaxJ=mJMax;
+        else if (rind.mMaxJ<0) rind.mMaxJ=mJMax+rind.mMaxJ;
+        if (!rind.mMaxK) rind.mMaxK=mKMax;
+        else if (rind.mMaxK<0) rind.mMaxK=mKMax+rind.mMaxK;
+        if (mType==ORDERED) {
+                // now that data is read, adjust grid sizes to the cut ones
+                int readI=mIMax, readJ=mJMax, readK=mKMax;
+                int readNumPts=readI*readJ*readK;
+                mIMax=rind.mMaxI-rind.mMinI;
+                mJMax=rind.mMaxJ-rind.mMinJ;
+                mKMax=rind.mMaxK-rind.mMinK;
+                mNumPts=mIMax*mJMax*mKMax;
+                bool is1D=mJMax==1 && mKMax==1;
+                for (int v=0, readV=0; readV<readNumPts*iNumVar; ++readV) {
+                        int readP, readM;
+                        if (mDataPacking==BLOCK) readM=readV/readNumPts, readP=readV%readNumPts;
+                        else if (mDataPacking==POINT) readM=readV%iNumVar, readP=readV/iNumVar;
+                        else throw "Unsupported DataPacking";
+                        int k=readP/(readI*readJ), j=readP%(readI*readJ);
+                        int i=j%readI;
+                        j/=readI;
+                        // read, but otherwise skip rind data
+                        if (i<rind.mMinI || i>=rind.mMaxI || j<rind.mMinJ || j>=rind.mMaxJ || k<rind.mMinK || k>=rind.mMaxK) {
+                                pimpl->skipReal(mVarDataFormat[readM]);
+                                continue;
+                        }
+                        int p=0, m=0;
+                        if (mDataPacking==BLOCK) m=v/mNumPts, p=v%mNumPts;
+                        else if (mDataPacking==POINT) m=v%iNumVar, p=v/iNumVar;
+                        else throw "Unsupported DataPacking";
+                        assert(m==readM);
+                        pimpl->skipReal(mVarDataFormat[readM]);
+                        ++v;
+                }
+                if (is1D) {
+                        // generic line reading for 2D cases
+                        mNumElements=mIMax-1;
+                        std::cerr << mNumElements << " " << mNumPts << std::endl;;
+#ifdef MARENCO
+                        if (pimpl->mDataSet==FLIGHTLAB_LINE) {
+                                ++mNumElements;
+                        }
+                        else
+#endif
+#ifdef AHD
+                        if (pimpl->mDataSet==CAMRAD_LINE) {
+                                ++mNumElements;
+                        }
+                        else
+#endif
+                        if (pimpl->mDataSet==LIFT_LINE) {
+                                ++mNumElements;
+                        }
+                        else
+                        if (pimpl->mDataSet==IAGCOUPLE_ACCOLOAD) {
+                                ++mNumElements;
+                        }
+                        else
+                        {
+                                mNumPts*=2;
+                        }
+                }
+                else if ((mIMax==1)||(mJMax==1)||(mKMax==1)) {
+                        // generic quad topology creation
+                        int counter=0;
+                        int di1=mIMax==1 ? 0 : 1, dj1=1-di1;
+                        // depending on ordering, the first running index may be i or j
+                        int dk2=mKMax==1 ? 0 : 1, dj2=1-dk2;
+                        // the second running index is either j or k
+                        assert((mJMax==1 && dj1+dj2==0) || (mJMax!=1 && dj1+dj2==1));
+                        assert(mKMax==1 && "");
+                        mNumElements=(mIMax-di1)*(mJMax-dj1-dj2)*(mKMax-dk2);
+#ifdef MARENCO
+                        if (pimpl->mDataSet==FLIGHTLAB_SURFACE) mNumElements=mNumPts;
+#endif
+#ifdef MARENCO
+                        if (pimpl->mDataSet!=FLIGHTLAB_SURFACE)
+#endif
+                }
+                else { // bricks
+                        mNumElements=(mIMax-1)*(mJMax-1)*(mKMax-1);
+                }
+                std::cout << "  Data = " << mIMax << "x"<< mJMax << "x"<< mKMax << "\n";
+        }
+        else { // FEM zones
+                if (pimpl->mDataSet!=FLOWER_NOVS && pimpl->mDataSet!=FLOWER_VS && pimpl->mDataSet!=FLOWER_ACCO)
+                        throw "Unsupported data format for unstructured mesh";
+                for (int p=0; p<mNumPts*iNumVar; ++p) {
+                        int i, j;
+                        if (mDataPacking==BLOCK) j=p/mNumPts, i=p%mNumPts;
+                        else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
+                        else throw "Unsupported DataPacking";
+                        // clear surface velocity, if it is not to be read
+                        pimpl->skipReal(mVarDataFormat[j]);
+                }
+                if (mType==FETRIANGLE) {	// Triangle
+                        pimpl->skip32(mNumElements*3);
+                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Triangle Elements \n";
+                }
+                else if (mType==FEQUADRILATERAL) {	// Quadrangle
+                        pimpl->skip32(mNumElements*4);
+                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Quadrangle Elements \n";
+                }
+                else if (mType==FETETRAHEDRON) {	// Tetrahedron
+                        pimpl->skip32(mNumElements*4);
+                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Tetrahedron Elements \n";
+                }
+                else if (mType==FEBRICK) {	// Hexahedron
+                        assert(0=="Copied and changed, but not yet testes. Remove assert if working as expected");
+                        pimpl->skip32(mNumElements*8);
+                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Hexahedron Elements \n";
+                }
+                else {
+                        std::cerr << "Unknown ZoneType=" << mType << std::endl;
+                        assert(0=="Unknown ZoneType");
+                }
+        }
+}
+
+
+
 void splitMinMax(std::string const & iSpec, int & oMin, int & oMax) {
 	oMin=oMax=0;
 	if (iSpec.empty()) return;
@@ -1060,6 +1212,16 @@ MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList) {
     assert(marker==pimpl->ZONEMARKER);
     std::cout << "Zone (" << i->getName() << ") "<< idx+1 <<":";
     return i->ReadData(&*pimpl, mNumVar, rind);
+}
+
+void TecplotFile::SkipZone(size_t idx) {
+
+    std::vector<TecplotFile::Zone>::iterator i = mZones.begin()+idx;
+
+    double marker=pimpl->fetchFloat();
+    assert(marker==pimpl->ZONEMARKER);
+    std::cout << "Skipping Zone (" << i->getName() << ") "<< idx+1 << std::endl;
+    return i->SkipData(&*pimpl, mNumVar);
 }
 
 bool TecplotFile::checkDataSetType() {
