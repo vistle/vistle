@@ -77,8 +77,10 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result) {
 
     while (m_tokens.size() > maxRunning) {
         auto token = m_tokens.front();
-        if (!token->result())
+        if (!token->result()) {
+            sendInfo("read task %lu failed", token->id());
             result = false;
+        }
         m_tokens.pop_front();
     }
 
@@ -162,8 +164,9 @@ bool Reader::prepare()
             waitForReaders(0, result);
             prev.reset();
             result = false;
-            break;
         }
+        if (!result)
+            break;
     }
     if (m_parallel == ParallelizeBlocks) {
         waitForReaders(0, result);
@@ -199,8 +202,9 @@ bool Reader::prepare()
                     waitForReaders(0, result);
                     prev.reset();
                     result = false;
-                    break;
                 }
+                if (!result)
+                    break;
             }
             if (m_parallel == ParallelizeBlocks) {
                 waitForReaders(0, result);
@@ -419,27 +423,50 @@ bool Reader::Token::waitDone()
 
         if (!m_future.valid()) {
             std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 1" << std::endl;
-            return false;
+            m_finished = true;
+            m_result = false;
         }
     }
 
-    {
+    if (!m_finished) {
         if (m_future.valid()) {
-            m_future.wait();
+            try {
+                m_future.wait();
+            } catch (std::exception &ex) {
+                std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+                std::lock_guard<std::mutex> locker(m_mutex);
+                m_finished = true;
+                m_result = false;
+            }
         } else {
-            std::cerr << "Reader::Token: finishing" << id() << ", but future not valid 2" << std::endl;
+            std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 2" << std::endl;
+            std::lock_guard<std::mutex> locker(m_mutex);
+            m_finished = true;
+            m_result = false;
         }
     }
 
     std::lock_guard<std::mutex> locker(m_mutex);
-    if (m_finished)
-        return m_result;
-    if (!m_future.valid()) {
-        std::cerr << "Reader::Token: finishing" << id() << ", but future not valid 3" << std::endl;
-        return false;
+    if (!m_finished && !m_future.valid()) {
+        std::cerr << "Reader::Token: finishing " << id() << ", but future not valid 3" << std::endl;
+        m_finished = true;
+        m_result = false;
     }
 
-    m_result = m_future.get();
+    if (!m_finished) {
+        try {
+            m_result = m_future.get();
+        } catch (std::exception &ex) {
+            std::cerr << "Reader::Token: finishing " << id() << ", but future throws: " << ex.what() << std::endl;
+            m_finished = true;
+            m_result = false;
+        } catch (...) {
+            std::cerr << "Reader::Token: finishing " << id() << ", but future throws unknown exception" << std::endl;
+            m_finished = true;
+            m_result = false;
+        }
+    }
+
     for (auto p: m_ports) {
         auto ps = p.second;
         if (!ps->valid) {
