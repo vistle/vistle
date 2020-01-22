@@ -22,6 +22,8 @@ public:
     int updateParameter(const char* info);
     vistle::Port* fakeInputPort = nullptr;
     vistle::IntParameter* runMode = nullptr;
+    vistle::IntParameter* consistentMesh = nullptr;
+    vistle::IntParameter* nThTimestep = nullptr;
     ~ConnectLibSim() override;
     //called from the simulation to inform us that the next read has to do sth
     bool timestepChanged();

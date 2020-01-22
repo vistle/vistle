@@ -44,6 +44,7 @@
 
 
 #define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
+#define DEBUG_CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
 
 using std::string; using std::vector;
 using std::endl;
@@ -330,11 +331,15 @@ void Engine::SimulationTimeStepChanged() {
         CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
-
-
-#ifndef MODULE_THREAD
     runModule();
-#endif
+    getMetaData();
+    int numMeshes, numVars;
+    v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle, numMeshes);
+    v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle, numVars);
+    if (m_metaData.currentCycle % m_module->nThTimestep->getValue() != 0) {
+        return;
+    }
+    DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
     if (m_module->timestepChanged()) {
         sendDataToModule();
     }
@@ -345,7 +350,7 @@ void Engine::SimulationTimeStepChanged() {
 
 void Engine::SimulationInitiateCommand(const std::string& command) {
     if (command.substr(0, 12) == "INTERNALSYNC") { //need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
-        // Send the command back to the engine so it knows we're done syncing.
+        // Send the command back to the engine so it knows we're done syncing. TODO: request tcp message from conroller
         std::string cmd("INTERNALSYNC");
         std::string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
@@ -362,6 +367,10 @@ void in_situ::Engine::passCommandToSim() {
     runModule();
 #endif
     if (m_rank == 0) {
+        if (!slaveCommandCallback) {
+            CERR << "passCommandToSim failed : slaveCommandCallback not set" << endl;
+            return;
+        }
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     finalizeInit();
@@ -392,9 +401,10 @@ void in_situ::Engine::passCommandToSim() {
         }
 
         simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
-        CERR << "received simulation command: " << msg << endl;
-        if (registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
-            CERR << "Engine received unknown command!" << endl;
+        DEBUG_CERR << "received simulation command: " << msg << endl;
+        const std::string defaulMsg{ "" };
+        if (msg != defaulMsg && registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
+            DEBUG_CERR << "Engine received unknown command!" << endl;
             return;
         }
     }
@@ -410,6 +420,7 @@ void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, vo
 }
 
 void in_situ::Engine::setSlaveComandCallback(void(*sc)(void)) {
+    DEBUG_CERR << "setSlaveComandCallback" << endl;
     slaveCommandCallback = sc;
 }
 
@@ -510,7 +521,7 @@ bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
                 }
             }
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_metaData.currentCycle);
+            grid->setTimestep(m_metaData.currentCycle/m_module->nThTimestep->getValue());
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -565,9 +576,10 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             break;
             case VISIT_COORD_MODE_SEPARATE:
             {
+                int numVals = dims[0] * dims[1] * dims[2];
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
-                if (nTuples != dims[i]) {
+                if (nTuples != numVals) {
                     throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
                 }
                 transformArray(data, gridCoords[i], nTuples, dataType);
@@ -577,15 +589,17 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             default:
                 throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
             }
-
-            grid->setTimestep(m_metaData.currentCycle);
+            if (meshInfo.dim == 0) {
+                std::fill(gridCoords[2], gridCoords[2] + nTuples, 0);
+            }
+            grid->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
             m_module->addObject(meshInfo.name, grid);
         }
     }
-    CERR << "made amr mesh with " << meshInfo.numDomains << " domains" << endl;
+    CERR << "made structured mesh with " << meshInfo.numDomains << " domains" << endl;
     m_meshes[meshInfo.name] = meshInfo;
     return true;
 }
@@ -593,13 +607,20 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
 void in_situ::Engine::sendMeshesToModule()     {
     int numMeshes = getNumObjects(SimulationDataTyp::mesh);
 
-
-
     for (size_t i = 0; i < numMeshes; i++) {
         MeshInfo meshInfo;
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
+        if (m_module->consistentMesh->getValue() && m_meshes.find(name) != m_meshes.end()) {
+            auto m = m_meshes.find(name);
+            if (m != m_meshes.end()) {
+                for (auto grid : m->second.grids)                     {
+                    m_module->addObject(name, grid);
+                }
+                return; //the mesh is consistent and already there
+            }
+        }
         visit_handle domainListHandle = v2check(simv2_invoke_GetDomainList, name);
         int allDoms = 0;
         visit_handle myDoms;
@@ -672,6 +693,8 @@ void in_situ::Engine::sendVarablesToModule()     {
         char* name, *meshName;
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
+        int centering = -1;
+        v2check(simv2_VariableMetaData_getCentering, varMetaHandle, &centering);
         auto meshInfo = m_meshes.find(meshName);
         if (meshInfo == m_meshes.end()) {
             throw EngineExeption(std::string("can't find mesh ") + meshName + " for variable " + name);
@@ -683,52 +706,15 @@ void in_situ::Engine::sendVarablesToModule()     {
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
             //CERR << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples  << endl;
-            switch (dataType) {
-            case VISIT_DATATYPE_CHAR:
-            {
-                //sendVariableToModule(name, meshInfo->second.grids[j], j, (unsigned char*)data, nTuples);
-                vistle::Vec<vistle::Scalar , 1>::ptr variable(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
-                for (size_t i = 0; i < nTuples; i++) {
-                    variable->x().data()[i] = static_cast<vistle::Scalar>(static_cast<unsigned char*>(data)[i]);
-                }
+            vistle::Vec<vistle::Scalar, 1>::ptr variable(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
+            transformArray(data, variable->x().data(), nTuples, dataType);
+            variable->setGrid(meshInfo->second.grids[cd]);
+            variable->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
+            variable->setBlock(currDomain);
+            variable->setMapping(centering == VISIT_VARCENTERING_NODE? vistle::DataBase::Vertex : vistle::DataBase::Element);
+            variable->addAttribute("_species", name);
+            m_module->addObject(name, variable);
 
-                variable->setGrid(meshInfo->second.grids[cd]);
-                variable->setTimestep(m_metaData.currentCycle);
-                variable->setBlock(currDomain);
-                variable->setMapping(vistle::DataBase::Element);
-                variable->addAttribute("_species", name);
-                m_module->addObject(name, variable);
-            }
-            break;
-            case VISIT_DATATYPE_INT:
-            {
-                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (int*)data, nTuples);
-            }
-            break;
-            case VISIT_DATATYPE_FLOAT:
-            {
-                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (float*)data, nTuples);
-            }
-            break;
-            case VISIT_DATATYPE_DOUBLE:
-            {
-                sendVariableToModule(name, meshInfo->second.grids[currDomain], currDomain, (double*)data, nTuples);
-            }
-            break;
-            case VISIT_DATATYPE_LONG:
-            {
-                throw EngineExeption("not supported variable type: long");
-            }
-            break;
-            case VISIT_DATATYPE_STRING:
-            {
-                throw EngineExeption("not supported variable type: string");
-            }
-            break;
-            default:
-                throw EngineExeption("unexpected variable type");
-                break;
-            }
         }
         CERR << "sent variable " << " with " << meshInfo->second.numDomains << " domains" << endl;
     }
@@ -754,7 +740,7 @@ void in_situ::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_metaData.currentCycle);
+    grid->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {
@@ -779,14 +765,6 @@ void in_situ::Engine::sendTestData() {
 
 void in_situ::Engine::finalizeInit()     {
     if (!m_moduleInitialized) {
-        if (m_rank == 0) {
-            if (!slaveCommandCallback) {
-                CERR << "finalizeInit failed : slaveCommandCallback not set" << endl;
-                return;
-            }
-            slaveCommandCallback(); //let the slaves call passCommandToSim() and therefore finalizeInit if not already done
-        }
-
         try {
             getMetaData();
             addPorts();

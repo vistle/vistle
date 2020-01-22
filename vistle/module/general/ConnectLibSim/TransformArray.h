@@ -22,6 +22,7 @@ void transformArray(Source* s, Source* end, Dest* d) {
         return static_cast<Dest>(val);
         });
 }
+//copies array from source to dest and converts from dataType to T
 template<typename T>
 void transformArray(void* source, T* dest, int size, int dataType) {
     switch (dataType) {

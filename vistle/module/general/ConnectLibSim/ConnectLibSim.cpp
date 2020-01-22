@@ -24,6 +24,11 @@ ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communi
 {
     runMode = addIntParameter("runMode", "change what happens on execute with the simulation", keepRunning, Parameter::Choice);
     V_ENUM_SET_CHOICES(runMode, RunMode);
+    consistentMesh = addIntParameter("consistent mesh", "is the mesh consistent over the timesteps/iterations of the simulation", true, Parameter::Boolean);
+    nThTimestep = addIntParameter("frequency", "collect data for ever n-th timestep", 1);
+    setParameterRange(nThTimestep, (Integer)1, (Integer)0x1000);
+
+
     fakeInputPort = createInputPort("fake");
 
 
