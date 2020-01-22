@@ -74,6 +74,7 @@ SET(RUNTIME_HEADERS
   SimulationMetaData.h
   SpeciesData.h
   SpeciesMetaData.h
+  TransformArray.h
   UnstructuredMesh.h
   VariableData.h
   VariableMetaData.h
