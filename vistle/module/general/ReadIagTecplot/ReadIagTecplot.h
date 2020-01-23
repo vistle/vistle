@@ -25,7 +25,7 @@ class ReadIagTecplot: public vistle::Reader {
    vistle::StringParameter *m_filename;
    vistle::Port *m_grid = nullptr;
    vistle::Port *m_p = nullptr;
-   vistle::Port *m_r = nullptr;
+   vistle::Port *m_rho = nullptr;
    vistle::Port *m_n = nullptr;
    vistle::Port *m_u = nullptr;
    vistle::Port *m_v = nullptr;

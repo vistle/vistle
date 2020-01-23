@@ -64,6 +64,7 @@ private:
 	ZoneType mType;
 	PackingType mDataPacking;
 	int mVarLocation;
+        std::vector<int> mVarMapping;
 	int mNeighborConnections;
 	int mIMax, mJMax, mKMax;
 	int mNumPts, mNumElements, mICellDim, mJCellDim, mKCellDim;
@@ -276,7 +277,7 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 	if (mVarLocation!=0) {
 		std::cerr << "Warning: Only unspecified ORDERED var location supported! \n"; 
     for (int i=0; i<iNumVar; i++) {
-      pimpl->fetchInt32();
+        mVarMapping.push_back(pimpl->fetchInt32());
     }
 //		throw std::runtime_error("Only unspecified ORDERED var location supported!");
 	}
@@ -468,8 +469,11 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 4: points[p].mU.X()=value; break;
 						case 5: points[p].mU.Y()=value; break;
 						case 6: points[p].mU.Z()=value; break;
-						case 7: points[p].mP=value; break; // cp, in fact, has to be rescaled later on
-                        case 8: if (pimpl->mDataSet == FLOWER_ACCO) points[p].mBlank = value; break;
+                                                case 7: points[p].mP=value; break; // cp, in fact, has to be rescaled later on
+                                                case 8: if (pimpl->mDataSet == FLOWER_ACCO) {
+                                                        points[p].mBlank = value;
+                                                    }
+                                                    break;
 						default: break;/*assert(0);*/ // just skip rest, nothing more interesting
 					}
 					break;
@@ -756,7 +760,7 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 			}
 			mesh = new VolumeMesh<HexaederTopo>(mNumElements, mNumPts, cells, points);
 		}
-		std::cout << "  Data = " << mIMax << "x"<< mJMax << "x"<< mKMax << "\n";
+        //std::cout << "  Data = " << mIMax << "x"<< mJMax << "x"<< mKMax << "\n";
 	}
 	else { // FEM zones
 		PointState * points(new PointState[mNumPts]);
@@ -769,12 +773,12 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
                         else throw std::runtime_error("Unsupported DataPacking");
 			// clear surface velocity, if it is not to be read
 			if (iNumVar<11 && j==0) points[i].mV=0;
-			double value=pimpl->fetchReal(mVarDataFormat[j]);
-            if (pimpl->mDataSet==FLOWER_ACCO &&  j>8) continue;
-            if (pimpl->mDataSet==FLOWER_ACCO &&  j==8) {
-                points[j].mBlank=value; break;
-            }
-			switch (j) {
+                        double value=pimpl->fetchReal(mVarDataFormat[j]);
+                        if (pimpl->mDataSet==FLOWER_ACCO &&  j==8) {
+                            points[i].mBlank=value;
+                        }
+                        if (pimpl->mDataSet==FLOWER_ACCO &&  j>7) continue;
+                        switch (j) {
 				case 0:	points[i][0]=value; break;
 				case 1:	points[i][1]=value; break;
 				case 2:	points[i][2]=value; break;
@@ -846,6 +850,7 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 			assert(0=="Unknown ZoneType");
 		}
 	}
+
 	assert(mesh);
 	if (mesh) mesh->setName(mName);
 	return mesh;
@@ -936,13 +941,10 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
         else { // FEM zones
                 if (pimpl->mDataSet!=FLOWER_NOVS && pimpl->mDataSet!=FLOWER_VS && pimpl->mDataSet!=FLOWER_ACCO)
                     throw std::runtime_error("Unsupported data format for unstructured mesh");
-                for (int p=0; p<mNumPts*iNumVar; ++p) {
-                        int i, j;
-                        if (mDataPacking==BLOCK) j=p/mNumPts, i=p%mNumPts;
-                        else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
-                        else throw std::runtime_error("Unsupported DataPacking");
-                        // clear surface velocity, if it is not to be read
-                        num32Skip += mVarDataFormat[j] == FLOAT ? 1 : 2;
+                for (int var=0; var<iNumVar; ++var) {
+                    num32Skip += mNumPts;
+                    if (mVarDataFormat[var] != FLOAT)
+                        num32Skip += mNumPts;
                 }
                 if (mType==FETRIANGLE) {	// Triangle
                         num32Skip += mNumElements*3;
@@ -959,7 +961,7 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
                 else if (mType==FEBRICK) {	// Hexahedron
                         assert(0=="Copied and changed, but not yet testes. Remove assert if working as expected");
                         num32Skip += mNumElements*8;
-                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Hexahedron Elements \n";
+                        //std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Hexahedron Elements \n";
                 }
                 else {
                         std::cerr << "Unknown ZoneType=" << mType << std::endl;
@@ -1216,7 +1218,7 @@ MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList) {
     }
     double marker=pimpl->fetchFloat();
     assert(marker==pimpl->ZONEMARKER);
-    std::cout << "Zone (" << i->getName() << ") "<< idx+1 <<":";
+    //std::cout << "Zone (" << i->getName() << ") "<< idx+1 <<":";
     return i->ReadData(&*pimpl, mNumVar, rind);
 }
 

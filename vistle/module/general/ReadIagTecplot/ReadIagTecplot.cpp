@@ -62,7 +62,7 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
        pp = &p->x();
    }
    array *rr = nullptr;
-   if (m_r->isConnected()) {
+   if (m_rho->isConnected()) {
        r = std::make_shared<Vec<Scalar>>(0);
        rr = &r->x();
    }
@@ -99,35 +99,35 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
    std::cerr << "reading zones "  << begin << " to " << end-1 << std::endl;
 
    for (size_t i=0; i<begin && i<numZones; ++i) {
-#if 1
        tecplot.SkipZone(i);
-#else
-       auto mesh = tecplot.ReadZone(i);
-       delete mesh;
-#endif
    }
 
    Index baseVertex = 0;
    for (size_t i=begin; i<end; ++i) {
        auto mesh = tecplot.ReadZone(i);
        if (auto hexmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-#if 1
            hexmesh->SetupVolume();
-           std::cerr << "hexmesh: #points=" << hexmesh->getNumPoints() << ", #cells=" << hexmesh->getNumCells() << std::endl;
+           //std::cerr << "hexmesh: #points=" << hexmesh->getNumPoints() << ", #cells=" << hexmesh->getNumCells() << std::endl;
 
            std::map<int, Index> vertMap;
            for (int c=0; c<hexmesh->getNumCells(); ++c) {
                const auto &cell = mesh->getState(c);
                const auto &hex = static_cast<const HexaederTopo &>(cell);
-               bool allNodes = true;
+               bool allNodesPresent = true, allNodesBlanked = true;
                for (int n=0; n<8; ++n) {
                    int v = hex.mNodes[n];
                    if (v < 0) {
-                       allNodes = false;
+                       allNodesPresent = false;
                        break;
                    }
+                   const auto &ps = mesh->getPointState(v);
+                   if (ps.mBlank) {
+                       allNodesBlanked = false;
+                   }
                }
-               if (!allNodes)
+               if (!allNodesPresent)
+                   continue;
+               if (allNodesBlanked)
                    continue;
                for (int n=0; n<8; ++n) {
                    int v = hex.mNodes[n];
@@ -167,27 +167,28 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
                el.push_back(cl.size());
            }
            baseVertex += vertMap.size();
-#endif
        } else if (auto tetmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-           std::cerr << "tetmesh: #points=" << tetmesh->getNumPoints() << ", #cells=" << tetmesh->getNumCells() << std::endl;
+           std::cerr << "IGNORING tetmesh: #points=" << tetmesh->getNumPoints() << ", #cells=" << tetmesh->getNumCells() << std::endl;
        } else if (auto trisurf = dynamic_cast<SurfaceMesh<TriangleTopo> *>(mesh)) {
-           std::cerr << "trisurf: #points=" << trisurf->getNumPoints() << ", #cells=" << trisurf->getNumCells() << std::endl;
+           std::cerr << "IGNORING trisurf: #points=" << trisurf->getNumPoints() << ", #cells=" << trisurf->getNumCells() << std::endl;
        } else if (auto quadsurf = dynamic_cast<SurfaceMesh<QuadrangleTopo> *>(mesh)) {
-           std::cerr << "quadsurf: #points=" << quadsurf->getNumPoints() << ", #cells=" << quadsurf->getNumCells() << std::endl;
+           std::cerr << "IGNORING quadsurf: #points=" << quadsurf->getNumPoints() << ", #cells=" << quadsurf->getNumCells() << std::endl;
+       } else {
+           std::cerr << "IGNORING unknown mesh type" << std::endl;
        }
        delete mesh;
    }
 
    token.addObject(m_grid, unstr);
    if (p) {
-       p->addAttribute("_species", "p");
+       p->addAttribute("_species", "pressure");
        p->setGrid(unstr);
        token.addObject(m_p, p);
    }
    if (r) {
-       r->addAttribute("_species", "r");
+       r->addAttribute("_species", "rho");
        r->setGrid(unstr);
-       token.addObject(m_r, r);
+       token.addObject(m_rho, r);
    }
    if (n) {
        n->addAttribute("_species", "n");
@@ -218,39 +219,10 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
 
    m_grid = createOutputPort("grid_out");
    m_p = createOutputPort("p");
-   m_r = createOutputPort("r");
+   m_rho = createOutputPort("rho");
    m_n = createOutputPort("n");
    m_u = createOutputPort("u");
    m_v = createOutputPort("v");
-#if 0
-   for (int i=0; i<NumPorts; ++i) {
-      std::stringstream spara;
-      spara << "cell_field_" << i;
-      m_cellDataChoice[i] = addStringParameter(spara.str(), "cell data field", "", Parameter::Choice);
-   }
-#endif
-
-
-#if 0
-   for (int i=0; i<NumPorts; ++i) {
-      std::stringstream spara;
-      spara << "point_field_" << i;
-      m_pointDataChoice[i] = addStringParameter(spara.str(), "point data field", "", Parameter::Choice);
-
-      std::stringstream sport;
-      sport << "point_data" << i;
-      m_pointPort[i] = createOutputPort(sport.str(), "vertex data");
-   }
-   for (int i=0; i<NumPorts; ++i) {
-      std::stringstream spara;
-      spara << "cell_field_" << i;
-      m_cellDataChoice[i] = addStringParameter(spara.str(), "cell data field", "", Parameter::Choice);
-
-      std::stringstream sport;
-      sport << "cell_data" << i;
-      m_cellPort[i] = createOutputPort(sport.str(), "cell data");
-   }
-#endif
 
    //setParallelizationMode(Serial);
    setParallelizationMode(ParallelizeTimeAndBlocks);
@@ -261,54 +233,3 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
 ReadIagTecplot::~ReadIagTecplot() {
 
 }
-
-#if 0
-bool ReadIagTecplot::changeParameter(const vistle::Parameter *p) {
-   if (p == m_filename) {
-      const std::string filename = m_filename->getValue();
-      try {
-          m_tecplot.reset(new TecplotFile(filename));
-      } catch(...) {
-          std::cerr << "failed to create TecplotFile for " << filename << std::endl;
-      }
-      setChoices();
-   }
-
-   return Module::changeParameter(p);
-}
-
-bool ReadIagTecplot::prepare() {
-
-   if (!m_tecplot) {
-       if (rank() == 0)
-           sendInfo("no Tecplot file open, tried %s", m_filename->getValue().c_str());
-       return true;
-   }
-
-   size_t numZones = m_tecplot->NumZones();
-   std::cerr << "reading " << numZones << " zones" << std::endl;
-   //numZones = std::min(size_t(100), numZones);
-   for (size_t i=0; i<numZones; ++i) {
-       auto mesh = m_tecplot->ReadZone(i);
-       if (auto hexmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-           std::cerr << "hexmesh: #points=" << hexmesh->getNumPoints() << ", #cells=" << hexmesh->getNumCells() << std::endl;
-#if 1
-           for (int c=0; c<hexmesh->getNumCells(); ++c) {
-               const auto &cell = mesh->getState(c);
-               const auto &hex = static_cast<const HexaederTopo &>(cell);
-               std::cerr << "hexeader: isCell=" << hex.isCell() << std::endl;
-           }
-#endif
-       } else if (auto tetmesh = dynamic_cast<VolumeMesh<HexaederTopo> *>(mesh)) {
-           std::cerr << "tetmesh: #points=" << tetmesh->getNumPoints() << ", #cells=" << tetmesh->getNumCells() << std::endl;
-       } else if (auto trisurf = dynamic_cast<SurfaceMesh<TriangleTopo> *>(mesh)) {
-           std::cerr << "trisurf: #points=" << trisurf->getNumPoints() << ", #cells=" << trisurf->getNumCells() << std::endl;
-       } else if (auto quadsurf = dynamic_cast<SurfaceMesh<QuadrangleTopo> *>(mesh)) {
-           std::cerr << "quadsurf: #points=" << quadsurf->getNumPoints() << ", #cells=" << quadsurf->getNumCells() << std::endl;
-       }
-       delete mesh;
-   }
-
-   return true;
-}
-#endif
