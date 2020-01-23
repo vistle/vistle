@@ -95,7 +95,7 @@ class ObjectStatistics: public vistle::Module {
          return *this;
       }
    };
-
+   vistle::IntParameter* continuousOutput = nullptr;
  private:
    static const int MaxDim = ParamVector::MaxDimension;
 
@@ -105,6 +105,7 @@ class ObjectStatistics: public vistle::Module {
    bool prepare();
 
    int m_timesteps; //!< no. of time steps
+   std::map<int, int> m_objectsInTimestep;
    stats m_cur; //! current timestep
    stats m_min; //! min. values across all timesteps
    stats m_max; //! max. values across all timesteps
@@ -170,7 +171,7 @@ ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::c
    : Module("object statistics", name, moduleID, comm)
 {
    setReducePolicy(message::ReducePolicy::OverAll);
-
+   continuousOutput = addIntParameter("continuous output", "additionally write info of received objects as they arrive", false, vistle::Parameter::Boolean);
    createInputPort("data_in", "input data", Port::MULTI);
 }
 
@@ -231,7 +232,15 @@ bool ObjectStatistics::compute() {
    }
    s.blocks = 1;
    m_cur += s;
-
+   if (continuousOutput->getValue()) {
+       int count = m_objectsInTimestep[obj->getTimestep()]++;
+       std::stringstream msg;
+       msg << "ObjectAnalysis received " << Object::toString(obj->getType()) << std::endl;;
+       msg << "[" << rank() << "/" << size() << "] " << count << "th object in timestep " << obj->getTimestep() << std::endl;
+       msg << s;
+       msg << "___________________________________________________" << std::endl;
+       sendInfo(msg.str());
+   }
    return true;
 }
 
