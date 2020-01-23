@@ -15,6 +15,10 @@ target_link_libraries(LibSimControlModule
 	${Boost_LIBRARIES}
 	)
 
+option(LIBSIM_DEBUG "print debuf messages" OFF)
+if(LIBSIM_DEBUG)
+   add_definitions(-DLIBSIM_DEBUG)
+endif()
 SET(RUNTIME_SOURCES 
   Exeption.cpp
   ConnectLibSim.cpp

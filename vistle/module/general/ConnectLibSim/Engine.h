@@ -126,8 +126,8 @@ private:
 
     void addPorts();
 
-    bool makeCurvilinearMesh(visit_handle meshMetaHandle);
-    bool makeUntructuredMesh(visit_handle meshMetaHandle);
+    bool makeRectilinearMesh(MeshInfo meshInfo);
+    bool makeUntructuredMesh(MeshInfo meshInfo);
     bool makeAmrMesh(MeshInfo meshInfo);
     bool makeStructuredMesh(MeshInfo meshInfo);
     void sendMeshesToModule();

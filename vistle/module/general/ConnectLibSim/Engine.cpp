@@ -43,8 +43,28 @@
 #include "ConnectLibSim.h"
 
 
-#define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
+#include <ostream>
+
+
+#ifdef  LIBSIM_DEBUG
 #define DEBUG_CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
+#else
+struct DoNothing {
+public:
+    template<typename T>
+    DoNothing& operator<<(const T& t) {
+        return *this;
+    }
+
+    DoNothing& operator<<(std::ostream& (*pManip)(std::ostream&)) {
+        return *this;
+    }
+};
+static DoNothing doNothingInstance;
+#define DEBUG_CERR doNothingInstance
+#endif
+#define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
+
 
 using std::string; using std::vector;
 using std::endl;
@@ -57,6 +77,7 @@ Engine* Engine::createEngine() {
         instance = new Engine;
     }
     return instance;
+
 }
 
 int Engine::getNumObjects(SimulationDataTyp type) {
@@ -376,7 +397,7 @@ void in_situ::Engine::passCommandToSim() {
     finalizeInit();
     std::string msg;
     if (simulationCommandCallback) {
-        if (m_rank == 0) {
+        if (m_rank == 0 && m_socket) {
             boost::system::error_code ec;
             boost::asio::streambuf streambuf;
             auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
@@ -425,7 +446,7 @@ void in_situ::Engine::setSlaveComandCallback(void(*sc)(void)) {
 }
 
 int in_situ::Engine::GetInputSocket() {
-    if (m_rank == 0) {
+    if (m_rank == 0 && m_socket) {
         return m_socket->native_handle();
     }
     else {
@@ -473,55 +494,27 @@ void Engine::addPorts() {
     }
 }
 
-bool in_situ::Engine::makeCurvilinearMesh(visit_handle h) {
-    char* name;
-    int dim;
-    if (simv2_MeshMetaData_getName(h, &name)) {
-        return false;
-    }
-    if (simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
-        return false;
-    }
-
-    //vistle::StructuredGrid::ptr grid(new vistle::StructuredGrid());
-
-
-}
-
-bool in_situ::Engine::makeUntructuredMesh(visit_handle h) {
-    char* name;
-    int dim;
-    if (simv2_MeshMetaData_getName(h, &name)) {
-        return false;
-    }
-    if (simv2_MeshMetaData_getTopologicalDimension(h, &dim)) {
-        return false;
-    }
-    
-    return false;
-}
-
-bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
-
+bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
-        visit_handle meshHandle = v2check(simv2_invoke_GetMesh,currDomain, meshInfo.name);
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
         int check = simv2_RectilinearMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
             visit_handle coordHandles[3]; //handles to variable data
             int ndims;
             v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
-            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{1,1,1};
+            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{ 1,1,1 };
             void* data[3]{};
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                 if (dataType[i] != dataType[0]) {
-                    CERR << "mesh data type must be consisten within a domain" << endl; 
+                    CERR << "mesh data type must be consisten within a domain" << endl;
                     return false;
                 }
             }
+
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_metaData.currentCycle/m_module->nThTimestep->getValue());
+            grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -537,11 +530,27 @@ bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
                 grid->coords(2)[0] = 0;
             }
             m_module->addObject(meshInfo.name, grid);
+            int min[3], max[3];
+            v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min, max);
+            DEBUG_CERR << "added rectilinear mesh " << meshInfo.name << " dom = " << currDomain << " xDim = " << nTuples[0] << " yDim = " << nTuples[1] << " zDim = " << nTuples[2] << endl;
+            DEBUG_CERR << "min bounds " << min[0] << " " << min[1] << " " << min[2] << " max bouns " << max[0] << " " << max[1] << " " << max[2] << endl;
         }
     }
-    CERR << "made amr mesh with " << meshInfo.numDomains << " domains" << endl;
-    m_meshes[meshInfo.name]  = meshInfo;
+    DEBUG_CERR << "made rectilinear grids with " << meshInfo.numDomains << " domains" << endl;
+    m_meshes[meshInfo.name] = meshInfo;
     return true;
+
+
+}
+
+bool in_situ::Engine::makeUntructuredMesh(MeshInfo meshInfo) {
+
+    return false;
+}
+
+bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
+    return makeRectilinearMesh(meshInfo);
+
 }
 
 bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
@@ -559,14 +568,14 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             }
             vistle::StructuredGrid::ptr grid(new vistle::StructuredGrid(dims[0], dims[1], dims[2]));
             std::array<float*, 3> gridCoords{ grid->x().data() ,grid->y().data() ,grid->z().data() };
+            int numVals = dims[0] * dims[1] * dims[2];
             int owner{}, dataType{}, nComps{}, nTuples{};
             void* data{};
             switch (coordMode) {
             case VISIT_COORD_MODE_INTERLEAVED:
             {
                 v2check(simv2_VariableData_getData, coordHandles[3], owner, dataType, nComps, nTuples, data);
-                int numVals = dims[0] * dims[1] * dims[2] * ndims;
-                if (nTuples != numVals) {
+                if (nTuples != numVals * ndims) {
                     throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
                 }
                
@@ -576,7 +585,6 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             break;
             case VISIT_COORD_MODE_SEPARATE:
             {
-                int numVals = dims[0] * dims[1] * dims[2];
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
                 if (nTuples != numVals) {
@@ -589,10 +597,10 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             default:
                 throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
             }
-            if (meshInfo.dim == 0) {
-                std::fill(gridCoords[2], gridCoords[2] + nTuples, 0);
+            if (meshInfo.dim == 2) {
+                std::fill(gridCoords[2], gridCoords[2] + numVals, 0);
             }
-            grid->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
+            grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -651,6 +659,7 @@ void in_situ::Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_RECTILINEAR:
         {
             CERR << "making rectilinear grid" << endl;
+            makeRectilinearMesh(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_CURVILINEAR:
@@ -686,7 +695,7 @@ void in_situ::Engine::sendMeshesToModule()     {
     }
 }
 
-void in_situ::Engine::sendVarablesToModule()     {
+void in_situ::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
     int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
@@ -714,9 +723,10 @@ void in_situ::Engine::sendVarablesToModule()     {
             variable->setMapping(centering == VISIT_VARCENTERING_NODE? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable->addAttribute("_species", name);
             m_module->addObject(name, variable);
+            DEBUG_CERR << "added variable " << name  << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
 
         }
-        CERR << "sent variable " << " with " << meshInfo->second.numDomains << " domains" << endl;
+        DEBUG_CERR << "sent variable " << name << " with " << meshInfo->second.numDomains << " domains" << endl;
     }
 }
 
@@ -740,7 +750,7 @@ void in_situ::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
+    grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {
