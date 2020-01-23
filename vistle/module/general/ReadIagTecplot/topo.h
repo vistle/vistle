@@ -33,8 +33,9 @@ struct State {
 };
 
 struct PointState : Position, State {
-	PointState() : Position(), State(), mN() {}
+    PointState() : Position(), State(), mN(), mBlank() {}
 	Vector mN;
+    unsigned char mBlank;
 };
 
 // ----------------------------------------

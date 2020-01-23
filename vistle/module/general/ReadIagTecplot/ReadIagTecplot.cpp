@@ -36,7 +36,7 @@ bool ReadIagTecplot::examine(const Parameter *param) {
         return false;
     }
 
-    setPartitions(std::min(size_t(size()*128), numZones));
+    setPartitions(std::min(size_t(size()*32), numZones));
 
     return true;
 }
@@ -98,7 +98,7 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
    size_t end = block>=0 ? std::min(numZones, numZonesBlock*(block+1)) : numZones;
    std::cerr << "reading zones "  << begin << " to " << end-1 << std::endl;
 
-   for (size_t i=0; i<begin; ++i) {
+   for (size_t i=0; i<begin && i<numZones; ++i) {
 #if 1
        tecplot.SkipZone(i);
 #else

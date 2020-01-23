@@ -22,6 +22,7 @@
 #include <cstring>
 #include <cstdio>
 #include <string>
+#include <exception>
 
 
 #if defined(HAVE_STDINT_H)
@@ -39,12 +40,8 @@ typedef double TEC_FLOAT64;
 enum FileDataSet {
 	UNKNOWN,
 	FLOWER_SURFACE, FLOWER_PLANFILE, FLOWER_NOVS, FLOWER_VS, FLOWER_ACCO, LIFT_LINE, SURFACE, IAGCOUPLE_ACCOLOAD,
-#ifdef AHD
 	CAMRAD_LINE, CAMRAD_SURFACE, 
-#endif
-#ifdef MARENCO
 	FLIGHTLAB_LINE, FLIGHTLAB_SURFACE,
-#endif
 };
 
 struct TecplotFile::Zone {
@@ -71,6 +68,7 @@ private:
 	int mIMax, mJMax, mKMax;
 	int mNumPts, mNumElements, mICellDim, mJCellDim, mKCellDim;
 	std::vector<DataFormat> mVarDataFormat;
+    std::vector<double> mVarMin, mVarMax;
 };
 
 struct TecplotFile::Impl {
@@ -265,8 +263,8 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 	pimpl->fetchInt32();
 	int type=pimpl->fetchInt32();
 	if (type<ORDERED || type>FEPOLYHEDRON) {
-		std::cerr << "Illegal zone type " << type <<"! \n";
-		throw "Illegal zone type";
+                std::cerr << "Illegal zone type " << type <<"! \n";
+                throw std::runtime_error("Illegal zone type");
 	}
 	mType=static_cast<ZoneType>(type);
 	// datapacking is always Block in 360.2009
@@ -280,7 +278,7 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
     for (int i=0; i<iNumVar; i++) {
       pimpl->fetchInt32();
     }
-//		throw "Only unspecified ORDERED var location supported!";
+//		throw std::runtime_error("Only unspecified ORDERED var location supported!");
 	}
 	if (pimpl->mVersion>=111) {
 		//int rawLocal1to1FaceNeighbours=
@@ -289,8 +287,8 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 	mNeighborConnections=pimpl->fetchInt32();
 	if (mNeighborConnections!=0) {
 		std::cerr << "User defined face neighbor mode (" 
-			<< mNeighborConnections << ") not supported! \n"; 
-		throw "User defined face neighbor mode not supported!";
+                        << mNeighborConnections << ") not supported! \n";
+                throw std::runtime_error("User defined face neighbor mode not supported!");
 	}
 	if (mType==ORDERED) {
 		mIMax=pimpl->fetchInt32();
@@ -305,28 +303,30 @@ void TecplotFile::Zone::ReadHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 		mKCellDim=pimpl->fetchInt32();
 	}
 	else {
-		std::cerr << "New zone types FEPOLYGON or FEPOLYHEDRON not supported! \n";
-		throw "New zone types FEPOLYGON or FEPOLYHEDRON not supported!";
+                std::cerr << "New zone types FEPOLYGON or FEPOLYHEDRON not supported! \n";
+                throw std::runtime_error("New zone types FEPOLYGON or FEPOLYHEDRON not supported!");
 	}
 	int auxiliaryNameValuePairs=pimpl->fetchInt32();
 	if (auxiliaryNameValuePairs!=0) {
-		std::cerr << "Auxiliary name/value pair: not supported! \n"; 
-		throw "Auxiliary name/value pair: not supported!";
+                std::cerr << "Auxiliary name/value pair: not supported! \n";
+                throw std::runtime_error("Auxiliary name/value pair: not supported!");
 	}
 }
 
 void TecplotFile::Zone::ReadDataHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 	mVarDataFormat.resize(iNumVar);
-	for (int i=0; i<iNumVar; i++) {
+    mVarMin.resize(iNumVar);
+    mVarMax.resize(iNumVar);
+    for (int i=0; i<iNumVar; i++) {
 		int format=pimpl->fetchInt32();
 		if (format<FLOAT || format>BIT) {
-			std::cerr << "Illegal variable format " << format <<"! \n";
-			throw "Illegal variable format";
+                        std::cerr << "Illegal variable format " << format <<"! \n";
+                        throw std::runtime_error("Illegal variable format");
 		}
 		mVarDataFormat[i]=static_cast<DataFormat>(format);
 		if (mVarDataFormat[i]!=FLOAT && mVarDataFormat[i]!=DOUBLE) {
-			std::cerr << "Unupported DataFormat " << format << "! \n";
-			throw "Unupported variable format";
+                        std::cerr << "Unupported DataFormat " << format << "! \n";
+                        throw std::runtime_error("Unupported variable format");
 		}
 	}
 	if (pimpl->mVersion>=107) {
@@ -349,9 +349,9 @@ void TecplotFile::Zone::ReadDataHeader(TecplotFile::Impl * pimpl, int iNumVar) {
 	if (pimpl->mVersion>=107) {
 		for (int j=0; j<iNumVar; j++) {
 			//double minVal=
-			pimpl->fetchDouble();
+            mVarMin[j] = pimpl->fetchDouble();
 			//double maxVal=
-			pimpl->fetchDouble();
+            mVarMax[j] = pimpl->fetchDouble();
 		}
 	}
 }
@@ -366,16 +366,16 @@ MeshPts * TecplotFile::Zone::ReadInnerPtsData(TecplotFile::Impl * pimpl, int iNu
 		for (int p=0; p<mNumPts*iNumVar; ++p) {
 			int i, j;
 			if (mDataPacking==BLOCK) j=p/mNumPts, i=p%mNumPts;
-			else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
-			else throw "Unsupported DataPacking";
+                        else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
+                        else throw std::runtime_error("Unsupported DataPacking");
 			if (j<3) points[i][j]=pimpl->fetchFloat();
 			else pimpl->fetchFloat(); // dummy read, as only coordinates are supported
 		}
 		mesh = new MeshPts(mNumPts, points);
 	}
 	else {
-		std::cerr << "Unsupported ZoneType " << mType << std::endl;
-		throw "Unsupported ZoneType";
+                std::cerr << "Unsupported ZoneType " << mType << std::endl;
+                throw std::runtime_error("Unsupported ZoneType");
 	}
 	return mesh;
 }
@@ -421,8 +421,8 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 		for (int v=0, readV=0; readV<readNumPts*iNumVar; ++readV) {
 			int readP, readM;
 			if (mDataPacking==BLOCK) readM=readV/readNumPts, readP=readV%readNumPts;
-			else if (mDataPacking==POINT) readM=readV%iNumVar, readP=readV/iNumVar;
-			else throw "Unsupported DataPacking";
+                        else if (mDataPacking==POINT) readM=readV%iNumVar, readP=readV/iNumVar;
+                        else throw std::runtime_error("Unsupported DataPacking");
 			int k=readP/(readI*readJ), j=readP%(readI*readJ);
 			int i=j%readI;
 			j/=readI;
@@ -433,8 +433,8 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 			}
 			int p=0, m=0;
 			if (mDataPacking==BLOCK) m=v/mNumPts, p=v%mNumPts;
-			else if (mDataPacking==POINT) m=v%iNumVar, p=v/iNumVar;
-			else throw "Unsupported DataPacking";
+                        else if (mDataPacking==POINT) m=v%iNumVar, p=v/iNumVar;
+                        else throw std::runtime_error("Unsupported DataPacking");
 			assert(m==readM);
 			// clear surface velocity, if not to be read
 			if ((iNumVar<11 || pimpl->mDataSet==FLOWER_SURFACE || pimpl->mDataSet==FLOWER_PLANFILE || iNumVar==13 || iNumVar==14 ) && m==0) points[p].mV=0;
@@ -469,6 +469,7 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 5: points[p].mU.Y()=value; break;
 						case 6: points[p].mU.Z()=value; break;
 						case 7: points[p].mP=value; break; // cp, in fact, has to be rescaled later on
+                        case 8: if (pimpl->mDataSet == FLOWER_ACCO) points[p].mBlank = value; break;
 						default: break;/*assert(0);*/ // just skip rest, nothing more interesting
 					}
 					break;
@@ -548,9 +549,9 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 					}
 					break;
 
-#ifdef AHD
 				case CAMRAD_SURFACE:
-					switch (m) {
+#ifdef AHD
+                                        switch (m) {
 						case 0: break; // time
 						case 1: break; // azimuth
 						case 2: points[p][0]=value; break; // quad center, not corner
@@ -562,9 +563,14 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 8: points[p].mP=value; break; // quad area, not pressure
 						default: break; // nothing more interesting: psi_blade, r_ACP, x_ACP
 					}
-					break;
+#else
+                                        std::cerr << "Unsupported data format CAMRAD_SURFACE " << pimpl->mDataSet << std::endl;
+                                        throw std::runtime_error("Unsupported data format CAMRAD_SURFACE");
+#endif // AHD
+                                        break;
 				case CAMRAD_LINE:
-					switch (m) {
+#ifdef AHD
+                                        switch (m) {
 						case 0: points[p][0]=value; break; // segment center, not corner
 						case 1: points[p][1]=value; break;
 						case 2: points[p][2]=value; break;
@@ -584,11 +590,14 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 9: points[p].mR=value; break; // dr
 						default: break; // nothing more
 					}
-					break;
+#else
+                                        std::cerr << "Unsupported data format CAMRAD_LINE " << pimpl->mDataSet << std::endl;
+                                        throw std::runtime_error("Unsupported data format CAMRAD_LINE");
 #endif // AHD
-#ifdef MARENCO
+                                        break;
 				case FLIGHTLAB_SURFACE:
-					switch (m) {
+#ifdef MARENCO
+                                        switch (m) {
 						case 0: break; // time
 						case 1: break; // azimuth
 						case 2: points[p][0]=value; break; // quad center, not corner
@@ -600,9 +609,14 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 8: points[p].mP=value; break; // quad area, not pressure
 						default: break; // nothing more interesting: psi_blade, r_ACP, x_ACP
 					}
-					break;
+#else
+                                        std::cerr << "Unsupported data format FLIGHTLAB_SURFACE " << pimpl->mDataSet << std::endl;
+                                        throw std::runtime_error("Unsupported data format FLIGHTLAB_SURFACE");
+#endif
+                                        break;
 				case FLIGHTLAB_LINE:
-					switch (m) {
+#ifdef MARENCO
+                                        switch (m) {
 						case 0: break; // time
 						case 1: break; // azimuth
 						case 2: break; // psi_blade
@@ -623,10 +637,14 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 						case 17: points[p].mV.Z()=points[p].mR*points[p].mV.Z()*value; break;
 						default: break; // nothing more interesting: psi_blade, r_ACP, x_ACP
 					}
-					break;
+#else
+                                        std::cerr << "Unsupported data format FLIGHTLAB_LINE " << pimpl->mDataSet << std::endl;
+                                        throw std::runtime_error("Unsupported data format FLIGHTLAB_LINE");
 #endif
-				default:
-					throw "Unsupported data format";
+                                        break;
+                                default:
+                                    std::cerr << "Unsupported data format " << pimpl->mDataSet << std::endl;
+                                    throw std::runtime_error("Unsupported data format");
 			}
 			++v;
 		}
@@ -742,17 +760,20 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 	}
 	else { // FEM zones
 		PointState * points(new PointState[mNumPts]);
-		if (pimpl->mDataSet!=FLOWER_NOVS && pimpl->mDataSet!=FLOWER_VS && pimpl->mDataSet!=FLOWER_ACCO)
-			throw "Unsupported data format for unstructured mesh";
+                if (pimpl->mDataSet!=FLOWER_NOVS && pimpl->mDataSet!=FLOWER_VS && pimpl->mDataSet!=FLOWER_ACCO)
+                    throw std::runtime_error("Unsupported data format for unstructured mesh");
 		for (int p=0; p<mNumPts*iNumVar; ++p) {
 			int i, j;
 			if (mDataPacking==BLOCK) j=p/mNumPts, i=p%mNumPts;
-			else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
-			else throw "Unsupported DataPacking";
+                        else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
+                        else throw std::runtime_error("Unsupported DataPacking");
 			// clear surface velocity, if it is not to be read
 			if (iNumVar<11 && j==0) points[i].mV=0;
 			double value=pimpl->fetchReal(mVarDataFormat[j]);
-			if (pimpl->mDataSet==FLOWER_ACCO &&  j>7) continue;
+            if (pimpl->mDataSet==FLOWER_ACCO &&  j>8) continue;
+            if (pimpl->mDataSet==FLOWER_ACCO &&  j==8) {
+                points[j].mBlank=value; break;
+            }
 			switch (j) {
 				case 0:	points[i][0]=value; break;
 				case 1:	points[i][1]=value; break;
@@ -831,6 +852,7 @@ MeshBase * TecplotFile::Zone::ReadData(TecplotFile::Impl * pimpl, int iNumVar, R
 }
 
 void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
+        size_t num32Skip = 0;
         ReadDataHeader(pimpl, iNumVar);
         RindSpec rind = { 0, 0, 0, 0, 0, 0, };
         if (rind.mMinI) --rind.mMinI;
@@ -860,31 +882,15 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
                 mKMax=rind.mMaxK-rind.mMinK;
                 mNumPts=mIMax*mJMax*mKMax;
                 bool is1D=mJMax==1 && mKMax==1;
-                for (int v=0, readV=0; readV<readNumPts*iNumVar; ++readV) {
-                        int readP, readM;
-                        if (mDataPacking==BLOCK) readM=readV/readNumPts, readP=readV%readNumPts;
-                        else if (mDataPacking==POINT) readM=readV%iNumVar, readP=readV/iNumVar;
-                        else throw "Unsupported DataPacking";
-                        int k=readP/(readI*readJ), j=readP%(readI*readJ);
-                        int i=j%readI;
-                        j/=readI;
-                        // read, but otherwise skip rind data
-                        if (i<rind.mMinI || i>=rind.mMaxI || j<rind.mMinJ || j>=rind.mMaxJ || k<rind.mMinK || k>=rind.mMaxK) {
-                                pimpl->skipReal(mVarDataFormat[readM]);
-                                continue;
-                        }
-                        int p=0, m=0;
-                        if (mDataPacking==BLOCK) m=v/mNumPts, p=v%mNumPts;
-                        else if (mDataPacking==POINT) m=v%iNumVar, p=v/iNumVar;
-                        else throw "Unsupported DataPacking";
-                        assert(m==readM);
-                        pimpl->skipReal(mVarDataFormat[readM]);
-                        ++v;
+                for (int var=0; var<iNumVar; ++var) {
+                    num32Skip += readNumPts;
+                    if (mVarDataFormat[var] != FLOAT)
+                        num32Skip += readNumPts;
                 }
                 if (is1D) {
                         // generic line reading for 2D cases
                         mNumElements=mIMax-1;
-                        std::cerr << mNumElements << " " << mNumPts << std::endl;;
+                        std::cerr << mNumElements << " " << mNumPts << std::endl;
 #ifdef MARENCO
                         if (pimpl->mDataSet==FLIGHTLAB_LINE) {
                                 ++mNumElements;
@@ -911,7 +917,6 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
                 }
                 else if ((mIMax==1)||(mJMax==1)||(mKMax==1)) {
                         // generic quad topology creation
-                        int counter=0;
                         int di1=mIMax==1 ? 0 : 1, dj1=1-di1;
                         // depending on ordering, the first running index may be i or j
                         int dk2=mKMax==1 ? 0 : 1, dj2=1-dk2;
@@ -922,41 +927,38 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
 #ifdef MARENCO
                         if (pimpl->mDataSet==FLIGHTLAB_SURFACE) mNumElements=mNumPts;
 #endif
-#ifdef MARENCO
-                        if (pimpl->mDataSet!=FLIGHTLAB_SURFACE)
-#endif
                 }
                 else { // bricks
                         mNumElements=(mIMax-1)*(mJMax-1)*(mKMax-1);
                 }
-                std::cout << "  Data = " << mIMax << "x"<< mJMax << "x"<< mKMax << "\n";
+                //std::cout << "  Data = " << mIMax << "x"<< mJMax << "x"<< mKMax << "\n";
         }
         else { // FEM zones
                 if (pimpl->mDataSet!=FLOWER_NOVS && pimpl->mDataSet!=FLOWER_VS && pimpl->mDataSet!=FLOWER_ACCO)
-                        throw "Unsupported data format for unstructured mesh";
+                    throw std::runtime_error("Unsupported data format for unstructured mesh");
                 for (int p=0; p<mNumPts*iNumVar; ++p) {
                         int i, j;
                         if (mDataPacking==BLOCK) j=p/mNumPts, i=p%mNumPts;
                         else if (mDataPacking==POINT) j=p%iNumVar, i=p/iNumVar;
-                        else throw "Unsupported DataPacking";
+                        else throw std::runtime_error("Unsupported DataPacking");
                         // clear surface velocity, if it is not to be read
-                        pimpl->skipReal(mVarDataFormat[j]);
+                        num32Skip += mVarDataFormat[j] == FLOAT ? 1 : 2;
                 }
                 if (mType==FETRIANGLE) {	// Triangle
-                        pimpl->skip32(mNumElements*3);
-                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Triangle Elements \n";
+                        num32Skip += mNumElements*3;
+                        //std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Triangle Elements \n";
                 }
                 else if (mType==FEQUADRILATERAL) {	// Quadrangle
-                        pimpl->skip32(mNumElements*4);
-                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Quadrangle Elements \n";
+                        num32Skip += mNumElements*4;
+                        //std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Quadrangle Elements \n";
                 }
                 else if (mType==FETETRAHEDRON) {	// Tetrahedron
-                        pimpl->skip32(mNumElements*4);
-                        std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Tetrahedron Elements \n";
+                        num32Skip += mNumElements*4;
+                        //std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Tetrahedron Elements \n";
                 }
                 else if (mType==FEBRICK) {	// Hexahedron
                         assert(0=="Copied and changed, but not yet testes. Remove assert if working as expected");
-                        pimpl->skip32(mNumElements*8);
+                        num32Skip += mNumElements*8;
                         std::cout << "  Data = " << mNumPts << " Points "<< mNumElements << " Hexahedron Elements \n";
                 }
                 else {
@@ -964,6 +966,7 @@ void TecplotFile::Zone::SkipData(TecplotFile::Impl * pimpl, int iNumVar) {
                         assert(0=="Unknown ZoneType");
                 }
         }
+        pimpl->skip32(num32Skip);
 }
 
 
@@ -998,7 +1001,7 @@ void TecplotFile::Zone::parseRindSpec(std::string const & iSpec, TecplotFile::Zo
 
 TecplotFile::TecplotFile(std::string const & iFile) : mNumVar(0), mVarNames(0), pimpl(new Impl) {
 //	::Read(iFile, "");
-	if (!pimpl->open(iFile)) throw "Failed to open";
+if (!pimpl->open(iFile)) throw std::runtime_error("Failed to open");
 	// ----------- 1.3) Title and variable names -----------
 	// file type
 	if (pimpl->mVersion>=111) {
@@ -1146,7 +1149,10 @@ TecplotFile::TecplotFile(std::string const & iFile) : mNumVar(0), mVarNames(0), 
 	if (mZones.size()>1) 
 		std::cout << mZones.size() << " Zones found:\n";
 
-    checkDataSetType();
+        if (!checkDataSetType()) {
+            std::cerr << "ERROR: Unsupported data format" << std::endl;
+            throw std::runtime_error("Unsupported data format");
+        }
 }
 
 // due to a bug in (at least) gcc 4.4.0 (apparently fixed in 4.4.1), an (otherwise
@@ -1172,8 +1178,8 @@ MeshBaseVec TecplotFile::Read(std::string const & iZoneRindList) {
 					std::cerr << " " << mVarNames[i];
 				std::cerr << std::endl;
 			}
-		}
-		throw "Unsupported variables";
+                }
+                throw std::runtime_error("Unsupported variables");
 	}
 
 	// data section
@@ -1198,13 +1204,13 @@ MeshBase *TecplotFile::ReadZone(size_t idx, const std::string &iZoneRindList) {
         if (endRind==std::string::npos) {
 
             std::cerr << "Missing closing brace in rind specification for zone " << i->getName() << std::endl;
-            throw "Missing closing brace in rind specification for zone";
+            throw std::runtime_error("Missing closing brace in rind specification for zone");
         }
         size_t comma=iZoneRindList.find(',', rindPos);
         if (comma!=std::string::npos && comma<endRind) {
 
             std::cerr << "Missing closing brace (early comma) in rind specification for zone " << i->getName() << std::endl;
-            throw "Missing closing brace (early comma) in rind specification for zone";
+            throw std::runtime_error("Missing closing brace (early comma) in rind specification for zone");
         }
         i->parseRindSpec(std::string(iZoneRindList, rindPos, endRind-rindPos), rind);
     }
@@ -1220,7 +1226,7 @@ void TecplotFile::SkipZone(size_t idx) {
 
     double marker=pimpl->fetchFloat();
     assert(marker==pimpl->ZONEMARKER);
-    std::cout << "Skipping Zone (" << i->getName() << ") "<< idx+1 << std::endl;
+    //std::cout << "Skipping Zone (" << i->getName() << ") "<< idx+1 << std::endl;
     return i->SkipData(&*pimpl, mNumVar);
 }
 
@@ -1338,7 +1344,6 @@ bool TecplotFile::checkDataSetType() {
     }
     else if (mNumVar==12) {
         if (false) {}
-#ifdef AHD
         else if ((mVarNames[0]==std::string("Time [s]")) &&
             (mVarNames[1]==std::string("Azimuth")) &&
             (mVarNames[2]==std::string("x [m]")) &&
@@ -1352,8 +1357,6 @@ bool TecplotFile::checkDataSetType() {
             (mVarNames[10]==std::string("r_ACP [m]")) &&
             (mVarNames[11]==std::string("x_ACP [-]")) )
             pimpl->mDataSet=CAMRAD_SURFACE;
-#endif // AHD
-#ifdef MARENCO
 // "Time [s]" "Azimuth" "x [m]" "y [m]" "z [m]" "nx [-]" "ny [-]" "nz [-]" "Area [m^2]" "Psi [deg]" "r_ACP [m]""x_ACP [-]"
         else if ((mVarNames[0]==std::string("Time [s]")) &&
             (mVarNames[1]==std::string("Azimuth")) &&
@@ -1368,7 +1371,6 @@ bool TecplotFile::checkDataSetType() {
             (mVarNames[10]==std::string("r_ACP [m]")) &&
             (mVarNames[11]==std::string("x_ACP [-]")) )
             pimpl->mDataSet=FLIGHTLAB_SURFACE;
-#endif // MARENCO
     }
     else if (mNumVar==10) {
 //"x" "y" "z" "Alpha" "Lift" "Drag" "RadialForce" "Radius" "Chord" "PanelWidth"
@@ -1383,7 +1385,6 @@ bool TecplotFile::checkDataSetType() {
             (mVarNames[8]==std::string("A [m^2]")) &&
             (mVarNames[9]==std::string("rho [kg/m^3]")))
             pimpl->mDataSet=IAGCOUPLE_ACCOLOAD;
-#ifdef AHD
         else if ((mVarNames[0]==std::string("x")) &&
             (mVarNames[1]==std::string("y")) &&
             (mVarNames[2]==std::string("z")) &&
@@ -1395,9 +1396,7 @@ bool TecplotFile::checkDataSetType() {
             (mVarNames[8]==std::string("Chord")) &&
             (mVarNames[9]==std::string("PanelWidth")))
             pimpl->mDataSet=CAMRAD_LINE;
-#endif // AHD
     }
-#ifdef MARENCO
     else if (mNumVar==18) {
 //	"Time [s]" "Azimuth" "Psi [deg]" "r_ACP [m]""x_ACP [-]""x_ACP1_IN [m] ""y_ACP1_IN [m] ""z_ACP1_IN [m] ""dr_ACP [m]"
 //	"clen_ACP [m]""dT/dr [N/m]" "dD/dr [N/m]" "Vvec_x_IN [-]" "Vvec_y_IN [-]" "Vvec_z_IN [-]" "Hvec_x_IN [-]" "Hvec_y_IN [-]" "Hvec_z_IN [-]"
@@ -1440,7 +1439,14 @@ bool TecplotFile::checkDataSetType() {
             (mVarNames[17]==std::string("Hvec_z_HC [-]")) )
             pimpl->mDataSet=FLIGHTLAB_LINE;
     }
-#endif // MARENCO
+
+    if (pimpl->mDataSet == UNKNOWN) {
+        std::cerr << "Unsupported data format: #variables=" << mNumVar << ":";
+        for (auto &v: mVarNames) {
+            std::cerr << " " << v;
+        }
+        std::cerr << std::endl;
+    }
 
     return pimpl->mDataSet != UNKNOWN;
 }
@@ -1453,13 +1459,13 @@ std::vector<MeshPts *> TecplotFile::ReadInnerPts() {
 				(mVarNames[1]!=std::string("y")) ||
 				(mVarNames[2]!=std::string("z")) ) {
 			std::cerr << "ERROR: Inner Points, Wrong variables (Support only for: x,y,z)! \n";
-			std::cerr << mVarNames[0] << " " << mVarNames[1] << " " << mVarNames[2] << std::endl;
-			throw "Inner Points, Unsupported variables";
+                        std::cerr << mVarNames[0] << " " << mVarNames[1] << " " << mVarNames[2] << std::endl;
+                        throw std::runtime_error("Inner Points, Unsupported variables");
 		}
 	}
 	else {
-		std::cerr << "ERROR: Inner Points, Unsupported number of variables (" << mNumVar << ")! \n";
-		throw "Inner Points, Unsupported number of variables";
+                std::cerr << "ERROR: Inner Points, Unsupported number of variables (" << mNumVar << ")! \n";
+                throw std::runtime_error("Inner Points, Unsupported number of variables");
 	}
 	// data section
 	MeshPtsVec mesh;

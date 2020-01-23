@@ -12,6 +12,8 @@ set(SOURCES
    tecplotfile.cpp
 )
 
+add_definitions(-DMARENCO)
+add_definitions(-DAHD)
 add_module(ReadIagTecplot ${HEADERS} ${SOURCES})
 
 target_link_libraries(ReadIagTecplot
