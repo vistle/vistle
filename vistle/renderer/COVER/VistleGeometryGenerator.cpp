@@ -572,16 +572,13 @@ osg::PrimitiveSet *buildTriangles(const PrimitiveBin &bin, const Index *el, bool
 }
 
 template<class MappedObject>
-float getValue(typename MappedObject::const_ptr data, Index idx);
+float getValue(typename MappedObject::const_ptr data, Index idx) {
+    return data->x()[idx];
+}
 
 template<>
 float getValue<vistle::Texture1D>(typename vistle::Texture1D::const_ptr data, Index idx) {
     return data->coords()[idx];
-}
-
-template<>
-float getValue<vistle::Vec<Scalar>>(typename vistle::Vec<Scalar>::const_ptr data, Index idx) {
-    return data->x()[idx];
 }
 
 template<>
@@ -590,11 +587,6 @@ float getValue<vistle::Vec<Scalar,3>>(typename vistle::Vec<Scalar,3>::const_ptr 
      auto y = data->y()[idx];
      auto z = data->z()[idx];
      return sqrt(x*x+y*y+z*z);
-}
-
-template<>
-float getValue<vistle::Vec<Index>>(typename vistle::Vec<Index>::const_ptr data, Index idx) {
-    return data->x()[idx];
 }
 
 template<class MappedObject>
@@ -784,6 +776,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped);
    vistle::Vec<Scalar,3>::const_ptr vdata = vistle::Vec<Scalar,3>::as(m_mapped);
    vistle::Vec<Index>::const_ptr idata = vistle::Vec<Index>::as(m_mapped);
+   vistle::Vec<Byte>::const_ptr bdata = vistle::Vec<Byte>::as(m_mapped);
    if (tex) {
        auto m = tex->guessMapping();
        if (m != vistle::DataBase::Vertex)
@@ -792,7 +785,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            debug << "NoIndex: tex ";
        }
        data.reset();
-   } else if (data || vdata || idata) {
+   } else if (data || vdata || idata || bdata) {
        auto m = database->guessMapping();
        if (m != vistle::DataBase::Vertex)
        {
@@ -921,6 +914,8 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                  fl = applyTriangle<Triangles, vistle::Vec<Scalar,3>::const_ptr, osg::FloatArray, false>(triangles, vdata, indexGeom, bin);
              } else if (idata) {
                  fl = applyTriangle<Triangles, vistle::Vec<Index>::const_ptr, osg::FloatArray, false>(triangles, idata, indexGeom, bin);
+             } else if (bdata) {
+                 fl = applyTriangle<Triangles, vistle::Vec<Byte>::const_ptr, osg::FloatArray, false>(triangles, bdata, indexGeom, bin);
              }
              if (fl)
                  geom->setVertexAttribArray(DataAttrib, fl);
@@ -1277,6 +1272,14 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
                osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Index>>(data, coords, debug, indexGeom);
                if (fl && !fl->empty() && geom) {
                    std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Index> of size " << fl->size() << std::endl;
+                   geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
+               }
+           }
+       } else if (vistle::Vec<Byte>::const_ptr data = vistle::Vec<Byte>::as(m_mapped)) {
+           if (!triangles && !polygons && !quads) {
+               osg::ref_ptr<osg::FloatArray> fl = buildArray<vistle::Vec<Byte>>(data, coords, debug, indexGeom);
+               if (fl && !fl->empty() && geom) {
+                   std::cerr << "VistleGeometryGenerator: setting VertexAttribArray for Vec<Byte> of size " << fl->size() << std::endl;
                    geom->setVertexAttribArray(DataAttrib, fl, osg::Array::BIND_PER_VERTEX);
                }
            }

@@ -196,7 +196,7 @@ Object::ptr IsoSurface::work(vistle::Object::const_ptr grid,
 #endif
    if(mapdata){
       l.addMappedData(mapdata);
-   };
+   }
    l.process();
 
 #ifndef CUTTINGSURFACE

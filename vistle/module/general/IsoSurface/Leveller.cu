@@ -35,8 +35,8 @@ const int MaxNumData = 6;
 struct HostData {
 
    Scalar m_isovalue;
-   int m_numInVertData, m_numInVertDataI;
-   int m_numInCellData, m_numInCellDataI;
+   int m_numInVertData=0, m_numInVertDataI=0, m_numInVertDataB=0;
+   int m_numInCellData=0, m_numInCellDataI=0, m_numInCellDataB=0;
    IsoDataFunctor m_isoFunc;
    const Index *m_el = nullptr;
    const Index *m_cl = nullptr;
@@ -50,10 +50,13 @@ struct HostData {
    Index m_nghost[3][2];
    std::vector<vistle::shm_array_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
    std::vector<vistle::shm_array_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
+   std::vector<vistle::shm_array_ref<vistle::shm_array<Byte, shm<Byte>::allocator>>> m_outVertDataB, m_outCellDataB;
    std::vector<const Scalar*> m_inVertPtr, m_inCellPtr;
    std::vector<const Index*> m_inVertPtrI, m_inCellPtrI;
+   std::vector<const Byte*> m_inVertPtrB, m_inCellPtrB;
    std::vector<Scalar*> m_outVertPtr, m_outCellPtr;
    std::vector<Index *> m_outVertPtrI, m_outCellPtrI;
+   std::vector<Byte *> m_outVertPtrB, m_outCellPtrB;
    bool m_isUnstructured = false;
    bool m_isPoly = false;
    bool m_isTri = false;
@@ -76,10 +79,6 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
-      , m_numInVertData(0)
-      , m_numInVertDataI(0)
-      , m_numInCellData(0)
-      , m_numInCellDataI(0)
       , m_isoFunc(isoFunc)
       , m_el(el)
       , m_cl(cl)
@@ -106,10 +105,6 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
-      , m_numInVertData(0)
-      , m_numInVertDataI(0)
-      , m_numInCellData(0)
-      , m_numInCellDataI(0)
       , m_isoFunc(isoFunc)
       , m_el(nullptr)
       , m_cl(nullptr)
@@ -140,10 +135,6 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
-      , m_numInVertData(0)
-      , m_numInVertDataI(0)
-      , m_numInCellData(0)
-      , m_numInCellDataI(0)
       , m_isoFunc(isoFunc)
       , m_el(el)
       , m_cl(cl)
@@ -169,10 +160,6 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
-      , m_numInVertData(0)
-      , m_numInVertDataI(0)
-      , m_numInCellData(0)
-      , m_numInCellDataI(0)
       , m_isoFunc(isoFunc)
       , m_el(nullptr)
       , m_cl(cl)
@@ -222,6 +209,14 @@ struct HostData {
       m_numInVertDataI = m_inVertPtrI.size();
    }
 
+   void addmappeddata(const Byte *mapdata){
+
+      m_inVertPtrB.push_back(mapdata);
+      m_outVertDataB.push_back(vistle::ShmVector<Byte>::create(0));
+      m_outVertPtrB.push_back(NULL);
+      m_numInVertDataB = m_inVertPtrB.size();
+   }
+
    void addcelldata(const Scalar *mapdata){
 
       m_inCellPtr.push_back(mapdata);
@@ -237,13 +232,21 @@ struct HostData {
       m_outCellPtrI.push_back(NULL);
       m_numInCellDataI = m_inCellPtrI.size();
    }
+
+   void addcelldata(const Byte *mapdata){
+
+      m_inCellPtrB.push_back(mapdata);
+      m_outCellDataB.push_back(vistle::ShmVector<Byte>::create(0));
+      m_outCellPtrB.push_back(NULL);
+      m_numInCellDataB = m_inCellPtrB.size();
+   }
 };
 
 struct DeviceData {
 
    Scalar m_isovalue;
-   int m_numInVertData, m_numInVertDataI;
-   int m_numInCellData, m_numInCellDataI;
+   int m_numInVertData, m_numInVertDataI, m_numInVertDataB;
+   int m_numInCellData, m_numInCellDataI, m_numInCellDataB;
    IsoDataFunctor m_isoFunc;
    thrust::device_vector<Index> m_el;
    thrust::device_vector<Index> m_cl;
@@ -259,10 +262,13 @@ struct DeviceData {
    thrust::device_vector<Scalar> m_z;
    std::vector<thrust::device_vector<Scalar> *> m_outVertData, m_outCellData;
    std::vector<thrust::device_vector<Index> *> m_outVertDataI, m_outCellDataI;
+   std::vector<thrust::device_vector<Byte> *> m_outVertDataB, m_outCellDataB;
    std::vector<thrust::device_ptr<Scalar> > m_inVertPtr, m_inCellPtr;
    std::vector<thrust::device_ptr<Index> > m_inVertPtrI, m_inCellPtrI;
+   std::vector<thrust::device_ptr<Byte> > m_inVertPtrB, m_inCellPtrB;
    std::vector<thrust::device_ptr<Scalar> > m_outVertPtr, m_outCellPtr;
    std::vector<thrust::device_ptr<Index> > m_outVertPtrI, m_outCellPtrI;
+   std::vector<thrust::device_ptr<Byte> > m_outVertPtrB, m_outCellPtrB;
    bool m_isUnstructured = false;
    bool m_isPoly = false;
    bool m_isTri = false;
@@ -310,11 +316,18 @@ struct DeviceData {
       }
       m_outVertPtr.resize(m_inVertPtr.size());
       m_numInVertData = m_inVertPtr.size();
+
       for(size_t i = 0; i < m_inVertPtrI.size(); i++){
          m_outVertDataI.push_back(new thrust::device_vector<Index>);
       }
       m_outVertPtrI.resize(m_inVertPtrI.size());
       m_numInVertDataI = m_inVertPtrI.size();
+
+      for(size_t i = 0; i < m_inVertPtrB.size(); i++){
+         m_outVertDataB.push_back(new thrust::device_vector<Byte>);
+      }
+      m_outVertPtrB.resize(m_inVertPtrB.size());
+      m_numInVertDataB = m_inVertPtrB.size();
    }
 };
 
@@ -327,11 +340,17 @@ struct ComputeOutput {
       for (int i = 0; i < m_data.m_numInVertDataI; i++){
          m_data.m_outVertPtrI[i] = m_data.m_outVertDataI[i]->data();
       }
+      for (int i = 0; i < m_data.m_numInVertDataB; i++){
+         m_data.m_outVertPtrB[i] = m_data.m_outVertDataB[i]->data();
+      }
       for (int i = 0; i < m_data.m_numInCellData; i++){
          m_data.m_outCellPtr[i] = m_data.m_outCellData[i]->data();
       }
       for (int i = 0; i < m_data.m_numInCellDataI; i++){
          m_data.m_outCellPtrI[i] = m_data.m_outCellDataI[i]->data();
+      }
+      for (int i = 0; i < m_data.m_numInCellDataB; i++){
+         m_data.m_outCellPtrB[i] = m_data.m_outCellDataB[i]->data();
       }
    }
 
@@ -349,6 +368,9 @@ struct ComputeOutput {
           }
           for(int j = 0; j < m_data.m_numInCellDataI; j++) {
               m_data.m_outCellPtrI[j][outcellindex] = m_data.m_inCellPtrI[j][CellNr];
+          }
+          for(int j = 0; j < m_data.m_numInCellDataB; j++) {
+              m_data.m_outCellPtrB[j][outcellindex] = m_data.m_inCellPtrB[j][CellNr];
           }
       }
 
@@ -370,6 +392,10 @@ struct ComputeOutput {
     for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
         m_data.m_outVertPtrI[j][outvertexindex] = \
             lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
+    } \
+    for(int j = 0; j < m_data.m_numInVertDataB; j++) { \
+        m_data.m_outVertPtrB[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtrB[j][cl[v1]], m_data.m_inVertPtrB[j][cl[v2]], t); \
     }
 
           switch (m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT) {
@@ -437,12 +463,15 @@ struct ComputeOutput {
               Index numAvg = 0;
               Scalar middleData[MaxNumData];
               Index middleDataI[MaxNumData];
+              Byte middleDataB[MaxNumData];
               for(int i = 0; i < MaxNumData; i++ ){
                   middleData[i] = 0;
                   middleDataI[i] = 0;
+                  middleDataB[i] = 0;
               };
               Scalar cd1[MaxNumData], cd2[MaxNumData];
               Index cd1I[MaxNumData], cd2I[MaxNumData];
+              Byte cd1B[MaxNumData], cd2B[MaxNumData];
 
               Index outIdx = m_data.m_LocationList[ValidCellIndex];
               for (Index i = Cellbegin; i < Cellend; i += cl[i]+1) {
@@ -460,6 +489,10 @@ struct ComputeOutput {
                       for(int i = 0; i < m_data.m_numInVertDataI; i++){
                           cd1I[i] = m_data.m_inVertPtrI[i][c1];
                           cd2I[i] = m_data.m_inVertPtrI[i][c2];
+                      }
+                      for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                          cd1B[i] = m_data.m_inVertPtrB[i][c1];
+                          cd2B[i] = m_data.m_inVertPtrB[i][c2];
                       }
 
                       Scalar d1 = m_data.m_isoFunc(c1);
@@ -491,6 +524,11 @@ struct ComputeOutput {
                               middleDataI[i] += vI;
                               m_data.m_outVertPtrI[i][out] = vI;
                           }
+                          for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                              Index vB = lerp(cd1B[i], cd2B[i], t);
+                              middleDataB[i] += vB;
+                              m_data.m_outVertPtrB[i][out] = vB;
+                          }
 
                           ++outIdx;
                           if (bigToSmall^flipped)
@@ -508,6 +546,9 @@ struct ComputeOutput {
                   for(int i = 0; i < m_data.m_numInVertDataI; i++){
                       middleDataI[i] /= numAvg;
                   }
+                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                      middleDataB[i] /= numAvg;
+                  }
               }
               for (Index i = 2; i < numVert; i += 3) {
                   const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
@@ -517,7 +558,10 @@ struct ComputeOutput {
                   for(int i = 0; i < m_data.m_numInVertDataI; i++){
                       m_data.m_outVertPtrI[i][idx] = middleDataI[i];
                   }
-              };
+                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                      m_data.m_outVertPtrB[i][idx] = middleDataB[i];
+                  }
+              }
               break;
           }
 
@@ -532,12 +576,15 @@ struct ComputeOutput {
               Index numAvg = 0;
               Scalar middleData[MaxNumData];
               Index middleDataI[MaxNumData];
+              Byte middleDataB[MaxNumData];
               for(int i = 0; i < MaxNumData; i++ ){
                   middleData[i] = 0;
                   middleDataI[i] = 0;
+                  middleDataB[i] = 0;
               };
               Scalar cd1[MaxNumData], cd2[MaxNumData];
               Index cd1I[MaxNumData], cd2I[MaxNumData];
+              Byte cd1B[MaxNumData], cd2B[MaxNumData];
 
               Index outIdx = m_data.m_LocationList[ValidCellIndex];
               Index facestart = InvalidIndex;
@@ -560,6 +607,10 @@ struct ComputeOutput {
                           for(int i = 0; i < m_data.m_numInVertDataI; i++){
                               cd1I[i] = m_data.m_inVertPtrI[i][c1];
                               cd2I[i] = m_data.m_inVertPtrI[i][c2];
+                          }
+                          for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                              cd1B[i] = m_data.m_inVertPtrB[i][c1];
+                              cd2B[i] = m_data.m_inVertPtrB[i][c2];
                           }
 
                           Scalar d1 = m_data.m_isoFunc(c1);
@@ -591,6 +642,11 @@ struct ComputeOutput {
                                   middleDataI[i] += vI;
                                   m_data.m_outVertPtrI[i][out] = vI;
                               }
+                              for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                                  Byte vB = lerp(cd1B[i], cd2B[i], t);
+                                  middleDataB[i] += vB;
+                                  m_data.m_outVertPtrB[i][out] = vB;
+                              }
 
                               ++outIdx;
                               if (bigToSmall^flipped)
@@ -608,6 +664,9 @@ struct ComputeOutput {
                   for(int i = 0; i < m_data.m_numInVertDataI; i++){
                       middleDataI[i] /= numAvg;
                   }
+                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                      middleDataB[i] /= numAvg;
+                  }
               }
               for (Index i = 2; i < numVert; i += 3) {
                   const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
@@ -616,6 +675,9 @@ struct ComputeOutput {
                   }
                   for(int i = 0; i < m_data.m_numInVertDataI; i++){
                       m_data.m_outVertPtrI[i][idx] = middleDataI[i];
+                  }
+                  for(int i = 0; i < m_data.m_numInVertDataB; i++){
+                      m_data.m_outVertPtrB[i][idx] = middleDataB[i];
                   }
               }
               break;
@@ -635,6 +697,10 @@ struct ComputeOutput {
     for(int j = 0; j < m_data.m_numInVertDataI; j++) { \
         m_data.m_outVertPtrI[j][outvertexindex] = \
             lerp(m_data.m_inVertPtrI[j][base+v1], m_data.m_inVertPtrI[j][base+v2], t); \
+    } \
+    for(int j = 0; j < m_data.m_numInVertDataB; j++) { \
+        m_data.m_outVertPtrB[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtrB[j][base+v1], m_data.m_inVertPtrB[j][base+v2], t); \
     }
           const Index Cellbegin = CellNr*3;
           Scalar field[3];
@@ -681,7 +747,7 @@ struct ComputeOutput {
           auto cl = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
           assert(cl.size() <= 8);
           Scalar field[8];
-          for (int idx = 0; idx < cl.size(); idx ++) {
+          for (unsigned idx = 0; idx < cl.size(); idx ++) {
               field[idx] = m_data.m_isoFunc(cl[idx]);
           }
 
@@ -1035,7 +1101,7 @@ struct ComputeOutputSizes {
        } else {
            auto verts = vistle::StructuredGridBase::cellVertices(CellNr, m_data.m_nvert);
            assert(verts.size() <= 8);
-           for (int idx = 0; idx < verts.size(); ++idx) {
+           for (unsigned idx = 0; idx < verts.size(); ++idx) {
                tableIndex += (((int) (m_data.m_isoFunc(verts[idx]) > m_data.m_isovalue)) << idx);
            }
            numVerts = hexaNumVertsTable[tableIndex];
@@ -1122,11 +1188,17 @@ Index Leveller::calculateSurface(Data &data) {
     for(int i = 0; i < data.m_numInVertDataI; i++){
         data.m_outVertDataI[i]->resize(totalNumVertices);
     }
+    for(int i = 0; i < data.m_numInVertDataB; i++){
+        data.m_outVertDataB[i]->resize(totalNumVertices);
+    }
     for (int i=0; i<data.m_numInCellData; ++i) {
         data.m_outCellData[i]->resize(totalNumVertices/3);
     }
     for (int i=0; i<data.m_numInCellDataI; ++i) {
         data.m_outCellDataI[i]->resize(totalNumVertices/3);
+    }
+    for (int i=0; i<data.m_numInCellDataB; ++i) {
+        data.m_outCellDataB[i]->resize(totalNumVertices/3);
     }
     thrust::counting_iterator<Index> start(0), finish(numSelectedCells);
     thrust::for_each(pol(), start, finish, ComputeOutput<Data>(data));
@@ -1221,6 +1293,9 @@ bool Leveller::process() {
             if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_vertexdata[i])){
                HD.addmappeddata(Idx->x());
             }
+            if(auto byte = Vec<Byte>::as(m_vertexdata[i])) {
+               HD.addmappeddata(byte->x());
+            }
          }
          for (size_t i=0; i<m_celldata.size(); ++i) {
             if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_celldata[i])){
@@ -1233,6 +1308,9 @@ bool Leveller::process() {
             }
             if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_celldata[i])){
                HD.addcelldata(Idx->x());
+            }
+            if(auto byte = Vec<Byte>::as(m_celldata[i])) {
+               HD.addcelldata(byte->x());
             }
          }
 
@@ -1276,7 +1354,7 @@ bool Leveller::process() {
                  }
              }
 
-             size_t idxI=0;
+             size_t idxI=0, idxB=0;
              for (size_t i=0; i<m_vertexdata.size(); ++i) {
                  if(Vec<Scalar>::as(m_vertexdata[i])){
 
@@ -1306,11 +1384,20 @@ bool Leveller::process() {
                      out->setMapping(DataBase::Vertex);
                      m_outvertData.push_back(out);
                  }
+                 if(Vec<Byte>::as(m_vertexdata[i])){
+
+                     Vec<Byte>::ptr out = Vec<Byte>::ptr(new Vec<Byte>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outVertDataB[idxB++];
+                     out->setMeta(m_vertexdata[i]->meta());
+                     out->setMapping(DataBase::Vertex);
+                     m_outvertData.push_back(out);
+                 }
              }
          }
          {
              size_t idx=0;
              size_t idxI=0;
+             size_t idxB=0;
              for (size_t i=0; i<m_celldata.size(); ++i) {
                  if(Vec<Scalar>::as(m_celldata[i])){
 
@@ -1336,6 +1423,14 @@ bool Leveller::process() {
 
                      Vec<Index>::ptr out = Vec<Index>::ptr(new Vec<Index>(Object::Initialized));
                      out->d()->x[0] = HD.m_outCellDataI[idxI++];
+                     out->setMeta(m_celldata[i]->meta());
+                     out->setMapping(DataBase::Element);
+                     m_outcellData.push_back(out);
+                 }
+                 if(Vec<Byte>::as(m_celldata[i])){
+
+                     Vec<Byte>::ptr out = Vec<Byte>::ptr(new Vec<Byte>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outCellDataB[idxB++];
                      out->setMeta(m_celldata[i]->meta());
                      out->setMapping(DataBase::Element);
                      m_outcellData.push_back(out);
