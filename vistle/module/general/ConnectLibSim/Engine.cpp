@@ -529,11 +529,21 @@ bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             if (meshInfo.dim == 2) {
                 grid->coords(2)[0] = 0;
             }
-            m_module->addObject(meshInfo.name, grid);
+
+
             int min[3], max[3];
             v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min, max);
+            for (size_t i = 0; i < 3; i++) {
+                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
+                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, max[i]);
+            }
+
+
+            m_module->addObject(meshInfo.name, grid);
+
             DEBUG_CERR << "added rectilinear mesh " << meshInfo.name << " dom = " << currDomain << " xDim = " << nTuples[0] << " yDim = " << nTuples[1] << " zDim = " << nTuples[2] << endl;
             DEBUG_CERR << "min bounds " << min[0] << " " << min[1] << " " << min[2] << " max bouns " << max[0] << " " << max[1] << " " << max[2] << endl;
+
         }
     }
     DEBUG_CERR << "made rectilinear grids with " << meshInfo.numDomains << " domains" << endl;
