@@ -12,6 +12,7 @@ add_module(LibSimControlModule LibSimControlModule.h LibSimControlModule.cpp)
 target_link_libraries(LibSimControlModule
 	vistle_module
 	vistle_util
+	libsim_connect
 	${Boost_LIBRARIES}
 	)
 
