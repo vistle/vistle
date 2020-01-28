@@ -1458,6 +1458,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
       case message::CANCELEXECUTE:
          // not relevant if not within prepare/compute/reduce
+          cancelExecuteMessageReceived(message);
          break;
 
       case message::MODULEEXIT:
@@ -2324,6 +2325,11 @@ bool Module::cancelRequested(bool collective) {
     }
 
     return m_cancelRequested;
+}
+
+void Module::cancelExecuteMessageReceived(const message::Message* msg) {
+    (void)msg;
+    return;
 }
 
 PortTask::PortTask(Module *module)

@@ -1,4 +1,5 @@
 set(module_SOURCES
+   inSituReader.cpp
    module.cpp
    objectcache.cpp
    reader.cpp
@@ -6,6 +7,7 @@ set(module_SOURCES
 
 set(module_HEADERS
    export.h
+   inSituReader.h
    module.h
    module_impl.h
    objectcache.h

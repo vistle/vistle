@@ -119,7 +119,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
 
-   virtual bool dispatch(bool block = true, bool *messageReived=nullptr);
+   virtual bool dispatch(bool block = true, bool * messageReceived =nullptr);
 
    Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter) override;
    bool removeParameter(Parameter *param) override;
@@ -253,9 +253,9 @@ protected:
    message::MessageQueue *receiveMessageQueue;
    std::deque<message::Buffer> messageBacklog;
    virtual bool handleMessage(const message::Message *message, const vistle::MessagePayload &payload);
-   bool handleExecute(const message::Execute *exec);
+   virtual bool handleExecute(const message::Execute *exec);
    bool cancelRequested(bool collective=false);
-
+   virtual void cancelExecuteMessageReceived(const message::Message* msg);
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);
    virtual bool objectAdded(int sender, const std::string &senderPort, const Port *port); //< notification when data object has been added - called on each rank individually
@@ -287,9 +287,11 @@ protected:
 
    bool getNextMessage(message::Buffer &buf, bool block=true);
 
+   bool reduceWrapper(const message::Execute* exec, bool reordered = false);
+   bool prepareWrapper(const message::Execute* exec);
+
  private:
-   bool reduceWrapper(const message::Execute *exec, bool reordered=false);
-   bool prepareWrapper(const message::Execute *exec);
+
 
    std::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
