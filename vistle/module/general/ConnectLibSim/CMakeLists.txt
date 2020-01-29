@@ -7,20 +7,13 @@
 #
 #****************************************************************************
 
-#LibSimControlModule
-add_module(LibSimControlModule LibSimControlModule.h LibSimControlModule.cpp)
-target_link_libraries(LibSimControlModule
-	vistle_module
-	vistle_util
-	libsim_connect
-	${Boost_LIBRARIES}
-	)
 
 option(LIBSIM_DEBUG "print debuf messages" OFF)
 if(LIBSIM_DEBUG)
    add_definitions(-DLIBSIM_DEBUG)
 endif()
 SET(RUNTIME_SOURCES 
+  EngineMessage.cpp
   Exeption.cpp
   ConnectLibSim.cpp
   VisItControlInterfaceRuntime.C 
@@ -57,8 +50,9 @@ SET(RUNTIME_SOURCES
 )
 
 SET(RUNTIME_HEADERS 
+  EngineMessage.h
   Exeption.h
-    ConnectLibSim.h
+  ConnectLibSim.h
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h
   VisItDataInterfaceRuntimeP.h
@@ -124,7 +118,17 @@ target_link_libraries(${LIBNAME}
 		vistle_clustermanager)
 endif()
 
-
+#LibSimControlModule
+add_module(LibSimControlModule LibSimControlModule.h LibSimControlModule.cpp)
+target_link_libraries(LibSimControlModule
+	vistle_module
+	vistle_util
+	libsim_connect
+	${LIBNAME}
+	${Boost_LIBRARIES}
+	)
+	
+	
 add_module(ConnectLibSim ConnectLibSimExec.cpp) 
 target_link_libraries(ConnectLibSim
 	${LIBNAME}
