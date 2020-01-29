@@ -11,6 +11,7 @@
 #include "Exeption.h"
 #include "TransformArray.h"
 
+
 #include "MeshMetaData.h"
 #include "VariableMetaData.h"
 #include "MaterialMetaData.h"
@@ -26,7 +27,7 @@
 
 #include <boost/mpi.hpp>
 #include <control/hub.h>
-#include <util/directory.h>
+
 
 #include <module/module.h>
 
@@ -37,9 +38,10 @@
 #include <core/tcpmessage.h>
 
 #include <util/sleep.h>
-
-
+#include <util/directory.h>
+#include <util/hostname.h>
 #include <util/listenv4v6.h>
+
 #include "ConnectLibSim.h"
 
 
@@ -299,29 +301,29 @@ bool Engine::initialize(int argC, char** argV) {
 
 #else
 
-    if (argC != 4) {
-        CERR << "simulation requires exactly 4 parameters" << endl;
+    if (argC != 6) {
+        CERR << "simulation requires exactly 6 parameters" << endl;
         return false;
     }
 
     if (atoi(argV[0]) != m_mpiSize) {
-        CERR << "mpi size of simulation must match viste's mpi size" << endl;
+        CERR << "mpi size of simulation must match vistle's mpi size" << endl;
         return false;
     }
     m_shmName = argV[1];
     m_moduleName = argV[2];
     m_moduleID = atoi(argV[3]);
-
-    vistle::registerTypes();
-    vistle::Module::setup(m_shmName, m_moduleID, m_rank);
-    boost::mpi::communicator c();
-    m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    runModule();
+    if(argV[4] != vistle::hostname())
+    //vistle::registerTypes();
+    //vistle::Module::setup(m_shmName, m_moduleID, m_rank);
+    //boost::mpi::communicator c();
+    //m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
+    //runModule();
     m_initialized = true;
 #endif
     if (m_rank == 0) {
         try {
-            initializeEngineSocket();
+            initializeEngineSocket(argV[4], atoi(argV[5]));
         } catch (const EngineExeption& ex) {
             return false;
         }
@@ -348,20 +350,19 @@ bool Engine::sendData() {
 }
 
 void Engine::SimulationTimeStepChanged() {
-    if (!m_initialized || !m_module || !m_moduleInitialized) {
+    if (!m_initialized || !m_moduleInitialized) {
         CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
-    runModule();
     getMetaData();
     int numMeshes, numVars;
     v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle, numMeshes);
     v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle, numVars);
-    if (m_metaData.currentCycle % m_module->nThTimestep->getValue() != 0) {
+    if (m_metaData.currentCycle % m_nthTimestep != 0) {
         return;
     }
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
-    if (m_module->timestepChanged()) {
+    if (m_moduleReady) {
         sendDataToModule();
     }
     else {
@@ -384,8 +385,6 @@ void Engine::DeleteData() {
 }
 
 void in_situ::Engine::passCommandToSim() {
-#ifndef MODULE_THREAD
-    runModule();
 #endif
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
@@ -395,38 +394,42 @@ void in_situ::Engine::passCommandToSim() {
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     finalizeInit();
-    std::string msg;
+    std::string command;
+    int type = 0;
     if (simulationCommandCallback) {
-        if (m_rank == 0 && m_socket) {
-            boost::system::error_code ec;
-            boost::asio::streambuf streambuf;
-            auto n = asio::read_until(*m_socket, streambuf, '\n', ec);
-            if (ec) {
-                throw EngineExeption("failed to read from engine socket");
+        while (m_socket->available() > 0) { //read all messages or until first processCommand message
+            if (m_rank == 0 && m_socket) {
+                EngineMessage msg = EngineMessage::read(m_socket);
+                type = msg.type();
+                if (type == EngineMessage::executeCommand) {
+                    msg >> command;
+                }
+                else {
+                    handleEngineMessage(msg);
+                }
+
             }
-            streambuf.commit(n);
+            MPI_Bcast(&type, 1, MPI_INTEGER, 0, comm);
+            if (type == EngineMessage::executeCommand) {
+                int l = command.size();
+                MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
+                command.resize(l);
+                MPI_Bcast(command.data(), l, MPI_CHARACTER, 0, comm);
 
-            std::istream is(&streambuf);
+                simulationCommandCallback(command.c_str(), "", simulationCommandCallbackData);
+                DEBUG_CERR << "received simulation command: " << command << endl;
+                const std::string defaulMsg{ "" };
+                if (command != defaulMsg && registeredGenericCommands.find(command) == registeredGenericCommands.end()) {
+                    DEBUG_CERR << "Engine received unknown command!" << endl;
+                    return;
+                }
 
-            is >> msg;
-            int l = msg.size();
-            MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
-            MPI_Bcast(const_cast<char *>(msg.data()), l, MPI_CHARACTER, 0, comm);
+                break;
+            }
+            else {
+                handleEngineMessage(static_cast<EngineMessage::Type>(type));
+            }
 
-        }
-        else {
-            int l = msg.size();
-            MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
-            msg.resize(l);
-            MPI_Bcast(const_cast<char *>(msg.data()), l, MPI_CHARACTER, 0, comm);
-        }
-
-        simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
-        DEBUG_CERR << "received simulation command: " << msg << endl;
-        const std::string defaulMsg{ "" };
-        if (msg != defaulMsg && registeredGenericCommands.find(msg) == registeredGenericCommands.end()) {
-            DEBUG_CERR << "Engine received unknown command!" << endl;
-            return;
         }
     }
     else {
@@ -467,26 +470,36 @@ void in_situ::Engine::getMetaData() {
 void in_situ::Engine::getRegisteredGenericCommands() {
     int numRegisteredCommands = getNumObjects(SimulationDataTyp::genericCommand);
     bool found = false;
+    std::vector<std::string> commands;
     for (size_t i = 0; i < numRegisteredCommands; i++) {
         visit_handle commandHandle = getNthObject(SimulationDataTyp::genericCommand, i);
         char* name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
         CERR << "registerd generic command: " << name << endl;
         registeredGenericCommands.insert(name);
+        commands.push_back(name);
     }
+    EngineMessage msg(EngineMessage::addCommands);
+    msg << commands;
+    msg.sendMessage(m_socket);
+
 }
+
 void Engine::addPorts() {
     try {
         std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
-        for (const auto name : names) {
-            auto port = m_module->createOutputPort(name, "mesh");
-            m_portsList[name] = port;
-        }
+
+        EngineMessage meshMsg(EngineMessage::addPorts);
+        meshMsg << "mesh";
+        meshMsg << names;
+        meshMsg.sendMessage(m_socket);
+
         names = getDataNames(SimulationDataTyp::variable);
-        for (const auto name : names) {
-            auto port = m_module->createOutputPort(name, "variable");
-            m_portsList[name] = port;
-        }
+        EngineMessage varMsg(EngineMessage::addPorts);
+        varMsg << "variable";
+        varMsg << names;
+        varMsg.sendMessage(m_socket);
+
     } catch (const SimV2Exeption& ex) {
         CERR << "failed to add output ports: " << ex.what() << endl;
     } catch (const EngineExeption & ex) {
@@ -514,7 +527,7 @@ bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             }
 
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
+            grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -539,7 +552,7 @@ bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             }
 
 
-            m_module->addObject(meshInfo.name, grid);
+            //m_module->addObject(meshInfo.name, grid);
 
             DEBUG_CERR << "added rectilinear mesh " << meshInfo.name << " dom = " << currDomain << " xDim = " << nTuples[0] << " yDim = " << nTuples[1] << " zDim = " << nTuples[2] << endl;
             DEBUG_CERR << "min bounds " << min[0] << " " << min[1] << " " << min[2] << " max bouns " << max[0] << " " << max[1] << " " << max[2] << endl;
@@ -610,11 +623,11 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (meshInfo.dim == 2) {
                 std::fill(gridCoords[2], gridCoords[2] + numVals, 0);
             }
-            grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
+            grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
-            m_module->addObject(meshInfo.name, grid);
+            //m_module->addObject(meshInfo.name, grid);
         }
     }
     CERR << "made structured mesh with " << meshInfo.numDomains << " domains" << endl;
@@ -630,11 +643,11 @@ void in_situ::Engine::sendMeshesToModule()     {
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
-        if (m_module->consistentMesh->getValue() && m_meshes.find(name) != m_meshes.end()) {
+        if (m_constGrids && m_meshes.find(name) != m_meshes.end()) {
             auto m = m_meshes.find(name);
             if (m != m_meshes.end()) {
                 for (auto grid : m->second.grids)                     {
-                    m_module->addObject(name, grid);
+                    //m_module->addObject(name, grid);
                 }
                 return; //the mesh is consistent and already there
             }
@@ -728,11 +741,11 @@ void in_situ::Engine::sendVarablesToModule()     { //todo: combine variables to 
             vistle::Vec<vistle::Scalar, 1>::ptr variable(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
             transformArray(data, variable->x().data(), nTuples, dataType);
             variable->setGrid(meshInfo->second.grids[cd]);
-            variable->setTimestep(m_metaData.currentCycle / m_module->nThTimestep->getValue());
+            variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
             variable->setBlock(currDomain);
             variable->setMapping(centering == VISIT_VARCENTERING_NODE? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable->addAttribute("_species", name);
-            m_module->addObject(name, variable);
+            //m_module->addObject(name, variable);
             DEBUG_CERR << "added variable " << name  << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
 
         }
@@ -741,6 +754,7 @@ void in_situ::Engine::sendVarablesToModule()     { //todo: combine variables to 
 }
 
 void in_situ::Engine::sendDataToModule() {
+    return; //not rdy yet
     try {
         sendMeshesToModule();
     } catch (const VistleLibSimExeption & exept) {
@@ -760,7 +774,7 @@ void in_situ::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_module->consistentMesh->getValue() ? -1 : m_metaData.currentCycle / m_module->nThTimestep->getValue());
+    grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {
@@ -780,7 +794,7 @@ void in_situ::Engine::sendTestData() {
         }
     }
     CERR << "sending test data for cycle " << m_metaData.currentCycle << endl;
-    m_module->addObject("AMR_mesh", grid);
+    //m_module->addObject("AMR_mesh", grid);
 }
 
 void in_situ::Engine::finalizeInit()     {
@@ -789,7 +803,6 @@ void in_situ::Engine::finalizeInit()     {
             getMetaData();
             addPorts();
             getRegisteredGenericCommands();
-            m_module->initDone();
 
         } catch (const VistleLibSimExeption& ex) {
             CERR << "finalizeInit failed: " << ex.what() << endl;
@@ -799,38 +812,11 @@ void in_situ::Engine::finalizeInit()     {
     }
 }
 
-#ifndef MODULE_THREAD
-void in_situ::Engine::runModule() {
-    if (!m_module) {
-        return;
-    }
-#ifndef NDEBUG
-    m_module->comm().barrier();
-#endif
-    bool messageReceived = true;;
-    try {
-        while (messageReceived) {
-            if (!m_module->dispatch(false, &messageReceived)) {
-                CERR << "Vistle requested ConnectLibSim to quit" << endl;
-                DisconnectSimulation();
-            }
-        }
-    } catch (boost::interprocess::interprocess_exception & e) {
-        CERR << "Module::dispatch: interprocess_exception: " << e.what() << endl;
-        CERR << "   error: code: " << e.get_error_code() << ", native: " << e.get_native_error() << endl;
-        throw(e);
-    } catch (std::exception & e) {
-        CERR << "Module::dispatch: std::exception: " << e.what() << endl;
-        throw(e);
-    }
-}
-#endif
-
-void in_situ::Engine::initializeEngineSocket() {
+void in_situ::Engine::initializeEngineSocket(const std::string& hostname, int port) {
 
     boost::system::error_code ec;
     asio::ip::tcp::resolver resolver(m_ioService);
-    asio::ip::tcp::resolver::query query("localhost", boost::lexical_cast<std::string>(31251));
+    asio::ip::tcp::resolver::query query(hostname, boost::lexical_cast<std::string>(port));
     m_socket.reset(new boost::asio::ip::tcp::socket(m_ioService));
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
     if (ec) {
@@ -840,18 +826,98 @@ void in_situ::Engine::initializeEngineSocket() {
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to connect socket");
     }
+    EngineMessage msg(EngineMessage::goOn);
+    msg.sendMessage(m_socket);
+}
+
+void in_situ::Engine::handleEngineMessage(EngineMessage::Type type)     {
+    DEBUG_CERR << "received message of type " << type << endl;
+    assert(m_rank != 0); //call with message on rank 0
+    switch (type) {
+    case in_situ::EngineMessage::invalid:
+        break;
+    case in_situ::EngineMessage::shmInit:
+        break;
+    case in_situ::EngineMessage::addObject:
+        break;
+    case in_situ::EngineMessage::addPorts:
+        break;
+    case in_situ::EngineMessage::addCommands:
+        break;
+    case in_situ::EngineMessage::executeCommand:
+        break;
+    case in_situ::EngineMessage::goOn:
+        break;
+    case in_situ::EngineMessage::constGrids:
+    {
+        MPI_Bcast(&m_constGrids, 1, MPI_INTEGER, 0, comm);
+    }
+        break;
+    case in_situ::EngineMessage::nThTimestep:
+    {
+        MPI_Bcast(&m_nthTimestep, 1, MPI_INTEGER, 0, comm);
+    }
+        break;
+    case in_situ::EngineMessage::ready:
+    {
+        MPI_Bcast(&m_moduleReady, 1, MPI_INTEGER, 0, comm);
+    }
+    default:
+        break;
+    }
+
+
+
+}
+
+void in_situ::Engine::handleEngineMessage(EngineMessage& msg) {
+
+
+    DEBUG_CERR << "received message of type " << msg.type() << endl;
+    assert(m_rank == 0); //call without message on slaves
+    switch (msg.type()) {
+    case in_situ::EngineMessage::invalid:
+        break;
+    case in_situ::EngineMessage::shmInit:
+        break;
+    case in_situ::EngineMessage::addObject:
+        break;
+    case in_situ::EngineMessage::addPorts:
+        break;
+    case in_situ::EngineMessage::addCommands:
+        break;
+    case in_situ::EngineMessage::executeCommand:
+        break;
+    case in_situ::EngineMessage::goOn:
+        break;
+    case in_situ::EngineMessage::constGrids:
+    {
+        msg >> m_constGrids;
+        MPI_Bcast(&m_constGrids, 1, MPI_INTEGER, 0, comm);
+    }
+        break;
+    case in_situ::EngineMessage::nThTimestep:
+    {
+        msg >> m_nthTimestep;
+        MPI_Bcast(&m_nthTimestep, 1, MPI_INTEGER, 0, comm);
+    }
+        break;
+    case in_situ::EngineMessage::ready:
+    {
+        msg >> m_moduleReady;
+        MPI_Bcast(&m_moduleReady, 1, MPI_INTEGER, 0, comm);
+    }
+    break;
+    default:
+        break;
+    }
+
 }
 
 Engine::Engine()
 { }
 
 Engine::~Engine() {
-#ifndef MODULE_THREAD
-    delete m_module;
-#endif // !MODULE_THREAD
-
-    m_module->prepareQuit();
-    delete m_module;
    
 }
 

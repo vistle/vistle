@@ -6,6 +6,8 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio.hpp>
 
+#include "EngineMessage.h"
+
 class ControllModule : public vistle::InSituReader
 {
 public:
@@ -17,9 +19,15 @@ public:
     ~ControllModule();
     vistle::Port* noDataOut = nullptr;
     vistle::StringParameter* m_filePath = nullptr;
+    vistle::IntParameter* m_constGrids = nullptr;
+    vistle::IntParameter* m_nthTimestep = nullptr;
+    vistle::IntParameter* sendMessageToSim = nullptr;
     vistle::IntParameter* sendCommand = nullptr;
     bool sendCommandChanged = false;
 private:
+
+    std::map<std::string, vistle::Port*> m_outputPorts;
+    std::set<const vistle::Parameter*> m_commandParameter;
 
     unsigned short m_port = 31299;
     boost::asio::io_service m_ioService;
@@ -45,7 +53,7 @@ private:
 
     void sendMsgToSim(const std::string& msg);
 
-    void handleMessage(const boost::system::error_code& err, size_t bytes_transferred);
+    void handleMessage(in_situ::EngineMessage&& msg);
 
     void waitForMessage();
 
