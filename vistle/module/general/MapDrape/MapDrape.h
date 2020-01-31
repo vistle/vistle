@@ -8,6 +8,8 @@ using namespace vistle;
 
 class MapDrape: public vistle::Module {
 
+  static const unsigned NumPorts = 5;
+
  public:
    MapDrape(const std::string &name, int moduleID, mpi::communicator comm);
    ~MapDrape();
@@ -18,7 +20,7 @@ class MapDrape: public vistle::Module {
    VectorParameter *p_offset;
    void transformCoordinates(int numCoords, float * xIn, float * yIn, float * zIn, float * xOut, float * yOut, float * zOut);
    float offset[3];
-   Port *data_out, *geo_in;
+   Port *data_in[NumPorts], *data_out[NumPorts];
 };
 
 
