@@ -1,64 +1,69 @@
 #include "EngineMessage.h"
-#include "EngineMessage.h"
 #include <boost/asio.hpp>
 #include <iostream>
 
-const std::string in_situ::EngineMessage::EoM = "הצü";
+using namespace in_situ;
+using namespace vistle::message;
 
-in_situ::EngineMessage::EngineMessage(in_situ::EngineMessage::Type t)
-    :m_type(t) {
-    m_msgIn << static_cast<int>(t);
-}
-in_situ::EngineMessage::Type in_situ::EngineMessage::type() {
+
+bool in_situ::EngineMessage::m_initialized = false;
+boost::mpi::communicator in_situ::EngineMessage::m_comm;
+std::shared_ptr< boost::asio::ip::tcp::socket> in_situ::EngineMessage::m_socket;
+
+EngineMessageType EngineMessage::type() const{
     return m_type;
 }
-in_situ::EngineMessage::EngineMessage(boost::asio::streambuf& streambuf)
-{
-    m_msgOut.reset(new std::istream(&streambuf));
-    int t = 0;
-    *m_msgOut >> t;
-    m_type = static_cast<Type>(t);
 
-}
-
-bool in_situ::EngineMessage::sendMessage(std::shared_ptr<boost::asio::ip::tcp::socket> s) {
-    m_msgIn << EoM;
-    boost::system::error_code err;
-    boost::asio::write(*s, boost::asio::buffer(m_msgIn.str()), err);
-    if (err) {
-        std::cerr << "Engine message write error" << std::endl;
-        return false;
-    }
-    return true;
-}
-
-in_situ::EngineMessage&& in_situ::EngineMessage::read(std::shared_ptr<boost::asio::ip::tcp::socket> s) {
-    boost::system::error_code ec;
-    boost::asio::streambuf streambuf;
-    auto n = boost::asio::read_until(*s, streambuf, EoM, ec);
-    if (ec) {
-        std::cerr << "Engine message read_until error" << std::endl;
-        return EngineMessage(invalid);
-    }
-    streambuf.commit(n);
-    return EngineMessage(streambuf);
-
-}
-
-void in_situ::EngineMessage::read(std::shared_ptr<boost::asio::ip::tcp::socket> s, std::function<void(EngineMessage&&)> handler) {
+EngineMessage::EngineMessage(EngineMessageType type, vistle::buffer&& payload)
+    :m_type(type)
+    ,m_payload(payload)
+    , m_msg(EngineMessageType::Invalid) {
     
-    boost::system::error_code ec;
-    static boost::asio::streambuf streambuf;
-    boost::asio::async_read_until(*s, streambuf, EoM, [handler](boost::system::error_code err, size_t n) {
-        if (err) {
-            std::cerr << "Engine message async_read_until error" << std::endl;
-            handler(EngineMessage(invalid));
-            return;
-        }
-        streambuf.commit(n);
-        handler(EngineMessage(streambuf));
+}
 
-        });
+EngineMessage::EngineMessage()
+    :m_type(EngineMessageType::Invalid)
+    , m_msg(EngineMessageType::Invalid) {
+
 }
 
 
+
+EngineMessage EngineMessage::recvEngineMessage() {
+    bool error = false;
+    vistle::buffer payload;
+    int type;
+    if (!m_initialized) {
+        error = true;
+    }
+    else {
+        if (m_comm.rank() == 0) {
+            boost::system::error_code err;
+            vistle::message::Buffer bf;
+            vistle::message::recv(*m_socket, bf, err, false, &payload);
+            if (err || bf.type() != vistle::message::Type::INSITU) {
+                error = true;
+            } else {
+                type = static_cast<int>(bf.as<InSituMessage>().emType);
+            }
+        }
+    }
+
+    boost::mpi::broadcast(m_comm, error, 0);
+    if (error) {
+        return EngineMessage{};
+    }
+    boost::mpi::broadcast(m_comm, type, 0);
+    boost::mpi::broadcast(m_comm, payload.data(), payload.size(), 0);
+    return EngineMessage{static_cast<EngineMessageType>(type), std::move(payload)};
+}
+
+void EngineMessage::initializeEngineMessage(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm) {
+    m_socket = socket;
+    m_comm = comm;
+    m_initialized = true;
+}
+
+bool EngineMessage::isInitialized() {
+    return m_initialized;
+}

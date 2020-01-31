@@ -11,9 +11,14 @@
 #include <boost/bind.hpp>
 
 #include "EngineMessage.h"
+#include <core/message.h>
+#include <core/tcpmessage.h>
 
 using namespace std;
 using in_situ::EngineMessage;
+
+#define CERR cerr << "["<< rank() << "/" << size() << "] "
+
 ControllModule::ControllModule(const string& name, int moduleID, mpi::communicator comm)
     : vistle::InSituReader("set ConnectLibSim in the state of prepare", name, moduleID, comm) 
     , m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioService))
@@ -24,6 +29,7 @@ ControllModule::ControllModule(const string& name, int moduleID, mpi::communicat
     , m_workGuard(new boost::asio::io_service::work(m_ioService))
 #endif
     , m_ioThread([this]() { m_ioService.run(); })
+    , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
     noDataOut = createOutputPort("noData", "");
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
@@ -41,23 +47,15 @@ ControllModule::ControllModule(const string& name, int moduleID, mpi::communicat
     observeParameter(m_nthTimestep);
     if (rank() == 0) {
         startControllServer();
+
+    } else {
+        m_socketThread = std::thread([this]() {
+            m_socketComm.barrier();
+            in_situ::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+            waitForMessages();
+            });
     }
-    //test
-    boost::asio::streambuf b;
-    std::ostream os(&b);
-    os << "abc";
-    os << 5;
-    os << std::string("def");
-    b.commit(b.size());
-    std::istream is(&b);
-    std::string a, d;
-    a.resize(3);
-    is.read(a.data(), 3);
-    
-    int i;
-    is >> i >> d;
-    std::cerr << " a= " << a << ", i = " << i << ", d = " << d << std::endl;
-    //endtest
+
 
 }
 
@@ -71,6 +69,7 @@ void ControllModule::startControllServer() {
     unsigned short port = m_port;
 
     boost::system::error_code ec;
+
     while (!vistle::start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
         if (ec == boost::system::errc::address_in_use) {
             ++port;
@@ -84,7 +83,7 @@ void ControllModule::startControllServer() {
 
     cerr << "listening for connections on port " << m_port << endl;
     startAccept(m_acceptorv4);
-    startAccept(m_acceptorv6);
+    startAccept(m_acceptorv4);
 
     return;
 }
@@ -96,33 +95,32 @@ bool ControllModule::startAccept(shared_ptr<acceptor> a) {
 
     shared_ptr<boost::asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(m_ioService));
     m_ListeningSocket = sock;
-    cerr << " acceptor is open" << endl;
+    boost::system::error_code ec;
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
         if (ec) {
             m_socket = nullptr;
             cerr << "failed connection attempt" << endl;
             return;
         }
-        cerr << "connected!" << endl;
+        cerr << "connected with engine" << endl;
         m_socket = sock;
-        waitForMessage();
+        m_socketComm.barrier();
+        m_socketThread = std::thread([this]() {
+            in_situ::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+            waitForMessages();
+            });
         });
-
     return true;
 }
 
 bool ControllModule::prepare() {
 
-    EngineMessage msg(EngineMessage::ready);
-    msg << true;
-    msg.sendMessage(m_socket); 
+    EngineMessage::sendEngineMessage(in_situ::EM_Ready(true));
     return true;
 }
 
 bool ControllModule::reduce(int timestep) {
-    EngineMessage msg(EngineMessage::ready);
-    msg << false;
-    msg.sendMessage(m_socket);
+    EngineMessage::sendEngineMessage(in_situ::EM_Ready(false));
     m_timestep = 0;
     return true;
 }
@@ -155,13 +153,10 @@ bool ControllModule::examine(const vistle::Parameter* param) {
         return true;
     }
     if (param == sendMessageToSim) {
-        in_situ::EngineMessage msg{ in_situ::EngineMessage::goOn };
-        msg.sendMessage(m_socket);
+        EngineMessage::sendEngineMessage(in_situ::EM_GoOn(true));
     }
     else if (m_commandParameter.find(param) != m_commandParameter.end()) {
-        in_situ::EngineMessage msg(in_situ::EngineMessage::executeCommand);
-        msg << param->getName();
-        msg.sendMessage(m_socket);
+        EngineMessage::sendEngineMessage(in_situ::EM_ExecuteCommand(param->getName()));
     }
     else if (param == m_filePath) {
         cerr << "test" << endl;
@@ -169,77 +164,30 @@ bool ControllModule::examine(const vistle::Parameter* param) {
         in_situ::attemptLibSImConnection(m_filePath->getValue(), args);
     }
     else if(param == m_constGrids){
-        EngineMessage msg{ EngineMessage::constGrids };
-        msg << true;
-        msg.sendMessage(m_socket);
+        EngineMessage::sendEngineMessage(in_situ::EM_ConstGrids(m_constGrids->getValue()));
     }
     else if (param == m_nthTimestep) {
-        EngineMessage msg{EngineMessage::nThTimestep};
-        msg << true;
-        msg.sendMessage(m_socket);
+        EngineMessage::sendEngineMessage(in_situ::EM_NthTimestep (m_nthTimestep->getValue()) );
     }
 
     return false;
 }
 
-void ControllModule::sendMsgToSim(const std::string& msg)
-{
-    boost::system::error_code ec;
-    boost::asio::write(*m_socket, boost::asio::buffer(msg), ec);
-    if (ec) {
-        std::cerr << "failed to send message key to sim" << std::endl;
-    }
-}
 
-void ControllModule::handleMessage(in_situ::EngineMessage&& msg)     {
+
+void ControllModule::handleMessage(const in_situ::EngineMessage& msg)     {
     
-    switch (msg.type()) {
-    case in_situ::EngineMessage::invalid:
-        break;
-    case in_situ::EngineMessage::shmInit:
-        break;
-    case in_situ::EngineMessage::addObject:
-        break;
-    case in_situ::EngineMessage::addPorts:
-    {
-        string type; 
-        vector<string> elements;
-        msg >> type;
-        msg >> elements;
-        for (auto element : elements) {
-            m_outputPorts[element] = createOutputPort(element, type);
-        }
-    }
-        break;
-    case in_situ::EngineMessage::addCommands:
-    {
-        std::vector<std::string> commands;
-        msg >> commands;
-        for (auto command : commands)             {
-            auto c = addIntParameter(command, command, vistle::Parameter::Boolean);
-            m_commandParameter.insert(c);
-            observeParameter(c);
-        }
-    }
-        break;
-    case in_situ::EngineMessage::executeCommand:
-        break;
-    case in_situ::EngineMessage::goOn:
-    {
-        EngineMessage msg(EngineMessage::goOn);
-        msg.sendMessage(m_socket);
-    }
-        break;
-    default:
-        break;
-    }
-    waitForMessage();
+    //toDO
+    waitForMessages();
 
 }
 
-void ControllModule::waitForMessage()     {
-    in_situ::EngineMessage::read(m_socket, [this](in_situ::EngineMessage&& msg) {
-        handleMessage(std::move(msg));
-        });
+void ControllModule::waitForMessages()     {
+    while (true) {
+       
+        handleMessage(EngineMessage::recvEngineMessage());
+    }
 }
+
+
 MODULE_MAIN(ControllModule)

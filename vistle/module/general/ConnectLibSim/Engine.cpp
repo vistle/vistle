@@ -329,6 +329,7 @@ bool Engine::initialize(int argC, char** argV) {
         }
     }
 
+    EngineMessage::sendEngineMessage(EM_GoOn(true));
     return true;
 }
 
@@ -394,48 +395,27 @@ void in_situ::Engine::passCommandToSim() {
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     finalizeInit();
-    std::string command;
-    int type = 0;
-    if (simulationCommandCallback) {
-        while (m_socket->available() > 0) { //read all messages or until first processCommand message
-            if (m_rank == 0 && m_socket) {
-                EngineMessage msg = EngineMessage::read(m_socket);
-                type = msg.type();
-                if (type == EngineMessage::executeCommand) {
-                    msg >> command;
-                }
-                else {
-                    handleEngineMessage(msg);
-                }
-
-            }
-            MPI_Bcast(&type, 1, MPI_INTEGER, 0, comm);
-            if (type == EngineMessage::executeCommand) {
-                int l = command.size();
-                MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
-                command.resize(l);
-                MPI_Bcast(command.data(), l, MPI_CHARACTER, 0, comm);
-
-                simulationCommandCallback(command.c_str(), "", simulationCommandCallbackData);
-                DEBUG_CERR << "received simulation command: " << command << endl;
-                const std::string defaulMsg{ "" };
-                if (command != defaulMsg && registeredGenericCommands.find(command) == registeredGenericCommands.end()) {
+    while (m_socket->available() > 0) { //read all messages or until first processCommand message
+        EngineMessage msg = EngineMessage::recvEngineMessage();
+        if (msg.type() != EngineMessageType::ExecuteCommand) {
+            handleEngineMessage(msg);
+        } else {
+            EM_ExecuteCommand exe = msg.unpackOrCast<EM_ExecuteCommand>();
+            if (simulationCommandCallback) {
+                simulationCommandCallback(exe.m_command.c_str(), "", simulationCommandCallbackData);
+                DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
+                    if (registeredGenericCommands.find(exe.m_command) == registeredGenericCommands.end()) {
                     DEBUG_CERR << "Engine received unknown command!" << endl;
                     return;
                 }
-
-                break;
             }
             else {
-                handleEngineMessage(static_cast<EngineMessage::Type>(type));
-            }
 
+                CERR << "received command, but required callback is not set" << endl;
+            }
         }
     }
-    else {
 
-        CERR << "passCommandToSim called, but required callback is not set" << endl;
-    }
 }
 
 void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
@@ -479,26 +459,18 @@ void in_situ::Engine::getRegisteredGenericCommands() {
         registeredGenericCommands.insert(name);
         commands.push_back(name);
     }
-    EngineMessage msg(EngineMessage::addCommands);
-    msg << commands;
-    msg.sendMessage(m_socket);
-
+    EngineMessage::sendEngineMessage(EM_AddCommands{ commands });
 }
 
 void Engine::addPorts() {
     try {
         std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
-
-        EngineMessage meshMsg(EngineMessage::addPorts);
-        meshMsg << "mesh";
-        meshMsg << names;
-        meshMsg.sendMessage(m_socket);
+        names.push_back("mesh");
+        EngineMessage::sendEngineMessage(EM_AddPorts{ names });
 
         names = getDataNames(SimulationDataTyp::variable);
-        EngineMessage varMsg(EngineMessage::addPorts);
-        varMsg << "variable";
-        varMsg << names;
-        varMsg.sendMessage(m_socket);
+        names.push_back("variable");
+        EngineMessage::sendEngineMessage(EM_AddPorts{ names });
 
     } catch (const SimV2Exeption& ex) {
         CERR << "failed to add output ports: " << ex.what() << endl;
@@ -826,92 +798,49 @@ void in_situ::Engine::initializeEngineSocket(const std::string& hostname, int po
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to connect socket");
     }
-    EngineMessage msg(EngineMessage::goOn);
-    msg.sendMessage(m_socket);
-}
-
-void in_situ::Engine::handleEngineMessage(EngineMessage::Type type)     {
-    DEBUG_CERR << "received message of type " << type << endl;
-    assert(m_rank != 0); //call with message on rank 0
-    switch (type) {
-    case in_situ::EngineMessage::invalid:
-        break;
-    case in_situ::EngineMessage::shmInit:
-        break;
-    case in_situ::EngineMessage::addObject:
-        break;
-    case in_situ::EngineMessage::addPorts:
-        break;
-    case in_situ::EngineMessage::addCommands:
-        break;
-    case in_situ::EngineMessage::executeCommand:
-        break;
-    case in_situ::EngineMessage::goOn:
-        break;
-    case in_situ::EngineMessage::constGrids:
-    {
-        MPI_Bcast(&m_constGrids, 1, MPI_INTEGER, 0, comm);
-    }
-        break;
-    case in_situ::EngineMessage::nThTimestep:
-    {
-        MPI_Bcast(&m_nthTimestep, 1, MPI_INTEGER, 0, comm);
-    }
-        break;
-    case in_situ::EngineMessage::ready:
-    {
-        MPI_Bcast(&m_moduleReady, 1, MPI_INTEGER, 0, comm);
-    }
-    default:
-        break;
-    }
-
-
-
 }
 
 void in_situ::Engine::handleEngineMessage(EngineMessage& msg) {
 
-
-    DEBUG_CERR << "received message of type " << msg.type() << endl;
-    assert(m_rank == 0); //call without message on slaves
-    switch (msg.type()) {
-    case in_situ::EngineMessage::invalid:
+    DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
+    EngineMessageType t;
+    switch (t) {
+    case in_situ::EngineMessageType::Invalid:
         break;
-    case in_situ::EngineMessage::shmInit:
+    case in_situ::EngineMessageType::ShmInit:
         break;
-    case in_situ::EngineMessage::addObject:
+    case in_situ::EngineMessageType::AddObject:
         break;
-    case in_situ::EngineMessage::addPorts:
+    case in_situ::EngineMessageType::AddPorts:
         break;
-    case in_situ::EngineMessage::addCommands:
+    case in_situ::EngineMessageType::AddCommands:
         break;
-    case in_situ::EngineMessage::executeCommand:
-        break;
-    case in_situ::EngineMessage::goOn:
-        break;
-    case in_situ::EngineMessage::constGrids:
+    case in_situ::EngineMessageType::Ready:
     {
-        msg >> m_constGrids;
-        MPI_Bcast(&m_constGrids, 1, MPI_INTEGER, 0, comm);
+        EM_Ready em = msg.unpackOrCast<EM_Ready>();
+        m_constGrids = em.m_state;
     }
         break;
-    case in_situ::EngineMessage::nThTimestep:
+    case in_situ::EngineMessageType::ExecuteCommand:
+        break;
+    case in_situ::EngineMessageType::GoOn:
+        break;
+    case in_situ::EngineMessageType::ConstGrids:
     {
-        msg >> m_nthTimestep;
-        MPI_Bcast(&m_nthTimestep, 1, MPI_INTEGER, 0, comm);
+        EM_ConstGrids em = msg.unpackOrCast<EM_ConstGrids>();
+        m_constGrids = em.m_state;
     }
         break;
-    case in_situ::EngineMessage::ready:
+    case in_situ::EngineMessageType::NthTimestep:
     {
-        msg >> m_moduleReady;
-        MPI_Bcast(&m_moduleReady, 1, MPI_INTEGER, 0, comm);
+        EM_NthTimestep em = msg.unpackOrCast<EM_NthTimestep>();
+        m_constGrids = em.m_frequency;
     }
-    break;
+        break;
     default:
         break;
     }
-
+    
 }
 
 Engine::Engine()

@@ -6,6 +6,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio.hpp>
 
+#include <core/message.h>
 #include "EngineMessage.h"
 
 class ControllModule : public vistle::InSituReader
@@ -40,8 +41,12 @@ private:
 #else
     std::shared_ptr<boost::asio::io_service::work> m_workGuard;
 #endif
+    //thread for io_service
     std::thread m_ioThread;
-
+    //thread to sync tcp communcation with slaves
+    std::thread m_socketThread;
+    //communicator to sync tcp communcation with slaves
+    boost::mpi::communicator m_socketComm;
 
     void startControllServer();
 
@@ -53,9 +58,11 @@ private:
 
     void sendMsgToSim(const std::string& msg);
 
-    void handleMessage(in_situ::EngineMessage&& msg);
 
-    void waitForMessage();
+    void handleMessage(const in_situ::EngineMessage& msg);
+
+    void waitForMessages();
+
 
     //test
     int m_timestep = 0;
