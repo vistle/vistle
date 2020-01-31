@@ -706,11 +706,16 @@ struct ComputeOutput {
                       Index u = StructuredGridBase::vertexIndex(x, m_data.m_nvert);
                       x[c] = xx;
                       grad[idx][c] = m_data.m_isoFunc(u) - m_data.m_isoFunc(l);
+                      Scalar diff = 0;
                       if (m_data.m_haveCoords) {
-                          grad[idx][c] /= (m_data.m_inVertPtr[3+c][u] - m_data.m_inVertPtr[3+c][l]);
+                          diff = (m_data.m_inVertPtr[3+c][u] - m_data.m_inVertPtr[3+c][l]);
                       } else {
-                          grad[idx][c] /= (m_data.m_inVertPtr[3+c][xu[c]] - m_data.m_inVertPtr[3+c][xl[c]]);
+                          diff = (m_data.m_inVertPtr[3+c][xu[c]] - m_data.m_inVertPtr[3+c][xl[c]]);
                       }
+                      if (fabs(diff) > EPSILON)
+                          grad[idx][c] /= diff;
+                      else
+                          grad[idx][c] = 0;
                   }
               }
           }
