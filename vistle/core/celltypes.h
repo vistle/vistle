@@ -2,6 +2,7 @@
 #define VISTLE_CELLTYPES_H
 
 #include "scalar.h"
+#include "index.h"
 
 namespace vistle {
 
