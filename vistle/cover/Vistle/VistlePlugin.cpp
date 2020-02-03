@@ -155,7 +155,7 @@ bool VistlePlugin::update() {
 #endif
    bool messageReceived = false;
    try {
-       if (m_module && !m_module->dispatch(&messageReceived)) {
+       if (m_module && !m_module->dispatch(false, &messageReceived)) {
            std::cerr << "Vistle requested COVER to quit" << std::endl;
            OpenCOVER::instance()->requestQuit();
        }
