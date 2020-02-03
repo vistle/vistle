@@ -45,6 +45,7 @@
 #endif
 #include "module.h"
 
+#include <boost/serialization/vector.hpp>
 #include <core/shm_reference.h>
 #include <core/archive_saver.h>
 #include <core/archive_loader.h>
@@ -1542,7 +1543,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 }
                 ++numConnected;
                 if (numObject == 0) {
-                    numObject = (vistle::Index)port.second.objects().size();
+                    numObject = port.second.objects().size();
                 } else if (numObject != port.second.objects().size()) {
                     CERR << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second.objects().size() << std::endl;
                     throw vistle::except::exception("input object mismatch");

@@ -718,7 +718,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
    if (mode == Mean) {
        if ((tl[elem] & TYPE_MASK) == VPOLYHEDRON || (tl[elem] & TYPE_MASK) == CPOLYHEDRON) {
          indices = cellVertices(elem);
-         const Index n = (Index)indices.size();
+         const Index n = indices.size();
          Scalar w = Scalar(1)/n;
          weights.resize(n, w);
       } else {
@@ -1173,7 +1173,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
          if ((tl[elem] & TYPE_MASK) == VPOLYHEDRON) {
              indices = cellVertices(elem);
-             const Index n = (Index)indices.size();
+             const Index n = indices.size();
              for (Index i=0; i<n; ++i) {
                  const Index k = indices[i];
                  const Vector3 vert(x[0][k], x[1][k], x[2][k]);

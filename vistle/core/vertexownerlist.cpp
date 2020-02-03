@@ -54,7 +54,7 @@ bool VertexOwnerList::isEmpty() const {
 }
 
 Index VertexOwnerList::getNumVertices() const {
-   return (Index)(d()->vertexList->size() - 1);
+   return d()->vertexList->size() - 1;
 }
 
 std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) const {

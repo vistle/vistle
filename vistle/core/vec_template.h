@@ -114,7 +114,7 @@ void Vec<T,Dim>::refreshImpl() const {
    for (int c=Dim; c<MaxDim; ++c) {
       m_x[c] = nullptr;
    }
-   m_size = (d && d->x[0]) ? (Index)(d->x[0]->size()) : 0;
+   m_size = (d && d->x[0]) ? d->x[0]->size() : 0;
 }
 
 template <class T, int Dim>
@@ -202,7 +202,7 @@ template <class T, int Dim>
 void Vec<T,Dim>::Data::updateBounds() {
     invalidateBounds();
     for (int c=0; c<Dim; ++c) {
-        Index sz = (Index)(x[c]->size());
+        Index sz = x[c]->size();
         const T *d = x[c]->data();
         for (Index i=0; i<sz; ++i) {
             if (d[i] < min[c])
