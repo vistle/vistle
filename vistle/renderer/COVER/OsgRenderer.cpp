@@ -443,6 +443,17 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (objType == vistle::Object::UNIFORMGRID) {
        cover->addPlugin("Volume");
    } else if (!VistleGeometryGenerator::isSupported(objType)) {
+       std::stringstream str;
+       if (objType == vistle::Object::TUBES) {
+           str << "Tubes input unsupported - use ToTriangle module";
+       } else {
+           str << "Unsupported input data: " << Object::toString(objType);
+       }
+       std::cerr << str.str() << std::endl;
+       if (m_dataTypeWarnings.find(objType) == m_dataTypeWarnings.end()) {
+           m_dataTypeWarnings.insert(objType);
+           cover->notify(Notify::Warning) << str.str();
+       }
        return nullptr;
    }
 

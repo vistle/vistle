@@ -142,6 +142,8 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
 
    typedef std::map<std::string, OsgColorMap> ColorMapMap;
    ColorMapMap m_colormaps;
+
+   std::set<int> m_dataTypeWarnings; // set of unsupported data types for which a warning has already been printed
 };
 
 #endif
