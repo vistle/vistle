@@ -535,12 +535,13 @@ bool Tracer::reduce(int timestep) {
    Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
    do {
       std::vector<Index> sendlist;
-      Index numStart = numActiveMin>maxNumActive ? maxNumActive : maxNumActive-numActiveMin;
+      Index numStart = maxNumActive>numActiveMin ? maxNumActive-numActiveMin : 0;
       startParticles(numStart);
 
       bool first = true;
+      int numDeactivated = 0;
       // build list of particles to send to their owner
-      for(auto it = activeParticles.begin(), next=it; it != activeParticles.end(); it=next) {
+      for (auto it = activeParticles.begin(), next=it; it != activeParticles.end(); it=next) {
 
           next = it;
           ++next;
@@ -556,17 +557,20 @@ bool Tracer::reduce(int timestep) {
                   sendlist.push_back(particle->id());
               }
               activeParticles.erase(it);
-              if (!localParticles.empty()) {
-                  auto p = *localParticles.begin();
-                  activeParticles.emplace(p);
-                  p->startTracing();
-                  localParticles.erase(localParticles.begin());
-              }
+              ++numDeactivated;
           }
       }
 
+      while (numDeactivated>0 && !localParticles.empty()) {
+          --numDeactivated;
+          auto p = *localParticles.begin();
+          activeParticles.emplace(p);
+          p->startTracing();
+          localParticles.erase(localParticles.begin());
+      }
+
       if (mpisize==1) {
-          numActiveMax = numActiveMin = activeParticles.size();
+          numActiveMax = numActiveMin = activeParticles.size()+localParticles.size();
           continue;
       }
 
