@@ -2,13 +2,13 @@
 #include <boost/asio.hpp>
 #include <iostream>
 
-using namespace in_situ;
+using namespace insitu;
 using namespace vistle::message;
 
 
-bool in_situ::EngineMessage::m_initialized = false;
-boost::mpi::communicator in_situ::EngineMessage::m_comm;
-std::shared_ptr< boost::asio::ip::tcp::socket> in_situ::EngineMessage::m_socket;
+bool insitu::EngineMessage::m_initialized = false;
+boost::mpi::communicator insitu::EngineMessage::m_comm;
+std::shared_ptr< boost::asio::ip::tcp::socket> insitu::EngineMessage::m_socket;
 
 EngineMessageType EngineMessage::type() const{
     return m_type;

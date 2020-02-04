@@ -33,7 +33,7 @@ public:
     void disconnect();
 private:
 
-    in_situ::Metadata metaData_;
+    insitu::Metadata metaData_;
 #ifdef MODULE_THREAD
     std::mutex isExecutingMutex;
 #endif

@@ -15,7 +15,7 @@
 #include <core/tcpmessage.h>
 
 using namespace std;
-using in_situ::EngineMessage;
+using insitu::EngineMessage;
 
 #define CERR cerr << "["<< rank() << "/" << size() << "] "
 
@@ -51,7 +51,7 @@ ControllModule::ControllModule(const string& name, int moduleID, mpi::communicat
     } else {
         m_socketThread = std::thread([this]() {
             m_socketComm.barrier();
-            in_situ::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+            insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
             waitForMessages();
             });
     }
@@ -106,7 +106,7 @@ bool ControllModule::startAccept(shared_ptr<acceptor> a) {
         m_socket = sock;
         m_socketComm.barrier();
         m_socketThread = std::thread([this]() {
-            in_situ::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+            insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
             waitForMessages();
             });
         });
@@ -115,12 +115,12 @@ bool ControllModule::startAccept(shared_ptr<acceptor> a) {
 
 bool ControllModule::prepare() {
 
-    EngineMessage::sendEngineMessage(in_situ::EM_Ready(true));
+    EngineMessage::sendEngineMessage(insitu::EM_Ready(true));
     return true;
 }
 
 bool ControllModule::reduce(int timestep) {
-    EngineMessage::sendEngineMessage(in_situ::EM_Ready(false));
+    EngineMessage::sendEngineMessage(insitu::EM_Ready(false));
     m_timestep = 0;
     return true;
 }
@@ -153,21 +153,21 @@ bool ControllModule::examine(const vistle::Parameter* param) {
         return true;
     }
     if (param == sendMessageToSim) {
-        EngineMessage::sendEngineMessage(in_situ::EM_GoOn(true));
+        EngineMessage::sendEngineMessage(insitu::EM_GoOn(true));
     }
     else if (m_commandParameter.find(param) != m_commandParameter.end()) {
-        EngineMessage::sendEngineMessage(in_situ::EM_ExecuteCommand(param->getName()));
+        EngineMessage::sendEngineMessage(insitu::EM_ExecuteCommand(param->getName()));
     }
     else if (param == m_filePath) {
         cerr << "test" << endl;
         vector<string> args{to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
-        in_situ::attemptLibSImConnection(m_filePath->getValue(), args);
+        insitu::attemptLibSImConnection(m_filePath->getValue(), args);
     }
     else if(param == m_constGrids){
-        EngineMessage::sendEngineMessage(in_situ::EM_ConstGrids(m_constGrids->getValue()));
+        EngineMessage::sendEngineMessage(insitu::EM_ConstGrids(m_constGrids->getValue()));
     }
     else if (param == m_nthTimestep) {
-        EngineMessage::sendEngineMessage(in_situ::EM_NthTimestep (m_nthTimestep->getValue()) );
+        EngineMessage::sendEngineMessage(insitu::EM_NthTimestep (m_nthTimestep->getValue()) );
     }
 
     return false;
@@ -175,18 +175,52 @@ bool ControllModule::examine(const vistle::Parameter* param) {
 
 
 
-void ControllModule::handleMessage(const in_situ::EngineMessage& msg)     {
+void ControllModule::handleMessage(insitu::EngineMessage&& msg)     {
     
-    //toDO
+    using namespace insitu;
+    switch (msg.type()) {
+    case EngineMessageType::Invalid:
+        break;
+    case EngineMessageType::ShmInit:
+        break;
+    case EngineMessageType::AddObject:
+        break;
+    case EngineMessageType::AddPorts:
+    {
+        auto em = msg.unpackOrCast< EM_AddPorts>();
+        for (size_t i = 0; i < em.m_portList.size() - 1; i++) {
+            createOutputPort(em.m_portList[i], em.m_portList[em.m_portList.size() - 1]);
+        }
+    }
+        break;
+    case EngineMessageType::AddCommands:
+    {
+        auto em = msg.unpackOrCast< EM_AddCommands>();
+        for (size_t i = 0; i < em.m_commandList.size(); i++) {
+            addIntParameter(em.m_commandList[i], "", false, vistle::Parameter::Presentation::Boolean);
+        }
+    }
+        break;
+    case EngineMessageType::Ready:
+        break;
+    case EngineMessageType::ExecuteCommand:
+        break;
+    case EngineMessageType::GoOn:
+        break;
+    case EngineMessageType::ConstGrids:
+        break;
+    case EngineMessageType::NthTimestep:
+        break;
+    default:
+        break;
+    }
+
     waitForMessages();
 
 }
 
 void ControllModule::waitForMessages()     {
-    while (true) {
-       
-        handleMessage(EngineMessage::recvEngineMessage());
-    }
+    handleMessage(EngineMessage::recvEngineMessage());
 }
 
 

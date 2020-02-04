@@ -59,7 +59,7 @@ private:
     void sendMsgToSim(const std::string& msg);
 
 
-    void handleMessage(const in_situ::EngineMessage& msg);
+    void handleMessage(insitu::EngineMessage&& msg);
 
     void waitForMessages();
 

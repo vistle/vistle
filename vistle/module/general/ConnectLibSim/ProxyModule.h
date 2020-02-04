@@ -4,7 +4,7 @@
 #include <string>
 #include <module/module.h>
 
-namespace in_situ{
+namespace insitu{
 class ProxyModule : public vistle::Module{
 public:
     ProxyModule(const std::string& shmName, const std::string& moduleName, int moduleID);

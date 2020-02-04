@@ -5,7 +5,7 @@
 #include <algorithm>
 #include "VisItDataTypes.h"
 
-namespace in_situ{
+namespace insitu{
 
 struct TransformArrayExeption: public VistleLibSimExeption {
     TransformArrayExeption(const std::string& msg) :m_msg(msg) {}

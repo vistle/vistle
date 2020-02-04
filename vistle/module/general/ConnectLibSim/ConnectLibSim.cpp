@@ -17,7 +17,7 @@ using namespace vistle;
 using std::string;
 using std::cerr; using std::endl;
 
-using namespace in_situ;
+using namespace insitu;
 
 ConnectLibSim::ConnectLibSim(const std::string& name, int moduleID, mpi::communicator comm)
     : vistle::Module("Connect to a simulation that implements the LibSim in-situ interface", name, moduleID, comm)

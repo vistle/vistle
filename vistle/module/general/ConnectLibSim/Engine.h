@@ -26,7 +26,7 @@
 #include <module/module.h>
 
 class ConnectLibSim;
-namespace in_situ {
+namespace insitu {
 enum class SimulationDataTyp {
      mesh
     ,variable

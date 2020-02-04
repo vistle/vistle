@@ -5,7 +5,7 @@
 
 #include <string>
 #include <vector>
-namespace in_situ {
+namespace insitu {
 //read a hostname, port and security key out of a .sim2 file from a LibSim simulation
 bool V_LIBSIMCONNECTEXPORT readSim2File(const std::string& path, std::string& hostname, int& port, std::string& securityKey);
 //send a tcp message with the launch args to the simulation. 

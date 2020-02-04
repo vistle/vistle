@@ -15,7 +15,7 @@
 #include <core/messagequeue.h>
 using namespace vistle;
 
-in_situ::ProxyModule::ProxyModule(const std::string& shmName, const std::string& moduleName, int moduleID) 
+insitu::ProxyModule::ProxyModule(const std::string& shmName, const std::string& moduleName, int moduleID) 
 :vistle::Module("proxy module", moduleName, moduleID, mpi::communicator())
 {
         

@@ -5,7 +5,7 @@
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
 namespace asio = boost::asio;
-namespace in_situ {
+namespace insitu {
 static asio::io_service m_ioService;
 bool readSim2File(const std::string& path, std::string& hostname, int& port, std::string& securityKey) {
 
@@ -116,7 +116,7 @@ bool sendInitToSim(const std::vector<std::string> launchArgs, const std::string&
 bool attemptLibSImConnection(const std::string& path, const std::vector<std::string>& args) {
     int port;
     std::string host, key;
-    if (!in_situ::readSim2File(path, host, port, key)) {
+    if (!insitu::readSim2File(path, host, port, key)) {
         return false;
     }
   return sendInitToSim(args, host, port, key);

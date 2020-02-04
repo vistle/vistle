@@ -2,7 +2,7 @@
 #define SIMULATION_META_DATA_H
 
 #include "VisItDataTypes.h"
-namespace in_situ {
+namespace insitu {
 struct Metadata {
     bool timestepChanged = false;
     int  simMode = VISIT_SIMMODE_UNKNOWN;

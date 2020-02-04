@@ -16,7 +16,7 @@
 
 #include <util/vecstreambuf.h>
 
-namespace in_situ{
+namespace insitu{
 
 
 enum class V_VISITXPORT EngineMessageType {
@@ -98,13 +98,9 @@ struct V_VISITXPORT InSituMessage : public vistle::message::MessageBase<InSituMe
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");
 
 
-namespace detail {
-template<typename SomeMessage>
-struct EngineMessageHelper     {
 
-};
-}
-//remove this in static functions
+
+
 class V_VISITXPORT EngineMessage {
 public:
 

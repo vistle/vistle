@@ -42,7 +42,9 @@
 #include <util/hostname.h>
 #include <util/listenv4v6.h>
 
+#ifndef MODULE_THREAD
 #include "ConnectLibSim.h"
+#endif // !MODULE_THREAD
 
 
 #include <ostream>
@@ -70,7 +72,7 @@ static DoNothing doNothingInstance;
 
 using std::string; using std::vector;
 using std::endl;
-using namespace in_situ;
+using namespace insitu;
 namespace asio = boost::asio;
 Engine* Engine::instance = nullptr;
 
@@ -199,7 +201,7 @@ visit_handle Engine::getNthObject(SimulationDataTyp type, int n) {
     return obj;
 }
 
-std::vector<std::string> in_situ::Engine::getDataNames(SimulationDataTyp type) {
+std::vector<std::string> insitu::Engine::getDataNames(SimulationDataTyp type) {
     std::function<int(visit_handle, char**)> getName;
     switch (type) {
     case SimulationDataTyp::mesh:
@@ -385,7 +387,7 @@ void Engine::DeleteData() {
     sendData();
 }
 
-void in_situ::Engine::passCommandToSim() {
+void insitu::Engine::passCommandToSim() {
 #endif
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
@@ -423,12 +425,12 @@ void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, vo
     simulationCommandCallbackData = scdata;
 }
 
-void in_situ::Engine::setSlaveComandCallback(void(*sc)(void)) {
+void insitu::Engine::setSlaveComandCallback(void(*sc)(void)) {
     DEBUG_CERR << "setSlaveComandCallback" << endl;
     slaveCommandCallback = sc;
 }
 
-int in_situ::Engine::GetInputSocket() {
+int insitu::Engine::GetInputSocket() {
     if (m_rank == 0 && m_socket) {
         return m_socket->native_handle();
     }
@@ -437,7 +439,7 @@ int in_situ::Engine::GetInputSocket() {
     }
 }
 
-void in_situ::Engine::getMetaData() {
+void insitu::Engine::getMetaData() {
     //m_metaData.handle = v2check(simv2_invoke_GetMetaData);
     m_metaData.handle = simv2_invoke_GetMetaData(); //somehow 0 is valid
     CERR << "getMetaData: handle = " << m_metaData.handle << endl;
@@ -447,7 +449,7 @@ void in_situ::Engine::getMetaData() {
 
 }
 
-void in_situ::Engine::getRegisteredGenericCommands() {
+void insitu::Engine::getRegisteredGenericCommands() {
     int numRegisteredCommands = getNumObjects(SimulationDataTyp::genericCommand);
     bool found = false;
     std::vector<std::string> commands;
@@ -479,7 +481,7 @@ void Engine::addPorts() {
     }
 }
 
-bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
+bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
@@ -538,17 +540,17 @@ bool in_situ::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
 
 }
 
-bool in_situ::Engine::makeUntructuredMesh(MeshInfo meshInfo) {
+bool insitu::Engine::makeUntructuredMesh(MeshInfo meshInfo) {
 
     return false;
 }
 
-bool in_situ::Engine::makeAmrMesh(MeshInfo meshInfo) {
+bool insitu::Engine::makeAmrMesh(MeshInfo meshInfo) {
     return makeRectilinearMesh(meshInfo);
 
 }
 
-bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
+bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
@@ -607,7 +609,7 @@ bool in_situ::Engine::makeStructuredMesh(MeshInfo meshInfo) {
     return true;
 }
 
-void in_situ::Engine::sendMeshesToModule()     {
+void insitu::Engine::sendMeshesToModule()     {
     int numMeshes = getNumObjects(SimulationDataTyp::mesh);
 
     for (size_t i = 0; i < numMeshes; i++) {
@@ -690,7 +692,7 @@ void in_situ::Engine::sendMeshesToModule()     {
     }
 }
 
-void in_situ::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
+void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
     int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
@@ -725,7 +727,7 @@ void in_situ::Engine::sendVarablesToModule()     { //todo: combine variables to 
     }
 }
 
-void in_situ::Engine::sendDataToModule() {
+void insitu::Engine::sendDataToModule() {
     return; //not rdy yet
     try {
         sendMeshesToModule();
@@ -740,7 +742,7 @@ void in_situ::Engine::sendDataToModule() {
     }
 }
 
-void in_situ::Engine::sendTestData() {
+void insitu::Engine::sendTestData() {
 
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -769,7 +771,7 @@ void in_situ::Engine::sendTestData() {
     //m_module->addObject("AMR_mesh", grid);
 }
 
-void in_situ::Engine::finalizeInit()     {
+void insitu::Engine::finalizeInit()     {
     if (!m_moduleInitialized) {
         try {
             getMetaData();
@@ -784,7 +786,7 @@ void in_situ::Engine::finalizeInit()     {
     }
 }
 
-void in_situ::Engine::initializeEngineSocket(const std::string& hostname, int port) {
+void insitu::Engine::initializeEngineSocket(const std::string& hostname, int port) {
 
     boost::system::error_code ec;
     asio::ip::tcp::resolver resolver(m_ioService);
@@ -800,38 +802,38 @@ void in_situ::Engine::initializeEngineSocket(const std::string& hostname, int po
     }
 }
 
-void in_situ::Engine::handleEngineMessage(EngineMessage& msg) {
+void insitu::Engine::handleEngineMessage(EngineMessage& msg) {
 
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     EngineMessageType t;
     switch (t) {
-    case in_situ::EngineMessageType::Invalid:
+    case insitu::EngineMessageType::Invalid:
         break;
-    case in_situ::EngineMessageType::ShmInit:
+    case insitu::EngineMessageType::ShmInit:
         break;
-    case in_situ::EngineMessageType::AddObject:
+    case insitu::EngineMessageType::AddObject:
         break;
-    case in_situ::EngineMessageType::AddPorts:
+    case insitu::EngineMessageType::AddPorts:
         break;
-    case in_situ::EngineMessageType::AddCommands:
+    case insitu::EngineMessageType::AddCommands:
         break;
-    case in_situ::EngineMessageType::Ready:
+    case insitu::EngineMessageType::Ready:
     {
         EM_Ready em = msg.unpackOrCast<EM_Ready>();
         m_constGrids = em.m_state;
     }
         break;
-    case in_situ::EngineMessageType::ExecuteCommand:
+    case insitu::EngineMessageType::ExecuteCommand:
         break;
-    case in_situ::EngineMessageType::GoOn:
+    case insitu::EngineMessageType::GoOn:
         break;
-    case in_situ::EngineMessageType::ConstGrids:
+    case insitu::EngineMessageType::ConstGrids:
     {
         EM_ConstGrids em = msg.unpackOrCast<EM_ConstGrids>();
         m_constGrids = em.m_state;
     }
         break;
-    case in_situ::EngineMessageType::NthTimestep:
+    case insitu::EngineMessageType::NthTimestep:
     {
         EM_NthTimestep em = msg.unpackOrCast<EM_NthTimestep>();
         m_constGrids = em.m_frequency;

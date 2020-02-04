@@ -7,7 +7,7 @@
 #include <functional>
 
 #include "VisItDataTypes.h"
-namespace in_situ {
+namespace insitu {
 //base class that lets us catch all vistleLibSimExeptions
 struct VistleLibSimExeption : public std::exception {
 public:
