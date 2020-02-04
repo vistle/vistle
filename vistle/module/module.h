@@ -255,6 +255,7 @@ protected:
    virtual bool handleMessage(const message::Message *message, const vistle::MessagePayload &payload);
    virtual bool handleExecute(const message::Execute *exec);
    bool cancelRequested(bool collective=false);
+   bool wasCancelRequested() const;
    virtual void cancelExecuteMessageReceived(const message::Message* msg);
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);

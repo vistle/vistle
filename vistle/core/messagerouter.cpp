@@ -67,7 +67,7 @@ void Router::initRoutingTable() {
 
    rt[FILEQUERY]             = Special;
    rt[FILEQUERYRESULT]       = Special;
-
+   rt[INSITU] = Special;
    for (int i=ANY+1; i<NumMessageTypes; ++i) {
       if (rt[i] == 0) {
          std::cerr << "message routing table not initialized for " << (Type)i << std::endl;

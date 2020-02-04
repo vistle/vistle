@@ -2327,6 +2327,10 @@ bool Module::cancelRequested(bool collective) {
     return m_cancelRequested;
 }
 
+bool Module::wasCancelRequested() const {
+    return m_cancelRequested;
+}
+
 void Module::cancelExecuteMessageReceived(const message::Message* msg) {
     (void)msg;
     return;

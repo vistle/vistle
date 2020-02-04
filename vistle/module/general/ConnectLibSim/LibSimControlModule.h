@@ -16,6 +16,8 @@ public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
 
+    typedef std::lock_guard<std::mutex> Guard;
+
     ControllModule(const std::string& name, int moduleID, mpi::communicator comm);
     ~ControllModule();
     vistle::Port* noDataOut = nullptr;
@@ -26,7 +28,9 @@ public:
     vistle::IntParameter* sendCommand = nullptr;
     bool sendCommandChanged = false;
 private:
-
+    bool m_terminate = false;
+    
+    bool m_connectedToSim = false;
     std::map<std::string, vistle::Port*> m_outputPorts;
     std::set<const vistle::Parameter*> m_commandParameter;
 
@@ -48,6 +52,7 @@ private:
     //communicator to sync tcp communcation with slaves
     boost::mpi::communicator m_socketComm;
 
+    std::mutex m_socketMutex;
     void startControllServer();
 
     bool startAccept(std::shared_ptr<acceptor> a);
@@ -55,6 +60,8 @@ private:
     virtual bool prepare() override; 
     virtual bool reduce(int timestep) override; 
     virtual bool examine(const vistle::Parameter* param);
+
+    void startSocketThread();
 
     void sendMsgToSim(const std::string& msg);
 

@@ -17,20 +17,22 @@
 using namespace std;
 using insitu::EngineMessage;
 
-#define CERR cerr << "["<< rank() << "/" << size() << "] "
+#define CERR cerr << "LibSimMoule["<< rank() << "/" << size() << "] "
 
 ControllModule::ControllModule(const string& name, int moduleID, mpi::communicator comm)
-    : vistle::InSituReader("set ConnectLibSim in the state of prepare", name, moduleID, comm) 
-    , m_acceptorv4(new boost::asio::ip::tcp::acceptor(m_ioService))
-    , m_acceptorv6(new boost::asio::ip::tcp::acceptor(m_ioService))
+    : vistle::InSituReader("set ConnectLibSim in the state of prepare", name, moduleID, comm)
 #if BOOST_VERSION >= 106600
     , m_workGuard(boost::asio::make_work_guard(m_ioService))
 #else
     , m_workGuard(new boost::asio::io_service::work(m_ioService))
 #endif
-    , m_ioThread([this]() { m_ioService.run(); })
+    , m_ioThread([this]() { m_ioService.run();
+CERR << "io thread terminated" << endl; })
     , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
+    m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
+    m_acceptorv6.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
+    
     noDataOut = createOutputPort("noData", "");
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "Simulation Files (*.sim2)");
@@ -45,21 +47,29 @@ ControllModule::ControllModule(const string& name, int moduleID, mpi::communicat
     observeParameter(sendCommand);
     observeParameter(m_constGrids);
     observeParameter(m_nthTimestep);
+
     if (rank() == 0) {
         startControllServer();
 
     } else {
-        m_socketThread = std::thread([this]() {
-            m_socketComm.barrier();
-            insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
-            waitForMessages();
-            });
+        startSocketThread();
     }
-
-
 }
 
 ControllModule::~ControllModule() {
+    m_socketMutex.lock();
+    m_terminate = true;
+    m_socketMutex.unlock();
+    comm().barrier(); //make sure m_terminate is set on all ranks before releasing slaves from waiting for connection
+    if (rank() == 0 && !m_connectedToSim) {
+        boost::system::error_code ec;
+        m_ListeningSocket->cancel(ec);// release me from waiting for connection
+        CERR << "releasing" << endl;
+        m_socketComm.barrier(); // release slaves from waiting for connection
+    }
+    if (m_socketThread.joinable()) {
+        m_socketThread.join();
+    }
     m_workGuard.reset();
     m_ioService.stop();
     m_ioThread.join();
@@ -74,16 +84,16 @@ void ControllModule::startControllServer() {
         if (ec == boost::system::errc::address_in_use) {
             ++port;
         } else if (ec) {
-            cerr << "failed to listen on port " << port << ": " << ec.message() << endl;
+            CERR << "failed to listen on port " << port << ": " << ec.message() << endl;
             return;
         }
     }
 
     m_port = port;
 
-    cerr << "listening for connections on port " << m_port << endl;
+    CERR << "listening for connections on port " << m_port << endl;
     startAccept(m_acceptorv4);
-    startAccept(m_acceptorv4);
+    startAccept(m_acceptorv6);
 
     return;
 }
@@ -99,27 +109,24 @@ bool ControllModule::startAccept(shared_ptr<acceptor> a) {
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
         if (ec) {
             m_socket = nullptr;
-            cerr << "failed connection attempt" << endl;
+            CERR << "failed connection attempt" << endl;
             return;
         }
-        cerr << "connected with engine" << endl;
+        CERR << "connected with engine" << endl;
         m_socket = sock;
-        m_socketComm.barrier();
-        m_socketThread = std::thread([this]() {
-            insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
-            waitForMessages();
-            });
+        startSocketThread();
         });
     return true;
 }
 
 bool ControllModule::prepare() {
-
+    CERR << "prepare" << endl;
     EngineMessage::sendEngineMessage(insitu::EM_Ready(true));
     return true;
 }
 
 bool ControllModule::reduce(int timestep) {
+    CERR << "reduce" << endl;
     EngineMessage::sendEngineMessage(insitu::EM_Ready(false));
     m_timestep = 0;
     return true;
@@ -129,7 +136,17 @@ bool ControllModule::examine(const vistle::Parameter* param) {
     if (!param) {
         return true;
     }
-    if (param == sendCommand && isExecuting()) {
+    if (param == m_filePath) {
+        if (m_connectedToSim) {
+            CERR << "already connected" << endl;
+        } else if(rank() == 0){
+            vector<string> args{ to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
+            if (insitu::attemptLibSImConnection(m_filePath->getValue(), args)) {
+                m_connectedToSim = true;
+            }
+        }
+        boost::mpi::broadcast(comm(), m_connectedToSim, 0);
+    } else if (param == sendCommand && isExecuting()) {
         array<int, 3> dims{ 5, 10, 3 };
         vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
         for (size_t i = 0; i < 3; i++) {
@@ -148,35 +165,41 @@ bool ControllModule::examine(const vistle::Parameter* param) {
         variable->addAttribute("_species", "velocity");
         addObject(noDataOut, variable);
         ++m_timestep;
-    }
-    else if (rank() != 0) {
+    } else if (rank() != 0) {
         return true;
-    }
-    if (param == sendMessageToSim) {
+    } else if (param == sendMessageToSim) {
         EngineMessage::sendEngineMessage(insitu::EM_GoOn(true));
-    }
-    else if (m_commandParameter.find(param) != m_commandParameter.end()) {
+    } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
         EngineMessage::sendEngineMessage(insitu::EM_ExecuteCommand(param->getName()));
-    }
-    else if (param == m_filePath) {
-        cerr << "test" << endl;
-        vector<string> args{to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
-        insitu::attemptLibSImConnection(m_filePath->getValue(), args);
-    }
-    else if(param == m_constGrids){
+    } else if(param == m_constGrids){
         EngineMessage::sendEngineMessage(insitu::EM_ConstGrids(m_constGrids->getValue()));
-    }
-    else if (param == m_nthTimestep) {
+    } else if (param == m_nthTimestep) {
         EngineMessage::sendEngineMessage(insitu::EM_NthTimestep (m_nthTimestep->getValue()) );
     }
 
     return false;
 }
 
+void ControllModule::startSocketThread()     {
+    m_socketThread = std::thread([this]() {
+        m_socketComm.barrier();
+        CERR << "socket thread running" << endl;
+        m_socketMutex.lock();
+        bool terminate = m_terminate;
+        m_socketMutex.unlock();
+        insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+        while (!terminate) {
+            waitForMessages();
+            Guard g(m_socketMutex);
+            terminate = m_terminate;
+        }
+        CERR << "socket thread terminating" << endl;
+        });
 
+}
 
 void ControllModule::handleMessage(insitu::EngineMessage&& msg)     {
-    
+    CERR << "handleMessage " << (int)msg.type() << endl;
     using namespace insitu;
     switch (msg.type()) {
     case EngineMessageType::Invalid:
@@ -214,14 +237,12 @@ void ControllModule::handleMessage(insitu::EngineMessage&& msg)     {
     default:
         break;
     }
-
-    waitForMessages();
-
 }
 
 void ControllModule::waitForMessages()     {
+    CERR << "waitForMessages" << endl;
     handleMessage(EngineMessage::recvEngineMessage());
 }
 
 
-MODULE_MAIN(ControllModule)
+MODULE_MAIN_THREAD(ControllModule, MPI_THREAD_MULTIPLE)

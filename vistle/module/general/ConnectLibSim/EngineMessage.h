@@ -55,16 +55,7 @@ struct V_VISITXPORT EM_##messageType : public EngineMessageBase\
        ar& m_##payloadName;\
     }\
 private:\
-    EM_##messageType(vistle::buffer&& data):EngineMessageBase(type)\
-    {\
-        vistle::vecistreambuf<char> buf(data);\
-        try {\
-            vistle::iarchive ar(buf);\
-            ar& m_##payloadName;\
-        } catch (yas::io_exception & ex) {\
-            std::cerr << "ERROR: failed to get engine message payload from " << data.size() << " bytes: " << ex.what() << std::endl;\
-        }\
-    }\
+    EM_##messageType():EngineMessageBase(type){}\
 };\
 
 struct V_VISITXPORT EM_Invalid : public EngineMessageBase {
@@ -111,7 +102,7 @@ public:
     template<typename SomeMessage>
     static bool sendEngineMessage(const SomeMessage& msg) {
         if (!m_initialized) {
-            std::cerr << "Engine message uninitialize: can not send message!" << std::endl;
+            std::cerr << "Engine message uninitialized: can not send message!" << std::endl;
             return false;
         }
         if (msg.type == EngineMessageType::Invalid) {
@@ -140,9 +131,20 @@ public:
 
     template<typename SomeMessage>
     SomeMessage& unpackOrCast() {
+
+
         assert(SomeMessage::type != type());
-        m_msg = SomeMessage(std::move(m_payload));
-        return static_cast<SomeMessage&>(m_msg);
+        if (!m_msg) {
+            vistle::vecistreambuf<char> buf(m_payload);
+            m_msg.reset(new SomeMessage{});
+            try {
+                vistle::iarchive ar(buf);
+                ar& *static_cast<SomeMessage*>(m_msg.get());
+            } catch (yas::io_exception & ex) {
+                std::cerr << "ERROR: failed to get engine message payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
+            }
+        }
+        return *static_cast<SomeMessage*>(m_msg.get());
 
     }
 
@@ -153,7 +155,7 @@ private:
     EngineMessage();
     EngineMessageType m_type;
     vistle::buffer m_payload;
-    EngineMessageBase m_msg;
+    std::unique_ptr<EngineMessageBase> m_msg;
 
     static bool m_initialized;
     static boost::mpi::communicator m_comm;

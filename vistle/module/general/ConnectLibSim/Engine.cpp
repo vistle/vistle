@@ -327,10 +327,11 @@ bool Engine::initialize(int argC, char** argV) {
         try {
             initializeEngineSocket(argV[4], atoi(argV[5]));
         } catch (const EngineExeption& ex) {
+            CERR << ex.what() << endl;
             return false;
         }
     }
-
+    EngineMessage::initializeEngineMessage(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     EngineMessage::sendEngineMessage(EM_GoOn(true));
     return true;
 }

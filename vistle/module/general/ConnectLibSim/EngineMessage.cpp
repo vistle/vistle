@@ -16,20 +16,18 @@ EngineMessageType EngineMessage::type() const{
 
 EngineMessage::EngineMessage(EngineMessageType type, vistle::buffer&& payload)
     :m_type(type)
-    ,m_payload(payload)
-    , m_msg(EngineMessageType::Invalid) {
-    
+    ,m_payload(payload){
 }
 
 EngineMessage::EngineMessage()
-    :m_type(EngineMessageType::Invalid)
-    , m_msg(EngineMessageType::Invalid) {
+    :m_type(EngineMessageType::Invalid) {
 
 }
 
 
 
 EngineMessage EngineMessage::recvEngineMessage() {
+    std::cerr << "recvEngineMessage" << std::endl;
     bool error = false;
     vistle::buffer payload;
     int type;
@@ -40,7 +38,7 @@ EngineMessage EngineMessage::recvEngineMessage() {
         if (m_comm.rank() == 0) {
             boost::system::error_code err;
             vistle::message::Buffer bf;
-            vistle::message::recv(*m_socket, bf, err, false, &payload);
+            vistle::message::recv(*m_socket, bf, err, true, &payload);
             if (err || bf.type() != vistle::message::Type::INSITU) {
                 error = true;
             } else {
@@ -48,13 +46,19 @@ EngineMessage EngineMessage::recvEngineMessage() {
             }
         }
     }
-
+    m_comm.barrier();
     boost::mpi::broadcast(m_comm, error, 0);
     if (error) {
         return EngineMessage{};
     }
     boost::mpi::broadcast(m_comm, type, 0);
+    int size = payload.size();
+    boost::mpi::broadcast(m_comm, size, 0);
+    if (m_comm.rank() != 0) {
+        payload.resize(size);
+    }
     boost::mpi::broadcast(m_comm, payload.data(), payload.size(), 0);
+    std::cerr << " rank " <<m_comm.rank() << " recvEngineMessage type: " << type << ", size :" << payload.size() << std::endl;
     return EngineMessage{static_cast<EngineMessageType>(type), std::move(payload)};
 }
 
