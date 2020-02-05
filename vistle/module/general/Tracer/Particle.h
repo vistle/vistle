@@ -58,7 +58,7 @@ public:
     bool isTracing(bool wait);
     bool madeProgress() const;
     bool trace();
-    void finishSegment(boost::mpi::communicator mpi_comm);
+    void finishSegment();
     void fetchSegments(Particle &other); //! move segments from other particle to this one
     void addToOutput();
     vistle::Scalar time() const;

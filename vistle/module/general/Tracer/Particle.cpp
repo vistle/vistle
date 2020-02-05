@@ -297,7 +297,7 @@ bool Particle::trace() {
     return traced;
 }
 
-void Particle::finishSegment(boost::mpi::communicator mpi_comm) {
+void Particle::finishSegment() {
 
     if (m_currentSegment) {
         m_segments[m_currentSegment->m_num] = m_currentSegment;

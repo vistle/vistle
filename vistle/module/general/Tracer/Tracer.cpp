@@ -593,7 +593,7 @@ bool Tracer::reduce(int timestep) {
                   if (p->rank() == rank() && rank() != mpirank) {
                       datarecvlist.emplace_back(p->id(), mpirank);
                   }
-                  p->finishSegment(comm());
+                  p->finishSegment();
                   int r = p->searchRank(comm());
                   if (r < 0) {
                       p->Deactivate(Particle::OutOfDomain);
@@ -618,7 +618,7 @@ bool Tracer::reduce(int timestep) {
 
    if (mpisize == 1) {
        for (auto p: allParticles) {
-           p->finishSegment(comm());
+           p->finishSegment();
        }
    } else {
       // iterate over all other ranks
