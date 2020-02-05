@@ -21,7 +21,7 @@
 #include <netcdfcpp.h>
 #include <core/structuredgrid.h>
 
-#define NUMPARAMS 5
+#define NUMPARAMS 6
 
 using namespace vistle;
 
@@ -65,8 +65,7 @@ private:
     StringParameter *m_trueHGT;
     StringParameter *m_PHB;
     StringParameter *m_PH;
-
-
+    StringParameter *m_gridZ;
 
     std::vector<std::string> varDimList = {"2D","3D","other"};
 

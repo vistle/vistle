@@ -41,16 +41,17 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices(m_varDim, varDimList);
 
     m_trueHGT = addStringParameter("true_height", "Use real ground topology", "", Parameter::Choice);
-    m_gridLat = addStringParameter("GridX", "grid Bottom-Top axis", "", Parameter::Choice);
-    m_gridLon = addStringParameter("GridY", "grid Sout-North axis", "", Parameter::Choice);
+    m_gridLat = addStringParameter("GridX", "grid Sout-North axis", "", Parameter::Choice);
+    m_gridLon = addStringParameter("GridY", "grid East_West axis", "", Parameter::Choice);
     m_PH = addStringParameter("pert_gp","perturbation geopotential", "", Parameter::Choice);
     m_PHB = addStringParameter("base_gp", "base-state geopotential", "", Parameter::Choice);
+    m_gridZ = addStringParameter("GridZ", "grid Bottom-Top axis","", Parameter::Choice);
 
     char namebuf[50];
     std::vector<std::string> varChoices;
     varChoices.push_back("(NONE)");
 
-    for (int i = 0; i < NUMPARAMS; ++i) {
+    for (int i = 0; i < NUMPARAMS-3; ++i) {
 
         sprintf(namebuf, "Variable%d", i);
 
@@ -65,12 +66,26 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
         m_dataOut[i] = createOutputPort(s_var.str(), "scalar data");
 
     }
+    m_variables[NUMPARAMS-3] = addStringParameter("U","U", "", Parameter::Choice);
+    setParameterChoices(m_variables[NUMPARAMS-3], varChoices);
+    observeParameter(m_variables[NUMPARAMS-3]);
+    m_dataOut[NUMPARAMS-3] = createOutputPort("data_out_U", "scalar data");
+    m_variables[NUMPARAMS-2] = addStringParameter("V","V", "", Parameter::Choice);
+    setParameterChoices(m_variables[NUMPARAMS-2], varChoices);
+    observeParameter(m_variables[NUMPARAMS-2]);
+    m_dataOut[NUMPARAMS-2] = createOutputPort("data_out_V", "scalar data");
+    m_variables[NUMPARAMS-1] = addStringParameter("W","W", "", Parameter::Choice);
+    setParameterChoices(m_variables[NUMPARAMS-1], varChoices);
+    observeParameter(m_variables[NUMPARAMS-1]);
+    m_dataOut[NUMPARAMS-1] = createOutputPort("data_out_W", "scalar data");
 
     setParameterChoices(m_gridLat, varChoices);
     setParameterChoices(m_gridLon, varChoices);
     setParameterChoices(m_trueHGT, varChoices);
     setParameterChoices(m_PH, varChoices);
     setParameterChoices(m_PHB, varChoices);
+    setParameterChoices(m_gridZ, varChoices);
+
     setParallelizationMode(Serial);
 
     observeParameter(m_filedir);
@@ -256,6 +271,7 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             setParameterChoices(m_gridLon, Axis2dChoices);
             setParameterChoices(m_PHB, AxisChoices);
             setParameterChoices(m_PH, AxisChoices);
+            setParameterChoices(m_gridZ, AxisChoices);
 
             setTimesteps(numFiles);
 
@@ -323,80 +339,114 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
     Object::ptr geoOut;
 
-    if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && !emptyValue(m_trueHGT) && !emptyValue(m_PH) && !emptyValue(m_PHB)) {
+    if(!emptyValue(m_gridLat) && !emptyValue(m_gridLon) && ((!emptyValue(m_PH) && !emptyValue(m_PHB)) || !emptyValue(m_gridZ) )) {
         //use geographic coordinates
         StructuredGrid::ptr strGrid(new StructuredGrid(bSizeX, bSizeY, bSizeZ));
-
-        float * hgt = new float[bSizeY*bSizeZ];
-        float * lat = new float[bSizeY*bSizeZ];
-        float * lon = new float[bSizeY*bSizeZ];
-
-        float * ph = new float[(bSizeX+1)*bSizeY*bSizeZ];
-        float * phb = new float[(bSizeX+1)*bSizeY*bSizeZ];
-
         auto ptrOnXcoords = strGrid->x().data();
         auto ptrOnYcoords = strGrid->y().data();
         auto ptrOnZcoords = strGrid->z().data();
-        NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
+
+       // float * hgt = new float[bSizeY*bSizeZ];
+        float * lat = new float[bSizeY*bSizeZ];
+        float * lon = new float[bSizeY*bSizeZ];
         NcVar *varLat = ncFirstFile->get_var(m_gridLat->getValue().c_str());
         NcVar *varLon = ncFirstFile->get_var(m_gridLon->getValue().c_str());
-        NcVar *varPH = ncFirstFile->get_var(m_PH->getValue().c_str());
-        NcVar *varPHB = ncFirstFile->get_var(m_PHB->getValue().c_str());
-
+      //  NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
         //extract (2D) lat, lon, hgt
-        varHGT->set_cur(0,b[1].begin,b[2].begin);
-        varHGT->get(hgt, 1,bSizeY, bSizeZ);
+       // varHGT->set_cur(0,b[1].begin,b[2].begin);
+       // varHGT->get(hgt, 1,bSizeY, bSizeZ);
         varLat->set_cur(0,b[1].begin,b[2].begin);
         varLat->get(lat, 1,bSizeY, bSizeZ);
         varLon->set_cur(0,b[1].begin,b[2].begin);
         varLon->get(lon, 1,bSizeY, bSizeZ);
 
-        //extract (3D) geopotential for z-coord calculation
-        int numDimElem = 4;
-        long *curs = varPH->edges();
-        //int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
+        if (!emptyValue(m_gridZ)) {
+            float * z = new float[(bSizeX+1)*bSizeY*bSizeZ];
+            NcVar *varZ = ncFirstFile->get_var(m_gridZ->getValue().c_str());
+            int numDimElem = 4;
+            long *curs = varZ->edges();
+            long *numElem = varZ->edges();
 
-        curs[numDimElem-3] = b[0].begin;
-        curs[numDimElem-2] = b[1].begin;
-        curs[numDimElem-1] = b[2].begin;
-        curs[0] = 0;
+            curs[numDimElem-3] = b[0].begin;
+            curs[numDimElem-2] = b[1].begin;
+            curs[numDimElem-1] = b[2].begin;
+            curs[0] = 0;
 
-        long *numElem = varPH->edges();
-        numElem[numDimElem-3] = bSizeX+1;
-        numElem[numDimElem-2] = bSizeY;
-        numElem[numDimElem-1] = bSizeZ;
-        numElem[0] = 1;
+            numElem[numDimElem-3] = bSizeX+1;
+            numElem[numDimElem-2] = bSizeY;
+            numElem[numDimElem-1] = bSizeZ;
 
-        varPH->set_cur(curs);
-        varPH->get(ph, numElem);
-        varPHB->set_cur(curs);
-        varPHB->get(phb, numElem);
+            varZ->set_cur(curs);
+            varZ->get(z, numElem);
 
-
-        int n = 0;
-        int idx = 0, idx1 = 0;
-        for (int i = 0; i < bSizeX; i++) {
-            for (int j = 0; j < bSizeY; j++) {
-                for (int k = 0; k < bSizeZ; k++, n++) {
-                    idx = i*bSizeY*bSizeZ + j*bSizeZ + k;
-                    idx1 = (i+1)*bSizeY*bSizeZ + j*bSizeZ + k;
-                    ptrOnXcoords[n] = (ph[idx]+phb[idx]+ph[idx1]+phb[idx1])/(2*9.81);//(hgt[k+bSizeZ*j]+i*50);  //divide by 50m (=dx of grid cell)
-                    ptrOnYcoords[n] = lat[j*bSizeZ+k];
-                    ptrOnZcoords[n] = lon[j*bSizeZ+k];
+            int n = 0;
+            int idx1 = 0;
+            for (int i = 0; i < bSizeX; i++) {
+                for (int j = 0; j < bSizeY; j++) {
+                    for (int k = 0; k < bSizeZ; k++, n++) {
+                        idx1 = (i+1)*bSizeY*bSizeZ + j*bSizeZ + k;
+                        ptrOnXcoords[n] = z[idx1];
+                        ptrOnYcoords[n] = lat[j*bSizeZ+k];
+                        ptrOnZcoords[n] = lon[j*bSizeZ+k];
+                    }
                 }
             }
+            delete [] z;
+
+        } else if (!emptyValue(m_PH) &&!emptyValue(m_PHB)) {
+            float * ph = new float[(bSizeX+1)*bSizeY*bSizeZ];
+            float * phb = new float[(bSizeX+1)*bSizeY*bSizeZ];
+            NcVar *varPH = ncFirstFile->get_var(m_PH->getValue().c_str());
+            NcVar *varPHB = ncFirstFile->get_var(m_PHB->getValue().c_str());
+
+            //extract (3D) geopotential for z-coord calculation
+            int numDimElem = 4;
+            long *curs = varPH->edges();
+            long *numElem = varPH->edges();
+
+            curs[numDimElem-3] = b[0].begin;
+            curs[numDimElem-2] = b[1].begin;
+            curs[numDimElem-1] = b[2].begin;
+            curs[0] = 0;
+
+            numElem[numDimElem-3] = bSizeX+1;
+            numElem[numDimElem-2] = bSizeY;
+            numElem[numDimElem-1] = bSizeZ;
+            numElem[0] = 1;
+
+            varPH->set_cur(curs);
+            varPH->get(ph, numElem);
+            varPHB->set_cur(curs);
+            varPHB->get(phb, numElem);
+
+            //geopotential height is defined on stagged grid -> one additional layer
+            //thus it is evaluated (vertically) inbetween vertices to match lat/lon grid
+            int n = 0;
+            int idx = 0, idx1 = 0;
+            for (int i = 0; i < bSizeX; i++) {
+                for (int j = 0; j < bSizeY; j++) {
+                    for (int k = 0; k < bSizeZ; k++, n++) {
+                        idx = i*bSizeY*bSizeZ + j*bSizeZ + k;
+                        idx1 = (i+1)*bSizeY*bSizeZ + j*bSizeZ + k;
+                        ptrOnXcoords[n] = (ph[idx]+phb[idx]+ph[idx1]+phb[idx1])/(2*9.81);
+                        ptrOnYcoords[n] = lat[j*bSizeZ+k];
+                        ptrOnZcoords[n] = lon[j*bSizeZ+k];
+                    }
+                }
+            }
+            delete [] ph;
+            delete [] phb;
         }
+
         for (int i=0; i<3; ++i) {
             strGrid->setNumGhostLayers(i, StructuredGrid::Bottom, b[i].ghost[0]);
             strGrid->setNumGhostLayers(i, StructuredGrid::Top, b[i].ghost[1]);
         }
 
         strGrid->updateInternals();
-        delete [] hgt;
+       // delete [] hgt;
         delete [] lat;
         delete [] lon;
-        delete [] ph;
-        delete [] phb;
 
         geoOut = strGrid;
     }else if (!emptyValue(m_trueHGT)) {
@@ -457,6 +507,7 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
     if (!(StructuredGrid::as(outGrid) || UniformGrid::as(outGrid)))
         return true;
     NcVar *varData = ncDataFile->get_var(m_variables[vi]->getValue().c_str());
+    std::string unit = varData->get_att("units")->values()->as_string(0);
     int numDimElem = varData->num_dims();
     long *curs = varData->edges();
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
@@ -475,14 +526,32 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
     Vec<Scalar>::ptr obj(new Vec<Scalar>(bSizeX*bSizeY*bSizeZ));
     vistle::Scalar *ptrOnScalarData = obj->x().data();
 
-    varData->set_cur(curs);
-    varData->get(ptrOnScalarData, numElem);
+    if ((vi==NUMPARAMS-1) && (numDimElem >3)) { //W has one level to many: -> read and crop
+         numElem[numDimElem-3] = bSizeX+1;
+         float * longdata = new float[(bSizeX+1)*bSizeY*bSizeZ];
 
+         varData->set_cur(curs);
+         varData->get(longdata, numElem);
+         int n = 0;
+         int idx1 = 0;
+         for (int i = 1; i < bSizeX+1; i++) {
+             for (int j = 0; j < bSizeY; j++) {
+                 for (int k = 0; k < bSizeZ; k++, n++) {
+                     idx1 = (i)*bSizeY*bSizeZ + j*bSizeZ + k;
+                     ptrOnScalarData[n] =longdata[idx1] ;
+                 }
+             }
+         }
+        delete [] longdata;
+    }else {
+        varData->set_cur(curs);
+        varData->get(ptrOnScalarData, numElem);
+    }
     obj->setGrid(outGrid);
     setMeta(obj, block, numBlocks, t);
     obj->setMapping(DataBase::Vertex);
     std::string pVar = m_variables[vi]->getValue();
-    obj->addAttribute("_species", pVar);
+    obj->addAttribute("_species", pVar+ " [" + unit + "]");
     token.addObject(m_dataOut[vi], obj);
 
     return true;
