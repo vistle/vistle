@@ -44,6 +44,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (Rainbow)
                                     (Earth)
                                     (Topography)
+                                    (RainbowPale)
                                     )
 
 ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
@@ -289,6 +290,16 @@ Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
    pins[1.0] = RGBA(1.00, 0.00, 0.00, 1);
    transferFunctions[Rainbow] = pins;
    pins.clear();
+
+   pins[0.0] = RGBA(1.0, 1.00, 1.00, 1);
+   pins[0.2] = RGBA(0.27, 0.87, 1.00, 1);
+   pins[0.4] = RGBA(0.31, 0.60, 1.00, 1);
+   pins[0.6] = RGBA(0.30, 0.66, 0.28, 1);
+   pins[0.8] = RGBA(1.00, 0.80, 0.13, 1);
+   pins[1.0] = RGBA(0.78, 0.11, 0.21, 1);
+   transferFunctions[RainbowPale] = pins;
+   pins.clear();
+
 
    pins[0.00] = RGBA(25,25,25,255)/255.;
    pins[1.00] = RGBA(230,230,230,255)/255.;
