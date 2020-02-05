@@ -130,6 +130,8 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    int size() const;
    int id() const;
 
+   unsigned hardware_concurrency() const;
+
    ObjectCache::CacheMode setCacheMode(ObjectCache::CacheMode mode, bool update=true);
    ObjectCache::CacheMode cacheMode() const;
 
@@ -339,6 +341,8 @@ protected:
    void waitAllTasks();
    std::shared_ptr<PortTask> m_lastTask;
    std::deque<std::shared_ptr<PortTask>> m_tasks;
+
+   unsigned m_hardware_concurrency = 1;
 };
 
 V_MODULEEXPORT int getTimestep(Object::const_ptr obj);

@@ -244,6 +244,8 @@ Module::Module(const std::string &desc,
       throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
    }
 
+   m_hardware_concurrency = mpi::all_reduce(comm, std::thread::hardware_concurrency(), mpi::minimum<unsigned>());
+
 #ifdef DEBUG
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] started as " << hostname() << ":"
@@ -273,7 +275,7 @@ Module::Module(const std::string &desc,
    addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
 
    m_concurrency = addIntParameter("_concurrency", "number of tasks to keep in flight per MPI rank (-1: #cores/2)", -1);
-   setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()));
+   setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()));
 }
 
 void Module::prepareQuit() {
@@ -326,7 +328,12 @@ const std::string &Module::name() const {
 
 int Module::id() const {
 
-   return m_id;
+    return m_id;
+}
+
+unsigned Module::hardware_concurrency() const {
+
+    return m_hardware_concurrency;
 }
 
 const mpi::communicator &Module::comm() const {
@@ -2121,7 +2128,7 @@ bool Module::compute() {
 
     int concurrency = m_concurrency->getValue();
     if (concurrency <= 0)
-        concurrency = std::thread::hardware_concurrency()/2;
+        concurrency = hardware_concurrency()/2;
     if (concurrency <= 1)
         concurrency = 1;
 

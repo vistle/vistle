@@ -23,7 +23,7 @@ Reader::Reader(const std::string &description, const std::string &name, const in
     setCurrentParameterGroup();
 
     assert(m_concurrency);
-    setParameterRange(m_concurrency, Integer(-1), Integer(std::thread::hardware_concurrency()*5));
+    setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()*5));
 }
 
 Reader::~Reader() {
