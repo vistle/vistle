@@ -342,7 +342,7 @@ bool Tracer::reduce(int timestep) {
    if (maxNumActive <= 0) {
        maxNumActive = std::thread::hardware_concurrency();
    }
-   maxNumActive = mpi::all_reduce(comm(), maxNumActive, mpi::minimum<Index>());
+   Index maxNumActiveGlobal = mpi::all_reduce(comm(), maxNumActive, mpi::maximum<Index>());
    auto taskType = (TraceType)getIntParameter("taskType");
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    if (taskType != Streamlines) {
@@ -535,7 +535,7 @@ bool Tracer::reduce(int timestep) {
    Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
    do {
       std::vector<Index> sendlist;
-      Index numStart = maxNumActive>numActiveMin ? maxNumActive-numActiveMin : 0;
+      Index numStart = maxNumActiveGlobal>numActiveMin ? maxNumActiveGlobal-numActiveMin : 0;
       startParticles(numStart);
 
       bool first = true;
