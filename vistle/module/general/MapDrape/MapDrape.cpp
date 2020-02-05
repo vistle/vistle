@@ -28,10 +28,7 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
 
    p_offset = addVectorParameter("offset","",ParamVector(0,0,0));
 
-   //std::vector<std::string> perList = {"xyz (default)","xzy","yxz","yzx","zxy","zyx"};
-
    p_permutation = addIntParameter("Axis Permutation","permutation of the axis", XYZ, Parameter::Choice);
-   //setParameterChoices(p_permutation, perList);
    V_ENUM_SET_CHOICES(p_permutation, PermutationOption);
 
 }
@@ -40,10 +37,11 @@ MapDrape::~MapDrape() {
 }
 
 bool MapDrape::compute() {
-    Coords::const_ptr inGeo;
     Coords::ptr outGeo;
 
     for (unsigned port=0; port<NumPorts; ++port) {
+        Coords::const_ptr inGeo;
+
         if (!isConnected(*data_in[port]))
             continue;
 
@@ -77,49 +75,46 @@ bool MapDrape::compute() {
             }
         } else {
             inGeo = coords;
-   	 float *xc, *yc, *zc, *xout, *yout, *zout;
-switch (p_permutation->getValue()) {
-    case XYZ: {
-        xc = &inGeo->x()[0];
-        yc = &inGeo->y()[0];
-        zc = &inGeo->z()[0];
-       break;
-    }
-    case XZY: {
-        xc = &inGeo->x()[0];
-        yc = &inGeo->z()[0];
-        zc = &inGeo->y()[0];
-       break;
-    }
-    case YXZ: {
-        xc = &inGeo->y()[0];
-        yc = &inGeo->x()[0];
-        zc = &inGeo->z()[0];
-       break;
-    }
-    case YZX: {
-       xc = &inGeo->y()[0];
-       yc = &inGeo->z()[0];
-       zc = &inGeo->x()[0];
-       break;
-    }
-    case ZXY: {
-       xc = &inGeo->z()[0];
-       yc = &inGeo->x()[0];
-       zc = &inGeo->y()[0];
-      break;
-    }
-    case ZYX: {
-       xc = &inGeo->z()[0];
-       yc = &inGeo->y()[0];
-       zc = &inGeo->x()[0];
-      break;
-    }
-    }
-    xout = outGeo->x()[0];
-    yout = outGeo->y()[0];
-    zout = outGeo->z()[0];
 
+            const float *xc, *yc, *zc;
+            switch (p_permutation->getValue()) {
+                case XYZ: {
+                    xc = &inGeo->x()[0];
+                    yc = &inGeo->y()[0];
+                    zc = &inGeo->z()[0];
+                   break;
+                }
+                case XZY: {
+                    xc = &inGeo->x()[0];
+                    yc = &inGeo->z()[0];
+                    zc = &inGeo->y()[0];
+                   break;
+                }
+                case YXZ: {
+                    xc = &inGeo->y()[0];
+                    yc = &inGeo->x()[0];
+                    zc = &inGeo->z()[0];
+                   break;
+                }
+                case YZX: {
+                   xc = &inGeo->y()[0];
+                   yc = &inGeo->z()[0];
+                   zc = &inGeo->x()[0];
+                   break;
+                }
+                case ZXY: {
+                   xc = &inGeo->z()[0];
+                   yc = &inGeo->x()[0];
+                   zc = &inGeo->y()[0];
+                  break;
+                }
+                case ZYX: {
+                   xc = &inGeo->z()[0];
+                   yc = &inGeo->y()[0];
+                   zc = &inGeo->x()[0];
+                  break;
+                }
+            }
 
 
             outGeo = coords->clone();
@@ -130,7 +125,6 @@ switch (p_permutation->getValue()) {
             auto xout = outGeo->x().data();
             auto yout = outGeo->y().data();
             auto zout = outGeo->z().data();
-
 
             projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
             projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
