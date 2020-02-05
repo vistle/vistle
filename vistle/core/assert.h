@@ -17,9 +17,8 @@
       str << __FILE__ << ":" << __LINE__ << ": assertion failure: " << #true_expr; \
       std::cerr << str.str() << std::endl << std::flush; \
       std::cerr << vistle::backtrace() << std::endl; \
-      vistle::attach_debugger(); \
-      throw(vistle::except::assertion_failure(str.str())); \
-   }
+   } \
+   assert(true_expr)
 #endif
 
 #endif
