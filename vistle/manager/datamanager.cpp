@@ -328,7 +328,7 @@ bool DataManager::handle(const message::Message &msg, buffer *payload)
     case message::IDENTIFY: {
         auto &mm = static_cast<const Identify &>(msg);
         if (mm.identity() == Identify::REQUEST) {
-            return send(Identify(Identify::LOCALBULKDATA, m_rank));
+            return send(Identify(mm, Identify::LOCALBULKDATA, m_rank));
         }
         return true;
     }

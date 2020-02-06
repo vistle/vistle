@@ -7,6 +7,7 @@
 #include <util/hostname.h>
 #include <util/sleep.h>
 #include <util/spawnprocess.h>
+#include <util/crypto.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/parameter.h>
@@ -28,6 +29,8 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_socket(m_ioService)
 , m_locked(true)
 {
+   crypto::initialize();
+
    message::DefaultSender::init(message::Id::UI, 0);
 
    if (observer)
@@ -177,7 +180,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message, const
       case message::IDENTIFY: {
          const message::Identify *id = static_cast<const message::Identify *>(message);
          if (id->identity() == message::Identify::REQUEST) {
-            const message::Identify reply(message::Identify::UI);
+            message::Identify reply(*id, message::Identify::UI);
+            reply.computeMac();
             sendMessage(reply);
          }
          return true;

@@ -66,7 +66,7 @@ private:
    void handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
    void handleAccept(std::shared_ptr<acceptor> a, std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
    void addSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
-   bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, bool close=true);
    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addSlave(const std::string &name, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);

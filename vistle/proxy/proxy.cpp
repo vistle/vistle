@@ -151,8 +151,10 @@ void Proxy::handleAccept(shared_ptr<asio::ip::tcp::socket> sock, const boost::sy
 
    addClient(sock);
 
+#if 0
    message::Identify ident(message::Identify::REQUEST);
    sendMessage(sock, ident);
+#endif
 
    startAccept();
 }
@@ -436,6 +438,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
+#if 0
    switch (msg.type()) {
       case message::IDENTIFY: {
 
@@ -523,6 +526,7 @@ bool Proxy::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp
       default:
          break;
    }
+#endif
 
    const int dest = idToHub(msg.destId());
    const int sender = idToHub(msg.senderId());

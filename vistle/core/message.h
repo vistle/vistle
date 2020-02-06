@@ -28,6 +28,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (INVALID) // keep 1st
       (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
       (IDENTIFY)
+      (CLOSECONNECTION)
       (ADDHUB)
       (REMOVESLAVE)
       (SETID)
@@ -260,7 +261,7 @@ class V_COREEXPORT Message {
    //! message is not a request for action
    bool m_notification;
    //! pad message to multiple of 8 bytes
-   char m_pad[1];
+   char m_pad[1] = {};
 };
 // ensure alignment
 static_assert(sizeof(Message) % sizeof(double)==0, "not padded to ensure double alignment");

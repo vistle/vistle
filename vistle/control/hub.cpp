@@ -14,6 +14,7 @@
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
 #include <util/listenv4v6.h>
+#include <util/crypto.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
@@ -130,6 +131,18 @@ Hub &Hub::the() {
 }
 
 bool Hub::init(int argc, char *argv[]) {
+
+   try {
+        if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
+
+            std::cerr << "Hub: failed to initialize cryptographic support" << std::endl;
+            return false;
+        }
+    } catch (const except::exception &e) {
+        std::cerr << "Hub: failed to initialize cryptographic support:" << std::endl;
+        std::cerr << "     " << e.what() << std::endl << e.where() << std::endl;
+        return false;
+    }
 
    m_prefix = dir::prefix(argc, argv);
 
@@ -264,7 +277,7 @@ bool Hub::init(int argc, char *argv[]) {
       pythonUi = false;
    }
 
-   if (!m_inManager) {
+   if (!m_inManager && !m_quitting) {
        if (!uiCmd.empty()) {
            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
            startUi(uipath);
@@ -289,7 +302,7 @@ bool Hub::init(int argc, char *argv[]) {
        m_inSitu = true;
    }
 #endif
-   if (!m_inManager) {
+   if (!m_inManager && !m_quitting) {
        std::string port = boost::lexical_cast<std::string>(this->port());
        std::string dataport = boost::lexical_cast<std::string>(dataPort());
 
@@ -450,7 +463,7 @@ void Hub::handleAccept(std::shared_ptr<acceptor> a, shared_ptr<asio::ip::tcp::so
 
    addClient(sock);
 
-   auto ident = make.message<message::Identify>(message::Identify::REQUEST);
+   auto ident = make.message<message::Identify>();
    sendMessage(sock, ident);
 
    startAccept(a);
@@ -463,14 +476,16 @@ void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::I
    (void)ok;
 }
 
-bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock) {
+bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close) {
 
-   try {
-       sock->shutdown(asio::ip::tcp::socket::shutdown_both);
-       sock->close();
-   } catch (std::exception &ex) {
-       CERR << "closing socket failed: " << ex.what() << std::endl;
-   }
+    if (close) {
+        try {
+            sock->shutdown(asio::ip::tcp::socket::shutdown_both);
+            sock->close();
+        } catch (std::exception &ex) {
+            CERR << "closing socket failed: " << ex.what() << std::endl;
+        }
+    }
 
    if (m_masterSocket == sock) {
        CERR << "lost connection to master" << std::endl;
@@ -881,6 +896,18 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        }
        break;
    }
+   case message::CLOSECONNECTION: {
+       auto &mm = msg.as<CloseConnection>();
+       CERR << "remote closes socket: " << mm.reason() << std::endl;
+       removeSocket(sock);
+       if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
+           CERR << "terminating." << std::endl;
+           m_quitting = true;
+           return false;
+       }
+       return true;
+       break;
+   }
    default: {
        break;
    }
@@ -899,22 +926,37 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          auto &id = static_cast<const Identify &>(msg);
          CERR << "ident msg: " << id.identity() << std::endl;
+         if (id.identity() == Identify::REQUEST) {
+             if (senderType == Identify::REMOTEBULKDATA) {
+                 Identify reply(id, Identify::REMOTEBULKDATA, m_hubId);
+                 reply.computeMac();
+                 sendMessage(sock, reply);
+             } else if (senderType == Identify::LOCALBULKDATA) {
+                 Identify reply(id, Identify::LOCALBULKDATA, -1);
+                 reply.computeMac();
+                 sendMessage(sock, reply);
+             } else if (m_isMaster) {
+                 Identify reply(id, Identify::HUB, m_name);
+                 reply.computeMac();
+                 sendMessage(sock, reply);
+             } else {
+                 Identify reply(id, Identify::SLAVEHUB, m_name);
+                 reply.computeMac();
+                 sendMessage(sock, reply);
+             }
+             break;
+         }
          if (id.identity() != Identify::UNKNOWN && id.identity() != Identify::REQUEST) {
             it->second = id.identity();
          }
+         if (!id.verifyMac()) {
+             CERR << "message authentication failed" << std::endl;
+             auto close = make.message<message::CloseConnection>("message authentication failed");
+             sendMessage(sock, close);
+             removeSocket(sock, false);
+             break;
+         }
          switch(id.identity()) {
-            case Identify::REQUEST: {
-               if (senderType == Identify::REMOTEBULKDATA) {
-                  sendMessage(sock, Identify(Identify::REMOTEBULKDATA, m_hubId));
-               } else if (senderType == Identify::LOCALBULKDATA) {
-                  sendMessage(sock, Identify(Identify::LOCALBULKDATA, -1));
-               } else if (m_isMaster) {
-                  sendMessage(sock, Identify(Identify::HUB, m_name));
-               } else {
-                  sendMessage(sock, Identify(Identify::SLAVEHUB, m_name));
-               }
-               break;
-            }
             case Identify::MANAGER: {
                vassert(!m_managerConnected);
                m_managerConnected = true;

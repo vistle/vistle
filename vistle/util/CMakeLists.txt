@@ -1,6 +1,9 @@
+vistle_find_package(BOTAN REQUIRED)
+
 set(util_SOURCES
    affinity.cpp
    coRestraint.cpp
+   crypto.cpp
    exception.cpp
    fileio.cpp
    findself.cpp
@@ -19,6 +22,7 @@ set(util_HEADERS
    export.h
    affinity.h
    coRestraint.h
+   crypto.h
    enum.h
    exception.h
    fileio.h
@@ -45,6 +49,8 @@ endif()
 
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
+include_directories(${BOTAN_INCLUDE_DIRS})
+
 target_link_libraries(vistle_util
     PRIVATE ${Boost_SYSTEM_LIBRARY}
 )
@@ -53,6 +59,9 @@ target_link_libraries(vistle_util
 )
 target_link_libraries(vistle_util
     PRIVATE Threads::Threads
+)
+target_link_libraries(vistle_util
+    PRIVATE ${BOTAN_LIBRARIES}
 )
 
 find_library(LIBEXECINFO execinfo)

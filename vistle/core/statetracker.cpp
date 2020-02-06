@@ -551,6 +551,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
          handled = handlePriv(m);
          break;
       }
+      case CLOSECONNECTION: {
+         const CloseConnection &m = static_cast<const CloseConnection &>(msg);
+         handled = handlePriv(m);
+         break;
+      }
 
       case FILEQUERY:
       case FILEQUERYRESULT:
@@ -1243,6 +1248,11 @@ bool StateTracker::handlePriv(const message::RequestTunnel &tunnel)
    return true;
 }
 
+bool StateTracker::handlePriv(const message::CloseConnection &close)
+{
+   CERR << "socket shutdown requested: " << close.reason() << std::endl;
+   return true;
+}
 
 
 StateTracker::~StateTracker() {

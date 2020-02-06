@@ -242,6 +242,7 @@ public:
    bool handlePriv(const message::ReducePolicy &pol);
    bool handlePriv(const message::SchedulingPolicy &pol);
    bool handlePriv(const message::RequestTunnel &tunnel);
+   bool handlePriv(const message::CloseConnection &close);
 
    std::shared_ptr<PortTracker> m_portTracker;
 

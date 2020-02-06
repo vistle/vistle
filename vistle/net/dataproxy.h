@@ -65,10 +65,13 @@ private:
    void startThread();
    void cleanUp();
 
-   void answerLocalIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
-   void answerRemoteIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
+   bool answerIdentify(EndPointType type, std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
+   bool answerLocalIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
+   bool answerRemoteIdentify(std::shared_ptr<tcp_socket> sock, const vistle::message::Identify &id);
    std::shared_ptr<tcp_socket> getRemoteDataSock(const message::Message &msg);
    std::shared_ptr<tcp_socket> getLocalDataSock(const message::Message &msg);
+
+   void shutdownSocket(std::shared_ptr<tcp_socket> sock);
 
    void msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type);
    void localMsgRecv(std::shared_ptr<tcp_socket> sock);

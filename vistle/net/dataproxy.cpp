@@ -132,21 +132,39 @@ void DataProxy::cleanUp() {
    }
 }
 
-void DataProxy::answerLocalIdentify(std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
-    if (ident.identity() != Identify::LOCALBULKDATA) {
-        CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
+bool DataProxy::answerIdentify(EndPointType type, std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
+    switch (type) {
+    case Local:
+        return answerRemoteIdentify(sock, ident);
+    case Remote:
+        return answerLocalIdentify(sock, ident);
     }
+
+    return false;
 }
 
-void DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
+bool DataProxy::answerLocalIdentify(std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
+    if (ident.identity() != Identify::LOCALBULKDATA) {
+        CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
+        return false;
+    }
+    if (!ident.verifyMac()) {
+        CERR << "MAC verification failed for local data port connection: " << ident << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
     if (ident.identity() == Identify::REQUEST) {
-        auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
-        async_send(*sock, ident, nullptr, [sock](error_code ec){
+        auto reply = make.message<Identify>(ident, Identify::REMOTEBULKDATA, m_hubId);
+        async_send(*sock, reply, nullptr, [sock](error_code ec){
             if (ec) {
                 CERR << "send error" << std::endl;
                 return;
             }
         });
+        return true;
     } else if (ident.identity() == Identify::REMOTEBULKDATA) {
         if (ident.boost_archive_version() != m_boost_archive_version) {
             std::cerr << "Boost.Archive version on hub " << m_hubId  << " is " << m_boost_archive_version << ", but hub " << ident.senderId() << " connected with version " << ident.boost_archive_version() << std::endl;
@@ -158,9 +176,21 @@ void DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
             }
 #endif
         }
+        if (!ident.verifyMac()) {
+            CERR << "MAC verification failed for remote data port connection: " << ident << std::endl;
+            return false;
+        }
+        return true;
     } else {
         CERR << "invalid identity " << ident.identity() << " connected to remote data port" << std::endl;
+        return false;
     }
+}
+
+void DataProxy::shutdownSocket(std::shared_ptr<DataProxy::tcp_socket> sock)
+{
+    auto close = message::CloseConnection("MAC verification failed");
+    send(*sock, close);
 }
 
 void DataProxy::startThread() {
@@ -195,7 +225,7 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
 
    startAccept(a);
 
-   auto ident = make.message<Identify>(Identify::REQUEST);
+   auto ident = make.message<Identify>();
    if (message::send(*sock, ident)) {
       //CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
    }
@@ -242,7 +272,7 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
                  }
 #endif
              }
-            auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
+            auto ident = make.message<Identify>(id, Identify::REMOTEBULKDATA, m_hubId);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                 if (ec) {
                     CERR << "send error" << std::endl;
@@ -261,7 +291,7 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
             assert(m_boost_archive_version == 0 || m_boost_archive_version == id.boost_archive_version());
             m_boost_archive_version = id.boost_archive_version();
 
-            auto ident = make.message<Identify>(Identify::LOCALBULKDATA, -1);
+            auto ident = make.message<Identify>(id, Identify::LOCALBULKDATA, -1);
             async_send(*sock, ident, nullptr, [this, sock](error_code ec){
                 if (ec) {
                     CERR << "send error" << std::endl;
@@ -302,16 +332,19 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
                 CERR << "handle forward to " << toString(type) << ": " << *msg << std::endl;
             }
 
+            if (msg->type() == IDENTIFY) {
+                auto &ident = msg->as<const Identify>();
+                if (!answerIdentify(type, sock, ident)) {
+                    shutdownSocket(sock);
+                    return;
+                }
+            }
+
             msgForward(sock, type);
 
             bool needPayload = false;
             bool forward = false;
             switch(msg->type()) {
-            case IDENTIFY: {
-                auto &ident = msg->as<const Identify>();
-                type==Local ? answerRemoteIdentify(sock, ident) : answerLocalIdentify(sock, ident);
-                break;
-            }
             case SENDOBJECT: {
                 forward = true;
                 needPayload = true;
@@ -379,7 +412,9 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
             switch(msg->type()) {
             case IDENTIFY: {
                 auto &ident = msg->as<const Identify>();
-                type==Local ? answerRemoteIdentify(sock, ident) : answerLocalIdentify(sock, ident);
+                if (!answerIdentify(type, sock, ident)) {
+                    return;
+                }
                 break;
             }
             case SENDOBJECT: {

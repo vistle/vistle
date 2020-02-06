@@ -22,6 +22,7 @@
 #include <util/sleep.h>
 #include <util/tools.h>
 #include <util/hostname.h>
+#include <util/crypto.h>
 
 #include "communicator.h"
 #include "clustermanager.h"
@@ -54,6 +55,8 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 , m_recvSize(0)
 , m_hubSocket(m_ioService)
 {
+   crypto::initialize();
+
    vassert(s_singleton == NULL);
    s_singleton = this;
 
@@ -509,8 +512,9 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
          CERR << "Identify message: " << id << std::endl;
          vassert(id.identity() == message::Identify::REQUEST);
          if (getRank() == 0) {
-             message::Identify ident(message::Identify::MANAGER);
+             message::Identify ident(id, message::Identify::MANAGER);
              ident.setNumRanks(m_size);
+             ident.computeMac();
              sendHub(ident);
          }
          scanModules(m_moduleDir);

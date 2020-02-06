@@ -15,6 +15,7 @@
 
 #include "archives.h"
 #include <util/vecstreambuf.h>
+#include <util/crypto.h>
 
 #include <algorithm>
 
@@ -25,12 +26,12 @@ template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
 
 #define COPY_STRING(dst, src) \
-   { \
+   do { \
       const size_t size = min(src.size(), dst.size()-1); \
       src.copy(dst.data(), size); \
       dst[size] = '\0'; \
       vassert(src.size() < dst.size()); \
-   }
+   } while(false)
 
 template<class Payload>
 buffer addPayload(Message &message, Payload &payload) {
@@ -62,27 +63,51 @@ template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &m
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 
-Identify::Identify(Identity id, const std::string &name)
+Identify::Identify(const std::string &name)
+: m_identity(Identity::REQUEST)
+, m_numRanks(-1)
+, m_rank(-1)
+, m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
+{
+   COPY_STRING(m_name, name);
+
+   auto &sd = crypto::session_data();
+   assert(sd.size() == m_session_data.size());
+   memcpy(m_session_data.data(), sd.data(), std::min(m_session_data.size(), sd.size()));
+}
+
+Identify::Identify(const Identify &request, Identify::Identity id, const std::string &name)
 : m_identity(id)
 , m_numRanks(-1)
 , m_rank(-1)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
-   if (id == UNKNOWN) {
+   setReferrer(request.uuid());
+   m_session_data = request.m_session_data;
+
+   if (id == UNKNOWN || id == REQUEST) {
+       std::cerr << "invalid identity " << toString(id) << std::endl;
        std::cerr << backtrace() << std::endl;
    }
    COPY_STRING(m_name, name);
+
+   computeMac();
 }
 
-Identify::Identify(Identity id, int rank)
+Identify::Identify(const Identify &request, Identity id, int rank)
 : m_identity(id)
 , m_numRanks(-1)
 , m_rank(rank)
 , m_boost_archive_version(boost::archive::BOOST_ARCHIVE_VERSION())
 {
+   setReferrer(request.uuid());
+   m_session_data = request.m_session_data;
+
    vassert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
 
    memset(m_name.data(), 0, m_name.size());
+
+   computeMac();
 }
 
 Identify::Identity Identify::identity() const {
@@ -112,6 +137,37 @@ int Identify::boost_archive_version() const {
 
 void Identify::setNumRanks(int size) {
     m_numRanks = size;
+}
+
+void Identify::computeMac() {
+
+    auto key = crypto::session_key();
+    std::fill(m_mac.begin(), m_mac.end(), 0);
+
+    auto mac = crypto::compute_mac(static_cast<const void *>(this), sizeof(*this), key);
+    assert(m_mac.size() == mac.size());
+    memcpy(m_mac.data(), mac.data(), m_mac.size());
+
+    assert(verifyMac(false));
+}
+
+bool Identify::verifyMac(bool compareSessionData) const {
+
+    if (compareSessionData) {
+        auto s = crypto::session_data();
+        if (memcmp(s.data(), m_session_data.data(), std::min(s.size(), m_session_data.size())) != 0) {
+            return  false;
+        }
+    }
+
+    auto key = crypto::session_key();
+    message::Buffer buf(*this);
+    auto &id = buf.as<Identify>();
+    std::fill(id.m_mac.begin(), id.m_mac.end(), 0);
+
+    std::vector<uint8_t> mac(m_mac.size());
+    memcpy(mac.data(), m_mac.data(), mac.size());
+    return crypto::verify_mac(static_cast<const void *>(buf.data()), sizeof(*this), key, mac);
 }
 
 AddHub::AddHub(int id, const std::string &name)
@@ -350,6 +406,16 @@ int Debug::getModule() const {
 
 Quit::Quit()
 {
+}
+
+CloseConnection::CloseConnection(const std::string &reason)
+{
+    COPY_STRING(m_reason, reason);
+}
+
+const char *CloseConnection::reason() const
+{
+    return m_reason.data();
 }
 
 ModuleExit::ModuleExit()

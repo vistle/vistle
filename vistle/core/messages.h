@@ -46,8 +46,12 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
          (REMOTEBULKDATA) //< bulk data transfer to remote hubs
          )
 
-   Identify(Identity id, const std::string &name = "");
-   Identify(Identity id, int rank);
+   typedef std::array<char, 32> mac_t;
+   typedef std::array<char, 64> session_data_t;
+
+   Identify(const std::string &name = ""); //< request identity
+   Identify(const Identify &request, Identity id, const std::string &name = ""); //< answer identification request
+   Identify(const Identify &request, Identity id, int rank);
    Identity identity() const;
    const char *name() const;
    int rank() const;
@@ -56,12 +60,17 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 
    void setNumRanks(int size);
 
+   void computeMac();
+   bool verifyMac(bool compareSessionData = true) const;
+
  private:
    Identity m_identity;
    description_t m_name;
    int m_numRanks;
    int m_rank;
    int m_boost_archive_version;
+   session_data_t m_session_data;
+   mac_t m_mac;
 };
 static_assert(sizeof(Identify) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Identity, Identify)
@@ -993,6 +1002,18 @@ extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
+
+//! terminate a socket connection
+class V_COREEXPORT CloseConnection: public MessageBase<CloseConnection, CLOSECONNECTION> {
+
+ public:
+   CloseConnection(const std::string &reason);
+   const char *reason() const;
+
+ private:
+   description_t m_reason;
+};
+static_assert(sizeof(CloseConnection) <= Message::MESSAGE_SIZE, "message too large");
 
 } // namespace message
 } // namespace vistle
