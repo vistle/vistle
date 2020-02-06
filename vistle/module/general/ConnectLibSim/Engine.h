@@ -155,7 +155,7 @@ private:
     }
     void initializeEngineSocket(const std::string &hostname, int port);
 
-    void handleEngineMessage(EngineMessage& msg);
+    void handleVistleMessage(EngineMessage& msg);
 
 
     Engine();

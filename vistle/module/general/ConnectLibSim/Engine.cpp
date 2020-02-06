@@ -332,7 +332,7 @@ bool Engine::initialize(int argC, char** argV) {
         }
     }
     EngineMessage::initializeEngineMessage(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    EngineMessage::sendEngineMessage(EM_GoOn(true));
+    EngineMessage::sendEngineMessage(EM_GoOn());
     return true;
 }
 
@@ -401,7 +401,7 @@ void insitu::Engine::passCommandToSim() {
     while (m_socket->available() > 0) { //read all messages or until first processCommand message
         EngineMessage msg = EngineMessage::recvEngineMessage();
         if (msg.type() != EngineMessageType::ExecuteCommand) {
-            handleEngineMessage(msg);
+            handleVistleMessage(msg);
         } else {
             EM_ExecuteCommand exe = msg.unpackOrCast<EM_ExecuteCommand>();
             if (simulationCommandCallback) {
@@ -803,7 +803,7 @@ void insitu::Engine::initializeEngineSocket(const std::string& hostname, int por
     }
 }
 
-void insitu::Engine::handleEngineMessage(EngineMessage& msg) {
+void insitu::Engine::handleVistleMessage(EngineMessage& msg) {
 
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     EngineMessageType t;
@@ -840,6 +840,11 @@ void insitu::Engine::handleEngineMessage(EngineMessage& msg) {
         m_constGrids = em.m_frequency;
     }
         break;
+    case insitu::EngineMessageType::ConnectionClosed:
+    {
+
+    }
+    break;
     default:
         break;
     }

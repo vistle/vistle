@@ -28,12 +28,14 @@ public:
     vistle::IntParameter* sendCommand = nullptr;
     bool sendCommandChanged = false;
 private:
-    bool m_terminate = false;
-    
-    bool m_connectedToSim = false;
-    std::map<std::string, vistle::Port*> m_outputPorts;
+    bool m_terminate = false; //set to true when when the module in closed to get out of loops in different threads
+    bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
+    bool m_connectedToEngine = false; //wether the socket connection to the engine is running
+    std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<const vistle::Parameter*> m_commandParameter;
 
+    //.........................................................................
+    //stuff to handle socket communication with Engine
     unsigned short m_port = 31299;
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
@@ -53,22 +55,31 @@ private:
     boost::mpi::communicator m_socketComm;
 
     std::mutex m_socketMutex;
-    void startControllServer();
+    //..........................................................................
 
-    bool startAccept(std::shared_ptr<acceptor> a);
 
-    virtual bool prepare() override; 
-    virtual bool reduce(int timestep) override; 
+        //..........................................................................                                               
+    //module functions
+    virtual bool prepare() override;
+    virtual bool reduce(int timestep) override;
     virtual bool examine(const vistle::Parameter* param);
+    //..........................................................................
 
+
+
+    void startControllServer(); //find a free socket to listen to and start accept
+
+    bool startAccept(std::shared_ptr<acceptor> a); //async accept initiates handle message toop
+    
     void startSocketThread();
+    
+    void recvAndhandleMessage();
 
-    void sendMsgToSim(const std::string& msg);
+    //..........................................................................
+    //thread safe (for the socket thread) getter and setter for bools
+    void setBool(bool & target, bool newval);
 
-
-    void handleMessage(insitu::EngineMessage&& msg);
-
-    void waitForMessages();
+    bool getBool(const bool& val);
 
 
     //test

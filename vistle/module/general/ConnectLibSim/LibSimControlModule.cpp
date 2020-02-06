@@ -17,7 +17,7 @@
 using namespace std;
 using insitu::EngineMessage;
 
-#define CERR cerr << "LibSimMoule["<< rank() << "/" << size() << "] "
+#define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
 
 ControllModule::ControllModule(const string& name, int moduleID, mpi::communicator comm)
     : vistle::InSituReader("set ConnectLibSim in the state of prepare", name, moduleID, comm)
@@ -57,15 +57,18 @@ CERR << "io thread terminated" << endl; })
 }
 
 ControllModule::~ControllModule() {
-    m_socketMutex.lock();
-    m_terminate = true;
-    m_socketMutex.unlock();
+    setBool(m_terminate, true);
     comm().barrier(); //make sure m_terminate is set on all ranks before releasing slaves from waiting for connection
-    if (rank() == 0 && !m_connectedToSim) {
+    if (rank() == 0) {
         boost::system::error_code ec;
-        m_ListeningSocket->cancel(ec);// release me from waiting for connection
-        CERR << "releasing" << endl;
-        m_socketComm.barrier(); // release slaves from waiting for connection
+        if (getBool(m_connectedToEngine)) {
+            m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
+            m_socket->close(ec);
+        } else {
+            boost::system::error_code ec;
+            m_ListeningSocket->cancel(ec);// release me from waiting for connection
+            m_socketComm.barrier(); // release slaves from waiting for connection
+        }
     }
     if (m_socketThread.joinable()) {
         m_socketThread.join();
@@ -73,6 +76,67 @@ ControllModule::~ControllModule() {
     m_workGuard.reset();
     m_ioService.stop();
     m_ioThread.join();
+}
+
+bool ControllModule::prepare() {
+    CERR << "prepare" << endl;
+    EngineMessage::sendEngineMessage(insitu::EM_Ready(true));
+    return true;
+}
+
+bool ControllModule::reduce(int timestep) {
+    CERR << "reduce" << endl;
+    EngineMessage::sendEngineMessage(insitu::EM_Ready(false));
+    m_timestep = 0;
+    return true;
+}
+
+bool ControllModule::examine(const vistle::Parameter* param) {
+    if (!param) {
+        return true;
+    }
+    if (param == m_filePath) {
+        if (m_simInitSent) {
+            CERR << "already connected" << endl;
+        } else if (rank() == 0) {
+            vector<string> args{ to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
+            if (insitu::attemptLibSImConnection(m_filePath->getValue(), args)) {
+                m_simInitSent = true;
+            }
+        }
+        boost::mpi::broadcast(comm(), m_simInitSent, 0);
+    } else if (param == sendCommand && isExecuting()) {
+        array<int, 3> dims{ 5, 10, 3 };
+        vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
+        for (size_t i = 0; i < 3; i++) {
+            for (size_t j = 0; j < dims[i]; j++) {
+                grid->coords(i)[j] = j * (1 + rank());
+            }
+        }
+        int nTuples = dims[0] * dims[1] * dims[2];
+        vistle::Vec<vistle::Scalar>::ptr variable(new typename vistle::Vec<vistle::Scalar>(nTuples));
+        for (size_t i = 0; i < nTuples; i++) {
+            variable->x().data()[i] = i * m_timestep;
+        }
+        variable->setGrid(grid);
+        variable->setTimestep(m_timestep);
+        variable->setMapping(vistle::DataBase::Vertex);
+        variable->addAttribute("_species", "velocity");
+        addObject(noDataOut, variable);
+        ++m_timestep;
+    } else if (rank() != 0) {
+        return true;
+    } else if (param == sendMessageToSim) {
+        EngineMessage::sendEngineMessage(insitu::EM_GoOn());
+    } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
+        EngineMessage::sendEngineMessage(insitu::EM_ExecuteCommand(param->getName()));
+    } else if (param == m_constGrids) {
+        EngineMessage::sendEngineMessage(insitu::EM_ConstGrids(m_constGrids->getValue()));
+    } else if (param == m_nthTimestep) {
+        EngineMessage::sendEngineMessage(insitu::EM_NthTimestep(m_nthTimestep->getValue()));
+    }
+
+    return false;
 }
 
 void ControllModule::startControllServer() {
@@ -114,91 +178,31 @@ bool ControllModule::startAccept(shared_ptr<acceptor> a) {
         }
         CERR << "connected with engine" << endl;
         m_socket = sock;
+        if (m_socketThread.joinable()) {
+            m_socketThread.join();
+        }
         startSocketThread();
         });
     return true;
 }
 
-bool ControllModule::prepare() {
-    CERR << "prepare" << endl;
-    EngineMessage::sendEngineMessage(insitu::EM_Ready(true));
-    return true;
-}
-
-bool ControllModule::reduce(int timestep) {
-    CERR << "reduce" << endl;
-    EngineMessage::sendEngineMessage(insitu::EM_Ready(false));
-    m_timestep = 0;
-    return true;
-}
-
-bool ControllModule::examine(const vistle::Parameter* param) {
-    if (!param) {
-        return true;
-    }
-    if (param == m_filePath) {
-        if (m_connectedToSim) {
-            CERR << "already connected" << endl;
-        } else if(rank() == 0){
-            vector<string> args{ to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
-            if (insitu::attemptLibSImConnection(m_filePath->getValue(), args)) {
-                m_connectedToSim = true;
-            }
-        }
-        boost::mpi::broadcast(comm(), m_connectedToSim, 0);
-    } else if (param == sendCommand && isExecuting()) {
-        array<int, 3> dims{ 5, 10, 3 };
-        vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-        for (size_t i = 0; i < 3; i++) {
-            for (size_t j = 0; j < dims[i]; j++) {
-                grid->coords(i)[j] = j * (1 + rank());
-            }
-        }
-        int nTuples = dims[0] * dims[1] * dims[2];
-        vistle::Vec<vistle::Scalar>::ptr variable(new typename vistle::Vec<vistle::Scalar>(nTuples));
-        for (size_t i = 0; i < nTuples; i++) {
-            variable->x().data()[i] = i * m_timestep;
-        }
-        variable->setGrid(grid);
-        variable->setTimestep(m_timestep);
-        variable->setMapping(vistle::DataBase::Vertex);
-        variable->addAttribute("_species", "velocity");
-        addObject(noDataOut, variable);
-        ++m_timestep;
-    } else if (rank() != 0) {
-        return true;
-    } else if (param == sendMessageToSim) {
-        EngineMessage::sendEngineMessage(insitu::EM_GoOn(true));
-    } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
-        EngineMessage::sendEngineMessage(insitu::EM_ExecuteCommand(param->getName()));
-    } else if(param == m_constGrids){
-        EngineMessage::sendEngineMessage(insitu::EM_ConstGrids(m_constGrids->getValue()));
-    } else if (param == m_nthTimestep) {
-        EngineMessage::sendEngineMessage(insitu::EM_NthTimestep (m_nthTimestep->getValue()) );
-    }
-
-    return false;
-}
-
 void ControllModule::startSocketThread()     {
     m_socketThread = std::thread([this]() {
         m_socketComm.barrier();
-        CERR << "socket thread running" << endl;
-        m_socketMutex.lock();
-        bool terminate = m_terminate;
-        m_socketMutex.unlock();
+        m_connectedToEngine = true;
         insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
-        while (!terminate) {
-            waitForMessages();
-            Guard g(m_socketMutex);
-            terminate = m_terminate;
-        }
-        CERR << "socket thread terminating" << endl;
+        recvAndhandleMessage();
         });
 
 }
 
-void ControllModule::handleMessage(insitu::EngineMessage&& msg)     {
+void ControllModule::recvAndhandleMessage()     {
+    if (getBool(m_terminate)) {
+        return;
+    }
+
+    EngineMessage msg = EngineMessage::recvEngineMessage();
+    
     CERR << "handleMessage " << (int)msg.type() << endl;
     using namespace insitu;
     switch (msg.type()) {
@@ -234,15 +238,45 @@ void ControllModule::handleMessage(insitu::EngineMessage&& msg)     {
         break;
     case EngineMessageType::NthTimestep:
         break;
+    case EngineMessageType::ConnectionClosed:
+    {
+        Guard g(m_socketMutex);
+        m_simInitSent = false;
+        m_connectedToEngine = false;
+        if (m_terminate) {
+            return;
+        }
+    }
+        if (rank() == 0) {
+            CERR << "conection closed, listening for connections on port " << m_port << endl;
+            startAccept(m_acceptorv4);
+            startAccept(m_acceptorv6);
+            return;
+        }
+        else {
+            m_socketComm.barrier(); //wait for rank 0 to reconnect
+            insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+        }
+
+        break;
     default:
         break;
     }
+    recvAndhandleMessage();
+
 }
 
-void ControllModule::waitForMessages()     {
-    CERR << "waitForMessages" << endl;
-    handleMessage(EngineMessage::recvEngineMessage());
+void ControllModule::setBool(bool& target, bool newval) {
+    Guard g(m_socketMutex);
+    target = newval;
 }
+
+bool ControllModule::getBool(const bool &val) {
+    Guard g(m_socketMutex);
+    return val;
+}
+
+
 
 
 MODULE_MAIN_THREAD(ControllModule, MPI_THREAD_MULTIPLE)

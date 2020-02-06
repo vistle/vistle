@@ -40,7 +40,7 @@ EngineMessage EngineMessage::recvEngineMessage() {
             vistle::message::Buffer bf;
             vistle::message::recv(*m_socket, bf, err, true, &payload);
             if (err || bf.type() != vistle::message::Type::INSITU) {
-                error = true;
+                type = static_cast<int>(EngineMessageType::ConnectionClosed);
             } else {
                 type = static_cast<int>(bf.as<InSituMessage>().emType);
             }
@@ -52,6 +52,9 @@ EngineMessage EngineMessage::recvEngineMessage() {
         return EngineMessage{};
     }
     boost::mpi::broadcast(m_comm, type, 0);
+    if (type == static_cast<int>(EngineMessageType::ConnectionClosed)) {
+        m_initialized = false;
+    }
     int size = payload.size();
     boost::mpi::broadcast(m_comm, size, 0);
     if (m_comm.rank() != 0) {
