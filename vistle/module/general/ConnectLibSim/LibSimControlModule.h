@@ -62,7 +62,7 @@ private:
     //module functions
     virtual bool prepare() override;
     virtual bool reduce(int timestep) override;
-    virtual bool examine(const vistle::Parameter* param);
+    virtual bool changeParameter(const vistle::Parameter* param);
     //..........................................................................
 
 

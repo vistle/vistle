@@ -424,7 +424,6 @@ bool insitu::Engine::handleVistleMessage() {
             DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
             if (registeredGenericCommands.find(exe.m_command) == registeredGenericCommands.end()) {
                 DEBUG_CERR << "Engine received unknown command!" << endl;
-                return;
             }
         } else {
 

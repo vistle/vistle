@@ -13,48 +13,6 @@ bool InSituReader::isExecuting() {
     return m_isExecuting;
 }
 
-void InSituReader::observeParameter(const Parameter* param) {
-
-    m_observedParameters.insert(param);
-}
-
-bool InSituReader::examine(const Parameter* param) {
-    return true;
-}
-
-
-bool InSituReader::changeParameters(std::set<const Parameter*> params) {
-    bool ret = true;
-    for (auto& p : params) {
-        ret &= Module::changeParameter(p);
-    }
-
-    bool ex = false;
-    for (auto& p : params) {
-        auto it = m_observedParameters.find(p);
-        if (it != m_observedParameters.end()) {
-            
-            ret &= examine();
-            break;
-        }
-    }
-
-    return ret;
-}
-
-bool InSituReader::changeParameter(const Parameter* param) {
-    bool ret = Module::changeParameter(param);
-
-    auto it = m_observedParameters.find(param);
-    if (it != m_observedParameters.end()) {
-        examine(param);
-        ret &= examine(param);
-    }
-
-    return ret;
-}
-
-
 bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
     CERR << "handleExecute start" << endl;
     using namespace vistle::message;

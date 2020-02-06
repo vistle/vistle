@@ -42,11 +42,7 @@ CERR << "io thread terminated" << endl; })
     m_nthTimestep = addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1);
     setParameterMinimum(m_nthTimestep, static_cast<vistle::Integer>(1));
     sendMessageToSim = addIntParameter("sendMessageToSim", "", false, vistle::Parameter::Boolean);
-    observeParameter(sendMessageToSim);
-    observeParameter(m_filePath);
-    observeParameter(sendCommand);
-    observeParameter(m_constGrids);
-    observeParameter(m_nthTimestep);
+
 
     if (rank() == 0) {
         startControllServer();
@@ -91,7 +87,8 @@ bool ControllModule::reduce(int timestep) {
     return true;
 }
 
-bool ControllModule::examine(const vistle::Parameter* param) {
+bool ControllModule::changeParameter(const vistle::Parameter* param) {
+    Module::changeParameter(param);
     if (!param) {
         return true;
     }
@@ -136,7 +133,7 @@ bool ControllModule::examine(const vistle::Parameter* param) {
         EngineMessage::sendEngineMessage(insitu::EM_NthTimestep(m_nthTimestep->getValue()));
     }
 
-    return false;
+    return InSituReader::changeParameter(param);
 }
 
 void ControllModule::startControllServer() {
@@ -226,7 +223,7 @@ void ControllModule::recvAndhandleMessage()     {
     {
         auto em = msg.unpackOrCast< EM_AddCommands>();
         for (size_t i = 0; i < em.m_commandList.size(); i++) {
-            addIntParameter(em.m_commandList[i], "", false, vistle::Parameter::Presentation::Boolean);
+            m_commandParameter.insert(addIntParameter(em.m_commandList[i], "", false, vistle::Parameter::Presentation::Boolean));
         }
     }
         break;
