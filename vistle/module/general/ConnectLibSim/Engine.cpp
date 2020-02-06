@@ -388,12 +388,11 @@ void Engine::DeleteData() {
     sendData();
 }
 
-void insitu::Engine::handleVistleMessage() {
-#endif
+bool insitu::Engine::handleVistleMessage() {
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
             CERR << "passCommandToSim failed : slaveCommandCallback not set" << endl;
-            return;
+            return true;;
         }
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
@@ -449,13 +448,14 @@ void insitu::Engine::handleVistleMessage() {
     break;
     case insitu::EngineMessageType::ConnectionClosed:
     {
-
+        CERR << "connection closed" << endl;
+        return false;
     }
     break;
     default:
         break;
     }
-
+    return true;
 }
 
 void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata) {
