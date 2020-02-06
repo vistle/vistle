@@ -191,6 +191,8 @@ void ControllModule::startSocketThread()     {
         m_socketComm.barrier();
         m_connectedToEngine = true;
         insitu::EngineMessage::initializeEngineMessage(m_socket, m_socketComm);
+        EngineMessage::sendEngineMessage(insitu::EM_ConstGrids(m_constGrids->getValue()));
+        EngineMessage::sendEngineMessage(insitu::EM_NthTimestep(m_nthTimestep->getValue()));
         recvAndhandleMessage();
         });
 

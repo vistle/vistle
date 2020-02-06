@@ -70,7 +70,7 @@ public:
     void SimulationInitiateCommand(const std::string& command);
     void DeleteData();
     //called by the sim when m_socket receives data. Reads this data until a command for the sim is received
-    void passCommandToSim();
+    void handleVistleMessage();
 
     //set callbacks (called from sim)
     void SetSimulationCommandCallback(void(*sc)(const char*, const char*, void*), void* scdata);
@@ -155,7 +155,7 @@ private:
     }
     void initializeEngineSocket(const std::string &hostname, int port);
 
-    void handleVistleMessage(EngineMessage& msg);
+    void handleVistleMessage2(EngineMessage& msg);
 
 
     Engine();

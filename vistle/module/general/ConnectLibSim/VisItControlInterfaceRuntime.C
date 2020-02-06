@@ -181,7 +181,7 @@ int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
 #ifndef MODULE_THREAD
-    engine->passCommandToSim();
+    engine->handleVistleMessage();
 #endif
 
 

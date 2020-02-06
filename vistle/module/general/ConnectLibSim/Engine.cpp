@@ -284,7 +284,7 @@ bool Engine::initialize(int argC, char** argV) {
     // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
-        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << std::endl;
+        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory.");
         return false;
     }
 
@@ -388,7 +388,7 @@ void Engine::DeleteData() {
     sendData();
 }
 
-void insitu::Engine::passCommandToSim() {
+void insitu::Engine::handleVistleMessage() {
 #endif
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
@@ -398,25 +398,62 @@ void insitu::Engine::passCommandToSim() {
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     finalizeInit();
-    while (m_socket->available() > 0) { //read all messages or until first processCommand message
-        EngineMessage msg = EngineMessage::recvEngineMessage();
-        if (msg.type() != EngineMessageType::ExecuteCommand) {
-            handleVistleMessage(msg);
+    EngineMessage msg = EngineMessage::recvEngineMessage();
+    DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
+    switch (msg.type()) {
+    case insitu::EngineMessageType::Invalid:
+        break;
+    case insitu::EngineMessageType::ShmInit:
+        break;
+    case insitu::EngineMessageType::AddObject:
+        break;
+    case insitu::EngineMessageType::AddPorts:
+        break;
+    case insitu::EngineMessageType::AddCommands:
+        break;
+    case insitu::EngineMessageType::Ready:
+    {
+        EM_Ready em = msg.unpackOrCast<EM_Ready>();
+        m_constGrids = em.m_state;
+    }
+    break;
+    case insitu::EngineMessageType::ExecuteCommand:
+    {
+        EM_ExecuteCommand exe = msg.unpackOrCast<EM_ExecuteCommand>();
+        if (simulationCommandCallback) {
+            simulationCommandCallback(exe.m_command.c_str(), "", simulationCommandCallbackData);
+            DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
+            if (registeredGenericCommands.find(exe.m_command) == registeredGenericCommands.end()) {
+                DEBUG_CERR << "Engine received unknown command!" << endl;
+                return;
+            }
         } else {
-            EM_ExecuteCommand exe = msg.unpackOrCast<EM_ExecuteCommand>();
-            if (simulationCommandCallback) {
-                simulationCommandCallback(exe.m_command.c_str(), "", simulationCommandCallbackData);
-                DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
-                    if (registeredGenericCommands.find(exe.m_command) == registeredGenericCommands.end()) {
-                    DEBUG_CERR << "Engine received unknown command!" << endl;
-                    return;
-                }
-            }
-            else {
 
-                CERR << "received command, but required callback is not set" << endl;
-            }
+            CERR << "received command, but required callback is not set" << endl;
         }
+    }
+    break;
+    case insitu::EngineMessageType::GoOn:
+        break;
+    case insitu::EngineMessageType::ConstGrids:
+    {
+        EM_ConstGrids em = msg.unpackOrCast<EM_ConstGrids>();
+        m_constGrids = em.m_state;
+    }
+    break;
+    case insitu::EngineMessageType::NthTimestep:
+    {
+        EM_NthTimestep em = msg.unpackOrCast<EM_NthTimestep>();
+        m_constGrids = em.m_frequency;
+    }
+    break;
+    case insitu::EngineMessageType::ConnectionClosed:
+    {
+
+    }
+    break;
+    default:
+        break;
     }
 
 }
@@ -803,51 +840,9 @@ void insitu::Engine::initializeEngineSocket(const std::string& hostname, int por
     }
 }
 
-void insitu::Engine::handleVistleMessage(EngineMessage& msg) {
+void insitu::Engine::handleVistleMessage2(EngineMessage& msg) {
 
-    DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
-    EngineMessageType t;
-    switch (t) {
-    case insitu::EngineMessageType::Invalid:
-        break;
-    case insitu::EngineMessageType::ShmInit:
-        break;
-    case insitu::EngineMessageType::AddObject:
-        break;
-    case insitu::EngineMessageType::AddPorts:
-        break;
-    case insitu::EngineMessageType::AddCommands:
-        break;
-    case insitu::EngineMessageType::Ready:
-    {
-        EM_Ready em = msg.unpackOrCast<EM_Ready>();
-        m_constGrids = em.m_state;
-    }
-        break;
-    case insitu::EngineMessageType::ExecuteCommand:
-        break;
-    case insitu::EngineMessageType::GoOn:
-        break;
-    case insitu::EngineMessageType::ConstGrids:
-    {
-        EM_ConstGrids em = msg.unpackOrCast<EM_ConstGrids>();
-        m_constGrids = em.m_state;
-    }
-        break;
-    case insitu::EngineMessageType::NthTimestep:
-    {
-        EM_NthTimestep em = msg.unpackOrCast<EM_NthTimestep>();
-        m_constGrids = em.m_frequency;
-    }
-        break;
-    case insitu::EngineMessageType::ConnectionClosed:
-    {
 
-    }
-    break;
-    default:
-        break;
-    }
     
 }
 
