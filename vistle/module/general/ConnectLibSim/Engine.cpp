@@ -2,7 +2,7 @@
 
 #include <mpi.h>
 
-#include <module/module.h>
+
 
 #include "ConnectLibSim.h"
 #include "VisItDataInterfaceRuntime.h"
@@ -35,6 +35,7 @@
 #include <core/structuredgrid.h>
 
 #include <core/message.h>
+#include <core/messagequeue.h>
 #include <core/tcpmessage.h>
 
 #include <util/sleep.h>
@@ -78,7 +79,7 @@ Engine* Engine::instance = nullptr;
 
 Engine* Engine::createEngine() {
     if (!instance) {
-        instance = new Engine;
+        instance = new Engine{};
     }
     return instance;
 
@@ -288,7 +289,7 @@ bool Engine::initialize(int argC, char** argV) {
         return false;
     }
 
-    managerThread = std::thread([argC, argV, VISTLE_ROOT]() {
+    m_managerThread = std::thread([argC, argV, VISTLE_ROOT]() {
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         std::vector<char*> args;
@@ -316,11 +317,24 @@ bool Engine::initialize(int argC, char** argV) {
     m_moduleName = argV[2];
     m_moduleID = atoi(argV[3]);
     if(argV[4] != vistle::hostname())
-    //vistle::registerTypes();
-    //vistle::Module::setup(m_shmName, m_moduleID, m_rank);
-    //boost::mpi::communicator c();
-    //m_module = new ConnectLibSim(m_moduleName, m_moduleID, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    //runModule();
+
+    vistle::registerTypes();
+    vistle::Shm::attach(m_shmName, m_moduleID, m_rank);
+
+#ifndef MODULE_THREAD
+    vistle::message::DefaultSender::init(m_moduleID, m_rank);
+#endif
+    // names are swapped relative to communicator
+    std::string smqName = vistle::message::MessageQueue::createName("recvFromSim", m_moduleID, m_rank);
+    try {
+        m_sendMessageQueue = vistle::message::MessageQueue::open(smqName);
+    } catch (boost::interprocess::interprocess_exception & ex) {
+        CERR << "opening send message queue " << smqName << ": " << ex.what() << endl;
+       return false;
+    }
+
+
+
     m_initialized = true;
 #endif
     if (m_rank == 0) {
@@ -358,7 +372,15 @@ void Engine::SimulationTimeStepChanged() {
         CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
+    static int counter = 0;
+    CERR << "SimulationTimeStepChanged counter = " << counter << endl;
+    ++counter;
+    int oldCycle = m_metaData.currentCycle;
     getMetaData();
+    if (oldCycle == m_metaData.currentCycle) {
+        CERR << "There is no new timestep but SimulationTimeStepChanged was called" << endl;
+        return;
+    }
     int numMeshes, numVars;
     v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle, numMeshes);
     v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle, numVars);
@@ -375,11 +397,15 @@ void Engine::SimulationTimeStepChanged() {
 }
 
 void Engine::SimulationInitiateCommand(const std::string& command) {
+    static int counter = 0;
+    CERR << "SimulationInitiateCommand " << command << " counter = " << counter << endl;
+    ++counter;
     if (command.substr(0, 12) == "INTERNALSYNC") { //need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
-        // Send the command back to the engine so it knows we're done syncing. TODO: request tcp message from conroller
+        // Send the command back to the engine so it knows we're done syncing. 
         std::string cmd("INTERNALSYNC");
         std::string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
+        EngineMessage::sendEngineMessage(EM_GoOn{}); //request tcp message from conroller
     }
 }
 
@@ -389,6 +415,7 @@ void Engine::DeleteData() {
 }
 
 bool insitu::Engine::handleVistleMessage() {
+    getMetaData();
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
             CERR << "passCommandToSim failed : slaveCommandCallback not set" << endl;
@@ -396,6 +423,9 @@ bool insitu::Engine::handleVistleMessage() {
         }
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
+    static int counter = 0;
+    CERR << "handleVistleMessage counter = " << counter << endl;
+    ++counter;
     finalizeInit();
     EngineMessage msg = EngineMessage::recvEngineMessage();
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
@@ -413,7 +443,7 @@ bool insitu::Engine::handleVistleMessage() {
     case insitu::EngineMessageType::Ready:
     {
         EM_Ready em = msg.unpackOrCast<EM_Ready>();
-        m_constGrids = em.m_state;
+        m_moduleReady = em.m_state;
     }
     break;
     case insitu::EngineMessageType::ExecuteCommand:
@@ -422,16 +452,22 @@ bool insitu::Engine::handleVistleMessage() {
         if (simulationCommandCallback) {
             simulationCommandCallback(exe.m_command.c_str(), "", simulationCommandCallbackData);
             DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
-            if (registeredGenericCommands.find(exe.m_command) == registeredGenericCommands.end()) {
+            if (m_registeredGenericCommands.find(exe.m_command) == m_registeredGenericCommands.end()) {
                 DEBUG_CERR << "Engine received unknown command!" << endl;
             }
         } else {
 
             CERR << "received command, but required callback is not set" << endl;
         }
+        EngineMessage::sendEngineMessage(EM_GoOn{});
     }
     break;
     case insitu::EngineMessageType::GoOn:
+    {
+        if (m_metaData.simMode == VISIT_SIMMODE_RUNNING) {
+            EngineMessage::sendEngineMessage(EM_GoOn{});
+        }
+    }
         break;
     case insitu::EngineMessageType::ConstGrids:
     {
@@ -477,13 +513,8 @@ int insitu::Engine::GetInputSocket() {
 }
 
 void insitu::Engine::getMetaData() {
-    //m_metaData.handle = v2check(simv2_invoke_GetMetaData);
     m_metaData.handle = simv2_invoke_GetMetaData(); //somehow 0 is valid
-    CERR << "getMetaData: handle = " << m_metaData.handle << endl;
     v2check(simv2_SimulationMetaData_getData, m_metaData.handle, m_metaData.simMode, m_metaData.currentCycle, m_metaData.currentTime);
-    CERR << "simMode = " << m_metaData.simMode << " currentCycle = " << m_metaData.currentCycle << " currentTime = " << m_metaData.currentTime << endl;
-
-
 }
 
 void insitu::Engine::getRegisteredGenericCommands() {
@@ -495,7 +526,7 @@ void insitu::Engine::getRegisteredGenericCommands() {
         char* name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
         CERR << "registerd generic command: " << name << endl;
-        registeredGenericCommands.insert(name);
+        m_registeredGenericCommands.insert(name);
         commands.push_back(name);
     }
     EngineMessage::sendEngineMessage(EM_AddCommands{ commands });
@@ -561,9 +592,7 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
                 grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
                 grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, max[i]);
             }
-
-
-            //m_module->addObject(meshInfo.name, grid);
+            addObject(meshInfo.name, grid);
 
             DEBUG_CERR << "added rectilinear mesh " << meshInfo.name << " dom = " << currDomain << " xDim = " << nTuples[0] << " yDim = " << nTuples[1] << " zDim = " << nTuples[2] << endl;
             DEBUG_CERR << "min bounds " << min[0] << " " << min[1] << " " << min[2] << " max bouns " << max[0] << " " << max[1] << " " << max[2] << endl;
@@ -638,7 +667,7 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
-            //m_module->addObject(meshInfo.name, grid);
+            addObject(meshInfo.name, grid);
         }
     }
     CERR << "made structured mesh with " << meshInfo.numDomains << " domains" << endl;
@@ -658,7 +687,7 @@ void insitu::Engine::sendMeshesToModule()     {
             auto m = m_meshes.find(name);
             if (m != m_meshes.end()) {
                 for (auto grid : m->second.grids)                     {
-                    //m_module->addObject(name, grid);
+                    addObject(name, grid);
                 }
                 return; //the mesh is consistent and already there
             }
@@ -756,7 +785,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
             variable->setBlock(currDomain);
             variable->setMapping(centering == VISIT_VARCENTERING_NODE? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable->addAttribute("_species", name);
-            //m_module->addObject(name, variable);
+            addObject(name, variable);
             DEBUG_CERR << "added variable " << name  << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
 
         }
@@ -765,7 +794,6 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
 }
 
 void insitu::Engine::sendDataToModule() {
-    return; //not rdy yet
     try {
         sendMeshesToModule();
     } catch (const VistleLibSimExeption & exept) {
@@ -805,7 +833,7 @@ void insitu::Engine::sendTestData() {
         }
     }
     CERR << "sending test data for cycle " << m_metaData.currentCycle << endl;
-    //m_module->addObject("AMR_mesh", grid);
+    addObject("AMR_mesh", grid);
 }
 
 void insitu::Engine::finalizeInit()     {
@@ -845,11 +873,35 @@ void insitu::Engine::handleVistleMessage2(EngineMessage& msg) {
     
 }
 
+void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj) {
+    if (m_sendMessageQueue) {
+        DEBUG_CERR << "addObject " << name << " of type " << obj->typeName << endl;
+        vistle::message::AddObject msg(name, obj);
+        vistle::message::Buffer buf(msg);
+#ifdef MODULE_THREAD
+        buf.setSenderId(id());
+        buf.setRank(rank());
+#endif
+        m_sendMessageQueue->send(buf);
+    }
+
+
+}
+
 Engine::Engine()
-{ }
+{ 
+
+}
 
 Engine::~Engine() {
-   
+    m_meshes.clear();
+#ifndef MODULE_THREAD
+    if (vistle::Shm::isAttached()) {
+        vistle::Shm::the().detach();
+    }
+#endif
+    delete m_sendMessageQueue;
+    Engine::instance = nullptr;
 }
 
 

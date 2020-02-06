@@ -193,7 +193,7 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank) {
 }
 
 Module::Module(const std::string &desc,
-      const std::string &moduleName, const int moduleId, mpi::communicator comm)
+      const std::string &moduleName, const int moduleId, mpi::communicator comm, bool keepMessageQueueOpen)
 : ParameterManager(moduleName, moduleId)
 , m_name(moduleName)
 , m_rank(-1)
@@ -233,6 +233,7 @@ Module::Module(const std::string &desc,
    std::string smqName = message::MessageQueue::createName("recv", id(), rank());
    try {
       sendMessageQueue = message::MessageQueue::open(smqName);
+      CERR << "sendMessageQueue name = " << smqName << std::endl;
    } catch (interprocess::interprocess_exception &ex) {
       throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
    }

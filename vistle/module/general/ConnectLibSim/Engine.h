@@ -21,11 +21,13 @@
 #endif // MODULE_THREAD
 
 
-#include "ConnectLibSim.h"
 #include <core/vec.h>
-#include <module/module.h>
 
-class ConnectLibSim;
+namespace vistle {
+namespace message {
+class  MessageQueue;
+}
+}
 namespace insitu {
 enum class SimulationDataTyp {
      mesh
@@ -56,9 +58,7 @@ public:
     //********************************
     //***functions called by module***
     //********************************
-    int getNumObjects(SimulationDataTyp type);
-    visit_handle getNthObject(SimulationDataTyp type, int n);
-    std::vector<std::string> getDataNames(SimulationDataTyp type);
+
 
     //********************************
     //****functions called by sim****
@@ -81,7 +81,7 @@ public:
 private:
     static Engine* instance;
     bool m_initialized = false; //Engine is initialize
-
+    vistle::message::MessageQueue* m_sendMessageQueue = nullptr;
     //mpi info
 
     int m_rank = -1, m_mpiSize = 0;
@@ -89,7 +89,7 @@ private:
 
     std::mutex* m_doReadMutex = nullptr;
     //thread to run the vistle manager in
-    std::thread managerThread;
+    std::thread m_managerThread;
 
 //Port info to comunicate with the vistle module
     const unsigned short m_basePort = 31100;
@@ -99,7 +99,7 @@ private:
     std::shared_ptr<socket> m_socket;
 //info from the simulation
     Metadata m_metaData;
-    std::set<std::string> registeredGenericCommands;
+    std::set<std::string> m_registeredGenericCommands;
     struct MeshInfo {
         char* name = nullptr;
         int dim = 0; //2D or 3D
@@ -121,13 +121,22 @@ private:
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;
     void (*slaveCommandCallback)(void);
-
-    //retrieves metaData from simulation 
+    //...................................................................
+    //functions to retrieve meta data from sim
+    //...................................................................
+    //get the meta handle and info about run mode and cycle and store them in m_metaData
     void getMetaData();
+    //find out how many objects of type the simulation has
+    int getNumObjects(SimulationDataTyp type);
+    //get the handle to the nth object of type
+    visit_handle getNthObject(SimulationDataTyp type, int n);
+    //get a vector of object names
+    std::vector<std::string> getDataNames(SimulationDataTyp type);
     //get the commands that the simulation implements and send them to the module
     void getRegisteredGenericCommands();
     //get the data types that the simulation implements and send them to the module to create output ports
     void addPorts();
+    //...................................................................
 
     bool makeRectilinearMesh(MeshInfo meshInfo);
     bool makeUntructuredMesh(MeshInfo meshInfo);
@@ -157,6 +166,7 @@ private:
 
     void handleVistleMessage2(EngineMessage& msg);
 
+    void addObject(const std::string& name, vistle::Object::ptr obj);
 
     Engine();
     ~Engine();

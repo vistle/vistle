@@ -30,6 +30,7 @@ ControllModule::ControllModule(const string& name, int moduleID, mpi::communicat
 CERR << "io thread terminated" << endl; })
     , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 {
+    
     m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
     m_acceptorv6.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
     
@@ -59,6 +60,7 @@ ControllModule::~ControllModule() {
         boost::system::error_code ec;
         if (getBool(m_connectedToEngine)) {
             m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
+            EngineMessage::sendEngineMessage(insitu::EM_ConnectionClosed{});
             m_socket->close(ec);
         } else {
             boost::system::error_code ec;
@@ -96,7 +98,7 @@ bool ControllModule::changeParameter(const vistle::Parameter* param) {
         if (m_simInitSent) {
             CERR << "already connected" << endl;
         } else if (rank() == 0) {
-            vector<string> args{ to_string(size()), "shm", name(), to_string(id()), vistle::hostname(), to_string(m_port) };
+            vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port) };
             if (insitu::attemptLibSImConnection(m_filePath->getValue(), args)) {
                 m_simInitSent = true;
             }
@@ -232,6 +234,9 @@ void ControllModule::recvAndhandleMessage()     {
     case EngineMessageType::ExecuteCommand:
         break;
     case EngineMessageType::GoOn:
+    {
+        EngineMessage::sendEngineMessage(EM_GoOn{});
+    }
         break;
     case EngineMessageType::ConstGrids:
         break;

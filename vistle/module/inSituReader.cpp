@@ -1,5 +1,6 @@
 #include "inSituReader.h"
 #include <core/message.h>
+#include <core/messagequeue.h>
 using namespace vistle;
 using std::endl;
 #define CERR std::cerr << "inSituReader["<< rank() << "/" << size() << "] "
@@ -7,14 +8,33 @@ using std::endl;
 InSituReader::InSituReader(const std::string& description, const std::string& name, const int moduleID, mpi::communicator comm)
     :Module(description, name, moduleID, comm){
     setReducePolicy(message::ReducePolicy::OverAll);
+    std::string rmqName = message::MessageQueue::createName("recvFromSim", id(), rank());
+    try {
+        m_receiveFromSimMessageQueue = message::MessageQueue::create(rmqName);
+    } catch (interprocess::interprocess_exception & ex) {
+        throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
+    }
+}
+
+vistle::InSituReader::~InSituReader() {
+    delete m_receiveFromSimMessageQueue;
 }
 
 bool InSituReader::isExecuting() {
     return m_isExecuting;
 }
 
+bool vistle::InSituReader::dispatch(bool block, bool* messageReceived) {
+    
+    vistle::message::Buffer buf;
+    while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
+        sendMessage(buf);
+    }
+    
+    return Module::dispatch(block, messageReceived);
+}
+
 bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
-    CERR << "handleExecute start" << endl;
     using namespace vistle::message;
 
     if (m_executionCount < exec->getExecutionCount()) {
@@ -32,7 +52,6 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
 #endif
     if (!m_isExecuting &&(exec->what() == Execute::ComputeExecute
         || exec->what() == Execute::Prepare)) {
-        CERR << "start prepareWrapper" << endl;
         applyDelayedChanges();
         ret &= prepareWrapper(exec);
         if (ret) {
@@ -40,7 +59,6 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
             m_isExecuting = true;
  
         }
-        CERR << "handleExecute end after prepare, ret =  " << ret << endl;
         return ret;
     }
 
@@ -50,21 +68,17 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
     idle.setDestId(Id::LocalManager);
     sendMessage(idle);
 #endif
-    CERR << "handleExecute end without prepare" << endl;
     return ret;
 }
 
 void vistle::InSituReader::cancelExecuteMessageReceived(const message::Message* msg) {
-    CERR << "cancelExecuteMessageReceived start" << endl;
     if (m_isExecuting) {
-        CERR << "cancelExecuteMessageReceived reduce wrapper start" << endl;
         reduceWrapper(m_exec);
-        CERR << "cancelExecuteMessageReceived reduce wrapper end, wasCancelRequested = " << wasCancelRequested() << endl;
         if (wasCancelRequested()) {//make sure reduce gets called exactly once afer cancel execute
             
             reduce(-1);
         }
         m_isExecuting = false;
     }
-    CERR << "cancelExecuteMessageReceived end" << endl;
 }
+

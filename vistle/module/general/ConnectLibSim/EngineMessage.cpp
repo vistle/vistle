@@ -27,7 +27,6 @@ EngineMessage::EngineMessage()
 
 
 EngineMessage EngineMessage::recvEngineMessage() {
-    std::cerr << "recvEngineMessage" << std::endl;
     bool error = false;
     vistle::buffer payload;
     int type;
@@ -54,6 +53,7 @@ EngineMessage EngineMessage::recvEngineMessage() {
     boost::mpi::broadcast(m_comm, type, 0);
     if (type == static_cast<int>(EngineMessageType::ConnectionClosed)) {
         m_initialized = false;
+        m_socket = nullptr;
     }
     int size = payload.size();
     boost::mpi::broadcast(m_comm, size, 0);
@@ -61,7 +61,6 @@ EngineMessage EngineMessage::recvEngineMessage() {
         payload.resize(size);
     }
     boost::mpi::broadcast(m_comm, payload.data(), payload.size(), 0);
-    std::cerr << " rank " <<m_comm.rank() << " recvEngineMessage type: " << type << ", size :" << payload.size() << std::endl;
     return EngineMessage{static_cast<EngineMessageType>(type), std::move(payload)};
 }
 

@@ -114,7 +114,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    static bool setup(const std::string &shmname, int moduleID, int rank);
 
    Module(const std::string &description,
-          const std::string &name, const int moduleID, mpi::communicator comm);
+          const std::string &name, const int moduleID, mpi::communicator comm, bool keepMessageQueueOpen = false);
    virtual ~Module();
    virtual void eventLoop(); // called from MODULE_MAIN
    void initDone(); // to be called from eventLoop after module ctor has run
