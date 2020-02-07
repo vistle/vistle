@@ -5,7 +5,7 @@
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
 
-#include <renderer/COVER/OsgRenderer.h>
+#include <renderer/COVER/COVER.h>
 
 // vistle
 #include <util/exception.h>
@@ -33,7 +33,7 @@ class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
    bool executeAll() override;
 
  private:
-   OsgRenderer *m_module = nullptr;
+   COVER *m_module = nullptr;
 };
 
 VistlePlugin::VistlePlugin()
@@ -86,7 +86,7 @@ bool VistlePlugin::init() {
 
    assert(!cover->visMenu);
 
-   m_module = OsgRenderer::the();
+   m_module = COVER::the();
    if (m_module) {
        m_module->setPlugin(this);
 

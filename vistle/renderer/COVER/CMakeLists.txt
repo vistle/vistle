@@ -24,7 +24,7 @@ include_directories(
 )
 
 vistle_add_library(vistle_cover SHARED 
-   OsgRenderer.cpp OsgRenderer.h
+   COVER.cpp COVER.h
    VistleGeometryGenerator.h VistleGeometryGenerator.cpp
 )
 target_link_libraries(vistle_cover ${EXTRA_LIBS} vistle_renderer vistle_util

@@ -1,5 +1,5 @@
-#ifndef OSG_RENDERER_H
-#define OSG_RENDERER_H
+#ifndef RENDERER_COVER_H
+#define RENDERER_COVER_H
 
 #include <future>
 #include <string>
@@ -17,8 +17,6 @@
 #include "export.h"
 
 class VistleInteractor;
-
-#define OsgRenderer COVER
 
 namespace opencover {
 class coVRPlugin;
@@ -41,12 +39,12 @@ class PluginRenderObject: public vistle::RenderObject {
    std::shared_ptr<VistleRenderObject> coverRenderObject;
 };
 
-class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
+class V_COVEREXPORT COVER: public vistle::Renderer {
 
  public:
-   OsgRenderer(const std::string &name, int moduleId, mpi::communicator comm);
-   ~OsgRenderer() override;
-   static OsgRenderer *the();
+   COVER(const std::string &name, int moduleId, mpi::communicator comm);
+   ~COVER() override;
+   static COVER *the();
 
    void eventLoop() override;
 
@@ -132,7 +130,7 @@ class V_COVEREXPORT OsgRenderer: public vistle::Renderer {
    osg::ref_ptr<osg::Group> getParent(VistleRenderObject *ro);
 
    opencover::coVRPlugin *m_plugin = nullptr;
-   static OsgRenderer *s_instance;
+   static COVER *s_instance;
 
    void updateStatus();
 

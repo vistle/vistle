@@ -22,7 +22,7 @@
 #include <PluginUtil/StaticSequence.h>
 #include "VistleGeometryGenerator.h"
 
-#include "OsgRenderer.h"
+#include "COVER.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -53,9 +53,9 @@
 using namespace opencover;
 using namespace vistle;
 
-OsgRenderer *OsgRenderer::s_instance = nullptr;
+COVER *COVER::s_instance = nullptr;
 
-OsgRenderer::Variant::Variant(const std::string &basename, const std::string &variant)
+COVER::Variant::Variant(const std::string &basename, const std::string &variant)
     : variant(variant)
     , ro(variant)
 {
@@ -77,7 +77,7 @@ OsgRenderer::Variant::Variant(const std::string &basename, const std::string &va
     root->addChild(animated);
 }
 
-OsgRenderer::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg::Group> parent)
+COVER::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg::Group> parent)
     : id(id)
     , name(name)
     , baseVariant(name)
@@ -85,7 +85,7 @@ OsgRenderer::Creator::Creator(int id, const std::string &name, osg::ref_ptr<osg:
     parent->addChild(baseVariant.root);
 }
 
-bool OsgRenderer::Creator::empty() const {
+bool COVER::Creator::empty() const {
     if (!variants.empty())
         return false;
 
@@ -97,7 +97,7 @@ bool OsgRenderer::Creator::empty() const {
     return true;
 }
 
-const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &variantName) const {
+const COVER::Variant &COVER::Creator::getVariant(const std::string &variantName) const {
 
     if (variantName.empty() || variantName == "NULL")
         return baseVariant;
@@ -107,11 +107,11 @@ const OsgRenderer::Variant &OsgRenderer::Creator::getVariant(const std::string &
         it = variants.emplace(std::make_pair(variantName, Variant(name, variantName))).first;
     }
     baseVariant.constant->addChild(it->second.root);
-    coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, OsgRenderer::the()->m_plugin);
+    coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, COVER::the()->m_plugin);
     return it->second;
 }
 
-bool OsgRenderer::Creator::removeVariant(const std::string &variantName) {
+bool COVER::Creator::removeVariant(const std::string &variantName) {
 
     osg::ref_ptr<osg::Group> root;
 
@@ -136,23 +136,23 @@ bool OsgRenderer::Creator::removeVariant(const std::string &variantName) {
     return true;
 }
 
-osg::ref_ptr<osg::Group> OsgRenderer::Creator::root(const std::string &variant) const { return getVariant(variant).root; }
-osg::ref_ptr<osg::Group> OsgRenderer::Creator::constant(const std::string &variant) const { return getVariant(variant).constant; }
-osg::ref_ptr<osg::Sequence> OsgRenderer::Creator::animated(const std::string &variant) const { return getVariant(variant).animated; }
+osg::ref_ptr<osg::Group> COVER::Creator::root(const std::string &variant) const { return getVariant(variant).root; }
+osg::ref_ptr<osg::Group> COVER::Creator::constant(const std::string &variant) const { return getVariant(variant).constant; }
+osg::ref_ptr<osg::Sequence> COVER::Creator::animated(const std::string &variant) const { return getVariant(variant).animated; }
 
-OsgRenderer::Creator &OsgRenderer::getCreator(int id) {
+COVER::Creator &COVER::getCreator(int id) {
     auto it = creatorMap.find(id);
     if (it == creatorMap.end()) {
         std::stringstream name;
         name << getModuleName(id) << "_" << id;
         if (id < message::Id::ModuleBase)
-            std::cerr << "OsgRenderer::getCreator: invalid id " << id << std::endl;
+            std::cerr << "COVER::getCreator: invalid id " << id << std::endl;
         it = creatorMap.insert(std::make_pair(id, Creator(id, name.str(), vistleRoot))).first;
     }
     return it->second;
 }
 
-bool OsgRenderer::removeCreator(int id) {
+bool COVER::removeCreator(int id) {
     auto it = creatorMap.find(id);
     if (it == creatorMap.end())
         return false;
@@ -164,7 +164,7 @@ bool OsgRenderer::removeCreator(int id) {
 }
 
 
-OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicator comm)
+COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm)
 : vistle::Renderer("VR renderer for immersive environments", name, moduleId, comm)
 {
    assert(!s_instance);
@@ -184,18 +184,18 @@ OsgRenderer::OsgRenderer(const std::string &name, int moduleId, mpi::communicato
    m_maySleep = false;
 }
 
-OsgRenderer::~OsgRenderer() {
+COVER::~COVER() {
 
     prepareQuit();
     s_instance = nullptr;
 }
 
-OsgRenderer *OsgRenderer::the() {
+COVER *COVER::the() {
 
     return s_instance;
 }
 
-void OsgRenderer::setPlugin(coVRPlugin *plugin) {
+void COVER::setPlugin(coVRPlugin *plugin) {
 
     m_plugin = plugin;
 
@@ -203,22 +203,22 @@ void OsgRenderer::setPlugin(coVRPlugin *plugin) {
    initDone();
 }
 
-bool OsgRenderer::updateRequired() const {
+bool COVER::updateRequired() const {
     return m_requireUpdate;
 }
 
-void OsgRenderer::clearUpdate() {
+void COVER::clearUpdate() {
     m_requireUpdate = false;
 }
 
-bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
+bool COVER::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    std::string plugin = moduleName;
    if (boost::algorithm::ends_with(plugin, "Old"))
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
-   if (plugin == "DisCOVERay" || plugin == "OsgRenderer")
+   if (plugin == "DisCOVERay" || plugin == "COVER")
        plugin = "RhrClient";
    if (plugin == "Color")
        plugin = "ColorBars";
@@ -248,7 +248,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
    return true;
 }
 
-bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) {
+bool COVER::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) {
 
     InteractorMap::iterator it = m_interactorMap.find(senderId);
     if (it != m_interactorMap.end()) {
@@ -264,7 +264,7 @@ bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, 
     return true;
 }
 
-bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
+bool COVER::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
 
    InteractorMap::iterator it = m_interactorMap.find(senderId);
    if (it == m_interactorMap.end()) {
@@ -279,7 +279,7 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
    return true;
 }
 
-void OsgRenderer::prepareQuit() {
+void COVER::prepareQuit() {
 
    removeAllObjects();
    if (cover)
@@ -289,7 +289,7 @@ void OsgRenderer::prepareQuit() {
    Renderer::prepareQuit();
 }
 
-bool OsgRenderer::executeAll() const {
+bool COVER::executeAll() const {
 
    message::Execute exec; // execute all sources in data flow graph
    exec.setDestId(message::Id::MasterHub);
@@ -297,7 +297,7 @@ bool OsgRenderer::executeAll() const {
    return true;
 }
 
-osg::ref_ptr<osg::Group> OsgRenderer::getParent(VistleRenderObject *ro) {
+osg::ref_ptr<osg::Group> COVER::getParent(VistleRenderObject *ro) {
     int creatorId = ro->getCreator();
     Creator &creator = getCreator(creatorId);
 
@@ -321,7 +321,7 @@ osg::ref_ptr<osg::Group> OsgRenderer::getParent(VistleRenderObject *ro) {
     return parent;
 }
 
-void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
+void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
    auto pro = std::static_pointer_cast<PluginRenderObject>(vro);
    auto ro = pro->coverRenderObject;
    std::string variant = pro->variant;
@@ -400,7 +400,7 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
    pro->coverRenderObject.reset();
 }
 
-std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
+std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
@@ -490,7 +490,7 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    return pro;
 }
 
-bool OsgRenderer::render() {
+bool COVER::render() {
 
    updateStatus();
 
@@ -501,7 +501,7 @@ bool OsgRenderer::render() {
    for (size_t i=0; i<m_delayedObjects.size(); ++i) {
       auto &node_future = m_delayedObjects[i].node_future;
       if (!node_future.valid()) {
-         std::cerr << "OsgRenderer::render(): future not valid" << std::endl;
+         std::cerr << "COVER::render(): future not valid" << std::endl;
          break;
       }
       auto status = node_future.wait_for(std::chrono::seconds(0));
@@ -566,7 +566,7 @@ bool OsgRenderer::render() {
    return true;
 }
 
-bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
+bool COVER::addColorMap(const std::string &species, Texture1D::const_ptr texture) {
 
     VistleGeometryGenerator::lock();
     auto &cmap = m_colormaps[species];
@@ -616,7 +616,7 @@ bool OsgRenderer::addColorMap(const std::string &species, Texture1D::const_ptr t
     return true;
 }
 
-bool OsgRenderer::removeColorMap(const std::string &species) {
+bool COVER::removeColorMap(const std::string &species) {
 
     auto it = m_colormaps.find(species);
     if (it == m_colormaps.end())
@@ -635,7 +635,7 @@ bool OsgRenderer::removeColorMap(const std::string &species) {
     return true;
 }
 
-void OsgRenderer::updateStatus() {
+void COVER::updateStatus() {
 
     if (comm().rank() != 0)
         return;
@@ -654,7 +654,7 @@ void OsgRenderer::updateStatus() {
 }
 
 
-std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
+std::string COVER::setupEnvAndGetLibDir(const std::string &bindir) {
     int rank = comm().rank();
 
     std::map<std::string, std::string> env;
@@ -786,7 +786,7 @@ std::string OsgRenderer::setupEnvAndGetLibDir(const std::string &bindir) {
     return coviselibdir;
 }
 
-int OsgRenderer::runMain(int argc, char *argv[]) {
+int COVER::runMain(int argc, char *argv[]) {
 
     std::string bindir = vistle::getbindir(argc, argv);
     std::string abslib = setupEnvAndGetLibDir(bindir) + libcover;
@@ -839,7 +839,7 @@ finish:
     return ret;
 }
 
-void OsgRenderer::eventLoop() {
+void COVER::eventLoop() {
 
 #if defined(COVER_ON_MAINTHREAD) && defined(MODULE_THREAD)
    std::function<void()> f = [this](){
