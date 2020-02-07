@@ -371,55 +371,6 @@ void async_recv_header(socket_t &sock, message::Buffer &msg, std::function<void(
    }
 }
 
-bool send(socket_t &sock, const Message &msg, const buffer *payload) {
-
-    assert(check(msg, payload));
-
-    const SizeType sz = htonl(msg.size());
-    std::vector<boost::asio::const_buffer> buffers;
-    //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
-    buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
-    buffers.push_back(boost::asio::buffer(&msg, msg.size()));
-    if (payload && payload->size()) {
-        buffers.push_back(boost::asio::buffer(*payload));
-        //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
-    }
-    error_code ec;
-    asio::write(sock, buffers, ec);
-    if (ec) {
-        std::cerr << "message::send: error: " << ec.message() << std::endl;
-        if (ec != boost::system::errc::connection_reset)
-            std::cerr << backtrace() << std::endl;
-        return false;
-    }
-    return true;
-}
-
-bool send(socket_t &sock, const message::Message &msg, error_code &ec, const buffer *payload) {
-
-   assert(check(msg, payload));
-
-   const SizeType sz = htonl(msg.size());
-   std::vector<boost::asio::const_buffer> buffers;
-   //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
-   buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
-   buffers.push_back(boost::asio::buffer(&msg, msg.size()));
-   if (payload && payload->size()) {
-       buffers.push_back(boost::asio::buffer(*payload));
-       //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
-   }
-
-   asio::write(sock, buffers, ec);
-   if (ec) {
-       std::cerr << "message::send: error: " << ec.message() << std::endl;
-       if (ec != boost::system::errc::connection_reset)
-           std::cerr << backtrace() << std::endl;
-       return false;
-   }
-
-   return true;
-}
-
 bool send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size) {
 
    const SizeType sz = htonl(msg.size());
@@ -441,6 +392,21 @@ bool send(socket_t &sock, const message::Message &msg, error_code &ec, const cha
    }
 
    return true;
+}
+
+bool send(socket_t &sock, const message::Message &msg, error_code &ec, const buffer *payload) {
+
+   assert(check(msg, payload));
+
+   if (payload)
+       return send(sock, msg, ec, payload->data(), payload->size());
+   return send(sock, msg, ec, nullptr, 0);
+}
+
+bool send(socket_t &sock, const Message &msg, const buffer *payload) {
+
+    error_code ec;
+    return send(sock, msg, ec, payload);
 }
 
 
