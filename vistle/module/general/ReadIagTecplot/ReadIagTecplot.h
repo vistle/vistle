@@ -3,8 +3,6 @@
 
 #include <module/reader.h>
 
-#include "tecplotfile.h"
-
 class ReadIagTecplot: public vistle::Reader {
 
  public:

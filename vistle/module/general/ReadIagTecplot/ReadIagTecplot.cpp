@@ -1,3 +1,8 @@
+#include "ReadIagTecplot.h"
+#include "topo.h"
+#include "mesh.h"
+#include "tecplotfile.h"
+
 #include <boost/algorithm/string/predicate.hpp>
 
 #include <core/object.h>
@@ -9,10 +14,6 @@
 #include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
-
-#include "ReadIagTecplot.h"
-#include "topo.h"
-#include "mesh.h"
 
 #include <util/filesystem.h>
 
