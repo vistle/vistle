@@ -40,9 +40,7 @@
 
 
 #include <util/listenv4v6.h>
-#ifndef MODULE_THREAD
 #include "ConnectLibSim.h"
-#endif // !MODULE_THREAD
 
 
 #define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
@@ -260,7 +258,7 @@ bool Engine::initialize(int argC, char** argV) {
     // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
-        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory.");
+        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << std::endl;
         return false;
     }
 
@@ -332,10 +330,11 @@ void Engine::SimulationTimeStepChanged() {
         CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
-  
 
 
+#ifndef MODULE_THREAD
     runModule();
+#endif
     if (m_module->timestepChanged()) {
         sendDataToModule();
     }
@@ -359,7 +358,9 @@ void Engine::DeleteData() {
 }
 
 void in_situ::Engine::passCommandToSim() {
+#ifndef MODULE_THREAD
     runModule();
+#endif
     if (m_rank == 0) {
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
@@ -380,14 +381,14 @@ void in_situ::Engine::passCommandToSim() {
             is >> msg;
             int l = msg.size();
             MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
-            MPI_Bcast(msg.data(), l, MPI_CHARACTER, 0, comm);
+            MPI_Bcast(const_cast<char *>(msg.data()), l, MPI_CHARACTER, 0, comm);
 
         }
         else {
             int l = msg.size();
             MPI_Bcast(&l, 1, MPI_INTEGER, 0, comm);
             msg.resize(l);
-            MPI_Bcast(msg.data(), l, MPI_CHARACTER, 0, comm);
+            MPI_Bcast(const_cast<char *>(msg.data()), l, MPI_CHARACTER, 0, comm);
         }
 
         simulationCommandCallback(msg.c_str(), "", simulationCommandCallbackData);
@@ -800,6 +801,7 @@ void in_situ::Engine::finalizeInit()     {
     }
 }
 
+#ifndef MODULE_THREAD
 void in_situ::Engine::runModule() {
     if (!m_module) {
         return;
@@ -824,6 +826,7 @@ void in_situ::Engine::runModule() {
         throw(e);
     }
 }
+#endif
 
 void in_situ::Engine::initializeEngineSocket() {
 
