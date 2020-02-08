@@ -69,13 +69,6 @@ esac
 
 WRAPPER=""
 LAUNCH=""
-if [ -n "$SINGULARITY_CONTAINER" ]; then
-    if [ -f /.singularity.d/libs/libGLX_nvidia.so.0 ]; then
-        WRAPPER="singularity exec --nv ${SINGULARITY_CONTAINER}"
-    else
-        WRAPPER="singularity exec ${SINGULARITY_CONTAINER}"
-    fi
-fi
 #WRAPPER="$WRAPPER valgrind"
 export TSAN_OPTIONS="history_size=7 force_seq_cst_atomics=1 second_deadlock_stack=1"
 
