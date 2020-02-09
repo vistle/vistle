@@ -540,14 +540,6 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote) {
                return;
            }
 
-           auto ident = make.message<Identify>(Identify::REMOTEBULKDATA, m_hubId);
-           async_send(*sock, ident, nullptr, [sock](error_code ec){
-               if (ec) {
-                   CERR << "send error" << std::endl;
-                   return;
-               }
-           });
-
            auto &socks = m_remoteDataSocket[hubId].sockets;
            if (std::find(socks.begin(), socks.end(), sock) != socks.end()) {
                return;
