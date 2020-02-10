@@ -319,6 +319,7 @@ private:
    VariantVisibilityMap m_clientVariants;
    InitialVariantVisibilityMap m_localVariants;
 
+   bool send(const message::Message &msg, const buffer *payload=nullptr);
    bool send(const RemoteRenderMessage &msg, const buffer *payload=nullptr);
    void resetClient();
    int m_framecount = 0;

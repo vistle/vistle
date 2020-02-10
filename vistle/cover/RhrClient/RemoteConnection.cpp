@@ -15,6 +15,7 @@
 
 #include <util/listenv4v6.h>
 #include <core/tcpmessage.h>
+#include <core/messages.h>
 
 #include <osg/io_utils>
 
@@ -308,6 +309,8 @@ void RemoteConnection::operator()() {
         if (ec) {
             NOTIFY_ERROR << "failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
             END;
+        } else {
+            sendMessage(message::Identify());
         }
     } else {
         asio::ip::tcp::resolver resolver(plugin->m_io);
@@ -328,7 +331,6 @@ void RemoteConnection::operator()() {
     {
         lock_guard locker(*m_mutex);
         m_connected = true;
-        connectionEstablished();
     }
 
     for (;;) {
@@ -359,12 +361,40 @@ void RemoteConnection::operator()() {
             continue;
         }
 
-        if (buf.type() != message::REMOTERENDERING) {
-            CERR << "invalid message type=" << buf.type() << " received" << std::endl;
-            break;
-        }
+        if (buf.type() == message::IDENTIFY) {
+            auto &msg = buf.as<message::Identify>();
+            using message::Identify;
+            switch (msg.identity()) {
+            case Identify::REQUEST: {
+                message::Identify id(msg, message::Identify::RENDERCLIENT);
+                sendMessage(id);
+                connectionEstablished();
+                break;
+            }
+            case Identify::RENDERSERVER: {
+                if (!msg.verifyMac()) {
+                    lock_guard locker(*m_mutex);
+                    m_interrupt = true;
+                    break;
+                }
+                connectionEstablished();
+                break;
+            }
+            default: {
+                CERR << "invalid identity: " << msg << std::endl;
+                lock_guard locker(*m_mutex);
+                m_interrupt = true;
+                break;
+            }
 
-        {
+            }
+
+        } else if (buf.type() != message::REMOTERENDERING) {
+            CERR << "invalid message type=" << buf.type() << " received" << std::endl;
+            lock_guard locker(*m_mutex);
+            m_interrupt = true;
+            break;
+        } else {
             auto &msg = buf.as<RemoteRenderMessage>();
             auto &rhr = msg.rhr();
             m_modificationCount = rhr.modificationCount;

@@ -23,7 +23,9 @@
 
 #include <util/stopwatch.h>
 #include <util/netpbmimage.h>
+#include <util/crypto.h>
 #include <core/tcpmessage.h>
+#include <core/messages.h>
 #include <util/listenv4v6.h>
 
 //#define QUANT_ERROR
@@ -34,6 +36,14 @@
 namespace vistle {
 
 bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
+    message::Buffer buf(msg);
+    auto &rem = buf.as<RemoteRenderMessage>();
+    rem.rhr().modificationCount = m_modificationCount;
+    return send(buf, payload);
+}
+
+bool RhrServer::send(const message::Message &msg, const buffer *payload) {
+
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
@@ -42,12 +52,8 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
     if (!m_clientSocket)
         return false;
 
-    message::Buffer buf(msg);
-    auto &rem = buf.as<RemoteRenderMessage>();
-    rem.rhr().modificationCount = m_modificationCount;
-
     message::error_code ec;
-    if (!message::send(*m_clientSocket, buf, ec, payload)) {
+    if (!message::send(*m_clientSocket, msg, ec, payload)) {
         if (ec) {
             CERR << "client error: " << ec.message() << ", disconnecting" << std::endl;
         } else {
@@ -266,6 +272,12 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
 //! called after plug-in is loaded and scenegraph is initialized
 void RhrServer::init() {
 
+   if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
+
+        CERR << "failed to initialize cryptographic support" << std::endl;
+        throw except::exception("failed to initialize cryptographic support");
+   }
+
    lightsUpdateCount = 0;
 
    m_tileWidth = 256;
@@ -305,6 +317,8 @@ void RhrServer::resetClient() {
 
     ++m_updateCount;
     ++lightsUpdateCount;
+    if (m_clientSocket)
+        m_clientSocket->close();
     m_clientSocket.reset();
     lightsUpdateCount = 0;
     m_clientVariants.clear();
@@ -365,17 +379,7 @@ void RhrServer::handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<asio::i
    CERR << "incoming connection, accepting new client" << std::endl;
    m_clientSocket = sock;
 
-   int nt = m_numTimesteps;
-   ++m_numTimesteps;
-   setNumTimesteps(nt);
-
-   for (auto &var: m_localVariants) {
-        variantMsg msg;
-        strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
-        msg.visible = var.second;
-        send(msg);
-
-   }
+   send(message::Identify());
 
    startAccept(a);
 }
@@ -668,6 +672,37 @@ RhrServer::preFrame() {
               received = message::recv(*m_clientSocket, msg, ec, false, &payload);
               if (received) {
                   switch(msg.type()) {
+                  case message::IDENTIFY: {
+                      auto &m = msg.as<message::Identify>();
+                      using message::Identify;
+                      switch (m.identity()) {
+                      case Identify::REQUEST: {
+                          Identify id(m, Identify::RENDERSERVER);
+                          send(id);
+                          break;
+                      }
+                      case Identify::RENDERCLIENT: {
+                          if (!m.verifyMac()) {
+                              CERR << "MAC verification failed" << std::endl;
+                              resetClient();
+                              break;
+                          }
+                          for (auto &var: m_localVariants) {
+                              variantMsg msg;
+                              strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+                              msg.visible = var.second;
+                              send(msg);
+                          }
+                          break;
+                      }
+                      default: {
+                          CERR << "unexpected client identiy: " << m << std::endl;
+                          resetClient();
+                          break;
+                      }
+                      }
+                      break;
+                  }
                   case message::REMOTERENDERING: {
                       auto &m = msg.as<message::RemoteRenderMessage>();
                       auto &rhr = m.rhr();

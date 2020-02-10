@@ -44,6 +44,8 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
          (SLAVEHUB) //< slave hub
          (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
          (REMOTEBULKDATA) //< bulk data transfer to remote hubs
+         (RENDERSERVER) //< remote render server
+         (RENDERCLIENT) //< remote render client
          )
 
    typedef std::array<char, 32> mac_t;

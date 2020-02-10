@@ -39,6 +39,7 @@
 
 #include <core/tcpmessage.h>
 #include <util/hostname.h>
+#include <util/crypto.h>
 #include <rhr/rfbext.h>
 
 #include <VistlePluginUtil/VistleRenderObject.h>
@@ -424,11 +425,24 @@ RhrClient::RhrClient()
 , m_numRemoteTimesteps(-1)
 {
    //fprintf(stderr, "new RhrClient plugin\n");
+
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
 bool RhrClient::init()
 {
+   try {
+        if (!crypto::initialize(sizeof(message::Identify::session_data_t))) {
+
+            CERR << "failed to initialize cryptographic support" << std::endl;
+            return false;
+        }
+   } catch (const except::exception &e) {
+       CERR << "failed to initialize cryptographic support:" << std::endl;
+       std::cerr << "     " << e.what() << std::endl << e.where() << std::endl;
+       return false;
+   }
+
    m_noModelUpdate = false;
    m_oldModelMatrix = osg::Matrix::identity();
 
