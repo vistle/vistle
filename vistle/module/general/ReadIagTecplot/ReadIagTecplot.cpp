@@ -19,9 +19,11 @@
 
 MODULE_MAIN(ReadIagTecplot)
 
-using namespace vistle;
-
-bool ReadIagTecplot::examine(const Parameter *param) {
+//using namespace vistle;
+using vistle::Scalar;
+using vistle::Vec;
+using vistle::Index;
+bool ReadIagTecplot::examine(const vistle::Parameter *param) {
 
     if (param != nullptr && param != m_filename)
         return true;
@@ -44,7 +46,7 @@ bool ReadIagTecplot::examine(const Parameter *param) {
 
 bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
 {
-   auto unstr = std::make_shared<UnstructuredGrid>(0,0,0);
+   auto unstr = std::make_shared<vistle::UnstructuredGrid>(0,0,0);
    auto &x = unstr->x();
    auto &y = unstr->y();
    auto &z = unstr->z();
@@ -52,14 +54,14 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
    auto &cl = unstr->cl();
    auto &tl = unstr->tl();
 
-   Vec<Scalar>::ptr p,r;
-   Vec<Scalar,3>::ptr n,u,v;
+   vistle::Vec<Scalar>::ptr p,r;
+   vistle::Vec<Scalar,3>::ptr n,u,v;
 
-   typedef Vec<Scalar>::array array;
+   typedef vistle::Vec<Scalar>::array array;
 
    array *pp = nullptr;
    if (m_p->isConnected()) {
-       p = std::make_shared<Vec<Scalar>>(0);
+       p = std::make_shared<Vec<vistle::Scalar>>(0);
        pp = &p->x();
    }
    array *rr = nullptr;
@@ -164,7 +166,7 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
                    Index &vv = p.first->second;
                    cl.push_back(vv);
                }
-               tl.push_back(UnstructuredGrid::HEXAHEDRON);
+               tl.push_back(vistle::UnstructuredGrid::HEXAHEDRON);
                el.push_back(cl.size());
            }
            baseVertex += vertMap.size();
@@ -216,7 +218,7 @@ ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::commu
    : Reader("read IAG Tecplot data (hexahedra only)", name, moduleID, comm)
 {
 
-   m_filename = addStringParameter("filename", "name of Tecplot file", "", Parameter::ExistingFilename);
+   m_filename = addStringParameter("filename", "name of Tecplot file", "", vistle::Parameter::ExistingFilename);
 
    m_grid = createOutputPort("grid_out");
    m_p = createOutputPort("p");
