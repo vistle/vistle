@@ -68,6 +68,7 @@ addons:
             - libzstd-dev
             - libzip-dev
             - libarchive-dev
+            - libbotan-2-dev
 
 
 before_install:
