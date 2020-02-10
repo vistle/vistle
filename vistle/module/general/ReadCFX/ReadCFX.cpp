@@ -590,18 +590,18 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 sendInfo("Found %d zones", m_nzones);
                 for(index_t i=1;i<=m_nzones;i++) {
                     cfxExportZoneSet(i,NULL);
-                    sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
+                    sendInfo("zone no. %lu: %s", (unsigned long)i,cfxExportZoneName(i));
                     cfxExportZoneFree();
                 }
                 //print out 2D area names (boundaries and regions)
                 sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
                 std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
                 for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
-                    sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].boundName).c_str());
+                    sendInfo("boundary no. %lu: %s",(unsigned long)i,(allBoundaries[i-1].boundName).c_str());
                 }
                 std::vector<Region> allRegions = m_case.getCopyOfAllRegions();
                 for(index_t i=(m_case.getNumberOfBoundaries()+1);i<=(m_case.getNumberOfBoundaries()+m_case.getNumberOfRegions());++i) {
-                    sendInfo("region no. %d: %s",i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
+                    sendInfo("region no. %lu: %s",(unsigned long)i,(allRegions[i-m_case.getNumberOfBoundaries()-1].regionName).c_str());
                 }
                 //print variable names in .trn file
                 std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
@@ -613,7 +613,7 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 //print particle type names
                 index_t nParticleTypes = cfxExportGetNumberOfParticleTypes();
                 for(index_t i=1;i<=nParticleTypes;++i) {
-                    sendInfo("particle type no. %d: %s",i,cfxExportGetParticleName(i));
+                    sendInfo("particle type no. %lu: %s",(unsigned long)i,cfxExportGetParticleName(i));
                 }
 
             }

@@ -14,6 +14,7 @@ enable_testing()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+# configure process model
 if (CRAY)
    option(VISTLE_MULTI_PROCESS "use multiple processes communicating via shared memory" OFF)
 else()
@@ -29,6 +30,17 @@ if(NOT VISTLE_MULTI_PROCESS)
    if(NOT VISTLE_USE_SHARED_MEMORY)
       add_definitions(-DNO_SHMEM)
    endif()
+endif()
+
+# configure data-type sizes
+option(VISTLE_64BIT_INDICES "use 64-bit integers for array indices" OFF)
+if (VISTLE_64BIT_INDICES)
+    add_definitions(-DVISTLE_INDEX_64BIT)
+endif()
+
+option(VISTLE_DOUBLE_PRECISION "use double instead of float for coordinates and data arrays" OFF)
+if (VISTLE_DOUBLE_PRECISION)
+    add_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
 
 option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
