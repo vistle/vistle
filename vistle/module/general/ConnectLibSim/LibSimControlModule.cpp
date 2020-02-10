@@ -76,15 +76,21 @@ ControllModule::~ControllModule() {
     m_ioThread.join();
 }
 
+bool ControllModule::prepareReduce() {
+    
+    EngineMessage::sendEngineMessage(insitu::EM_Ready({ false, false, false }));
+    return true;
+}
+
 bool ControllModule::prepare() {
     CERR << "prepare" << endl;
-    EngineMessage::sendEngineMessage(insitu::EM_Ready(true));
+    EngineMessage::sendEngineMessage(insitu::EM_Ready({ true, vistle::Shm::the().objectID(), vistle::Shm::the().objectID() }));
     return true;
 }
 
 bool ControllModule::reduce(int timestep) {
     CERR << "reduce" << endl;
-    EngineMessage::sendEngineMessage(insitu::EM_Ready(false));
+
     m_timestep = 0;
     return true;
 }

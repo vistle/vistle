@@ -3,7 +3,9 @@
 
 #include "VisItExports.h"
 
-#include <sstream>
+#include <string>
+#include <array>
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
 
@@ -31,6 +33,7 @@ enum class V_VISITXPORT EngineMessageType {
     , ConstGrids
     , NthTimestep
     , ConnectionClosed
+    , CycleFinished
 
 };
 
@@ -77,7 +80,8 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit, shmName, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject, name, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddPorts, portList, std::vector<std::string>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddCommands, commandList, std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
+//use vector{true/false, Shm::the().objectID(), Shm::the().arrayID()} 
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, std::vector<size_t>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
@@ -86,7 +90,6 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
 
 struct V_VISITXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
     InSituMessage(EngineMessageType t):emType(t){}
-    
     EngineMessageType emType;
 };
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");

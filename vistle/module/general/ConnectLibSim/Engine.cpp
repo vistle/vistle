@@ -388,7 +388,7 @@ void Engine::SimulationTimeStepChanged() {
         return;
     }
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
-    if (m_moduleReady) {
+    if (m_moduleReady) {//only here vistle::objects are allowed to be made
         sendDataToModule();
     }
     else {
@@ -443,7 +443,15 @@ bool insitu::Engine::handleVistleMessage() {
     case insitu::EngineMessageType::Ready:
     {
         EM_Ready em = msg.unpackOrCast<EM_Ready>();
-        m_moduleReady = em.m_state;
+        m_moduleReady = em.m_state[0];
+        if (m_moduleReady) {
+            vistle::Shm::the().setObjectID(em.m_state[1]);
+            vistle::Shm::the().setArrayID(em.m_state[2]);
+        }
+        else {
+            vistle::message::SyncShmIDs msg(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
+            m_sendMessageQueue->send(msg);
+        }
     }
     break;
     case insitu::EngineMessageType::ExecuteCommand:

@@ -28,7 +28,9 @@ bool vistle::InSituReader::dispatch(bool block, bool* messageReceived) {
     
     vistle::message::Buffer buf;
     while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-        sendMessage(buf);
+        if (buf.type() != vistle::message::SYNCSHMIDS) {
+            sendMessage(buf);
+        }
     }
     
     return Module::dispatch(block, messageReceived);
@@ -73,10 +75,34 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
 
 void vistle::InSituReader::cancelExecuteMessageReceived(const message::Message* msg) {
     if (m_isExecuting) {
-        reduceWrapper(m_exec);
+        vistle::message::Buffer buf;
+        bool finished = false;
+        if (!prepareReduce()) {
+            sendError("failed to prepare reduce");
+            return;
+        }
+        while (!finished) {
+            m_receiveFromSimMessageQueue->receive(buf);
+            if (buf.type() == vistle::message::SYNCSHMIDS) {
+                auto msg = buf.as<vistle::message::SyncShmIDs>();
+                Shm::the().setArrayID(msg.arrayID());
+                Shm::the().setObjectID(msg.objectID());
+                finished = true;
+            } else {
+                sendMessage(buf);
+            }
+
+        }
+        if (reduceWrapper(m_exec)) {
+            sendError("failed to reduce");
+            return;
+        }
         if (wasCancelRequested()) {//make sure reduce gets called exactly once afer cancel execute
             
-            reduce(-1);
+            if (reduce(-1)) {
+                sendError("failed to reduce");
+                return;
+            }
         }
         m_isExecuting = false;
     }
