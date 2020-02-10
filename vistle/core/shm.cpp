@@ -229,6 +229,24 @@ void Shm::unlockDictionary() const {
 #endif
 }
 
+size_t Shm::objectID() const {
+    return m_objectId;
+}
+
+size_t Shm::arrayID() const {
+    return m_arrayId;
+}
+
+void Shm::setObjectID(size_t id) {
+    vassert(id > m_objectId);
+    m_objectId = id;
+}
+
+void Shm::setArrayID(size_t id) {
+    vassert(id > m_arrayId);
+    m_arrayId = id;
+}
+
 namespace {
 
 std::string shmSegName(const std::string &name, const int rank) {
