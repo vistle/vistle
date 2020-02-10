@@ -28,7 +28,7 @@ public:
 
     bool m_isExecuting = false;
     const vistle::message::Execute* m_exec;
-    message::MessageQueue* m_receiveFromSimMessageQueue = nullptr;
+    message::MessageQueue* m_receiveFromSimMessageQueue = nullptr, *m_sendToSimMessageQueue = nullptr;
 };
 
 

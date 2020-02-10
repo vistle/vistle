@@ -1,7 +1,7 @@
-#ifndef ENGINE_MESSAGE_H
-#define ENGINE_MESSAGE_H
+#ifndef INSITU_MESSAGE_H
+#define INSITU_MESSAGE_H
 
-#include "VisItExports.h"
+#include "export.h"
 
 #include <string>
 #include <array>
@@ -21,7 +21,7 @@
 namespace insitu{
 
 
-enum class V_VISITXPORT EngineMessageType {
+enum class V_INSITUEXPORT EngineMessageType {
     Invalid
     , ShmInit
     , AddObject
@@ -34,10 +34,11 @@ enum class V_VISITXPORT EngineMessageType {
     , NthTimestep
     , ConnectionClosed
     , CycleFinished
+    , SyncShmID
 
 };
 
-struct V_VISITXPORT EngineMessageBase {
+struct V_INSITUEXPORT EngineMessageBase {
     EngineMessageBase(EngineMessageType t) :m_type(t) {};
     EngineMessageType type() const;
 protected:
@@ -47,7 +48,7 @@ protected:
 };
 
 #define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType, payloadName, payloadType)\
-struct V_VISITXPORT EM_##messageType : public EngineMessageBase\
+struct V_INSITUEXPORT EM_##messageType : public EngineMessageBase\
 {\
     friend class EngineMessage;\
     EM_##messageType(const payloadType& payloadName):EngineMessageBase(type), m_##payloadName(payloadName){}\
@@ -64,7 +65,7 @@ private:\
 
 
 #define DECLARE_ENGINE_MESSAGE(messageType)\
-struct V_VISITXPORT EM_##messageType : public EngineMessageBase {\
+struct V_INSITUEXPORT EM_##messageType : public EngineMessageBase {\
     static const EngineMessageType type = EngineMessageType::messageType;\
     EM_##messageType() :EngineMessageBase(type) {}\
     ARCHIVE_ACCESS\
@@ -80,15 +81,14 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit, shmName, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject, name, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddPorts, portList, std::vector<std::string>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddCommands, commandList, std::vector<std::string>)
-//use vector{true/false, Shm::the().objectID(), Shm::the().arrayID()} 
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, std::vector<size_t>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(SyncShmID, ids, std::vector<std::size_t>)
 
 
-
-struct V_VISITXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
+struct V_INSITUEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
     InSituMessage(EngineMessageType t):emType(t){}
     EngineMessageType emType;
 };
@@ -101,7 +101,7 @@ static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "
 //When the connection is closed returns EngineMEssageType::ConnectionClosed and becomes uninitialized.
 //while uninitialized calls to send and received are ignored.
 //Received Messages are broadcasted to all ranks so make sure they all call receive together.
-class V_VISITXPORT EngineMessage {
+class V_INSITUEXPORT EngineMessage {
 public:
 
     EngineMessageType type() const;

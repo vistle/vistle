@@ -10,7 +10,7 @@
 
 #include <boost/bind.hpp>
 
-#include "EngineMessage.h"
+#include <insitu/InSituMessage.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 
@@ -78,20 +78,14 @@ ControllModule::~ControllModule() {
 
 bool ControllModule::prepareReduce() {
     
-    EngineMessage::sendEngineMessage(insitu::EM_Ready({ false, false, false }));
+    EngineMessage::sendEngineMessage(insitu::EM_Ready{ false });
+    m_timestep = 0;
     return true;
 }
 
 bool ControllModule::prepare() {
     CERR << "prepare" << endl;
-    EngineMessage::sendEngineMessage(insitu::EM_Ready({ true, vistle::Shm::the().objectID(), vistle::Shm::the().objectID() }));
-    return true;
-}
-
-bool ControllModule::reduce(int timestep) {
-    CERR << "reduce" << endl;
-
-    m_timestep = 0;
+    EngineMessage::sendEngineMessage(insitu::EM_Ready{ true });
     return true;
 }
 

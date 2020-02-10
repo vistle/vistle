@@ -7,7 +7,7 @@
 
 #include "MetaData.h"
 #include "VisItExports.h"
-#include "EngineMessage.h"
+#include <insitu/InSituMessage.h>
 
 #include <string>
 #include <vector>

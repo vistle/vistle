@@ -8,11 +8,18 @@ using std::endl;
 InSituReader::InSituReader(const std::string& description, const std::string& name, const int moduleID, mpi::communicator comm)
     :Module(description, name, moduleID, comm){
     setReducePolicy(message::ReducePolicy::OverAll);
-    std::string rmqName = message::MessageQueue::createName("recvFromSim", id(), rank());
+    std::string mqName = message::MessageQueue::createName("recvFromSim", id(), rank());
     try {
-        m_receiveFromSimMessageQueue = message::MessageQueue::create(rmqName);
+        m_receiveFromSimMessageQueue = message::MessageQueue::create(mqName);
     } catch (interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
+        throw vistle::exception(std::string("opening receive message queue ") + mqName + ": " + ex.what());
+    }
+   mqName = message::MessageQueue::createName("sendToSim", id(), rank());
+
+    try {
+        m_sendToSimMessageQueue = message::MessageQueue::create(mqName);
+    } catch (interprocess::interprocess_exception & ex) {
+        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
     }
 }
 
@@ -28,7 +35,7 @@ bool vistle::InSituReader::dispatch(bool block, bool* messageReceived) {
     
     vistle::message::Buffer buf;
     while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-        if (buf.type() != vistle::message::SYNCSHMIDS) {
+        if (buf.type() != vistle::message::INSITU) {
             sendMessage(buf);
         }
     }
@@ -83,10 +90,10 @@ void vistle::InSituReader::cancelExecuteMessageReceived(const message::Message* 
         }
         while (!finished) {
             m_receiveFromSimMessageQueue->receive(buf);
-            if (buf.type() == vistle::message::SYNCSHMIDS) {
-                auto msg = buf.as<vistle::message::SyncShmIDs>();
-                Shm::the().setArrayID(msg.arrayID());
-                Shm::the().setObjectID(msg.objectID());
+            if (buf.type() == vistle::message::INSITU) {
+                //auto msg = buf.as<insitu::InSitu>();
+                //Shm::the().setArrayID(msg.arrayID());
+                //Shm::the().setObjectID(msg.objectID());
                 finished = true;
             } else {
                 sendMessage(buf);
@@ -99,7 +106,7 @@ void vistle::InSituReader::cancelExecuteMessageReceived(const message::Message* 
         }
         if (wasCancelRequested()) {//make sure reduce gets called exactly once afer cancel execute
             
-            if (reduce(-1)) {
+            if (!reduce(-1)) {
                 sendError("failed to reduce");
                 return;
             }

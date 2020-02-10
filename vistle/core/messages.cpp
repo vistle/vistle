@@ -1867,18 +1867,5 @@ SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices)
 {
 }
 
-SyncShmIDs::SyncShmIDs(size_t objectID, size_t arrayID)
-:m_objectID(objectID)
-,m_arrayID(arrayID){
-}
-
-size_t SyncShmIDs::objectID() const {
-    return m_objectID;
-}
-
-size_t SyncShmIDs::arrayID() const {
-    return m_arrayID;
-}
-
 } // namespace message
 } // namespace vistle

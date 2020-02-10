@@ -7,7 +7,7 @@
 #include <boost/asio.hpp>
 
 #include <core/message.h>
-#include "EngineMessage.h"
+#include <insitu/InSituMessage.h>
 
 class ControllModule : public vistle::InSituReader
 {
@@ -62,7 +62,6 @@ private:
     //module functions
     virtual bool prepareReduce() override;
     virtual bool prepare() override;
-    virtual bool reduce(int timestep) override;
     virtual bool changeParameter(const vistle::Parameter* param);
     //..........................................................................
 

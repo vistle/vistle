@@ -443,14 +443,12 @@ bool insitu::Engine::handleVistleMessage() {
     case insitu::EngineMessageType::Ready:
     {
         EM_Ready em = msg.unpackOrCast<EM_Ready>();
-        m_moduleReady = em.m_state[0];
+        m_moduleReady = em.m_state;
         if (m_moduleReady) {
-            vistle::Shm::the().setObjectID(em.m_state[1]);
-            vistle::Shm::the().setArrayID(em.m_state[2]);
+            //wait for shm ids
         }
         else {
-            vistle::message::SyncShmIDs msg(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
-            m_sendMessageQueue->send(msg);
+            //send shm ids
         }
     }
     break;

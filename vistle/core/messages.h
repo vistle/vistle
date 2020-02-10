@@ -992,19 +992,6 @@ private:
     long m_numTransferring;
 };
 
-class V_COREEXPORT SyncShmIDs : public MessageBase<SyncShmIDs, SYNCSHMIDS> {
-public:
-
-    SyncShmIDs(size_t objectID, size_t arrayID);
-    size_t objectID() const;
-    size_t arrayID() const;
-private:
-
-    size_t m_objectID = 0;
-    size_t m_arrayID = 0;
-};
-static_assert(sizeof(SyncShmIDs) <= Message::MESSAGE_SIZE, "message too large");
-
 
 template<class Payload>
 extern V_COREEXPORT buffer addPayload(Message &message, Payload &payload);

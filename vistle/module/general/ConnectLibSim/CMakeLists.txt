@@ -8,12 +8,11 @@
 #****************************************************************************
 
 
-option(LIBSIM_DEBUG "print debuf messages" OFF)
+option(LIBSIM_DEBUG "print debug messages" OFF)
 if(LIBSIM_DEBUG)
    add_definitions(-DLIBSIM_DEBUG)
 endif()
 SET(RUNTIME_SOURCES 
-  EngineMessage.cpp
   Exeption.cpp
   ConnectLibSim.cpp
   VisItControlInterfaceRuntime.C 
@@ -50,7 +49,6 @@ SET(RUNTIME_SOURCES
 )
 
 SET(RUNTIME_HEADERS 
-  EngineMessage.h
   Exeption.h
   ConnectLibSim.h
   VisItControlInterfaceRuntime.h
@@ -109,6 +107,7 @@ target_link_libraries(${LIBNAME}
 		vistle_control
         vistle_core
         vistle_boost_mpi
+		vistle_insitu
 		libsim_connect
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
@@ -123,6 +122,7 @@ add_module(LibSimControlModule LibSimControlModule.h LibSimControlModule.cpp)
 target_link_libraries(LibSimControlModule
 	vistle_module
 	vistle_util
+	vistle_insitu
 	libsim_connect
 	${LIBNAME}
 	${Boost_LIBRARIES}
