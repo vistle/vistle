@@ -840,22 +840,27 @@ void Hub::hubReady() {
 
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
-                if (m_exposedHost.empty())
+                if (m_exposedHost.empty()) {
                     try {
                         auto addr = sock.first->local_endpoint().address();
                         if (addr.is_v6()) {
                             hub.setAddress(addr.to_v6());
+                            CERR << "AddHub: local v6 address: " << addr.to_v6() << std::endl;
                         } else if (addr.is_v4()) {
                             hub.setAddress(addr.to_v4());
+                            CERR << "AddHub: local v4 address: " << addr.to_v4() << std::endl;
                         } else {
                             hub.setAddress(addr);
+                            CERR << "AddHub: local address: " << addr << std::endl;
                         }
                     } catch (std::bad_cast &except) {
                         CERR << "AddHub: failed to convert local address to v6: " << except.what() << std::endl;
                         return;
                     }
-            } else {
-                hub.setAddress(m_exposedHostAddr);
+                } else {
+                    hub.setAddress(m_exposedHostAddr);
+                    CERR << "AddHub: exposed host: " << m_exposedHostAddr << std::endl;
+                }
             }
         }
 
@@ -973,6 +978,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    if (!m_exposedHost.empty()) {
                        master.setAddress(m_exposedHostAddr);
                    }
+                   CERR << "MASTER HUB: " << master << std::endl;
                    m_stateTracker.handle(master, nullptr);
                    sendUi(master);
                }
@@ -1037,8 +1043,13 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             slaveReady(slave);
          } else {
             if (add.id() == Id::MasterHub) {
-               CERR << "received AddHub for master with " << add.numRanks() << " ranks" << std::endl;
-               add.setAddress(m_masterSocket->remote_endpoint().address());
+                CERR << "received AddHub for master with " << add.numRanks() << " ranks";
+                if (add.hasAddress()) {
+                    std::cerr << ", address is " << add.address() << std::endl;
+                } else {
+                    add.setAddress(m_masterSocket->remote_endpoint().address());
+                    std::cerr << ", using address " << add.address() << std::endl;
+                }
             }
          }
          if (m_dataProxy->connectRemoteData(add)) {

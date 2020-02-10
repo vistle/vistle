@@ -71,7 +71,8 @@ private:
    std::shared_ptr<tcp_socket> getRemoteDataSock(const message::Message &msg);
    std::shared_ptr<tcp_socket> getLocalDataSock(const message::Message &msg);
 
-   void shutdownSocket(std::shared_ptr<tcp_socket> sock);
+   void shutdownSocket(std::shared_ptr<tcp_socket> sock, const std::string &reason);
+   bool removeSocket(std::shared_ptr<tcp_socket> sock);
 
    void msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type);
    void localMsgRecv(std::shared_ptr<tcp_socket> sock);
@@ -81,6 +82,8 @@ private:
 
    message::MessageFactory make;
    message::Type m_traceMessages = message::INVALID;
+
+   void printConnections() const;
 };
 
 }

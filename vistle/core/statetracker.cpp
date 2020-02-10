@@ -196,7 +196,8 @@ StateTracker::VistleState StateTracker::getState() const {
       msg.setNumRanks(slave.numRanks);
       msg.setPort(slave.port);
       msg.setDataPort(slave.dataPort);
-      msg.setAddress(slave.address);
+      if (!slave.address.is_unspecified())
+          msg.setAddress(slave.address);
       appendMessage(state, msg);
    }
 

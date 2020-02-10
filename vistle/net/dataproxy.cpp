@@ -145,11 +145,15 @@ bool DataProxy::answerIdentify(EndPointType type, std::shared_ptr<DataProxy::tcp
 
 bool DataProxy::answerLocalIdentify(std::shared_ptr<DataProxy::tcp_socket> sock, const message::Identify &ident) {
     if (ident.identity() != Identify::LOCALBULKDATA) {
-        CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
+        std::stringstream str;
+        str << "invalid identity " << ident.identity() << " connected to local data port";
+        shutdownSocket(sock, str.str());
+        removeSocket(sock);
         return false;
     }
     if (!ident.verifyMac()) {
-        CERR << "MAC verification failed for local data port connection: " << ident << std::endl;
+        shutdownSocket(sock, "MAC verification failed");
+        removeSocket(sock);
         return false;
     }
     return true;
@@ -177,20 +181,54 @@ bool DataProxy::answerRemoteIdentify(std::shared_ptr<DataProxy::tcp_socket> sock
 #endif
         }
         if (!ident.verifyMac()) {
-            CERR << "MAC verification failed for remote data port connection: " << ident << std::endl;
+            shutdownSocket(sock, "MAC verification failed");
+            removeSocket(sock);
             return false;
         }
         return true;
     } else {
-        CERR << "invalid identity " << ident.identity() << " connected to remote data port" << std::endl;
+        std::stringstream str;
+        str << "invalid identity " << ident.identity() << " connected to remote data port";
+        shutdownSocket(sock, str.str());
+        removeSocket(sock);
         return false;
     }
 }
 
-void DataProxy::shutdownSocket(std::shared_ptr<DataProxy::tcp_socket> sock)
+void DataProxy::shutdownSocket(std::shared_ptr<DataProxy::tcp_socket> sock, const std::string &reason)
 {
-    auto close = message::CloseConnection("MAC verification failed");
+    CERR << "closing socket: " << reason << std::endl;
+    auto close = message::CloseConnection(reason);
     send(*sock, close);
+}
+
+bool DataProxy::removeSocket(std::shared_ptr<DataProxy::tcp_socket> sock) {
+
+    sock->shutdown(tcp_socket::shutdown_both);
+    sock->close();
+
+    lock_guard lock(m_mutex);
+
+    for (auto it = m_localDataSocket.begin(); it != m_localDataSocket.end(); ++it) {
+        if (it->second != sock)
+            continue;
+
+        m_localDataSocket.erase(it);
+        return true;
+    }
+
+    for (auto it = m_remoteDataSocket.begin(); it != m_remoteDataSocket.end(); ++it) {
+        auto &socks = it->second.sockets;
+        auto it2 = std::find(socks.begin(), socks.end(), sock);
+        if (it2 == socks.end())
+            continue;
+
+        std::swap(*it2, socks.back());
+        socks.pop_back();
+        return true;
+    }
+
+    return false;
 }
 
 void DataProxy::startThread() {
@@ -211,9 +249,9 @@ void DataProxy::startAccept(acceptor &a) {
 
    //CERR << "(re-)starting accept" << std::endl;
    std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
-   a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec){handleAccept(a, ec, sock);});
-   startThread();
-   startThread();
+   a.async_accept(*sock, [this, &a, sock](boost::system::error_code ec){
+       handleAccept(a, ec, sock);
+   });
 }
 
 void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock) {
@@ -224,6 +262,9 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
    }
 
    startAccept(a);
+
+   startThread();
+   startThread();
 
    auto ident = make.message<Identify>();
    if (message::send(*sock, ident)) {
@@ -252,6 +293,11 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
          auto &id = buf->as<message::Identify>();
          switch(id.identity()) {
          case Identify::REMOTEBULKDATA: {
+             if (!id.verifyMac()) {
+                 shutdownSocket(sock, "MAC verification failed");
+                 return;
+             }
+
              {
                  lock_guard lock(m_mutex);
                  auto &socks = m_remoteDataSocket[id.senderId()].sockets;
@@ -272,45 +318,38 @@ void DataProxy::handleAccept(acceptor &a, const boost::system::error_code &error
                  }
 #endif
              }
-            auto ident = make.message<Identify>(id, Identify::REMOTEBULKDATA, m_hubId);
-            async_send(*sock, ident, nullptr, [this, sock](error_code ec){
-                if (ec) {
-                    CERR << "send error" << std::endl;
-                    return;
-                }
-                msgForward(sock, Local);
-            });
-            break;
+
+             msgForward(sock, Local);
+             break;
          }
          case Identify::LOCALBULKDATA: {
+            if (!id.verifyMac()) {
+                shutdownSocket(sock, "MAC verification failed");
+                return;
+            }
+
             {
                  lock_guard lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
             }
 
-            assert(m_boost_archive_version == 0 || m_boost_archive_version == id.boost_archive_version());
-            m_boost_archive_version = id.boost_archive_version();
-
-            auto ident = make.message<Identify>(id, Identify::LOCALBULKDATA, -1);
-            async_send(*sock, ident, nullptr, [this, sock](error_code ec){
-                if (ec) {
-                    CERR << "send error" << std::endl;
-                    return;
-                }
-                msgForward(sock, Remote);
-            });
+            msgForward(sock, Remote);
             break;
          }
          default: {
-             CERR << "unexpected identity " << id.identity() << std::endl;
+             std::stringstream str;
+             str << "unexpected identity " << id.identity();
+             shutdownSocket(sock, str.str());
              break;
          }
          }
          break;
       }
       default: {
-         CERR << "expected Identify message, got " << buf->type() << std::endl;
-         CERR << "got: " << *buf << std::endl;
+         std::stringstream str;
+         str << "expected Identify message, got " << buf->type() << std::endl;
+         str << "got: " << *buf;
+         shutdownSocket(sock, str.str());
       }
       }
    });
@@ -335,9 +374,15 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
             if (msg->type() == IDENTIFY) {
                 auto &ident = msg->as<const Identify>();
                 if (!answerIdentify(type, sock, ident)) {
-                    shutdownSocket(sock);
                     return;
                 }
+            }
+
+            if (msg->type() == CLOSECONNECTION) {
+                auto &close = msg->as<CloseConnection>();
+                CERR << "peer is closing connection: " << close.reason() << std::endl;
+                removeSocket(sock);
+                return;
             }
 
             msgForward(sock, type);
@@ -345,6 +390,10 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
             bool needPayload = false;
             bool forward = false;
             switch(msg->type()) {
+            case IDENTIFY: {
+                // already handled
+                break;
+            }
             case SENDOBJECT: {
                 forward = true;
                 needPayload = true;
@@ -417,6 +466,13 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
                 }
                 break;
             }
+            case CLOSECONNECTION: {
+                auto &close = msg->as<CloseConnection>();
+                CERR << "peer is closing connection: " << close.reason() << std::endl;
+                removeSocket(sock);
+                return;
+                break;
+            }
             case SENDOBJECT: {
                 forward = true;
 #ifdef DEBUG
@@ -477,18 +533,50 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
     }
 }
 
+void DataProxy::printConnections() const {
+
+    CERR << "CONNECTIONS:" << std::endl;
+
+    for (auto &p: m_localDataSocket) {
+        auto &s = *p.second;
+        CERR << "LOCAL: " << s.local_endpoint() << " -> " << s.remote_endpoint() << std::endl;
+    }
+
+    for (auto &p: m_remoteDataSocket) {
+        int i=0;
+        for (auto &s: p.second.sockets) {
+            CERR << "REMOTE " << i++ << ": " << s->local_endpoint() << " -> " << s->remote_endpoint() << std::endl;
+        }
+    }
+}
+
 bool DataProxy::connectRemoteData(const message::AddHub &remote) {
+
+   CERR << "connectRemoteData: " << remote << std::endl;
+
    if (remote.id() == m_hubId)
        return true;
-
-   lock_guard lock(m_mutex);
 
    if (!message::Id::isHub(remote.id())) {
        CERR << "id is not for a hub: " << remote.id() << std::endl;
        return false;
    }
 
+   if (remote.hasAddress()) {
+       if (remote.address().is_unspecified()) {
+           CERR << "remote address is unspecified" << std::endl;
+           return false;
+       }
+   } else {
+       if (remote.host().empty()) {
+           CERR << "remote host is empty" << std::endl;
+           return false;
+       }
+   }
+
    auto hubId = remote.id();
+
+   lock_guard lock(m_mutex);
 
    asio::deadline_timer timer(io());
    timer.expires_from_now(boost::posix_time::seconds(10));
@@ -573,6 +661,8 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote) {
    } else {
        CERR << "WARNING: connected to hub (data) at " << remote.address() << ":" << remote.dataPort() << " with ONLY " << m_remoteDataSocket[hubId].sockets.size() << " parallel connections" << std::endl;
    }
+
+   //printConnections();
 
    return !m_remoteDataSocket[hubId].sockets.empty();
 }

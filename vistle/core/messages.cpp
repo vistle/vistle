@@ -1811,7 +1811,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case ADDHUB: {
          auto &mm = static_cast<const AddHub &>(m);
-         s << ", name: " << mm.name() << ", id: " << mm.id();
+         s << ", name: " << mm.name() << ", id: " << mm.id() << ", addr: ";
+         if (mm.hasAddress()) {
+             s << mm.address();
+         } else {
+             s << "n/a";
+         }
          break;
       }
       case SENDTEXT: {

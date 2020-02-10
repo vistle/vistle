@@ -160,9 +160,10 @@ bool DataManager::send(const message::Message &message, std::shared_ptr<buffer> 
        return true;
    } else {
 #ifdef ASYNC_SEND
-       message::async_send(m_dataSocket, message, payload, [this, message](boost::system::error_code ec){
+       //CERR << "async send: " << message << std::endl;
+       message::async_send(m_dataSocket, message, payload, [this](boost::system::error_code ec){
            if (ec) {
-               CERR << "async send " << message << " failed: " << ec.message() << std::endl;
+               CERR << "ERROR: async send to " << m_dataSocket.remote_endpoint() << " failed: " << ec.message() << std::endl;
            }
        });
        return true;
@@ -517,6 +518,13 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
                 m_requestedObjects.erase(objIt);
                 lock.unlock();
                 auto obj = Shm::the().getObjectFromName(objName);
+                if (!obj) {
+                    if (auto incomplete = Shm::the().getObjectFromName(objName, false)) {
+                        CERR << objName << " is INCOMPLETE" << std::endl;
+                    } else {
+                        CERR << "could not retrieve " << objName << " from shmem" << std::endl;
+                    }
+                }
                 assert(obj);
                 for (const auto &handler: handlers) {
                     handler(obj);
