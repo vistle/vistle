@@ -279,7 +279,7 @@ bool Engine::initialize(int argC, char** argV) {
     // start manager on cluster
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
-        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory.");
+        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
         return false;
     }
 
@@ -889,9 +889,10 @@ void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj)
         DEBUG_CERR << "addObject " << name << " of type " << obj->typeName << endl;
         vistle::message::AddObject msg(name, obj);
         vistle::message::Buffer buf(msg);
+
 #ifdef MODULE_THREAD
-        buf.setSenderId(id());
-        buf.setRank(rank());
+        buf.setSenderId(m_moduleID);
+        buf.setRank(m_rank);
 #endif
         m_sendMessageQueue->send(buf);
     }
