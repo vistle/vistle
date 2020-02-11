@@ -32,7 +32,7 @@ target_link_libraries(vistle_control
     PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE vistle_net
-    PRIVATE libsim_connect
+    PRIVATE vistle_libsim_connect
 )
 target_link_libraries(vistle_control
     PRIVATE Threads::Threads

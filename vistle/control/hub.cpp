@@ -23,7 +23,10 @@
 #include <core/statetracker.h>
 #include <core/shm.h>
 
-#include <insitu/LibSim/EstablishConnection.h>
+#ifdef MODULE_THREAD
+#include <insitu/libsim/EstablishConnection.h>
+#endif // MODULE_THREAD
+
 
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
@@ -1341,27 +1344,17 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                  argv.push_back(name);
                  argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
                  std::cerr << "starting module " << name << std::endl;
-                 if (m_inSitu && name == "ConnectLibSim"){ //tell the simulation to start the ConnectLibSim module
-                     argv[0] = std::to_string(m_localRanks);
-                     if (insitu::attemptLibSImConnection(sim2FilePath, argv)) {
-                         sendInfo("Successfully connected to simulation");
-                     } else {
-                         sendError("failed to connect to simulation");
-                     }
-                 }
-                 else {
-                    auto pid = launchProcess(argv);
-                     if (pid) {
-                         //CERR << "started " << executable << " with PID " << pid << std::endl;
-                         m_processMap[pid] = spawn.spawnId();
-                     } else {
-                         std::stringstream str;
-                         str << "program " << argv[0] << " failed to start";
-                         sendError(str.str());
-                         auto ex = make.message<message::ModuleExit>();
-                         ex.setSenderId(spawn.spawnId());
-                         sendManager(ex);
-                     }
+                 auto pid = launchProcess(argv);
+                 if (pid) {
+                     //CERR << "started " << executable << " with PID " << pid << std::endl;
+                     m_processMap[pid] = spawn.spawnId();
+                 } else {
+                     std::stringstream str;
+                     str << "program " << argv[0] << " failed to start";
+                     sendError(str.str());
+                     auto ex = make.message<message::ModuleExit>();
+                     ex.setSenderId(spawn.spawnId());
+                     sendManager(ex);
                  }
  
 #endif

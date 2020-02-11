@@ -1,0 +1,21 @@
+#ifndef LIBSIM_ESTABLISH_CONNECTION_EXPORT_H
+#define LIBSIM_ESTABLISH_CONNECTION_EXPORT_H
+
+#include <util/export.h>
+
+
+#if defined (vistle_libsim_connect_EXPORTS)
+#define V_LIBSIMCONNECTEXPORT V_EXPORT
+#else
+#define V_LIBSIMCONNECTEXPORT V_IMPORT
+#endif
+
+#if defined (TEMPLATES_IN_HEADERS)
+#define V_TEMPLATE_IMPORT
+#define V_TEMPLATE_EXPORT
+#else
+#define V_TEMPLATE_IMPORT V_EXPORT
+#define V_TEMPLATE_EXPORT V_IMPORT
+#endif
+
+#endif
