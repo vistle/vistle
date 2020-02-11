@@ -322,7 +322,7 @@ bool Hub::init(int argc, char *argv[]) {
            CERR << "starting manager in simulation" << std::endl;
            bool success = false;
 
-           success = in_situ::attemptLibSImConnection(sim2FilePath, args);
+           success = insitu::attemptLibSImConnection(sim2FilePath, args);
            if (success) {
                sendInfo("Successfully connected to simulation");
            }
