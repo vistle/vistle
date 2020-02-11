@@ -4,7 +4,7 @@
 #include <util/export.h>
 
 
-#if defined (libsimV2runtime_par_EXPORTS)
+#if defined (LIBSIM_EXPORT)
 #define V_VISITXPORT V_EXPORT
 #else
 #define V_VISITXPORT V_IMPORT
