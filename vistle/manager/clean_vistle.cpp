@@ -21,9 +21,7 @@ int main(int argc, char ** argv) {
 
       if (argc == 2) {
 
-         vistle::Shm::attach(argv[1], 0, rank);
-         vistle::Shm::the().setRemoveOnDetach();
-         vistle::Shm::the().detach();
+         vistle::Shm::remove(argv[1], 0, rank);
       } else {
 
          vistle::Shm::cleanAll(rank);

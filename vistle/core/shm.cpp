@@ -74,8 +74,7 @@ std::string Shm::instanceName(const std::string &host, unsigned short port) {
    return str.str();
 }
 
-Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
-         message::MessageQueue * mq, bool create)
+Shm::Shm(const std::string &name, const int m, const int r, size_t size, bool create)
    : m_allocator(nullptr)
    , m_name(name)
    , m_remove(create)
@@ -98,6 +97,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 #endif
 
 #ifdef NO_SHMEM
+      (void)size;
       m_allocator = new void_allocator();
       m_shmDeletionMutex = new std::recursive_mutex;
       m_objectDictionaryMutex = new std::recursive_mutex;
@@ -147,7 +147,7 @@ void Shm::setId(int id) {
 void Shm::detach() {
 
    delete s_singleton;
-   s_singleton = NULL;
+   s_singleton = nullptr;
 }
 
 void Shm::setRemoveOnDetach() {
@@ -264,7 +264,6 @@ bool Shm::cleanAll(int rank) {
 
    std::fstream shmlist;
    shmlist.open(shmIdFilename().c_str(), std::ios::in);
-   ::remove(shmIdFilename().c_str());
 
    bool ret = true;
 
@@ -291,6 +290,10 @@ bool Shm::cleanAll(int rank) {
       }
    }
    shmlist.close();
+
+   if (ret) {
+       ::remove(shmIdFilename().c_str());
+   }
 
    return ret;
 }
@@ -329,8 +332,7 @@ bool Shm::remove(const std::string &name, const int id, const int rank) {
    return interprocess::shared_memory_object::remove(n.c_str());
 }
 
-Shm & Shm::create(const std::string &name, const int id, const int rank,
-                    message::MessageQueue * mq) {
+Shm & Shm::create(const std::string &name, const int id, const int rank) {
 
    std::string n = shmSegName(name, rank);
 
@@ -346,7 +348,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(n, id, rank, memsize, mq, true);
+            s_singleton = new Shm(n, id, rank, memsize, true);
          } catch (boost::interprocess::interprocess_exception & /*ex*/) {
             memsize /= 2;
          }
@@ -356,7 +358,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank,
          throw(shm_exception("failed to create shared memory segment"));
 
          std::cerr << "failed to create shared memory: module id: " << id
-            << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
+                   << ", rank: " << rank << std::endl;
       }
    }
 
@@ -365,8 +367,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank,
    return *s_singleton;
 }
 
-Shm & Shm::attach(const std::string &name, const int id, const int rank,
-                    message::MessageQueue * mq) {
+Shm & Shm::attach(const std::string &name, const int id, const int rank) {
 
    std::string n = shmSegName(name, rank);
 
@@ -375,7 +376,7 @@ Shm & Shm::attach(const std::string &name, const int id, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(n, id, rank, memsize, mq, false);
+            s_singleton = new Shm(n, id, rank, memsize, false);
          } catch (boost::interprocess::interprocess_exception &) {
             memsize /= 2;
          }
@@ -383,7 +384,7 @@ Shm & Shm::attach(const std::string &name, const int id, const int rank,
 
       if (!s_singleton) {
          std::cerr << "failed to attach to shared memory: module id: " << id
-            << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
+                    << ", rank: " << rank << std::endl;
       }
    }
 

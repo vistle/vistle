@@ -168,14 +168,14 @@ int main(int argc, char *argv[]) {
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0, NULL);
+      vistle::Shm::create(shmname, 1, 0);
       vistle::Vec<DataType, 1> v(DataType(0));
       time_pb(v.x(), "vistle push_back only", size);
       bi::shared_memory_object::remove(shmname.c_str());
    }
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0, NULL);
+      vistle::Shm::create(shmname, 1, 0);
       vistle::Vec<DataType, 1> v(DataType(0));
       v.x().reserve(size);
       time_pb(v.x(), "vistle push_back+reserve", size);
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0, NULL);
+      vistle::Shm::create(shmname, 1, 0);
       vistle::Vec<DataType, 1> v(DataType(0));
       shm<DataType>::array &vv = v.x();
       vv.reserve(size);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0, NULL);
+      vistle::Shm::create(shmname, 1, 0);
       vistle::shm<DataType>::array_ptr v7p = Shm::the().shm().construct<vistle::shm<DataType>::array>("testvector")(0, Shm::the().allocator());
       vistle::shm<DataType>::array &v = *v7p;
       v.reserve(size);
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
 #if 0
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0, NULL);
+      vistle::Shm::create(shmname, 1, 0);
       auto v7p = Shm::the().shm().construct<vistle::shm<DataType>::vector>("testvector")(0, 0, Shm::the().allocator());
       vistle::shm<DataType>::vector &v = *v7p;
       v.reserve(size);
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
 
 #if 0
    bi::shared_memory_object::remove(shmname.c_str());
-   vistle::Shm::create(shmname, 1, 0, NULL);
+   vistle::Shm::create(shmname, 1, 0);
    start = clock();
    vistle::Vec<DataType, 1> v7(DataType(0));
    auto v7p = &(v7.x()());

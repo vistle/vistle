@@ -70,11 +70,11 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
 
    if (first) {
       vistle::Shm::remove(m_name, 0, m_rank);
-      vistle::Shm::create(m_name, 0, m_rank, NULL);
+      vistle::Shm::create(m_name, 0, m_rank);
    }
    comm.barrier();
    if (!first)
-      vistle::Shm::attach(m_name, 0, m_rank, NULL);
+      vistle::Shm::attach(m_name, 0, m_rank);
    comm.barrier();
 
    m_comm = new vistle::Communicator(m_rank, hostnames, comm);

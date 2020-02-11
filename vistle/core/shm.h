@@ -124,10 +124,8 @@ class V_COREEXPORT Shm {
    static std::string instanceName(const std::string &host, unsigned short port);
    static Shm & the();
    static bool remove(const std::string &shmname, const int moduleID, const int rank);
-   static Shm & create(const std::string &shmname, const int moduleID, const int rank,
-                         message::MessageQueue *messageQueue = NULL);
-   static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
-                         message::MessageQueue *messageQueue = NULL);
+   static Shm & create(const std::string &shmname, const int moduleID, const int rank);
+   static Shm & attach(const std::string &shmname, const int moduleID, const int rank);
    static bool isAttached();
 
    void detach();
@@ -185,8 +183,7 @@ class V_COREEXPORT Shm {
 #endif
 
  private:
-   Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
-       message::MessageQueue *messageQueue, bool create);
+   Shm(const std::string &name, const int moduleID, const int rank, size_t size, bool create);
    ~Shm();
 
    void setId(int id);
