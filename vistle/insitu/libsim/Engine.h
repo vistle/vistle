@@ -81,7 +81,7 @@ public:
 private:
     static Engine* instance;
     bool m_initialized = false; //Engine is initialize
-    vistle::message::MessageQueue* m_sendMessageQueue = nullptr, * m_recvMessageQueue = nullptr;
+    vistle::message::MessageQueue* m_sendMessageQueue = nullptr;
     //mpi info
 
     int m_rank = -1, m_mpiSize = 0;

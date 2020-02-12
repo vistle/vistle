@@ -8,8 +8,8 @@
 
 namespace vistle {
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = allocator<CharT>>
-class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
+template<typename Vector, typename TraitsT = std::char_traits<typename Vector::value_type>>
+class vecostreambuf: public std::basic_streambuf<typename Vector::value_type, TraitsT> {
 
  public:
    vecostreambuf() {
@@ -24,7 +24,7 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
       }
    }
 
-   std::streamsize xsputn (const CharT *s, std::streamsize num) {
+   std::streamsize xsputn (const typename Vector::value_type*s, std::streamsize num) {
       size_t oldsize = m_vector.size();
       if (oldsize+num > m_vector.capacity()) {
           m_vector.reserve(std::max(2*(oldsize+num), m_vector.capacity()*2));
@@ -35,49 +35,52 @@ class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
    std::size_t write(const void *ptr, std::size_t size) {
-       return xsputn(static_cast<const CharT *>(ptr), size);
+       return xsputn(static_cast<const typename Vector::value_type*>(ptr), size);
    }
 
-   const std::vector<CharT, allocator> &get_vector() const {
+   const Vector &get_vector() const {
       return m_vector;
    }
 
-   std::vector<CharT, allocator> &get_vector() {
+   Vector &get_vector() {
       return m_vector;
    }
 
  private:
-   std::vector<CharT, allocator> m_vector;
+   Vector m_vector;
 };
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT>, typename allocator = allocator<CharT>>
-class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
- public:
-     vecistreambuf(const std::vector<CharT, allocator> &vec)
-   : vec(vec)
-   {
-      auto &v = const_cast<std::vector<CharT, allocator> &>(vec);
-      this->setg(v.data(), v.data(), v.data()+v.size());
-   }
 
-   std::size_t read(void *ptr, std::size_t size) {
-       if (cur+size > vec.size())
-           size = vec.size()-cur;
-       memcpy(ptr, vec.data()+cur, size);
-       cur += size;
-       return size;
-   }
 
-   bool empty() const { return cur==0; }
-   CharT peekch() const { return vec[cur]; }
-   CharT getch() { return vec[cur++]; }
-   void ungetch(char) { if (cur>0) --cur; }
+template<typename Vector, typename TraitsT = std::char_traits<typename Vector::value_type>>
+class vecistreambuf : public std::basic_streambuf<typename Vector::value_type, TraitsT> {
+public:
+    vecistreambuf(const Vector& ve) : vec(ve) {
+
+        auto& v = const_cast<Vector&>(vec);
+        this->setg(v.data(), v.data(), v.data() + v.size());
+    }
+
+    std::size_t read(void* ptr, std::size_t size) {
+        if (cur + size > vec.size())
+            size = vec.size() - cur;
+        memcpy(ptr, vec.data() + cur, size);
+        cur += size;
+        return size;
+    }
+
+    bool empty() const { return cur == 0; }
+    typename Vector::value_type peekch() const { return vec[cur]; }
+    typename Vector::value_type getch() { return vec[cur++]; }
+    void ungetch(char) { if (cur > 0) --cur; }
 
 private:
-   const std::vector<CharT, allocator> &vec;
-   size_t cur = 0;
+    const Vector& vec;
+    size_t cur = 0;
 };
+
+
 
 } // namespace vistle
 #endif

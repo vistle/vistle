@@ -40,7 +40,7 @@ void DeepArchiveFetcher::requestArray(const std::string &arname, int type, const
             return;
         }
     }
-    vecistreambuf<char> vb(comp==message::CompressionNone ? it->second : raw);
+    vecistreambuf vb(comp==message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     ArrayLoader loader(arname, type, ar);
@@ -79,7 +79,7 @@ void DeepArchiveFetcher::requestObject(const std::string &arname, const ObjectCo
             return;
         }
     }
-    vecistreambuf<char> vb(comp==message::CompressionNone ? it->second : raw);
+    vecistreambuf vb(comp==message::CompressionNone ? it->second : raw);
     iarchive ar(vb);
     ar.setFetcher(shared_from_this());
     Object::ptr obj(Object::loadObject(ar));

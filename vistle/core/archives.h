@@ -202,9 +202,9 @@ struct yas_binary_oarchive
     }
 };
 
-class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<char>>, public CompressionSettings {
+class V_COREEXPORT yas_oarchive: public yas_binary_oarchive<yas_oarchive, vecostreambuf<vistle::buffer>>, public CompressionSettings {
 
-    typedef vecostreambuf<char> Stream;
+    typedef vecostreambuf<vistle::buffer> Stream;
     typedef yas_binary_oarchive<yas_oarchive, Stream> Base;
     FieldCompressionMode m_compress = Uncompressed;
     double m_zfpRate = 8.;
@@ -351,9 +351,9 @@ struct yas_binary_iarchive
     }
 };
 
-class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecistreambuf<char>> {
+class V_COREEXPORT yas_iarchive: public yas_binary_iarchive<yas_iarchive, vecistreambuf<vistle::buffer>> {
 
-    typedef vecistreambuf<char> Stream;
+    typedef vecistreambuf<vistle::buffer> Stream;
     typedef yas_binary_iarchive<yas_iarchive, Stream> Base;
 public:
     yas_iarchive(Stream &mi, unsigned int flags=0);

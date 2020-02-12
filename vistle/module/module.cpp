@@ -572,7 +572,7 @@ bool Module::removeParameter(Parameter *param) {
 bool Module::sendObject(const mpi::communicator &comm, Object::const_ptr obj, int destRank) const {
 
     auto saver = std::make_shared<DeepArchiveSaver>();
-    vecostreambuf<char> memstr;
+    vecostreambuf<buffer> memstr;
     vistle::oarchive memar(memstr);
     memar.setSaver(saver);
     obj->saveObject(memar);
@@ -609,7 +609,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
         }
         comm.recv(sourceRank, 0, ent.data, ent.size);
     }
-    vecistreambuf<char> membuf(mem);
+    vecistreambuf membuf(mem);
     vistle::iarchive memar(membuf);
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
     memar.setFetcher(fetcher);
@@ -625,7 +625,7 @@ Object::const_ptr Module::receiveObject(int destRank) const {
 bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &obj, int root) const {
 
     if (rank() == root) {
-        vecostreambuf<char> memstr;
+        vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
         auto saver = std::make_shared<DeepArchiveSaver>();
         memar.setSaver(saver);
@@ -655,7 +655,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
             }
             mpi::broadcast(comm, ent.data, ent.size, root);
         }
-        vecistreambuf<char> membuf(mem);
+        vecistreambuf membuf(mem);
         vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);

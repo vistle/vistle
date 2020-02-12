@@ -393,7 +393,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
 
     auto fut = std::async(std::launch::async, [this, req](){
         std::shared_ptr<message::SendObject> snd;
-        vecostreambuf<char> buf;
+        vecostreambuf<buffer> buf;
         buffer &mem = buf.get_vector();
         vistle::oarchive memar(buf);
 #ifdef USE_YAS
@@ -450,7 +450,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
     auto fut = std::async(std::launch::async, [this, snd, payload2](){
 
         buffer uncompressed = decompressPayload(snd, *payload2.get());
-        vecistreambuf<char> membuf(uncompressed);
+        vecistreambuf membuf(uncompressed);
 
         if (snd.isArray()) {
             // an array was received

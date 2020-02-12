@@ -35,7 +35,7 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 template<class Payload>
 buffer addPayload(Message &message, Payload &payload) {
-    vecostreambuf<char> buf;
+    vecostreambuf<buffer> buf;
     oarchive ar(buf);
     ar & payload;
     auto vec = buf.get_vector();
@@ -45,7 +45,7 @@ buffer addPayload(Message &message, Payload &payload) {
 
 template<class Payload>
 Payload getPayload(const buffer &data) {
-    vecistreambuf<char> buf(data);
+    vecistreambuf buf(data);
     Payload payload;
     try {
         iarchive ar(buf);

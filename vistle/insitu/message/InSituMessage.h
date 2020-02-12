@@ -13,12 +13,12 @@
 #include <core/message.h>
 #include <core/messages.h>
 #include <core/messagepayload.h>
-#include <core/messagequeue.h>
 #include <core/tcpmessage.h>
 #include <core/archives_config.h>
 #include <core/archives.h>
 
 #include <util/vecstreambuf.h>
+#include <boost/interprocess/ipc/message_queue.hpp>
 
 namespace insitu{
 namespace message {
@@ -49,7 +49,8 @@ protected:
     InSituMessageType m_type;
 
 };
-
+#define COMMA ,
+constexpr int INSITU_MESSAGE_MAX_SIZE = sizeof(InSituMessageBase);
 #define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType, payloadName, payloadType)\
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
@@ -65,6 +66,7 @@ struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 private:\
     messageType():InSituMessageBase(type){}\
 };\
+
 
 
 #define DECLARE_ENGINE_MESSAGE(messageType)\
@@ -88,7 +90,8 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SyncShmID, ids, std::vector<std::size_t>)
+//ids[0] = objectID, ids[1] = arrayID
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(SyncShmID, ids, std::array<std::size_t COMMA 2>)
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
@@ -129,7 +132,7 @@ public:
         if (m_comm.rank() == 0) {
             boost::system::error_code err;
             InSituMessage ism(msg.type);
-            vistle::vecostreambuf<char> buf;
+            vistle::vecostreambuf<vistle::buffer> buf;
             vistle::oarchive ar(buf);
             ar& msg;
             vistle::buffer vec = buf.get_vector();
@@ -151,7 +154,7 @@ public:
 
         assert(SomeMessage::type != type());
         if (!m_msg) {
-            vistle::vecistreambuf<char> buf(m_payload);
+            vistle::vecistreambuf buf(m_payload);
             m_msg.reset(new SomeMessage{});
             try {
                 vistle::iarchive ar(buf);
@@ -182,84 +185,33 @@ private:
 
 };
 
-class V_INSITUMESSAGEEXPORT InSituShmMessage {
+class V_INSITUMESSAGEEXPORT SyncShmMessage {
 public:
-    InSituMessageType type() const;
     enum class Mode {
-        Create
+          Create
         , Attach
     };
 
     static void initialize(int moduleID, int rank, Mode mode);
     static bool isInitialized();
-    template<typename SomeMessage>
-    static bool send(const SomeMessage& msg) {
-        if (!m_initialized) {
-            std::cerr << "Engine message uninitialized: can not send message!" << std::endl;
-            return false;
-        }
-        if (msg.type == InSituMessageType::Invalid) {
-            std::cerr << "Engine message : can not send invalid message!" << std::endl;
-            return false;
-        }
-        bool error = false;
-        InSituMessage ism(msg.type);
-        vistle::vecostreambuf<char> buf;
-        vistle::oarchive ar(buf);
-        ar& msg;
-        vistle::buffer vec = buf.get_vector();
-        vistle::MessagePayload pl;
-        pl.construct(buf.get_vector().size());
-        std::copy(buf.get_vector().begin(), buf.get_vector().end(), pl->data());
-        pl.ref();
-        ism.setPayloadName(pl.name());
-        ism.setPayloadSize(vec.size());
-#ifdef MODULE_THREAD
-        ism.setSenderId(m_moduleID);
-        ism.setRank(m_rank);
-#endif
-        m_sendMessageQueue->send(ism);
-        return error;
-    }
 
-    static InSituShmMessage recv(bool block = true);
+    static bool send(const SyncShmMessage& msg);
 
-    template<typename SomeMessage>
-    SomeMessage& unpackOrCast() {
-        assert(SomeMessage::type != type());
-        if (!m_msg) {
-            assert(m_payloadSize > 0);
-            vistle::MessagePayload pl;
-            pl = vistle::Shm::the().getArrayFromName<char>(m_payload);
-            pl.unref();
-            assert(m_payloadSize == pl->size());
-            vistle::vecistreambuf<char> buf(pl);
-            m_msg.reset(new SomeMessage{});
-            try {
-                vistle::iarchive ar(buf);
-                ar&* static_cast<SomeMessage*>(m_msg.get());
-            } catch (yas::io_exception & ex) {
-                std::cerr << "ERROR: failed to get insitu message payload from " << m_payloadSize << " bytes: " << ex.what() << std::endl;
-            }
-        }
-        return *static_cast<SomeMessage*>(m_msg.get());
+    static SyncShmMessage recv();
 
-    }
-
-
+    SyncShmMessage(size_t objectID, size_t arrayID);
+    size_t objectID() const;
+    size_t arrayID() const;
 
 private:
-    InSituShmMessage(const InSituMessage& msg);
-    InSituShmMessage();
-    static std::unique_ptr<vistle::message::MessageQueue> m_sendMessageQueue;
-    static std::unique_ptr<vistle::message::MessageQueue> m_receiveMessageQueue;
+
+    static std::unique_ptr<boost::interprocess::message_queue> m_sendMessageQueue;
+    static std::unique_ptr<boost::interprocess::message_queue> m_receiveMessageQueue;
     static int m_rank;
     static int m_moduleID;
 
-    InSituMessageType m_type;
-    std::string m_payload;
-    size_t m_payloadSize = 0;
-    std::unique_ptr<InSituMessageBase> m_msg;
+    size_t m_objectID;
+    size_t m_array_ID;
 
     static bool m_initialized;
 };

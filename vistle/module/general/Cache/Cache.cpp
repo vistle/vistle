@@ -746,7 +746,7 @@ bool Cache::compute() {
                 assert(m_fd != -1);
 
                 // serialialize object and all not-yet-serialized sub-objects to memory
-                vecostreambuf<char> memstr;
+                vecostreambuf<buffer> memstr;
                 vistle::oarchive memar(memstr);
                 memar.setCompressionSettings(m_compressionSettings);
                 memar.setSaver(m_saver);
@@ -890,7 +890,7 @@ bool Cache::prepare() {
             }
         }
         const auto &buf = comp==message::CompressionNone ? objbuf : raw;
-        vecistreambuf<char> membuf(buf);
+        vecistreambuf membuf(buf);
         vistle::iarchive memar(membuf);
         memar.setFetcher(fetcher);
         //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;

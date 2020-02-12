@@ -17,9 +17,12 @@
 
 using namespace std;
 using insitu::message::InSituTcpMessage;
+using insitu::message::SyncShmMessage;
 using insitu::message::InSituMessageType;
 
 #define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
+
+
 
 LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator comm)
     : InSituReader("View and controll optins for LibSim instrumented simulations", name, moduleID, comm)
@@ -46,6 +49,13 @@ CERR << "io thread terminated" << endl; })
     setParameterMinimum(m_nthTimestep, static_cast<vistle::Integer>(1));
     sendMessageToSim = addIntParameter("sendMessageToSim", "", false, vistle::Parameter::Boolean);
 
+    std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", moduleID, rank());
+    try {
+        m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
+        std::cerr << "sendMessageQueue name = " << mqName << std::endl;
+    } catch (boost::interprocess::interprocess_exception & ex) {
+        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
+    }
 
     if (rank() == 0) {
         startControllServer();
@@ -53,6 +63,19 @@ CERR << "io thread terminated" << endl; })
     } else {
         startSocketThread();
     }
+    std::vector<char> vec{};
+    vistle::vecistreambuf test(vec);
+
+
+
+
+
+
+
+
+
+
+
 }
 
 LibSimModule::~LibSimModule() {
@@ -81,14 +104,32 @@ LibSimModule::~LibSimModule() {
 bool LibSimModule::prepareReduce() {
     
     InSituTcpMessage::send(insitu::message::Ready{ false });
+    while (true) {
+        SyncShmMessage msg = SyncShmMessage::recv();
+        vistle::Shm::the().setObjectID(msg.objectID());
+        vistle::Shm::the().setArrayID(msg.arrayID());
+    }
+
     m_timestep = 0;
     return true;
 }
 
 bool LibSimModule::prepare() {
-    CERR << "prepare" << endl;
     InSituTcpMessage::send(insitu::message::Ready{ true });
+    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
     return true;
+}
+
+bool LibSimModule::dispatch(bool block, bool* messageReceived) {
+    vistle::message::Buffer buf;
+    while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
+        if (buf.type() != vistle::message::INSITU) {
+            sendMessage(buf);
+        }
+    }
+
+    return Module::dispatch(block, messageReceived);
+
 }
 
 bool LibSimModule::changeParameter(const vistle::Parameter* param) {

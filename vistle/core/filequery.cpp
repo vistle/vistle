@@ -6,7 +6,7 @@
 namespace vistle {
 
 buffer createPayload(const std::vector<FileInfo> &info) {
-    vecostreambuf<char> buf;
+    vecostreambuf<buffer> buf;
     oarchive ar(buf);
     ar & Index(info.size());
     for (auto &i: info)
@@ -17,7 +17,7 @@ buffer createPayload(const std::vector<FileInfo> &info) {
 std::vector<FileInfo> unpackFileInfos(const buffer &payload) {
     std::vector<FileInfo> info;
     try {
-        vecistreambuf<char> buf(payload);
+        vecistreambuf buf(payload);
         iarchive ar(buf);
         Index size=0;
         ar & size;
@@ -32,7 +32,7 @@ std::vector<FileInfo> unpackFileInfos(const buffer &payload) {
 
 buffer createPayload(const SystemInfo &info)
 {
-    vecostreambuf<char> buf;
+    vecostreambuf<buffer> buf;
     oarchive ar(buf);
     ar & info;
     return buf.get_vector();
@@ -42,7 +42,7 @@ SystemInfo unpackSystemInfo(const buffer &payload)
 {
     SystemInfo info;
     try {
-        vecistreambuf<char> buf(payload);
+        vecistreambuf buf(payload);
         iarchive ar(buf);
         ar & info;
     } catch (std::exception &ex) {
@@ -53,7 +53,7 @@ SystemInfo unpackSystemInfo(const buffer &payload)
 
 buffer packFileList(const std::vector<std::string> &files)
 {
-    vecostreambuf<char> buf;
+    vecostreambuf<buffer> buf;
     oarchive ar(buf);
     ar & Index(files.size());
     for (auto &f: files)
@@ -65,7 +65,7 @@ std::vector<std::string> unpackFileList(const buffer &payload)
 {
     std::vector<std::string> files;
     try {
-        vecistreambuf<char> buf(payload);
+        vecistreambuf buf(payload);
         iarchive ar(buf);
         Index size=0;
         ar & size;

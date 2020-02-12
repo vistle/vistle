@@ -327,13 +327,7 @@ bool Engine::initialize(int argC, char** argV) {
        return false;
     }
 
-   mqName = vistle::message::MessageQueue::createName("sendToSim", m_moduleID, m_rank);
-    try {
-        m_recvMessageQueue = vistle::message::MessageQueue::open(mqName);
-    } catch (boost::interprocess::interprocess_exception & ex) {
-        CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
-        return false;
-    }
+
 
     m_initialized = true;
 #endif
@@ -445,21 +439,12 @@ bool insitu::Engine::handleVistleMessage() {
         Ready em = msg.unpackOrCast<Ready>();
         m_moduleReady = em.m_state;
         if (m_moduleReady) {
-            vistle::message::Buffer buf;
-            m_recvMessageQueue->receive(buf);
-            if (buf.type() != vistle::message::INSITU) {
-                CERR << "received unexpected vistle message from module: " << buf.type() << endl;
-                return false;
-            }
-            InSituMessage msg = buf.as<InSituMessage>();
-            if (msg.ismType() != InSituMessageType::SyncShmID) {
-                CERR << "received unexpected insitu message from module: " << static_cast<int>(msg.ismType()) << endl;
-                return false;
-            }
-            vistle::buffer pl;
+            SyncShmMessage msg = SyncShmMessage::recv();
+            vistle::Shm::the().setObjectID(msg.objectID());
+            vistle::Shm::the().setArrayID(msg.arrayID());
         }
         else {
-            //send shm ids
+            SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
         }
     }
     break;
@@ -913,7 +898,6 @@ Engine::~Engine() {
     }
 #endif
     delete m_sendMessageQueue;
-    delete m_recvMessageQueue;
     Engine::instance = nullptr;
 }
 

@@ -1,6 +1,6 @@
 #include "inSituReader.h"
 #include <core/message.h>
-#include <core/messagequeue.h>
+
 using namespace vistle;
 using namespace insitu;
 using std::endl;
@@ -9,40 +9,12 @@ using std::endl;
 InSituReader::InSituReader(const std::string& description, const std::string& name, const int moduleID, mpi::communicator comm)
     :Module(description, name, moduleID, comm){
     setReducePolicy(message::ReducePolicy::OverAll);
-    std::string mqName = message::MessageQueue::createName("recvFromSim", id(), rank());
-    try {
-        m_receiveFromSimMessageQueue = message::MessageQueue::create(mqName);
-    } catch (interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening receive message queue ") + mqName + ": " + ex.what());
-    }
-   mqName = message::MessageQueue::createName("sendToSim", id(), rank());
-
-    try {
-        m_sendToSimMessageQueue = message::MessageQueue::create(mqName);
-    } catch (interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
-    }
 }
 
-InSituReader::~InSituReader() {
-    delete m_receiveFromSimMessageQueue;
-    delete m_sendToSimMessageQueue;
-}
+
 
 bool InSituReader::isExecuting() {
     return m_isExecuting;
-}
-
-bool InSituReader::dispatch(bool block, bool* messageReceived) {
-    
-    vistle::message::Buffer buf;
-    while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-        if (buf.type() != vistle::message::INSITU) {
-            sendMessage(buf);
-        }
-    }
-    
-    return Module::dispatch(block, messageReceived);
 }
 
 bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
@@ -90,28 +62,9 @@ void InSituReader::cancelExecuteMessageReceived(const message::Message* msg) {
             sendError("failed to prepare reduce");
             return;
         }
-        while (!finished) {
-            m_receiveFromSimMessageQueue->receive(buf);
-            if (buf.type() == vistle::message::INSITU) {
-                //auto msg = buf.as<insitu::InSitu>();
-                //Shm::the().setArrayID(msg.arrayID());
-                //Shm::the().setObjectID(msg.objectID());
-                finished = true;
-            } else {
-                sendMessage(buf);
-            }
-
-        }
         if (reduceWrapper(m_exec)) {
             sendError("failed to reduce");
             return;
-        }
-        if (wasCancelRequested()) {//make sure reduce gets called exactly once afer cancel execute
-            
-            if (!reduce(-1)) {
-                sendError("failed to reduce");
-                return;
-            }
         }
         m_isExecuting = false;
     }

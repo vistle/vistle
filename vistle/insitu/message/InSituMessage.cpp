@@ -2,6 +2,8 @@
 #include <boost/asio.hpp>
 #include <iostream>
 
+#include <boost/interprocess/creation_tags.hpp>
+#include <core/messagequeue.h>
 
 using namespace insitu;
 using namespace insitu::message;
@@ -13,11 +15,11 @@ boost::mpi::communicator insitu::message::InSituTcpMessage::m_comm;
 std::shared_ptr< boost::asio::ip::tcp::socket> insitu::message::InSituTcpMessage::m_socket;
 
 
-bool insitu::message::InSituShmMessage::m_initialized = false;
-std::unique_ptr<vistle::message::MessageQueue> insitu::message::InSituShmMessage::m_sendMessageQueue = nullptr;
-std::unique_ptr<vistle::message::MessageQueue> insitu::message::InSituShmMessage::m_receiveMessageQueue = nullptr;
-int  insitu::message::InSituShmMessage::m_rank = -1;
-int  insitu::message::InSituShmMessage::m_moduleID = -1;
+bool insitu::message::SyncShmMessage::m_initialized = false;
+std::unique_ptr<boost::interprocess::message_queue> insitu::message::SyncShmMessage::m_sendMessageQueue = nullptr;
+std::unique_ptr<boost::interprocess::message_queue> insitu::message::SyncShmMessage::m_receiveMessageQueue = nullptr;
+int  insitu::message::SyncShmMessage::m_rank = -1;
+int  insitu::message::SyncShmMessage::m_moduleID = -1;
 
 InSituMessageType insitu::message::InSituMessageBase::type() const {
     return m_type;
@@ -85,74 +87,92 @@ bool InSituTcpMessage::isInitialized() {
     return m_initialized;
 }
 
-InSituMessageType InSituShmMessage::type() const {
-    return m_type;
-}
 
-void InSituShmMessage::initialize(int moduleID, int rank, Mode mode) {
+
+void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
     m_moduleID = moduleID;
     m_rank = rank;
 
-    std::function<vistle::message::MessageQueue * (const std::string&)> f;
     std::string smqName, rmqName;
+    using namespace boost::interprocess;
+
     switch (mode) {
-    case InSituShmMessage::Mode::Create:
-        f = vistle::message::MessageQueue::create;
+    case SyncShmMessage::Mode::Create:
         smqName = vistle::message::MessageQueue::createName("sendInSitu", moduleID, rank);
         rmqName = vistle::message::MessageQueue::createName("recvInSitu", moduleID, rank);
+        try {
+
+            m_sendMessageQueue.reset(new message_queue(create_only, smqName.c_str(), 5, INSITU_MESSAGE_MAX_SIZE));
+            std::cerr << "sendMessageQueue name = " << smqName << std::endl;
+        } catch (boost::interprocess::interprocess_exception & ex) {
+            throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
+        }
+
+        try {
+            m_receiveMessageQueue.reset(new message_queue(create_only, rmqName.c_str(), 5, INSITU_MESSAGE_MAX_SIZE));
+        } catch (boost::interprocess::interprocess_exception & ex) {
+            throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
+        }
+
         break;
-    case InSituShmMessage::Mode::Attach:
-        f = vistle::message::MessageQueue::open;
+    case SyncShmMessage::Mode::Attach:
         smqName = vistle::message::MessageQueue::createName("recvInSitu", moduleID, rank);
         rmqName = vistle::message::MessageQueue::createName("sendInSitu", moduleID, rank);
+        try {
+            m_sendMessageQueue.reset(new message_queue(open_only, smqName.c_str()));
+            std::cerr << "sendMessageQueue name = " << smqName << std::endl;
+        } catch (boost::interprocess::interprocess_exception & ex) {
+            throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
+        }
+
+        try {
+            m_receiveMessageQueue.reset(new message_queue(open_only, rmqName.c_str()));
+        } catch (boost::interprocess::interprocess_exception & ex) {
+            throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
+        }
         break;
     default:
         break;
     }
 
-    try {
-        m_sendMessageQueue.reset(f(smqName));
-        std::cerr << "sendMessageQueue name = " << smqName << std::endl;
-    } catch (boost::interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
-    }
-
-    try {
-        m_receiveMessageQueue.reset(f(rmqName));
-    } catch (boost::interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
-    }
-
     m_initialized = true;
 }
 
-bool InSituShmMessage::isInitialized() {
+bool SyncShmMessage::isInitialized() {
     return m_initialized;
 }
 
-InSituShmMessage InSituShmMessage::recv(bool block) {
-    vistle::message::Buffer buf;
-    if (block) {
-        m_receiveMessageQueue->receive(buf);
-    } else if (!m_receiveMessageQueue->tryReceive(buf)) {
-        return InSituShmMessage{};
-    } 
-    if (buf.type() != vistle::message::Type::INSITU) {
-        return InSituShmMessage{};
+bool SyncShmMessage::send(const SyncShmMessage& msg) {
+    if (!m_initialized) {
+        std::cerr << "SyncShmMessage uninitialized: can not send message!" << std::endl;
+        return false;
     }
-    InSituMessage ism = buf.as<InSituMessage>();
-    return InSituShmMessage { ism };
+    m_sendMessageQueue->send(&msg, sizeof(SyncShmMessage), 0);
+    return true;
 }
 
-InSituShmMessage::InSituShmMessage(const InSituMessage& msg)
-    : m_type(msg.ismType())
-    , m_payload(msg.payloadName())
-    , m_payloadSize(msg.payloadSize()){
+SyncShmMessage SyncShmMessage::recv() {
+    SyncShmMessage msg(0, 0);
+    size_t recvSize;
+    unsigned int priority;
+    m_receiveMessageQueue->receive(&msg, sizeof(SyncShmMessage), recvSize, priority);
+    return msg;
 }
 
-InSituShmMessage::InSituShmMessage()
-    : m_type(InSituMessageType::Invalid) {
+SyncShmMessage::SyncShmMessage(size_t objectID, size_t arrayID)
+    : m_objectID(objectID)
+    , m_array_ID(arrayID) {
 }
+
+size_t SyncShmMessage::objectID() const {
+    return m_objectID;
+}
+
+size_t SyncShmMessage::arrayID() const {
+    return m_array_ID;
+}
+
+
 
 

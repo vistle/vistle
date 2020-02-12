@@ -7,6 +7,7 @@
 #include <boost/asio.hpp>
 
 #include <core/message.h>
+#include <core/messagequeue.h>
 
 #include <insitu/message/InSituMessage.h>
 class LibSimModule : public insitu::InSituReader
@@ -33,7 +34,7 @@ private:
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<const vistle::Parameter*> m_commandParameter;
-
+    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue;
     //.........................................................................
     //stuff to handle socket communication with Engine
     unsigned short m_port = 31299;
@@ -60,8 +61,10 @@ private:
 
         //..........................................................................                                               
     //module functions
-    virtual bool prepareReduce() override;
+
     virtual bool prepare() override;
+    virtual bool dispatch(bool block = true, bool* messageReceived = nullptr) override;
+    virtual bool prepareReduce() override;
     virtual bool changeParameter(const vistle::Parameter* param);
     //..........................................................................
 
