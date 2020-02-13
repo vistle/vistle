@@ -597,8 +597,11 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             int min[3], max[3];
             v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min, max);
             for (size_t i = 0; i < 3; i++) {
+                assert(min[i] >= 0);
+                int numTop = nTuples[i] - 1 - max[i];
+                assert(numTop >= 0);
                 grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
-                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, max[i]);
+                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, numTop);
             }
             addObject(meshInfo.name, grid);
 
