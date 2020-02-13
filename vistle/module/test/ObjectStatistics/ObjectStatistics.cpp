@@ -203,6 +203,10 @@ bool ObjectStatistics::compute() {
       s.elements = q->getNumElements();
       s.vertices = q->getNumCorners();
       ++s.grids;
+   } else if (auto sg = StructuredGridBase::as(obj)) {
+      s.elements = sg->getNumElements();
+      s.vertices = sg->getNumVertices();
+      ++s.grids;
    }
    if (auto c = Coords::as(obj)) {
       s.coords = c->getNumCoords();
