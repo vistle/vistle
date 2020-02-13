@@ -116,9 +116,10 @@ Gendat::~Gendat() {
 
 bool Gendat::examine(const Parameter *)
 {
-    setPartitions(m_blocks[0]->getValue()*m_blocks[1]->getValue()*m_blocks[2]->getValue());
+    size_t nblocks = m_blocks[0]->getValue()*m_blocks[1]->getValue()*m_blocks[2]->getValue();
+    setPartitions(nblocks);
     setTimesteps(m_steps->getValue());
-    return true;
+    return nblocks > 0;
 }
 
 bool Gendat::read(Reader::Token &token, int timestep, int blockNum)
