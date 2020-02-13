@@ -209,10 +209,6 @@ bool Hub::init(int argc, char *argv[]) {
    }
    if (vm.count("dataport") > 0) {
        m_dataPort = vm["dataport"].as<unsigned short>();
-       if (m_dataPort == m_port) {
-           CERR << "control port and data port have to be different" << std::endl;
-           return false;
-       }
    }
 
    try {
@@ -223,7 +219,11 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    try {
-       m_dataProxy.reset(new DataProxy(m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
+       if (m_dataPort > 0) {
+           m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
+       } else {
+           m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, 0, 0));
+       }
        m_dataProxy->setTrace(m_traceMessages);
    } catch (std::exception &ex) {
        CERR << "failed to initialise data server on port " << (m_dataPort?m_dataPort:m_port+1) << ": " << ex.what() << std::endl;
@@ -316,7 +316,7 @@ bool Hub::init(int argc, char *argv[]) {
        args.push_back("-from-vistle");
        args.push_back(hostname());
        args.push_back(port);
-       args.push_back(dataport);
+       args.push_back(port);
 #ifdef MODULE_THREAD
        if (vm.count("libsim") > 0) {
            sim2FilePath = vm["libsim"].as<std::string>();
@@ -600,6 +600,7 @@ bool Hub::dispatch() {
          m_processMap.erase(it);
          if (id == Process::Manager) {
             // manager died
+            m_ioService.stop();
             m_dataProxy.reset();
             if (!m_quitting) {
                m_uiManager.requestQuit();
@@ -1024,6 +1025,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                CERR << "slave hub '" << id.name() << "' connected" << std::endl;
                addSlave(id.name(), sock);
                break;
+            }
+            case Identify::LOCALBULKDATA:
+            case Identify::REMOTEBULKDATA: {
+                m_dataProxy->addSocket(id, sock);
+                removeSocket(sock, false);
+                break;
             }
             default: {
                CERR << "invalid identity: " << id.identity() << std::endl;

@@ -29,7 +29,7 @@ class V_NETEXPORT DataProxy {
 public:
    typedef boost::asio::ip::tcp::socket tcp_socket;
 
-    DataProxy(StateTracker &state, unsigned short basePort, bool changePort=true);
+    DataProxy(io_service &io, StateTracker &state, unsigned short basePort, bool changePort=true);
     ~DataProxy();
     void setHubId(int id);
     void setNumRanks(int size);
@@ -38,6 +38,7 @@ public:
     void setTrace(message::Type type);
 
    bool connectRemoteData(const message::AddHub &hub);
+   bool addSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
 
 private:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(EndPointType, (Local)(Remote))
@@ -49,7 +50,7 @@ private:
    int m_numRanks = 0;
    StateTracker &m_stateTracker;
    unsigned short m_port;
-   io_service m_io;
+   io_service &m_io;
    acceptor m_acceptorv4, m_acceptorv6;
    std::vector<std::thread> m_threads;
    std::map<int, std::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket
@@ -62,6 +63,7 @@ private:
    void startAccept(acceptor &a);
    void handleAccept(acceptor &a, const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock);
    void handleConnect(std::shared_ptr<tcp_socket> sock0, std::shared_ptr<tcp_socket> sock1, const boost::system::error_code &error);
+   bool serveSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
    void startThread();
    void cleanUp();
 

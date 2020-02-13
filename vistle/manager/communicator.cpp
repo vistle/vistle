@@ -115,6 +115,8 @@ int Communicator::getSize() const {
 
 bool Communicator::connectHub(std::string host, unsigned short port, unsigned short dataPort) {
 
+   if (dataPort == 0)
+       dataPort = port;
    if (host == hostname())
        host = "localhost";
    if (getRank() == 0) {
