@@ -89,7 +89,7 @@ SET(RUNTIME_HEADERS
 )
 
 set (LIBCORENAME simV2runtime_par) # use disable LIBSIM_PARALELL CMake option for serial simulation
-if(LIBSIM_PARALELL)
+if(NOT LIBSIM_PARALELL)
 set (LIBCORENAME simV2runtime_ser) 
 endif()
 set(LIBNAME lib${LIBCORENAME}) #export.h has to be adopted if this changes
@@ -110,8 +110,7 @@ target_link_libraries(${LIBNAME}
         vistle_core
         vistle_boost_mpi
 		vistle_insitu_message
-		vistle_libsim_connect
-        ${Boost_LIBRARIES}
+		${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
 if(NOT VISTLE_MULTI_PROCESS)

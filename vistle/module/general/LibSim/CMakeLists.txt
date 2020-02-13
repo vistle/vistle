@@ -8,8 +8,8 @@
 #****************************************************************************
 
 #LibSimModule
-add_module(LibSimModule LibSimModule.h LibSimModule.cpp)
-target_link_libraries(LibSimModule
+add_module(LibSimController LibSimModule.h LibSimModule.cpp)
+target_link_libraries(LibSimController
 	vistle_module
 	vistle_util
 	vistle_insitu_message

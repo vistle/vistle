@@ -450,7 +450,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, buffer *payload) {
     auto fut = std::async(std::launch::async, [this, snd, payload2](){
 
         buffer uncompressed = decompressPayload(snd, *payload2.get());
-        vecistreambuf membuf(uncompressed);
+        vecistreambuf<buffer> membuf(uncompressed);
 
         if (snd.isArray()) {
             // an array was received

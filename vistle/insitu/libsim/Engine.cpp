@@ -310,7 +310,11 @@ bool Engine::initialize(int argC, char** argV) {
     m_shmName = argV[1];
     m_moduleName = argV[2];
     m_moduleID = atoi(argV[3]);
-    if(argV[4] != vistle::hostname())
+    if (m_rank == 0 && argV[4] != vistle::hostname())         {
+        CERR << "this " << vistle::hostname() << "trying to connect to " << argV[4] << endl;
+        CERR << "Wrong host: must connect to Vistle on the same machine!" << endl;
+        return false;
+    }
 
     vistle::registerTypes();
     vistle::Shm::attach(m_shmName, m_moduleID, m_rank);
@@ -341,6 +345,8 @@ bool Engine::initialize(int argC, char** argV) {
     }
     InSituTcpMessage::initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     InSituTcpMessage::send(GoOn());
+    SyncShmMessage::initialize(m_moduleID, m_rank, SyncShmMessage::Mode::Attach);
+
     return true;
 }
 
@@ -871,7 +877,7 @@ void insitu::Engine::initializeEngineSocket(const std::string& hostname, int por
 
 void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj) {
     if (m_sendMessageQueue) {
-        DEBUG_CERR << "addObject " << name << " of type " << obj->typeName << endl;
+        DEBUG_CERR << "addObject " << name << " of type " << obj->typeName() << endl;
         vistle::message::AddObject msg(name, obj);
         vistle::message::Buffer buf(msg);
 

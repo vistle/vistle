@@ -50,7 +50,7 @@ protected:
 
 };
 #define COMMA ,
-constexpr int INSITU_MESSAGE_MAX_SIZE = sizeof(InSituMessageBase);
+
 #define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType, payloadName, payloadType)\
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
@@ -121,11 +121,11 @@ public:
     template<typename SomeMessage>
     static bool send(const SomeMessage& msg) {
         if (!m_initialized) {
-            std::cerr << "Engine message uninitialized: can not send message!" << std::endl;
+            std::cerr << "InSituTcpMessage uninitialized: can not send message!" << std::endl;
             return false;
         }
         if (msg.type == InSituMessageType::Invalid) {
-            std::cerr << "Engine message : can not send invalid message!" << std::endl;
+            std::cerr << "InSituTcpMessage : can not send invalid message!" << std::endl;
             return false;
         }
         bool error = false;
@@ -154,13 +154,13 @@ public:
 
         assert(SomeMessage::type != type());
         if (!m_msg) {
-            vistle::vecistreambuf buf(m_payload);
+            vistle::vecistreambuf<vistle::buffer> buf(m_payload);
             m_msg.reset(new SomeMessage{});
             try {
                 vistle::iarchive ar(buf);
                 ar&* static_cast<SomeMessage*>(m_msg.get());
             } catch (yas::io_exception & ex) {
-                std::cerr << "ERROR: failed to get engine message payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
+                std::cerr << "ERROR: failed to get InSituTcpMessage payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
             }
         }
         return *static_cast<SomeMessage*>(m_msg.get());

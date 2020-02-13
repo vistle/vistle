@@ -21,7 +21,6 @@ public:
 
     LibSimModule(const std::string& name, int moduleID, mpi::communicator comm);
     ~LibSimModule();
-    vistle::Port* noDataOut = nullptr;
     vistle::StringParameter* m_filePath = nullptr;
     vistle::IntParameter* m_constGrids = nullptr;
     vistle::IntParameter* m_nthTimestep = nullptr;

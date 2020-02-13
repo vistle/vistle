@@ -33,13 +33,11 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
 #endif
     , m_ioThread([this]() { m_ioService.run();
 CERR << "io thread terminated" << endl; })
-    , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
-{
-    
+, m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate) {
+
     m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
     m_acceptorv6.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
-    
-    noDataOut = createOutputPort("noData", "");
+
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "Simulation Files (*.sim2)");
     //setParameterFilters(m_resultfiledir, "Result Files (*.res)/All Files (*)");
@@ -57,25 +55,14 @@ CERR << "io thread terminated" << endl; })
         throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
     }
 
+
+    SyncShmMessage::initialize(id(), rank(), SyncShmMessage::Mode::Create);
     if (rank() == 0) {
         startControllServer();
 
     } else {
         startSocketThread();
     }
-    std::vector<char> vec{};
-    vistle::vecistreambuf test(vec);
-
-
-
-
-
-
-
-
-
-
-
 }
 
 LibSimModule::~LibSimModule() {
@@ -104,31 +91,40 @@ LibSimModule::~LibSimModule() {
 bool LibSimModule::prepareReduce() {
     
     InSituTcpMessage::send(insitu::message::Ready{ false });
-    while (true) {
+    if (getBool(m_connectedToEngine)) {
         SyncShmMessage msg = SyncShmMessage::recv();
         vistle::Shm::the().setObjectID(msg.objectID());
         vistle::Shm::the().setArrayID(msg.arrayID());
     }
-
     m_timestep = 0;
     return true;
 }
 
 bool LibSimModule::prepare() {
     InSituTcpMessage::send(insitu::message::Ready{ true });
-    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+    if (m_connectedToEngine) {
+        SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+    }
     return true;
 }
 
 bool LibSimModule::dispatch(bool block, bool* messageReceived) {
     vistle::message::Buffer buf;
-    while (m_receiveFromSimMessageQueue->tryReceive(buf)) {
+    bool passMsg = false;
+    if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
         if (buf.type() != vistle::message::INSITU) {
             sendMessage(buf);
         }
+        passMsg = true;
     }
+    bool msgRecv;
+    auto retval =  Module::dispatch(false, &msgRecv);
+    vistle::adaptive_wait((msgRecv || passMsg));
+    if (messageReceived) {
+        *messageReceived = msgRecv;
+    }
+    return retval;
 
-    return Module::dispatch(block, messageReceived);
 
 }
 
@@ -164,7 +160,6 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
         variable->setTimestep(m_timestep);
         variable->setMapping(vistle::DataBase::Vertex);
         variable->addAttribute("_species", "velocity");
-        addObject(noDataOut, variable);
         ++m_timestep;
     } else if (rank() != 0) {
         return true;
@@ -231,7 +226,7 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
 void LibSimModule::startSocketThread()     {
     m_socketThread = std::thread([this]() {
         m_socketComm.barrier();
-        m_connectedToEngine = true;
+        setBool(m_connectedToEngine, true);
         InSituTcpMessage::initialize(m_socket, m_socketComm);
         InSituTcpMessage::send(insitu::message::ConstGrids(m_constGrids->getValue()));
         InSituTcpMessage::send(insitu::message::NthTimestep(m_nthTimestep->getValue()));

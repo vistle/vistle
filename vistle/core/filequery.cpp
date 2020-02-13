@@ -17,7 +17,7 @@ buffer createPayload(const std::vector<FileInfo> &info) {
 std::vector<FileInfo> unpackFileInfos(const buffer &payload) {
     std::vector<FileInfo> info;
     try {
-        vecistreambuf buf(payload);
+        vecistreambuf<buffer> buf(payload);
         iarchive ar(buf);
         Index size=0;
         ar & size;
@@ -42,7 +42,7 @@ SystemInfo unpackSystemInfo(const buffer &payload)
 {
     SystemInfo info;
     try {
-        vecistreambuf buf(payload);
+        vecistreambuf<buffer> buf(payload);
         iarchive ar(buf);
         ar & info;
     } catch (std::exception &ex) {
@@ -65,7 +65,7 @@ std::vector<std::string> unpackFileList(const buffer &payload)
 {
     std::vector<std::string> files;
     try {
-        vecistreambuf buf(payload);
+        vecistreambuf<buffer> buf(payload);
         iarchive ar(buf);
         Index size=0;
         ar & size;

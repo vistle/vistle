@@ -62,10 +62,7 @@ void InSituReader::cancelExecuteMessageReceived(const message::Message* msg) {
             sendError("failed to prepare reduce");
             return;
         }
-        if (reduceWrapper(m_exec)) {
-            sendError("failed to reduce");
-            return;
-        }
+        reduceWrapper(m_exec);
         m_isExecuting = false;
     }
 }

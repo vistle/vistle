@@ -609,7 +609,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
         }
         comm.recv(sourceRank, 0, ent.data, ent.size);
     }
-    vecistreambuf membuf(mem);
+    vecistreambuf<buffer> membuf(mem);
     vistle::iarchive memar(membuf);
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
     memar.setFetcher(fetcher);
@@ -655,7 +655,7 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
             }
             mpi::broadcast(comm, ent.data, ent.size, root);
         }
-        vecistreambuf membuf(mem);
+        vecistreambuf<buffer> membuf(mem);
         vistle::iarchive memar(membuf);
         auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
         memar.setFetcher(fetcher);

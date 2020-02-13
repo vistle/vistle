@@ -102,15 +102,17 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
         smqName = vistle::message::MessageQueue::createName("sendInSitu", moduleID, rank);
         rmqName = vistle::message::MessageQueue::createName("recvInSitu", moduleID, rank);
         try {
-
-            m_sendMessageQueue.reset(new message_queue(create_only, smqName.c_str(), 5, INSITU_MESSAGE_MAX_SIZE));
+            message_queue::remove(smqName.c_str());
+            message_queue::remove(rmqName.c_str());
+            m_sendMessageQueue.reset(new message_queue(create_only, smqName.c_str(), 5, sizeof(SyncShmMessage)));
             std::cerr << "sendMessageQueue name = " << smqName << std::endl;
         } catch (boost::interprocess::interprocess_exception & ex) {
             throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
         }
 
         try {
-            m_receiveMessageQueue.reset(new message_queue(create_only, rmqName.c_str(), 5, INSITU_MESSAGE_MAX_SIZE));
+            m_receiveMessageQueue.reset(new message_queue(create_only, rmqName.c_str(), 5, sizeof(SyncShmMessage)));
+            std::cerr << "receiveMessageQueue name = " << rmqName << std::endl;
         } catch (boost::interprocess::interprocess_exception & ex) {
             throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
         }
@@ -128,9 +130,12 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
         try {
             m_receiveMessageQueue.reset(new message_queue(open_only, rmqName.c_str()));
+            std::cerr << "receiveMessageQueue name = " << rmqName << std::endl;
         } catch (boost::interprocess::interprocess_exception & ex) {
             throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
         }
+        message_queue::remove(smqName.c_str());
+        message_queue::remove(rmqName.c_str());
         break;
     default:
         break;
@@ -153,6 +158,7 @@ bool SyncShmMessage::send(const SyncShmMessage& msg) {
 }
 
 SyncShmMessage SyncShmMessage::recv() {
+    assert(m_initialized);
     SyncShmMessage msg(0, 0);
     size_t recvSize;
     unsigned int priority;

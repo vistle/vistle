@@ -45,7 +45,7 @@ buffer addPayload(Message &message, Payload &payload) {
 
 template<class Payload>
 Payload getPayload(const buffer &data) {
-    vecistreambuf buf(data);
+    vecistreambuf<buffer> buf(data);
     Payload payload;
     try {
         iarchive ar(buf);

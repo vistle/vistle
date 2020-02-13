@@ -890,7 +890,7 @@ bool Cache::prepare() {
             }
         }
         const auto &buf = comp==message::CompressionNone ? objbuf : raw;
-        vecistreambuf membuf(buf);
+        vecistreambuf<buffer> membuf(buf);
         vistle::iarchive memar(membuf);
         memar.setFetcher(fetcher);
         //CERR << "output to port " << port << ", trying to load " << name0 << std::endl;
