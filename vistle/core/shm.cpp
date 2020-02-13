@@ -291,9 +291,7 @@ bool Shm::cleanAll(int rank) {
    }
    shmlist.close();
 
-   if (ret) {
-       ::remove(shmIdFilename().c_str());
-   }
+   ::remove(shmIdFilename().c_str());
 
    return ret;
 }
