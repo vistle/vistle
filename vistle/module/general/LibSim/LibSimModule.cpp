@@ -230,15 +230,14 @@ void LibSimModule::startSocketThread()     {
         InSituTcpMessage::initialize(m_socket, m_socketComm);
         InSituTcpMessage::send(insitu::message::ConstGrids(m_constGrids->getValue()));
         InSituTcpMessage::send(insitu::message::NthTimestep(m_nthTimestep->getValue()));
-        recvAndhandleMessage();
+        while (!getBool(m_terminate)) {
+            recvAndhandleMessage();
+        }
         });
 
 }
 
 void LibSimModule::recvAndhandleMessage()     {
-    if (getBool(m_terminate)) {
-        return;
-    }
 
     InSituTcpMessage msg = InSituTcpMessage::recv();
     
@@ -282,30 +281,28 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::ConnectionClosed:
     {
-        Guard g(m_socketMutex);
-        m_simInitSent = false;
-        m_connectedToEngine = false;
-        if (m_terminate) {
-            return;
+        {
+            Guard g(m_socketMutex);
+            m_simInitSent = false;
+            m_connectedToEngine = false;
+            if (m_terminate) {
+                return;
+            }
         }
-    }
         if (rank() == 0) {
             CERR << "conection closed, listening for connections on port " << m_port << endl;
             startAccept(m_acceptorv4);
             startAccept(m_acceptorv6);
             return;
-        }
-        else {
+        } else {
             m_socketComm.barrier(); //wait for rank 0 to reconnect
             InSituTcpMessage::initialize(m_socket, m_socketComm);
         }
-
+    }
         break;
     default:
         break;
     }
-    recvAndhandleMessage();
-
 }
 
 void LibSimModule::setBool(bool& target, bool newval) {

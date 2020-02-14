@@ -373,7 +373,7 @@ void Engine::SimulationTimeStepChanged() {
         return;
     }
     static int counter = 0;
-    CERR << "SimulationTimeStepChanged counter = " << counter << endl;
+    DEBUG_CERR << "SimulationTimeStepChanged counter = " << counter << endl;
     ++counter;
     int oldCycle = m_metaData.currentCycle;
     getMetaData();
@@ -398,7 +398,7 @@ void Engine::SimulationTimeStepChanged() {
 
 void Engine::SimulationInitiateCommand(const std::string& command) {
     static int counter = 0;
-    CERR << "SimulationInitiateCommand " << command << " counter = " << counter << endl;
+    DEBUG_CERR << "SimulationInitiateCommand " << command << " counter = " << counter << endl;
     ++counter;
     if (command.substr(0, 12) == "INTERNALSYNC") { //need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
         // Send the command back to the engine so it knows we're done syncing. 
@@ -424,7 +424,7 @@ bool insitu::Engine::handleVistleMessage() {
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     static int counter = 0;
-    CERR << "handleVistleMessage counter = " << counter << endl;
+    DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
     ++counter;
     finalizeInit();
     InSituTcpMessage msg = InSituTcpMessage::recv();
@@ -473,7 +473,7 @@ bool insitu::Engine::handleVistleMessage() {
     case InSituMessageType::GoOn:
     {
         if (m_metaData.simMode == VISIT_SIMMODE_RUNNING) {
-            InSituTcpMessage::send(GoOn{});
+            //InSituTcpMessage::send(GoOn{});
         }
     }
         break;
@@ -710,7 +710,7 @@ void insitu::Engine::sendMeshesToModule()     {
         int allDoms = 0;
         visit_handle myDoms;
         v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
-        CERR << "allDoms = " << allDoms << " myDoms = " << myDoms << endl;
+        DEBUG_CERR << "allDoms = " << allDoms << " myDoms = " << myDoms << endl;
 
         int owner, dataType, nComps;
         void* data;
@@ -909,6 +909,7 @@ Engine::~Engine() {
         vistle::Shm::the().detach();
     }
 #endif
+    InSituTcpMessage::send(ConnectionClosed{});
     delete m_sendMessageQueue;
     Engine::instance = nullptr;
 }

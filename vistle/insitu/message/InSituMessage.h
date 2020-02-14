@@ -36,8 +36,6 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , NthTimestep
     , ConnectionClosed
     , CycleFinished
-    , SyncShmID
-
 };
 
 
@@ -90,8 +88,6 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
-//ids[0] = objectID, ids[1] = arrayID
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SyncShmID, ids, std::array<std::size_t COMMA 2>)
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
