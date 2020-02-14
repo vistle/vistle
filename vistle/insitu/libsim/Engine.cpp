@@ -566,8 +566,8 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             visit_handle coordHandles[3]; //handles to variable data
             int ndims;
             v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
-            int owner[3]{}, dataType[3]{}, nComps[3]{}, nTuples[3]{ 1,1,1 };
-            void* data[3]{};
+            std::array<int, 3> owner{}, dataType{}, nComps{}, nTuples{ 1,1,1 };
+            std::array<void*, 3> data{};
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                 if (dataType[i] != dataType[0]) {
@@ -575,27 +575,30 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
                     return false;
                 }
             }
+            std::reverse(owner.begin(), owner.end());
+            std::reverse(dataType.begin(), dataType.end());
+            std::reverse(nComps.begin(), nComps.end());
+            std::reverse(nTuples.begin(), nTuples.end());
+            std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
             grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
-            for (size_t i = 0; i < meshInfo.dim; ++i) {
-                transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataType[i]);
-                memcpy(grid->coords(i).begin(), data[i], nTuples[i] * sizeof(float));
+            for (size_t i = 0; i < 3; ++i) {
+                if (data[i]) {
+                    transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataType[i]);
+                }
+                else {
+                    grid->coords(i)[0] = 0;
+                }
             }
 
-            if (meshInfo.dim == 2 && nTuples[2] != 1) {
-                throw EngineExeption("2d rectiliniar grids must have exactly one z coordinate");
-            }
-            if (meshInfo.dim == 2) {
-                grid->coords(2)[0] = 0;
-            }
-
-
-            int min[3], max[3];
-            v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min, max);
+            std::array<int, 3> min, max;
+            v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min.data(), max.data());
+            std::reverse(min.begin(), min.end());
+            std::reverse(max.begin(), max.end());
             for (size_t i = 0; i < 3; i++) {
                 assert(min[i] >= 0);
                 int numTop = nTuples[i] - 1 - max[i];
