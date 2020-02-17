@@ -1534,6 +1534,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
                 || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
 
+        CERR << "GANG scheduling: " << gang << std::endl;
+
         int direction = 1;
 
         // just process one tuple of objects at a time
@@ -1727,10 +1729,12 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             }
         }
 
+        CERR << "NUM OBJECTS: " << numObject << std::endl;
+
 
         if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
 #ifdef REDUCE_DEBUG
-            CERR << "all_reduce for execCount with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+            CERR << "all_reduce for execCount " << m_executionCount << " with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
             int oldExecCount = m_executionCount;
             m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
@@ -1743,7 +1747,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         if (m_numTimesteps > 0) {
             prevTimestep = startTimestep;
 #ifdef REDUCE_DEBUG
-            if (rank() == 0 && exec->what() == message::Execute::ComputeExecute)
+            if (exec->what() == message::Execute::ComputeExecute)
                 CERR << "last timestep to reduce: " << prevTimestep << std::endl;
 #endif
         }
@@ -1751,8 +1755,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
         auto runReduce = [this](int timestep, int &numReductions) -> bool {
 #ifdef REDUCE_DEBUG
-            if (rank() == 0)
-                CERR << "running reduce for timestep " << timestep << ", already did " << numReductions  << " of " << m_numTimesteps << " reductions" << std::endl;
+            CERR << "running reduce for timestep " << timestep << ", already did " << numReductions  << " of " << m_numTimesteps << " reductions" << std::endl;
 #endif
             if (cancelRequested(true))
                 return true;
@@ -1808,6 +1811,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
                 if (reordered && timestep>=0 && m_numTimesteps>0 && reducePerTimestep) {
                     // if processing for another timestep starts, run reduction for previous timesteps
+                    // -- reordered is a requirement: otherwise, objects have not to be ordered by timestep
                     if (waitForZero) {
                         if (startWithZero && timestep > 0) {
                             waitForZero = false;
@@ -1859,14 +1863,14 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                           << ", error code: " << e.get_error_code()
                           << ", native error: " << e.get_native_error()
                           << std::endl << std::flush;
-                std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
+                CERR << name() << "::compute(): interprocess_exception: " << e.what()
                           << ", error code: " << e.get_error_code()
                           << ", native error: " << e.get_native_error()
                           << std::endl;
                 throw(e); // rethrow and probably crash - there is no guarantee that the module terminates gracefully
             } catch (std::exception &e) {
                 std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
-                std::cerr << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
+                CERR << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
                 throw(e);
             }
             ret &= computeOk;
@@ -1877,8 +1881,13 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         if (reordered && m_numTimesteps>0 && reducePerTimestep) {
             // run reduction for remaining (most often just the last) timesteps
+            if (startWithZero && waitForZero) {
+                waitForZero = false;
+                assert (numReductions < m_numTimesteps);
+                runReduce(0, numReductions);
+            }
             int t = prevTimestep;
-            while (numReductions < m_numTimesteps && !cancelRequested(true)) {
+            while (numReductions < m_numTimesteps) {
                 runReduce(t, numReductions);
                 if (direction >= 0) {
                     t = (t+1)%m_numTimesteps;
@@ -2089,7 +2098,7 @@ bool Module::prepareWrapper(const message::Execute *exec) {
 
 #ifdef REDUCE_DEBUG
    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
-      std::cerr << "prepare(): barrier for reduce policy " << reducePolicy() << std::endl;
+      CERR << "prepare(): barrier for reduce policy " << reducePolicy() << std::endl;
       comm().barrier();
    }
 #endif
@@ -2161,7 +2170,7 @@ bool Module::compute() {
 bool Module::compute(std::shared_ptr<PortTask> task) const {
 
     (void)task;
-    std::cerr << "compute() or compute(std::shared_ptr<PortTask>) should be reimplemented from vistle::Module" << std::endl;
+    CERR << "compute() or compute(std::shared_ptr<PortTask>) should be reimplemented from vistle::Module" << std::endl;
     return false;
 }
 
@@ -2176,7 +2185,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
 
 #ifdef REDUCE_DEBUG
    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
-      std::cerr << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *exec << std::endl;
+      CERR << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *exec << std::endl;
       comm().barrier();
    }
 #endif
@@ -2220,7 +2229,7 @@ bool Module::reduceWrapper(const message::Execute *exec, bool reordered) {
    } catch (std::exception &e) {
            ret = false;
            std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
-           std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
+           CERR << name() << "::reduce(): exception - " << e.what() << std::endl;
    }
 
    for (auto &port: outputPorts) {
