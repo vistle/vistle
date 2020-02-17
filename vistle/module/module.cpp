@@ -1063,15 +1063,19 @@ bool Module::dispatch(bool block, bool *messageReceived) {
          throw(except::parent_died());
 #endif
 
+      message::Buffer buf;
+      if (!getNextMessage(buf, block)) {
+          if (messageReceived)
+              *messageReceived = false;
+          if (block) {
+              return false;
+          }
+          return true;
+      }
+
       if (messageReceived)
          *messageReceived = true;
 
-      message::Buffer buf;
-      if (!getNextMessage(buf, block) && !block)           {
-          if (messageReceived)
-              *messageReceived = false;
-          return true;
-      }
       MessagePayload pl;
       if (buf.payloadSize() > 0) {
           pl = Shm::the().getArrayFromName<char>(buf.payloadName());
