@@ -10,6 +10,7 @@
 
 #APRUN_FLAGS="-j2 -cc 0-11,24-35:12-23,36-47" # enable hyper-threading
 
+# environment variables to copy to all ranks
 envvars="VISTLE_KEY VISTLE_SHMSIZE LD_LIBRARY_PATH DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH COVISE_PATH COVISEDIR ARCHSUFFIX PYTHONHOME PYTHONPATH"
 
 if [ -n "$VISTLE_LAUNCH" ]; then
@@ -47,16 +48,13 @@ fi
 
 LOGPREFIX=
 mkdir -p "/var/tmp/${USER}" && LOGPREFIX="/var/tmp/${USER}"
-LOGFILE="${LOGPREFIX}$(basename $1)"-$$.log
-
+LOGFILE="${LOGPREFIX}/$(basename $1)"-$$.log
 if [ -n "$4" ]; then
    # include module ID
    LOGFILE="${LOGPREFIX}/$(basename $1)"-$4-$$.log
 fi
 
 echo "spawn_vistle.sh: $@" > "$LOGFILE"
-export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
-export MV2_HOMOGENEOUS_CLUSTER=1 # faster start-up
 case $(uname) in
    Darwin)
       libpath=DYLD_LIBRARY_PATH
@@ -67,6 +65,7 @@ case $(uname) in
       ;;
 esac
 
+WRAPPER="valgrind --track-origins=yes --read-var-info=yes --read-inline-info=yes --error-limit=no"
 WRAPPER=""
 LAUNCH=""
 #WRAPPER="$WRAPPER valgrind"
@@ -76,18 +75,19 @@ export MPI_UNBUFFERED_STDIO=1
 export MPICH_MAX_THREAD_SAFETY=multiple
 export MPICH_VERSION_DISPLAY=1
 export KMP_AFFINITY=verbose,none
+export MV2_ENABLE_AFFINITY=0 # necessary for MPI_THREAD_MULTIPLE support
+export MV2_HOMOGENEOUS_CLUSTER=1 # faster start-up
 
 MPI_IMPL="mpich"
  
-if mpirun -version 2>&1| grep -q open-mpi\.org && echo true > /dev/null; then
+if mpirun -version 2>&1| grep -q open-mpi\.org; then
    MPI_IMPL="ompi"
    echo "OpenMPI spawn: $@"
-   LAUNCH="--launch-agent $(which orted)"
+   #LAUNCH="--launch-agent $(which orted)"
    export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
    #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
-fi
-
-if mpirun -version 2>&1| grep -q MPT && echo true > /dev/null; then
+   export OMPI_MCA_mpi_abort_delay=-1
+elif mpirun -version 2>&1| grep -q MPT; then
    MPI_IMPL="mpt"
    echo "HPE MPT spawn: $@"
 fi
@@ -107,17 +107,12 @@ if [ -n "$PBS_ENVIRONMENT" ]; then
          #-genv I_MPI_DEBUG=5 \
    else
       exec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-      exec mpiexec 
    fi
-fi
-
-if [ -n "$SLURM_JOB_ID" ]; then
+elif [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none $WRAPPER "$@"
    #exec srun --overcommit "$@"
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
-
-
 
 BIND=0
 case $(hostname) in
@@ -165,45 +160,43 @@ fi
 if [ "$MPISIZE" != "1" ]; then
    PREPENDRANK=-prepend-rank
    TAGOUTPUT=-tag-output
-fi
 
-if [ "$MPI_IMPL" = "ompi" ]; then
+   case "$MPI_IMPL" in
+       ompi)
+           BIND="-bind-to none"
+           if [ "$BINDTO" = "socket0" ]; then 
+               BIND="-cpu-list 0,1,2,3,4,5,6,7"
+           elif [ "$BINDTO" = "socket1" ]; then
+               BIND="-cpu-list 8,9,10,11,12,13,14,15"
+           fi
 
-    BIND="-bind-to none"
-    if [ "$BINDTO" = "socket0" ]; then 
-        BIND="-cpu-list 0,1,2,3,4,5,6,7"
-    elif [ "$BINDTO" = "socket1" ]; then
-        BIND="-cpu-list 8,9,10,11,12,13,14,15"
-    fi
+           ENVS=""
+           for v in $envvars; do
+               eval test -z \${${v}+x} || ENVS="$ENVS -x $v"
+           done
 
-   ENVS=""
-   for v in $envvars; do
-       eval test -z \${${v}+x} || ENVS="$ENVS -x $v"
-   done
-   if [ -z "$MPIHOSTFILE" ]; then
-       if [ -z "$MPIHOSTS" ]; then
-          echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
-          exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-       else
-          exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-       fi
-    else
-      echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
-      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-    fi
-else
-   if [ -z "$MPIHOSTFILE" ]; then	
-	   if [ -z "$MPIHOSTS" ]; then
-		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-	   elif [ "$BIND" = "1" ]; then
-		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-	   else
-		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-	   fi
-   else
-	   exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-   fi
+           if [ -n "$MPIHOSTFILE" ]; then
+               echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
+               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           elif [ -n "$MPIHOSTS" ]; then
+               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           else
+               echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
+               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           fi
+           ;;
+
+       *)
+           if [ -n "$MPIHOSTFILE" ]; then	
+               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           elif [ -n "$MPIHOSTS" ]; then
+               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           else
+               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+           fi
+           ;;
+   esac
 fi
 
 echo "default: $@"
-exec WRAPPER "$@"
+exec $WRAPPER "$@"
