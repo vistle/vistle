@@ -1318,6 +1318,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
        bool broadcast = false;
        if (destMod.objectPolicy == message::ObjectReceivePolicy::Local) {
+           CERR << "LOCAL object add at " << destId << ": " << addObj2.objectName() << std::endl;
            if (!sendMessage(destId, addObj2))
                return false;
            portManager().addObject(destPort);
@@ -1325,6 +1326,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
            if (!checkExecuteObject(destId))
                return false;
        } else {
+           CERR << "BROADCAST object add at " << destId << ": " << addObj2.objectName() << std::endl;
            broadcast = true;
            if (!Communicator::the().broadcastAndHandleMessage(addObj2))
                return false;
@@ -1431,13 +1433,23 @@ bool ClusterManager::checkExecuteObject(int destId) {
    if (!isReadyForExecute(destId))
        return true;
 
+   int numconn = 0;
    for (const auto input: portManager().getConnectedInputPorts(destId)) {
+       if (input->flags() & Port::NOCOMPUTE)
+           continue;
+       ++numconn;
        if (!portManager().hasObject(input)) {
            return true;
        }
    }
-   for (const auto input: portManager().getConnectedInputPorts(destId))
+   CERR << "checkExecuteObject " << destId << ": " << numconn << " connections" << std::endl;
+   if (numconn == 0)
+       return true;
+   for (const auto input: portManager().getConnectedInputPorts(destId)) {
+       if (input->flags() & Port::NOCOMPUTE)
+           continue;
        portManager().popObject(input);
+   }
 
    auto it = m_stateTracker.runningMap.find(destId);
    if (it == m_stateTracker.runningMap.end()) {
@@ -1453,6 +1465,7 @@ bool ClusterManager::checkExecuteObject(int destId) {
       sendMessage(destId, c);
    } else if (destMod.schedulingPolicy == message::SchedulingPolicy::Gang) {
       c.setAllRanks(true);
+      CERR << "checkExecuteObject " << destId << ": exec b/c gang scheduling: " << c << std::endl;
       if (!Communicator::the().broadcastAndHandleMessage(c))
          return false;
    } else if (destMod.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
@@ -1589,7 +1602,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::ConstPortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
-         if (!(destPort->flags() & Port::COMBINE)) {
+         if (!(destPort->flags() & Port::NOCOMPUTE)) {
             if (readyForPrepare)
                portManager().resetInput(destPort);
             if (readyForReduce)
@@ -1601,7 +1614,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::ConstPortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
-         if (!(destPort->flags() & Port::COMBINE)) {
+         if (!(destPort->flags() & Port::NOCOMPUTE)) {
             bool allReadyForPrepare = true, allReadyForReduce = true;
             const int destId = destPort->getModuleID();
             auto allInputs = portManager().getConnectedInputPorts(destId);

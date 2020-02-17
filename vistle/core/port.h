@@ -36,8 +36,10 @@ class V_COREEXPORT Port {
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type, (ANY) (INPUT) (OUTPUT) (PARAMETER))
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Flags,
       (NONE)
-      (MULTI) //< additional ports are created for each connected port
+      (NOCOMPUTE) //< compute won't be called for objects received via this port
+      (COMBINE_BIT) //< several connections to a single port are allowed and should be processed together - only together with NOCOMPUTE
       (COMBINE) //< several connections to a single port are allowed and should be processed together
+      (MULTI) //< additional ports are created for each connected port
    )
 
    Port(int moduleID, const std::string &name, Port::Type type, int flags=0);

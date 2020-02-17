@@ -1555,6 +1555,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     objectAdded(srcPort->getModuleID(), srcPort->getName(), &port.second);
                 }
                 ++numConnected;
+                if (port.second.flags() & Port::NOCOMPUTE)
+                    continue;
                 if (numObject == 0) {
                     numObject = port.second.objects().size();
                 } else if (numObject != port.second.objects().size()) {
@@ -1567,6 +1569,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
 
         for (auto &port: inputPorts) {
             if (!isConnected(port.second))
+                continue;
+            if (port.second.flags() & Port::NOCOMPUTE)
                 continue;
             const auto &objs = port.second.objects();
             for (Index i=0; i<numObject && i<objs.size(); ++i) {
@@ -1674,6 +1678,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     port.second.objects().clear();
                     if (!isConnected(port.second))
                         continue;
+                    if (port.second.flags() & Port::NOCOMPUTE)
+                        continue;
                     auto objs = m_cache.getObjects(port.first);
                     // objects without timestep
                     ssize_t cur = step<0 ? numObject-1 : 0;
@@ -1768,6 +1774,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 for (auto &port: inputPorts) {
                     if (!isConnected(port.second))
                         continue;
+                    if (port.second.flags() & Port::NOCOMPUTE)
+                        continue;
                     const auto &objs = port.second.objects();
                     if (objs.empty()) {
                         objectIsEmpty = true;
@@ -1785,6 +1793,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     //CERR << "timestep=" << timestep << ": empty objects, skipping compute" << std::endl;
                     for (auto &port: inputPorts) {
                         if (!isConnected(port.second))
+                            continue;
+                        if (port.second.flags() & Port::NOCOMPUTE)
                             continue;
                         auto &objs = port.second.objects();
                         if (!objs.empty()) {
