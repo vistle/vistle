@@ -264,6 +264,7 @@ bool Tracer::compute() {
     return true;
 }
 
+namespace {
 
 void mergeAttributes(Tracer::AttributeMap &dest, const Tracer::AttributeMap &other) {
 
@@ -284,12 +285,16 @@ void applyAttributes(vistle::Object::ptr obj, const Tracer::AttributeMap &attrs)
 
 void applyTime(vistle::Object::ptr obj, const Meta &time) {
 
+    //std::cerr << "applying t=" << time.timeStep() << " to " << (obj?obj->getName():"(NULL)") << std::endl;
+
     if (!obj)
         return;
 
     obj->setRealTime(time.realTime());
     obj->setTimestep(time.timeStep());
     obj->setNumTimesteps(time.numTimesteps());
+}
+
 }
 
 bool Tracer::reduce(int timestep) {
@@ -322,6 +327,27 @@ bool Tracer::reduce(int timestep) {
    attrGridRank = mpi::all_reduce(comm(), attrGridRank, mpi::minimum<int>());
    attrData0Rank = mpi::all_reduce(comm(), attrData0Rank, mpi::minimum<int>());
    attrData1Rank = mpi::all_reduce(comm(), attrData1Rank, mpi::minimum<int>());
+   if (attrGridRank == size()) {
+       attrGridRank = m_gridTime[timestep+1].timeStep()<0 ? size() : rank();
+       attrGridRank = mpi::all_reduce(comm(), attrGridRank, mpi::minimum<int>());
+   }
+   if (attrGridRank == size()) {
+       attrGridRank = 0;
+   }
+   if (attrData0Rank == size()) {
+       attrData0Rank = m_data0Time[timestep+1].timeStep()<0 ? size() : rank();
+       attrData0Rank = mpi::all_reduce(comm(), attrData0Rank, mpi::minimum<int>());
+   }
+   if (attrData0Rank == size()) {
+       attrData0Rank = 0;
+   }
+   if (attrData1Rank == size()) {
+       attrData1Rank = m_data0Time[timestep+1].timeStep()<0 ? size() : rank();
+       attrData1Rank = mpi::all_reduce(comm(), attrData1Rank, mpi::minimum<int>());
+   }
+   if (attrData1Rank == size()) {
+       attrData1Rank = 0;
+   }
    if (attrGridRank != size()) {
        mpi::broadcast(comm(), m_gridAttr[timestep+1], attrGridRank);
        mpi::broadcast(comm(), m_gridTime[timestep+1], attrGridRank);
@@ -419,7 +445,7 @@ bool Tracer::reduce(int timestep) {
              << std::endl;
 #endif
    numtime = std::min(timestep+1, numtime);
-   if (numtime == 0)
+   if (numtime <= 0)
        numtime = 1;
 
 
@@ -684,6 +710,7 @@ bool Tracer::reduce(int timestep) {
            global.lines.emplace_back(new Lines(0,0,0));
            applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
            if (taskType == Streamlines) {
+               //std::cerr << "apply time for grid: ";
                applyTime(global.lines.back(), m_gridTime[timestep+1]);
            }
        }
@@ -692,6 +719,7 @@ bool Tracer::reduce(int timestep) {
            global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
            applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
            if (taskType == Streamlines) {
+               //std::cerr << "apply time for vec: ";
                applyTime(global.vecField.back(), m_data0Time[timestep+1]);
            } else if (taskType == MovingPoints) {
                global.vecField.back()->x().reserve(allParticles.size());
@@ -703,6 +731,7 @@ bool Tracer::reduce(int timestep) {
            global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
            applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
            if (taskType == Streamlines) {
+               //std::cerr << "apply time for scal: ";
                applyTime(global.scalField.back(), m_data1Time[timestep+1]);
            } else if (taskType == MovingPoints) {
                global.scalField.back()->x().reserve(allParticles.size());
