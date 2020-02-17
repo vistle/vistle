@@ -446,7 +446,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
        std::stringstream str;
        if (objType == vistle::Object::TUBES) {
            str << "Tubes input unsupported - use ToTriangle module";
-       } else {
+       } else if (objType != vistle::Object::EMPTY) {
            str << "Unsupported input data: " << Object::toString(objType);
        }
        std::cerr << str.str() << std::endl;
