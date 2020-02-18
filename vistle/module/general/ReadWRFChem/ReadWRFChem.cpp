@@ -87,6 +87,7 @@ ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicato
     setParameterChoices(m_gridZ, varChoices);
 
     setParallelizationMode(Serial);
+    setAllowTimestepDistribution(true);
 
     observeParameter(m_filedir);
     observeParameter(m_varDim);
@@ -615,10 +616,12 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             b[1] = computeBlock(block, numBlocksLat, blockYbegin, blockSizeLat, ny );
             b[2] = computeBlock(block, numBlocksLat, blockZbegin, blockSizeLat, nz );
 
-            if (timestep < 0) {
+            if (!outObject[block]) {
                 //********* GRID *************
                outObject[block] = generateGrid(b);
                setMeta(outObject[block], block, numBlocks, -1);
+            }
+            if (timestep == -1) {
                token.addObject(m_gridOut, outObject[block]);
             }else {
                 // ******** DATA *************
