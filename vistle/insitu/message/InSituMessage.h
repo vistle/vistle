@@ -195,9 +195,9 @@ public:
 
     static SyncShmMessage recv();
 
-    SyncShmMessage(size_t objectID, size_t arrayID);
-    size_t objectID() const;
-    size_t arrayID() const;
+    SyncShmMessage(int objectID, int arrayID);
+    int objectID() const;
+    int arrayID() const;
 
 private:
 
@@ -206,8 +206,8 @@ private:
     static int m_rank;
     static int m_moduleID;
 
-    size_t m_objectID;
-    size_t m_array_ID;
+    int m_objectID;
+    int m_array_ID;
 
     static bool m_initialized;
 };

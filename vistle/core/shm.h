@@ -151,10 +151,10 @@ class V_COREEXPORT Shm {
    void lockDictionary() const;
    void unlockDictionary() const;
 
-   size_t objectID() const;
-   size_t arrayID() const;
-   void setObjectID(size_t id);
-   void setArrayID(size_t id);
+   int objectID() const;
+   int arrayID() const;
+   void setObjectID(int id);
+   void setArrayID(int id);
 
    std::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t &handle) const;
    shm_handle_t getHandleFromObject(std::shared_ptr<const Object> object) const;

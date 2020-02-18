@@ -166,16 +166,16 @@ SyncShmMessage SyncShmMessage::recv() {
     return msg;
 }
 
-SyncShmMessage::SyncShmMessage(size_t objectID, size_t arrayID)
+SyncShmMessage::SyncShmMessage(int objectID, int arrayID)
     : m_objectID(objectID)
     , m_array_ID(arrayID) {
 }
 
-size_t SyncShmMessage::objectID() const {
+int SyncShmMessage::objectID() const {
     return m_objectID;
 }
 
-size_t SyncShmMessage::arrayID() const {
+int SyncShmMessage::arrayID() const {
     return m_array_ID;
 }
 
