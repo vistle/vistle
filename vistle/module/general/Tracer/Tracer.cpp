@@ -283,24 +283,14 @@ void applyAttributes(vistle::Object::ptr obj, const Tracer::AttributeMap &attrs)
     }
 }
 
-void applyTime(vistle::Object::ptr obj, const Meta &time) {
-
-    //std::cerr << "applying t=" << time.timeStep() << " to " << (obj?obj->getName():"(NULL)") << std::endl;
-
-    if (!obj)
-        return;
-
-    obj->setRealTime(time.realTime());
-    obj->setTimestep(time.timeStep());
-    obj->setNumTimesteps(time.numTimesteps());
-}
-
 }
 
 bool Tracer::reduce(int timestep) {
 
-   if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep)
+    if (timestep == -1 && numTimesteps()>0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
+       // all the work for stream lines has already be done per timestep
        return true;
+    }
 
    size_t minsize = std::max(numTimesteps()+1, timestep+2);
    if (m_gridAttr.size() < minsize) {
@@ -342,7 +332,7 @@ bool Tracer::reduce(int timestep) {
        attrData0Rank = 0;
    }
    if (attrData1Rank == size()) {
-       attrData1Rank = m_data0Time[timestep+1].timeStep()<0 ? size() : rank();
+       attrData1Rank = m_data1Time[timestep+1].timeStep()<0 ? size() : rank();
        attrData1Rank = mpi::all_reduce(comm(), attrData1Rank, mpi::minimum<int>());
    }
    if (attrData1Rank == size()) {
@@ -709,19 +699,12 @@ bool Tracer::reduce(int timestep) {
        } else {
            global.lines.emplace_back(new Lines(0,0,0));
            applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
-           if (taskType == Streamlines) {
-               //std::cerr << "apply time for grid: ";
-               applyTime(global.lines.back(), m_gridTime[timestep+1]);
-           }
        }
 
        if (global.computeVector) {
            global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
            applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
-           if (taskType == Streamlines) {
-               //std::cerr << "apply time for vec: ";
-               applyTime(global.vecField.back(), m_data0Time[timestep+1]);
-           } else if (taskType == MovingPoints) {
+           if (taskType == MovingPoints) {
                global.vecField.back()->x().reserve(allParticles.size());
                global.vecField.back()->y().reserve(allParticles.size());
                global.vecField.back()->z().reserve(allParticles.size());
@@ -730,10 +713,7 @@ bool Tracer::reduce(int timestep) {
        if (global.computeScalar) {
            global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
            applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
-           if (taskType == Streamlines) {
-               //std::cerr << "apply time for scal: ";
-               applyTime(global.scalField.back(), m_data1Time[timestep+1]);
-           } else if (taskType == MovingPoints) {
+           if (taskType == MovingPoints) {
                global.scalField.back()->x().reserve(allParticles.size());
            }
        }
@@ -787,6 +767,37 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
+   if (taskType == MovingPoints) {
+       assert(global.points.size() > timestep);
+       applyAttributes(global.points[timestep], m_gridAttr[timestep+1]);
+   } else {
+       if (taskType == Streamlines) {
+           assert(!global.lines.empty());
+           applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
+       } else {
+           assert(global.lines.size() > timestep);
+           applyAttributes(global.lines[timestep], m_gridAttr[timestep+1]);
+       }
+   }
+   if (global.computeVector) {
+       if (taskType == Streamlines) {
+           assert(!global.vecField.empty());
+           applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
+       } else {
+           assert(global.vecField.size() > timestep);
+           applyAttributes(global.vecField[timestep], m_data0Attr[timestep+1]);
+       }
+   }
+   if (global.computeScalar) {
+       if (taskType == Streamlines) {
+           assert(!global.scalField.empty());
+           applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
+       } else {
+           assert(global.scalField.size() > timestep);
+           applyAttributes(global.scalField[timestep], m_data1Attr[timestep+1]);
+       }
+   }
+
    for (auto &p: allParticles) {
        if (rank() == 0)
            ++stopReasonCount[p->stopReason()];
@@ -809,14 +820,19 @@ bool Tracer::reduce(int timestep) {
            continue;
 
        if (taskType == Streamlines) {
-           meta.setNumTimesteps(m_gridTime[timestep+1].numTimesteps());
-           meta.setTimeStep(m_gridTime[timestep+1].timeStep());
-           meta.setRealTime(m_gridTime[timestep+1].realTime());
+           if (m_data0Time[timestep+1].timeStep() >= 0) {
+               meta.setNumTimesteps(m_data0Time[timestep+1].numTimesteps());
+               meta.setTimeStep(m_data0Time[timestep+1].timeStep());
+               meta.setRealTime(m_data0Time[timestep+1].realTime());
+           } else {
+               meta.setNumTimesteps(m_gridTime[timestep+1].numTimesteps());
+               meta.setTimeStep(m_gridTime[timestep+1].timeStep());
+               meta.setRealTime(m_gridTime[timestep+1].realTime());
+           }
        } else {
            meta.setNumTimesteps(numtime > 1 ? numtime : -1);
            meta.setTimeStep(numtime > 1 ? t : -1);
        }
-
 
        Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);
