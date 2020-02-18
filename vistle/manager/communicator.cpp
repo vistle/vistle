@@ -175,6 +175,8 @@ bool Communicator::sendHub(const message::Message &message, const MessagePayload
 
     if (message.payloadSize() > 0) {
         assert(payload);
+    }
+    if (payload) {
         assert(payload->size() == message.payloadSize());
     }
 
@@ -417,6 +419,8 @@ bool Communicator::forwardToMaster(const message::Message &message, const Messag
 
     if (message.payloadSize() > 0) {
         assert(payload);
+    }
+    if (payload) {
         assert(payload->size() == message.payloadSize());
     }
 
@@ -440,6 +444,8 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
     assert(message.destRank() == -1);
     if (message.payloadSize() > 0) {
         assert(payload);
+    }
+    if (payload) {
         assert(payload->size() == message.payloadSize());
     }
 
