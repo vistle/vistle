@@ -346,9 +346,11 @@ bool Communicator::dispatch(bool *work) {
          } else if (buf.destRank() >= 0) {
              auto p = m_ongoingSends.emplace(new SendRequest(buf));
              auto it = p.first;
-             MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &(*it)->req);
+             auto &sr = **it;
+             MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &sr.req);
              if (buf.payloadSize() > 0) {
-                 MPI_Isend((*it)->buf.data(), (*it)->buf.size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &(*it)->req);
+                 sr.payload = pl;
+                 MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &sr.payload_req);
              }
          } else if(!broadcastAndHandleMessage(buf, pl)) {
             CERR << "Quit reason: broadcast & handle 2: " << buf << buf << std::endl;
