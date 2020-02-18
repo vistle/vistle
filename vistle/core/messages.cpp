@@ -16,6 +16,7 @@
 #include "archives.h"
 #include <util/vecstreambuf.h>
 #include <util/crypto.h>
+#include <util/tools.h>
 
 #include <algorithm>
 
@@ -52,6 +53,7 @@ Payload getPayload(const buffer &data) {
         ar & payload;
     } catch (::yas::io_exception &ex) {
         std::cerr << "ERROR: failed to get message payload from " << data.size() << " bytes: " << ex.what() << std::endl;
+        std::cerr << vistle::backtrace() << std::endl;
     }
 
     return payload;
