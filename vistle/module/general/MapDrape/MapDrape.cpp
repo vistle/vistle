@@ -76,77 +76,92 @@ bool MapDrape::compute() {
         } else {
             inGeo = coords;
 
-            const float *xc, *yc, *zc;
-            switch (p_permutation->getValue()) {
+            auto it = m_alreadyMapped.find(inGeo);
+            if (it == m_alreadyMapped.end()) {
+
+                const Scalar *xc, *yc, *zc;
+                switch (p_permutation->getValue()) {
                 case XYZ: {
                     xc = &inGeo->x()[0];
                     yc = &inGeo->y()[0];
                     zc = &inGeo->z()[0];
-                   break;
+                    break;
                 }
                 case XZY: {
                     xc = &inGeo->x()[0];
                     yc = &inGeo->z()[0];
                     zc = &inGeo->y()[0];
-                   break;
+                    break;
                 }
                 case YXZ: {
                     xc = &inGeo->y()[0];
                     yc = &inGeo->x()[0];
                     zc = &inGeo->z()[0];
-                   break;
+                    break;
                 }
                 case YZX: {
-                   xc = &inGeo->y()[0];
-                   yc = &inGeo->z()[0];
-                   zc = &inGeo->x()[0];
-                   break;
+                    xc = &inGeo->y()[0];
+                    yc = &inGeo->z()[0];
+                    zc = &inGeo->x()[0];
+                    break;
                 }
                 case ZXY: {
-                   xc = &inGeo->z()[0];
-                   yc = &inGeo->x()[0];
-                   zc = &inGeo->y()[0];
-                  break;
+                    xc = &inGeo->z()[0];
+                    yc = &inGeo->x()[0];
+                    zc = &inGeo->y()[0];
+                    break;
                 }
                 case ZYX: {
-                   xc = &inGeo->z()[0];
-                   yc = &inGeo->y()[0];
-                   zc = &inGeo->x()[0];
-                  break;
+                    xc = &inGeo->z()[0];
+                    yc = &inGeo->y()[0];
+                    zc = &inGeo->x()[0];
+                    break;
                 }
-            }
+                default: {
+                    assert("axis permutation not handled" == nullptr);
+                    xc = yc = zc = nullptr;
+                    return false;
+                }
+                }
 
 
-            outGeo = coords->clone();
-            outGeo->resetCoords();
-            outGeo->x().resize(inGeo->getNumCoords());
-            outGeo->y().resize(inGeo->getNumCoords());
-            outGeo->z().resize(inGeo->getNumCoords());
-            auto xout = outGeo->x().data();
-            auto yout = outGeo->y().data();
-            auto zout = outGeo->z().data();
+                outGeo = coords->clone();
+                updateMeta(outGeo);
+                outGeo->resetCoords();
+                outGeo->x().resize(inGeo->getNumCoords());
+                outGeo->y().resize(inGeo->getNumCoords());
+                outGeo->z().resize(inGeo->getNumCoords());
+                auto xout = outGeo->x().data();
+                auto yout = outGeo->y().data();
+                auto zout = outGeo->z().data();
 
-            projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
-            projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
-            if (!pj_from || !pj_to)
-                return false;
+                projPJ pj_from = pj_init_plus(p_mapping_from_->getValue().c_str());
+                projPJ pj_to = pj_init_plus(p_mapping_to_->getValue().c_str());
+                if (!pj_from || !pj_to)
+                    return false;
 
-            offset[0] = p_offset->getValue()[0];
-            offset[1] = p_offset->getValue()[1];
-            offset[2] = p_offset->getValue()[2];
+                offset[0] = p_offset->getValue()[0];
+                offset[1] = p_offset->getValue()[1];
+                offset[2] = p_offset->getValue()[2];
 
-            int numCoords =  inGeo->getSize();
+                Index numCoords =  inGeo->getSize();
+                assert(outGeo->getSize() == inGeo->getSize());
 
-            for (int i = 0; i < numCoords; ++i) {
-                double x = xc[i] * DEG_TO_RAD;
-                double y = yc[i] * DEG_TO_RAD;
-                double z = zc[i] ;
+                for (Index i = 0; i < numCoords; ++i) {
+                    double x = xc[i] * DEG_TO_RAD;
+                    double y = yc[i] * DEG_TO_RAD;
+                    double z = zc[i] ;
 
-                pj_transform(pj_from, pj_to,1,1,&x,&y,&z);
+                    pj_transform(pj_from, pj_to,1,1,&x,&y,&z);
 
-                xout[i] = x + offset[0];
-                yout[i] = y + offset[1];
-                zout[i] = z + offset[2];
+                    xout[i] = x + offset[0];
+                    yout[i] = y + offset[1];
+                    zout[i] = z + offset[2];
+                }
+
+                m_alreadyMapped[inGeo] = outGeo;
+            } else {
+                outGeo = it->second;
             }
         }
 
@@ -155,10 +170,23 @@ bool MapDrape::compute() {
             dataOut->setGrid(outGeo);
             addObject(data_out[port], dataOut);
         } else {
-            addObject(data_out[port], outGeo);
+            passThroughObject(data_out[port], outGeo);
         }
     }
 
+    return true;
+}
+
+bool MapDrape::prepare() {
+
+    m_alreadyMapped.clear();
+    return true;
+}
+
+bool MapDrape::reduce(int timestep) {
+
+    if (timestep == -1)
+        m_alreadyMapped.clear();
     return true;
 }
 
