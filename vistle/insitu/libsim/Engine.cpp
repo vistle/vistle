@@ -195,10 +195,9 @@ void Engine::SimulationTimeStepChanged() {
     static int counter = 0;
     DEBUG_CERR << "SimulationTimeStepChanged counter = " << counter << endl;
     ++counter;
-    int oldCycle = m_metaData.currentCycle;
     getMetaData();
-    if (oldCycle == m_metaData.currentCycle) {
-        CERR << "There is no new timestep but SimulationTimeStepChanged was called" << endl;
+    if (m_processedCycles >= m_metaData.currentCycle) {
+        DEBUG_CERR << "There is no new timestep but SimulationTimeStepChanged was called" << endl;
         return;
     }
     int numMeshes, numVars;
@@ -210,6 +209,7 @@ void Engine::SimulationTimeStepChanged() {
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
     if (m_moduleReady) {//only here vistle::objects are allowed to be made
         sendDataToModule();
+        m_processedCycles = m_metaData.currentCycle;
     }
     else {
         CERR << "ConnectLibSim is not ready to process data" << endl;

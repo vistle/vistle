@@ -103,6 +103,7 @@ private:
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::shared_ptr<socket> m_socket;
 //info from the simulation
+    size_t m_processedCycles = 0; //the last cycle that was processed
     Metadata m_metaData; //the meta data of the currenc cycle
     std::set<std::string> m_registeredGenericCommands; //the commands that are availiable for the sim
     struct MeshInfo {
