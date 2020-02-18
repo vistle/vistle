@@ -111,33 +111,38 @@ bool ReadWRFChem::inspectDir() {
         return false;
     }
 
-    bf::path dir(sFileDir);
-    fileList.clear();
-    numFiles = 0;
+     try {
+         bf::path dir(sFileDir);
+         fileList.clear();
+         numFiles = 0;
 
-    if (bf::is_directory(dir)) {
-        sendInfo("Locating files in %s", dir.string().c_str());
-        for (bf::directory_iterator it(dir) ; it != bf::directory_iterator(); ++it) {
-            if (bf::is_regular_file(it->path()) &&(bf::extension(it->path().filename())==".nc")) {
-                   // std::string fName = it->path().filename().string();
-                   std::string fPath = it->path().string();
-                   fileList.push_back(fPath);
-                   ++numFiles;
-            }
-        }
-    }else if (bf::is_regular_file(dir)) {
-        if (bf::extension(dir.filename())==".nc") {
-            std::string fName = dir.string();
-            sendInfo("Loading file %s", fName.c_str());
-            fileList.push_back(fName);
-            ++numFiles;
-        }else {
-            sendError("File does not end with '.nc' ");
-        }
-    }else {
-        sendInfo("Could not find given directory. Please specify a valid path");
-        return false;
-    }
+         if (bf::is_directory(dir)) {
+             sendInfo("Locating files in %s", dir.string().c_str());
+             for (bf::directory_iterator it(dir) ; it != bf::directory_iterator(); ++it) {
+                 if (bf::is_regular_file(it->path()) &&(bf::extension(it->path().filename())==".nc")) {
+                     // std::string fName = it->path().filename().string();
+                     std::string fPath = it->path().string();
+                     fileList.push_back(fPath);
+                     ++numFiles;
+                 }
+             }
+         }else if (bf::is_regular_file(dir)) {
+             if (bf::extension(dir.filename())==".nc") {
+                 std::string fName = dir.string();
+                 sendInfo("Loading file %s", fName.c_str());
+                 fileList.push_back(fName);
+                 ++numFiles;
+             }else {
+                 sendError("File does not end with '.nc' ");
+             }
+         }else {
+             sendInfo("Could not find given directory. Please specify a valid path");
+             return false;
+         }
+     } catch (std::exception &ex) {
+         sendError("Could not read %s: %s", sFileDir.c_str(), ex.what());
+         return false;
+     }
 
     if (numFiles > 1) {
         std::sort(fileList.begin(), fileList.end(), [](std::string a, std::string b) {return a<b;}) ;
