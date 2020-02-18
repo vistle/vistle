@@ -88,7 +88,6 @@ bool InSituTcpMessage::isInitialized() {
 }
 
 
-
 void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
     m_moduleID = moduleID;
@@ -96,6 +95,7 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
     std::string smqName, rmqName;
     using namespace boost::interprocess;
+
 
     switch (mode) {
     case SyncShmMessage::Mode::Create:

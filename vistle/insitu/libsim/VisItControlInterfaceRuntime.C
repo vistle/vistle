@@ -25,7 +25,7 @@ using insitu::Engine;
 static Engine *
 simv2_create_engine(void *)
 {
-    return Engine::createEngine();
+    return Engine::EngineInstance();
 }
 
 // ****************************************************************************
@@ -53,7 +53,7 @@ void *simv2_get_engine()
 
 
     //Engine::createEngine()->EnableSimulationPlugins();
-    return (void*)Engine::createEngine();
+    return (void*)Engine::EngineInstance();
 }
 
 // ****************************************************************************
@@ -181,7 +181,7 @@ int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
 #ifndef MODULE_THREAD
-    return engine->handleVistleMessage();
+    return engine->recvAndhandleVistleMessage();
 #endif
 
 }
@@ -285,7 +285,7 @@ void simv2_disconnect()
 
 void simv2_set_slave_process_callback(void(*spic)())
 {
-    Engine::createEngine()->setSlaveComandCallback(spic);
+    Engine::EngineInstance()->setSlaveComandCallback(spic);
 }
 
 // ****************************************************************************
@@ -368,7 +368,7 @@ simv2_debug_logs(int level, const char *msg)
 int
 simv2_set_mpicomm(void *comm)
 {
-    return Engine::createEngine()->setMpiComm(comm);
+    return Engine::EngineInstance()->setMpiComm(comm);
 }
 
 // ****************************************************************************

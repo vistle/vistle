@@ -3,7 +3,10 @@
 
 #include "Exeption.h"
 #include <algorithm>
+#include <array>
 #include "VisItDataTypes.h"
+#include <core/object.h>
+#include <core/database.h>
 
 namespace insitu{
 
@@ -21,6 +24,11 @@ void transformArray(Source* s, Source* end, Dest* d) {
     std::transform(s, end, d, [](Source val) {
         return static_cast<Dest>(val);
         });
+}
+
+template<typename SourceDest>
+void transformArray(SourceDest* s, SourceDest* end, SourceDest* d) {
+    std::copy(s, end, d);
 }
 //copies array from source to dest and converts from dataType to T
 template<typename T>
@@ -119,6 +127,132 @@ void transformInterleavedArray(void* source, std::array<T*, I> dest, int size, i
     }
 }
 
+
+
+template<typename T>
+vistle::DataBase::ptr vtkArray2Vistle(T* vd, vistle::Index n, vistle::Object::const_ptr grid, bool interleaved = false) {
+    using namespace vistle;
+    bool perCell = false;
+    Index dim[3] = { n, 1, 1 };
+    if (auto sgrid = StructuredGridBase::as(grid)) {
+        for (int c = 0; c < 3; ++c)
+            dim[c] = sgrid->getNumDivisions(c);
+    }
+    if (n > 0 && n == (dim[0] - 1) * (dim[1] - 1) * (dim[2] - 1)) {
+        perCell = true;
+        // cell-mapped data
+    }
+
+    if (interleaved) {
+        Vec<Scalar, 3>::ptr cv(new Vec<Scalar, 3>(n));
+        float* x = cv->x().data();
+        float* y = cv->y().data();
+        float* z = cv->z().data();
+        Index l = 0;
+        for (Index k = 0; k < dim[2]; ++k) {
+            for (Index j = 0; j < dim[1]; ++j) {
+                for (Index i = 0; i < dim[0]; ++i) {
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                    x[idx] = vd[3*l];
+                    y[idx] = vd[3 * l + 1];
+                    z[idx] = vd[3 * l + 2];
+
+                    ++l;
+                }
+            }
+        }
+        cv->setGrid(grid);
+        return cv;
+    } else {
+        Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
+        float* x = cf->x().data();
+        Index l = 0;
+        for (Index k = 0; k < dim[2]; ++k) {
+            for (Index j = 0; j < dim[1]; ++j) {
+                for (Index i = 0; i < dim[0]; ++i) {
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                    x[idx] = vd[l];
+                    ++l;
+                }
+            }
+        }
+        cf->setGrid(grid);
+        return cf;
+    }
+
+    return nullptr;
+}
+
+vistle::DataBase::ptr vtkData2Vistle(void* source, vistle::Index n, int dataType, vistle::Object::const_ptr grid, bool interleaved = false) {
+    using namespace vistle;
+    DataBase::ptr data;
+
+    if (!source)
+        return data;
+
+
+    Index dim[3] = { n, 1, 1 };
+    if (auto sgrid = StructuredGridBase::as(grid)) {
+        for (int c = 0; c < 3; ++c) {
+            dim[c] = sgrid->getNumDivisions(c);
+        }
+    }
+    if (n > 0 && n == (dim[0] - 1) * (dim[1] - 1) * (dim[2] - 1)) {
+        // cell-mapped data
+        for (int c = 0; c < 3; ++c)
+            --dim[c];
+    }
+    if (dim[0] * dim[1] * dim[2] != n) {
+        std::cerr << "vtkData2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2] << "] != " << n << std::endl;
+        return NULL;
+    }
+    switch (dataType) {
+        case VISIT_DATATYPE_CHAR:
+        {
+            char* f = static_cast<char*>(source);
+            return vtkArray2Vistle(f, n, grid, interleaved);
+        }
+        break;
+        case VISIT_DATATYPE_INT:
+        {
+            int* f = static_cast<int*>(source);
+            return vtkArray2Vistle(f, n, grid, interleaved);
+
+
+        }
+        break;
+        case VISIT_DATATYPE_FLOAT:
+        {
+            float* f = static_cast<float*>(source);
+            return vtkArray2Vistle(f, n, grid, interleaved);
+
+        }
+            break;
+        case VISIT_DATATYPE_DOUBLE:
+        {
+            double* f = static_cast<double*>(source);
+            return vtkArray2Vistle(f, n, grid, interleaved);
+
+
+        }
+        break;
+        case VISIT_DATATYPE_LONG:
+        {
+            long* f = static_cast<long*>(source);
+            return vtkArray2Vistle(f, n, grid, interleaved);
+
+
+        }
+        break;
+        default:
+        {
+            throw TransformArrayExeption("non-numeric data types can not be converted");
+        }
+        break;
+    }
+
+    return NULL;
+}
 
 
 }
