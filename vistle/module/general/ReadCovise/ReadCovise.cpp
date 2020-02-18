@@ -20,6 +20,8 @@
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
 
+#include <boost/algorithm/string/predicate.hpp>
+
 #ifdef _WIN32
 #include <io.h>
 #endif
@@ -185,7 +187,15 @@ bool ReadCovise::prepareRead()
         }
 #else
         const std::string name = m_fieldFile[port]->getValue();
-        m_species[port] = name;
+        std::string species = name;
+        if (boost::algorithm::ends_with(species, ".covise")) {
+            species = species.substr(0, species.length()-std::string(".covise").length());
+        }
+        auto last_slash = species.find_last_of('/');
+        if (last_slash != std::string::npos) {
+            species = species.substr(last_slash+1);
+        }
+        m_species[port] = species;
 #endif
         m_filename[port] = name;
         if (name.empty())
