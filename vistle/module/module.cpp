@@ -1756,6 +1756,10 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         auto runReduce = [this](int timestep, int &numReductions) -> bool {
 #ifdef REDUCE_DEBUG
             CERR << "running reduce for timestep " << timestep << ", already did " << numReductions  << " of " << m_numTimesteps << " reductions" << std::endl;
+            if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
+                CERR << "runReduce(t=" << timestep << "): barrier for reduce policy " << reducePolicy() << std::endl;
+                comm().barrier();
+            }
 #endif
             if (cancelRequested(true))
                 return true;
@@ -1888,13 +1892,15 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
             }
             int t = prevTimestep;
             while (numReductions < m_numTimesteps) {
-                runReduce(t, numReductions);
+                if (t != 0 || !startWithZero)
+                    runReduce(t, numReductions);
                 if (direction >= 0) {
                     t = (t+1)%m_numTimesteps;
                 } else {
                     t = (t+m_numTimesteps-1)%m_numTimesteps;
                 }
             }
+            assert(numReductions == m_numTimesteps);
         }
     }
 
