@@ -55,16 +55,20 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          solidColor = Vector4(r, g, b, a);
       }
    }
-   if (geometry)
-      timestep = geometry->getTimestep();
-   if (timestep < 0 && normals) {
-      timestep = normals->getTimestep();
-   }
    if (timestep < 0 && texture) {
       timestep = texture->getTimestep();
    }
    if (timestep < 0 && scalars) {
       timestep = scalars->getTimestep();
+   }
+   if (timestep < 0 && geometry) {
+      timestep = geometry->getTimestep();
+   }
+   if (timestep < 0 && normals) {
+      timestep = normals->getTimestep();
+   }
+   if (timestep < 0 && container) {
+      timestep = container->getTimestep();
    }
 
    variant = container->getAttribute("_variant");
