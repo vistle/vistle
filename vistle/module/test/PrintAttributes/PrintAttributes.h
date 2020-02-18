@@ -11,6 +11,7 @@ class PrintAttributes: public vistle::Module {
 
  private:
    virtual bool compute();
+   void print(vistle::Object::const_ptr obj);
 };
 
 #endif
