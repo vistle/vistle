@@ -640,8 +640,7 @@ osg::FloatArray *buildArray(typename MappedObject::const_ptr data, Coords::const
             for (Index index = 0; index < numElements; ++index) {
                 const Index num = el[index + 1] - el[index];
                 for (Index n = 0; n < num; n ++) {
-                    Index v = el[index];
-                    tc->push_back(getValue<MappedObject>(data,v));
+                    tc->push_back(getValue<MappedObject>(data,index));
                 }
             }
         } else {
