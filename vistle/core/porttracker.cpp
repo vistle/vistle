@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <util/tools.h>
 
-#define CERR std::cerr << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
+#define CERR std::cerr << "Port@" << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
 
 namespace vistle {
 
@@ -590,7 +590,7 @@ bool PortTracker::check() const {
     }
 
     if (numInput != numOutput) {
-        CERR << "FAIL: numInput=" << numInput << ", numOutput=" << numOutput << std::endl;
+        CERR << "FAIL: #connected inputs=" << numInput << ", #connected outputs=" << numOutput << " not equal" << std::endl;
         ok = false;
     }
     if (numParam % 2) {
@@ -600,6 +600,7 @@ bool PortTracker::check() const {
     if (!ok) {
         CERR << vistle::backtrace() << std::endl;
     }
+    assert(ok);
     return ok;
 }
 
