@@ -188,7 +188,7 @@ vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, int dataType, vistl
     if (!source)
         return data;
 
-    callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
+    return callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
 }
 
 
