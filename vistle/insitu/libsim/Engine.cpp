@@ -813,23 +813,18 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
             int  owner{}, dataType{}, nComps{}, nTuples{};
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
-            //CERR << "variable " << name << " domain " << currDomain << " owner = " << owner << " dataType = " << dataType << " ncomps = " << nComps << " nTuples = " << nTuples  << endl;
-            //vistle::Vec<vistle::Scalar, 1>::ptr variable(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
-            auto variable = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd]);
+            DEBUG_CERR << "added variable " << name << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
+            auto variable = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering ==VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
             if (!variable) {
-                CERR << "sendVarablesToModule failed to convert variable " << name << endl;
-                CERR << "trying next" << endl;
+                CERR << "sendVarablesToModule failed to convert variable " << name << "... trying next" <<  endl;
                 continue;
             }
 
-            //transformArray(data, variable->x().data(), nTuples, dataType);
-            variable->setGrid(meshInfo->second.grids[cd]);
             variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
             variable->setBlock(currDomain);
-            variable->setMapping(centering == VISIT_VARCENTERING_NODE? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable->addAttribute("_species", name);
             addObject(name, variable);
-            DEBUG_CERR << "added variable " << name  << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
+
 
         }
         DEBUG_CERR << "sent variable " << name << " with " << meshInfo->second.numDomains << " domains" << endl;
