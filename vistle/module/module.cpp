@@ -616,7 +616,7 @@ Object::const_ptr Module::receiveObject(const mpi::communicator &comm, int sourc
     auto fetcher = std::make_shared<DeepArchiveFetcher>(objects, arrays, comp, rawsizes);
     memar.setFetcher(fetcher);
     Object::ptr p(Object::loadObject(memar));
-    //std::cerr << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
+    //CERR << "receiveObject " << p->getName() << ": refcount=" << p->refcount() << std::endl;
     return p;
 }
 
@@ -1305,7 +1305,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
          const Port::ConstPortSet *ports = NULL;
          std::string ownPortName;
          bool inputConnection = false;
-         //std::cerr << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
+         //CERR << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
          if (conn->getModuleA() == id()) {
             port = findOutputPort(conn->getPortAName());
             ownPortName = conn->getPortAName();
@@ -1481,9 +1481,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
          break;
 
       default:
-         std::cerr << "    module [" << name() << "] [" << id() << "] ["
-                   << rank() << "/" << size() << "] unknown message type ["
-                   << message->type() << "]" << std::endl;
+         CERR << "unknown message type [" << message->type() << "]" << std::endl;
 
          break;
    }
@@ -2395,7 +2393,7 @@ bool Module::cancelRequested(bool collective) {
         case message::CANCELEXECUTE: {
             const auto &cancel = buf.as<message::CancelExecute>();
             if (cancel.getModule() == id()) {
-                std::cerr << "canceling execution requested" << std::endl;
+                CERR << "canceling execution requested" << std::endl;
                 m_cancelRequested = true;
             }
             break;
@@ -2432,6 +2430,9 @@ void Module::cancelExecuteMessageReceived(const message::Message* msg) {
     (void)msg;
     return;
 }
+
+#undef CERR
+#define CERR std::cerr << m_module->m_name << "_" << m_module->id() << ":task" << " [" << m_module->rank() << "/" << m_module->size() << "] "
 
 PortTask::PortTask(Module *module)
 : m_module(module)
@@ -2495,7 +2496,7 @@ void PortTask::addObject(const std::string &port, Object::ptr obj) {
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());
     if (it == m_portsByString.end()) {
-        std::cerr << "PortTask: port '" << port << "' not found" << std::endl;
+        CERR << "PortTask: port '" << port << "' not found" << std::endl;
         return;
     }
     addObject(it->second, obj);
@@ -2520,7 +2521,7 @@ void PortTask::passThroughObject(const std::string &port, Object::const_ptr obj)
     auto it = m_portsByString.find(port);
     assert(it != m_portsByString.end());
     if (it == m_portsByString.end()) {
-        std::cerr << "PortTask: port '" << port << "' not found" << std::endl;
+        CERR << "PortTask: port '" << port << "' not found" << std::endl;
         return;
     }
     passThroughObject(it->second, obj);
