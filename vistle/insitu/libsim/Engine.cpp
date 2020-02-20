@@ -307,7 +307,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::NthTimestep:
     {
         NthTimestep em = msg.unpackOrCast<NthTimestep>();
-        m_constGrids = em.m_frequency;
+        m_nthTimestep = em.m_frequency;
     }
     break;
     case InSituMessageType::ConnectionClosed:
