@@ -123,6 +123,7 @@ private:
     bool m_moduleReady = false; //wether the module is executing or not
     int m_nthTimestep = 1; //how often data should be processed and send to module
     bool m_constGrids = false; //if the grids have to be updated for every timestep
+    bool m_VTKVariables = false; //if the variables have to be reordered from vtk to vistle
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;

@@ -41,7 +41,7 @@ CERR << "io thread terminated" << endl; })
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "Simulation Files (*.sim2)");
     //setParameterFilters(m_resultfiledir, "Result Files (*.res)/All Files (*)");
-    sendCommand = addIntParameter("sendCommand", "send the command to the simulation", false, vistle::Parameter::Boolean);
+    m_VTKVariables = addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean);
     m_constGrids = addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean);
     m_nthTimestep = addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1);
     setParameterMinimum(m_nthTimestep, static_cast<vistle::Integer>(1));
@@ -52,7 +52,7 @@ CERR << "io thread terminated" << endl; })
         m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
         std::cerr << "sendMessageQueue name = " << mqName << std::endl;
     } catch (boost::interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
+        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what()); 
     }
 
 
@@ -96,7 +96,6 @@ bool LibSimModule::prepareReduce() {
         vistle::Shm::the().setObjectID(msg.objectID());
         vistle::Shm::the().setArrayID(msg.arrayID());
     }
-    m_timestep = 0;
     return true;
 }
 
@@ -143,34 +142,18 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
             }
         }
         boost::mpi::broadcast(comm(), m_simInitSent, 0);
-    } else if (param == sendCommand && isExecuting()) {
-        array<int, 3> dims{ 5, 10, 3 };
-        vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-        for (size_t i = 0; i < 3; i++) {
-            for (size_t j = 0; j < dims[i]; j++) {
-                grid->coords(i)[j] = j * (1 + rank());
-            }
-        }
-        int nTuples = dims[0] * dims[1] * dims[2];
-        vistle::Vec<vistle::Scalar>::ptr variable(new typename vistle::Vec<vistle::Scalar>(nTuples));
-        for (size_t i = 0; i < nTuples; i++) {
-            variable->x().data()[i] = i * m_timestep;
-        }
-        variable->setGrid(grid);
-        variable->setTimestep(m_timestep);
-        variable->setMapping(vistle::DataBase::Vertex);
-        variable->addAttribute("_species", "velocity");
-        ++m_timestep;
+    } else if (param == m_VTKVariables) {
+        InSituTcpMessage::send(insitu::message::VTKVariables{ static_cast<bool>(m_VTKVariables->getValue()) });
     } else if (rank() != 0) {
         return true;
     } else if (param == sendMessageToSim) {
-        InSituTcpMessage::send(insitu::message::GoOn());
+        InSituTcpMessage::send(insitu::message::GoOn{});
     } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
-        InSituTcpMessage::send(insitu::message::ExecuteCommand(param->getName()));
+        InSituTcpMessage::send(insitu::message::ExecuteCommand{ param->getName() });
     } else if (param == m_constGrids) {
-        InSituTcpMessage::send(insitu::message::ConstGrids(m_constGrids->getValue()));
+        InSituTcpMessage::send(insitu::message::ConstGrids{ static_cast<bool>(m_constGrids->getValue()) });
     } else if (param == m_nthTimestep) {
-        InSituTcpMessage::send(insitu::message::NthTimestep(m_nthTimestep->getValue()));
+        InSituTcpMessage::send(insitu::message::NthTimestep{ static_cast<size_t>(m_nthTimestep->getValue()) });
     }
 
     return InSituReader::changeParameter(param);
@@ -230,6 +213,7 @@ void LibSimModule::startSocketThread()     {
         InSituTcpMessage::initialize(m_socket, m_socketComm);
         InSituTcpMessage::send(insitu::message::ConstGrids(m_constGrids->getValue()));
         InSituTcpMessage::send(insitu::message::NthTimestep(m_nthTimestep->getValue()));
+        InSituTcpMessage::send(insitu::message::VTKVariables{ static_cast<bool>(m_VTKVariables->getValue()) });
         while (!getBool(m_terminate)) {
             recvAndhandleMessage();
         }

@@ -25,7 +25,7 @@ public:
     vistle::IntParameter* m_constGrids = nullptr;
     vistle::IntParameter* m_nthTimestep = nullptr;
     vistle::IntParameter* sendMessageToSim = nullptr;
-    vistle::IntParameter* sendCommand = nullptr;
+    vistle::IntParameter* m_VTKVariables = nullptr;
     bool sendCommandChanged = false;
 private:
     bool m_terminate = false; //set to true when when the module in closed to get out of loops in different threads
@@ -83,9 +83,6 @@ private:
 
     bool getBool(const bool& val);
 
-
-    //test
-    int m_timestep = 0;
 
 };
 

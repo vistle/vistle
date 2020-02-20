@@ -310,6 +310,12 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         m_nthTimestep = em.m_frequency;
     }
     break;
+    case InSituMessageType::VTKVariables:
+    {
+        VTKVariables em = msg.unpackOrCast<VTKVariables>();
+        m_VTKVariables = em.m_state;
+    }
+    break;
     case InSituMessageType::ConnectionClosed:
     {
         CERR << "connection closed" << endl;
@@ -814,18 +820,25 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
             DEBUG_CERR << "added variable " << name << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
-            auto variable = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering ==VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-            if (!variable) {
-                CERR << "sendVarablesToModule failed to convert variable " << name << "... trying next" <<  endl;
-                continue;
+            vistle::Object::ptr variable;
+            if (m_VTKVariables) {
+                variable = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                if (!variable) {
+                    CERR << "sendVarablesToModule failed to convert variable " << name << "... trying next" << endl;
+                    continue;
+                }
             }
-
+            else {
+                vistle::Vec<vistle::Scalar, 1>::ptr var(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
+                transformArray(data, var->x().data(), nTuples, dataType);
+                var->setGrid(meshInfo->second.grids[cd]);
+                var->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                variable = var;
+            }
             variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
             variable->setBlock(currDomain);
             variable->addAttribute("_species", name);
             addObject(name, variable);
-
-
         }
         DEBUG_CERR << "sent variable " << name << " with " << meshInfo->second.numDomains << " domains" << endl;
     }

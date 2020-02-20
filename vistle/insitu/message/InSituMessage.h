@@ -35,7 +35,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , ConstGrids
     , NthTimestep
     , ConnectionClosed
-    , CycleFinished
+    , VTKVariables
 };
 
 
@@ -88,6 +88,7 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables, state, bool)
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
