@@ -1,7 +1,7 @@
 VisIt's LibSim interface
 =====================================================
-This builds the paralell runtime library (libsimV2runntime_par) a LibSim instrumented simulation dynamically links against.
-To use with serial simulations disable LIBSIM_PARALELL in CMake options.
+This builds the parallel runtime library (libsimV2runntime_par) a LibSim instrumented simulation dynamically links against.
+To use with serial simulations disable LIBSIM_PARALLEL in CMake options.
 
 To link a simulation to Vislte instead of VisIt remove VisIt specific entries from LD_LIBRARY_PATH and add Vistle's lib directory instead.
 

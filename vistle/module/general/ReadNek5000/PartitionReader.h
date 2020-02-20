@@ -77,7 +77,7 @@ private:
         bool timestepHasMesh = 0;
     };
     DomainParams GetDomainSizeAndVarOffset(int iTimestep, const std::string& varname);
-    //return the file index for paralell files. 
+    //return the file index for parallel files. 
     int getFileID(int block);
 
     bool CheckOpenFile(std::unique_ptr<OpenFile>& file, int timestep, int fileID);

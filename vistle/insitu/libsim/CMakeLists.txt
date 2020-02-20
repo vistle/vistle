@@ -1,5 +1,5 @@
 option(LIBSIM_DEBUG "print debug messages" OFF)
-option(LIBSIM_PARALELL "build paralell or serial LibSim Interface" ON)
+option(LIBSIM_PARALLEL "build parallel instead of serial LibSim Interface" ON)
 
 vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
 target_link_libraries(vistle_libsim_connect
@@ -88,8 +88,8 @@ SET(RUNTIME_HEADERS
   export.h
 )
 
-set (LIBCORENAME simV2runtime_par) # use disable LIBSIM_PARALELL CMake option for serial simulation
-if(NOT LIBSIM_PARALELL)
+set (LIBCORENAME simV2runtime_par) # use disable LIBSIM_PARALLEL CMake option for serial simulation
+if(NOT LIBSIM_PARALLEL)
 set (LIBCORENAME simV2runtime_ser) 
 endif()
 set(LIBNAME lib${LIBCORENAME}) #export.h has to be adopted if this changes

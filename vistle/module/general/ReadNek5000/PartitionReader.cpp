@@ -146,17 +146,17 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
     if(!CheckOpenFile(curOpenMeshFile, timestep, fileID))
         return false;
 
-    if (isParalellFormat)
+    if (isParallelFormat)
         block = blockMap[block].second;
     //block = myBlockPositions[block];
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, string());
     int nFloatsInDomain = dp.domSizeInFloats;
-    long iRealHeaderSize = iHeaderSize + (isParalellFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (isParallelFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
 
     if (isBinary) {
         //In the parallel format, the whole mesh comes before all the vars.
-        if (isParalellFormat)
+        if (isParallelFormat)
             nFloatsInDomain = dim * blockSize;
 
         if (iPrecision == 4) {
@@ -223,15 +223,15 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
         return false;
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, "velocity");
-    if (isParalellFormat)
+    if (isParallelFormat)
         block = blockMap[block].second;
     //block = myBlockPositions[block];
 
-    long iRealHeaderSize = iHeaderSize + (isParalellFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (isParallelFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
 
     if (isBinary) {
         long filepos;
-        if (!isParalellFormat)
+        if (!isParallelFormat)
             filepos = (long)iRealHeaderSize + (long)(dp.domSizeInFloats * block + dp.varOffsetBinary) * sizeof(float);
         else
             //This assumes [block 0: 216u 216v 216w][block 1: 216u 216v 216w]...[block n: 216u 216v 216w]
@@ -302,15 +302,15 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
 
     DomainParams dp = GetDomainSizeAndVarOffset(timestep, varname);
 
-    if (isParalellFormat)
+    if (isParallelFormat)
         block = blockMap[block].second;
     //block = myBlockPositions[block];
 
-    long iRealHeaderSize = iHeaderSize + (isParalellFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
+    long iRealHeaderSize = iHeaderSize + (isParallelFormat ? vBlocksPerFile[fileID] * sizeof(int) : 0);
 
     if (isBinary) {
         long filepos;
-        if (!isParalellFormat)
+        if (!isParallelFormat)
             filepos = (long)iRealHeaderSize + ((long)dp.domSizeInFloats * block + dp.varOffsetBinary) * sizeof(float);
         else {
             // This assumes uvw for all fields comes after the mesh as [block0: 216u 216v 216w]...
@@ -363,7 +363,7 @@ bool PartitionReader::ReadBlockLocations() {
     // an inverse map, from a zero-based global id to a proc num and local
     // offset.
 
-    if (!isBinary || !isParalellFormat)
+    if (!isBinary || !isParallelFormat)
         return true;
 
     vBlocksPerFile = std::vector<int>(numOutputDirs);
@@ -517,7 +517,7 @@ PartitionReader::DomainParams PartitionReader::GetDomainSizeAndVarOffset(int iTi
 int PartitionReader::getFileID(int block)
 {
     int fileID = 0;
-    if(isParalellFormat)
+    if(isParallelFormat)
         fileID = blockMap[block].first;
     return fileID;
 }

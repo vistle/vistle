@@ -48,7 +48,7 @@ protected:
     int iNumberOfRanks = 1;
     bool isBinary = false;         //binary or ascii
     int numOutputDirs = 1;  //number of parallel files per timestep
-    bool isParalellFormat = false;
+    bool isParallelFormat = false;
 
     int numberOfTimePeriods = 1;
     double gapBetweenTimePeriods = 0.0;

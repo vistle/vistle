@@ -86,12 +86,12 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
 
     if (nPrintfTokens > 1) {
         isBinary = true;
-        isParalellFormat = true;
+        isParallelFormat = true;
     }
 
-    if (!isParalellFormat && nPrintfTokens != 1) {
+    if (!isParallelFormat && nPrintfTokens != 1) {
         sendError("Nek: The filetemplate tag must receive only one printf token for serial Nek files.");
-    } else if (isParalellFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
+    } else if (isParallelFormat && (nPrintfTokens < 2 || nPrintfTokens > 3)) {
         sendError("Nek: The filetemplate tag must receive either 2 or 3 printf tokens for parallel Nek files.");
     }
     int bufSize = fileTemplate.size();
@@ -101,7 +101,7 @@ std::string ReaderBase::GetFileName(int rawTimestep, int pardir) {
     {
         bufSize += 64;
         char *outFileName = new char[bufSize];
-        if (!isParalellFormat)
+        if (!isParallelFormat)
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), timestep);
         else if (nPrintfTokens == 2)
             len = snprintf(outFileName, bufSize, fileTemplate.c_str(), pardir, timestep);
@@ -137,7 +137,7 @@ void ReaderBase::UpdateCyclesAndTimes() {
     string meshfilename = GetFileName(curTimestep, 0);
     f.open(meshfilename.c_str());
 
-    if (!isParalellFormat) {
+    if (!isParallelFormat) {
         string tString, cString;
         f >> dummy >> dummy >> dummy >> dummy >> tString >> cString >> v;  //skip #blocks and block size
         t = atof(tString.c_str());
@@ -281,7 +281,7 @@ bool ReaderBase::parseMetaDataFile() {
                 isBinary = true;
             } else if (tag == "binary6") {
                 isBinary = true;
-                isParalellFormat = true;
+                isParallelFormat = true;
             } else if (tag == "ascii") {
                 isBinary = false;
             } else {
@@ -297,7 +297,7 @@ bool ReaderBase::parseMetaDataFile() {
             //This reader scans the headers for the number of fld files
             f >> numOutputDirs;
             if (numOutputDirs > 1)
-                isParalellFormat = true;
+                isParallelFormat = true;
         } else if (tag == "timeperiods:") {
             f >> numberOfTimePeriods;
         } else if (tag == "gapBetweenTimePeriods:") {
@@ -437,7 +437,7 @@ bool ReaderBase::ParseNekFileHeader() {
     // Determine the type (ascii or binary)
     // Parallel type is determined by the number of tokens in the file template
     // and is always binary
-    if (!isParalellFormat) {
+    if (!isParallelFormat) {
         float test;
         f.seekg(80, ios::beg);
 
@@ -454,15 +454,15 @@ bool ReaderBase::ParseNekFileHeader() {
 
     //iHeaderSize no longer includes the size of the block index metadata, for the
     //parallel format, since this now can vary per file.
-    if (isBinary && isParalellFormat)
+    if (isBinary && isParallelFormat)
         iHeaderSize = 136;
-    else if (isBinary && !isParalellFormat)
+    else if (isBinary && !isParallelFormat)
         iHeaderSize = 84;
     else
         iHeaderSize = 80;
 
 
-    if (!isParalellFormat) {
+    if (!isParallelFormat) {
         f >> totalNumBlocks;
         f >> blockDimensions[0];
         f >> blockDimensions[1];
@@ -537,7 +537,7 @@ bool ReaderBase::ParseNekFileHeader() {
         // put 6.54321 into this float.
 
         float test;
-        if (!isParalellFormat) {
+        if (!isParallelFormat) {
             f.seekg(80, std::ios_base::beg);
             f.read((char*)(&test), 4);
         } else {
