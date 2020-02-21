@@ -45,3 +45,6 @@
 [submodule "vistle/module/univiz"]
 	path = vistle/module/univiz
 	url = git://github.com/vistle/univiz.git
+[submodule "vistle/module/general/ReadCovise/file"]
+	path = vistle/module/general/ReadCovise/file
+	url = git://github.com/hlrs-vis/covise-file.git
