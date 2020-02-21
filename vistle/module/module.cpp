@@ -496,10 +496,8 @@ bool Module::destroyPort(const Port *port) {
    message.setDestId(Id::ForBroadcast);
    if (const Port *p = findInputPort(port->getName())) {
        inputPorts.erase(port->getName());
-       delete p;
    } else if (const Port *p = findOutputPort(port->getName())) {
        outputPorts.erase(port->getName());
-       delete p;
    } else {
        return false;
    }
