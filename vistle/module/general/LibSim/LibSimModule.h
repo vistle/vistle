@@ -22,6 +22,7 @@ public:
     LibSimModule(const std::string& name, int moduleID, mpi::communicator comm);
     ~LibSimModule();
     vistle::StringParameter* m_filePath = nullptr;
+    vistle::StringParameter* m_simName = nullptr;
     vistle::IntParameter* m_constGrids = nullptr;
     vistle::IntParameter* m_nthTimestep = nullptr;
     vistle::IntParameter* sendMessageToSim = nullptr;
@@ -31,6 +32,7 @@ private:
     bool m_terminate = false; //set to true when when the module in closed to get out of loops in different threads
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
+    bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<const vistle::Parameter*> m_commandParameter;
     std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue;
@@ -76,6 +78,8 @@ private:
     void startSocketThread();
     
     void recvAndhandleMessage();
+
+    void connectToSim();
 
     //..........................................................................
     //thread safe (for the socket thread) getter and setter for bools

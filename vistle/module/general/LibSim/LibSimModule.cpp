@@ -15,6 +15,8 @@
 #include <core/message.h>
 #include <core/tcpmessage.h>
 
+#include <boost/filesystem.hpp>
+
 using namespace std;
 using insitu::message::InSituTcpMessage;
 using insitu::message::SyncShmMessage;
@@ -40,7 +42,7 @@ CERR << "io thread terminated" << endl; })
 
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "Simulation Files (*.sim2)");
-    //setParameterFilters(m_resultfiledir, "Result Files (*.res)/All Files (*)");
+    m_simName = addStringParameter("Simulation name", "the name of the simulation as used in the filename of the sim2 file ", "");
     m_VTKVariables = addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean);
     m_constGrids = addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean);
     m_nthTimestep = addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1);
@@ -130,18 +132,11 @@ bool LibSimModule::dispatch(bool block, bool* messageReceived) {
 bool LibSimModule::changeParameter(const vistle::Parameter* param) {
     Module::changeParameter(param);
     if (!param) {
+        CERR << "called without param " << m_filePath->getValue() << endl;
         return true;
     }
-    if (param == m_filePath) {
-        if (m_simInitSent) {
-            CERR << "already connected" << endl;
-        } else if (rank() == 0) {
-            vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port) };
-            if (insitu::attemptLibSImConnection(m_filePath->getValue(), args)) {
-                m_simInitSent = true;
-            }
-        }
-        boost::mpi::broadcast(comm(), m_simInitSent, 0);
+    if (param == m_filePath || param == m_simName) {
+        connectToSim();
     } else if (param == m_VTKVariables) {
         InSituTcpMessage::send(insitu::message::VTKVariables{ static_cast<bool>(m_VTKVariables->getValue()) });
     } else if (rank() != 0) {
@@ -288,6 +283,38 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     }
 }
+
+void LibSimModule::connectToSim()     {
+
+    if (m_simInitSent) {
+        CERR << "already connected" << endl;
+    } else if (rank() == 0) {
+        using namespace boost::filesystem;
+        path p{ m_filePath->getValue() };
+        if (is_directory(p)) {
+            auto simName = m_simName->getValue();
+            path lastEditedFile;
+            std::time_t lastEdit{};
+            for (auto& entry : boost::make_iterator_range(boost::filesystem::directory_iterator(p), {})) {
+                if (simName.size() == 0 || entry.path().filename().generic_string().find(simName + ".sim2") != std::string::npos) {
+                    auto editTime = last_write_time(entry.path());
+                    if (editTime > lastEdit) {
+                        lastEdit = editTime;
+                        lastEditedFile = entry.path();
+                    }
+                }
+            }
+            p = lastEditedFile;
+        }
+        CERR << "opening file: " << p.string() << endl;
+        vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port) };
+        if (insitu::attemptLibSImConnection(p.string(), args)) {
+            m_simInitSent = true;
+        }
+    }
+    boost::mpi::broadcast(comm(), m_simInitSent, 0);
+}
+
 
 void LibSimModule::setBool(bool& target, bool newval) {
     Guard g(m_socketMutex);
