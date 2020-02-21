@@ -6,7 +6,7 @@ vistle_find_package(LibArchive)
 
 vistle_find_package(LibZip)
 
-#vistle_find_package(ZLIB)
+vistle_find_package(ZLIB)
 if (NOT Boost_FOUND)
     return()
 endif()
@@ -47,6 +47,10 @@ endif()
 
 if (LIBZIP_FOUND)
    target_link_libraries(ReadFoam ${LIBZIP_LIBRARIES})
+endif()
+
+if (ZLIB_FOUND)
+   target_link_libraries(ReadFoam ${ZLIB_LIBRARIES})
 endif()
 
 #add_executable(foambounds bounds.cpp foamtoolbox.cpp)
