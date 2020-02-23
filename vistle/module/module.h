@@ -363,7 +363,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
        vistle::Module::setup("dummy shm", moduleId, comm.rank()); \
        return std::shared_ptr<X>(new X(name, moduleId, comm)); \
     } \
-    static vistle::ModuleRegistry::RegisterClass registerModule(VISTLE_MODULE_NAME, newModuleInstance);
+    static vistle::ModuleRegistry::RegisterClass registerModule##X(VISTLE_MODULE_NAME, newModuleInstance);
 #else
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
     static std::shared_ptr<vistle::Module> newModuleInstance(const std::string &name, int moduleId, mpi::communicator comm) { \
