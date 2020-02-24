@@ -6,6 +6,7 @@ set(pluginutil_SOURCES
 set(pluginutil_HEADERS
    export.h
    VistleInteractor.h
+   VistleMessage.h
    VistleRenderObject.h
 )
 
