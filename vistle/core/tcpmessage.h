@@ -5,6 +5,8 @@
 
 #include <vistle/util/buffer.h>
 
+#include "messagepayload.h"
+
 #include "export.h"
 
 namespace vistle {
@@ -22,6 +24,9 @@ bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &
 bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, error_code &ec, const char *payload, size_t size);
 void V_COREEXPORT async_send(socket_t &sock, const Message &msg,
                              std::shared_ptr<buffer> payload,
+                             const std::function<void(error_code ec)> handler);
+void V_COREEXPORT async_send(socket_t &sock, const Message &msg,
+                             const MessagePayload &payload,
                              const std::function<void(error_code ec)> handler);
 void V_COREEXPORT async_forward(socket_t &sock, const Message &msg,
                              std::shared_ptr<socket_t> payloadSock,

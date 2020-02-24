@@ -1135,6 +1135,33 @@ bool Module::sendMessage(const message::Message &message, const buffer *payload)
            pl.ref();
            buf.setPayloadName(pl.name());
            buf.setPayloadSize(payload->size());
+           buf.setPayloadRawSize(pl->size());
+       }
+#ifdef MODULE_THREAD
+       buf.setSenderId(id());
+       buf.setRank(rank());
+#endif
+       sendMessageQueue->send(buf);
+   }
+
+   return true;
+}
+
+bool Module::sendMessage(const message::Message &message, const MessagePayload &payload) const {
+
+   // exclude SendText messages to avoid circular calls
+   if (message.type() != message::SENDTEXT
+         && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
+      CERR << "SEND: " << message << std::endl;
+   }
+   if (rank() == 0 || message::Router::the().toRank0(message)) {
+       message::Buffer buf(message);
+       if (payload) {
+           MessagePayload pl = payload;
+           pl.ref();
+           buf.setPayloadName(pl.name());
+           buf.setPayloadSize(pl->size());
+           buf.setPayloadRawSize(pl->size());
        }
 #ifdef MODULE_THREAD
        buf.setSenderId(id());

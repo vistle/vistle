@@ -992,7 +992,6 @@ private:
     long m_numTransferring;
 };
 
-
 template<class Payload>
 extern V_COREEXPORT buffer addPayload(Message &message, Payload &payload);
 template<class Payload>

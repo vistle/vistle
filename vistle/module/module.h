@@ -188,6 +188,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
 
    void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
    bool sendMessage(const message::Message &message, const buffer *payload=nullptr) const override;
+   bool sendMessage(const message::Message &message, const MessagePayload &payload) const override;
    template<class Payload>
    bool sendMessageWithPayload(message::Message &message, Payload &payload) const;
 

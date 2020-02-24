@@ -10,6 +10,7 @@
 #include "tcpmessage.h"
 #include "message.h"
 #include "messages.h"
+#include "messagepayload.h"
 #include <deque>
 
 namespace asio = boost::asio;
@@ -114,6 +115,7 @@ struct SendRequest {
     socket_t &sock;
     const message::Buffer msg;
     std::shared_ptr<buffer> payload;
+    MessagePayload payloadShm;
     std::shared_ptr<socket_t> payloadSocket;
     std::function<void(error_code)> handler;
     SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<buffer> payload, std::function<void(error_code)> handler)
@@ -132,18 +134,40 @@ struct SendRequest {
     {
     }
 
+    SendRequest(socket_t &sock, const message::Message &msg, const MessagePayload &payload, std::function<void(error_code)> handler)
+        : sock(sock)
+        , msg(msg)
+        , payloadShm(payload)
+        , handler(handler)
+    {
+    }
+
     void operator()() {
 
         error_code ec;
         size_t n = msg.payloadSize();
-        if (payload) {
+        if (payloadShm) {
+            if (n >= payloadShm->size()) {
+                n -= payloadShm->size();
+            } else {
+                n = 0;
+            }
+        } else if (payload) {
             if (n >= payload->size()) {
                 n -= payload->size();
             } else {
                 n = 0;
             }
         }
-        if (send(sock, msg, ec, payload.get()) && payloadSocket) {
+
+        bool sent = false;
+        if (payloadShm) {
+            sent = send(sock, msg, ec, &payloadShm->at(0), payloadShm->size());
+        } else {
+            sent = send(sock, msg, ec, payload.get());
+        }
+
+        if (sent && payloadSocket) {
             buffer bufvec(buffersize);
             for (size_t i = 0; i < n;) {
                 auto buf = asio::buffer(bufvec.data(), std::min(bufvec.size(), n-i));
@@ -432,6 +456,24 @@ void async_send(socket_t &sock, const message::Message &msg,
        submitSendRequest(req);
    }
 }
+
+void async_send(socket_t &sock, const message::Message &msg,
+                const MessagePayload &payload,
+                const std::function<void(error_code ec)> handler)
+{
+   //assert(check(msg, payload.get()));
+   auto req = std::make_shared<SendRequest>(sock, msg, payload, handler);
+
+   std::lock_guard<std::mutex> locker(sendQueueMutex);
+   bool submit = sendQueues[&sock].empty();
+   sendQueues[&sock].emplace_back(req);
+   //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+
+   if (submit) {
+       submitSendRequest(req);
+   }
+}
+
 
 void async_forward(socket_t &sock, const message::Message &msg,
                 std::shared_ptr<socket_t> payloadSock,
