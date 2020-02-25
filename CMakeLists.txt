@@ -324,7 +324,8 @@ endif()
 
 if (NOT CRAY)
    set(MPI_SKIP_MPICXX TRUE)
-   add_definitions(-DOMPI_SKIP_MPICXX)
+   add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
+   add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
    vistle_find_package(MPI REQUIRED COMPONENTS C)
 
    include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
