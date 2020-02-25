@@ -50,6 +50,7 @@ void run_on_main_thread(std::function<void()>& func) {
 
 #if defined(Q_OS_UNIX) && !defined(Q_OS_MAC)
 #include <xcb/xcb.h>
+#ifdef HAVE_X11_ICE
 #include <X11/ICE/ICElib.h>
 
 namespace {
@@ -58,6 +59,7 @@ void iceIOErrorHandler(IceConn conn) {
     std::cerr << "Vistle: ignoring ICE IO error" << std::endl;
 }
 }
+#endif
 #endif
 
 
@@ -156,7 +158,9 @@ bool VistleManager::run(int argc, char* argv[]) {
         if (xcb_connection_t* xconn = xcb_connect(nullptr, nullptr)) {
             if (!xcb_connection_has_error(xconn)) {
                 std::cerr << "X11 connection!" << std::endl;
+#ifdef HAVE_X11_ICE
                 IceSetIOErrorHandler(&iceIOErrorHandler);
+#endif
                 auto app = new QApplication(argc, argv);
             }
             xcb_disconnect(xconn);
