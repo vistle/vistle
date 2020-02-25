@@ -83,21 +83,14 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         int hexes = pReader->getHexes();
         int ghostHexes = pReader->getNumGhostHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
-        if (pReader->getDim() == 2) {
-            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const Byte)UnstructuredGrid::QUAD);
-            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const Byte)UnstructuredGrid::QUAD|UnstructuredGrid::GHOST_BIT);
-        } else {
-            std::fill_n(grid->tl().data(), hexes - ghostHexes, (const Byte)UnstructuredGrid::HEXAHEDRON);
-            std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, (const Byte)UnstructuredGrid::HEXAHEDRON|UnstructuredGrid::GHOST_BIT);
-        }
+        Byte elemType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
+        Byte ghostType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD|| UnstructuredGrid::GHOST_BIT : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
+        std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
+        std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
         pReader->fillConnectivityList(grid->cl().data());
-
+        int numCorners = pReader->getDim() == 2 ? 4 : 8;
         for (int i = 0; i < hexes + 1; i++) {
-            if (pReader->getDim() == 2) {
-                grid->el().data()[i] = 4 * i;
-            } else {
-                grid->el().data()[i] = 8 * i;
-            }
+            grid->el().data()[i] = numCorners * i;
         }
         if (!pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data())) {
             cerr << "nek: failed to fill mesh" << endl;
