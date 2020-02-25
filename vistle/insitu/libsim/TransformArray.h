@@ -63,16 +63,24 @@ RetVal callFunctionWithVoidToTypeCast(void* v, int dataType, size_t size, Args2 
     break;
     }
 }
-
+//dest must be of plain type (no pointer or reference)
 template<typename Source, typename Dest>
 struct ArrayTransformer {
     void operator()(Source* s, size_t size, Dest d) {
-        std::transform(s, s + size, d, [](Source val) {
-            return static_cast<typename std::remove_pointer<Dest>::type>(val);
-            });
+        transformArray(s, size, d);
           }
 };
+template<typename Source, typename Dest>
+void transformArray(Source* s, size_t size, Dest d) {
+    std::transform(s, s + size, d, [](Source val) {
+        return static_cast<typename std::remove_pointer<Dest>::type>(val);
+        });
+}
 
+template<typename T>
+void transformArray(T* s, size_t size, T* d) {
+    std::copy(s, s + size, d);
+}
 
 
 
@@ -190,7 +198,6 @@ vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, int dataType, vistl
 
     return callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
 }
-
 
 }
 

@@ -30,6 +30,8 @@
 
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
+#include <core/uniformgrid.h>
+#include <core/unstr.h>
 
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -638,7 +640,14 @@ void insitu::Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_CURVILINEAR:
         {
             CERR << "making curvilinear grid" << endl;
-            makeStructuredMesh(meshInfo);
+            if (meshInfo.numDomains < 4) {
+                makeStructuredMesh(meshInfo);
+            }
+            else {
+                //to do:read domain boundaries if set
+                combineStructuredMeshesToUnstructured(meshInfo);
+            }
+
         }
         break;
         case VISIT_MESHTYPE_UNSTRUCTURED:
@@ -800,6 +809,112 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
     return true;
 }
 
+void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)     {
+    using namespace vistle;
+
+    size_t totalNumElements = 0, totalNumVerts = 0;
+    size_t numVertices;
+    size_t numElements;
+    int numCorners = meshInfo.dim == 2 ? 4 : 8;
+    vistle::UnstructuredGrid::ptr grid{ new vistle::UnstructuredGrid(0,0,0) };
+    std::array<float*, 3> gridCoords{ grid->x().end() ,grid->y().end() ,grid->z().end() };
+    Index* connectivityListSegmentBegin = grid->cl().begin();
+    visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
+    int dims[3]{ 1,1,1 }; //the x,y,z dimensions
+    int ndims, coordMode;
+    visit_handle meshHandle;
+
+    int owner{}, dataType{}, nComps{}, nTuples{};
+    void* data{};
+
+
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
+        meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
+
+
+        //no v2check because last visit_handle can be invalid
+        if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1], &coordHandles[2], &coordHandles[3])) {
+            throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
+        }
+
+        numVertices = dims[0] * dims[1] * dims[2];
+        numElements = (dims[0] - 1) * (dims[1] - 1) * (dims[2] == 1 ? 1 : (dims[2] - 1));
+        totalNumElements += numElements;
+        totalNumVerts += numVertices;
+        // reserve memory for the arrays, /assume we have the same sub-grid size for the rest to reduce the amout of re-allocations
+        if (grid->x().size() <totalNumVerts + numVertices) {
+            auto newSize = totalNumVerts + numVertices * (meshInfo.numDomains - cd);
+            grid->setSize(newSize);
+            gridCoords = { grid->x().begin() + totalNumVerts ,grid->y().begin() + totalNumVerts ,grid->z().begin() + totalNumVerts };
+        }
+        if (grid->cl().size() < (totalNumElements + numElements) * numCorners) {
+            grid->cl().resize((totalNumElements + numElements * (meshInfo.numDomains - cd))* numCorners);
+            connectivityListSegmentBegin = grid->cl().begin() + totalNumElements * numCorners;
+        }
+        if (m_VTKVariables) {
+            //to do: create connectivity list for vtk structured grids
+        } else {
+            makeStructuredGridConnectivityList(dims, connectivityListSegmentBegin);
+        }
+
+
+
+
+        switch (coordMode) {
+        case VISIT_COORD_MODE_INTERLEAVED:
+        {
+            v2check(simv2_VariableData_getData, coordHandles[3], owner, dataType, nComps, nTuples, data);
+            if (nTuples != numVertices * ndims) {
+                throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
+            }
+
+            transformInterleavedArray(data, gridCoords, numVertices, dataType, ndims);
+
+        }
+        break;
+        case VISIT_COORD_MODE_SEPARATE:
+        {
+            for (int i = 0; i < meshInfo.dim; ++i) {
+                v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
+                if (nTuples != numVertices) {
+                    throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
+                }
+                transformArray(data, gridCoords[i], nTuples, dataType);
+            }
+        }
+        break;
+        default:
+            throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
+        }
+        gridCoords = { gridCoords[0] + numVertices, gridCoords[1] + numVertices, gridCoords[2] + numVertices, };
+        connectivityListSegmentBegin += numElements * numCorners;
+
+    }
+    assert(grid->getSize() >= totalNumVerts);
+    grid->setSize(totalNumVerts);
+    assert(grid->cl().size() >= totalNumElements * numCorners);
+    grid->cl().resize(totalNumElements* numCorners);
+    if (meshInfo.dim == 2) {
+        std::fill(grid->z().begin(), grid->z().end(), 0);
+    }
+    grid->tl().resize(totalNumElements);
+    std::fill(grid->tl().begin(), grid->tl().end(), meshInfo.dim == 2 ? (const Byte)UnstructuredGrid::QUAD : (const Byte)UnstructuredGrid::HEXAHEDRON);
+    grid->el().resize(totalNumElements + 1);
+    for (size_t i = 0; i < totalNumElements + 1; i++) {
+        grid->el()[i] = numCorners * i;
+    }
+
+    grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
+    grid->setBlock(m_rank);
+    addObject(meshInfo.name, grid);
+    meshInfo.grids.push_back(grid);
+    meshInfo.combined = true;
+    m_meshes[meshInfo.name] = meshInfo;
+
+    DEBUG_CERR << "added unstructured mesh " << meshInfo.name << " with " << totalNumVerts << " vertices and " << totalNumElements << " elements " << endl;
+   }
+
 void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
     int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
@@ -811,8 +926,27 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         v2check(simv2_VariableMetaData_getCentering, varMetaHandle, &centering);
         auto meshInfo = m_meshes.find(meshName);
         if (meshInfo == m_meshes.end()) {
-            throw EngineExeption(std::string("can't find mesh ") + meshName + " for variable " + name);
+            EngineExeption ex{""};
+            ex << "sendVarablesToModule: can't find mesh " << meshName << " for variable " << name;
+            throw ex;
         }
+        vistle::Vec<vistle::Scalar, 1>::ptr variable;
+        size_t combinedVecPos = 0;
+        if (meshInfo->second.combined) {
+
+            auto unstr = vistle::UnstructuredGrid::as(meshInfo->second.grids[0]);
+            if (!unstr) {
+                throw EngineExeption{ "combined grids must be UnstructuredGrids" };
+            }
+            size_t size = centering == VISIT_VARCENTERING_NODE ? unstr->getNumVertices() : unstr->getNumElements();
+            auto var = vistle::Vec<vistle::Scalar, 1>::ptr(new vistle::Vec<vistle::Scalar, 1>(size));
+            var->setGrid(unstr);
+            var->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+            variable = var;
+        }
+
+
+
         for (size_t cd = 0; cd < meshInfo->second.numDomains; ++cd) {
             int currDomain = meshInfo->second.domains[cd];
             visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, name);
@@ -820,23 +954,38 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
             void* data = nullptr;
             v2check(simv2_VariableData_getData, varHandle, owner, dataType, nComps, nTuples, data);
             DEBUG_CERR << "added variable " << name << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
-            vistle::Object::ptr variable;
-            if (m_VTKVariables) {
-                variable = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                if (!variable) {
-                    CERR << "sendVarablesToModule failed to convert variable " << name << "... trying next" << endl;
-                    continue;
+            if (meshInfo->second.combined) {
+                assert(combinedVecPos + nTuples >= variable->x().size());
+                transformArray(data, variable->x().data() + combinedVecPos, nTuples, dataType);
+                combinedVecPos += nTuples;
+                
+
+            } else {
+                if (m_VTKVariables) {
+
+                    auto var = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                    auto vec = std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar, 1>>(var);
+
+                    if (!vec) {
+                        CERR << "sendVarablesToModule failed to convert variable " << name << "... trying next" << endl;
+                        continue;
+                    }
+                    variable = vec;
+                } else {
+                    variable.reset(new vistle::Vec<vistle::Scalar, 1>(nTuples));
+                    transformArray(data, variable->x().data(), nTuples, dataType);
+                    variable->setGrid(meshInfo->second.grids[cd]);
+                    variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                 }
+                variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
+                variable->setBlock(currDomain);
+                variable->addAttribute("_species", name);
+                addObject(name, variable);
             }
-            else {
-                vistle::Vec<vistle::Scalar, 1>::ptr var(new typename vistle::Vec<vistle::Scalar, 1>(nTuples));
-                transformArray(data, var->x().data(), nTuples, dataType);
-                var->setGrid(meshInfo->second.grids[cd]);
-                var->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
-                variable = var;
-            }
+        }
+        if (meshInfo->second.combined) {
             variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
-            variable->setBlock(currDomain);
+            variable->setBlock(m_rank);
             variable->addAttribute("_species", name);
             addObject(name, variable);
         }
@@ -918,6 +1067,51 @@ void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj)
     }
 
 
+}
+
+void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle::Index * elementList)     {
+    // construct connectivity list (all hexahedra)
+    using namespace vistle;
+    Index numVert[3];
+    Index numElements[3];
+    for (size_t i = 0; i < 3; ++i) {
+        numVert[i] = static_cast<Index>(dims[i]);
+        numElements[i] = numVert[i] - 1;
+    }
+    if (dims[2] > 1) {
+        // 3-dim
+        Index el = 0;
+        for (Index ix = 0; ix < numElements[0]; ++ix) {
+            for (Index iy = 0; iy < numElements[1]; ++iy) {
+                for (Index iz = 0; iz < numElements[2]; ++iz) {
+                    const Index baseInsertionIndex = el * 8;
+                    elementList[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, iz, numVert);                       // 0       7 -------- 6
+                    elementList[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, iz, numVert);               // 1      /|         /|
+                    elementList[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz, numVert);           // 2     / |        / |
+                    elementList[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, iz, numVert);               // 3    4 -------- 5  |
+                    elementList[baseInsertionIndex + 4] = UniformGrid::vertexIndex(ix, iy, iz + 1, numVert);               // 4    |  3-------|--2
+                    elementList[baseInsertionIndex + 5] = UniformGrid::vertexIndex(ix + 1, iy, iz + 1, numVert);           // 5    | /        | /
+                    elementList[baseInsertionIndex + 6] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, numVert);       // 6    |/         |/
+                    elementList[baseInsertionIndex + 7] = UniformGrid::vertexIndex(ix, iy + 1, iz + 1, numVert);           // 7    0----------1
+
+                    ++el;
+                }
+            }
+        }
+    } else if (dims[1] > 1) {
+        // 2-dim
+        Index el = 0;
+        for (Index ix = 0; ix < numElements[0]; ++ix) {
+            for (Index iy = 0; iy < numElements[1]; ++iy) {
+                const Index baseInsertionIndex = el * 4;
+                elementList[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, 0, numVert);
+                elementList[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, 0, numVert);
+                elementList[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, 0, numVert);
+                elementList[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, 0, numVert);
+                ++el;
+            }
+        }
+    } 
 }
 
 Engine::Engine()

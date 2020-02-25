@@ -107,6 +107,7 @@ private:
     Metadata m_metaData; //the meta data of the currenc cycle
     std::set<std::string> m_registeredGenericCommands; //the commands that are availiable for the sim
     struct MeshInfo {
+        bool combined = false; //if the mesh is made of multiple smaler meshes
         char* name = nullptr;
         int dim = 0; //2D or 3D
         int numDomains = 0;
@@ -152,6 +153,8 @@ private:
     bool makeUntructuredMesh(MeshInfo meshInfo);
     bool makeAmrMesh(MeshInfo meshInfo);
     bool makeStructuredMesh(MeshInfo meshInfo);
+    //combine the structured meshes of one domain to a singe unstructured mesh. Points of adjacent faces will be doubled.
+    void combineStructuredMeshesToUnstructured(MeshInfo meshInfo);
 
     
     void sendVarablesToModule();
@@ -163,6 +166,8 @@ private:
     void finalizeInit();  //if not already done, initializes the things that require the simulation 
 
     void addObject(const std::string& name, vistle::Object::ptr obj); //send addObject message to module, from where it gets passed to Vistle
+
+    void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList);
 
     Engine();
 
