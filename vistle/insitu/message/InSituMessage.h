@@ -36,6 +36,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , NthTimestep
     , ConnectionClosed
     , VTKVariables
+    , CombineGrids
 };
 
 
@@ -49,17 +50,18 @@ protected:
 };
 #define COMMA ,
 
-#define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType, payloadName, payloadType)\
+#define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType,  payloadType)\
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
-    friend class InSituTcpMessage;\
-    messageType(const payloadType& payloadName):InSituMessageBase(type), m_##payloadName(payloadName){}\
+    typedef payloadType value_type;\
+    friend class InSituTcpMessage; \
+    messageType(const payloadType& payloadName):InSituMessageBase(type), value(payloadName){}\
     static const InSituMessageType type = InSituMessageType::messageType;\
-    payloadType m_##payloadName; \
+    payloadType value; \
     ARCHIVE_ACCESS\
     template<class Archive>\
     void serialize(Archive& ar) {\
-       ar& m_##payloadName;\
+       ar& value;\
     }\
 private:\
     messageType():InSituMessageBase(type){}\
@@ -80,15 +82,16 @@ DECLARE_ENGINE_MESSAGE(Invalid)
 DECLARE_ENGINE_MESSAGE(GoOn)
 DECLARE_ENGINE_MESSAGE(ConnectionClosed)
 
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit, shmName, std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject, name, std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddPorts, portList, std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddCommands, commandList, std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, state, bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, command, std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, state, bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, frequency, size_t)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables, state, bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject,  std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddPorts,  std::vector<std::string>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddCommands,  std::vector<std::string>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready,  bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand,  std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids,  bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(CombineGrids,  bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep,  size_t)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables,  bool)
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {

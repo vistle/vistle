@@ -205,7 +205,7 @@ void Engine::SimulationTimeStepChanged() {
     int numMeshes, numVars;
     v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle, numMeshes);
     v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle, numVars);
-    if (m_metaData.currentCycle % m_nthTimestep != 0) {
+    if (m_metaData.currentCycle % m_intOptions[message::InSituMessageType::NthTimestep]->val != 0) {
         return;
     }
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
@@ -266,7 +266,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::Ready:
     {
         Ready em = msg.unpackOrCast<Ready>();
-        m_moduleReady = em.m_state;
+        m_moduleReady = em.value;
         if (m_moduleReady) {
             SyncShmMessage msg = SyncShmMessage::recv();
             vistle::Shm::the().setObjectID(msg.objectID());
@@ -281,9 +281,9 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
         if (simulationCommandCallback) {
-            simulationCommandCallback(exe.m_command.c_str(), "", simulationCommandCallbackData);
-            DEBUG_CERR << "received simulation command: " << exe.m_command << endl;
-            if (m_registeredGenericCommands.find(exe.m_command) == m_registeredGenericCommands.end()) {
+            simulationCommandCallback(exe.value.c_str(), "", simulationCommandCallbackData);
+            DEBUG_CERR << "received simulation command: " << exe.value << endl;
+            if (m_registeredGenericCommands.find(exe.value) == m_registeredGenericCommands.end()) {
                 DEBUG_CERR << "Engine received unknown command!" << endl;
             }
         } else {
@@ -300,24 +300,6 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         }
     }
         break;
-    case InSituMessageType::ConstGrids:
-    {
-        ConstGrids em = msg.unpackOrCast<ConstGrids>();
-        m_constGrids = em.m_state;
-    }
-    break;
-    case InSituMessageType::NthTimestep:
-    {
-        NthTimestep em = msg.unpackOrCast<NthTimestep>();
-        m_nthTimestep = em.m_frequency;
-    }
-    break;
-    case InSituMessageType::VTKVariables:
-    {
-        VTKVariables em = msg.unpackOrCast<VTKVariables>();
-        m_VTKVariables = em.m_state;
-    }
-    break;
     case InSituMessageType::ConnectionClosed:
     {
         CERR << "connection closed" << endl;
@@ -325,6 +307,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     }
     break;
     default:
+        m_intOptions[msg.type()]->setVal(msg);
         break;
     }
     return true;
@@ -595,7 +578,7 @@ void insitu::Engine::sendMeshesToModule()     {
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
-        if (m_constGrids && m_meshes.find(name) != m_meshes.end()) {
+        if (m_intOptions[message::InSituMessageType::ConstGrids]->val && m_meshes.find(name) != m_meshes.end()) {
             auto m = m_meshes.find(name);
             if (m != m_meshes.end()) {
                 for (auto grid : m->second.grids)                     {
@@ -640,7 +623,7 @@ void insitu::Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_CURVILINEAR:
         {
             CERR << "making curvilinear grid" << endl;
-            if (meshInfo.numDomains < 4) {
+            if (!m_intOptions[message::InSituMessageType::CombineGrids]->val) {
                 makeStructuredMesh(meshInfo);
             }
             else {
@@ -702,7 +685,7 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
+            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -797,7 +780,7 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (meshInfo.dim == 2) {
                 std::fill(gridCoords[2], gridCoords[2] + numVals, 0);
             }
-            grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
+            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -852,7 +835,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
             grid->cl().resize((totalNumElements + numElements * (meshInfo.numDomains - cd))* numCorners);
             connectivityListSegmentBegin = grid->cl().begin() + totalNumElements * numCorners;
         }
-        if (m_VTKVariables) {
+        if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
             //to do: create connectivity list for vtk structured grids
         } else {
             makeStructuredGridConnectivityList(dims, connectivityListSegmentBegin);
@@ -905,7 +888,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
         grid->el()[i] = numCorners * i;
     }
 
-    grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
+    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
     grid->setBlock(m_rank);
     addObject(meshInfo.name, grid);
     meshInfo.grids.push_back(grid);
@@ -961,7 +944,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                 
 
             } else {
-                if (m_VTKVariables) {
+                if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
 
                     auto var = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                     auto vec = std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar, 1>>(var);
@@ -977,14 +960,14 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                 }
-                variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
+                variable->setTimestep(m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
                 variable->setBlock(currDomain);
                 variable->addAttribute("_species", name);
                 addObject(name, variable);
             }
         }
         if (meshInfo->second.combined) {
-            variable->setTimestep(m_metaData.currentCycle / m_nthTimestep);
+            variable->setTimestep(m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
             variable->setBlock(m_rank);
             variable->addAttribute("_species", name);
             addObject(name, variable);
@@ -999,7 +982,7 @@ void insitu::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_constGrids ? -1 : m_metaData.currentCycle / m_nthTimestep);
+    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {
@@ -1116,7 +1099,10 @@ void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle:
 
 Engine::Engine()
 { 
-
+    m_intOptions[message::InSituMessageType::ConstGrids] = std::unique_ptr< IntOption<message::ConstGrids>>(new IntOption<message::ConstGrids>{false});
+    m_intOptions[message::InSituMessageType::VTKVariables] = std::unique_ptr< IntOption<message::VTKVariables>>(new IntOption<message::VTKVariables>{false});
+    m_intOptions[message::InSituMessageType::NthTimestep] = std::unique_ptr< IntOption<message::NthTimestep>>(new IntOption<message::NthTimestep>{1});
+    m_intOptions[message::InSituMessageType::CombineGrids] = std::unique_ptr< IntOption<message::CombineGrids>>(new IntOption<message::CombineGrids>{false});
 }
 
 Engine::~Engine() {

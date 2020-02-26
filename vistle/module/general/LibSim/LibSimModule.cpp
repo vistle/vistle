@@ -43,11 +43,14 @@ CERR << "io thread terminated" << endl; })
     m_filePath = addStringParameter("file Path", "path to a .sim2 file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "Simulation Files (*.sim2)");
     m_simName = addStringParameter("Simulation name", "the name of the simulation as used in the filename of the sim2 file ", "");
-    m_VTKVariables = addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean);
-    m_constGrids = addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean);
-    m_nthTimestep = addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1);
-    setParameterMinimum(m_nthTimestep, static_cast<vistle::Integer>(1));
-    sendMessageToSim = addIntParameter("sendMessageToSim", "", false, vistle::Parameter::Boolean);
+    
+
+
+    m_intOptions[InSituMessageType::VTKVariables] = std::unique_ptr< IntParam<insitu::message::VTKVariables>>(new IntParam<insitu::message::VTKVariables>{ addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean) });
+    m_intOptions[InSituMessageType::ConstGrids] = std::unique_ptr< IntParam<insitu::message::ConstGrids>>(new IntParam<insitu::message::ConstGrids>{ addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean) });
+    m_intOptions[InSituMessageType::NthTimestep] = std::unique_ptr< IntParam<insitu::message::NthTimestep>>(new IntParam<insitu::message::NthTimestep>{ addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1) });
+    m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("Combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) });
+    
 
     std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", moduleID, rank());
     try {
@@ -56,7 +59,6 @@ CERR << "io thread terminated" << endl; })
     } catch (boost::interprocess::interprocess_exception & ex) {
         throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what()); 
     }
-
 
     SyncShmMessage::initialize(id(), rank(), SyncShmMessage::Mode::Create);
     if (rank() == 0) {
@@ -137,18 +139,15 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
     }
     if (param == m_filePath || param == m_simName) {
         connectToSim();
-    } else if (param == m_VTKVariables) {
-        InSituTcpMessage::send(insitu::message::VTKVariables{ static_cast<bool>(m_VTKVariables->getValue()) });
-    } else if (rank() != 0) {
-        return true;
-    } else if (param == sendMessageToSim) {
-        InSituTcpMessage::send(insitu::message::GoOn{});
     } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
-        InSituTcpMessage::send(insitu::message::ExecuteCommand{ param->getName() });
-    } else if (param == m_constGrids) {
-        InSituTcpMessage::send(insitu::message::ConstGrids{ static_cast<bool>(m_constGrids->getValue()) });
-    } else if (param == m_nthTimestep) {
-        InSituTcpMessage::send(insitu::message::NthTimestep{ static_cast<size_t>(m_nthTimestep->getValue()) });
+        InSituTcpMessage::send(insitu::message::ExecuteCommand(param->getName()));
+    } else {
+        for (const auto &option : m_intOptions) {
+            if (option.second->param() == param) {
+                option.second->send();
+                continue;
+            }
+        }
     }
 
     return InSituReader::changeParameter(param);
@@ -206,9 +205,9 @@ void LibSimModule::startSocketThread()     {
         m_socketComm.barrier();
         setBool(m_connectedToEngine, true);
         InSituTcpMessage::initialize(m_socket, m_socketComm);
-        InSituTcpMessage::send(insitu::message::ConstGrids(m_constGrids->getValue()));
-        InSituTcpMessage::send(insitu::message::NthTimestep(m_nthTimestep->getValue()));
-        InSituTcpMessage::send(insitu::message::VTKVariables{ static_cast<bool>(m_VTKVariables->getValue()) });
+        for (const auto &option : m_intOptions)             {
+            option.second->send();
+        }
         while (!getBool(m_terminate)) {
             recvAndhandleMessage();
         }
@@ -232,16 +231,16 @@ void LibSimModule::recvAndhandleMessage()     {
     case InSituMessageType::AddPorts:
     {
         auto em = msg.unpackOrCast< message::AddPorts>();
-        for (size_t i = 0; i < em.m_portList.size() - 1; i++) {
-            createOutputPort(em.m_portList[i], em.m_portList[em.m_portList.size() - 1]);
+        for (size_t i = 0; i < em.value.size() - 1; i++) {
+            createOutputPort(em.value[i], em.value[em.value.size() - 1]);
         }
     }
         break;
     case InSituMessageType::AddCommands:
     {
         auto em = msg.unpackOrCast< message::AddCommands>();
-        for (size_t i = 0; i < em.m_commandList.size(); i++) {
-            m_commandParameter.insert(addIntParameter(em.m_commandList[i], "", false, vistle::Parameter::Presentation::Boolean));
+        for (size_t i = 0; i < em.value.size(); i++) {
+            m_commandParameter.insert(addIntParameter(em.value[i], "", false, vistle::Parameter::Presentation::Boolean));
         }
     }
         break;

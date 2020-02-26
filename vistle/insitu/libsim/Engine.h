@@ -122,9 +122,25 @@ private:
     std::string m_shmName, m_moduleName;
     int m_moduleID = 0;
     bool m_moduleReady = false; //wether the module is executing or not
-    int m_nthTimestep = 1; //how often data should be processed and send to module
-    bool m_constGrids = false; //if the grids have to be updated for every timestep
-    bool m_VTKVariables = false; //if the variables have to be reordered from vtk to vistle
+
+    struct IntOptionBase
+    {
+        virtual void setVal(insitu::message::InSituTcpMessage& msg) {};
+        int val = 0;
+    };
+    template<typename T>
+    struct IntOption : public IntOptionBase  {
+        IntOption(int initialVal) {
+            val = initialVal;
+        }
+        virtual void setVal(insitu::message::InSituTcpMessage& msg) override
+        {
+            
+            auto m = msg.unpackOrCast<T>();
+            val = static_cast<typename T::value_type>(m.value);
+        }
+    };
+    std::map<insitu::message::InSituMessageType, std::unique_ptr<IntOptionBase>> m_intOptions; // options that can be set in the module
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;

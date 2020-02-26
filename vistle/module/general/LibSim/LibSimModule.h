@@ -23,10 +23,33 @@ public:
     ~LibSimModule();
     vistle::StringParameter* m_filePath = nullptr;
     vistle::StringParameter* m_simName = nullptr;
-    vistle::IntParameter* m_constGrids = nullptr;
-    vistle::IntParameter* m_nthTimestep = nullptr;
-    vistle::IntParameter* sendMessageToSim = nullptr;
-    vistle::IntParameter* m_VTKVariables = nullptr;
+    
+    struct IntParamBase
+    { 
+        IntParamBase() {}
+
+        virtual void send() { return; };
+        const vistle::IntParameter* param() const {
+            return m_param;
+        }
+    protected:
+        IntParamBase(vistle::IntParameter* param)
+            :m_param(param) {
+        }
+    private:
+        vistle::IntParameter* m_param = nullptr;
+    };
+
+    template<typename T>
+    struct IntParam : public IntParamBase {
+        IntParam(vistle::IntParameter* param)
+            :IntParamBase(param){}
+
+        virtual void send() override {
+            insitu::message::InSituTcpMessage::send(T{ static_cast<typename T::value_type>(param()->getValue()) });
+        }
+    };
+    std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
     bool sendCommandChanged = false;
 private:
     bool m_terminate = false; //set to true when when the module in closed to get out of loops in different threads
