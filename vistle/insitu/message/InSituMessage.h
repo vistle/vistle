@@ -27,7 +27,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     Invalid
     , ShmInit
     , AddObject
-    , AddPorts
+    , AddPorts //detected ports from sim to module <--> connected ports from module to Engine
     , AddCommands
     , Ready
     , ExecuteCommand
@@ -37,6 +37,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , ConnectionClosed
     , VTKVariables
     , CombineGrids
+
 };
 
 

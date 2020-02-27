@@ -104,6 +104,13 @@ bool LibSimModule::prepareReduce() {
 }
 
 bool LibSimModule::prepare() {
+    vector<string> connectedPorts;
+    for (const auto port : m_outputPorts)         {
+        if (port.second->isConnected()) {
+            connectedPorts.push_back(port.first);
+        }
+    }
+    InSituTcpMessage::send(insitu::message::AddPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
     if (m_connectedToEngine) {
         SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });

@@ -122,7 +122,7 @@ private:
     std::string m_shmName, m_moduleName;
     int m_moduleID = 0;
     bool m_moduleReady = false; //wether the module is executing or not
-
+    std::set<std::string> m_connectedPorts;
     struct IntOptionBase
     {
         virtual void setVal(insitu::message::InSituTcpMessage& msg) {};

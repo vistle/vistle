@@ -260,6 +260,11 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::AddObject:
         break;
     case InSituMessageType::AddPorts:
+    {
+        AddPorts ap = msg.unpackOrCast<AddPorts>();
+        m_connectedPorts.clear();
+        m_connectedPorts.insert(ap.value.begin(), ap.value.end());
+    }
         break;
     case InSituMessageType::AddCommands:
         break;
@@ -904,6 +909,9 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
         char* name, *meshName;
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
+        if (m_connectedPorts.find(name) != m_connectedPorts.end()) { //don't process data for un-used ports
+            continue;
+        }
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
         int centering = -1;
         v2check(simv2_VariableMetaData_getCentering, varMetaHandle, &centering);
