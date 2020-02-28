@@ -201,6 +201,7 @@ void Engine::SimulationTimeStepChanged() {
     if (m_moduleReady) {//only here vistle::objects are allowed to be made
         sendDataToModule();
         m_processedCycles = m_metaData.currentCycle;
+        ++m_timestep;
     }
     else {
         CERR << "ConnectLibSim is not ready to process data" << endl;
@@ -265,6 +266,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
             SyncShmMessage msg = SyncShmMessage::recv();
             vistle::Shm::the().setObjectID(msg.objectID());
             vistle::Shm::the().setArrayID(msg.arrayID());
+            m_timestep = 0;
         }
         else {
             SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
@@ -572,14 +574,12 @@ void insitu::Engine::sendMeshesToModule()     {
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
-        if (m_intOptions[message::InSituMessageType::ConstGrids]->val && m_meshes.find(name) != m_meshes.end()) {
-            auto m = m_meshes.find(name);
-            if (m != m_meshes.end()) {
-                for (auto grid : m->second.grids)                     {
-                    addObject(name, grid);
-                }
-                return; //the mesh is consistent and already there
+        auto meshIt = m_meshes.find(name);
+        if (m_intOptions[message::InSituMessageType::ConstGrids]->val && meshIt != m_meshes.end()) {
+            for (auto grid : meshIt->second.grids) {
+                addObject(name, grid);
             }
+            return; //the mesh is consistent and already there
         }
         visit_handle domainListHandle = v2check(simv2_invoke_GetDomainList, name);
         int allDoms = 0;
@@ -679,7 +679,7 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -774,7 +774,7 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (meshInfo.dim == 2) {
                 std::fill(gridCoords[2], gridCoords[2] + numVals, 0);
             }
-            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -877,7 +877,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
         grid->el()[i] = numCorners * i;
     }
 
-    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
     grid->setBlock(m_rank);
     addObject(meshInfo.name, grid);
     meshInfo.grids.push_back(grid);
@@ -952,14 +952,14 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                 }
-                variable->setTimestep(m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+                variable->setTimestep(m_timestep);
                 variable->setBlock(currDomain);
                 variable->addAttribute("_species", name);
                 addObject(name, variable);
             }
         }
         if (meshInfo->second.combined) {
-            variable->setTimestep(m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+            variable->setTimestep(m_timestep);
             variable->setBlock(m_rank);
             variable->addAttribute("_species", name);
             addObject(name, variable);
@@ -974,7 +974,7 @@ void insitu::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_metaData.currentCycle / m_intOptions[message::InSituMessageType::NthTimestep]->val);
+    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {

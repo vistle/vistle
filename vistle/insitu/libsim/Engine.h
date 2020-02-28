@@ -123,6 +123,7 @@ private:
     int m_moduleID = 0;
     bool m_moduleReady = false; //wether the module is executing or not
     std::set<std::string> m_connectedPorts;
+    size_t m_timestep = 0; //timestep couter for module
     struct IntOptionBase
     {
         virtual void setVal(insitu::message::InSituTcpMessage& msg) {};
