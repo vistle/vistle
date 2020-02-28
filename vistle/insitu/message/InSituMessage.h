@@ -37,6 +37,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , ConnectionClosed
     , VTKVariables
     , CombineGrids
+    , KeepTimesteps
 
 };
 
@@ -93,6 +94,7 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids,  bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(CombineGrids,  bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep,  size_t)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables,  bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(KeepTimesteps, bool)
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {

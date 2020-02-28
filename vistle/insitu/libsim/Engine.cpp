@@ -679,7 +679,7 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
-            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
+            setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -774,7 +774,7 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (meshInfo.dim == 2) {
                 std::fill(gridCoords[2], gridCoords[2] + numVals, 0);
             }
-            grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
+            setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
             meshInfo.grids.push_back(grid);
@@ -877,7 +877,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
         grid->el()[i] = numCorners * i;
     }
 
-    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
+    setTimestep(grid);
     grid->setBlock(m_rank);
     addObject(meshInfo.name, grid);
     meshInfo.grids.push_back(grid);
@@ -952,14 +952,14 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                 }
-                variable->setTimestep(m_timestep);
+                setTimestep(variable);
                 variable->setBlock(currDomain);
                 variable->addAttribute("_species", name);
                 addObject(name, variable);
             }
         }
         if (meshInfo->second.combined) {
-            variable->setTimestep(m_timestep);
+            setTimestep(variable);
             variable->setBlock(m_rank);
             variable->addAttribute("_species", name);
             addObject(name, variable);
@@ -974,7 +974,7 @@ void insitu::Engine::sendTestData() {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
     vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
-    grid->setTimestep(m_intOptions[message::InSituMessageType::ConstGrids]->val ? -1 : m_timestep);
+    setTimestep(grid);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < dims[i]; j++) {
@@ -1089,12 +1089,37 @@ void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle:
     } 
 }
 
+void Engine::setTimestep(vistle::Object::ptr data)     {
+    int step;
+    if (m_intOptions[message::InSituMessageType::ConstGrids]->val) {
+        step = -1;
+    }
+    else {
+        step = m_timestep;
+    }
+    if (m_intOptions[message::InSituMessageType::KeepTimesteps]->val) {
+        data->setTimestep(step);
+    } else {
+        data->setIteration(step);
+    }
+
+}
+
+void Engine::setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec)     {
+    if (m_intOptions[message::InSituMessageType::KeepTimesteps]->val) {
+        vec->setTimestep(m_timestep);
+    } else {
+        vec->setIteration(m_timestep);
+    }
+}
+
 Engine::Engine()
 { 
     m_intOptions[message::InSituMessageType::ConstGrids] = std::unique_ptr< IntOption<message::ConstGrids>>(new IntOption<message::ConstGrids>{false});
     m_intOptions[message::InSituMessageType::VTKVariables] = std::unique_ptr< IntOption<message::VTKVariables>>(new IntOption<message::VTKVariables>{false});
     m_intOptions[message::InSituMessageType::NthTimestep] = std::unique_ptr< IntOption<message::NthTimestep>>(new IntOption<message::NthTimestep>{1});
     m_intOptions[message::InSituMessageType::CombineGrids] = std::unique_ptr< IntOption<message::CombineGrids>>(new IntOption<message::CombineGrids>{false});
+    m_intOptions[message::InSituMessageType::KeepTimesteps] = std::unique_ptr< IntOption<message::KeepTimesteps>>(new IntOption<message::KeepTimesteps>{ false });
 }
 
 Engine::~Engine() {

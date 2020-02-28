@@ -186,6 +186,10 @@ private:
 
     void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList, vistle::Index startOfGridIndex);
 
+    void setTimestep(vistle::Object::ptr data);
+
+    void setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec);
+
     Engine();
 
     ~Engine();
