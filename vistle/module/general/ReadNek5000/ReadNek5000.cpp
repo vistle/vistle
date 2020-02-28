@@ -245,7 +245,7 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    p_numGhostLayers = addIntParameter("numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
    p_numBlocks = addIntParameter("number of blocks", "number of blocks, <= 0 to read all", 0);
    p_numPartitions = addIntParameter("numerOfPartitions", "number of partitions", 1);
-
+   setParameterMinimum(p_numPartitions, Integer{ 1 });
    observeParameter(p_useMap);
    observeParameter(p_numGhostLayers);
    observeParameter(p_data_path);
