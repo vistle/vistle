@@ -29,6 +29,7 @@ set(util_HEADERS
    findself.h
    hostname.h
    math.h
+   print.h
    sysdep.h
    tools.h
    stopwatch.h
