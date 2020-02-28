@@ -183,7 +183,7 @@ private:
 
     void addObject(const std::string& name, vistle::Object::ptr obj); //send addObject message to module, from where it gets passed to Vistle
 
-    void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList);
+    void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList, vistle::Index startOfGridIndex);
 
     Engine();
 

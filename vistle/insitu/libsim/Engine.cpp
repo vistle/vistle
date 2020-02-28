@@ -795,7 +795,6 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
     int numCorners = meshInfo.dim == 2 ? 4 : 8;
     vistle::UnstructuredGrid::ptr grid{ new vistle::UnstructuredGrid(0,0,0) };
     std::array<float*, 3> gridCoords{ grid->x().end() ,grid->y().end() ,grid->z().end() };
-    Index* connectivityListSegmentBegin = grid->cl().begin();
     visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
     int dims[3]{ 1,1,1 }; //the x,y,z dimensions
     int ndims, coordMode;
@@ -817,8 +816,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
 
         numVertices = dims[0] * dims[1] * dims[2];
         numElements = (dims[0] - 1) * (dims[1] - 1) * (dims[2] == 1 ? 1 : (dims[2] - 1));
-        totalNumElements += numElements;
-        totalNumVerts += numVertices;
+
         // reserve memory for the arrays, /assume we have the same sub-grid size for the rest to reduce the amout of re-allocations
         if (grid->x().size() <totalNumVerts + numVertices) {
             auto newSize = totalNumVerts + numVertices * (meshInfo.numDomains - cd);
@@ -827,16 +825,12 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
         }
         if (grid->cl().size() < (totalNumElements + numElements) * numCorners) {
             grid->cl().resize((totalNumElements + numElements * (meshInfo.numDomains - cd))* numCorners);
-            connectivityListSegmentBegin = grid->cl().begin() + totalNumElements * numCorners;
         }
         if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
             //to do: create connectivity list for vtk structured grids
         } else {
-            makeStructuredGridConnectivityList(dims, connectivityListSegmentBegin);
+            makeStructuredGridConnectivityList(dims, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
         }
-
-
-
 
         switch (coordMode) {
         case VISIT_COORD_MODE_INTERLEAVED:
@@ -865,7 +859,8 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
             throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
         }
         gridCoords = { gridCoords[0] + numVertices, gridCoords[1] + numVertices, gridCoords[2] + numVertices, };
-        connectivityListSegmentBegin += numElements * numCorners;
+        totalNumElements += numElements;
+        totalNumVerts += numVertices;
 
     }
     assert(grid->getSize() >= totalNumVerts);
@@ -1049,7 +1044,7 @@ void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj)
 
 }
 
-void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle::Index * elementList)     {
+void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle::Index * connectivityList, vistle::Index startOfGridIndex)     {
     // construct connectivity list (all hexahedra)
     using namespace vistle;
     Index numVert[3];
@@ -1065,14 +1060,14 @@ void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle:
             for (Index iy = 0; iy < numElements[1]; ++iy) {
                 for (Index iz = 0; iz < numElements[2]; ++iz) {
                     const Index baseInsertionIndex = el * 8;
-                    elementList[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, iz, numVert);                       // 0       7 -------- 6
-                    elementList[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, iz, numVert);               // 1      /|         /|
-                    elementList[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz, numVert);           // 2     / |        / |
-                    elementList[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, iz, numVert);               // 3    4 -------- 5  |
-                    elementList[baseInsertionIndex + 4] = UniformGrid::vertexIndex(ix, iy, iz + 1, numVert);               // 4    |  3-------|--2
-                    elementList[baseInsertionIndex + 5] = UniformGrid::vertexIndex(ix + 1, iy, iz + 1, numVert);           // 5    | /        | /
-                    elementList[baseInsertionIndex + 6] = UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, numVert);       // 6    |/         |/
-                    elementList[baseInsertionIndex + 7] = UniformGrid::vertexIndex(ix, iy + 1, iz + 1, numVert);           // 7    0----------1
+                    connectivityList[baseInsertionIndex + 0] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy, iz, numVert);                       // 0       7 -------- 6
+                    connectivityList[baseInsertionIndex + 1] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy, iz, numVert);               // 1      /|         /|
+                    connectivityList[baseInsertionIndex + 2] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy + 1, iz, numVert);           // 2     / |        / |
+                    connectivityList[baseInsertionIndex + 3] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy + 1, iz, numVert);               // 3    4 -------- 5  |
+                    connectivityList[baseInsertionIndex + 4] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy, iz + 1, numVert);               // 4    |  3-------|--2
+                    connectivityList[baseInsertionIndex + 5] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy, iz + 1, numVert);           // 5    | /        | /
+                    connectivityList[baseInsertionIndex + 6] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy + 1, iz + 1, numVert);       // 6    |/         |/
+                    connectivityList[baseInsertionIndex + 7] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy + 1, iz + 1, numVert);           // 7    0----------1
 
                     ++el;
                 }
@@ -1084,10 +1079,10 @@ void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle:
         for (Index ix = 0; ix < numElements[0]; ++ix) {
             for (Index iy = 0; iy < numElements[1]; ++iy) {
                 const Index baseInsertionIndex = el * 4;
-                elementList[baseInsertionIndex] = UniformGrid::vertexIndex(ix, iy, 0, numVert);
-                elementList[baseInsertionIndex + 1] = UniformGrid::vertexIndex(ix + 1, iy, 0, numVert);
-                elementList[baseInsertionIndex + 2] = UniformGrid::vertexIndex(ix + 1, iy + 1, 0, numVert);
-                elementList[baseInsertionIndex + 3] = UniformGrid::vertexIndex(ix, iy + 1, 0, numVert);
+                connectivityList[baseInsertionIndex + 0] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy, 0, numVert);
+                connectivityList[baseInsertionIndex + 1] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy, 0, numVert);
+                connectivityList[baseInsertionIndex + 2] = startOfGridIndex + UniformGrid::vertexIndex(ix + 1, iy + 1, 0, numVert);
+                connectivityList[baseInsertionIndex + 3] = startOfGridIndex + UniformGrid::vertexIndex(ix, iy + 1, 0, numVert);
                 ++el;
             }
         }
