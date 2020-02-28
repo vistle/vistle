@@ -49,19 +49,8 @@
 #ifdef  LIBSIM_DEBUG
 #define DEBUG_CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
 #else
-struct DoNothing {
-public:
-    template<typename T>
-    DoNothing& operator<<(const T& t) {
-        return *this;
-    }
-
-    DoNothing& operator<<(std::ostream& (*pManip)(std::ostream&)) {
-        return *this;
-    }
-};
-static DoNothing doNothingInstance;
-#define DEBUG_CERR doNothingInstance
+#include <util/print.h>
+#define DEBUG_CERR vistle::DoNotPrintInstance
 #endif
 #define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
 
