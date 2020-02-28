@@ -21,14 +21,17 @@ bool StructuredGridBase::isGhostCell(Index elem) const {
 
       Index dims[3];
       std::array<Index,3> cellCoords;
-
+      int dim = 0;
       for (int c=0; c<3; ++c) {
           dims[c] = getNumDivisions(c);
+          if (dims[c] > 1) {
+              ++dim;
+          }
       }
 
       cellCoords = cellCoordinates(elem, dims);
-
-      for (int c=0; c<3; ++c) {
+      
+      for (int c=0; c<dim; ++c) {
           if (cellCoords[c] < getNumGhostLayers(c, Bottom)
                   || cellCoords[c]+getNumGhostLayers(c, Top)+1 >= dims[c]) {
               return true;
