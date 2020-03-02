@@ -202,6 +202,10 @@ public:
 
     static SyncShmMessage recv();
 
+    static SyncShmMessage tryRecv(bool &received);
+
+    static SyncShmMessage timedRecv(int time, bool& received);
+
     SyncShmMessage(int objectID, int arrayID);
     int objectID() const;
     int arrayID() const;

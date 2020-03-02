@@ -269,7 +269,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
             m_timestep = 0;
         }
         else {
-            SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+            sendShmIds();
         }
     }
     break;
@@ -503,7 +503,7 @@ std::vector<std::string> insitu::Engine::getDataNames(SimulationDataTyp type) {
     }
     break;
     default:
-        throw new EngineExeption("getDataNames called with invalid type");
+        throw EngineExeption("getDataNames called with invalid type");
         break;
     }
 
@@ -551,6 +551,14 @@ void Engine::addPorts() {
     }
 }
 //...................................................................................................
+template<typename T, typename...Args>
+typename T::ptr Engine::createVistleObject(Args&&... args)     {
+    auto obj = typename T::ptr(new T(args...));
+    sendShmIds();
+    return obj;
+}
+
+
 
 void insitu::Engine::sendDataToModule() {
     try {
@@ -678,7 +686,8 @@ bool insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(nTuples.begin(), nTuples.end());
             //std::reverse(data.begin(), data.end());
 
-            vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(nTuples[0], nTuples[1], nTuples[2]));
+            vistle::RectilinearGrid::ptr grid = createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
+            sendShmIds();
             setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
@@ -740,7 +749,8 @@ bool insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1], &coordHandles[2], &coordHandles[3]))                 {
                 throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
             }
-            vistle::StructuredGrid::ptr grid(new vistle::StructuredGrid(dims[0], dims[1], dims[2]));
+            vistle::StructuredGrid::ptr grid = createVistleObject<vistle::StructuredGrid>(dims[0], dims[1], dims[2]);
+
             std::array<float*, 3> gridCoords{ grid->x().data() ,grid->y().data() ,grid->z().data() };
             int numVals = dims[0] * dims[1] * dims[2];
             int owner{}, dataType{}, nComps{}, nTuples{};
@@ -793,7 +803,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
     size_t numVertices;
     size_t numElements;
     int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    vistle::UnstructuredGrid::ptr grid{ new vistle::UnstructuredGrid(0,0,0) };
+    vistle::UnstructuredGrid::ptr grid= createVistleObject<vistle::UnstructuredGrid>(0,0,0);
     std::array<float*, 3> gridCoords{ grid->x().end() ,grid->y().end() ,grid->z().end() };
     visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
     int dims[3]{ 1,1,1 }; //the x,y,z dimensions
@@ -914,7 +924,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                 throw EngineExeption{ "combined grids must be UnstructuredGrids" };
             }
             size_t size = centering == VISIT_VARCENTERING_NODE ? unstr->getNumVertices() : unstr->getNumElements();
-            auto var = vistle::Vec<vistle::Scalar, 1>::ptr(new vistle::Vec<vistle::Scalar, 1>(size));
+            auto var = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(size);
             var->setGrid(unstr);
             var->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable = var;
@@ -947,7 +957,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     }
                     variable = vec;
                 } else {
-                    variable.reset(new vistle::Vec<vistle::Scalar, 1>(nTuples));
+                    variable = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(nTuples);
                     transformArray(data, variable->x().data(), nTuples, dataType);
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
@@ -973,7 +983,7 @@ void insitu::Engine::sendTestData() {
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
-    vistle::RectilinearGrid::ptr grid = vistle::RectilinearGrid::ptr(new vistle::RectilinearGrid(dims[0], dims[1], dims[2]));
+    vistle::RectilinearGrid::ptr grid = createVistleObject<vistle::RectilinearGrid>(dims[0], dims[1], dims[2]);
     setTimestep(grid);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {
@@ -1111,6 +1121,10 @@ void Engine::setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec)     {
     } else {
         vec->setIteration(m_timestep);
     }
+}
+
+void Engine::sendShmIds()     {
+    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
 }
 
 Engine::Engine()

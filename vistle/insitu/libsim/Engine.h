@@ -190,11 +190,16 @@ private:
 
     void setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec);
 
+    void sendShmIds();
+
     Engine();
 
     ~Engine();
 
     
+    template<typename T, typename ...Args>
+    typename T::ptr createVistleObject(Args&& ...args);
+
 };
 
 

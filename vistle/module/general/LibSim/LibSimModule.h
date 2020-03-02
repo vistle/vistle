@@ -79,7 +79,7 @@ private:
     //communicator to sync tcp communcation with slaves
     boost::mpi::communicator m_socketComm;
 
-    std::mutex m_socketMutex;
+    std::mutex m_socketMutex, m_shmSyncMutex;
     //..........................................................................
 
 
@@ -103,6 +103,8 @@ private:
     void recvAndhandleMessage();
 
     void connectToSim();
+
+    void disconnectSim();
 
     //..........................................................................
     //thread safe (for the socket thread) getter and setter for bools

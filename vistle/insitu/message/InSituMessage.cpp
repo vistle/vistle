@@ -166,6 +166,25 @@ SyncShmMessage SyncShmMessage::recv() {
     return msg;
 }
 
+SyncShmMessage SyncShmMessage::tryRecv(bool& received) {
+    assert(m_initialized);
+    SyncShmMessage msg(0, 0);
+    size_t recvSize;
+    unsigned int priority;
+    received = m_receiveMessageQueue->try_receive(&msg, sizeof(SyncShmMessage), recvSize, priority);
+    return msg;
+}
+
+SyncShmMessage SyncShmMessage::timedRecv(int time, bool& received) {
+    assert(m_initialized);
+    SyncShmMessage msg(0, 0);
+    size_t recvSize;
+    unsigned int priority;
+    boost::posix_time::ptime t(boost::posix_time::second_clock::local_time() + boost::posix_time::time_duration(0,0,time));
+    received = m_receiveMessageQueue->timed_receive(&msg, sizeof(SyncShmMessage), recvSize, priority, t);
+    return msg;
+}
+
 SyncShmMessage::SyncShmMessage(int objectID, int arrayID)
     : m_objectID(objectID)
     , m_array_ID(arrayID) {

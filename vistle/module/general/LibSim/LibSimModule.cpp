@@ -96,9 +96,20 @@ bool LibSimModule::prepareReduce() {
     
     InSituTcpMessage::send(insitu::message::Ready{ false });
     if (getBool(m_connectedToEngine)) {
-        SyncShmMessage msg = SyncShmMessage::recv();
-        vistle::Shm::the().setObjectID(msg.objectID());
-        vistle::Shm::the().setArrayID(msg.arrayID());
+        bool r = false;
+        {
+            Guard g(m_shmSyncMutex);
+            SyncShmMessage msg = SyncShmMessage::timedRecv(2, r);
+            if (r && (vistle::Shm::the().objectID() != msg.objectID() || vistle::Shm::the().arrayID() != msg.arrayID())) {
+                CERR << "permanently sending shm ids does not work!!!!!!!!!" << endl;
+                vistle::Shm::the().setObjectID(msg.objectID());
+                vistle::Shm::the().setArrayID(msg.arrayID());
+            }
+        }
+        if (!r) {
+           
+            disconnectSim();
+        }
     }
     return true;
 }
@@ -113,6 +124,7 @@ bool LibSimModule::prepare() {
     InSituTcpMessage::send(insitu::message::AddPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
     if (m_connectedToEngine) {
+        Guard g(m_shmSyncMutex);
         SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
     }
     return true;
@@ -216,6 +228,17 @@ void LibSimModule::startSocketThread()     {
             option.second->send();
         }
         while (!getBool(m_terminate)) {
+            bool r = false;
+            {
+                Guard g(m_shmSyncMutex);
+                do {
+                    SyncShmMessage msg = SyncShmMessage::tryRecv(r);
+                    if (r) {
+                        vistle::Shm::the().setObjectID(msg.objectID());
+                        vistle::Shm::the().setArrayID(msg.arrayID());
+                    }
+                } while (r);
+            }
             recvAndhandleMessage();
         }
         });
@@ -266,23 +289,8 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::ConnectionClosed:
     {
-        {
-            Guard g(m_socketMutex);
-            m_simInitSent = false;
-            m_connectedToEngine = false;
-            if (m_terminate) {
-                return;
-            }
-        }
-        if (rank() == 0) {
-            CERR << "conection closed, listening for connections on port " << m_port << endl;
-            startAccept(m_acceptorv4);
-            startAccept(m_acceptorv6);
-            return;
-        } else {
-            m_socketComm.barrier(); //wait for rank 0 to reconnect
-            InSituTcpMessage::initialize(m_socket, m_socketComm);
-        }
+        
+        disconnectSim();
     }
         break;
     default:
@@ -321,6 +329,25 @@ void LibSimModule::connectToSim()     {
     boost::mpi::broadcast(comm(), m_simInitSent, 0);
 }
 
+void LibSimModule::disconnectSim()     {
+    {
+        Guard g(m_socketMutex);
+        m_simInitSent = false;
+        m_connectedToEngine = false;
+        if (m_terminate) {
+            return;
+        }
+    }
+    if (rank() == 0) {
+        CERR << "conection closed, listening for connections on port " << m_port << endl;
+        startAccept(m_acceptorv4);
+        startAccept(m_acceptorv6);
+        return;
+    } else {
+        m_socketComm.barrier(); //wait for rank 0 to reconnect
+        InSituTcpMessage::initialize(m_socket, m_socketComm);
+    }
+}
 
 void LibSimModule::setBool(bool& target, bool newval) {
     Guard g(m_socketMutex);
