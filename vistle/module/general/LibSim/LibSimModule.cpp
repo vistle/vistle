@@ -16,14 +16,14 @@
 #include <core/tcpmessage.h>
 
 #include <boost/filesystem.hpp>
-
+#include <util/print.h>
 using namespace std;
 using insitu::message::InSituTcpMessage;
 using insitu::message::SyncShmMessage;
 using insitu::message::InSituMessageType;
 
 #define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
-
+#define DEBUG_CERR vistle::DoNotPrintInstance
 
 
 LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator comm)
@@ -33,8 +33,10 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
 #else
     , m_workGuard(new boost::asio::io_service::work(m_ioService))
 #endif
-    , m_ioThread([this]() { m_ioService.run();
-CERR << "io thread terminated" << endl; })
+    , m_ioThread([this]() { 
+        m_ioService.run();
+        DEBUG_CERR << "io thread terminated" << endl;
+        })
 , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate) {
 
     m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
@@ -55,7 +57,7 @@ CERR << "io thread terminated" << endl; })
     std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", moduleID, rank());
     try {
         m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
-        std::cerr << "sendMessageQueue name = " << mqName << std::endl;
+        DEBUG_CERR << "sendMessageQueue name = " << mqName << std::endl;
     } catch (boost::interprocess::interprocess_exception & ex) {
         throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what()); 
     }
@@ -107,7 +109,7 @@ bool LibSimModule::prepareReduce() {
             }
         }
         if (!r) {
-           
+            CERR << "message with shm ids timed out...disconnecting" << endl;
             disconnectSim();
         }
     }
@@ -249,7 +251,7 @@ void LibSimModule::recvAndhandleMessage()     {
 
     InSituTcpMessage msg = InSituTcpMessage::recv();
     
-    CERR << "handleMessage " << (int)msg.type() << endl;
+    DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
     using namespace insitu;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
@@ -289,7 +291,7 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::ConnectionClosed:
     {
-        
+        CERR << " tcp connection close...disconnecting" << endl;
         disconnectSim();
     }
         break;
@@ -301,7 +303,7 @@ void LibSimModule::recvAndhandleMessage()     {
 void LibSimModule::connectToSim()     {
 
     if (m_simInitSent) {
-        CERR << "already connected" << endl;
+        DEBUG_CERR << "already connected" << endl;
     } else if (rank() == 0) {
         using namespace boost::filesystem;
         path p{ m_filePath->getValue() };
