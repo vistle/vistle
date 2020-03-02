@@ -62,7 +62,6 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
         throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what()); 
     }
 
-    SyncShmMessage::initialize(id(), rank(), SyncShmMessage::Mode::Create);
     if (rank() == 0) {
         startControllServer();
 
@@ -72,7 +71,7 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
 }
 
 LibSimModule::~LibSimModule() {
-    setBool(m_terminate, true);
+    setBool(m_terminateSocketThread, true);
     comm().barrier(); //make sure m_terminate is set on all ranks before releasing slaves from waiting for connection
     if (rank() == 0) {
         boost::system::error_code ec;
@@ -95,12 +94,11 @@ LibSimModule::~LibSimModule() {
 }
 
 bool LibSimModule::prepareReduce() {
-    
+
     InSituTcpMessage::send(insitu::message::Ready{ false });
-    if (getBool(m_connectedToEngine)) {
+    if (m_connectedToEngine) {
         bool r = false;
         {
-            Guard g(m_shmSyncMutex);
             SyncShmMessage msg = SyncShmMessage::timedRecv(2, r);
             if (r && (vistle::Shm::the().objectID() != msg.objectID() || vistle::Shm::the().arrayID() != msg.arrayID())) {
                 CERR << "permanently sending shm ids does not work!!!!!!!!!" << endl;
@@ -108,15 +106,22 @@ bool LibSimModule::prepareReduce() {
                 vistle::Shm::the().setArrayID(msg.arrayID());
             }
         }
-        if (!r) {
-            CERR << "message with shm ids timed out...disconnecting" << endl;
-            disconnectSim();
+        bool result = false;
+        auto f = [](bool a, bool b) { return false; };
+        boost::mpi::all_reduce(comm(), r, result, mpi::minimum<bool>());
+        if (!result) { //closeing tcp connection will restart the connection process
+            m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
+            m_socket->close();
         }
     }
     return true;
 }
 
 bool LibSimModule::prepare() {
+
+    if (!getBool(m_connectedToEngine)) {
+        return true;
+    }
     vector<string> connectedPorts;
     for (const auto port : m_outputPorts)         {
         if (port.second->isConnected()) {
@@ -125,10 +130,8 @@ bool LibSimModule::prepare() {
     }
     InSituTcpMessage::send(insitu::message::AddPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
-    if (m_connectedToEngine) {
-        Guard g(m_shmSyncMutex);
-        SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
-    }
+    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+
     return true;
 }
 
@@ -161,6 +164,7 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
     if (param == m_filePath || param == m_simName) {
         connectToSim();
     } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
+
         InSituTcpMessage::send(insitu::message::ExecuteCommand(param->getName()));
     } else {
         for (const auto &option : m_intOptions) {
@@ -222,6 +226,7 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
 }
 
 void LibSimModule::startSocketThread()     {
+    SyncShmMessage::initialize(id(), rank(), SyncShmMessage::Mode::Create);
     m_socketThread = std::thread([this]() {
         m_socketComm.barrier();
         setBool(m_connectedToEngine, true);
@@ -229,10 +234,9 @@ void LibSimModule::startSocketThread()     {
         for (const auto &option : m_intOptions)             {
             option.second->send();
         }
-        while (!getBool(m_terminate)) {
+        while (!getBool(m_terminateSocketThread)) {
             bool r = false;
             {
-                Guard g(m_shmSyncMutex);
                 do {
                     SyncShmMessage msg = SyncShmMessage::tryRecv(r);
                     if (r) {
@@ -291,7 +295,7 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::ConnectionClosed:
     {
-        CERR << " tcp connection close...disconnecting" << endl;
+        CERR << " tcp connection closed...disconnecting." << endl;
         disconnectSim();
     }
         break;
@@ -336,7 +340,7 @@ void LibSimModule::disconnectSim()     {
         Guard g(m_socketMutex);
         m_simInitSent = false;
         m_connectedToEngine = false;
-        if (m_terminate) {
+        if (m_terminateSocketThread) {
             return;
         }
     }

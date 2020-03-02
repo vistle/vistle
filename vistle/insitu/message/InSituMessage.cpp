@@ -34,14 +34,16 @@ InSituTcpMessage::InSituTcpMessage(InSituMessageType type, vistle::buffer&& payl
     ,m_payload(payload){
 }
 
+
 InSituTcpMessage::InSituTcpMessage()
     :m_type(InSituMessageType::Invalid) {
 
 }
 
 InSituTcpMessage InSituTcpMessage::recv() {
-    bool error = false;
     vistle::buffer payload;
+    bool error = false;
+
     int type;
     if (!m_initialized) {
         error = true;
@@ -142,6 +144,11 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
     }
 
     m_initialized = true;
+}
+void SyncShmMessage::close()     {
+    m_sendMessageQueue.reset(nullptr);
+    m_receiveMessageQueue.reset(nullptr);
+    m_initialized = false;
 }
 
 bool SyncShmMessage::isInitialized() {

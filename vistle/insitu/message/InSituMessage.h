@@ -196,6 +196,7 @@ public:
     };
 
     static void initialize(int moduleID, int rank, Mode mode);
+    static void close();
     static bool isInitialized();
 
     static bool send(const SyncShmMessage& msg);

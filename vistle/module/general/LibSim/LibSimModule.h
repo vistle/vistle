@@ -52,7 +52,7 @@ public:
     std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
     bool sendCommandChanged = false;
 private:
-    bool m_terminate = false; //set to true when when the module in closed to get out of loops in different threads
+    bool m_terminateSocketThread = false; //set to true when when the module in closed to get out of loops in different threads
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
@@ -79,7 +79,7 @@ private:
     //communicator to sync tcp communcation with slaves
     boost::mpi::communicator m_socketComm;
 
-    std::mutex m_socketMutex, m_shmSyncMutex;
+    std::mutex m_socketMutex;
     //..........................................................................
 
 
