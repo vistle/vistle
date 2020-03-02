@@ -249,11 +249,13 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         break;
     case InSituMessageType::AddObject:
         break;
-    case InSituMessageType::AddPorts:
+    case InSituMessageType::SetPorts:
     {
-        AddPorts ap = msg.unpackOrCast<AddPorts>();
+        SetPorts ap = msg.unpackOrCast<SetPorts>();
         m_connectedPorts.clear();
-        m_connectedPorts.insert(ap.value.begin(), ap.value.end());
+        for (auto vec : ap.value)             {
+            m_connectedPorts.insert(vec.begin(), vec.end());
+        }
     }
         break;
     case InSituMessageType::AddCommands:
@@ -536,13 +538,15 @@ void insitu::Engine::getRegisteredGenericCommands() {
 
 void Engine::addPorts() {
     try {
+        SetPorts::value_type ports;
         std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
         names.push_back("mesh");
-        InSituTcpMessage::send(AddPorts{ names });
+        ports.push_back(names);
 
         names = getDataNames(SimulationDataTyp::variable);
         names.push_back("variable");
-        InSituTcpMessage::send(AddPorts{ names });
+        ports.push_back(names);
+        InSituTcpMessage::send(SetPorts{ ports });
 
     } catch (const SimV2Exeption& ex) {
         CERR << "failed to add output ports: " << ex.what() << endl;

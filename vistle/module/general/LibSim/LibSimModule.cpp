@@ -54,14 +54,7 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("Combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) });
 
-    std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", moduleID, rank());
-    try {
-        m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
-        DEBUG_CERR << "sendMessageQueue name = " << mqName << std::endl;
-    } catch (boost::interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what()); 
-    }
-
+    initRecvFromSimQueue();
     if (rank() == 0) {
         startControllServer();
 
@@ -122,13 +115,15 @@ bool LibSimModule::prepare() {
     if (!getBool(m_connectedToEngine)) {
         return true;
     }
-    vector<string> connectedPorts;
+    insitu::message::SetPorts::value_type connectedPorts;
+    std::vector<string> p;
     for (const auto port : m_outputPorts)         {
         if (port.second->isConnected()) {
-            connectedPorts.push_back(port.first);
+            p.push_back(port.first);
         }
     }
-    InSituTcpMessage::send(insitu::message::AddPorts{ connectedPorts });
+    connectedPorts.push_back(p);
+    InSituTcpMessage::send(insitu::message::SetPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
     SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
 
@@ -136,16 +131,18 @@ bool LibSimModule::prepare() {
 }
 
 bool LibSimModule::dispatch(bool block, bool* messageReceived) {
-    vistle::message::Buffer buf;
     bool passMsg = false;
-    if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-        if (buf.type() != vistle::message::INSITU) {
-            sendMessage(buf);
+    bool msgRecv = false;
+    if (getBool(m_connectedToEngine)) { //if we are connected we forward messages (fow now only used for AddObject) from the sim to Vistle as if they came from this module
+        vistle::message::Buffer buf;
+        if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
+            if (buf.type() != vistle::message::INSITU) {
+                sendMessage(buf);
+            }
+            passMsg = true;
         }
-        passMsg = true;
     }
-    bool msgRecv;
-    auto retval =  Module::dispatch(false, &msgRecv);
+    bool retval = Module::dispatch(false, &msgRecv);
     vistle::adaptive_wait((msgRecv || passMsg));
     if (messageReceived) {
         *messageReceived = msgRecv;
@@ -264,12 +261,26 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::AddObject:
         break;
-    case InSituMessageType::AddPorts:
+    case InSituMessageType::SetPorts: //list of ports, last entry is the type description (e.g mesh or variable)
     {
-        auto em = msg.unpackOrCast< message::AddPorts>();
-        for (size_t i = 0; i < em.value.size() - 1; i++) {
-            createOutputPort(em.value[i], em.value[em.value.size() - 1]);
+        auto em = msg.unpackOrCast< message::SetPorts>();
+        for (auto i = m_outputPorts.begin(); i != m_outputPorts.end(); ++i) {//destoy unnecessary ports
+            if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<string>& ports) {return std::find(ports.begin(), ports.end(), i->first) != ports.end();}) != em.value.end()) {
+                destroyPort(i->second);
+                i = m_outputPorts.erase(i);
+            }
         }
+        for (auto portList : em.value)             {
+            for (size_t i = 0; i < portList.size() - 1; i++) {
+                auto lb = m_outputPorts.lower_bound(portList[i]);
+                if (!(lb != m_outputPorts.end() && !(m_outputPorts.key_comp()(portList[i], lb->first)))) {
+                    m_outputPorts.insert(lb, std::make_pair(portList[i], createOutputPort(portList[i], portList[portList.size() - 1])));
+                }
+            }
+        }
+
+
+
     }
         break;
     case InSituMessageType::AddCommands:
@@ -353,7 +364,22 @@ void LibSimModule::disconnectSim()     {
         m_socketComm.barrier(); //wait for rank 0 to reconnect
         InSituTcpMessage::initialize(m_socket, m_socketComm);
     }
+    initRecvFromSimQueue();
 }
+
+
+void LibSimModule::initRecvFromSimQueue() {
+    std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", id(), rank());
+
+    try {
+        m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
+        DEBUG_CERR << "sendMessageQueue name = " << mqName << std::endl;
+    } catch (boost::interprocess::interprocess_exception & ex) {
+        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
+
+    }
+}
+
 
 void LibSimModule::setBool(bool& target, bool newval) {
     Guard g(m_socketMutex);
