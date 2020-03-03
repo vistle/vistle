@@ -94,6 +94,7 @@ bool LibSimModule::prepareReduce() {
     if (m_connectedToEngine) {
         bool r = false;
         {
+            Guard g(m_socketMutex);
             SyncShmMessage msg = SyncShmMessage::timedRecv(2, r);
             if (r && (vistle::Shm::the().objectID() != msg.objectID() || vistle::Shm::the().arrayID() != msg.arrayID())) {
                 CERR << "permanently sending shm ids does not work!!!!!!!!!" << endl;
@@ -102,7 +103,6 @@ bool LibSimModule::prepareReduce() {
             }
         }
         bool result = false;
-        auto f = [](bool a, bool b) { return false; };
         boost::mpi::all_reduce(comm(), r, result, mpi::minimum<bool>());
         if (!result) { //closeing tcp connection will restart the connection process
             m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
@@ -127,6 +127,7 @@ bool LibSimModule::prepare() {
     connectedPorts.push_back(p);
     InSituTcpMessage::send(insitu::message::SetPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
+    Guard g(m_socketMutex);
     SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
 
     return true;
@@ -233,6 +234,7 @@ void LibSimModule::startSocketThread()     {
             bool r = false;
             {
                 do {
+                    Guard g(m_socketMutex);
                     SyncShmMessage msg = SyncShmMessage::tryRecv(r);
                     if (r) {
                         vistle::Shm::the().setObjectID(msg.objectID());
