@@ -54,7 +54,6 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) });
 
-    initRecvFromSimQueue();
     if (rank() == 0) {
         startControllServer();
 
@@ -223,7 +222,6 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
 }
 
 void LibSimModule::startSocketThread()     {
-    SyncShmMessage::initialize(id(), rank(), SyncShmMessage::Mode::Create);
     m_socketThread = std::thread([this]() {
         m_socketComm.barrier();
         setBool(m_connectedToEngine, true);
@@ -319,7 +317,12 @@ void LibSimModule::connectToSim()     {
 
     if (m_simInitSent) {
         DEBUG_CERR << "already connected" << endl;
-    } else if (rank() == 0) {
+        return;
+    } 
+    ++m_numberOfConnections;
+    initRecvFromSimQueue();
+    SyncShmMessage::initialize(id(), rank(), m_numberOfConnections, SyncShmMessage::Mode::Create);
+    if (rank() == 0) {
         using namespace boost::filesystem;
         path p{ m_filePath->getValue() };
         if (is_directory(p)) {
@@ -338,7 +341,7 @@ void LibSimModule::connectToSim()     {
             p = lastEditedFile;
         }
         CERR << "opening file: " << p.string() << endl;
-        vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port) };
+        vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(m_numberOfConnections) };
         if (insitu::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }
@@ -364,16 +367,15 @@ void LibSimModule::disconnectSim()     {
         m_socketComm.barrier(); //wait for rank 0 to reconnect
         InSituTcpMessage::initialize(m_socket, m_socketComm);
     }
-    initRecvFromSimQueue();
 }
 
 
 void LibSimModule::initRecvFromSimQueue() {
-    std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", id(), rank());
+    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + to_string(m_numberOfConnections)).c_str(), id(), rank());
 
     try {
         m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
-        DEBUG_CERR << "sendMessageQueue name = " << mqName << std::endl;
+        DEBUG_CERR << "receiveFromSimMessageQueue name = " << mqName << std::endl;
     } catch (boost::interprocess::interprocess_exception & ex) {
         throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
 

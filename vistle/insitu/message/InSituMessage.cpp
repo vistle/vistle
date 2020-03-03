@@ -90,7 +90,7 @@ bool InSituTcpMessage::isInitialized() {
 }
 
 
-void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
+void SyncShmMessage::initialize(int moduleID, int rank, int instance, Mode mode) {
 
     m_moduleID = moduleID;
     m_rank = rank;
@@ -101,8 +101,8 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
     switch (mode) {
     case SyncShmMessage::Mode::Create:
-        smqName = vistle::message::MessageQueue::createName("sendInSitu", moduleID, rank);
-        rmqName = vistle::message::MessageQueue::createName("recvInSitu", moduleID, rank);
+        smqName = vistle::message::MessageQueue::createName(("sendInSitu" + std::to_string(instance)).c_str(), moduleID, rank);
+        rmqName = vistle::message::MessageQueue::createName(("recvInSitu" + std::to_string(instance)).c_str(), moduleID, rank);
         try {
             message_queue::remove(smqName.c_str());
             message_queue::remove(rmqName.c_str());
@@ -121,8 +121,8 @@ void SyncShmMessage::initialize(int moduleID, int rank, Mode mode) {
 
         break;
     case SyncShmMessage::Mode::Attach:
-        smqName = vistle::message::MessageQueue::createName("recvInSitu", moduleID, rank);
-        rmqName = vistle::message::MessageQueue::createName("sendInSitu", moduleID, rank);
+        smqName = vistle::message::MessageQueue::createName(("recvInSitu" + std::to_string(instance)).c_str(), moduleID, rank);
+        rmqName = vistle::message::MessageQueue::createName(("sendInSitu" + std::to_string(instance)).c_str(), moduleID, rank);
         try {
             m_sendMessageQueue.reset(new message_queue(open_only, smqName.c_str()));
             std::cerr << "sendMessageQueue name = " << smqName << std::endl;

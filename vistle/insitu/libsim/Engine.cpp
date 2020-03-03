@@ -107,8 +107,8 @@ bool Engine::initialize(int argC, char** argV) {
 
 #else
 
-    if (argC != 6) {
-        CERR << "simulation requires exactly 6 parameters" << endl;
+    if (argC != 7) {
+        CERR << "simulation requires exactly 7 parameters" << endl;
         return false;
     }
 
@@ -132,7 +132,7 @@ bool Engine::initialize(int argC, char** argV) {
     vistle::message::DefaultSender::init(m_moduleID, m_rank);
 #endif
     // names are swapped relative to communicator
-    std::string mqName = vistle::message::MessageQueue::createName("recvFromSim", m_moduleID, m_rank);
+    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + std::string(argV[6])).c_str(), m_moduleID, m_rank);
     try {
         m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
     } catch (boost::interprocess::interprocess_exception & ex) {
@@ -154,7 +154,12 @@ bool Engine::initialize(int argC, char** argV) {
     }
     InSituTcpMessage::initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     InSituTcpMessage::send(GoOn());
-    SyncShmMessage::initialize(m_moduleID, m_rank, SyncShmMessage::Mode::Attach);
+    try {
+        SyncShmMessage::initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmMessage::Mode::Attach);
+    } catch (const vistle::exception&) {
+        CERR << "failed to initialize SyncShmMessage" << endl;
+        return false;
+    }
 
     return true;
 }
@@ -907,7 +912,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
         char* name, *meshName;
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
-        if (m_connectedPorts.find(name) != m_connectedPorts.end()) { //don't process data for un-used ports
+        if (m_connectedPorts.find(name) == m_connectedPorts.end()) { //don't process data for un-used ports
             continue;
         }
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);

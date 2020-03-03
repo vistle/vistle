@@ -56,6 +56,7 @@ private:
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
+    int m_numberOfConnections = 0; //number of times we have been connected with a simulation, used to rename reopend shm queues.
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<const vistle::Parameter*> m_commandParameter;
     std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue;

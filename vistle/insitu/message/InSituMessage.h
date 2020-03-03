@@ -195,7 +195,7 @@ public:
         , Attach
     };
 
-    static void initialize(int moduleID, int rank, Mode mode);
+    static void initialize(int moduleID, int rank, int instance, Mode mode);
     static void close();
     static bool isInitialized();
 
