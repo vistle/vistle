@@ -25,6 +25,9 @@ using insitu::message::InSituMessageType;
 #define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
+bool testBool = false;
+std::mutex testMutex;
+std::condition_variable testCV;
 
 LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator comm)
     : InSituReader("View and controll optins for LibSim instrumented simulations", name, moduleID, comm)
@@ -54,12 +57,8 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) });
 
-    if (rank() == 0) {
-        startControllServer();
+    startSocketThread();
 
-    } else {
-        startSocketThread();
-    }
 }
 
 LibSimModule::~LibSimModule() {
@@ -73,8 +72,12 @@ LibSimModule::~LibSimModule() {
             m_socket->close(ec);
         } else {
             boost::system::error_code ec;
-            m_ListeningSocket->cancel(ec);// release me from waiting for connection
-            m_socketComm.barrier(); // release slaves from waiting for connection
+            m_ListeningSocket->cancel(ec);// release asio from waiting for connection
+            {
+                Guard g(m_asioMutex);
+                m_waitingForAccept = true;
+            }
+            m_connectedCondition.notify_one(); //release me from waiting for connection
         }
     }
     if (m_socketThread.joinable()) {
@@ -213,22 +216,19 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
         }
         CERR << "connected with engine" << endl;
         m_socket = sock;
-        if (m_socketThread.joinable()) {
-            m_socketThread.join();
+        {
+            Guard g(m_asioMutex);
+            m_waitingForAccept = true;
         }
-        startSocketThread();
+        m_connectedCondition.notify_one();
         });
     return true;
 }
 
 void LibSimModule::startSocketThread()     {
     m_socketThread = std::thread([this]() {
-        m_socketComm.barrier();
-        setBool(m_connectedToEngine, true);
-        InSituTcpMessage::initialize(m_socket, m_socketComm);
-        for (const auto &option : m_intOptions)             {
-            option.second->send();
-        }
+        
+        resetSocketThread();
         while (!getBool(m_terminateSocketThread)) {
             bool r = false;
             {
@@ -244,6 +244,24 @@ void LibSimModule::startSocketThread()     {
         }
         });
 
+}
+
+void LibSimModule::resetSocketThread()     {
+    if (rank() == 0) {
+        startControllServer(); //start socket and wait for connection
+        std::unique_lock<std::mutex> lk(m_asioMutex);
+        m_connectedCondition.wait(lk, [this]() {return m_waitingForAccept; });
+        m_waitingForAccept = false;
+    }
+    m_socketComm.barrier(); //slaves are waiting here
+    if (getBool(m_terminateSocketThread)) {
+        return;
+    }
+    setBool(m_connectedToEngine, true);
+    InSituTcpMessage::initialize(m_socket, m_socketComm);
+    for (const auto& option : m_intOptions) {
+        option.second->send();
+    }
 }
 
 void LibSimModule::recvAndhandleMessage()     {
@@ -365,7 +383,8 @@ void LibSimModule::disconnectSim()     {
         return;
     } else {
         m_socketComm.barrier(); //wait for rank 0 to reconnect
-        InSituTcpMessage::initialize(m_socket, m_socketComm);
+        setBool(m_connectedToEngine, true);
+        resetSocketThread();
     }
 }
 

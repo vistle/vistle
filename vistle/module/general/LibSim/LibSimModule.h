@@ -73,14 +73,18 @@ private:
 #else
     std::shared_ptr<boost::asio::io_service::work> m_workGuard;
 #endif
-    //thread for io_service
-    std::thread m_ioThread;
-    //thread to sync tcp communcation with slaves
-    std::thread m_socketThread;
-    //communicator to sync tcp communcation with slaves
-    boost::mpi::communicator m_socketComm;
+   
+    std::thread m_ioThread; //thread for io_service
+    
+    std::mutex m_asioMutex; //to let the rank 0 socket thread wait for connection (the slaves use mpi barrier);
+    std::condition_variable m_connectedCondition; //to let the rank 0 socket thread wait for connection in the asio thread
+    bool m_waitingForAccept = false; //condition
 
-    std::mutex m_socketMutex;
+    std::thread m_socketThread; //thread to sync tcp communcation with slaves
+
+    boost::mpi::communicator m_socketComm;//communicator to sync tcp communcation with slaves
+
+    std::mutex m_socketMutex; //mutex to sync main and socket thread
     //..........................................................................
 
 
@@ -100,6 +104,8 @@ private:
     bool startAccept(std::shared_ptr<acceptor> a); //async accept initiates handle message toop
     
     void startSocketThread();
+
+    void resetSocketThread();
     
     void recvAndhandleMessage();
 
