@@ -106,7 +106,7 @@ private:
 
     void disconnectSim();
 
-    void initrecvFromSimQueue();
+    void initRecvFromSimQueue();
 
     //..........................................................................
     //thread safe (for the socket thread) getter and setter for bools
