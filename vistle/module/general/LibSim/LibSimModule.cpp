@@ -101,6 +101,9 @@ bool LibSimModule::prepareReduce() {
                 vistle::Shm::the().setObjectID(msg.objectID());
                 vistle::Shm::the().setArrayID(msg.arrayID());
             }
+            if (!r) {
+                CERR << "SyncShmMessage timed out...disconnecting!" << endl;
+            }
         }
         bool result = false;
         boost::mpi::all_reduce(comm(), r, result, mpi::minimum<bool>());
@@ -378,16 +381,7 @@ void LibSimModule::disconnectSim()     {
             return;
         }
     }
-    if (rank() == 0) {
-        CERR << "conection closed, listening for connections on port " << m_port << endl;
-        startAccept(m_acceptorv4);
-        startAccept(m_acceptorv6);
-        return;
-    } else {
-        m_socketComm.barrier(); //wait for rank 0 to reconnect
-        setBool(m_connectedToEngine, true);
-        resetSocketThread();
-    }
+    resetSocketThread();
 }
 
 
