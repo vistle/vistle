@@ -56,7 +56,7 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::NthTimestep] = std::unique_ptr< IntParam<insitu::message::NthTimestep>>(new IntParam<insitu::message::NthTimestep>{ addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1) });
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) });
-
+    startControllServer(); //start socket and wait for connection
     startSocketThread();
 
 }
@@ -198,9 +198,6 @@ void LibSimModule::startControllServer() {
     m_port = port;
 
     CERR << "listening for connections on port " << m_port << endl;
-    startAccept(m_acceptorv4);
-    startAccept(m_acceptorv6);
-
     return;
 }
 
@@ -253,7 +250,8 @@ void LibSimModule::startSocketThread()     {
 
 void LibSimModule::resetSocketThread()     {
     if (rank() == 0) {
-        startControllServer(); //start socket and wait for connection
+        startAccept(m_acceptorv4);
+        startAccept(m_acceptorv6);
         std::unique_lock<std::mutex> lk(m_asioMutex);
         m_connectedCondition.wait(lk, [this]() {return m_waitingForAccept; });
         m_waitingForAccept = false;
