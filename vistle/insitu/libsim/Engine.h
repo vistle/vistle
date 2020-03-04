@@ -128,19 +128,23 @@ private:
     {
         virtual void setVal(insitu::message::InSituTcpMessage& msg) {};
         int val = 0;
+
     };
     template<typename T>
     struct IntOption : public IntOptionBase  {
-        IntOption(int initialVal) {
+        IntOption(int initialVal, std::function<void()> cb = nullptr):callback(cb) {
             val = initialVal;
         }
         virtual void setVal(insitu::message::InSituTcpMessage& msg) override
         {
-            
             auto m = msg.unpackOrCast<T>();
             val = static_cast<typename T::value_type>(m.value);
+            if (callback) {
+                callback();
+            }
         }
-    };
+        std::function<void()> callback = nullptr;
+     };
     std::map<insitu::message::InSituMessageType, std::unique_ptr<IntOptionBase>> m_intOptions; // options that can be set in the module
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
