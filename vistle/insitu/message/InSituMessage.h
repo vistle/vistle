@@ -18,7 +18,9 @@
 #include <core/archives.h>
 
 #include <util/vecstreambuf.h>
-#include <boost/interprocess/ipc/message_queue.hpp>
+
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 
 namespace insitu{
 namespace message {
@@ -188,7 +190,7 @@ private:
 
 };
 
-class V_INSITUMESSAGEEXPORT SyncShmMessage {
+class V_INSITUMESSAGEEXPORT SyncShmIDs {
 public:
     enum class Mode {
           Create
@@ -198,23 +200,26 @@ public:
     static void initialize(int moduleID, int rank, int instance, Mode mode);
     static void close();
     static bool isInitialized();
-
-    static bool send(const SyncShmMessage& msg);
-
-    static SyncShmMessage recv();
-
-    static SyncShmMessage tryRecv(bool &received);
-
-    static SyncShmMessage timedRecv(int time, bool& received);
-
-    SyncShmMessage(int objectID, int arrayID);
-    int objectID() const;
-    int arrayID() const;
+    //we might need to use a mutex for this?
+    static void set(int objID, int arrayID);
+    static int objectID();
+    static int arrayID();
 
 private:
 
-    static std::unique_ptr<boost::interprocess::message_queue> m_sendMessageQueue;
-    static std::unique_ptr<boost::interprocess::message_queue> m_receiveMessageQueue;
+    class ShmSegment{
+    public:
+        ShmSegment() {}
+        ShmSegment(const std::string& name, Mode mode) throw(vistle::exception);
+        ~ShmSegment();
+        const std::unique_ptr<boost::interprocess::managed_shared_memory>& operator->() const;
+        std::unique_ptr<boost::interprocess::managed_shared_memory>& operator->();
+        ShmSegment& operator=(ShmSegment&& other) noexcept;
+    private:
+        std::unique_ptr<boost::interprocess::managed_shared_memory> m_segment;
+        std::string m_name;
+    };
+    static ShmSegment m_segment;
     static int m_rank;
     static int m_moduleID;
 

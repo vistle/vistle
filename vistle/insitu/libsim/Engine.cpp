@@ -139,7 +139,7 @@ bool Engine::initialize(int argC, char** argV) {
         CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
        return false;
     }
-
+    m_moduleReady = false;
 
 
     m_initialized = true;
@@ -155,7 +155,7 @@ bool Engine::initialize(int argC, char** argV) {
     InSituTcpMessage::initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     InSituTcpMessage::send(GoOn());
     try {
-        SyncShmMessage::initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmMessage::Mode::Attach);
+        SyncShmIDs::initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmIDs::Mode::Attach);
     } catch (const vistle::exception&) {
         CERR << "failed to initialize SyncShmMessage" << endl;
         return false;
@@ -270,9 +270,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         Ready em = msg.unpackOrCast<Ready>();
         m_moduleReady = em.value;
         if (m_moduleReady) {
-            SyncShmMessage msg = SyncShmMessage::recv();
-            vistle::Shm::the().setObjectID(msg.objectID());
-            vistle::Shm::the().setArrayID(msg.arrayID());
+            vistle::Shm::the().setObjectID(SyncShmIDs::objectID());
+            vistle::Shm::the().setArrayID(SyncShmIDs::arrayID());
             m_timestep = 0;
         }
         else {
@@ -306,6 +305,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::ConnectionClosed:
     {
         CERR << "connection closed" << endl;
+        SyncShmIDs::close();
         return false;
     }
     break;
@@ -1133,7 +1133,7 @@ void Engine::setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec)     {
 }
 
 void Engine::sendShmIds()     {
-    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+    SyncShmIDs::set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() );
 }
 
 Engine::Engine()

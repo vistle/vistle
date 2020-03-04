@@ -19,7 +19,7 @@
 #include <util/print.h>
 using namespace std;
 using insitu::message::InSituTcpMessage;
-using insitu::message::SyncShmMessage;
+using insitu::message::SyncShmIDs;
 using insitu::message::InSituMessageType;
 
 #define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
@@ -28,6 +28,17 @@ using insitu::message::InSituMessageType;
 bool testBool = false;
 std::mutex testMutex;
 std::condition_variable testCV;
+
+
+struct Test {
+    template<typename T>
+    T find(const char* c) {
+        return T{};
+    }
+
+};
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 
 LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator comm)
     : InSituReader("View and controll optins for LibSim instrumented simulations", name, moduleID, comm)
@@ -58,7 +69,6 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) });
     startControllServer(); //start socket and wait for connection
     startSocketThread();
-
 }
 
 LibSimModule::~LibSimModule() {
@@ -91,26 +101,10 @@ LibSimModule::~LibSimModule() {
 bool LibSimModule::prepareReduce() {
 
     InSituTcpMessage::send(insitu::message::Ready{ false });
-    if (m_connectedToEngine) {
-        bool r = false;
-        {
-            Guard g(m_socketMutex);
-            SyncShmMessage msg = SyncShmMessage::timedRecv(2, r);
-            if (r && (vistle::Shm::the().objectID() != msg.objectID() || vistle::Shm::the().arrayID() != msg.arrayID())) {
-                CERR << "permanently sending shm ids does not work!!!!!!!!!" << endl;
-                vistle::Shm::the().setObjectID(msg.objectID());
-                vistle::Shm::the().setArrayID(msg.arrayID());
-            }
-            if (!r) {
-                CERR << "SyncShmMessage timed out...disconnecting!" << endl;
-            }
-        }
-        bool result = false;
-        boost::mpi::all_reduce(comm(), r, result, mpi::minimum<bool>());
-        if (!result) { //closeing tcp connection will restart the connection process
-            m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
-            m_socket->close();
-        }
+    vistle::Shm::the().setArrayID(SyncShmIDs::arrayID());
+    vistle::Shm::the().setObjectID(SyncShmIDs::objectID());
+    if (!m_connectedToEngine) {
+        SyncShmIDs::close();
     }
     return true;
 }
@@ -131,7 +125,7 @@ bool LibSimModule::prepare() {
     InSituTcpMessage::send(insitu::message::SetPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
     Guard g(m_socketMutex);
-    SyncShmMessage::send(SyncShmMessage{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() });
+    SyncShmIDs::set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() );
 
     return true;
 }
@@ -233,17 +227,6 @@ void LibSimModule::startSocketThread()     {
         
         resetSocketThread();
         while (!getBool(m_terminateSocketThread)) {
-            bool r = false;
-            {
-                do {
-                    Guard g(m_socketMutex);
-                    SyncShmMessage msg = SyncShmMessage::tryRecv(r);
-                    if (r) {
-                        vistle::Shm::the().setObjectID(msg.objectID());
-                        vistle::Shm::the().setArrayID(msg.arrayID());
-                    }
-                } while (r);
-            }
             recvAndhandleMessage();
         }
         });
@@ -352,7 +335,7 @@ void LibSimModule::connectToSim()     {
     } 
     ++m_numberOfConnections;
     initRecvFromSimQueue();
-    SyncShmMessage::initialize(id(), rank(), m_numberOfConnections, SyncShmMessage::Mode::Create);
+    SyncShmIDs::initialize(id(), rank(), m_numberOfConnections, SyncShmIDs::Mode::Create);
     if (rank() == 0) {
         using namespace boost::filesystem;
         path p{ m_filePath->getValue() };
@@ -390,7 +373,7 @@ void LibSimModule::disconnectSim()     {
         }
     }
     if (rank() == 0) {
-        sendInfo("LibSimCOntroller is disconnecting from simulation");
+        sendInfo("LibSimController is disconnecting from simulation");
     }
     resetSocketThread();
 }

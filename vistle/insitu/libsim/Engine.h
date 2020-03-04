@@ -63,7 +63,7 @@ public:
     //********************************
     //****functions called by sim****
     //********************************
-    //oea nothing, should add all available data to the according outputs to execute the pipeline
+    //does nothing, should add all available data to the according outputs to execute the pipeline
     bool sendData();
     //called from simulation when a timestep changed
     void SimulationTimeStepChanged();
