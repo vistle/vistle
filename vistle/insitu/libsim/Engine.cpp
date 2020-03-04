@@ -263,7 +263,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         }
     }
         break;
-    case InSituMessageType::AddCommands:
+    case InSituMessageType::SetCommands:
         break;
     case InSituMessageType::Ready:
     {
@@ -538,7 +538,7 @@ void insitu::Engine::getRegisteredGenericCommands() {
         m_registeredGenericCommands.insert(name);
         commands.push_back(name);
     }
-    InSituTcpMessage::send(AddCommands{ commands });
+    InSituTcpMessage::send(SetCommands{ commands });
 }
 
 void Engine::addPorts() {

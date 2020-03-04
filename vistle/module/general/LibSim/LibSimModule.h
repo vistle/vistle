@@ -21,11 +21,23 @@ public:
 
     LibSimModule(const std::string& name, int moduleID, mpi::communicator comm);
     ~LibSimModule();
+
+    
+
+private:
     vistle::StringParameter* m_filePath = nullptr;
     vistle::StringParameter* m_simName = nullptr;
-    
-    struct IntParamBase
-    { 
+    bool m_terminateSocketThread = false; //set to true when when the module in closed to get out of loops in different threads
+    bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
+    bool m_connectedToEngine = false; //wether the socket connection to the engine is running
+    bool m_firstConnectionAttempt = true;
+    int m_numberOfConnections = 0; //number of times we have been connected with a simulation, used to rename reopend shm queues.
+    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue; //receives vistle messages that will be passed through to manager
+    std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
+    std::set<vistle::Parameter*> m_commandParameter; //buttons to trigger simulation commands
+    //...................................................................................
+    //used to manager the the int and bool options this module always offers
+    struct IntParamBase {
         IntParamBase() {}
 
         virtual void send() { return; };
@@ -43,23 +55,15 @@ public:
     template<typename T>
     struct IntParam : public IntParamBase {
         IntParam(vistle::IntParameter* param)
-            :IntParamBase(param){}
+            :IntParamBase(param) {
+        }
 
         virtual void send() override {
             insitu::message::InSituTcpMessage::send(T{ static_cast<typename T::value_type>(param()->getValue()) });
         }
     };
     std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
-    bool sendCommandChanged = false;
-private:
-    bool m_terminateSocketThread = false; //set to true when when the module in closed to get out of loops in different threads
-    bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
-    bool m_connectedToEngine = false; //wether the socket connection to the engine is running
-    bool m_firstConnectionAttempt = true;
-    int m_numberOfConnections = 0; //number of times we have been connected with a simulation, used to rename reopend shm queues.
-    std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
-    std::set<const vistle::Parameter*> m_commandParameter;
-    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue;
+
     //.........................................................................
     //stuff to handle socket communication with Engine
     unsigned short m_port = 31299;

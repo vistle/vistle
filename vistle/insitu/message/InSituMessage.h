@@ -28,7 +28,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , ShmInit
     , AddObject
     , SetPorts //detected ports from sim to module <--> connected ports from module to Engine
-    , AddCommands
+    , SetCommands
     , Ready
     , ExecuteCommand
     , GoOn
@@ -87,7 +87,7 @@ DECLARE_ENGINE_MESSAGE(ConnectionClosed)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts,  std::vector<std::vector<std::string>>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddCommands,  std::vector<std::string>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetCommands,  std::vector<std::string>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready,  bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids,  bool)

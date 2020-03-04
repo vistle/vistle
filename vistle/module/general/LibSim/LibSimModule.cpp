@@ -166,7 +166,7 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
     }
     if (param == m_filePath || param == m_simName) {
         connectToSim();
-    } else if (m_commandParameter.find(param) != m_commandParameter.end()) {
+    } else if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
 
         InSituTcpMessage::send(insitu::message::ExecuteCommand(param->getName()));
     } else {
@@ -284,7 +284,7 @@ void LibSimModule::recvAndhandleMessage()     {
     {
         auto em = msg.unpackOrCast< message::SetPorts>();
         for (auto i = m_outputPorts.begin(); i != m_outputPorts.end(); ++i) {//destoy unnecessary ports
-            if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<string>& ports) {return std::find(ports.begin(), ports.end(), i->first) != ports.end();}) != em.value.end()) {
+            if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<string>& ports) {return std::find(ports.begin(), ports.end(), i->first) != ports.end();}) == em.value.end()) {
                 destroyPort(i->second);
                 i = m_outputPorts.erase(i);
             }
@@ -298,15 +298,23 @@ void LibSimModule::recvAndhandleMessage()     {
             }
         }
 
-
-
     }
         break;
-    case InSituMessageType::AddCommands:
+    case InSituMessageType::SetCommands:
     {
-        auto em = msg.unpackOrCast< message::AddCommands>();
-        for (size_t i = 0; i < em.value.size(); i++) {
-            m_commandParameter.insert(addIntParameter(em.value[i], "", false, vistle::Parameter::Presentation::Boolean));
+        auto em = msg.unpackOrCast< message::SetCommands>();
+        for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
+            if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
+                removeParameter(*i);
+                i = m_commandParameter.erase(i);
+
+            }
+        }
+        for (auto portName : em.value)             {
+            auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(), [portName](const auto& val) {return val->getName() == portName; });
+            if (lb == m_commandParameter.end()) {
+                m_commandParameter.insert(addIntParameter(portName, "trigger command on change", false, vistle::Parameter::Presentation::Boolean));
+            }
         }
     }
         break;
