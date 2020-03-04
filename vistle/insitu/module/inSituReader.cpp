@@ -56,7 +56,6 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
 
 void InSituReader::cancelExecuteMessageReceived(const message::Message* msg) {
     if (m_isExecuting) {
-        vistle::message::Buffer buf;
         bool finished = false;
         if (!prepareReduce()) {
             sendError("failed to prepare reduce");

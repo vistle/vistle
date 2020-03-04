@@ -15,11 +15,12 @@ class V_INSITUMODULEEXPORT InSituReader : public vistle::Module {
 public:
     InSituReader(const std::string& description, const std::string& name, const int moduleID, mpi::communicator comm);
     bool isExecuting();
-    //use this function to get conformation that the external proces will not create vistle objects
+    //use this function to get conformation that the external procces will not create vistle objects
     virtual bool prepareReduce() = 0;
+    virtual void cancelExecuteMessageReceived(const vistle::message::Message* msg) override;
+
   private:
     virtual bool handleExecute(const vistle::message::Execute* exec) override;
-    virtual void cancelExecuteMessageReceived(const vistle::message::Message* msg) override;
 
 
 

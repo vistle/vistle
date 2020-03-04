@@ -147,6 +147,8 @@ bool LibSimModule::dispatch(bool block, bool* messageReceived) {
             }
             passMsg = true;
         }
+    } else if(isExecuting()){
+        cancelExecuteMessageReceived(nullptr);
     }
     bool retval = Module::dispatch(false, &msgRecv);
     vistle::adaptive_wait((msgRecv || passMsg));
@@ -386,6 +388,9 @@ void LibSimModule::disconnectSim()     {
         if (m_terminateSocketThread) {
             return;
         }
+    }
+    if (rank() == 0) {
+        sendInfo("LibSimCOntroller is disconnecting from simulation");
     }
     resetSocketThread();
 }
