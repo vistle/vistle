@@ -101,6 +101,7 @@ LibSimModule::~LibSimModule() {
 bool LibSimModule::prepareReduce() {
 
     InSituTcpMessage::send(insitu::message::Ready{ false });
+
     vistle::Shm::the().setArrayID(SyncShmIDs::arrayID());
     vistle::Shm::the().setObjectID(SyncShmIDs::objectID());
     if (!m_connectedToEngine) {
@@ -125,7 +126,13 @@ bool LibSimModule::prepare() {
     InSituTcpMessage::send(insitu::message::SetPorts{ connectedPorts });
     InSituTcpMessage::send(insitu::message::Ready{ true });
     Guard g(m_socketMutex);
-    SyncShmIDs::set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() );
+    try {
+        SyncShmIDs::set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
+    } catch (const vistle::exception& ex) {
+        CERR << ex.what() << endl;
+        m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //trigger disconnect on the socket thread
+    }
+
 
     return true;
 }

@@ -201,9 +201,9 @@ public:
     static void close();
     static bool isInitialized();
     //we might need to use a mutex for this?
-    static void set(int objID, int arrayID);
-    static int objectID();
-    static int arrayID();
+    static void set(int objID, int arrayID); 
+    static int objectID(); 
+    static int arrayID(); 
 
 private:
 

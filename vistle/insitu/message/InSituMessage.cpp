@@ -113,13 +113,21 @@ void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
     if (!m_initialized) {
         return;
     }
-    *m_segment->find<int>("objID").first = objID;
-    *m_segment->find<int>("arrayID").first = arrayID;
+    try {
+        *m_segment->find<int>("objID").first = objID;
+        *m_segment->find<int>("arrayID").first = arrayID;
+    } catch (const boost::interprocess::interprocess_exception& ex) {
+        throw vistle::exception(std::string("error setting shm object IDs: ") + ex.what());
+    }
 }
 
 int insitu::message::SyncShmIDs::objectID() {
     if (m_initialized) {
-        return *m_segment->find<int>("objID").first;
+        try {
+            return *m_segment->find<int>("objID").first;
+        } catch (const boost::interprocess::interprocess_exception& ex) {
+            throw vistle::exception(std::string("error getting shm object ID: ") + ex.what());
+        }
     }
     return vistle::Shm::the().objectID();
 
@@ -127,7 +135,11 @@ int insitu::message::SyncShmIDs::objectID() {
 
 int insitu::message::SyncShmIDs::arrayID() {
     if (m_initialized) {
+    }try {
         return    *m_segment->find<int>("arrayID").first;
+
+    } catch (const boost::interprocess::interprocess_exception& ex) {
+        throw vistle::exception(std::string("error getting shm array ID: ") + ex.what());
     }
     return vistle::Shm::the().arrayID();
 
