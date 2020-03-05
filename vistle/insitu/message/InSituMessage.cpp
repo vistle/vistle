@@ -94,8 +94,8 @@ void SyncShmIDs::initialize(int moduleID, int rank, int instance, Mode mode) {
     m_moduleID = moduleID;
     m_rank = rank;
     std::string segName = vistle::message::MessageQueue::createName(("syncShmIds" + std::to_string(instance)).c_str(), moduleID, rank);
-    m_segment = ShmSegment(segName, mode);
-
+    m_segment = ShmSegment{ segName, mode };
+    assert(m_segment.data());
     m_initialized = true;
 }
 
@@ -114,8 +114,9 @@ void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
         return;
     }
     try {
-        *m_segment->find<int>("objID").first = objID;
-        *m_segment->find<int>("arrayID").first = arrayID;
+        Guard g(m_segment.data()->mutex);
+        m_segment.data()->objID = objID;
+        m_segment.data()->arrayID = arrayID;
     } catch (const boost::interprocess::interprocess_exception& ex) {
         throw vistle::exception(std::string("error setting shm object IDs: ") + ex.what());
     }
@@ -124,7 +125,8 @@ void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
 int insitu::message::SyncShmIDs::objectID() {
     if (m_initialized) {
         try {
-            return *m_segment->find<int>("objID").first;
+            Guard g(m_segment.data()->mutex);
+            return m_segment.data()->objID;
         } catch (const boost::interprocess::interprocess_exception& ex) {
             throw vistle::exception(std::string("error getting shm object ID: ") + ex.what());
         }
@@ -136,12 +138,20 @@ int insitu::message::SyncShmIDs::objectID() {
 int insitu::message::SyncShmIDs::arrayID() {
     if (m_initialized) {
     }try {
-        return    *m_segment->find<int>("arrayID").first;
+        Guard g(m_segment.data()->mutex);
+        return m_segment.data()->arrayID;
 
     } catch (const boost::interprocess::interprocess_exception& ex) {
         throw vistle::exception(std::string("error getting shm array ID: ") + ex.what());
     }
     return vistle::Shm::the().arrayID();
+
+}
+
+
+insitu::message::SyncShmIDs::ShmSegment::ShmSegment(insitu::message::SyncShmIDs::ShmSegment&& other) 
+:m_name(std::move(other.m_name))
+,m_region(std::move(other.m_region)) {
 
 }
 
@@ -156,9 +166,11 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mod
 
             shared_memory_object::remove(name.c_str());
 
-            m_segment.reset(new managed_shared_memory(create_only, name.c_str(), mapped_region::get_page_size()));
-            int* objID = m_segment->construct<int>("objID")(vistle::Shm::the().objectID());
-            int* arrayID = m_segment->construct<int>("arrayID")(vistle::Shm::the().arrayID());
+            auto m_shmObj = shared_memory_object { create_only, name.c_str(), read_write };
+            m_shmObj.truncate(sizeof(ShmData));
+            m_region = mapped_region{ m_shmObj, read_write };
+            void* addr = m_region.get_address();
+            auto data = new(addr)ShmData{vistle::Shm::the().objectID(), vistle::Shm::the().arrayID()};
         } catch (boost::interprocess::interprocess_exception & ex) {
             throw vistle::exception(std::string("opening shm segment ") + name + ": " + ex.what());
         }
@@ -168,7 +180,8 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mod
     case SyncShmIDs::Mode::Attach:
     {
         try {
-            m_segment.reset(new managed_shared_memory(open_only, name.c_str()));
+            auto m_shmObj = shared_memory_object{ open_only, name.c_str(), read_write };
+            m_region = mapped_region{ m_shmObj, read_write };
             shared_memory_object::remove(name.c_str());
         } catch (boost::interprocess::interprocess_exception & ex) {
             throw vistle::exception(std::string("opening shm segment ") + name + ": " + ex.what());
@@ -182,23 +195,26 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mod
 
 }
 
+
+
 insitu::message::SyncShmIDs::ShmSegment::~ShmSegment() {
     boost::interprocess::shared_memory_object::remove(m_name.c_str());
 }
 
-const std::unique_ptr<boost::interprocess::managed_shared_memory>& insitu::message::SyncShmIDs::ShmSegment::operator->() const{
-    return m_segment;
+const insitu::message::SyncShmIDs::ShmData* insitu::message::SyncShmIDs::ShmSegment::data() const {
+    return static_cast<ShmData*>(m_region.get_address());
+}
+insitu::message::SyncShmIDs::ShmData* insitu::message::SyncShmIDs::ShmSegment::data()  {
+    return static_cast<ShmData *>(m_region.get_address());
 }
 
-std::unique_ptr<boost::interprocess::managed_shared_memory>& insitu::message::SyncShmIDs::ShmSegment::operator->() {
-    return m_segment;
-}
-
-insitu::message::SyncShmIDs::ShmSegment& insitu::message::SyncShmIDs::ShmSegment::operator=(ShmSegment&& other) noexcept{
-    m_segment = std::move(other.m_segment);
+insitu::message::SyncShmIDs::ShmSegment& insitu::message::SyncShmIDs::ShmSegment::operator=(insitu::message::SyncShmIDs::ShmSegment&& other) noexcept{
     m_name = std::move(other.m_name);
+    m_region = std::move(other.m_region);
     return *this;
 }
+
+
 
 
 

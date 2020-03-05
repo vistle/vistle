@@ -380,6 +380,8 @@ void LibSimModule::disconnectSim()     {
         }
     }
     if (rank() == 0) {
+        vistle::Shm::the().setArrayID(SyncShmIDs::arrayID());
+        vistle::Shm::the().setObjectID(SyncShmIDs::objectID());
         sendInfo("LibSimController is disconnecting from simulation");
     }
     resetSocketThread();

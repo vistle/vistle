@@ -19,7 +19,9 @@
 
 #include <util/vecstreambuf.h>
 
-#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/sync/scoped_lock.hpp>
 
 
 namespace insitu{
@@ -196,7 +198,7 @@ public:
           Create
         , Attach
     };
-
+    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> Guard;
     static void initialize(int moduleID, int rank, int instance, Mode mode);
     static void close();
     static bool isInitialized();
@@ -205,19 +207,25 @@ public:
     static int objectID(); 
     static int arrayID(); 
 
+    struct ShmData {
+        int objID = -1;
+        int arrayID = -1;
+        boost::interprocess::interprocess_mutex mutex;
+    };
 private:
 
     class ShmSegment{
     public:
         ShmSegment() {}
+        ShmSegment(ShmSegment&& other);
         ShmSegment(const std::string& name, Mode mode) throw(vistle::exception);
         ~ShmSegment();
-        const std::unique_ptr<boost::interprocess::managed_shared_memory>& operator->() const;
-        std::unique_ptr<boost::interprocess::managed_shared_memory>& operator->();
+        const ShmData* data() const;
+        ShmData* data();
         ShmSegment& operator=(ShmSegment&& other) noexcept;
     private:
-        std::unique_ptr<boost::interprocess::managed_shared_memory> m_segment;
         std::string m_name;
+        boost::interprocess::mapped_region m_region;
     };
     static ShmSegment m_segment;
     static int m_rank;
