@@ -7,6 +7,7 @@
 #include "VisItDataTypes.h"
 #include <core/object.h>
 #include <core/database.h>
+#include <core/uniformgrid.h>
 #include <type_traits>
 #include <cassert>
 namespace insitu{
@@ -187,8 +188,6 @@ struct VtkArray2VistleConverter     {
     }
 };
 
-
-
 vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, int dataType, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
     using namespace vistle;
     DataBase::ptr data;
@@ -197,6 +196,62 @@ vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, int dataType, vistl
         return data;
 
     return callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
+}
+
+template<typename Source, typename Dest, typename p_Pos>
+struct ConversionInserter {
+    void operator()(Source* src, size_t SourcePos,  Dest dest, size_t destPos)         {
+        dest[destPos] = src[SourcePos];
+    }
+
+};
+
+template<typename T>
+void expandRectilinearToStructured(void* source[3], int dataType, const int size[3], std::array<T*, 3> dest) {
+    using namespace vistle;
+    const Index dim[3] = { (Index)size[0], (Index)size[1], (Index)size[2] };
+    for (Index i = 0; i < dim[0]; i++) {
+        for (Index j = 0; j < dim[1]; j++) {
+            for (Index k = 0; k < dim[2]; k++) {
+                const Index insertionIndex = UniformGrid::vertexIndex(i, j, k, dim);
+
+                //unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
+                //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
+                //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
+
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
+            }
+        }
+    }
+}
+
+vistle::Index VTKVertexIndex(vistle::Index x, vistle::Index y, vistle::Index z, const vistle::Index dims[3])     {
+    return ((z * dims[1] + y) * dims[0] + x);
+}
+
+
+
+template<typename T>
+void expandRectilinearToVTKStructured(void* source[3], int dataType, const int size[3], std::array<T*, 3> dest) {
+    using namespace vistle;
+    const Index dim[3] = { (Index)size[0], (Index)size[1], (Index)size[2] };
+    for (Index k = 0; k < dim[2]; ++k) {
+        for (Index j = 0; j < dim[1]; ++j) {
+            for (Index i = 0; i < dim[0]; ++i) {
+                const Index insertionIndex = VTKVertexIndex(i, j, k, dim);
+
+                //unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
+                //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
+                //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
+
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
+                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
+            }
+        }
+    }
 }
 
 }

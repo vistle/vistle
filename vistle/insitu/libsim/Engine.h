@@ -9,6 +9,8 @@
 #include "export.h"
 #include <insitu/message/InSituMessage.h>
 
+#include <core/uniformgrid.h>
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -87,6 +89,7 @@ public:
 
 
 private:
+    const int zero = 0;
     static Engine* instance;
     bool m_initialized = false; //Engine is initialized
     vistle::message::MessageQueue* m_sendMessageQueue = nullptr; //Queue to send addObject messages to LibSImController module
@@ -170,12 +173,14 @@ private:
     void sendDataToModule();//create all data objects and send them to vistle
     
     void sendMeshesToModule();
-    bool makeRectilinearMesh(MeshInfo meshInfo);
-    bool makeUntructuredMesh(MeshInfo meshInfo);
-    bool makeAmrMesh(MeshInfo meshInfo);
-    bool makeStructuredMesh(MeshInfo meshInfo);
+    void makeRectilinearMesh(MeshInfo meshInfo);
+    void makeUntructuredMesh(MeshInfo meshInfo);
+    void makeAmrMesh(MeshInfo meshInfo);
+    void makeStructuredMesh(MeshInfo meshInfo);
     //combine the structured meshes of one domain to a singe unstructured mesh. Points of adjacent faces will be doubled.
     void combineStructuredMeshesToUnstructured(MeshInfo meshInfo);
+
+    void combineRectilinearToUnstructured(MeshInfo meshInfo);
 
     
     void sendVarablesToModule();
@@ -189,6 +194,8 @@ private:
     void addObject(const std::string& name, vistle::Object::ptr obj); //send addObject message to module, from where it gets passed to Vistle
 
     void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList, vistle::Index startOfGridIndex);
+
+    void makeVTKStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, vistle::Index(*vertexIdex)(vistle::Index, vistle::Index, vistle::Index, vistle::Index[3])  = nullptr);
 
     void setTimestep(vistle::Object::ptr data);
 
