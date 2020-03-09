@@ -198,7 +198,12 @@ public:
           Create
         , Attach
     };
+#ifdef MODULE_THREAD
+    typedef std::lock_guard<std::mutex> Guard;
+#else
     typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> Guard;
+#endif
+
     static void initialize(int moduleID, int rank, int instance, Mode mode);
     static void close();
     static bool isInitialized();
@@ -210,10 +215,15 @@ public:
     struct ShmData {
         int objID = -1;
         int arrayID = -1;
+#ifdef MODULE_THREAD
+        std::mutex mutex;
+#else
         boost::interprocess::interprocess_mutex mutex;
+#endif
+
     };
 private:
-
+#ifndef MODULE_THREAD
     class ShmSegment{
     public:
         ShmSegment() {}
@@ -225,9 +235,21 @@ private:
         ShmSegment& operator=(ShmSegment&& other) noexcept;
     private:
         std::string m_name;
+
         boost::interprocess::mapped_region m_region;
     };
     static ShmSegment m_segment;
+#else
+    class Data { //wrapper if we dont need shm
+public:
+    ShmData* data(){
+        return &m_data;
+    }
+    private:
+        ShmData m_data;
+};
+    static Data m_segment;
+#endif
     static int m_rank;
     static int m_moduleID;
 

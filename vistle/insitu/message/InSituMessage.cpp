@@ -14,8 +14,13 @@ using namespace vistle::message;
 bool insitu::message::InSituTcpMessage::m_initialized = false;
 boost::mpi::communicator insitu::message::InSituTcpMessage::m_comm;
 std::shared_ptr< boost::asio::ip::tcp::socket> insitu::message::InSituTcpMessage::m_socket;
-
+#ifndef MODULE_THREAD
 insitu::message::SyncShmIDs::ShmSegment insitu::message::SyncShmIDs::m_segment;
+#else
+insitu::message::SyncShmIDs::Data insitu::message::SyncShmIDs::m_segment;
+#endif // !MODULE_THREAD
+
+
 bool insitu::message::SyncShmIDs::m_initialized = false;
 int  insitu::message::SyncShmIDs::m_rank = -1;
 int  insitu::message::SyncShmIDs::m_moduleID = -1;
@@ -94,13 +99,19 @@ void SyncShmIDs::initialize(int moduleID, int rank, int instance, Mode mode) {
     m_moduleID = moduleID;
     m_rank = rank;
     std::string segName = vistle::message::MessageQueue::createName(("syncShmIds" + std::to_string(instance)).c_str(), moduleID, rank);
+#ifndef MODULE_THREAD
     m_segment = ShmSegment{ segName, mode };
-    assert(m_segment.data());
+#endif // MODULE_THREAD
+
     m_initialized = true;
 }
 
 void SyncShmIDs::close() {
+#ifndef MODULE_THREAD
     m_segment = ShmSegment{};
+#endif // MODULE_THREAD
+
+
     m_initialized = false;
 
 }
@@ -148,10 +159,13 @@ int insitu::message::SyncShmIDs::arrayID() {
 
 }
 
+#ifndef MODULE_THREAD
 
 insitu::message::SyncShmIDs::ShmSegment::ShmSegment(insitu::message::SyncShmIDs::ShmSegment&& other) 
 :m_name(std::move(other.m_name))
-,m_region(std::move(other.m_region)) {
+,m_region(std::move(other.m_region)) 
+
+{
 
 }
 
@@ -214,7 +228,7 @@ insitu::message::SyncShmIDs::ShmSegment& insitu::message::SyncShmIDs::ShmSegment
     return *this;
 }
 
-
+#endif // !MODULE_THREAD
 
 
 
