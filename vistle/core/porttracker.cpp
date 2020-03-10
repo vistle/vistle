@@ -69,10 +69,10 @@ const Port *PortTracker::addPort(const int moduleID, const std::string &name, co
    if (pi == portMap->end()) {
 
       if (type == Port::INPUT) {
-         const bool combine = flags & Port::COMBINE;
+         const bool combine = flags & Port::COMBINE_BIT;
          for (auto &p: *portMap) {
             if (p.second->getType() == Port::INPUT) {
-               if ((flags & Port::COMBINE) || combine) {
+               if ((flags & Port::COMBINE_BIT) || combine) {
                   CERR << "COMBINE port has to be only input port of a module" << std::endl;
                   check();
                   return nullptr;

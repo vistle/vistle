@@ -1619,6 +1619,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             const int destId = destPort->getModuleID();
             auto allInputs = portManager().getConnectedInputPorts(destId);
             for (auto input: allInputs) {
+               if (input->flags() & Port::NOCOMPUTE)
+                    continue;
                if (!portManager().isReset(input))
                   allReadyForPrepare = false;
                if (!portManager().isFinished(input))
