@@ -16,7 +16,7 @@
 #include <core/tcpmessage.h>
 
 
-#include <util/print.h>
+#include <insitu/util/print.h>
 
 #ifdef MODULE_THREAD
 #include <insitu/libsim/EngineInterface.h>

@@ -52,7 +52,7 @@
 #ifdef  LIBSIM_DEBUG
 #define DEBUG_CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
 #else
-#include <util/print.h>
+#include <insitu/util/print.h>
 #define DEBUG_CERR vistle::DoNotPrintInstance
 #endif
 #define CERR std::cerr << "Engine: " << " [" << m_rank << "/" << m_mpiSize << "] "
@@ -145,26 +145,27 @@ bool Engine::initialize(int argC, char** argV) {
        return false;
     }
     m_moduleReady = false;
-
-
-
-#endif
     if (m_rank == 0) {
         try {
             connectToModule(argV[4], atoi(argV[5]));
-        } catch (const EngineExeption& ex) {
-            CERR << ex.what() << endl;
-            return false;
-        }
+} catch (const EngineExeption & ex) {
+    CERR << ex.what() << endl;
+    return false;
+}
     }
     m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     m_messageHandler.send(GoOn());
     try {
         m_shmIDs.initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmIDs::Mode::Attach);
-    } catch (const vistle::exception&) {
-        CERR << "failed to initialize SyncShmMessage" << endl;
-        return false;
-    }
+} catch (const vistle::exception&) {
+    CERR << "failed to initialize SyncShmMessage" << endl;
+    return false;
+}
+
+#endif
+
+
+    
     m_initialized = true;
     return true;
 }
@@ -370,7 +371,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
             CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
             return false;
         }
-
+        m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
         m_shmIDs.initialize(m_moduleID, m_rank, 0, message::SyncShmIDs::Mode::Attach);
         m_moduleReady = false;
         

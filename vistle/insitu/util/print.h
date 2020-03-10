@@ -17,15 +17,15 @@ This is usefull in functions that only want to print under certain circumstances
 struct DoNotPrint {
 public:
     template<typename T>
-    DoNotPrint& operator<<(const T& t) {
+    constexpr const DoNotPrint& operator<<(const T& t) const{
         return *this;
     }
 
-    DoNotPrint& operator<<(std::ostream& (*pManip)(std::ostream&)) {
+    constexpr const DoNotPrint& operator<<(std::ostream& (*pManip)(std::ostream&)) const{
         return *this;
     }
 };
-static DoNotPrint DoNotPrintInstance;
+static const DoNotPrint DoNotPrintInstance;
 
 /*
     prints to stream if condition is true
