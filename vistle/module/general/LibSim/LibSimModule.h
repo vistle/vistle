@@ -25,8 +25,12 @@ public:
     
 
 private:
+    insitu::message::InSituTcp m_messageHandler;
+    insitu::message::SyncShmIDs m_shmIDs;
+#ifndef MODULE_THREAD
     vistle::StringParameter* m_filePath = nullptr;
     vistle::StringParameter* m_simName = nullptr;
+#endif
     bool m_terminateSocketThread = false; //set to true when when the module in closed to get out of loops in different threads
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
@@ -36,7 +40,7 @@ private:
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<vistle::Parameter*> m_commandParameter; //buttons to trigger simulation commands
     //...................................................................................
-    //used to manager the the int and bool options this module always offers
+    //used to manag the int and bool options this module always offers
     struct IntParamBase {
         IntParamBase() {}
 
@@ -54,23 +58,23 @@ private:
 
     template<typename T>
     struct IntParam : public IntParamBase {
-        IntParam(vistle::IntParameter* param)
-            :IntParamBase(param) {
+        IntParam(vistle::IntParameter* param, const insitu::message::InSituTcp& sender)
+            :IntParamBase(param) 
+        , m_sender(sender){
         }
-
+        const insitu::message::InSituTcp& m_sender;
         virtual void send() override {
-            insitu::message::InSituTcpMessage::send(T{ static_cast<typename T::value_type>(param()->getValue()) });
+            m_sender.send(T{ static_cast<typename T::value_type>(param()->getValue()) });
         }
     };
     std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
-
+#ifndef MODULE_THREAD
     //.........................................................................
     //stuff to handle socket communication with Engine
     unsigned short m_port = 31299;
     boost::asio::io_service m_ioService;
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::shared_ptr<boost::asio::ip::tcp::socket> m_socket, m_ListeningSocket;
-    boost::asio::streambuf m_streambuf;
 
 #if BOOST_VERSION >= 106600
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
@@ -83,7 +87,7 @@ private:
     std::mutex m_asioMutex; //to let the rank 0 socket thread wait for connection (the slaves use mpi barrier);
     std::condition_variable m_connectedCondition; //to let the rank 0 socket thread wait for connection in the asio thread
     bool m_waitingForAccept = false; //condition
-
+#endif
     std::thread m_socketThread; //thread to sync tcp communcation with slaves
 
     boost::mpi::communicator m_socketComm;//communicator to sync tcp communcation with slaves
@@ -102,14 +106,13 @@ private:
     //..........................................................................
 
 
-
-    void startControllServer(); //find a free socket to listen to and start accept
+    void startControllServer();
 
     bool startAccept(std::shared_ptr<acceptor> a); //async accept initiates handle message toop
     
     void startSocketThread();
 
-    void resetSocketThread();
+    void resetSocketThread(); //blocks rank 0 and slaves until rank 0 is connected
     
     void recvAndhandleMessage();
 

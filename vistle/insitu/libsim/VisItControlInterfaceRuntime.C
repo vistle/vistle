@@ -180,9 +180,9 @@ int simv2_get_descriptor(void *e)
 int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
-#ifndef MODULE_THREAD
+
     return engine->recvAndhandleVistleMessage();
-#endif
+
 
 }
 

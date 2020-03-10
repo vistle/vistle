@@ -1,6 +1,13 @@
 option(LIBSIM_DEBUG "print debug messages" OFF)
 option(LIBSIM_PARALLEL "build parallel instead of serial LibSim Interface" ON)
 
+if(NOT VISTLE_MULTI_PROCESS)
+vistle_add_library(vistle_libsim_engine_interface EngineInterface.h EngineInterface.cpp)
+target_link_libraries(vistle_libsim_engine_interface
+        ${Boost_LIBRARIES}
+)
+endif()
+
 vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
 target_link_libraries(vistle_libsim_connect
         ${Boost_LIBRARIES}
@@ -32,7 +39,6 @@ SET(RUNTIME_SOURCES
   MaterialMetaData.C
   MeshMetaData.C
   MessageMetaData.C
-  ModuleInterface.cpp
   NameList.C
   OptionList.C
   PointMesh.C
@@ -69,7 +75,6 @@ SET(RUNTIME_HEADERS
   MeshMetaData.h
   MessageMetaData.h
   MetaData.h
-  ModuleInterface.h
   NameList.h
   OptionList.h
   PointMesh.h
@@ -112,10 +117,13 @@ target_link_libraries(${LIBNAME}
 		vistle_insitu_message
 		${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
-)
+		)
+		
 if(NOT VISTLE_MULTI_PROCESS)
 target_link_libraries(${LIBNAME}
-		vistle_clustermanager)
+		vistle_clustermanager
+		vistle_libsim_engine_interface
+		)
 endif()
 
 

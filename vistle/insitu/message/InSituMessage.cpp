@@ -11,40 +11,40 @@ using namespace insitu::message;
 using namespace vistle::message;
 
 
-bool insitu::message::InSituTcpMessage::m_initialized = false;
-boost::mpi::communicator insitu::message::InSituTcpMessage::m_comm;
-std::shared_ptr< boost::asio::ip::tcp::socket> insitu::message::InSituTcpMessage::m_socket;
-#ifndef MODULE_THREAD
-insitu::message::SyncShmIDs::ShmSegment insitu::message::SyncShmIDs::m_segment;
-#else
-insitu::message::SyncShmIDs::Data insitu::message::SyncShmIDs::m_segment;
-#endif // !MODULE_THREAD
-
-
-bool insitu::message::SyncShmIDs::m_initialized = false;
-int  insitu::message::SyncShmIDs::m_rank = -1;
-int  insitu::message::SyncShmIDs::m_moduleID = -1;
+//bool insitu::message::InSituTcpMessage::m_initialized = false;
+//boost::mpi::communicator insitu::message::InSituTcpMessage::m_comm;
+//std::shared_ptr< boost::asio::ip::tcp::socket> insitu::message::InSituTcpMessage::m_socket;
+//#ifndef MODULE_THREAD
+//insitu::message::SyncShmIDs::ShmSegment insitu::message::SyncShmIDs::m_segment;
+//#else
+//insitu::message::SyncShmIDs::Data insitu::message::SyncShmIDs::m_segment;
+//#endif // !MODULE_THREAD
+//
+//
+//bool insitu::message::SyncShmIDs::m_initialized = false;
+//int  insitu::message::SyncShmIDs::m_rank = -1;
+//int  insitu::message::SyncShmIDs::m_moduleID = -1;
 
 InSituMessageType insitu::message::InSituMessageBase::type() const {
     return m_type;
 }
 
-InSituMessageType InSituTcpMessage::type() const{
+InSituMessageType InSituTcp::Message::type() const{
     return m_type;
 }
 
-InSituTcpMessage::InSituTcpMessage(InSituMessageType type, vistle::buffer&& payload)
+InSituTcp::Message::Message(InSituMessageType type, vistle::buffer&& payload)
     :m_type(type)
     ,m_payload(payload){
 }
 
 
-InSituTcpMessage::InSituTcpMessage()
+InSituTcp::Message::Message()
     :m_type(InSituMessageType::Invalid) {
 
 }
 
-InSituTcpMessage InSituTcpMessage::recv() {
+InSituTcp::Message InSituTcp::recv() {
     vistle::buffer payload;
     bool error = false;
 
@@ -67,7 +67,7 @@ InSituTcpMessage InSituTcpMessage::recv() {
     m_comm.barrier();
     boost::mpi::broadcast(m_comm, error, 0);
     if (error) {
-        return InSituTcpMessage{};
+        return InSituTcp::Message{};
     }
     boost::mpi::broadcast(m_comm, type, 0);
     if (type == static_cast<int>(InSituMessageType::ConnectionClosed)) {
@@ -80,16 +80,16 @@ InSituTcpMessage InSituTcpMessage::recv() {
         payload.resize(size);
     }
     boost::mpi::broadcast(m_comm, payload.data(), payload.size(), 0);
-    return InSituTcpMessage{static_cast<InSituMessageType>(type), std::move(payload)};
+    return InSituTcp::Message{static_cast<InSituMessageType>(type), std::move(payload)};
 }
 
-void InSituTcpMessage::initialize(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm) {
+void InSituTcp::initialize(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm) {
     m_socket = socket;
     m_comm = comm;
     m_initialized = true;
 }
 
-bool InSituTcpMessage::isInitialized() {
+bool InSituTcp::isInitialized() {
     return m_initialized;
 }
 

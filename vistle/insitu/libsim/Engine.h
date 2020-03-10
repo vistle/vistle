@@ -17,6 +17,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 
 #ifdef MODULE_THREAD
 #include <manager/manager.h>
@@ -43,8 +44,11 @@ enum class SimulationDataTyp {
     ,message
 
 };
-
+#ifdef MODULE_THREAD
 class V_VISITXPORT Engine {
+#else
+class V_VISITXPORT Engine {
+#endif
 public:
     
     typedef boost::asio::ip::tcp::socket socket;
@@ -56,12 +60,18 @@ public:
     bool isInitialized() const noexcept;
     bool setMpiComm(void* newConn);
 
+    void ConnectMySelf();
 
+    bool startAccept(std::shared_ptr<acceptor> a);
+
+
+
+#ifdef MODULE_THREAD
     //********************************
-    //***functions called by module***
-    //********************************
+//***functions called by module***
+//********************************
 
-
+#endif
     //********************************
     //****functions called by sim****
     //********************************
@@ -100,11 +110,27 @@ private:
     //thread to run the vistle manager in
     std::thread m_managerThread;
 #endif
+
+    insitu::message::InSituTcp m_messageHandler;
+    insitu::message::SyncShmIDs m_shmIDs;
+
 //Port info to comunicate with the vistle module
-    unsigned short m_port = 0;
+    unsigned short m_port = 31099;
     boost::asio::io_service m_ioService;
-    std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+
     std::shared_ptr<socket> m_socket;
+#ifdef MODULE_THREAD //we create s server and connect m_socket with it. Then we pass connected the server socket the EngineInterface from where the module can take it.
+#if BOOST_VERSION >= 106600
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+#else
+    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
+#endif
+    std::thread m_ioThread; //thread for io_service
+    std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+    std::mutex m_asioMutex;
+    std::condition_variable m_connectedCondition; //to let the rank 0 socket thread wait for connection in the asio thread
+    bool m_waitingForAccept = false; //condition
+#endif
 //info from the simulation
     size_t m_processedCycles = 0; //the last cycle that was processed
     Metadata m_metaData; //the meta data of the currenc cycle
@@ -129,7 +155,7 @@ private:
     size_t m_timestep = 0; //timestep couter for module
     struct IntOptionBase
     {
-        virtual void setVal(insitu::message::InSituTcpMessage& msg) {};
+        virtual void setVal(insitu::message::InSituTcp::Message& msg) {};
         int val = 0;
 
     };
@@ -138,7 +164,7 @@ private:
         IntOption(int initialVal, std::function<void()> cb = nullptr):callback(cb) {
             val = initialVal;
         }
-        virtual void setVal(insitu::message::InSituTcpMessage& msg) override
+        virtual void setVal(insitu::message::InSituTcp::Message& msg) override
         {
             auto m = msg.unpackOrCast<T>();
             val = static_cast<typename T::value_type>(m.value);

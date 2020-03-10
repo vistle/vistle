@@ -18,5 +18,9 @@ target_link_libraries(LibSimController
 	${Boost_LIBRARIES}
 	)
 
-
+if(NOT VISTLE_MULTI_PROCESS)
+target_link_libraries(LibSimController
+		vistle_libsim_engine_interface
+		)
+endif()
 

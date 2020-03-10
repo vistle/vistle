@@ -41,8 +41,12 @@
 #include <util/hostname.h>
 #include <util/listenv4v6.h>
 
-
 #include <ostream>
+
+
+#ifdef MODULE_THREAD
+#include "EngineInterface.cpp"
+#endif // MODULE_THREAD
 
 
 #ifdef  LIBSIM_DEBUG
@@ -84,8 +88,13 @@ bool Engine::initialize(int argC, char** argV) {
     }
     CERR << "_______________________________" << endl;
 #ifdef MODULE_THREAD
+    
+    
+    if (m_rank == 0) {
+        ConnectMySelf();
+    }
     // start manager on cluster
-    const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+    const char* VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
         CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
         return false;
@@ -126,10 +135,7 @@ bool Engine::initialize(int argC, char** argV) {
 
     vistle::registerTypes();
     vistle::Shm::attach(m_shmName, m_moduleID, m_rank);
-
-#ifndef MODULE_THREAD
     vistle::message::DefaultSender::init(m_moduleID, m_rank);
-#endif
     // names are swapped relative to communicator
     std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + std::string(argV[6])).c_str(), m_moduleID, m_rank);
     try {
@@ -141,7 +147,7 @@ bool Engine::initialize(int argC, char** argV) {
     m_moduleReady = false;
 
 
-    m_initialized = true;
+
 #endif
     if (m_rank == 0) {
         try {
@@ -151,15 +157,15 @@ bool Engine::initialize(int argC, char** argV) {
             return false;
         }
     }
-    InSituTcpMessage::initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    InSituTcpMessage::send(GoOn());
+    m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
+    m_messageHandler.send(GoOn());
     try {
-        SyncShmIDs::initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmIDs::Mode::Attach);
+        m_shmIDs.initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmIDs::Mode::Attach);
     } catch (const vistle::exception&) {
         CERR << "failed to initialize SyncShmMessage" << endl;
         return false;
     }
-
+    m_initialized = true;
     return true;
 }
 
@@ -173,9 +179,53 @@ bool Engine::setMpiComm(void* newconn) {
 return true;
 
 }
+#ifdef MODULE_THREAD
+void Engine::ConnectMySelf()     {
+    unsigned short port = m_port;
 
+    boost::system::error_code ec;
 
+    while (!vistle::start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
+        if (ec == boost::system::errc::address_in_use) {
+            ++port;
+        } else if (ec) {
+            CERR << "failed to listen on port " << port << ": " << ec.message() << endl;
+            return;
+        }
+    }
+    m_port = port;
+    startAccept(m_acceptorv4);
+    startAccept(m_acceptorv6);
+    connectToModule("localhost", m_port);
 
+    std::unique_lock<std::mutex> lk(m_asioMutex);
+    m_connectedCondition.wait(lk, [this]() {return m_waitingForAccept; });
+    m_waitingForAccept = false;
+
+}
+
+bool Engine::startAccept(std::shared_ptr<acceptor> a) {
+
+    if (!a->is_open())
+        return false;
+
+    std::shared_ptr<socket> sock(new boost::asio::ip::tcp::socket(m_ioService));
+    EngineInterface::setControllSocket(sock);
+    boost::system::error_code ec;
+    a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
+        if (ec) {
+            m_socket = nullptr;
+            CERR << "failed connection attempt" << endl;
+            return;
+        }
+        CERR << "server connected with engine" << (a == m_acceptorv4? "v4" : "v6") <<  endl;
+        m_socket = sock;
+       
+        });
+    return true;
+}
+
+#endif
 bool Engine::sendData() {
 
     CERR << "sendData was called" << endl;
@@ -221,7 +271,7 @@ void Engine::SimulationInitiateCommand(const std::string& command) {
         std::string cmd("INTERNALSYNC");
         std::string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
-        InSituTcpMessage::send(GoOn{}); //request tcp message from conroller
+        m_messageHandler.send(GoOn{}); //request tcp message from conroller
     }
 }
 
@@ -244,7 +294,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
     ++counter;
     finalizeInit();
-    InSituTcpMessage msg = InSituTcpMessage::recv();
+    InSituTcp::Message msg = m_messageHandler.recv();
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
@@ -269,8 +319,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         Ready em = msg.unpackOrCast<Ready>();
         m_moduleReady = em.value;
         if (m_moduleReady) {
-            vistle::Shm::the().setObjectID(SyncShmIDs::objectID());
-            vistle::Shm::the().setArrayID(SyncShmIDs::arrayID());
+            vistle::Shm::the().setObjectID(m_shmIDs.objectID());
+            vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
             m_timestep = 0;
         }
         else {
@@ -291,23 +341,42 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
 
             CERR << "received command, but required callback is not set" << endl;
         }
-        InSituTcpMessage::send(GoOn{});
+        m_messageHandler.send(GoOn{});
     }
     break;
     case InSituMessageType::GoOn:
     {
         if (m_metaData.simMode == VISIT_SIMMODE_RUNNING) {
-            //InSituTcpMessage::send(GoOn{});
+            //m_messageHandler.send(GoOn{});
         }
     }
         break;
     case InSituMessageType::ConnectionClosed:
     {
         CERR << "connection closed" << endl;
-        SyncShmIDs::close();
+        m_shmIDs.close();
         return false;
     }
     break;
+#ifdef MODULE_THREAD
+    case InSituMessageType::ModuleID:
+    {
+        auto mid = msg.unpackOrCast<ModuleID>();
+        m_moduleID = mid.value;
+        std::string mqName = vistle::message::MessageQueue::createName("recvFromSim0" , m_moduleID, m_rank);
+        try {
+            m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
+        } catch (boost::interprocess::interprocess_exception & ex) {
+            CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
+            return false;
+        }
+
+        m_shmIDs.initialize(m_moduleID, m_rank, 0, message::SyncShmIDs::Mode::Attach);
+        m_moduleReady = false;
+        
+    }
+    break;
+#endif
     default:
         m_intOptions[msg.type()]->setVal(msg);
         break;
@@ -537,7 +606,7 @@ void insitu::Engine::getRegisteredGenericCommands() {
         m_registeredGenericCommands.insert(name);
         commands.push_back(name);
     }
-    InSituTcpMessage::send(SetCommands{ commands });
+    m_messageHandler.send(SetCommands{ commands });
 }
 
 void Engine::addPorts() {
@@ -550,7 +619,7 @@ void Engine::addPorts() {
         names = getDataNames(SimulationDataTyp::variable);
         names.push_back("variable");
         ports.push_back(names);
-        InSituTcpMessage::send(SetPorts{ ports });
+        m_messageHandler.send(SetPorts{ ports });
 
     } catch (const SimV2Exeption& ex) {
         CERR << "failed to add output ports: " << ex.what() << endl;
@@ -1124,10 +1193,30 @@ void insitu::Engine::connectToModule(const std::string& hostname, int port) {
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to resolve connect socket");
     }
+#ifndef MODULE_THREAD
     asio::connect(*m_socket, endpoint_iterator, ec);
+#else
+    asio::async_connect(*m_socket, endpoint_iterator, [this](boost::system::error_code ec, boost::asio::ip::tcp::resolver::iterator iterator) {
+        if (ec) {
+            m_socket = nullptr;
+            CERR << "client failed to connect" << endl;
+            return;
+        }
+        CERR << "client connected with engine" << endl;
+        {
+            std::lock_guard<std::mutex> g(m_asioMutex);
+            m_waitingForAccept = true;
+        }
+        m_connectedCondition.notify_one();
+    });
+#endif
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to connect socket");
     }
+
+
+
+
 }
 
 void insitu::Engine::finalizeInit()     {
@@ -1283,11 +1372,28 @@ void Engine::setTimestep(vistle::Vec<vistle::Scalar, 1>::ptr vec)     {
 }
 
 void Engine::sendShmIds()     {
-    SyncShmIDs::set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() );
+    m_shmIDs.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() );
 }
 
 Engine::Engine()
-{ 
+#ifdef MODULE_THREAD
+#if BOOST_VERSION >= 106600
+: m_workGuard(boost::asio::make_work_guard(m_ioService))
+#else
+ :m_workGuard(new boost::asio::io_service::work(m_ioService))
+#endif
+, m_ioThread([this]() {
+    m_ioService.run();
+    DEBUG_CERR << "io thread terminated" << endl;
+    })
+{
+
+    m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
+    m_acceptorv6.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
+#else
+    {
+#endif
+
     m_intOptions[message::InSituMessageType::ConstGrids] = std::unique_ptr< IntOption<message::ConstGrids>>(new IntOption<message::ConstGrids>{false});
     m_intOptions[message::InSituMessageType::VTKVariables] = std::unique_ptr< IntOption<message::VTKVariables>>(new IntOption<message::VTKVariables>{false});
     m_intOptions[message::InSituMessageType::NthTimestep] = std::unique_ptr< IntOption<message::NthTimestep>>(new IntOption<message::NthTimestep>{1});
@@ -1302,7 +1408,7 @@ Engine::~Engine() {
         vistle::Shm::the().detach();
     }
 #endif
-    InSituTcpMessage::send(ConnectionClosed{});
+    m_messageHandler.send(ConnectionClosed{});
     delete m_sendMessageQueue;
     Engine::instance = nullptr;
 }

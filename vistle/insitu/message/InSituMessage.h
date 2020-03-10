@@ -42,7 +42,9 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     , VTKVariables
     , CombineGrids
     , KeepTimesteps
-
+#ifdef MODULE_THREAD
+    , ModuleID
+#endif
 };
 
 
@@ -60,9 +62,9 @@ protected:
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
     typedef payloadType value_type;\
-    friend class InSituTcpMessage; \
+    friend class InSituTcp; \
     messageType(const payloadType& payloadName):InSituMessageBase(type), value(payloadName){}\
-    static const InSituMessageType type = InSituMessageType::messageType;\
+     static const InSituMessageType type = InSituMessageType::messageType;\
     payloadType value; \
     ARCHIVE_ACCESS\
     template<class Archive>\
@@ -77,7 +79,7 @@ private:\
 
 #define DECLARE_ENGINE_MESSAGE(messageType)\
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase {\
-    static const InSituMessageType type = InSituMessageType::messageType;\
+     const InSituMessageType type = InSituMessageType::messageType;\
     messageType() :InSituMessageBase(type) {}\
     ARCHIVE_ACCESS\
     template<class Archive>\
@@ -99,6 +101,9 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(CombineGrids,  bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep,  size_t)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables,  bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(KeepTimesteps, bool)
+#ifdef MODULE_THREAD
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ModuleID, int)
+#endif
 
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
@@ -118,15 +123,43 @@ static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "
 //When the connection is closed returns EngineMEssageType::ConnectionClosed and becomes uninitialized.
 //while uninitialized calls to send and received are ignored.
 //Received Messages are broadcasted to all ranks so make sure they all call receive together.
-class V_INSITUMESSAGEEXPORT InSituTcpMessage {
+class V_INSITUMESSAGEEXPORT InSituTcp {
 public:
-
+    class V_INSITUMESSAGEEXPORT Message{
+        friend class InSituTcp;
+    public:
     InSituMessageType type() const;
 
-    static void initialize(std::shared_ptr< boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm);
-    static bool isInitialized();
+       
     template<typename SomeMessage>
-    static bool send(const SomeMessage& msg) {
+    SomeMessage& unpackOrCast() {
+
+
+        assert(SomeMessage::type != type());
+        if (!m_msg) {
+            vistle::vecistreambuf<vistle::buffer> buf(m_payload);
+            m_msg.reset(new SomeMessage{});
+            try {
+                vistle::iarchive ar(buf);
+                ar&* static_cast<SomeMessage*>(m_msg.get());
+            } catch (yas::io_exception & ex) {
+                std::cerr << "ERROR: failed to get InSituTcpMessage payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
+            }
+        }
+        return *static_cast<SomeMessage*>(m_msg.get());
+
+    }
+private:
+    Message(InSituMessageType type, vistle::buffer&& payload);
+    Message();
+    InSituMessageType m_type;
+    vistle::buffer m_payload;
+    std::unique_ptr<InSituMessageBase> m_msg;
+};
+
+
+    template<typename SomeMessage>
+    bool send(const SomeMessage& msg) const{
         if (!m_initialized) {
             std::cerr << "InSituTcpMessage uninitialized: can not send message!" << std::endl;
             return false;
@@ -152,44 +185,13 @@ public:
         }
         return error;
     }
-
-    static InSituTcpMessage recv();
-
-    template<typename SomeMessage>
-    SomeMessage& unpackOrCast() {
-
-
-        assert(SomeMessage::type != type());
-        if (!m_msg) {
-            vistle::vecistreambuf<vistle::buffer> buf(m_payload);
-            m_msg.reset(new SomeMessage{});
-            try {
-                vistle::iarchive ar(buf);
-                ar&* static_cast<SomeMessage*>(m_msg.get());
-            } catch (yas::io_exception & ex) {
-                std::cerr << "ERROR: failed to get InSituTcpMessage payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
-            }
-        }
-        return *static_cast<SomeMessage*>(m_msg.get());
-
-    }
-
-
-
+    void initialize(std::shared_ptr< boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm);
+    bool isInitialized();
+    InSituTcp::Message recv();
 private:
-    InSituTcpMessage(InSituMessageType type, vistle::buffer&& payload);
-    InSituTcpMessage();
-    InSituMessageType m_type;
-    vistle::buffer m_payload;
-    std::unique_ptr<InSituMessageBase> m_msg;
-
-    static bool m_initialized;
-    static boost::mpi::communicator m_comm;
-    static std::shared_ptr< boost::asio::ip::tcp::socket> m_socket;
-
-
-
-
+     bool m_initialized = false;
+     boost::mpi::communicator m_comm;
+     std::shared_ptr< boost::asio::ip::tcp::socket> m_socket;
 };
 
 class V_INSITUMESSAGEEXPORT SyncShmIDs {
@@ -204,13 +206,13 @@ public:
     typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> Guard;
 #endif
 
-    static void initialize(int moduleID, int rank, int instance, Mode mode);
-    static void close();
-    static bool isInitialized();
+     void initialize(int moduleID, int rank, int instance, Mode mode);
+     void close();
+     bool isInitialized();
     //we might need to use a mutex for this?
-    static void set(int objID, int arrayID); 
-    static int objectID(); 
-    static int arrayID(); 
+     void set(int objID, int arrayID); 
+     int objectID(); 
+     int arrayID(); 
 
     struct ShmData {
         int objID = -1;
@@ -238,7 +240,7 @@ private:
 
         boost::interprocess::mapped_region m_region;
     };
-    static ShmSegment m_segment;
+     ShmSegment m_segment;
 #else
     class Data { //wrapper if we dont need shm
 public:
@@ -248,15 +250,15 @@ public:
     private:
         ShmData m_data;
 };
-    static Data m_segment;
+     Data m_segment;
 #endif
-    static int m_rank;
-    static int m_moduleID;
+     int m_rank = -1;
+     int m_moduleID = -1;
 
-    int m_objectID;
-    int m_array_ID;
+    int m_objectID = -1;
+    int m_array_ID = -1;
 
-    static bool m_initialized;
+     bool m_initialized = false;
 };
 } //message
 } //insitu

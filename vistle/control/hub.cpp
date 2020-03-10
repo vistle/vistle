@@ -299,12 +299,7 @@ bool Hub::init(int argc, char *argv[]) {
    if (vm.count("execute") > 0) {
        m_executeModules = true;
    }
-#ifndef MODULE_THREAD
-   if (vm.count("libsim") > 0) {
-       sim2FilePath = vm["libsim"].as<std::string>();
-       m_inSitu = true;
-   }
-#endif
+
    if (!m_inManager && !m_quitting) {
        std::string port = boost::lexical_cast<std::string>(this->port());
        std::string dataport = boost::lexical_cast<std::string>(dataPort());
