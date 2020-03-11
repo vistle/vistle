@@ -10,7 +10,7 @@
 
 #APRUN_FLAGS="-j2 -cc 0-11,24-35:12-23,36-47" # enable hyper-threading
 
-
+envvars="VISTLE_KEY LD_LIBRARY_PATH DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH COVISE_PATH COVISEDIR ARCHSUFFIX PYTHONHOME PYTHONPATH"
 
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
@@ -163,11 +163,15 @@ if [ "$OPENMPI" = "1" ]; then
         BIND="-cpu-list 8,9,10,11,12,13,14,15"
     fi
 
+   ENVS=""
+   for v in $envvars; do
+       ENVS="$ENVS -x $v"
+   done
    if [ -z "$MPIHOSTS" ]; then
-      echo mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
+      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -x ${libpath} $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
