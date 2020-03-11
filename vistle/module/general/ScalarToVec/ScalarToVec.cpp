@@ -31,7 +31,6 @@ bool ScalarToVec::compute() {
 
        }
    }
-
    for (size_t i = 0; i < NumScalars; i++) {
        if (!data_in[i]) {
            Vec<Scalar>::ptr  vec(new  Vec<Scalar>(data_in[found]->getSize()));
@@ -43,7 +42,11 @@ bool ScalarToVec::compute() {
    Vec<Scalar, NumScalars>::ptr out(new Vec<Scalar, NumScalars>(Index(0)));
    for (int i=0; i<NumScalars; ++i)
        out->d()->x[i] = data_in[i]->d()->x[0];
-   out->copyAttributes(data_in[found]);
+   for (int i=NumScalars-1; i>=0; --i) {
+       if (data_in[i]) {
+           out->copyAttributes(data_in[i]);
+       }
+   }
    out->setGrid(data_in[found]->grid());
    addObject(m_vecOut, out);
 
