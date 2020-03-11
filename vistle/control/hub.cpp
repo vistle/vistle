@@ -311,7 +311,7 @@ bool Hub::init(int argc, char *argv[]) {
        args.push_back("-from-vistle");
        args.push_back(hostname());
        args.push_back(port);
-       args.push_back(port);
+       args.push_back(dataport);
 #ifdef MODULE_THREAD
        if (vm.count("libsim") > 0) {
            sim2FilePath = vm["libsim"].as<std::string>();
