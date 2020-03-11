@@ -80,6 +80,7 @@ void Engine::DisconnectSimulation() {
 }
 
 bool Engine::initialize(int argC, char** argV) {
+    m_moduleReady = false;
     MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
     CERR<< "__________Engine args__________" << endl;
@@ -111,7 +112,6 @@ bool Engine::initialize(int argC, char** argV) {
         vistle::VistleManager manager;
         manager.run(args.size(), args.data());
     });
-    m_initialized = true;
 
 #else
 
@@ -144,7 +144,7 @@ bool Engine::initialize(int argC, char** argV) {
         CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
        return false;
     }
-    m_moduleReady = false;
+
     if (m_rank == 0) {
         try {
             connectToModule(argV[4], atoi(argV[5]));
