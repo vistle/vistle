@@ -230,7 +230,7 @@ private:
     public:
         ShmSegment() {}
         ShmSegment(ShmSegment&& other);
-        ShmSegment(const std::string& name, Mode mode) throw(vistle::exception);
+        ShmSegment(const std::string& name, Mode mode);
         ~ShmSegment();
         const ShmData* data() const;
         ShmData* data();

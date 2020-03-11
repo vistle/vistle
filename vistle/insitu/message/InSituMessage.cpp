@@ -57,7 +57,7 @@ InSituTcp::Message InSituTcp::recv() {
             boost::system::error_code err;
             vistle::message::Buffer bf;
             vistle::message::recv(*m_socket, bf, err, true, &payload);
-            if (err || bf.type() != vistle::message::Type::INSITU) {
+            if (err || static_cast<vistle::message::Message &>(bf).type() != vistle::message::Type::INSITU) {
                 type = static_cast<int>(InSituMessageType::ConnectionClosed);
             } else {
                 type = static_cast<int>(bf.as<InSituMessage>().ismType());
@@ -169,7 +169,7 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(insitu::message::SyncShmIDs:
 
 }
 
-insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mode mode) throw(vistle::exception)
+insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mode mode)
 :m_name(name){
     using namespace boost::interprocess;
     std::cerr << "trying to create shm segment with name " << name << std::endl;
