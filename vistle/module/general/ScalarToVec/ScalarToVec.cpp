@@ -28,23 +28,19 @@ bool ScalarToVec::compute() {
        if (m_scalarIn[i]->isConnected()) {
            found = i;
            data_in[i] = expect<Vec<Scalar>>(m_scalarIn[i]);
-
-       }
-   }
-   for (size_t i = 0; i < NumScalars; i++) {
-       if (!data_in[i]) {
-           Vec<Scalar>::ptr  vec(new  Vec<Scalar>(data_in[found]->getSize()));
-           std::fill(vec->x().begin(), vec->x().end(), 0);
-           data_in[i] = vec;
        }
    }
 
    Vec<Scalar, NumScalars>::ptr out(new Vec<Scalar, NumScalars>(Index(0)));
-   for (int i=0; i<NumScalars; ++i)
-       out->d()->x[i] = data_in[i]->d()->x[0];
+
    for (int i=NumScalars-1; i>=0; --i) {
        if (data_in[i]) {
+           out->d()->x[i] = data_in[i]->d()->x[0];
            out->copyAttributes(data_in[i]);
+       }
+       else {
+           out->d()->x[i]->resize(data_in[found]->getSize());
+           std::fill(out->d()->x[i]->begin(), out->d()->x[i]->end(), 0);
        }
    }
    out->setGrid(data_in[found]->grid());
