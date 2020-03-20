@@ -80,9 +80,10 @@ void Engine::DisconnectSimulation() {
 }
 
 bool Engine::initialize(int argC, char** argV) {
-    m_moduleReady = false;
-    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &m_mpiSize);
+    m_moduleInfo.id = false;
+    comm = MPI_COMM_WORLD;
+    MPI_Comm_rank(comm, &m_rank);
+    MPI_Comm_size(comm, &m_mpiSize);
     CERR<< "__________Engine args__________" << endl;
     for (size_t i = 0; i < argC; i++) {
         CERR << argV[i] << endl;
@@ -114,8 +115,7 @@ bool Engine::initialize(int argC, char** argV) {
     });
 
 #else
-
-    if (argC != 7) {
+if (argC != 7) {
         CERR << "simulation requires exactly 7 parameters" << endl;
         return false;
     }
@@ -124,50 +124,63 @@ bool Engine::initialize(int argC, char** argV) {
         CERR << "mpi size of simulation must match vistle's mpi size" << endl;
         return false;
     }
-    m_shmName = argV[1];
-    m_moduleName = argV[2];
-    m_moduleID = atoi(argV[3]);
+    m_moduleInfo.shmName = argV[1];
+    m_moduleInfo.name = argV[2];
+    m_moduleInfo.id = atoi(argV[3]);
+    m_moduleInfo.hostname = argV[4];
+    m_moduleInfo.port = atoi(argV[5]);
+    m_moduleInfo.numCons = argV[6];
     if (m_rank == 0 && argV[4] != vistle::hostname())         {
         CERR << "this " << vistle::hostname() << "trying to connect to " << argV[4] << endl;
         CERR << "Wrong host: must connect to Vistle on the same machine!" << endl;
         return false;
     }
 
+    initializeVistleEnv();
+#endif
+    
+
+    
+    return true;
+}
+
+
+bool Engine::initializeVistleEnv()
+{
     vistle::registerTypes();
-    vistle::Shm::attach(m_shmName, m_moduleID, m_rank);
-    vistle::message::DefaultSender::init(m_moduleID, m_rank);
+    vistle::Shm::attach(m_moduleInfo.shmName, m_moduleInfo.id, m_rank);
+    vistle::message::DefaultSender::init(m_moduleInfo.id, m_rank);
     // names are swapped relative to communicator
-    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + std::string(argV[6])).c_str(), m_moduleID, m_rank);
+    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + m_moduleInfo.numCons).c_str(), m_moduleInfo.id, m_rank);
     try {
         m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
-    } catch (boost::interprocess::interprocess_exception & ex) {
+    }
+    catch (boost::interprocess::interprocess_exception& ex) {
         CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
-       return false;
+        return false;
     }
 
     if (m_rank == 0) {
         try {
-            connectToModule(argV[4], atoi(argV[5]));
-} catch (const EngineExeption & ex) {
-    CERR << ex.what() << endl;
-    return false;
-}
+            connectToModule(m_moduleInfo.hostname, m_moduleInfo.port);
+        }
+        catch (const EngineExeption& ex) {
+            CERR << ex.what() << endl;
+            return false;
+        }
     }
     m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
     m_messageHandler.send(GoOn());
     try {
-        m_shmIDs.initialize(m_moduleID, m_rank, atoi(argV[6]), SyncShmIDs::Mode::Attach);
-} catch (const vistle::exception&) {
-    CERR << "failed to initialize SyncShmMessage" << endl;
-    return false;
-}
+        m_shmIDs.initialize(m_moduleInfo.id, m_rank, std::stoi(m_moduleInfo.numCons), SyncShmIDs::Mode::Attach);
+    }
+    catch (const vistle::exception&) {
+        CERR << "failed to initialize SyncShmMessage" << endl;
+        return false;
+    }
 
-#endif
-
-
-    
     m_initialized = true;
-    return true;
+
 }
 
 bool Engine::isInitialized() const noexcept {
@@ -234,10 +247,11 @@ bool Engine::sendData() {
 }
 
 void Engine::SimulationTimeStepChanged() {
-    if (!m_initialized || !m_moduleInitialized) {
+    if (!m_initialized || !m_moduleInfo.initialized) {
         CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
         return;
     }
+
     static int counter = 0;
     DEBUG_CERR << "SimulationTimeStepChanged counter = " << counter << endl;
     ++counter;
@@ -253,7 +267,7 @@ void Engine::SimulationTimeStepChanged() {
         return;
     }
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle << " has " << numMeshes << " meshes and " << numVars << "variables" << endl;
-    if (m_moduleReady) {//only here vistle::objects are allowed to be made
+    if (m_moduleInfo.ready) {//only here vistle::objects are allowed to be made
         sendDataToModule();
         m_processedCycles = m_metaData.currentCycle;
         ++m_timestep;
@@ -283,7 +297,9 @@ void Engine::DeleteData() {
 }
 
 bool insitu::Engine::recvAndhandleVistleMessage() {
-    getMetaData();
+    static int counter = 0;
+    DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
+    ++counter;
     if (m_rank == 0) {
         if (!slaveCommandCallback) {
             CERR << "passCommandToSim failed : slaveCommandCallback not set" << endl;
@@ -291,9 +307,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
         }
         slaveCommandCallback(); //let the slaves call visitProcessEngineCommand() -> simv2_process_input() -> Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
-    static int counter = 0;
-    DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
-    ++counter;
+    getMetaData();
     finalizeInit();
     InSituTcp::Message msg = m_messageHandler.recv();
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
@@ -307,9 +321,9 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::SetPorts:
     {
         SetPorts ap = msg.unpackOrCast<SetPorts>();
-        m_connectedPorts.clear();
+        m_moduleInfo.connectedPorts.clear();
         for (auto vec : ap.value)             {
-            m_connectedPorts.insert(vec.begin(), vec.end());
+            m_moduleInfo.connectedPorts.insert(vec.begin(), vec.end());
         }
     }
         break;
@@ -318,8 +332,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::Ready:
     {
         Ready em = msg.unpackOrCast<Ready>();
-        m_moduleReady = em.value;
-        if (m_moduleReady) {
+        m_moduleInfo.ready = em.value;
+        if (m_moduleInfo.ready) {
             vistle::Shm::the().setObjectID(m_shmIDs.objectID());
             vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
             m_timestep = 0;
@@ -1079,7 +1093,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
         char* name, *meshName;
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
-        if (m_connectedPorts.find(name) == m_connectedPorts.end()) { //don't process data for un-used ports
+        if (m_moduleInfo.connectedPorts.find(name) == m_moduleInfo.connectedPorts.end()) { //don't process data for un-used ports
             continue;
         }
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
@@ -1221,7 +1235,7 @@ void insitu::Engine::connectToModule(const std::string& hostname, int port) {
 }
 
 void insitu::Engine::finalizeInit()     {
-    if (!m_moduleInitialized) {
+    if (!m_moduleInfo.initialized) {
         try {
             getMetaData();
             addPorts();
@@ -1231,7 +1245,7 @@ void insitu::Engine::finalizeInit()     {
             CERR << "finalizeInit failed: " << ex.what() << endl;
             return;
         }
-        m_moduleInitialized = true;
+        m_moduleInfo.initialized = true;
     }
 }
 

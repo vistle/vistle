@@ -57,7 +57,8 @@ public:
     static Engine* EngineInstance();
     static void DisconnectSimulation();
     bool initialize(int argC, char** argV);
-    bool isInitialized() const noexcept;
+	bool initializeVistleEnv();
+	bool isInitialized() const noexcept;
     bool setMpiComm(void* newConn);
 
     void ConnectMySelf();
@@ -146,13 +147,15 @@ private:
     };
     std::map<std::string, MeshInfo> m_meshes; //used to find the coresponding mesh for the variables
 
-    //module info
-    bool m_moduleInitialized = false; //Module is initialized(sent port and command info)
-    std::string m_shmName, m_moduleName;
-    int m_moduleID = 0;
-    bool m_moduleReady = false; //wether the module is executing or not
-    std::set<std::string> m_connectedPorts;
-    size_t m_timestep = 0; //timestep couter for module
+    struct ModuleInfo {
+        bool initialized = false; //Module is initialized(sent port and command info)
+        std::string shmName, name, numCons, hostname;
+        int id = 0, port = 0;
+        bool ready = false; //wether the module is executing or not
+        std::set<std::string> connectedPorts;
+    } m_moduleInfo;
+        size_t m_timestep = 0; //timestep couter for module
+
     struct IntOptionBase
     {
         virtual void setVal(insitu::message::InSituTcp::Message& msg) {};
