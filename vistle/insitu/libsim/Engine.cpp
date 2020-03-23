@@ -75,6 +75,7 @@ Engine* Engine::EngineInstance() {
 
 void Engine::DisconnectSimulation() {
 
+    instance->m_messageHandler.send(ConnectionClosed{true});
     delete instance;
     instance = nullptr;
 }
@@ -1423,7 +1424,6 @@ Engine::~Engine() {
         vistle::Shm::the().detach();
     }
 #endif
-    m_messageHandler.send(ConnectionClosed{});
     delete m_sendMessageQueue;
     Engine::instance = nullptr;
 }

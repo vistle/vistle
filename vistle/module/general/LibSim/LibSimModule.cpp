@@ -97,7 +97,7 @@ LibSimModule::~LibSimModule() {
         boost::system::error_code ec;
         if (getBool(m_connectedToEngine)) {
             m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //release me from waiting for messages
-            m_messageHandler.send(insitu::message::ConnectionClosed{});
+            m_messageHandler.send(insitu::message::ConnectionClosed{false});
             m_socket->close(ec);
         } 
 
@@ -410,7 +410,15 @@ void LibSimModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::ConnectionClosed:
     {
-        CERR << " tcp connection closed...disconnecting." << endl;
+        auto state = msg.unpackOrCast<insitu::message::ConnectionClosed>();
+        if (state.value)
+        {
+            sendInfo("the simulation disconnected properly");
+        }
+        else
+        {
+            CERR << " tcp connection closed...disconnecting." << endl;
+        }
 #ifndef MODULE_THREAD
         disconnectSim();
 #endif

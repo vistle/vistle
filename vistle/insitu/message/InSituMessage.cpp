@@ -84,7 +84,7 @@ InSituTcp::Message InSituTcp::recv() {
 }
 
 void InSituTcp::initialize(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm) {
-    m_socket = socket;
+    m_socket = &(*socket);
     m_comm = comm;
     m_initialized = true;
 }

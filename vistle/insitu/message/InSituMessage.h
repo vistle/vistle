@@ -88,8 +88,8 @@ struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase {\
 
 DECLARE_ENGINE_MESSAGE(Invalid)
 DECLARE_ENGINE_MESSAGE(GoOn)
-DECLARE_ENGINE_MESSAGE(ConnectionClosed)
 
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConnectionClosed, bool) //true -> disconnected on purpose
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts,  std::vector<std::vector<std::string>>)
@@ -191,7 +191,7 @@ private:
 private:
      bool m_initialized = false;
      boost::mpi::communicator m_comm;
-     std::shared_ptr< boost::asio::ip::tcp::socket> m_socket;
+     boost::asio::ip::tcp::socket* m_socket;
 };
 
 class V_INSITUMESSAGEEXPORT SyncShmIDs {
