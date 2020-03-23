@@ -170,9 +170,9 @@ struct VtkArray2VistleConverter     {
             Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
             float* x = cf->x().data();
             Index l = 0;
-            for (Index k = 0; k < dim[2]; ++k) {
+            for (Index k = 0; k < dim[0]; ++k) {
                 for (Index j = 0; j < dim[1]; ++j) {
-                    for (Index i = 0; i < dim[0]; ++i) {
+                    for (Index i = 0; i < dim[2]; ++i) {
                         const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
                         x[idx] = vd[l];
                         ++l;
