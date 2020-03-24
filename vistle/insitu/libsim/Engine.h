@@ -203,7 +203,7 @@ private:
     
     void sendMeshesToModule();
     void makeRectilinearMesh(MeshInfo meshInfo);
-    void makeUntructuredMesh(MeshInfo meshInfo);
+    void makeUnstructuredMesh(MeshInfo meshInfo);
     void makeAmrMesh(MeshInfo meshInfo);
     void makeStructuredMesh(MeshInfo meshInfo);
     //combine the structured meshes of one domain to a singe unstructured mesh. Points of adjacent faces will be doubled.

@@ -130,6 +130,7 @@ constexpr int VISIT_CELL_QUADRATIC_LINEAR_QUAD         = 30;
 constexpr int VISIT_CELL_QUADRATIC_LINEAR_WEDGE        = 31;
 constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_WEDGE   = 32;
 constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_HEX     = 33;
+constexpr int VISIT_NUM_CELL_TYPES = 34;
 
 /* Coordinate modes */
 constexpr int VISIT_COORD_MODE_SEPARATE         = 0;

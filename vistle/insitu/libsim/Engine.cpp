@@ -5,6 +5,7 @@
 #include "VisItDataInterfaceRuntime.h"
 #include "SimulationMetaData.h"
 #include "VisItDataTypes.h"
+#include "VertexTypesToVistle.h"
 #include "Exeption.h"
 #include "TransformArray.h"
 
@@ -20,6 +21,7 @@
 #include "DomainList.h"
 #include "RectilinearMesh.h"
 #include "CurvilinearMesh.h"
+#include "UnstructuredMesh.h"
 #include "VariableData.h"
 
 #include <boost/mpi.hpp>
@@ -735,6 +737,7 @@ void insitu::Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_UNSTRUCTURED:
         {
             CERR << "making unstructured grid" << endl;
+            makeUnstructuredMesh(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_POINT:
@@ -774,7 +777,7 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             for (int i = 0; i < meshInfo.dim; ++i) {
                 v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                 if (dataType[i] != dataType[0]) {
-                    CERR << "mesh data type must be consisten within a domain" << endl;
+                    CERR << "mesh data type must be consistent within a domain" << endl;
                     return;
                 }
             }
@@ -785,7 +788,6 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
-            sendShmIds();
             setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
@@ -821,7 +823,125 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     m_meshes[meshInfo.name] = meshInfo;
 }
 
-void insitu::Engine::makeUntructuredMesh(MeshInfo meshInfo) {
+void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
+
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
+        int check = simv2_UnstructuredMesh_check(meshHandle);
+        if (check == VISIT_OKAY) {
+            vistle::UnstructuredGrid::ptr grid = createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+            std::array<vistle::UnstructuredGrid::array*, 3> gridPoints{ &grid->x(), &grid->y(), &grid->z() };
+            //std::array<std::array<int, 10>, 3> gridPoints;
+            int ncells;
+            visit_handle connListHandle;
+            v2check(simv2_UnstructuredMesh_getConnectivity, meshHandle, &ncells, &connListHandle);
+            grid->el().reserve(ncells);
+            grid->tl().reserve(ncells);
+            int owner{}, dataType{}, nComps{}, nTuples{};
+            void* data{};
+            v2check(simv2_VariableData_getData, connListHandle, owner, dataType, nComps, nTuples, data);
+            int idx = 0;
+            if (dataType != VISIT_DATATYPE_INT)
+            {
+                throw EngineExeption("element list is not of expected type (int)");
+            }
+            //auto elementList = createVistleObject<
+            //grid->el().push_back(0);
+            size_t elemIndex = 0;
+            for (int i = 0; i < ncells; ++i)
+            {
+                auto type = static_cast<int*>(data)[idx];
+                ++idx;
+                auto elemType = vertexTypeToVistle(type);
+                if (elemType == vistle::UnstructuredGrid::Type::NONE)
+                {
+                    CERR << "Engine warning: type " << type << " is not converted to a vistle type...returning" << endl;
+                    return;
+                }
+
+                elemIndex += getNumVertices(elemType);
+
+                if (idx + getNumVertices(elemType) > nTuples)
+                {
+                    CERR << "element " << i << " with idx = " << idx << " and type " << elemType << "with typesize" << getNumVertices(elemType) << " is outside of given elementList data!" << endl;
+                    break;
+                }
+                grid->el().push_back(elemIndex);
+                grid->tl().push_back(elemType);
+
+                for (size_t i = 0; i < getNumVertices(elemType); i++)
+                {
+                    grid->cl().push_back(static_cast<int*>(data)[idx]);
+                    ++idx;
+                }
+            }
+
+            visit_handle coordHandles[4]; //handles to variable data pos 3 is for interleaved data
+            int ndims;
+            int coordMode;
+            v2check(simv2_UnstructuredMesh_getCoords, meshHandle, &ndims, &coordMode, &coordHandles[0], &coordHandles[1], &coordHandles[2], &coordHandles[3]);
+
+            switch (coordMode) {
+            case VISIT_COORD_MODE_INTERLEAVED:
+            {
+                int owner{}, dataType{}, nComps{}, nTuples{1};
+                void* data{};
+                v2check(simv2_VariableData_getData, coordHandles[3], owner, dataType, nComps, nTuples, data);
+                std::array<vistle::Scalar*, 3> gridCoords;
+
+                for (size_t i = 0; i < meshInfo.dim; ++i)
+                {
+                    gridPoints[i]->resize(nTuples);
+                    gridCoords[i] = gridPoints[i]->data();
+                }
+                transformInterleavedArray(data, gridCoords, nTuples, dataType, ndims);
+
+            }
+            break;
+            case VISIT_COORD_MODE_SEPARATE:
+            {
+                std::array<int, 3> owner{}, dataType{}, nComps{}, nTuples{ 1,1,1 };
+                std::array<void*, 3> data{};
+
+
+                for (int i = 0; i < meshInfo.dim; ++i) {
+                    v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
+                    gridPoints[i]->resize(nTuples[i]);
+
+                    transformArray(data[i], gridPoints[i]->data(), nTuples[i], dataType[i]);
+                }
+            }
+            break;
+            default:
+                throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
+            }
+
+
+            std::array<int, 3> min, max;
+            visit_handle ghostCellHandle;
+            v2check(simv2_UnstructuredMesh_getGhostCells, meshHandle, &ghostCellHandle);
+            v2check(simv2_UnstructuredMesh_getRealIndices, meshHandle, min.data(), max.data());
+
+            //for (size_t i = 0; i < 3; i++) {
+            //    assert(min[i] >= 0);
+            //    int numTop = nTuples[i] - 1 - max[i];
+            //    assert(numTop >= 0);
+            //    grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
+            //    grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, numTop);
+            //}
+            setTimestep(grid);
+            grid->setBlock(currDomain);
+            meshInfo.handles.push_back(meshHandle);
+            meshInfo.grids.push_back(grid);
+            addObject(meshInfo.name, grid);
+
+            DEBUG_CERR << "added unstructured grid with size " << grid->getSize() << ", with " << grid->el().size() << " elements and " << grid->cl().size() << " connections" << endl;
+        }
+    }
+    DEBUG_CERR << "made unstructured grids with " << meshInfo.numDomains << " domains" << endl;
+    m_meshes[meshInfo.name] = meshInfo;
+
 
     return;
 }
@@ -843,7 +963,7 @@ void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
         int check = simv2_CurvilinearMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
-            visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
+            visit_handle coordHandles[4]; //handles to variable data, 4th entry contains interleaved data depending on coordMode
             int dims[3]{ 1,1,1 }; //the x,y,z dimensions
             int ndims, coordMode;
             //no v2check because last visit_handle can be invalid

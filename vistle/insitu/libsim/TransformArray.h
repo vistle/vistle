@@ -99,7 +99,7 @@ struct InterleavedArrayTransformer {
         assert(dest.size() < dim);
         for (size_t j = 0; j < size; ++j) {
             for (size_t i = 0; i < dim; ++i) {
-                dest[i][0] = static_cast<typename std::remove_pointer<Dest::value_type>::type>(*source);
+                dest[i][0] = static_cast<typename std::remove_pointer<Dest::value_type>::type>(source[0]);
                 ++source;
                 ++dest[i];
             }
@@ -128,12 +128,12 @@ struct VtkArray2VistleConverter     {
     vistle::DataBase::ptr operator()(T* vd, size_t n, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
         using namespace vistle;
         bool perCell = false;
-        Index dim[3] = { 1, 1, 1 };
+        Index dim[3] = { Index(n), 1, 1 };
         if (auto sgrid = StructuredGridBase::as(grid)) {
             for (int c = 0; c < 3; ++c)
                 dim[c] = sgrid->getNumDivisions(c);
         }
-
+       
         if (m == DataBase::Mapping::Element) {
             for (int c = 0; c < 3; ++c)
                 dim[c] > 1 ? --dim[c] : dim[c];
@@ -143,7 +143,6 @@ struct VtkArray2VistleConverter     {
             std::cerr << "vtkArray2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2] << "] != " << n << std::endl;
             return nullptr;
         }
-
 
         if (interleaved) {
             Vec<Scalar, 3>::ptr cv(new Vec<Scalar, 3>(n));
@@ -170,9 +169,9 @@ struct VtkArray2VistleConverter     {
             Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
             float* x = cf->x().data();
             Index l = 0;
-            for (Index k = 0; k < dim[0]; ++k) {
+            for (Index k = 0; k < dim[2]; ++k) {
                 for (Index j = 0; j < dim[1]; ++j) {
-                    for (Index i = 0; i < dim[2]; ++i) {
+                    for (Index i = 0; i < dim[0]; ++i) {
                         const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
                         x[idx] = vd[l];
                         ++l;
@@ -183,7 +182,7 @@ struct VtkArray2VistleConverter     {
             cf->setMapping(m);
             return cf;
         }
-        std::cerr << "vtkArray2Vistle: soething went wrong: [" << dim[0] << "*" << dim[1] << "*" << dim[2] << "] != " << n << std::endl;
+        std::cerr << "vtkArray2Vistle: something went wrong: [" << dim[0] << "*" << dim[1] << "*" << dim[2] << "] != " << n << std::endl;
         return nullptr;
     }
 };

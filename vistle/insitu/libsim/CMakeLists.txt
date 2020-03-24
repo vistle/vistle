@@ -20,7 +20,7 @@ endif()
 add_definitions(-DLIBSIM_EXPORT)
 
 SET(RUNTIME_SOURCES 
-
+  VertexTypesToVistle.h
   Exeption.cpp
   VisItControlInterfaceRuntime.C 
   VisItDataInterfaceRuntime.C 
@@ -55,6 +55,7 @@ SET(RUNTIME_SOURCES
 )
 
 SET(RUNTIME_HEADERS 
+  VertexTypesToVistle.h  
   Exeption.h
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h

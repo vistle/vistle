@@ -128,7 +128,7 @@ bool LibSimModule::prepareReduce() {
 
     vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
     vistle::Shm::the().setObjectID(m_shmIDs.objectID());
-    if (!m_connectedToEngine) {
+    if (!getBool(m_connectedToEngine)) {
         m_shmIDs.close();
     }
     return true;
