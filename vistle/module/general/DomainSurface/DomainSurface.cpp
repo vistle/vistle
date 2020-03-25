@@ -380,7 +380,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                           auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                           std::copy(rbegin, rend, std::back_inserter(pcl));
                           if (haveElementData)
-                              em.emplace_back(pl.size());
+                              em.emplace_back(i);
                           pl.push_back(pcl.size());
                       }
                   }
@@ -408,7 +408,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                               auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
                               std::copy(rbegin, rend, std::back_inserter(pcl));
                               if (haveElementData)
-                                  em.emplace_back(pl.size());
+                                  em.emplace_back(i);
                               pl.push_back(pcl.size());
                           }
                       }
@@ -455,7 +455,7 @@ Polygons::ptr DomainSurface::createSurface(vistle::UnstructuredGrid::const_ptr m
                      pcl.push_back(cl[elStart + face[j]]);
                   }
                   if (haveElementData)
-                      em.emplace_back(pl.size());
+                      em.emplace_back(i);
                   pl.push_back(pcl.size());
                }
             }
