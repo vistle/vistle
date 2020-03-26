@@ -29,7 +29,7 @@ TransformGrid::TransformGrid(const std::string &name, int moduleID, mpi::communi
         m_reverse[i] = addIntParameter(std::string("reverse ") + axisNames[i] + "-axix", "", false, Parameter::Presentation::Boolean);
     }
 
-    m_order = addIntParameter("orderOfGrodAxes", "", XYZ, Parameter::Presentation::Choice);
+    m_order = addIntParameter("orderOfGridAxes", "", XYZ, Parameter::Presentation::Choice);
     V_ENUM_SET_CHOICES(m_order, DimensionOrder);
 }
 
