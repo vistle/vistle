@@ -257,6 +257,24 @@ void expandRectilinearToVTKStructured(void* source[3], int dataType, const int s
     }
 }
 
+template<typename T, typename p_separator>
+struct Printer
+{
+    void operator()(T* source, int size, const std::string& separeator = " ")
+    {
+        for (size_t i = 0; i < size; i++)
+        {
+            std::cerr << source[i] << separeator;
+        }
+    }
+};
+
+void printArray(void* source, int dataType, int size, const std::string &separeator = " ")
+{
+    callFunctionWithVoidToTypeCast<void, Printer>(source, dataType, size, separeator);
+}
+
+
 }
 
 
