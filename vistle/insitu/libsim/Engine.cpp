@@ -916,20 +916,24 @@ void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
             default:
                 throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " + std::to_string(coordMode));
             }
-
-
-            std::array<int, 3> min, max;
             visit_handle ghostCellHandle;
             v2check(simv2_UnstructuredMesh_getGhostCells, meshHandle, &ghostCellHandle);
-            v2check(simv2_UnstructuredMesh_getRealIndices, meshHandle, min.data(), max.data());
-
-            //for (size_t i = 0; i < 3; i++) {
-            //    assert(min[i] >= 0);
-            //    int numTop = nTuples[i] - 1 - max[i];
-            //    assert(numTop >= 0);
-            //    grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
-            //    grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, numTop);
-            //}
+            data = nullptr;
+            v2check(simv2_VariableData_getData, ghostCellHandle, owner, dataType, nComps, nTuples, data);
+            if (dataType != VISIT_DATATYPE_CHAR)
+            {
+                EngineExeption ex("expectet ghostCellData of type char, type is ");
+                ex << dataType;
+                throw ex;
+            }
+            char* c = static_cast<char*>(data);
+            for (int i = 0; i < nTuples; ++i)
+            {
+                if (c[i])
+                {
+                    grid->tl()[i] |= vistle::UnstructuredGrid::GHOST_BIT;
+                }
+            }
             setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
