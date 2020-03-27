@@ -380,8 +380,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     case InSituMessageType::ModuleID:
     {
         auto mid = msg.unpackOrCast<ModuleID>();
-        m_moduleID = mid.value;
-        std::string mqName = vistle::message::MessageQueue::createName("recvFromSim0" , m_moduleID, m_rank);
+        m_moduleInfo.id = mid.value;
+        std::string mqName = vistle::message::MessageQueue::createName("recvFromSim0" , m_moduleInfo.id, m_rank);
         try {
             m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
         } catch (boost::interprocess::interprocess_exception & ex) {
@@ -389,8 +389,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
             return false;
         }
         m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-        m_shmIDs.initialize(m_moduleID, m_rank, 0, message::SyncShmIDs::Mode::Attach);
-        m_moduleReady = false;
+        m_shmIDs.initialize(m_moduleInfo.id, m_rank, 0, message::SyncShmIDs::Mode::Attach);
+        m_moduleInfo.ready = false;
         
     }
     break;
@@ -1380,7 +1380,7 @@ void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj)
         vistle::message::Buffer buf(msg);
 
 #ifdef MODULE_THREAD
-        buf.setSenderId(m_moduleID);
+        buf.setSenderId(m_moduleInfo.id);
         buf.setRank(m_rank);
 #endif
         m_sendMessageQueue->send(buf);
