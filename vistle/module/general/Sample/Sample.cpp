@@ -237,6 +237,13 @@ bool Sample::compute(std::shared_ptr<vistle::PortTask> task) const{
         auto unstr = UnstructuredGrid::as(obj);
         auto str = StructuredGrid::as(obj);
 
+        if (!str && !unstr ) {
+            DataBase::const_ptr data = DataBase::as(obj);
+            if (data && data->grid()) {
+                unstr = UnstructuredGrid::as(data->grid());
+                str = StructuredGrid::as(data->grid());
+            }
+        }
         if (str) {
             if (!str->hasCelltree()) {
                 str->getCelltree();
