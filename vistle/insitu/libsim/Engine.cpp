@@ -1057,7 +1057,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
             grid->cl().resize((totalNumElements + numElements * (meshInfo.numDomains - cd))* numCorners);
         }
         if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
-            //to do: create connectivity list for vtk structured grids
+            makeVTKStructuredGridConnectivityList(dims, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
         } else {
             makeStructuredGridConnectivityList(dims, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
         }
@@ -1167,7 +1167,6 @@ void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
         if (grid->cl().size() < (totalNumElements + numElements) * numCorners) {
             grid->cl().resize((totalNumElements + numElements * (meshInfo.numDomains - cd)) * numCorners);
         }
-        makeStructuredGridConnectivityList(nTuples, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
 
         if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
             expandRectilinearToVTKStructured(data, dataType[0], nTuples, gridCoords);
@@ -1449,9 +1448,9 @@ void insitu::Engine::makeVTKStructuredGridConnectivityList(const int* dims, vist
     if (dims[2] > 1) {
         // 3-dim
         Index el = 0;
-        for (Index ix = 0; ix < numElements[0]; ++ix) {
+        for (Index iz = 0; iz < numElements[2]; ++iz) {
             for (Index iy = 0; iy < numElements[1]; ++iy) {
-                for (Index iz = 0; iz < numElements[2]; ++iz) {
+                for (Index ix = 0; ix < numElements[0]; ++ix) {
                     const Index baseInsertionIndex = el * 8;
                     connectivityList[baseInsertionIndex + 0] = startOfGridIndex + vertexIndex(ix, iy, iz, numVert);                   // 0       7 -------- 6
                     connectivityList[baseInsertionIndex + 1] = startOfGridIndex + vertexIndex(ix + 1, iy, iz, numVert);               // 1      /|         /|
@@ -1469,8 +1468,8 @@ void insitu::Engine::makeVTKStructuredGridConnectivityList(const int* dims, vist
     } else if (dims[1] > 1) {
         // 2-dim
         Index el = 0;
-        for (Index ix = 0; ix < numElements[0]; ++ix) {
-            for (Index iy = 0; iy < numElements[1]; ++iy) {
+        for (Index iy = 0; iy < numElements[1]; ++iy) {
+            for (Index ix = 0; ix < numElements[0]; ++ix) {
                 const Index baseInsertionIndex = el * 4;
                 connectivityList[baseInsertionIndex + 0] = startOfGridIndex + vertexIndex(ix, iy, 0, numVert);
                 connectivityList[baseInsertionIndex + 1] = startOfGridIndex + vertexIndex(ix + 1, iy, 0, numVert);
