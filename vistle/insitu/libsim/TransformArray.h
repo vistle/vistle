@@ -129,9 +129,13 @@ struct VtkArray2VistleConverter     {
         using namespace vistle;
         bool perCell = false;
         Index dim[3] = { Index(n), 1, 1 };
+        Index numGridDivisions[3] = { Index(n), 1, 1 };
         if (auto sgrid = StructuredGridBase::as(grid)) {
             for (int c = 0; c < 3; ++c)
+            {
                 dim[c] = sgrid->getNumDivisions(c);
+                numGridDivisions[c] = sgrid->getNumDivisions(c);
+            }
         }
        
         if (m == DataBase::Mapping::Element) {
@@ -153,7 +157,7 @@ struct VtkArray2VistleConverter     {
             for (Index k = 0; k < dim[2]; ++k) {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index i = 0; i < dim[0]; ++i) {
-                        const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                        const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions);
                         x[idx] = vd[3 * l];
                         y[idx] = vd[3 * l + 1];
                         z[idx] = vd[3 * l + 2];
@@ -172,7 +176,7 @@ struct VtkArray2VistleConverter     {
             for (Index k = 0; k < dim[2]; ++k) {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index i = 0; i < dim[0]; ++i) {
-                        const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                        const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions);
                         x[idx] = vd[l];
                         ++l;
                     }
