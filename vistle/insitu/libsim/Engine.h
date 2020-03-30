@@ -129,8 +129,7 @@ private:
     std::thread m_ioThread; //thread for io_service
     std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::mutex m_asioMutex;
-    std::condition_variable m_connectedCondition; //to let the rank 0 socket thread wait for connection in the asio thread
-    bool m_waitingForAccept = false; //condition
+    std::atomic<bool> m_waitingForAccept{ true }; //condition
 #endif
 //info from the simulation
     size_t m_processedCycles = 0; //the last cycle that was processed
