@@ -98,6 +98,7 @@ bool Engine::initialize(int argC, char** argV) {
     if (m_rank == 0) {
         ConnectMySelf();
     }
+    m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate)); //comm is not set by the simulation code at this point. Since most simulations never change comm, this is a easy cheat impl
     // start manager on cluster
     const char* VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
@@ -116,7 +117,7 @@ bool Engine::initialize(int argC, char** argV) {
         vistle::VistleManager manager;
         manager.run(args.size(), args.data());
     });
-
+    m_initialized = true;
 #else
 if (argC != 7) {
         CERR << "simulation requires exactly 7 parameters" << endl;
@@ -215,10 +216,6 @@ void Engine::ConnectMySelf()     {
     startAccept(m_acceptorv6);
     connectToModule("localhost", m_port);
 
-    std::unique_lock<std::mutex> lk(m_asioMutex);
-    m_connectedCondition.wait(lk, [this]() {return m_waitingForAccept; });
-    m_waitingForAccept = false;
-
 }
 
 bool Engine::startAccept(std::shared_ptr<acceptor> a) {
@@ -227,17 +224,20 @@ bool Engine::startAccept(std::shared_ptr<acceptor> a) {
         return false;
 
     std::shared_ptr<socket> sock(new boost::asio::ip::tcp::socket(m_ioService));
-    EngineInterface::setControllSocket(sock);
     boost::system::error_code ec;
     a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
         if (ec) {
-            m_socket = nullptr;
-            CERR << "failed connection attempt" << endl;
+            if (m_waitingForAccept)
+            {
+                EngineInterface::setControllSocket(nullptr);
+                CERR << "failed connection attempt" << endl;
+            }
             return;
         }
         CERR << "server connected with engine" << (a == m_acceptorv4? "v4" : "v6") <<  endl;
-        m_socket = sock;
-       
+        EngineInterface::setControllSocket(sock);
+        m_waitingForAccept = false;
+        a == m_acceptorv4 ? m_acceptorv6->close() : m_acceptorv4->close();
         });
     return true;
 }
@@ -388,7 +388,6 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
             CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
             return false;
         }
-        m_messageHandler.initialize(m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
         m_shmIDs.initialize(m_moduleInfo.id, m_rank, 0, message::SyncShmIDs::Mode::Attach);
         m_moduleInfo.ready = false;
         
@@ -1332,23 +1331,9 @@ void insitu::Engine::connectToModule(const std::string& hostname, int port) {
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to resolve connect socket");
     }
-#ifndef MODULE_THREAD
+
     asio::connect(*m_socket, endpoint_iterator, ec);
-#else
-    asio::async_connect(*m_socket, endpoint_iterator, [this](boost::system::error_code ec, boost::asio::ip::tcp::resolver::iterator iterator) {
-        if (ec) {
-            m_socket = nullptr;
-            CERR << "client failed to connect" << endl;
-            return;
-        }
-        CERR << "client connected with engine" << endl;
-        {
-            std::lock_guard<std::mutex> g(m_asioMutex);
-            m_waitingForAccept = true;
-        }
-        m_connectedCondition.notify_one();
-    });
-#endif
+
     if (ec) {
         throw EngineExeption("initializeEngineSocket failed to connect socket");
     }
