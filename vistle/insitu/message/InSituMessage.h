@@ -255,9 +255,6 @@ public:
      int m_rank = -1;
      int m_moduleID = -1;
 
-    int m_objectID = -1;
-    int m_array_ID = -1;
-
      bool m_initialized = false;
 };
 } //message

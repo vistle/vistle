@@ -125,6 +125,9 @@ bool SyncShmIDs::isInitialized() {
 }
 
 void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
+#ifdef MODULE_THREAD
+    //do nothing
+#else
     if (!m_initialized) {
         return;
     }
@@ -132,25 +135,32 @@ void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
         Guard g(m_segment.data()->mutex);
         m_segment.data()->objID = objID;
         m_segment.data()->arrayID = arrayID;
-    } catch (const boost::interprocess::interprocess_exception& ex) {
+    }
+    catch (const boost::interprocess::interprocess_exception& ex) {
         throw vistle::exception(std::string("error setting shm object IDs: ") + ex.what());
     }
+#endif // MODULE_THREAD
+
 }
 
 int insitu::message::SyncShmIDs::objectID() {
+#ifndef MODULE_THREAD
     if (m_initialized) {
         try {
             Guard g(m_segment.data()->mutex);
             return m_segment.data()->objID;
-        } catch (const boost::interprocess::interprocess_exception& ex) {
+        }
+        catch (const boost::interprocess::interprocess_exception& ex) {
             throw vistle::exception(std::string("error getting shm object ID: ") + ex.what());
         }
     }
+#endif
     return vistle::Shm::the().objectID();
 
 }
 
 int insitu::message::SyncShmIDs::arrayID() {
+#ifndef MODULE_THREAD
     if (m_initialized) {
     }try {
         Guard g(m_segment.data()->mutex);
@@ -159,6 +169,7 @@ int insitu::message::SyncShmIDs::arrayID() {
     } catch (const boost::interprocess::interprocess_exception& ex) {
         throw vistle::exception(std::string("error getting shm array ID: ") + ex.what());
     }
+#endif
     return vistle::Shm::the().arrayID();
 
 }
