@@ -59,12 +59,16 @@ InSituTcp::Message InSituTcp::recv() {
             vistle::message::recv(*m_socket, bf, err, true, &payload);
             if (err || static_cast<vistle::message::Message &>(bf).type() != vistle::message::Type::INSITU) {
                 type = static_cast<int>(InSituMessageType::ConnectionClosed);
+                ConnectionClosed proxy{ false };
+                vistle::vecostreambuf<vistle::buffer> buf;
+                vistle::oarchive ar(buf);
+                ar& proxy;
+                payload = buf.get_vector();
             } else {
                 type = static_cast<int>(bf.as<InSituMessage>().ismType());
             }
         }
     }
-    m_comm.barrier();
     boost::mpi::broadcast(m_comm, error, 0);
     if (error) {
         return InSituTcp::Message{};

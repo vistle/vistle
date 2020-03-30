@@ -143,7 +143,7 @@ public:
                 vistle::iarchive ar(buf);
                 ar&* static_cast<SomeMessage*>(m_msg.get());
             } catch (yas::io_exception & ex) {
-                std::cerr << "ERROR: failed to get InSituTcpMessage payload from " << m_payload.size() << " bytes: " << ex.what() << std::endl;
+                std::cerr << "ERROR: failed to get InSituTcp::Message of type " << static_cast<int>(type()) << " with payload size " << m_payload.size() << " bytes: " << ex.what() << std::endl;
             }
         }
         return *static_cast<SomeMessage*>(m_msg.get());
