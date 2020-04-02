@@ -368,19 +368,17 @@ bool ReaderBase::parseMetaDataFile() {
 }
 
 bool ReaderBase::ParseGridMap() {
-    string map_filename = file;
-    size_t ext = map_filename.find_last_of('.') + 1;
-    map_filename.erase(ext);
-    map_filename.insert(ext, "map");
-
-
+    string base_filename = file;
+    size_t ext = base_filename.find_last_of('.') + 1;
+    base_filename.erase(ext);
+    string map_filename = base_filename + "map";
     ifstream  mptr(map_filename);
     if (mptr.is_open()) {
 
         for (size_t i = 0; i < 7; i++) {
             mptr >> mapFileHeader[i];
         }
-        std::vector<int> map_elements(mapFileHeader[0]);
+        //std::vector<int> map_elements(mapFileHeader[0]);
         mapFileData.reserve(mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
         for (int i = 0; i < mapFileHeader[0]; ++i) {
@@ -389,36 +387,82 @@ bool ReaderBase::ParseGridMap() {
                 mptr >> line[j];
             }
             mapFileData.emplace_back(line);
-            map_elements[i] = line[0] + 1;
+            //map_elements[i] = line[0] + 1;
         }
         mptr.close();
-        map<int, vector<int>> matches;
-        int line = 1;
-        for (auto entry : mapFileData) {
-            for (size_t i = 1; i <= numCorners; i++) {
-                matches[entry[i]].push_back(line);
-            }
-            ++line;
-        }
-        //map<int, vector<pair<int, vector<int>>>> points;
-        //for (auto point : matches)           {
-        //    points[point.second.size()].push_back(make_pair( point.first, point.second ));
-        //}
-        //cerr << "___________number of corner apperences_____________" << endl;
-        //for (auto p : points)           {
-        //    cerr << "[" << p.first << "] ";
-        //    for (auto n : p.second)               {
-        //        cerr << n.first << " (";
-        //        for (auto l : n.second)                   {
-        //            cerr << l << ", ";
-        //        }
-        //        cerr << "); ";
+        //map<int, vector<int>> matches;
+        //int line = 1;
+        //for (auto entry : mapFileData) {
+        //    for (size_t i = 1; i <= numCorners; i++) {
+        //        matches[entry[i]].push_back(line);
         //    }
-        //    cerr << endl;
+        //    ++line;
         //}
+
 
         return true;
     }
+    string ma2_filename = base_filename + "ma2";
+    ifstream  ma2ptr(ma2_filename, ifstream::binary);
+    if (ma2ptr.is_open())
+    {
+        //ma2ptr.seekg(0, ios::beg);
+        cerr << "ma2 file is open" << endl;
+        string version;
+        ma2ptr >> version;
+        if (version != "#v001")
+        {
+            sendError("ma2 file of version " + version + " is not supported");
+            return false;
+        }
+        cerr << "version: " << version << endl;
+        for (size_t i = 0; i < 7; i++) {
+            ma2ptr >> mapFileHeader[i];
+            cerr << mapFileHeader[i] << " ";
+        }
+        cerr << endl;
+        ma2ptr.seekg(132/4 * sizeof(float), ios::beg);
+        char test;
+        ma2ptr >> test;
+        if (test)
+        {
+            cerr << "test = true" << endl;
+        }
+        else {
+            cerr  << "test = false " << endl;
+        }
+        ma2ptr.seekg((132 / 4  + 1) * sizeof(float), ios::beg);
+        mapFileData.reserve(mapFileHeader[0]);
+        int columns = dim == 2 ? 5 : 9;
+        float number = 66;
+
+
+        int* map = new int[columns * mapFileHeader[0]];
+        ma2ptr.read((char*)map, columns * mapFileHeader[0] * sizeof(float));
+
+        for (int i = 0; i < mapFileHeader[0]; ++i) {
+            array<int, 9> line;
+            cerr << " line " << i << ": ";
+            for (size_t j = 0; j < columns; j++) {
+                line[j] = map[i * columns + j];
+
+                //ma2ptr >> line[j];
+                cerr << line[j] << " ";
+            }
+            cerr << endl;
+            mapFileData.emplace_back(line);
+            //map_elements[i] = line[0] + 1;
+        } 
+        delete[] map;
+        ma2ptr.close();
+        return true;
+
+
+
+
+    }
+
+    sendError("ReadNek: can neither open map file " + map_filename + " nor ma2 file " + ma2_filename );
     return false;
 }
 
