@@ -59,6 +59,7 @@ bool ReadNek::prepareRead() {
 
 bool ReadNek::read(Token& token, int timestep, int partition) {
     ++numReads;
+    ++numReads;
     if (!myRead(token, timestep, partition)) {
         sendError("nek: could not read: timestep = " + to_string(timestep) + ", partition = " + to_string(partition));
         finishRead();
@@ -157,6 +158,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
 bool ReadNek::examine(const vistle::Parameter* param) {
     (void)param;
     if (!fs::exists(p_data_path->getValue())) {
+        cerr << "file " << p_data_path->getValue() << " does not exist" << endl;
         return false;
     }
     readerBase.reset(new nek5000::ReaderBase(p_data_path->getValue(),p_numPartitions->getValue(), p_numBlocks->getValue()));
