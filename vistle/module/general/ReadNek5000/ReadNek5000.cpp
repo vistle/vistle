@@ -111,6 +111,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         token.addObject(p_blockNumber, blockNumbers);
 
     } else if (!p_only_geometry->getValue()) {
+        pReader->UpdateCyclesAndTimes(timestep);
         {//velocities
             if (pReader->hasVelocity() && p_velocity->isConnected()) {
                 auto grid = mGrids[partition];

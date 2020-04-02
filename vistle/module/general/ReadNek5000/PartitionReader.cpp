@@ -447,8 +447,6 @@ PartitionReader::DomainParams PartitionReader::GetDomainSizeAndVarOffset(int iTi
     DomainParams params;
     params.timestepHasMesh = 0;
 
-    UpdateCyclesAndTimes();   //Needs to call this to update iTimestepsWithMesh
-
     if (vTimestepsWithMesh[iTimestep] == true)
         params.timestepHasMesh = 1;
 
