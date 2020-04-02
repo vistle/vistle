@@ -29,7 +29,7 @@ public:
     bool hasVelocity() const;
     bool hasPressure() const;
     bool hasTemperature() const;
-
+    void UpdateCyclesAndTimes(int timestep);
 protected:
     //variables
     std::string file; //path to meta data file
@@ -77,7 +77,6 @@ protected:
     std::vector<double> aTimes;
     std::vector<bool> readTimeInfoFor;
     std::vector<bool> vTimestepsWithMesh;
-    int curTimestep = 1;
     int timestepToUseForMesh = 0;
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
     std::array<int, 7> mapFileHeader;
@@ -96,7 +95,7 @@ protected:
 
     void sendError(const std::string& msg);
 
-    void UpdateCyclesAndTimes();
+
 private:
     //methods
         //creates a list of all possible corners in edge indices

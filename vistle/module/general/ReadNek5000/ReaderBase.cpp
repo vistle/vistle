@@ -33,7 +33,7 @@ bool ReaderBase::init()
     }
     if(numBlocksToRead < 1 || numBlocksToRead > totalNumBlocks)
         numBlocksToRead = totalNumBlocks;
-    UpdateCyclesAndTimes();
+    UpdateCyclesAndTimes(0);
     //create basic structures to later create connectivity lists
     makeBaseConnList();
     setAllPlanesInCornerIndices();
@@ -118,7 +118,7 @@ void ReaderBase::sendError(const std::string &msg)
     cerr << msg << endl;
 }
 
-void ReaderBase::UpdateCyclesAndTimes() {
+void ReaderBase::UpdateCyclesAndTimes(int timestep) {
     if (aTimes.size() != (size_t)numTimesteps) {
         aTimes.resize(numTimesteps);
         aCycles.resize(numTimesteps);
@@ -134,7 +134,7 @@ void ReaderBase::UpdateCyclesAndTimes() {
     t = 0.0;
     c = 0;
 
-    string meshfilename = GetFileName(curTimestep, 0);
+    string meshfilename = GetFileName(timestep, 0);
     f.open(meshfilename.c_str());
 
     if (!isParallelFormat) {
@@ -161,26 +161,26 @@ void ReaderBase::UpdateCyclesAndTimes() {
     }
     f.close();
 
-    aTimes[curTimestep] = t;
-    aCycles[curTimestep] = c;
+    aTimes[timestep] = t;
+    aCycles[timestep] = c;
     //if (metadata != nullptr) {
-    //    metadata->SetTime(curTimestep + timeSliceOffset, t);
-    //    metadata->SetTimeIsAccurate(true, curTimestep + timeSliceOffset);
-    //    metadata->SetCycle(curTimestep + timeSliceOffset, c);
-    //    metadata->SetCycleIsAccurate(true, curTimestep + timeSliceOffset);
+    //    metadata->SetTime(timestep + timeSliceOffset, t);
+    //    metadata->SetTimeIsAccurate(true, timestep + timeSliceOffset);
+    //    metadata->SetCycle(timestep + timeSliceOffset, c);
+    //    metadata->SetCycleIsAccurate(true, timestep + timeSliceOffset);
     //}
 
     // If this file contains a mesh, the first variable codes after the
     // cycle number will be X Y
     if (v.find("X") != string::npos)
-        vTimestepsWithMesh[curTimestep] = true;
+        vTimestepsWithMesh[timestep] = true;
 
     // Nek has a bug where the time and cycle sometimes run together (e.g. 2.52000E+0110110 for
     // time 25.2, cycle 10110).  If that happens, then v will be Y
     if (v.find("Y") != string::npos)
-        vTimestepsWithMesh[curTimestep] = true;
+        vTimestepsWithMesh[timestep] = true;
 
-    readTimeInfoFor[curTimestep] = true;
+    readTimeInfoFor[timestep] = true;
 }
 //private methods
 void ReaderBase::setAllEdgesInCornerIndices() {
@@ -378,7 +378,6 @@ bool ReaderBase::ParseGridMap() {
         for (size_t i = 0; i < 7; i++) {
             mptr >> mapFileHeader[i];
         }
-        //std::vector<int> map_elements(mapFileHeader[0]);
         mapFileData.reserve(mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
         for (int i = 0; i < mapFileHeader[0]; ++i) {
@@ -387,27 +386,14 @@ bool ReaderBase::ParseGridMap() {
                 mptr >> line[j];
             }
             mapFileData.emplace_back(line);
-            //map_elements[i] = line[0] + 1;
         }
         mptr.close();
-        //map<int, vector<int>> matches;
-        //int line = 1;
-        //for (auto entry : mapFileData) {
-        //    for (size_t i = 1; i <= numCorners; i++) {
-        //        matches[entry[i]].push_back(line);
-        //    }
-        //    ++line;
-        //}
-
-
         return true;
     }
     string ma2_filename = base_filename + "ma2";
     ifstream  ma2ptr(ma2_filename, ifstream::binary);
     if (ma2ptr.is_open())
     {
-        //ma2ptr.seekg(0, ios::beg);
-        cerr << "ma2 file is open" << endl;
         string version;
         ma2ptr >> version;
         if (version != "#v001")
@@ -415,22 +401,12 @@ bool ReaderBase::ParseGridMap() {
             sendError("ma2 file of version " + version + " is not supported");
             return false;
         }
-        cerr << "version: " << version << endl;
         for (size_t i = 0; i < 7; i++) {
             ma2ptr >> mapFileHeader[i];
-            cerr << mapFileHeader[i] << " ";
         }
-        cerr << endl;
         ma2ptr.seekg(132/4 * sizeof(float), ios::beg);
         char test;
-        ma2ptr >> test;
-        if (test)
-        {
-            cerr << "test = true" << endl;
-        }
-        else {
-            cerr  << "test = false " << endl;
-        }
+        ma2ptr >> test; //to do: use this to perform byteswap if neccessary
         ma2ptr.seekg((132 / 4  + 1) * sizeof(float), ios::beg);
         mapFileData.reserve(mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
@@ -442,16 +418,10 @@ bool ReaderBase::ParseGridMap() {
 
         for (int i = 0; i < mapFileHeader[0]; ++i) {
             array<int, 9> line;
-            cerr << " line " << i << ": ";
             for (size_t j = 0; j < columns; j++) {
                 line[j] = map[i * columns + j];
-
-                //ma2ptr >> line[j];
-                cerr << line[j] << " ";
             }
-            cerr << endl;
             mapFileData.emplace_back(line);
-            //map_elements[i] = line[0] + 1;
         } 
         delete[] map;
         ma2ptr.close();
