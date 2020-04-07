@@ -629,13 +629,24 @@ void insitu::Engine::getRegisteredGenericCommands() {
 void Engine::addPorts() {
     try {
         SetPorts::value_type ports;
-        std::vector<string> names = getDataNames(SimulationDataTyp::mesh);
-        names.push_back("mesh");
-        ports.push_back(names);
+        std::vector<string> meshNames = getDataNames(SimulationDataTyp::mesh);
+        meshNames.push_back("mesh");
+        ports.push_back(meshNames);
 
-        names = getDataNames(SimulationDataTyp::variable);
-        names.push_back("variable");
-        ports.push_back(names);
+        auto varNames = getDataNames(SimulationDataTyp::variable);
+        varNames.push_back("variable");
+        ports.push_back(varNames);
+
+        std::vector<string> debugNames;
+        int i = 0;
+        for (auto mesh : meshNames)
+        {
+            debugNames.push_back(mesh + "_mpi_ranks");
+        }
+
+        debugNames.push_back("debug");
+        ports.push_back(debugNames);
+
         m_messageHandler.send(SetPorts{ ports });
 
     } catch (const SimV2Exeption& ex) {
@@ -1290,6 +1301,36 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         }
         DEBUG_CERR << "sent variable " << name << " with " << meshInfo->second.numDomains << " domains" << endl;
     }
+    for (auto mesh : m_meshes)
+    {
+        string name = mesh.first + "_mpi_ranks";
+        if (m_moduleInfo.connectedPorts.find( name) != m_moduleInfo.connectedPorts.end())
+        {
+            for (auto grid : mesh.second.grids)
+            {
+                auto str = vistle::StructuredGridBase::as(grid);
+                auto unstr = vistle::UnstructuredGrid::as(grid);
+                vistle::Index mumElements;
+                if (str)
+                {
+                    mumElements = str->getNumElements();
+                }
+                else
+                {
+                    mumElements = unstr->getNumElements();
+                }
+                vistle::Vec<vistle::Scalar, 1>::ptr v = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(mumElements);
+                std::fill(v->x().begin(), v->x().end(), m_rank);
+                v->setMapping(vistle::DataBase::Mapping::Element);
+                v->setGrid(grid);
+                v->addAttribute("_species", name);
+                setTimestep(v);
+                addObject(name, v);
+            }
+        }
+    }
+
+
 }
 
 void insitu::Engine::sendTestData() {
