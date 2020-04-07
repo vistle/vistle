@@ -163,7 +163,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("dataport", po::value<unsigned short>(), "data port")
       ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
-      ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation")
+      ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
       ("gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
       ;
    po::variables_map vm;
@@ -316,15 +316,10 @@ bool Hub::init(int argc, char *argv[]) {
        if (vm.count("libsim") > 0) {
            sim2FilePath = vm["libsim"].as<std::string>();
 
-
            CERR << "starting manager in simulation" << std::endl;
-           bool success = false;
-
-           success = insitu::attemptLibSImConnection(sim2FilePath, args);
-           if (success) {
+           if (insitu::attemptLibSImConnection(sim2FilePath, args)) {
                sendInfo("Successfully connected to simulation");
-           }
-           else {
+           } else {
                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
                exit(1);
            }
