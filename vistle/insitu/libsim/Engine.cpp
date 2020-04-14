@@ -656,15 +656,6 @@ void Engine::addPorts() {
     }
 }
 //...................................................................................................
-template<typename T, typename...Args>
-typename T::ptr Engine::createVistleObject(Args&&... args)     {
-    auto obj = typename T::ptr(new T(args...));
-    sendShmIds();
-    return obj;
-}
-
-
-
 void insitu::Engine::sendDataToModule() {
     try {
         sendMeshesToModule();
@@ -797,7 +788,7 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             //std::reverse(nTuples.begin(), nTuples.end());
             //std::reverse(data.begin(), data.end());
 
-            vistle::RectilinearGrid::ptr grid = createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
+            vistle::RectilinearGrid::ptr grid = m_shmIDs.createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
             setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
@@ -840,7 +831,7 @@ void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
         int check = simv2_UnstructuredMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
-            vistle::UnstructuredGrid::ptr grid = createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+            vistle::UnstructuredGrid::ptr grid = m_shmIDs.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
             std::array<vistle::UnstructuredGrid::array*, 3> gridPoints{ &grid->x(), &grid->y(), &grid->z() };
             //std::array<std::array<int, 10>, 3> gridPoints;
             int ncells;
@@ -984,7 +975,7 @@ void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
             if (!simv2_CurvilinearMesh_getCoords(meshHandle, &ndims, dims, &coordMode, &coordHandles[0], &coordHandles[1], &coordHandles[2], &coordHandles[3]))                 {
                 throw EngineExeption("makeStructuredMesh: simv2_CurvilinearMesh_getCoords failed");
             }
-            vistle::StructuredGrid::ptr grid = createVistleObject<vistle::StructuredGrid>(dims[0], dims[1], dims[2]);
+            vistle::StructuredGrid::ptr grid = m_shmIDs.createVistleObject<vistle::StructuredGrid>(dims[0], dims[1], dims[2]);
 
             std::array<float*, 3> gridCoords{ grid->x().data() ,grid->y().data() ,grid->z().data() };
             int numVals = dims[0] * dims[1] * dims[2];
@@ -1037,7 +1028,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
     size_t numVertices;
     size_t numElements;
     int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    vistle::UnstructuredGrid::ptr grid= createVistleObject<vistle::UnstructuredGrid>(0,0,0);
+    vistle::UnstructuredGrid::ptr grid= m_shmIDs.createVistleObject<vistle::UnstructuredGrid>(0,0,0);
     std::array<float*, 3> gridCoords{ grid->x().end() ,grid->y().end() ,grid->z().end() };
     visit_handle coordHandles[4]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
     int dims[3]{ 1,1,1 }; //the x,y,z dimensions
@@ -1138,7 +1129,7 @@ void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
     size_t numVertices;
     size_t numElements;
     int numCorners = meshInfo.dim == 2 ? 4 : 8;
-    vistle::UnstructuredGrid::ptr grid = createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+    vistle::UnstructuredGrid::ptr grid = m_shmIDs.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
     std::array<float*, 3> gridCoords{ grid->x().end() ,grid->y().end() ,grid->z().end() };
     visit_handle coordHandles[3]; //handles to variable data, 4th entry conteins interleaved data depending on coordMode
     int ndims;
@@ -1248,7 +1239,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                 throw EngineExeption{ "combined grids must be UnstructuredGrids" };
             }
             size_t size = centering == VISIT_VARCENTERING_NODE ? unstr->getNumVertices() : unstr->getNumElements();
-            auto var = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(size);
+            auto var = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(size);
             var->setGrid(unstr);
             var->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
             variable = var;
@@ -1282,7 +1273,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     }
                     variable = vec;
                 } else {
-                    variable = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(nTuples);
+                    variable = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(nTuples);
                     transformArray(data, variable->x().data(), nTuples, dataType);
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
@@ -1319,7 +1310,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                 {
                     mumElements = unstr->getNumElements();
                 }
-                vistle::Vec<vistle::Scalar, 1>::ptr v = createVistleObject<vistle::Vec<vistle::Scalar, 1>>(mumElements);
+                vistle::Vec<vistle::Scalar, 1>::ptr v = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(mumElements);
                 std::fill(v->x().begin(), v->x().end(), m_rank);
                 v->setMapping(vistle::DataBase::Mapping::Element);
                 v->setGrid(grid);
@@ -1338,7 +1329,7 @@ void insitu::Engine::sendTestData() {
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::array<int, 3> dims{ 5, 10, 1 };
-    vistle::RectilinearGrid::ptr grid = createVistleObject<vistle::RectilinearGrid>(dims[0], dims[1], dims[2]);
+    vistle::RectilinearGrid::ptr grid = m_shmIDs.createVistleObject<vistle::RectilinearGrid>(dims[0], dims[1], dims[2]);
     setTimestep(grid);
     grid->setBlock(rank);
     for (size_t i = 0; i < 3; i++) {

@@ -16,6 +16,7 @@
 #include <core/tcpmessage.h>
 #include <core/archives_config.h>
 #include <core/archives.h>
+#include <core/shm.h>
 
 #include <util/vecstreambuf.h>
 
@@ -209,11 +210,17 @@ public:
      void initialize(int moduleID, int rank, int instance, Mode mode);
      void close();
      bool isInitialized();
+
     //we might need to use a mutex for this?
      void set(int objID, int arrayID); 
      int objectID(); 
      int arrayID(); 
-
+     template<typename T, typename...Args>
+     typename T::ptr createVistleObject(Args&&... args) {
+         auto obj = typename T::ptr(new T(args...));
+         set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
+             return obj;
+     }
     struct ShmData {
         int objID = -1;
         int arrayID = -1;
