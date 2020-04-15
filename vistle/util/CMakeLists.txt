@@ -48,6 +48,7 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
+vistle_install_headers(util ${util_HEADERS})
 
 include_directories(${BOTAN_INCLUDE_DIRS})
 

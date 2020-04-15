@@ -20,6 +20,7 @@ endif()
 use_openmp()
 
 vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
+vistle_install_headers(module ${module_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_module

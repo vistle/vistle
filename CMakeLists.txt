@@ -387,6 +387,10 @@ macro(vistle_add_library targetname)
        ARCHIVE DESTINATION ${INSTALL_LIB_DIR})
 endmacro(vistle_add_library)
 
+macro(vistle_install_headers directory)
+    install(FILES ${ARGN} DESTINATION include/vistle/${directory})
+endmacro(vistle_install_headers)
+
 if (APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
 endif()

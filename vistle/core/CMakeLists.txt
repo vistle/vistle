@@ -189,6 +189,7 @@ if (VISTLE_SHM_PER_RANK)
 endif()
 
 vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
+vistle_install_headers(core ${core_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core

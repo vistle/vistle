@@ -26,6 +26,7 @@ if (PYTHONLIBS_FOUND)
 endif()
 
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+vistle_install_headers(userinterface ${userinterface_HEADERS})
 target_compile_definitions(vistle_userinterface PRIVATE -DEMBED_PYTHON)
 target_link_libraries(vistle_userinterface
     PRIVATE ${Boost_SYSTEM_LIBRARY}

@@ -25,6 +25,7 @@ if(PYTHONLIBS_FOUND)
 endif()
 
 vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
+vistle_install_headers(control ${control_HEADERS})
 target_link_libraries(vistle_control
     PRIVATE ${Boost_SYSTEM_LIBRARY}
     PRIVATE ${Boost_PROGRAM_OPTIONS_LIBRARY}

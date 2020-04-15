@@ -27,6 +27,7 @@ endif()
 use_openmp()
 
 vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
+vistle_install_headers(renderer ${renderer_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_renderer
