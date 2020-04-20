@@ -60,7 +60,8 @@ SET(RUNTIME_HEADERS
   VisItControlInterfaceRuntime.h
   VisItDataInterfaceRuntime.h
   VisItDataInterfaceRuntimeP.h
-  VisItDataTypes.h 
+  VisItDataTypes.h
+  VisitDataTypesToVistle.h  
   CommandMetaData.h
   CurveData.h
   CurveMetaData.h
@@ -84,7 +85,6 @@ SET(RUNTIME_HEADERS
   SimulationMetaData.h
   SpeciesData.h
   SpeciesMetaData.h
-  TransformArray.h
   UnstructuredMesh.h
   VariableData.h
   VariableMetaData.h
@@ -110,6 +110,7 @@ endif()
 vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
 target_link_libraries(${LIBNAME}
+		vistle_insitu_core
 		vistle_module
 		vistle_util
 		vistle_control

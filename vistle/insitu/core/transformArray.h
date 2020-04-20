@@ -12,7 +12,7 @@
 #include <cassert>
 namespace insitu{
 
-struct TransformArrayExeption: public VistleLibSimExeption {
+struct TransformArrayExeption: public InsituExeption {
     TransformArrayExeption(const std::string& msg) :m_msg(msg) {}
      const char* what() const noexcept override {
          return ("TransformArrayExeption" + m_msg).c_str();

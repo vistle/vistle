@@ -7,7 +7,7 @@
 #include "VisItDataTypes.h"
 #include "VertexTypesToVistle.h"
 #include "Exeption.h"
-#include "TransformArray.h"
+#include <insitu/core/transformArray.h>
 
 
 #include "MeshMetaData.h"
@@ -659,13 +659,13 @@ void Engine::addPorts() {
 void insitu::Engine::sendDataToModule() {
     try {
         sendMeshesToModule();
-    } catch (const VistleLibSimExeption & exept) {
+    } catch (const InsituExeption & exept) {
         CERR << "sendMeshesToModule failed: " << exept.what() << endl;
     }
 
     try {
         sendVarablesToModule();
-    } catch (const VistleLibSimExeption & exept) {
+    } catch (const InsituExeption& exept) {
         CERR << "sendVarablesToModule failed: " << exept.what() << endl;
     }
 }
@@ -1382,7 +1382,7 @@ void insitu::Engine::finalizeInit()     {
             addPorts();
             getRegisteredGenericCommands();
 
-        } catch (const VistleLibSimExeption& ex) {
+        } catch (const InsituExeption& ex) {
             CERR << "finalizeInit failed: " << ex.what() << endl;
             return;
         }
