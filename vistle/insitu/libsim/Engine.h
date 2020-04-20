@@ -8,7 +8,6 @@
 #include "MetaData.h"
 #include "export.h"
 #include <insitu/message/InSituMessage.h>
-#include <insitu/core/dataAdaptorToVistle.h>
 
 #include <core/uniformgrid.h>
 
@@ -202,18 +201,18 @@ private:
         
     void sendDataToModule();//create all data objects and send them to vistle
     
-    void sendMeshesToModule(DataAdaptor &data);
-    void makeRectilinearMesh(visit_handle h, MultiMesh &meshInfo);
-    void makeUnstructuredMesh(visit_handle h, MultiMesh& meshInfo);
-    void makeAmrMesh(visit_handle h, MultiMesh& meshInfo);
-    void makeStructuredMesh(visit_handle h, MultiMesh& meshInfo);
+    void sendMeshesToModule();
+    void makeRectilinearMesh(MeshInfo meshInfo);
+    void makeUnstructuredMesh(MeshInfo meshInfo);
+    void makeAmrMesh(MeshInfo meshInfo);
+    void makeStructuredMesh(MeshInfo meshInfo);
     //combine the structured meshes of one domain to a singe unstructured mesh. Points of adjacent faces will be doubled.
     void combineStructuredMeshesToUnstructured(MeshInfo meshInfo);
 
     void combineRectilinearToUnstructured(MeshInfo meshInfo);
 
     
-    void sendVarablesToModule(DataAdaptor &data);
+    void sendVarablesToModule();
 
     void sendTestData(); //testing only
 
