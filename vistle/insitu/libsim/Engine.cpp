@@ -23,6 +23,7 @@
 #include "CurvilinearMesh.h"
 #include "UnstructuredMesh.h"
 #include "VariableData.h"
+#include "VisitDataTypesToVistle.h"
 
 #include <boost/mpi.hpp>
 #include <control/hub.h>
@@ -795,7 +796,7 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
             meshInfo.grids.push_back(grid);
             for (size_t i = 0; i < 3; ++i) {
                 if (data[i]) {
-                    transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataType[i]);
+                    transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataTypeToVistle(dataType[i]));
                 }
                 else {
                     grid->coords(i)[0] = 0;
@@ -896,7 +897,7 @@ void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
                     gridPoints[i]->resize(nTuples);
                     gridCoords[i] = gridPoints[i]->data();
                 }
-                transformInterleavedArray(data, gridCoords, nTuples, dataType, ndims);
+                transformInterleavedArray(data, gridCoords, nTuples, dataTypeToVistle(dataType), ndims);
 
             }
             break;
@@ -910,7 +911,7 @@ void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
                     v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
                     gridPoints[i]->resize(nTuples[i]);
 
-                    transformArray(data[i], gridPoints[i]->data(), nTuples[i], dataType[i]);
+                    transformArray(data[i], gridPoints[i]->data(), nTuples[i], dataTypeToVistle(dataType[i]));
                 }
             }
             break;
@@ -989,7 +990,7 @@ void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
                     throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
                 }
                
-                transformInterleavedArray(data, gridCoords, numVals, dataType, ndims);
+                transformInterleavedArray(data, gridCoords, numVals, dataTypeToVistle(dataType), ndims);
 
             }
             break;
@@ -1000,7 +1001,7 @@ void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
                 if (nTuples != numVals) {
                     throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
                 }
-                transformArray(data, gridCoords[i], nTuples, dataType);
+                transformArray(data, gridCoords[i], nTuples, dataTypeToVistle(dataType));
             }
             }
             break;
@@ -1075,7 +1076,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
                 throw EngineExeption("makeStructuredMesh: received points in interleaved grid " + std::string(meshInfo.name) + " do not match the grid dimensions");
             }
 
-            transformInterleavedArray(data, gridCoords, numVertices, dataType, ndims);
+            transformInterleavedArray(data, gridCoords, numVertices, dataTypeToVistle(dataType), ndims);
 
         }
         break;
@@ -1086,7 +1087,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
                 if (nTuples != numVertices) {
                     throw EngineExeption("makeStructuredMesh: received points in separate grid " + std::string(meshInfo.name) + " do not match the grid dimension " + std::to_string(i));
                 }
-                transformArray(data, gridCoords[i], nTuples, dataType);
+                transformArray(data, gridCoords[i], nTuples, dataTypeToVistle(dataType));
             }
         }
         break;
@@ -1174,10 +1175,10 @@ void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
         }
 
         if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
-            expandRectilinearToVTKStructured(data, dataType[0], nTuples, gridCoords);
+            expandRectilinearToVTKStructured(data, dataTypeToVistle(dataType[0]), nTuples, gridCoords);
             makeVTKStructuredGridConnectivityList(nTuples, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
         } else {
-            expandRectilinearToStructured(data, dataType[0], nTuples, gridCoords);
+            expandRectilinearToStructured(data, dataTypeToVistle(dataType[0]), nTuples, gridCoords);
             makeStructuredGridConnectivityList(nTuples, grid->cl().begin() + totalNumElements * numCorners, totalNumVerts);
         }
 
@@ -1256,14 +1257,14 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
             DEBUG_CERR << "added variable " << name << " to mesh " << meshName << " dom = " << currDomain << " Dim = " << nTuples << endl;
             if (meshInfo->second.combined) {
                 assert(combinedVecPos + nTuples >= variable->x().size());
-                transformArray(data, variable->x().data() + combinedVecPos, nTuples, dataType);
+                transformArray(data, variable->x().data() + combinedVecPos, nTuples, dataTypeToVistle(dataType));
                 combinedVecPos += nTuples;
                 
 
             } else {
                 if (m_intOptions[message::InSituMessageType::VTKVariables]->val) {
 
-                    auto var = vtkData2Vistle(data, nTuples, dataType, meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
+                    auto var = vtkData2Vistle(data, nTuples, dataTypeToVistle(dataType), meshInfo->second.grids[cd], centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                     sendShmIds(); //since vtkData2Vistle creates objects
                     auto vec = std::dynamic_pointer_cast<vistle::Vec<vistle::Scalar, 1>>(var);
 
@@ -1274,7 +1275,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
                     variable = vec;
                 } else {
                     variable = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(nTuples);
-                    transformArray(data, variable->x().data(), nTuples, dataType);
+                    transformArray(data, variable->x().data(), nTuples, dataTypeToVistle(dataType));
                     variable->setGrid(meshInfo->second.grids[cd]);
                     variable->setMapping(centering == VISIT_VARCENTERING_NODE ? vistle::DataBase::Vertex : vistle::DataBase::Element);
                 }
