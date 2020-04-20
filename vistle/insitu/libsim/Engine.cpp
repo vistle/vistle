@@ -7,7 +7,7 @@
 #include "VisItDataTypes.h"
 #include "VertexTypesToVistle.h"
 #include "Exeption.h"
-
+#include "TransformArray.h"
 
 
 #include "MeshMetaData.h"
@@ -23,7 +23,6 @@
 #include "CurvilinearMesh.h"
 #include "UnstructuredMesh.h"
 #include "VariableData.h"
-#include "VisitDataTypesToVistle.h"
 
 #include <boost/mpi.hpp>
 #include <control/hub.h>
@@ -45,7 +44,7 @@
 #include <util/listenv4v6.h>
 
 #include <ostream>
-#include <insitu/core/dataAdaptor.h>
+
 
 #ifdef MODULE_THREAD
 #include "EngineInterface.cpp"
@@ -658,66 +657,68 @@ void Engine::addPorts() {
 }
 //...................................................................................................
 void insitu::Engine::sendDataToModule() {
-    DataAdaptor data;
     try {
-        sendMeshesToModule(data);
+        sendMeshesToModule();
     } catch (const VistleLibSimExeption & exept) {
         CERR << "sendMeshesToModule failed: " << exept.what() << endl;
     }
 
     try {
-        sendVarablesToModule(data);
+        sendVarablesToModule();
     } catch (const VistleLibSimExeption & exept) {
         CERR << "sendVarablesToModule failed: " << exept.what() << endl;
     }
 }
 
-void insitu::Engine::sendMeshesToModule(DataAdaptor& data)     {
+void insitu::Engine::sendMeshesToModule()     {
     int numMeshes = getNumObjects(SimulationDataTyp::mesh);
+
     for (size_t i = 0; i < numMeshes; i++) {
-        MultiMesh mesh;
-        mesh.staticMesh = m_intOptions[message::InSituMessageType::ConstGrids]->val;
-        mesh.combine = m_intOptions[message::InSituMessageType::CombineGrids]->val;
+        MeshInfo meshInfo;
         visit_handle meshHandle = getNthObject(SimulationDataTyp::mesh, i);
         char* name;
         v2check(simv2_MeshMetaData_getName, meshHandle, &name);
+        auto meshIt = m_meshes.find(name);
+        if (m_intOptions[message::InSituMessageType::ConstGrids]->val && meshIt != m_meshes.end()) {
+            for (auto grid : meshIt->second.grids) {
+                addObject(name, grid);
+            }
+            return; //the mesh is consistent and already there
+        }
         visit_handle domainListHandle = v2check(simv2_invoke_GetDomainList, name);
         int allDoms = 0;
         visit_handle myDoms;
-        v2check(simv2_DomainList_getData, domainListHandle, mesh.numBlocks, myDoms);
-        DEBUG_CERR << "allDoms = " << allDoms << " myDomsHandle = " << myDoms << endl;
+        v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
+        DEBUG_CERR << "allDoms = " << allDoms << " myDoms = " << myDoms << endl;
 
         int owner, dataType, nComps;
-        void* domainListData;
+        void* data;
         try {
-            v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, mesh.numBlocksLocal, domainListData);
+            v2check(simv2_VariableData_getData, myDoms, owner, dataType, nComps, meshInfo.numDomains, data);
         } catch (const SimV2Exeption&) {
             CERR << "failed to get domain list" << endl;
         }
         if (dataType != VISIT_DATATYPE_INT) {
             CERR << "expected domain list to be ints" << endl;
         }
-        mesh.blockIndices = static_cast<const int*>(domainListData);
+        meshInfo.domains = static_cast<const int*>(data);
   
 
         VisIt_MeshType meshType = VisIt_MeshType::VISIT_MESHTYPE_UNKNOWN;
         v2check(simv2_MeshMetaData_getMeshType, meshHandle, (int*)&meshType);
 
 
-        v2check(simv2_MeshMetaData_getName, meshHandle, name);
-        mesh.name = name;
-        int dim;
-        v2check(simv2_MeshMetaData_getTopologicalDimension, meshHandle, &dim);
-        mesh.dim = dim == 2 ? Dimension::d2D : Dimension::d3D;
-        mesh.type = objTypeToVistle(meshType);
+        v2check(simv2_MeshMetaData_getName, meshHandle, &meshInfo.name);
+        v2check(simv2_MeshMetaData_getTopologicalDimension, meshHandle, &meshInfo.dim);
+
         switch (meshType) {
         case VISIT_MESHTYPE_RECTILINEAR:
         {
             CERR << "making rectilinear grid" << endl;
             if (m_intOptions[message::InSituMessageType::CombineGrids]->val) {
-                combineRectilinearToUnstructured(meshHandle, mesh);
+                combineRectilinearToUnstructured(meshInfo);
             } else {
-                makeRectilinearMesh(meshHandle, mesh);
+                makeRectilinearMesh(meshInfo);
             }
         }
         break;
@@ -725,11 +726,11 @@ void insitu::Engine::sendMeshesToModule(DataAdaptor& data)     {
         {
             CERR << "making curvilinear grid" << endl;
             if (!m_intOptions[message::InSituMessageType::CombineGrids]->val) {
-                makeStructuredMesh(meshHandle, mesh);
+                makeStructuredMesh(meshInfo);
             }
             else {
                 //to do:read domain boundaries if set
-                combineStructuredMeshesToUnstructured(meshHandle, mesh);
+                combineStructuredMeshesToUnstructured(meshInfo);
             }
 
         }
@@ -737,7 +738,7 @@ void insitu::Engine::sendMeshesToModule(DataAdaptor& data)     {
         case VISIT_MESHTYPE_UNSTRUCTURED:
         {
             CERR << "making unstructured grid" << endl;
-            makeUnstructuredMesh(meshHandle, mesh);
+            makeUnstructuredMesh(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_POINT:
@@ -753,7 +754,7 @@ void insitu::Engine::sendMeshesToModule(DataAdaptor& data)     {
         case VISIT_MESHTYPE_AMR:
         {
             CERR << "making AMR grid" << endl;
-            makeAmrMesh(meshHandle, mesh);
+            makeAmrMesh(meshInfo);
         }
         break;
         default:
@@ -763,53 +764,85 @@ void insitu::Engine::sendMeshesToModule(DataAdaptor& data)     {
     }
 }
 
-void insitu::Engine::makeRectilinearMesh(visit_handle h, MultiMesh& meshInfo) {
-    
-    for (size_t cd = 0; cd < meshInfo.numBlocksLocal; cd++) {
-        int currDomain = meshInfo.blockIndices[cd];
-        Mesh mesh;
+void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
         int check = simv2_RectilinearMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
             visit_handle coordHandles[3]; //handles to variable data
             int ndims;
             v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
-            int owner{}, dataType{}, nComps{}, nTuples = 1;
+            std::array<int, 3> owner{}, dataType{}, nComps{}, nTuples{ 1,1,1 };
             std::array<void*, 3> data{};
-            std::vector<Array> arrays;
-            for (int i = 0; i < static_cast<int>(meshInfo.dim); ++i) {
-                v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, mesh.data[i].data);
-                mesh.data[i].dataType = dataTypeToVistle(dataType);
-                mesh.data[i].size = nTuples;
-                mesh.data[i].owner = ownerToVistle(owner);
-                mesh.data[i].centering = vistle::DataBase::Vertex;
+            for (int i = 0; i < meshInfo.dim; ++i) {
+                v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
+                if (dataType[i] != dataType[0]) {
+                    CERR << "mesh data type must be consistent within a domain" << endl;
+                    return;
+                }
+            }
+            //std::reverse(owner.begin(), owner.end());
+            //std::reverse(dataType.begin(), dataType.end());
+            //std::reverse(nComps.begin(), nComps.end());
+            //std::reverse(nTuples.begin(), nTuples.end());
+            //std::reverse(data.begin(), data.end());
+
+            vistle::RectilinearGrid::ptr grid = m_shmIDs.createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
+            setTimestep(grid);
+            grid->setBlock(currDomain);
+            meshInfo.handles.push_back(meshHandle);
+            meshInfo.grids.push_back(grid);
+            for (size_t i = 0; i < 3; ++i) {
+                if (data[i]) {
+                    transformArray(data[i], grid->coords(i).begin(), nTuples[i], dataType[i]);
+                }
+                else {
+                    grid->coords(i)[0] = 0;
+                }
             }
 
-            v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, mesh.min.data(), mesh.max.data()); //geth ghost cell info
+            std::array<int, 3> min, max;
+            v2check(simv2_RectilinearMesh_getRealIndices, meshHandle, min.data(), max.data());
+            //std::reverse(min.begin(), min.end());
+            //std::reverse(max.begin(), max.end());
+            for (size_t i = 0; i < 3; i++) {
+                assert(min[i] >= 0);
+                int numTop = nTuples[i] - 1 - max[i];
+                assert(numTop >= 0);
+                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Bottom, min[i]);
+                grid->setNumGhostLayers(i, vistle::StructuredGrid::GhostLayerPosition::Top, numTop);
+            }
+            addObject(meshInfo.name, grid);
+
+            DEBUG_CERR << "added rectilinear mesh " << meshInfo.name << " dom = " << currDomain << " xDim = " << nTuples[0] << " yDim = " << nTuples[1] << " zDim = " << nTuples[2] << endl;
+            DEBUG_CERR << "min bounds " << min[0] << " " << min[1] << " " << min[2] << " max bouns " << max[0] << " " << max[1] << " " << max[2] << endl;
 
         }
     }
-    DEBUG_CERR << "made dataBase for rectilinear grids with " << meshInfo.numBlocksLocal << " local blocks" << endl;
+    DEBUG_CERR << "made rectilinear grids with " << meshInfo.numDomains << " domains" << endl;
+    m_meshes[meshInfo.name] = meshInfo;
 }
 
-void insitu::Engine::makeUnstructuredMesh(visit_handle h, MultiMesh& meshInfo) {
+void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
 
-    for (size_t cd = 0; cd < meshInfo.numBlocksLocal; cd++) {
-        int currDomain = meshInfo.blockIndices[cd];
+    for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
+        int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
         int check = simv2_UnstructuredMesh_check(meshHandle);
         if (check == VISIT_OKAY) {
-            UnstructuredMesh mesh;
+            vistle::UnstructuredGrid::ptr grid = m_shmIDs.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
+            std::array<vistle::UnstructuredGrid::array*, 3> gridPoints{ &grid->x(), &grid->y(), &grid->z() };
+            //std::array<std::array<int, 10>, 3> gridPoints;
             int ncells;
             visit_handle connListHandle;
             v2check(simv2_UnstructuredMesh_getConnectivity, meshHandle, &ncells, &connListHandle);
-            Array& cl = mesh.cl;
-            cl.size = ncells;
+            grid->el().reserve(ncells);
+            grid->tl().reserve(ncells);
             int owner{}, dataType{}, nComps{}, nTuples{};
             void* data{};
-            v2check(simv2_VariableData_getData, connListHandle, owner, dataType, nComps, nTuples, cl.data);
-            cl.dataType = dataTypeToVistle(dataType);
-
+            v2check(simv2_VariableData_getData, connListHandle, owner, dataType, nComps, nTuples, data);
+            int idx = 0;
             if (dataType != VISIT_DATATYPE_INT)
             {
                 throw EngineExeption("element list is not of expected type (int)");
@@ -918,18 +951,18 @@ void insitu::Engine::makeUnstructuredMesh(visit_handle h, MultiMesh& meshInfo) {
     return;
 }
 
-void insitu::Engine::makeAmrMesh(visit_handle h, Mesh& meshInfo) {
+void insitu::Engine::makeAmrMesh(MeshInfo meshInfo) {
     if (m_intOptions[message::InSituMessageType::CombineGrids]->val) {
-        combineRectilinearToUnstructured(h, meshInfo);
+        combineRectilinearToUnstructured(meshInfo);
     } else {
-        makeRectilinearMesh(h, meshInfo);
+        makeRectilinearMesh(meshInfo);
     }
     
 
 
 }
 
-void insitu::Engine::makeStructuredMesh(visit_handle h, Mesh& meshInfo) {
+void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
@@ -1179,7 +1212,7 @@ void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
     DEBUG_CERR << "added unstructured mesh " << meshInfo.name << " with " << totalNumVerts << " vertices and " << totalNumElements << " elements " << endl;
 }
 
-void insitu::Engine::sendVarablesToModule(DataAdaptor& data)     { //todo: combine variables to vectors
+void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
     int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
