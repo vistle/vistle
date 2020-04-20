@@ -1,40 +1,33 @@
 #ifndef SIMV2_EXEPTION
 #define SIMV2_EXEPTION
-#include <exception>
+
 #include <string>
 
 #include <tuple>
 #include <functional>
 
 #include "VisItDataTypes.h"
+
+#include <insitu/core/exeption.h>
+
 namespace insitu {
-//base class that lets us catch all vistleLibSimExeptions
-struct VistleLibSimExeption : public std::exception {
-public:
-    VistleLibSimExeption();
+    class Test : public InsituExeption
+    {
 
-    VistleLibSimExeption& operator<< (const std::string& msg);
-    VistleLibSimExeption& operator<< (int msg);
-    virtual ~VistleLibSimExeption() = default;
+    };
 
-protected:
-    std::string m_msg;
-    int rank = -1, size = 0;
-};
-
-struct SimV2Exeption : public VistleLibSimExeption {
+struct SimV2Exeption : public InsituExeption {
     const char* what() const noexcept override;
 };
 
 
-class EngineExeption : public VistleLibSimExeption {
-public:
+struct EngineExeption : public InsituExeption {
     EngineExeption(const std::string& message);
     const char* what() const noexcept override;
 
 };
 
-//check simV2_ functions on invalid return valuse or invalid vistle_handles and throw in case
+//check simV2_ functions on valid return values and valid vistle_handles and throw otherwise
 //___________________________________________________________________________________________
 
 template<typename T>

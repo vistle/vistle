@@ -26,6 +26,7 @@
 
 
 namespace insitu{
+
 namespace message {
 
 enum class V_INSITUMESSAGEEXPORT InSituMessageType {

@@ -1,11 +1,9 @@
 set(SENSEI_SOURCES
-  dataAdaptor.cpp
   sensei.cpp
 )
 
 set(SENSEI_HEADER
   export.h  
-  dataAdaptor.h  
   sensei.h
 
 )
@@ -18,6 +16,7 @@ target_link_libraries(vistle_sensei
         vistle_core
         vistle_boost_mpi
 		vistle_insitu_message
+		vistle_insitu_core
 		${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 		)
