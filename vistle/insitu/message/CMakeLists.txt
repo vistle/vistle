@@ -1,10 +1,16 @@
 set(LIBSIM_SOURCES
   InSituMessage.cpp
+  ShmMessage.cpp
+  SyncShmIDs.cpp
+  TcpMessage.cpp
 )
 
 set(LIBSIM_HEADER
-  InSituMessage.h
   export.h
+  InSituMessage.h
+  ShmMessage.h
+  SyncShmIDs.h
+  TcpMessage.h
 )
 
 vistle_add_library(vistle_insitu_message ${LIBSIM_SOURCES} ${LIBSIM_HEADER})

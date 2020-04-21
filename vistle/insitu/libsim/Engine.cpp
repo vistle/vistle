@@ -313,7 +313,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     }
     getMetaData();
     finalizeInit();
-    InSituTcp::Message msg = m_messageHandler.recv();
+    auto msg = m_messageHandler.recv();
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
@@ -326,9 +326,7 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     {
         SetPorts ap = msg.unpackOrCast<SetPorts>();
         m_moduleInfo.connectedPorts.clear();
-        for (auto vec : ap.value)             {
-            m_moduleInfo.connectedPorts.insert(vec.begin(), vec.end());
-        }
+        m_moduleInfo.connectedPorts = ap.value[0];
     }
         break;
     case InSituMessageType::SetCommands:
@@ -1219,7 +1217,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
         char* name, *meshName;
         v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
-        if (m_moduleInfo.connectedPorts.find(name) == m_moduleInfo.connectedPorts.end()) { //don't process data for un-used ports
+        if (std::find(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end(), name) == m_moduleInfo.connectedPorts.end()) { //don't process data for un-used ports
             continue;
         }
         v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
@@ -1296,7 +1294,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
     for (auto mesh : m_meshes)
     {
         string name = mesh.first + "_mpi_ranks";
-        if (m_moduleInfo.connectedPorts.find( name) != m_moduleInfo.connectedPorts.end())
+        if (std::find(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end(), name) != m_moduleInfo.connectedPorts.end())
         {
             for (auto grid : mesh.second.grids)
             {

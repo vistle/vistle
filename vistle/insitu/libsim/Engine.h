@@ -7,7 +7,11 @@
 
 #include "MetaData.h"
 #include "export.h"
-#include <insitu/message/InSituMessage.h>
+
+#include <insitu/message/SyncShmIDs.h>
+#include <insitu/message/TcpMessage.h>
+
+#include <insitu/core/moduleInfo.h>
 
 #include <core/uniformgrid.h>
 
@@ -146,18 +150,12 @@ private:
     };
     std::map<std::string, MeshInfo> m_meshes; //used to find the coresponding mesh for the variables
 
-    struct ModuleInfo {
-        bool initialized = false; //Module is initialized(sent port and command info)
-        std::string shmName, name, numCons, hostname;
-        int id = 0, port = 0;
-        bool ready = false; //wether the module is executing or not
-        std::set<std::string> connectedPorts;
-    } m_moduleInfo;
-        size_t m_timestep = 0; //timestep couter for module
+    ModuleInfo m_moduleInfo;
+    size_t m_timestep = 0; //timestep couter for module
 
     struct IntOptionBase
     {
-        virtual void setVal(insitu::message::InSituTcp::Message& msg) {};
+        virtual void setVal(insitu::message::Message& msg) {};
         int val = 0;
 
     };
@@ -166,7 +164,7 @@ private:
         IntOption(int initialVal, std::function<void()> cb = nullptr):callback(cb) {
             val = initialVal;
         }
-        virtual void setVal(insitu::message::InSituTcp::Message& msg) override
+        virtual void setVal(insitu::message::Message& msg) override
         {
             auto m = msg.unpackOrCast<T>();
             val = static_cast<typename T::value_type>(m.value);

@@ -9,3 +9,6 @@ The InSituTcpMessage is designed to only use a tcp connection on rank 0 and then
 Therefore it is nececarry for the receive method to be called on all ranks consistently.
 
 The InSituShmMessage sends and receives on all ranks independently.
+
+The SyncShmIDs class provides utility to synchronize the shm-object ids of vistle objects. Use the createVistleObject function 
+in the simulation adapters to make sure the object ids are synced. In single process mode this class is redundant.
