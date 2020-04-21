@@ -346,7 +346,7 @@ void LibSimModule::disconnectSim() {
 
 void LibSimModule::recvAndhandleMessage()     {
 
-    insitu::message::InSituTcp::Message msg = m_messageHandler.recv();
+    auto msg = m_messageHandler.recv();
     
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
     using namespace insitu;

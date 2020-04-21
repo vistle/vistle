@@ -49,7 +49,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
 #endif
 };
 
-
+class Message;
 struct V_INSITUMESSAGEEXPORT InSituMessageBase {
     InSituMessageBase(InSituMessageType t) :m_type(t) {};
     InSituMessageType type() const;
@@ -64,7 +64,7 @@ protected:
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
     typedef payloadType value_type;\
-    friend class InSituTcp; \
+    friend class insitu::message::Message; \
     messageType(const payloadType& payloadName):InSituMessageBase(type), value(payloadName){}\
      static const InSituMessageType type = InSituMessageType::messageType;\
     payloadType value; \
@@ -118,21 +118,12 @@ private:
 };
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");
 
+class V_INSITUMESSAGEEXPORT Message {
 
-
-
-//after being initialized, sends and receives messages in a blocking manner. 
-//When the connection is closed returns EngineMEssageType::ConnectionClosed and becomes uninitialized.
-//while uninitialized calls to send and received are ignored.
-//Received Messages are broadcasted to all ranks so make sure they all call receive together.
-class V_INSITUMESSAGEEXPORT InSituTcp {
 public:
-    class V_INSITUMESSAGEEXPORT Message{
-        friend class InSituTcp;
-    public:
     InSituMessageType type() const;
 
-       
+
     template<typename SomeMessage>
     SomeMessage& unpackOrCast() {
 
@@ -144,15 +135,18 @@ public:
             try {
                 vistle::iarchive ar(buf);
                 ar&* static_cast<SomeMessage*>(m_msg.get());
-            } catch (yas::io_exception & ex) {
+            }
+            catch (yas::io_exception& ex) {
                 std::cerr << "ERROR: failed to get InSituTcp::Message of type " << static_cast<int>(type()) << " with payload size " << m_payload.size() << " bytes: " << ex.what() << std::endl;
             }
         }
         return *static_cast<SomeMessage*>(m_msg.get());
 
     }
-private:
+    static Message errorMessage();
     Message(InSituMessageType type, vistle::buffer&& payload);
+private:
+
     Message();
     InSituMessageType m_type;
     vistle::buffer m_payload;
@@ -160,111 +154,9 @@ private:
 };
 
 
-    template<typename SomeMessage>
-    bool send(const SomeMessage& msg) const{
-        if (!m_initialized) {
-            std::cerr << "InSituTcpMessage uninitialized: can not send message!" << std::endl;
-            return false;
-        }
-        if (msg.type == InSituMessageType::Invalid) {
-            std::cerr << "InSituTcpMessage : can not send invalid message!" << std::endl;
-            return false;
-        }
-        bool error = false;
-        if (m_comm.rank() == 0) {
-            boost::system::error_code err;
-            InSituMessage ism(msg.type);
-            vistle::vecostreambuf<vistle::buffer> buf;
-            vistle::oarchive ar(buf);
-            ar& msg;
-            vistle::buffer vec = buf.get_vector();
 
-            ism.setPayloadSize(vec.size());
-            vistle::message::send(*m_socket, ism, err, &vec);
-            if (err) {
-                error = true;
-            }
-        }
-        return error;
-    }
-    void initialize(std::shared_ptr< boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm);
-    bool isInitialized();
-    InSituTcp::Message recv();
-private:
-     bool m_initialized = false;
-     boost::mpi::communicator m_comm;
-     boost::asio::ip::tcp::socket* m_socket;
-};
 
-class V_INSITUMESSAGEEXPORT SyncShmIDs {
-public:
-    enum class Mode {
-          Create
-        , Attach
-    };
-#ifdef MODULE_THREAD
-    typedef std::lock_guard<std::mutex> Guard;
-#else
-    typedef boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> Guard;
-#endif
 
-     void initialize(int moduleID, int rank, int instance, Mode mode);
-     void close();
-     bool isInitialized();
-
-    //we might need to use a mutex for this?
-     void set(int objID, int arrayID); 
-     int objectID(); 
-     int arrayID(); 
-     template<typename T, typename...Args>
-     typename T::ptr createVistleObject(Args&&... args) {
-         auto obj = typename T::ptr(new T(args...));
-         set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
-             return obj;
-     }
-    struct ShmData {
-        int objID = -1;
-        int arrayID = -1;
-#ifdef MODULE_THREAD
-        std::mutex mutex;
-#else
-        boost::interprocess::interprocess_mutex mutex;
-#endif
-
-    };
-private:
-#ifndef MODULE_THREAD
-    class ShmSegment{
-    public:
-        ShmSegment() {}
-        ShmSegment(ShmSegment&& other);
-        ShmSegment(const std::string& name, Mode mode);
-        ~ShmSegment();
-        const ShmData* data() const;
-        ShmData* data();
-        ShmSegment& operator=(ShmSegment&& other) noexcept;
-    private:
-        std::string m_name;
-
-        boost::interprocess::mapped_region m_region;
-    };
-     ShmSegment m_segment;
-#else
-    class Data { //wrapper if we dont need shm
-public:
-    ShmData* data(){
-        return &m_data;
-    }
-    private:
-        ShmData m_data;
-};
-     Data m_segment;
-#endif
-     int m_rank = -1;
-     int m_moduleID = -1;
-
-     bool m_initialized = false;
-};
 } //message
 } //insitu
 

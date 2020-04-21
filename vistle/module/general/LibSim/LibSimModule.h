@@ -9,7 +9,9 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
 
-#include <insitu/message/InSituMessage.h>
+#include <insitu/message/SyncShmIDs.h>
+#include <insitu/message/TcpMessage.h>
+
 class LibSimModule : public insitu::InSituReader
 {
 public:
