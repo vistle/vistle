@@ -1,7 +1,7 @@
 #ifndef TRANSFORM_ARRAY_H
 #define TRANSFORM_ARRAY_H
 
-#include "Exeption.h"
+#include "exeption.h"
 #include <algorithm>
 #include <array>
 #include <core/object.h>
@@ -64,6 +64,7 @@ RetVal callFunctionWithVoidToTypeCast(void* v, DataType dataType, size_t size, A
     break;
     }
 }
+
 template<typename Source, typename Dest>
 void transformArray(Source* s, size_t size, Dest d) {
     std::transform(s, s + size, d, [](Source val) {
@@ -77,7 +78,11 @@ void transformArray(T* s, size_t size, T* d) {
 }
 
 template<typename Source, typename Dest>
-struct ArrayTransformer;
+struct ArrayTransformer {
+    void operator()(Source* s, size_t size, Dest d) {
+        transformArray(s, size, d);
+          }
+};
 
 //copies array from source to dest and converts from dataType to T
 template<typename T>
