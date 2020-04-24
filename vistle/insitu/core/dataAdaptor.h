@@ -31,6 +31,12 @@ namespace insitu {
 		,Simulation
 		,Vistle
 	};
+struct MetaData {
+	std::vector<std::string> meshes;
+	std::vector<std::tuple<std::string, int>> variables;
+
+};
+
 struct Array {
 	std::string name;
 	size_t size;
@@ -41,6 +47,7 @@ struct Array {
 };
 
 struct Mesh {
+	Dimension dim = Dimension::d3D;
 	bool globalView = false;
 	bool interleaved = false; // if true x,y and z coordinates are interleaved in data[0]
 	std::string name;
@@ -52,6 +59,7 @@ struct Mesh {
 	size_t numCells = 0; // total number of cells in all blocks 
 	size_t cellArraySize = 0; // total cell array size in all blocks
 	size_t numArrays = 0;
+	std::array<size_t, 3> sizes; //if iterleaved these are the dimensions
 	std::array<size_t, 3> min, max; //outside these indicees is ghost data
 	std::array<Array, 3> data;
 
@@ -66,11 +74,11 @@ struct UnstructuredMesh : public Mesh
 
 };
 
-struct MultiMesh
+struct MultiMesh : public Mesh
 {
-	std::string name;
+
 	vistle::Object::Type type = vistle::Object::Type::UNKNOWN;
-	Dimension dim = Dimension::d3D;
+
 	const int* blockIndices = nullptr; //global block indicees for the local blocks
 	size_t numBlocks = 0;
 	size_t numBlocksLocal = 0; // number of blocks on each rank

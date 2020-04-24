@@ -1,7 +1,7 @@
 #ifndef TRANSFORM_ARRAY_H
 #define TRANSFORM_ARRAY_H
 
-#include "Exeption.h"
+#include "exeption.h"
 #include <algorithm>
 #include <array>
 #include <core/object.h>
@@ -65,12 +65,7 @@ RetVal callFunctionWithVoidToTypeCast(void* v, DataType dataType, size_t size, A
     }
 }
 //dest must be of plain type (no pointer or reference)
-template<typename Source, typename Dest>
-struct ArrayTransformer {
-    void operator()(Source* s, size_t size, Dest d) {
-        transformArray(s, size, d);
-          }
-};
+
 template<typename Source, typename Dest>
 void transformArray(Source* s, size_t size, Dest d) {
     std::transform(s, s + size, d, [](Source val) {
@@ -83,7 +78,12 @@ void transformArray(T* s, size_t size, T* d) {
     std::copy(s, s + size, d);
 }
 
-
+template<typename Source, typename Dest>
+struct ArrayTransformer {
+    void operator()(Source* s, size_t size, Dest d) {
+        transformArray(s, size, d);
+          }
+};
 
 //copies array from source to dest and converts from dataType to T
 template<typename T>
@@ -99,7 +99,7 @@ struct InterleavedArrayTransformer {
         assert(dest.size() < dim);
         for (size_t j = 0; j < size; ++j) {
             for (size_t i = 0; i < dim; ++i) {
-                dest[i][0] = static_cast<typename std::remove_pointer<Dest::value_type>::type>(source[0]);
+                dest[i][0] = static_cast<typename std::remove_pointer<typename Dest::value_type>::type>(source[0]);
                 ++source;
                 ++dest[i];
             }

@@ -1,0 +1,7 @@
+#ifndef SENSEI_STRUCTURED_GRID_H
+#define SENSEI_STRUCTURED_GRID_H
+
+
+
+
+#endif

@@ -7,9 +7,12 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
 
-#include <insitu/message/InSituMessage.h>
+#include <insitu/message/SyncShmIDs.h>
+#include <insitu/message/ShmMessage.h>
 
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <insitu/core/moduleInfo.h>
+#include <insitu/core/dataAdaptor.h>
 
 namespace vistle {
 namespace message {
@@ -20,12 +23,21 @@ class  MessageQueue;
 namespace insitu {
 namespace sensei{
 	class DataAdapter;
-	
+	class Callbacks {
+	public:
+		Callbacks(Mesh(*getMesh)(const std::string&), Array(*getVar)(const std::string&));
+		Mesh getMesh(const std::string& name);
+		Array getVar(const std::string& name);
+	private:
+		Mesh(*m_getMesh)(const std::string&) = nullptr;
+		Array(*m_getVar)(const std::string&) = nullptr;
+	};
 	class V_SENSEIEXPORT SenseiAdapter
 	{
 	public:
-		bool Initialize();
-		bool Execute(const DataAdapter* dataAdapter);
+
+		bool Initialize(MetaData &&meta, Callbacks cbs);
+		bool Execute();
 		bool Finalize();
 
 		bool processTimestep(size_t timestep); //true if we have sth to do for the given timestep
@@ -36,19 +48,23 @@ namespace sensei{
 		SenseiAdapter(SenseiAdapter&& other) = delete;
 		SenseiAdapter(SenseiAdapter& other) = delete;
 		~SenseiAdapter();
+
+
+
 	private:
-        bool m_initialized = false; //Engine is initialized
-		bool m_isConnected = false;
-		bool m_moduleConnected = false;
+		//unsigned int m_rank = 0, m_mpiSize = 0;
+		Callbacks m_callbacks;
+		MetaData m_metaData;
+		ModuleInfo m_moduleInfo;
+		bool m_initialized = false; //Engine is initialized
         vistle::message::MessageQueue* m_sendMessageQueue = nullptr; //Queue to send addObject messages to LibSImController module
         //mpi info
         int m_rank = -1, m_mpiSize = 0;
         MPI_Comm comm = MPI_COMM_WORLD;
-
+		
         insitu::message::SyncShmIDs m_shmIDs;
 
-
-		boost::interprocess::message_queue sendMsq, recvMsq; //to exchange command with the module
+		message::InSituShmMessage m_messageHandler;
 
 
 
@@ -58,6 +74,8 @@ namespace sensei{
 		void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
 		void updateStatus();
 		void recvAndHandeMessage();
+		void sendMeshToModule(const Mesh& mesh);
+		void sendVariableToModule(const Array& var);
 
 	};
 }

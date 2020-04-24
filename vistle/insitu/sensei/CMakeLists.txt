@@ -1,11 +1,17 @@
 set(SENSEI_SOURCES
+  rectilinerGrid.cpp
   sensei.cpp
+  structuredGrid.cpp
+  unstructuredGrid.cpp
 )
 
 set(SENSEI_HEADER
   export.h  
+  metaData.h
+  rectilinerGrid.h
   sensei.h
-
+  structuredGrid.h
+  unstructuredGrid.h
 )
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
