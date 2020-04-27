@@ -316,7 +316,7 @@ void LibSimModule::connectToSim() {
             p = lastEditedFile;
         }
         CERR << "opening file: " << p.string() << endl;
-        vector<string> args{ to_string(size()), vistle::Shm::the().name(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(m_numberOfConnections) };
+        vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(m_numberOfConnections) };
         if (insitu::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }

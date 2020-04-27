@@ -141,11 +141,10 @@ if (argC != 7) {
         return false;
     }
 
-    initializeVistleEnv();
+    return initializeVistleEnv();
 #endif
     
-
-    
+   
     return true;
 }
 
@@ -153,7 +152,33 @@ if (argC != 7) {
 bool Engine::initializeVistleEnv()
 {
     vistle::registerTypes();
-    vistle::Shm::attach(m_moduleInfo.shmName, m_moduleInfo.id, m_rank);
+#ifdef SHMPERRANK
+    //remove the"_r" + std::to_string(rank) because that gets added by attach again
+    char c_ = ' ', cr = ' ';
+    while (m_moduleInfo.shmName.size() > 0 &&c_ != '_' && cr != 'r')
+    {
+        cr = c_;
+        c_ = m_moduleInfo.shmName[m_moduleInfo.shmName.size() - 1];
+        m_moduleInfo.shmName.pop_back();
+    }
+    if (m_moduleInfo.shmName.size() == 0)
+    {
+        CERR << "failed to create shmName: expected it to end with _r + std::to_string(rank)" << endl;
+        return false;
+    }
+#endif // SHMPERRANK
+
+    
+    try
+    {
+        CERR << "attaching to shm: name = " << m_moduleInfo.shmName << " id = " << m_moduleInfo.id << " rank = " << m_rank << endl;
+        vistle::Shm::attach(m_moduleInfo.shmName, m_moduleInfo.id, m_rank);
+    }
+    catch (const vistle::shm_exception& ex)
+    {
+        CERR << ex.what() << endl;
+        return false;
+    }
     vistle::message::DefaultSender::init(m_moduleInfo.id, m_rank);
     // names are swapped relative to communicator
     std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + m_moduleInfo.numCons).c_str(), m_moduleInfo.id, m_rank);
