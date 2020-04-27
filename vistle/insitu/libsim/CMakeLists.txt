@@ -16,7 +16,9 @@ target_link_libraries(vistle_libsim_connect
 if(LIBSIM_DEBUG)
    add_definitions(-DLIBSIM_DEBUG)
 endif()
-
+if (VISTLE_SHM_PER_RANK)
+   add_definitions(-DSHMPERRANK)
+endif()
 add_definitions(-DLIBSIM_EXPORT)
 
 SET(RUNTIME_SOURCES 
