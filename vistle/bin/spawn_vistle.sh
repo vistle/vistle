@@ -167,12 +167,17 @@ if [ "$OPENMPI" = "1" ]; then
    for v in $envvars; do
        ENVS="$ENVS -x $v"
    done
-   if [ -z "$MPIHOSTS" ]; then
-      echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
-      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-   else
-      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-   fi
+   if [ -z "$MPIHOSTFILE" ]; then
+       if [ -z "$MPIHOSTS" ]; then
+          echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
+          exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+       else
+          exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+       fi
+    else
+      echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
+      exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+    fi
 else
    if [ -z "$MPIHOSTS" ]; then
       exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
