@@ -179,12 +179,16 @@ if [ "$OPENMPI" = "1" ]; then
       exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
     fi
 else
-   if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-   elif [ "$BIND" = "1" ]; then
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+   if [ -z "$MPIHOSTFILE" ]; then	
+	   if [ -z "$MPIHOSTS" ]; then
+		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+	   elif [ "$BIND" = "1" ]; then
+		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+	   else
+		  exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+	   fi
    else
-      exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+	   exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
