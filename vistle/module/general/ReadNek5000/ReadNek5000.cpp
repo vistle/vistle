@@ -68,7 +68,23 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
 }
 
 bool ReadNek::myRead(Token& token, int timestep, int partition) {
-    
+    if (!parameterChanged) //reuse data
+    {
+        if (timestep == -1)
+        {
+            std::cerr << "read: reusing data since parameters have not changed since last read" << std::endl;
+            token.addObject(p_grid, readGrid);
+            token.addObject(p_blockNumber, readBlockNumbers);
+        }
+        else
+        {
+            for (auto it : readData)
+            {
+                token.addObject(it.first, it.second[timestep]);
+            }
+        }
+        return true;
+    }
     unique_lock<mutex> guard(readerMapMutex);
     auto r = readers.find(partition);
     if (r == readers.end()) {
@@ -80,7 +96,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
     nek5000::PartitionReader* pReader = &r->second;
     if (timestep == -1) {//there is only one grid for all timesteps, so we read it in advance
 
-
+        readData.clear();
         int hexes = pReader->getHexes();
         int ghostHexes = pReader->getNumGhostHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
@@ -102,6 +118,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         grid->setBlock(partition);
         grid->setTimestep(-1);
         token.addObject(p_grid, grid);
+        readGrid = grid;
         //block numbers
         Vec<Index>::ptr blockNumbers(new Vec<Index>(pReader->getGridSize()));
         pReader->fillBlockNumbers(blockNumbers->x().data());
@@ -109,6 +126,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         blockNumbers->setBlock(partition);
         blockNumbers->setMapping(DataBase::Vertex);
         token.addObject(p_blockNumber, blockNumbers);
+        readBlockNumbers = blockNumbers;
 
     } else if (!p_only_geometry->getValue()) {
         pReader->UpdateCyclesAndTimes(timestep);
@@ -129,7 +147,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
                 auto y = velocity->y().data();
                 auto z = velocity->z().data();
                 pReader->fillVelocity(timestep, x, y, z);
-
+                readData[p_velocity].push_back(velocity);
                 token.addObject(p_velocity, velocity);
             }
         }
@@ -158,18 +176,20 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
 
 bool ReadNek::examine(const vistle::Parameter* param) {
     (void)param;
+    parameterChanged = true;
     if (!fs::exists(p_data_path->getValue())) {
         cerr << "file " << p_data_path->getValue() << " does not exist" << endl;
         return false;
     }
-    readerBase.reset(new nek5000::ReaderBase(p_data_path->getValue(),p_numPartitions->getValue(), p_numBlocks->getValue()));
+    vistle::Integer numPartitions = p_numPartitions->getValue() == 0 ? size() : p_numPartitions->getValue();
+    readerBase.reset(new nek5000::ReaderBase(p_data_path->getValue(), numPartitions, p_numBlocks->getValue()));
     if(!readerBase->init())
         return false;
     size_t oldNumSFields = pv_misc.size();
 
     setTimesteps(readerBase->getNumTimesteps());
-    setPartitions(p_numPartitions->getValue());
-    mGrids.resize(p_numPartitions->getValue());
+    setPartitions(numPartitions);
+    mGrids.resize(numPartitions);
     for (size_t i = oldNumSFields; i < readerBase->getNumScalarFields(); i++) {
         pv_misc.push_back(createOutputPort("scalarFiled" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
     }
@@ -182,6 +202,7 @@ bool ReadNek::examine(const vistle::Parameter* param) {
 
 bool ReadNek::finishRead() {
     readers.clear();
+    parameterChanged = false;
     std::cerr << "_________________________________________________________" << std::endl;
     std::cerr << "read was called "<< numReads << " times" << std::endl;
     std::cerr << "_________________________________________________________" << std::endl;
@@ -218,6 +239,7 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
     scal->setBlock(partition);
     scal->addAttribute("_species", varname);
     token.addObject(p, scal);
+    readData[p].push_back(scal);
     return true;
 }
 
@@ -247,8 +269,8 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    p_useMap = addIntParameter("useMap", "use .map file to partition mesh", false, Parameter::Boolean);
    p_numGhostLayers = addIntParameter("numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
    p_numBlocks = addIntParameter("number of blocks", "number of blocks, <= 0 to read all", 0);
-   p_numPartitions = addIntParameter("numerOfPartitions", "number of partitions", 1);
-   setParameterMinimum(p_numPartitions, Integer{ 1 });
+   p_numPartitions = addIntParameter("numerOfPartitions", "number of partitions, 0 = one partition for each rank", 0);
+   setParameterMinimum(p_numPartitions, Integer{ 0 });
    observeParameter(p_useMap);
    observeParameter(p_numGhostLayers);
    observeParameter(p_data_path);

@@ -16,7 +16,7 @@ namespace nek5000 {
 
 ReaderBase::ReaderBase(std::string file, int numPartitions, int blocksToRead)
     :file(file)
-    ,numPartitions(numPartitions)
+    ,numPartitions(numPartitions )
     ,numBlocksToRead(blocksToRead)
 {
 }
