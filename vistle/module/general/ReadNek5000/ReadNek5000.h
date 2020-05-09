@@ -80,6 +80,10 @@ private:
     vistle::IntParameter* p_numGhostLayers = nullptr;
     float minVeclocity = 0, maxVelocity = 0;
     int numReads = 0;
+    bool parameterChanged = true;
+    vistle::UnstructuredGrid::ptr readGrid; //the grid to use if params haven't changed
+    vistle::Vec<vistle::Index>::ptr readBlockNumbers; //the blockNumbers to use if params haven't changed
+    std::map<vistle::Port*, std::vector<vistle::Object::ptr>> readData; //the data to use if params haven't changed
     std::unique_ptr<nek5000::ReaderBase> readerBase;
     std::map<int, nek5000::PartitionReader> readers;
     //maps the grids to the blocks
