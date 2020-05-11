@@ -158,6 +158,7 @@ private:
 
     struct IntOptionBase
     {
+        virtual ~IntOptionBase() = default;
         virtual void setVal(insitu::message::InSituTcp::Message& msg) {};
         int val = 0;
 

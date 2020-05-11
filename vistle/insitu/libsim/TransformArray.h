@@ -64,13 +64,6 @@ RetVal callFunctionWithVoidToTypeCast(void* v, int dataType, size_t size, Args2 
     break;
     }
 }
-//dest must be of plain type (no pointer or reference)
-template<typename Source, typename Dest>
-struct ArrayTransformer {
-    void operator()(Source* s, size_t size, Dest d) {
-        transformArray(s, size, d);
-          }
-};
 template<typename Source, typename Dest>
 void transformArray(Source* s, size_t size, Dest d) {
     std::transform(s, s + size, d, [](Source val) {
@@ -83,7 +76,8 @@ void transformArray(T* s, size_t size, T* d) {
     std::copy(s, s + size, d);
 }
 
-
+template<typename Source, typename Dest>
+struct ArrayTransformer;
 
 //copies array from source to dest and converts from dataType to T
 template<typename T>
@@ -91,6 +85,13 @@ void transformArray(void* source, T* dest, size_t size, int dataType) {
     callFunctionWithVoidToTypeCast<void, ArrayTransformer> (source, dataType, size, dest);
 }
 
+//dest must be of plain type (no pointer or reference)
+template<typename Source, typename Dest>
+struct ArrayTransformer {
+    void operator()(Source* s, size_t size, Dest d) {
+        transformArray(s, size, d);
+          }
+};
 
 //takes a singe array of type Source and and std::array of dim (or bigger) and converts and distributes from source to dest
 template<typename Source, typename Dest, typename p_Dim>
@@ -99,7 +100,7 @@ struct InterleavedArrayTransformer {
         assert(dest.size() < dim);
         for (size_t j = 0; j < size; ++j) {
             for (size_t i = 0; i < dim; ++i) {
-                dest[i][0] = static_cast<typename std::remove_pointer<Dest::value_type>::type>(source[0]);
+                dest[i][0] = static_cast<typename std::remove_pointer<typename Dest::value_type>::type>(source[0]);
                 ++source;
                 ++dest[i];
             }
