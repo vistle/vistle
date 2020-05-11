@@ -260,6 +260,16 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
       return true;
    }
    auto grid = dataS->grid();
+   if (mapdata) {
+       if (!mapdata->grid()) {
+           sendError("no grid for mapped data");
+           return true;
+       }
+       if (mapdata->grid() != grid) {
+           sendError("grids on mapped data and iso-data do not match");
+           return true;
+       }
+   }
 #endif
    auto uni = UniformGrid::as(grid);
    auto rect = RectilinearGrid::as(grid);
