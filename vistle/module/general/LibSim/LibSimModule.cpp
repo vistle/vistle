@@ -320,6 +320,10 @@ void LibSimModule::connectToSim() {
         if (insitu::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }
+        else
+        {
+            CERR << "attemptLibSImConnection failed " << endl;
+        }
     }
     boost::mpi::broadcast(comm(), m_simInitSent, 0);
    }
