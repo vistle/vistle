@@ -32,6 +32,7 @@ bool readSim2File(const std::string& path, std::string& hostname, int& port, std
     }
     f.close();
     if (i < 3) {
+        std::cerr << "readSim2File: wrong file format" << std::endl;
         return false;
     }
     return true;
