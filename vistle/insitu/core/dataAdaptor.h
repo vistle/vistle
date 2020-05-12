@@ -8,7 +8,7 @@
 #include <core/database.h>
 #include <core/unstr.h>
 namespace insitu {
-	enum class Dimension {
+	enum class Dimension { //castable to int
 		d2D = 2
 		,d3D = 3
 	};
@@ -44,6 +44,12 @@ struct Array {
 	Owner owner = Owner::Unknown;
 	DataType dataType = DataType::INVALID;
 	void* data;
+	~Array() {
+		if (owner ==Owner::Vistle)
+		{
+			free(data);
+		}
+	}
 };
 
 struct Mesh {
@@ -52,32 +58,53 @@ struct Mesh {
 	bool interleaved = false; // if true x,y and z coordinates are interleaved in data[0]
 	std::string name;
 	vistle::Object::Type type = vistle::Object::Type::UNKNOWN;
-
+	size_t numVerts() const{
+		if (interleaved)
+		{
+			size_t s = 1;
+			for (size_t i = 0; i < 3; i++)
+			{
+				s *= std::max(sizes[0], (size_t)1);
+			}
+			assert(data[0].size * static_cast<int>(dim) == s);
+			return s;
+		} else
+		{
+			assert(data[0].size == data[1].size && data[0].size == data[2].size);
+			return data[0].size;
+		}
+	}
 
 	vistle::DataBase::Mapping coordinateType = vistle::DataBase::Mapping::Unspecified;
+	size_t blockNumber = 0;
 	size_t numPoints = 0; // total number of points in all blocks
 	size_t numCells = 0; // total number of cells in all blocks 
 	size_t cellArraySize = 0; // total cell array size in all blocks
 	size_t numArrays = 0;
 	std::array<size_t, 3> sizes; //if iterleaved these are the dimensions
 	std::array<size_t, 3> min, max; //outside these indicees is ghost data
-	std::array<Array, 3> data;
+	std::array<Array, 3> data; //if interleaved only data[0] is used
+	virtual ~Mesh() {};
 
 };
 
 struct UnstructuredMesh : public Mesh
 {
+	//types are void and will be converted with ...ToVistle function;
 	Array cl;
-	Array tl;
-	Array el; //must be in and will be converted to vistle::UnstructuredGrid::Type via typeToVistle
-	vistle::UnstructuredGrid::Type(*typeToVistle)(int) = nullptr;
+	Array tl; 
+	Array el;
+	//functions to convert cl, tl and el to vistle
+	bool (*clToVistle)(vistle::Index* vistleTl);
+	bool (*tlToVistle)(vistle::Byte* vistleTl);
+	bool (*elToVistle)(vistle::Index* vistleTl);
 
 };
 
 struct MultiMesh : public Mesh
 {
 
-	vistle::Object::Type type = vistle::Object::Type::UNKNOWN;
+	vistle::Object::Type type = vistle::Object::Type::PLACEHOLDER;
 
 	const int* blockIndices = nullptr; //global block indicees for the local blocks
 	size_t numBlocks = 0;

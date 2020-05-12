@@ -9,7 +9,6 @@
 #include "Exeption.h"
 #include <insitu/core/transformArray.h>
 
-
 #include "MeshMetaData.h"
 #include "VariableMetaData.h"
 #include "MaterialMetaData.h"
@@ -179,14 +178,11 @@ bool Engine::initializeVistleEnv()
         CERR << ex.what() << endl;
         return false;
     }
-    vistle::message::DefaultSender::init(m_moduleInfo.id, m_rank);
-    // names are swapped relative to communicator
-    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + m_moduleInfo.numCons).c_str(), m_moduleInfo.id, m_rank);
     try {
-        m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
+        m_sendMessageQueue.reset(new AddObjectMsq(m_moduleInfo, m_rank));
     }
-    catch (boost::interprocess::interprocess_exception& ex) {
-        CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
+    catch (InsituExeption& ex) {
+        CERR << "opening send message queue: " << ex.what() << endl;
         return false;
     }
 
@@ -1414,17 +1410,9 @@ void insitu::Engine::finalizeInit()     {
     }
 }
 
-void insitu::Engine::addObject(const std::string& name, vistle::Object::ptr obj) {
+void insitu::Engine::addObject(const std::string& port, vistle::Object::ptr obj) {
     if (m_sendMessageQueue) {
-        DEBUG_CERR << "addObject " << name << " of type " << obj->typeName() << endl;
-        vistle::message::AddObject msg(name, obj);
-        vistle::message::Buffer buf(msg);
-
-#ifdef MODULE_THREAD
-        buf.setSenderId(m_moduleInfo.id);
-        buf.setRank(m_rank);
-#endif
-        m_sendMessageQueue->send(buf);
+        m_sendMessageQueue->addObject(port, obj);
     }
 
 
@@ -1588,7 +1576,6 @@ Engine::~Engine() {
         vistle::Shm::the().detach();
     }
 #endif
-    delete m_sendMessageQueue;
     Engine::instance = nullptr;
 }
 

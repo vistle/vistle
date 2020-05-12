@@ -12,6 +12,7 @@
 #include <insitu/message/TcpMessage.h>
 
 #include <insitu/core/moduleInfo.h>
+#include <insitu/core/addObjectMsq.h>
 
 #include <core/uniformgrid.h>
 
@@ -107,7 +108,7 @@ private:
     const int zero = 0;
     static Engine* instance;
     bool m_initialized = false; //Engine is initialized
-    vistle::message::MessageQueue* m_sendMessageQueue = nullptr; //Queue to send addObject messages to LibSImController module
+    std::unique_ptr<AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to LibSImController module
     //mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;

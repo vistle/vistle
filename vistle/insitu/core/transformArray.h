@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <cassert>
 #include "dataAdaptor.h"
+
 namespace insitu{
 
 struct TransformArrayExeption: public InsituExeption {
@@ -24,36 +25,36 @@ struct TransformArrayExeption: public InsituExeption {
 //cast the void* to dataType* and call Func(dataType*, size, Args2)
 //Args1 must be equal to Args2 without pointer or reference
 template<typename RetVal, template<typename...Args1> typename Func, typename ...Args2>
-RetVal callFunctionWithVoidToTypeCast(void* v, DataType dataType, size_t size, Args2 &&...args) {
+RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, size_t size, Args2 &&...args) {
     
     switch (dataType) {
     case DataType::CHAR:
     {
-        char* f = static_cast<char*>(v);
+        const char* f = static_cast<const char*>(source);
         return Func<char,typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
     case DataType::INT:
     {
-        int* f = static_cast<int*>(v);
+        const int* f = static_cast<const int*>(source);
         return Func<int, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
     case DataType::FLOAT:
     {
-        float* f = static_cast<float*>(v);
+        const float* f = static_cast<const float*>(source);
         return Func<float, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
     case DataType::DOUBLE:
     {
-        double* f = static_cast<double*>(v );
+        const double* f = static_cast<const double*>(source );
         return Func<double, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
     case DataType::LONG:
     {
-        long* f = static_cast<long*>(v);
+        const long* f = static_cast<const long*>(source);
         return Func<long, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
@@ -67,27 +68,35 @@ RetVal callFunctionWithVoidToTypeCast(void* v, DataType dataType, size_t size, A
 //dest must be of plain type (no pointer or reference)
 
 template<typename Source, typename Dest>
-void transformArray(Source* s, size_t size, Dest d) {
-    std::transform(s, s + size, d, [](Source val) {
+void transformArray(Source* source, size_t size, Dest d) {
+    std::transform(source, source + size, d, [](Source val) {
         return static_cast<typename std::remove_pointer<Dest>::type>(val);
         });
 }
 
 template<typename T>
-void transformArray(T* s, size_t size, T* d) {
-    std::copy(s, s + size, d);
+void transformArray(const T* source, size_t size, T* d) {
+    std::copy(source, source + size, d);
 }
+
+
 
 template<typename Source, typename Dest>
 struct ArrayTransformer {
-    void operator()(Source* s, size_t size, Dest d) {
+    void operator()(const Source* s, size_t size, Dest d) {
         transformArray(s, size, d);
           }
 };
 
+
+template<typename T>
+void transformArray(const Array &source, T* dest) {
+    callFunctionWithVoidToTypeCast<void, ArrayTransformer>(source.data, source.dataType, source.size, dest);
+}
+
 //copies array from source to dest and converts from dataType to T
 template<typename T>
-void transformArray(void* source, T* dest, size_t size, DataType dataType) {
+void transformArray(const void* source, T* dest, size_t size, DataType dataType) {
     callFunctionWithVoidToTypeCast<void, ArrayTransformer> (source, dataType, size, dest);
 }
 
@@ -95,7 +104,7 @@ void transformArray(void* source, T* dest, size_t size, DataType dataType) {
 //takes a singe array of type Source and and std::array of dim (or bigger) and converts and distributes from source to dest
 template<typename Source, typename Dest, typename p_Dim>
 struct InterleavedArrayTransformer {
-    void operator()(Source* source, size_t size, Dest dest, int dim) {
+    void operator()(const Source* source, size_t size, Dest dest, int dim) {
         assert(dest.size() < dim);
         for (size_t j = 0; j < size; ++j) {
             for (size_t i = 0; i < dim; ++i) {
@@ -114,18 +123,25 @@ struct InterleavedArrayTransformer {
 //copies the data from source to dest while transforming its type
 //source : interleaved array, dest: separate destination arrays, size : number of entris in source, dim : number of arrays that are interleaved
 template<typename T, size_t I>
-void transformInterleavedArray(void* source, std::array<T*, I> dest, int size, DataType dataType, int dim) {
+void transformInterleavedArray(const void* source, std::array<T*, I> dest, int size, DataType dataType, int dim) {
     if (dim > I) {
         throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
     }
     callFunctionWithVoidToTypeCast<void, InterleavedArrayTransformer>(source, dataType, size, dest, dim);
 }
 
+template<typename T, size_t I>
+void transformInterleavedArray(const Array& source, std::array<T*, I> dest, int dim) {
+    if (dim > I) {
+        throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
+    }
+    callFunctionWithVoidToTypeCast<void, InterleavedArrayTransformer>(source.data, source.dataType, source.size, dest, dim);
+}
 
 
 template<typename T, typename p_Object, typename p_Mapping, typename p_Interleaved>
 struct VtkArray2VistleConverter     {
-    vistle::DataBase::ptr operator()(T* vd, size_t n, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
+    vistle::DataBase::ptr operator()(const T* source, size_t n, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
         using namespace vistle;
         bool perCell = false;
         Index dim[3] = { Index(n), 1, 1 };
@@ -158,9 +174,9 @@ struct VtkArray2VistleConverter     {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index i = 0; i < dim[0]; ++i) {
                         const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions);
-                        x[idx] = vd[3 * l];
-                        y[idx] = vd[3 * l + 1];
-                        z[idx] = vd[3 * l + 2];
+                        x[idx] = source[3 * l];
+                        y[idx] = source[3 * l + 1];
+                        z[idx] = source[3 * l + 2];
 
                         ++l;
                     }
@@ -177,7 +193,7 @@ struct VtkArray2VistleConverter     {
                 for (Index j = 0; j < dim[1]; ++j) {
                     for (Index i = 0; i < dim[0]; ++i) {
                         const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions);
-                        x[idx] = vd[l];
+                        x[idx] = source[l];
                         ++l;
                     }
                 }
@@ -191,7 +207,7 @@ struct VtkArray2VistleConverter     {
     }
 };
 
-vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, DataType dataType, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
+inline vistle::DataBase::ptr vtkData2Vistle(const void* source, size_t n, DataType dataType, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
     using namespace vistle;
     DataBase::ptr data;
 
@@ -203,8 +219,8 @@ vistle::DataBase::ptr vtkData2Vistle(void* source, size_t n, DataType dataType, 
 
 template<typename Source, typename Dest, typename p_Pos>
 struct ConversionInserter {
-    void operator()(Source* src, size_t SourcePos,  Dest dest, size_t destPos)         {
-        dest[destPos] = src[SourcePos];
+    void operator()(const Source* source, size_t SourcePos,  Dest dest, size_t destPos)         {
+        dest[destPos] = source[SourcePos];
     }
 
 };
@@ -230,11 +246,10 @@ void expandRectilinearToStructured(void* source[3], DataType dataType, const int
     }
 }
 
-vistle::Index VTKVertexIndex(vistle::Index x, vistle::Index y, vistle::Index z, const vistle::Index dims[3])     {
+inline vistle::Index VTKVertexIndex(vistle::Index x, vistle::Index y, vistle::Index z, const vistle::Index dims[3])
+{
     return ((z * dims[1] + y) * dims[0] + x);
 }
-
-
 
 template<typename T>
 void expandRectilinearToVTKStructured(void* source[3], DataType dataType, const int size[3], std::array<T*, 3> dest) {
@@ -260,7 +275,7 @@ void expandRectilinearToVTKStructured(void* source[3], DataType dataType, const 
 template<typename T, typename p_separator>
 struct Printer
 {
-    void operator()(T* source, int size, const std::string& separeator = " ")
+    void operator()(const T* source, int size, const std::string& separeator = " ")
     {
         for (size_t i = 0; i < size; i++)
         {
@@ -269,13 +284,13 @@ struct Printer
     }
 };
 
-void printArray(void* source, DataType dataType, int size, const std::string &separeator = " ")
+inline void printArray(const void* source, DataType dataType, int size, const std::string& separeator = " ")
 {
     callFunctionWithVoidToTypeCast<void, Printer>(source, dataType, size, separeator);
 }
 
 
-}
+}//insitu
 
 
 
