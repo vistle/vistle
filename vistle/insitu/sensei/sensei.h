@@ -9,7 +9,7 @@
 
 #include <insitu/message/SyncShmIDs.h>
 #include <insitu/message/ShmMessage.h>
-
+#include <insitu/core/addObjectMsq.h>
 #include <boost/interprocess/ipc/message_queue.hpp>
 #include <insitu/core/moduleInfo.h>
 #include <insitu/core/dataAdaptor.h>
@@ -36,8 +36,8 @@ namespace sensei{
 	{
 	public:
 
-		bool Initialize(MetaData &&meta, Callbacks cbs);
-		bool Execute();
+		bool Initialize(bool paused, size_t rank, size_t mpiSize, MetaData &&meta, Callbacks cbs, ModuleInfo moduleInfo);
+		bool Execute(size_t timestep);
 		bool Finalize();
 
 		bool processTimestep(size_t timestep); //true if we have sth to do for the given timestep
@@ -52,12 +52,12 @@ namespace sensei{
 
 
 	private:
-		//unsigned int m_rank = 0, m_mpiSize = 0;
+		size_t m_currTimestep = 0;
 		Callbacks m_callbacks;
 		MetaData m_metaData;
 		ModuleInfo m_moduleInfo;
 		bool m_initialized = false; //Engine is initialized
-        vistle::message::MessageQueue* m_sendMessageQueue = nullptr; //Queue to send addObject messages to LibSImController module
+		std::unique_ptr<AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to module
         //mpi info
         int m_rank = -1, m_mpiSize = 0;
         MPI_Comm comm = MPI_COMM_WORLD;
@@ -73,9 +73,10 @@ namespace sensei{
 		void startListening(); //wait for the senei module to connect
 		void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
 		void updateStatus();
-		void recvAndHandeMessage();
+		bool recvAndHandeMessage(bool blocking = false);
 		void sendMeshToModule(const Mesh& mesh);
 		void sendVariableToModule(const Array& var);
+		void sendObject(const std::string& port, vistle::Object::const_ptr obj);
 
 	};
 }

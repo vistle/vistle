@@ -6,6 +6,7 @@ set(SENSEI_SOURCES
 )
 
 set(SENSEI_HEADER
+  exeption.h
   export.h  
   metaData.h
   rectilinerGrid.h
@@ -24,5 +25,5 @@ target_link_libraries(vistle_sensei
 		vistle_insitu_message
 		vistle_insitu_core
 		${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
+		${MPI_C_LIBRARIES}
 		)
