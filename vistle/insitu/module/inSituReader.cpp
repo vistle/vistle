@@ -130,7 +130,7 @@ void InSituReader::initRecvFromSimQueue() {
         CERR << "receiveFromSimMessageQueue name = " << msqName << std::endl;
     }
     catch (boost::interprocess::interprocess_exception& ex) {
-        throw vistle::exception(std::string("opening send message queue ") + msqName + ": " + ex.what());
+        throw vistle::exception(std::string("opening recv from sim message queue with name ") + msqName + ": " + ex.what());
 
     }
 }

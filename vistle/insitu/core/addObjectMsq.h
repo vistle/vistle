@@ -16,9 +16,9 @@ public:
 	AddObjectMsq(const ModuleInfo& moduleInfo, size_t rank);
 	~AddObjectMsq();
 	AddObjectMsq(AddObjectMsq& other) = delete;
-	AddObjectMsq(AddObjectMsq&& other);
+	AddObjectMsq(AddObjectMsq&& other) noexcept;
 	AddObjectMsq operator=(AddObjectMsq& other) = delete;
-	AddObjectMsq &operator=(AddObjectMsq&& other);
+	AddObjectMsq &operator=(AddObjectMsq&& other) noexcept;
 
 	void addObject(const std::string& port, vistle::Object::const_ptr obj);
 

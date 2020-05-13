@@ -182,7 +182,7 @@ bool Engine::initializeVistleEnv()
         m_sendMessageQueue.reset(new AddObjectMsq(m_moduleInfo, m_rank));
     }
     catch (InsituExeption& ex) {
-        CERR << "opening send message queue: " << ex.what() << endl;
+        CERR << "failed to create AddObjectMsq numCons =  " <<  m_moduleInfo.numCons  << " module id = " << m_moduleInfo.id <<  " : " << ex.what() << endl;
         return false;
     }
 
@@ -401,16 +401,8 @@ bool insitu::Engine::recvAndhandleVistleMessage() {
     {
         auto mid = msg.unpackOrCast<ModuleID>();
         m_moduleInfo.id = mid.value;
-        std::string mqName = vistle::message::MessageQueue::createName("recvFromSim0" , m_moduleInfo.id, m_rank);
-        try {
-            m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
-        } catch (boost::interprocess::interprocess_exception & ex) {
-            CERR << "opening send message queue " << mqName << ": " << ex.what() << endl;
-            return false;
-        }
-        m_shmIDs.initialize(m_moduleInfo.id, m_rank, 0, message::SyncShmIDs::Mode::Attach);
         m_moduleInfo.ready = false;
-        
+        m_sendMessageQueue.reset(new AddObjectMsq(m_moduleInfo, m_rank));
     }
     break;
 #endif

@@ -25,7 +25,7 @@ bool insitu::sensei::SenseiAdapter::Initialize(bool paused, size_t rank, size_t 
 	}
 	catch (const InsituExeption& ex)
 	{
-		CERR << "opening send message queue: " << ex.what() << endl;
+		CERR << "opening AddObjectMsq: " << ex.what() << endl;
 		return false;
 	}
 
