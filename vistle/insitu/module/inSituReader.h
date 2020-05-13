@@ -3,6 +3,9 @@
 
 #include <module/module.h>
 #include "export.h"
+#include<core/messagequeue.h>
+#include <insitu/message/SyncShmIDs.h>
+
 namespace insitu {
 
 
@@ -15,17 +18,26 @@ class V_INSITUMODULEEXPORT InSituReader : public vistle::Module {
 public:
     InSituReader(const std::string& description, const std::string& name, const int moduleID, mpi::communicator comm);
     bool isExecuting();
-    //use this function to get conformation that the external procces will not create vistle objects
-    virtual bool prepareReduce() = 0;
+    //use these function to make sure that the insitu process only creates vistle objects after beginExecute and before endExecute.
+    virtual bool beginExecute() = 0;
+    virtual bool endExecute() = 0;
     virtual void cancelExecuteMessageReceived(const vistle::message::Message* msg) override;
-
+    size_t InstanceNum() const;
+    void reconnect();
   private:
-    virtual bool handleExecute(const vistle::message::Execute* exec) override;
-
-
+    bool handleExecute(const vistle::message::Execute* exec) override final;
+    bool dispatch(bool block = true, bool* messageReceived = nullptr) override final;
+    bool prepare() override final;
+    void initRecvFromSimQueue();
 
     bool m_isExecuting = false;
     const vistle::message::Execute* m_exec;
+    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue; //receives vistle messages that will be passed through to manager
+    std::string m_receiveFromSimMessageQueueName = "recvFromSimMsq";
+    size_t m_instanceNum = 0;
+    static size_t m_numInstances;
+
+    insitu::message::SyncShmIDs m_shmIDs;
 };
 
 

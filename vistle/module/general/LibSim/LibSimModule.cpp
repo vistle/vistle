@@ -22,7 +22,6 @@
 #include <insitu/libsim/EngineInterface.h>
 #endif
 using namespace std;
-using insitu::message::SyncShmIDs;
 using insitu::message::InSituMessageType;
 
 #define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
@@ -65,7 +64,10 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) , m_messageHandler });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) , m_messageHandler });
 #ifndef MODULE_THREAD
-    startControllServer(); //start socket and wait for connection
+    if (rank() == 0)
+    {
+        startControllServer(); //start socket and wait for connection
+    }
     startSocketThread();
 #else
     if (rank() == 0 && !insitu::EngineInterface::getControllSocket()) {
@@ -74,8 +76,6 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     } 
     m_connectedToEngine = true;
     m_messageHandler.initialize(insitu::EngineInterface::getControllSocket(), boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
-    m_shmIDs.initialize(id(), rank(), 0, insitu::message::SyncShmIDs::Mode::Create);
-    initRecvFromSimQueue();
     m_messageHandler.send(insitu::message::ModuleID{ id() });
     m_socketThread = std::thread([this]() {
         while (!getBool(m_terminateSocketThread)) {
@@ -122,19 +122,13 @@ LibSimModule::~LibSimModule() {
     }
 }
 
-bool LibSimModule::prepareReduce() {
+bool LibSimModule::endExecute() {
 
     m_messageHandler.send(insitu::message::Ready{ false });
-
-    vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
-    vistle::Shm::the().setObjectID(m_shmIDs.objectID());
-    if (!getBool(m_connectedToEngine)) {
-        m_shmIDs.close();
-    }
     return true;
 }
 
-bool LibSimModule::prepare() {
+bool LibSimModule::beginExecute() {
 
     if (!getBool(m_connectedToEngine)) {
         return true;
@@ -149,42 +143,8 @@ bool LibSimModule::prepare() {
     connectedPorts.push_back(p);
     m_messageHandler.send(insitu::message::SetPorts{ connectedPorts });
     m_messageHandler.send(insitu::message::Ready{ true });
-    Guard g(m_socketMutex);
-    try {
-        m_shmIDs.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
-    } catch (const vistle::exception& ex) {
-        CERR << ex.what() << endl;
-#ifndef MODULE_THREAD
-        m_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive); //trigger disconnect on the socket thread
-#endif // !MOULE_THREAD
-    }
-
-
+    
     return true;
-}
-
-bool LibSimModule::dispatch(bool block, bool* messageReceived) {
-    bool passMsg = false;
-    bool msgRecv = false;
-    if (getBool(m_connectedToEngine)) { //if we are connected we forward messages (fow now only used for AddObject) from the sim to Vistle as if they came from this module
-        vistle::message::Buffer buf;
-        if (m_receiveFromSimMessageQueue->tryReceive(buf)) {
-            if (buf.type() != vistle::message::INSITU) {
-                sendMessage(buf);
-            }
-            passMsg = true;
-        }
-    } else if(isExecuting()){
-        cancelExecuteMessageReceived(nullptr);
-    }
-    bool retval = Module::dispatch(false, &msgRecv);
-    vistle::adaptive_wait((msgRecv || passMsg));
-    if (messageReceived) {
-        *messageReceived = msgRecv;
-    }
-    return retval;
-
-
 }
 
 bool LibSimModule::changeParameter(const vistle::Parameter* param) {
@@ -294,9 +254,7 @@ void LibSimModule::connectToSim() {
         DEBUG_CERR << "already connected" << endl;
         return;
     }
-    ++m_numberOfConnections;
-    initRecvFromSimQueue();
-    m_shmIDs.initialize(id(), rank(), m_numberOfConnections, SyncShmIDs::Mode::Create);
+    reconnect();
     if (rank() == 0) {
         using namespace boost::filesystem;
         path p{ m_filePath->getValue() };
@@ -316,7 +274,7 @@ void LibSimModule::connectToSim() {
             p = lastEditedFile;
         }
         CERR << "opening file: " << p.string() << endl;
-        vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(m_numberOfConnections) };
+        vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(InstanceNum()) };
         if (insitu::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }
@@ -331,6 +289,9 @@ void LibSimModule::connectToSim() {
 
 
 void LibSimModule::disconnectSim() {
+    if (rank() == 0) {
+        sendInfo("LibSimController is disconnecting from simulation");
+    }
     {
         Guard g(m_socketMutex);
         m_simInitSent = false;
@@ -339,11 +300,7 @@ void LibSimModule::disconnectSim() {
             return;
         }
     }
-    if (rank() == 0) {
-        vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
-        vistle::Shm::the().setObjectID(m_shmIDs.objectID());
-        sendInfo("LibSimController is disconnecting from simulation");
-    }
+
     resetSocketThread();
 }
 #endif // !MODULE_THREAD
@@ -433,18 +390,6 @@ void LibSimModule::recvAndhandleMessage()     {
     }
 }
 
-
-void LibSimModule::initRecvFromSimQueue() {
-    std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + to_string(m_numberOfConnections)).c_str(), id(), rank());
-
-    try {
-        m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(mqName));
-        DEBUG_CERR << "receiveFromSimMessageQueue name = " << mqName << std::endl;
-    } catch (boost::interprocess::interprocess_exception & ex) {
-        throw vistle::exception(std::string("opening send message queue ") + mqName + ": " + ex.what());
-
-    }
-}
 
 
 void LibSimModule::setBool(bool& target, bool newval) {
