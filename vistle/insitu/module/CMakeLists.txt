@@ -10,4 +10,5 @@ set(LIBSIM_HEADER
 vistle_add_library(vistle_insitu_module ${LIBSIM_SOURCES} ${LIBSIM_HEADER})
 target_link_libraries(vistle_insitu_module
 		PRIVATE vistle_module
+		PUBLIC vistle_insitu_message
 		)

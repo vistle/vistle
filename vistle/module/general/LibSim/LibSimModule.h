@@ -28,7 +28,6 @@ public:
 
 private:
     insitu::message::InSituTcp m_messageHandler;
-    insitu::message::SyncShmIDs m_shmIDs;
 #ifndef MODULE_THREAD
     vistle::StringParameter* m_filePath = nullptr;
     vistle::StringParameter* m_simName = nullptr;
@@ -37,8 +36,6 @@ private:
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToEngine = false; //wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
-    int m_numberOfConnections = 0; //number of times we have been connected with a simulation, used to rename reopend shm queues.
-    std::unique_ptr<vistle::message::MessageQueue> m_receiveFromSimMessageQueue; //receives vistle messages that will be passed through to manager
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<vistle::Parameter*> m_commandParameter; //buttons to trigger simulation commands
     //...................................................................................
@@ -101,9 +98,8 @@ private:
         //..........................................................................                                               
     //module functions
 
-    virtual bool prepare() override;
-    virtual bool dispatch(bool block = true, bool* messageReceived = nullptr) override;
-    virtual bool prepareReduce() override;
+    virtual bool beginExecute() override;
+    virtual bool endExecute() override;
     virtual bool changeParameter(const vistle::Parameter* param);
     //..........................................................................
 
@@ -121,8 +117,6 @@ private:
     void connectToSim();
 
     void disconnectSim();
-
-    void initRecvFromSimQueue();
 
     //..........................................................................
     //thread safe (for the socket thread) getter and setter for bools
