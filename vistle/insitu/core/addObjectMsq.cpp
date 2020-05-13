@@ -17,7 +17,7 @@ insitu::AddObjectMsq::AddObjectMsq(const ModuleInfo& moduleInfo, size_t rank)
         m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
     }
     catch (boost::interprocess::interprocess_exception& ex) {
-        throw InsituExeption() << "opening send message queue " << mqName << ": " << ex.what();
+        throw InsituExeption() << "opening add object message queue with name " << mqName << ": " << ex.what();
     }
 }
 
@@ -26,13 +26,13 @@ insitu::AddObjectMsq::~AddObjectMsq()
     delete m_sendMessageQueue;
 }
 
-insitu::AddObjectMsq::AddObjectMsq(AddObjectMsq&& other)
+insitu::AddObjectMsq::AddObjectMsq(AddObjectMsq&& other) noexcept
     :m_sendMessageQueue(other.m_sendMessageQueue)
 {
     other.m_sendMessageQueue = nullptr;
 }
 
-AddObjectMsq &insitu::AddObjectMsq::operator=(AddObjectMsq&& other)
+AddObjectMsq &insitu::AddObjectMsq::operator=(AddObjectMsq&& other) noexcept
 {
     m_sendMessageQueue = other.m_sendMessageQueue;
     other.m_sendMessageQueue = nullptr;
