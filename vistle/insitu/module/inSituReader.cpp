@@ -67,9 +67,6 @@ bool InSituReader::dispatch(bool block, bool* messageReceived) {
         }
         passMsg = true;
     }
-    else if (isExecuting()) {
-        cancelExecuteMessageReceived(nullptr);
-    }
     bool retval = Module::dispatch(false, &msgRecv);
     vistle::adaptive_wait((msgRecv || passMsg));
     if (messageReceived) {
