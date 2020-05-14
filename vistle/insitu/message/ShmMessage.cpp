@@ -142,3 +142,63 @@ insitu::message::Message insitu::message::InSituShmMessage::tryRecv()
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
+
+insitu::message::Message insitu::message::InSituShmMessage::timedRecv(size_t timeInSec)
+{
+	vistle::buffer payload;
+	int type = 0;
+	auto iter = payload.begin();
+	unsigned int i = 0;
+
+	ShmMsg m;
+	size_t recvSize = 0;
+	unsigned int prio = 0;
+	boost::posix_time::ptime endTime(boost::posix_time::second_clock::local_time());
+	endTime += boost::posix_time::seconds(timeInSec);
+	try
+	{
+		if (!m_msqs[m_order[0]]->timed_receive((void*)&m, sizeof(m), recvSize, prio, endTime))
+		{
+			return Message::errorMessage();
+		}
+		payload.resize(m.size);
+		type = m.type;
+		iter = payload.begin();
+		int left = ShmMessageMaxSize;
+		if (m.size < i++ * ShmMessageMaxSize)
+		{
+			left = m.size - (i - 1) * ShmMessageMaxSize;
+		}
+		std::copy(m.buf, m.buf + left, iter);
+	}
+	catch (const boost::interprocess::interprocess_exception& ex)
+	{
+		std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
+		return Message::errorMessage();
+	}
+
+	while (i * ShmMessageMaxSize < payload.size())
+	{
+		try
+		{
+			if (!m_msqs[m_order[0]]->timed_receive((void*)&m, sizeof(m), recvSize, prio, endTime))
+			{
+				return Message::errorMessage();
+			}
+		}
+		catch (const boost::interprocess::interprocess_exception& ex)
+		{
+			std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
+			return Message::errorMessage();
+		}
+
+		assert(type == m.type);
+		int left = ShmMessageMaxSize;
+		if (m.size < i++ * ShmMessageMaxSize)
+		{
+			left = m.size - (i - 1) * ShmMessageMaxSize;
+		}
+		std::copy(m.buf, m.buf + left, iter);
+	}
+	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
+}

@@ -67,6 +67,7 @@ public:
     std::string name();
     Message recv();
     Message tryRecv();
+    Message timedRecv(size_t timeInSec);
 private:
     bool m_initialized = false;
     std::array<std::unique_ptr<boost::interprocess::message_queue>, 2> m_msqs;
