@@ -206,7 +206,7 @@ bool Engine::initializeVistleEnv()
     }
 
     m_initialized = true;
-
+    return true;
 }
 
 bool Engine::isInitialized() const noexcept {

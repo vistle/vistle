@@ -67,7 +67,7 @@ RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, siz
 }
 
 template<typename Source, typename Dest>
-void transformArray(Source* source, size_t size, Dest d) {
+void transformArray(const Source* source, size_t size, Dest d) {
     std::transform(source, source + size, d, [](Source val) {
         return static_cast<typename std::remove_pointer<Dest>::type>(val);
         });
@@ -77,15 +77,6 @@ template<typename T>
 void transformArray(const T* source, size_t size, T* d) {
     std::copy(source, source + size, d);
 }
-
-
-
-template<typename Source, typename Dest>
-struct ArrayTransformer {
-    void operator()(const Source* s, size_t size, Dest d) {
-        transformArray(s, size, d);
-          }
-};
 
 
 template<typename T>
@@ -102,7 +93,7 @@ void transformArray(const void* source, T* dest, size_t size, DataType dataType)
 //dest must be of plain type (no pointer or reference)
 template<typename Source, typename Dest>
 struct ArrayTransformer {
-    void operator()(Source* s, size_t size, Dest d) {
+    void operator()(const Source* s, size_t size, Dest d) {
         transformArray(s, size, d);
           }
 };
