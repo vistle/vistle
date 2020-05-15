@@ -348,10 +348,10 @@ void LibSimModule::recvAndhandleMessage()     {
 
             }
         }
-        for (auto portName : em.value)             {
-            auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(), [portName](const auto& val) {return val->getName() == portName; });
+        for (auto cmd : em.value)             {
+            auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(), [cmd](const auto& val) {return val->getName() == cmd; });
             if (lb == m_commandParameter.end()) {
-                m_commandParameter.insert(addIntParameter(portName, "trigger command on change", false, vistle::Parameter::Presentation::Boolean));
+                m_commandParameter.insert(addIntParameter(cmd, "trigger command on change", false, vistle::Parameter::Presentation::Boolean));
             }
         }
     }
