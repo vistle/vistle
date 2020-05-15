@@ -21,17 +21,17 @@ struct TransformArrayExeption: public InsituExeption {
     std::string m_msg;
 };
 
-
+namespace detail {
 //cast the void* to dataType* and call Func(dataType*, size, Args2)
 //Args1 must be equal to Args2 without pointer or reference
 template<typename RetVal, template<typename...Args1> typename Func, typename ...Args2>
-RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, size_t size, Args2 &&...args) {
-    
+RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, size_t size, Args2&&...args) {
+
     switch (dataType) {
     case DataType::CHAR:
     {
         const char* f = static_cast<const char*>(source);
-        return Func<char,typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
+        return Func<char, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
     case DataType::INT:
@@ -48,7 +48,7 @@ RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, siz
     break;
     case DataType::DOUBLE:
     {
-        const double* f = static_cast<const double*>(source );
+        const double* f = static_cast<const double*>(source);
         return Func<double, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
     }
     break;
@@ -78,24 +78,12 @@ void transformArray(const T* source, size_t size, T* d) {
     std::copy(source, source + size, d);
 }
 
-
-template<typename T>
-void transformArray(const Array &source, T* dest) {
-    callFunctionWithVoidToTypeCast<void, ArrayTransformer>(source.data, source.dataType, source.size, dest);
-}
-
-//copies array from source to dest and converts from dataType to T
-template<typename T>
-void transformArray(const void* source, T* dest, size_t size, DataType dataType) {
-    callFunctionWithVoidToTypeCast<void, ArrayTransformer> (source, dataType, size, dest);
-}
-
 //dest must be of plain type (no pointer or reference)
 template<typename Source, typename Dest>
 struct ArrayTransformer {
     void operator()(const Source* s, size_t size, Dest d) {
         transformArray(s, size, d);
-          }
+    }
 };
 
 //takes a singe array of type Source and and std::array of dim (or bigger) and converts and distributes from source to dest
@@ -113,31 +101,8 @@ struct InterleavedArrayTransformer {
     }
 };
 
-
-
-
-
-//copies the data from source to dest while transforming its type
-//source : interleaved array, dest: separate destination arrays, size : number of entris in source, dim : number of arrays that are interleaved
-template<typename T, size_t I>
-void transformInterleavedArray(const void* source, std::array<T*, I> dest, int size, DataType dataType, int dim) {
-    if (dim > I) {
-        throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
-    }
-    callFunctionWithVoidToTypeCast<void, InterleavedArrayTransformer>(source, dataType, size, dest, dim);
-}
-
-template<typename T, size_t I>
-void transformInterleavedArray(const Array& source, std::array<T*, I> dest, int dim) {
-    if (dim > I) {
-        throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
-    }
-    callFunctionWithVoidToTypeCast<void, InterleavedArrayTransformer>(source.data, source.dataType, source.size, dest, dim);
-}
-
-
 template<typename T, typename p_Object, typename p_Mapping, typename p_Interleaved>
-struct VtkArray2VistleConverter     {
+struct VtkArray2VistleConverter {
     vistle::DataBase::ptr operator()(const T* source, size_t n, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
         using namespace vistle;
         bool perCell = false;
@@ -150,7 +115,7 @@ struct VtkArray2VistleConverter     {
                 numGridDivisions[c] = sgrid->getNumDivisions(c);
             }
         }
-       
+
         if (m == DataBase::Mapping::Element) {
             for (int c = 0; c < 3; ++c)
                 dim[c] > 1 ? --dim[c] : dim[c];
@@ -182,7 +147,8 @@ struct VtkArray2VistleConverter     {
             cv->setGrid(grid);
             cv->setMapping(m);
             return cv;
-        } else {
+        }
+        else {
             Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
             float* x = cf->x().data();
             Index l = 0;
@@ -204,6 +170,67 @@ struct VtkArray2VistleConverter     {
     }
 };
 
+template<typename T, typename p_separator>
+struct Printer
+{
+    void operator()(const T* source, int size, const std::string& separeator = " ")
+    {
+        for (size_t i = 0; i < size; i++)
+        {
+            std::cerr << source[i] << separeator;
+        }
+    }
+};
+
+template<typename Source, typename Dest, typename p_Pos>
+struct ConversionInserter {
+    void operator()(const Source* source, size_t SourcePos, Dest dest, size_t destPos) {
+        dest[destPos] = source[SourcePos];
+    }
+
+};
+
+} //detail
+
+template<typename T>
+void transformArray(const Array &source, T* dest) {
+    detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source.data, source.dataType, source.size, dest);
+}
+
+//copies array from source to dest and converts from dataType to T
+template<typename T>
+void transformArray(const void* source, T* dest, size_t size, DataType dataType) {
+    detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer> (source, dataType, size, dest);
+}
+
+
+
+
+
+
+
+
+
+//copies the data from source to dest while transforming its type
+//source : interleaved array, dest: separate destination arrays, size : number of entris in source, dim : number of arrays that are interleaved
+template<typename T, size_t I>
+void transformInterleavedArray(const void* source, std::array<T*, I> dest, int size, DataType dataType, int dim) {
+    if (dim > I) {
+        throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
+    }
+    detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source, dataType, size, dest, dim);
+}
+
+template<typename T, size_t I>
+void transformInterleavedArray(const Array& source, std::array<T*, I> dest, int dim) {
+    if (dim > I) {
+        throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
+    }
+    detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source.data, source.dataType, source.size, dest, dim);
+}
+
+
+
 inline vistle::DataBase::ptr vtkData2Vistle(const void* source, size_t n, DataType dataType, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
     using namespace vistle;
     DataBase::ptr data;
@@ -211,16 +238,10 @@ inline vistle::DataBase::ptr vtkData2Vistle(const void* source, size_t n, DataTy
     if (!source)
         return data;
 
-    return callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
+    return detail::callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, detail::VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
 }
 
-template<typename Source, typename Dest, typename p_Pos>
-struct ConversionInserter {
-    void operator()(const Source* source, size_t SourcePos,  Dest dest, size_t destPos)         {
-        dest[destPos] = source[SourcePos];
-    }
 
-};
 
 template<typename T>
 void expandRectilinearToStructured(void* source[3], DataType dataType, const int size[3], std::array<T*, 3> dest) {
@@ -235,9 +256,9 @@ void expandRectilinearToStructured(void* source[3], DataType dataType, const int
                 //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
                 //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
 
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
             }
         }
     }
@@ -261,29 +282,19 @@ void expandRectilinearToVTKStructured(void* source[3], DataType dataType, const 
                 //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
                 //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
 
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
-                callFunctionWithVoidToTypeCast<void, ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
+                detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
             }
         }
     }
 }
 
-template<typename T, typename p_separator>
-struct Printer
-{
-    void operator()(const T* source, int size, const std::string& separeator = " ")
-    {
-        for (size_t i = 0; i < size; i++)
-        {
-            std::cerr << source[i] << separeator;
-        }
-    }
-};
+
 
 inline void printArray(const void* source, DataType dataType, int size, const std::string& separeator = " ")
 {
-    callFunctionWithVoidToTypeCast<void, Printer>(source, dataType, size, separeator);
+    detail::callFunctionWithVoidToTypeCast<void, detail::Printer>(source, dataType, size, separeator);
 }
 
 
