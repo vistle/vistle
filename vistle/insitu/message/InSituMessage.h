@@ -92,7 +92,7 @@ DECLARE_ENGINE_MESSAGE(Invalid)
 DECLARE_ENGINE_MESSAGE(GoOn)
 
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConnectionClosed, bool) //true -> disconnected on purpose
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::vector<std::string>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject,  std::string)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts,  std::vector<std::vector<std::string>>)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetCommands,  std::vector<std::string>)

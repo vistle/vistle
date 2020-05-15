@@ -16,8 +16,7 @@
 
 
 using namespace std;
-using insitu::message::SyncShmIDs;
-using insitu::message::InSituMessageType;
+using namespace insitu::message;
 
 #define CERR cerr << "SenseiModule["<< rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
@@ -27,10 +26,12 @@ using insitu::message::InSituMessageType;
 SenseiModule::SenseiModule(const string& name, int moduleID, mpi::communicator comm)
     : InSituReader("Observe simulations via SENSEI", name, moduleID, comm)
  {
-    m_filePath = addStringParameter("path", "path to a .sim2 file or directory containing these files", "", vistle::Parameter::ExistingFilename);
-    setParameterFilters(m_filePath, "simulation Files (*.sim2)");
-    m_simName = addStringParameter("simulation name", "the name of the simulation as used in the filename of the sim2 file ", "");
- 
+
+    m_filePath = addStringParameter("path", "path to a .vistle file", "", vistle::Parameter::ExistingFilename);
+    setParameterFilters(m_filePath, "simulation Files (*.vistle)");
+
+    m_timeout = addIntParameter("timeout time in second", "time in seconds in which simulation must respond", 1);
+    setParameterMinimum(m_timeout, vistle::Integer{ 0 });
 
 
     m_intOptions[InSituMessageType::VTKVariables] = std::unique_ptr< IntParam<insitu::message::VTKVariables>>(new IntParam<insitu::message::VTKVariables>{ addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean), m_messageHandler });
@@ -47,7 +48,7 @@ SenseiModule::~SenseiModule() {
 
 bool SenseiModule::beginExecute() {
 
-    if (!m_connectedToEngine)
+    if (!m_connectedToSim)
     {
         return true;
     }
@@ -67,7 +68,23 @@ bool SenseiModule::beginExecute() {
 bool SenseiModule::endExecute() {
 
     m_messageHandler.send(insitu::message::Ready{ false });
-
+    std::unique_ptr<insitu::message::Message> msg;
+    while (true) //wait until we receive the confirmation that the sim stopped making vistle objects or timeout
+    {
+        auto msg = m_messageHandler.timedRecv(m_timeout->getValue());
+        if (msg.type() == insitu::message::InSituMessageType::Invalid)
+        {
+            disconnectSim();
+            return false;
+        }
+        if (msg.type() == insitu::message::InSituMessageType::Ready && !msg.unpackOrCast<Ready>().value)
+        {
+            return true;
+        }
+        handleMessage(msg);
+    }
+    
+  
 
     return true;
 }
@@ -77,7 +94,7 @@ bool SenseiModule::changeParameter(const vistle::Parameter* param) {
     if (!param) {
         return true;
     }
-    if (param == m_filePath || param == m_simName) {
+    if (param == m_filePath) {
         connectToSim();
     } else
 
@@ -100,7 +117,16 @@ bool SenseiModule::changeParameter(const vistle::Parameter* param) {
 
 
 void SenseiModule::connectToSim() {
+    std::ifstream infile(m_filePath->getValue());
+    std::string key;
+    infile >> key;
+    infile.close();
     
+    
+    m_messageHandler.initialize(key);
+    vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
+    insitu::message::ShmInit init();
+
    }
 
 
@@ -113,9 +139,13 @@ void SenseiModule::disconnectSim() {
 void SenseiModule::recvAndhandleMessage()     {
 
     auto msg = m_messageHandler.recv();
-    
+    handleMessage(msg);
+
+}
+
+void SenseiModule::handleMessage(insitu::message::Message& msg) {
+
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
-    using namespace insitu;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
         break;
@@ -125,14 +155,14 @@ void SenseiModule::recvAndhandleMessage()     {
         break;
     case InSituMessageType::SetPorts: //list of ports, last entry is the type description (e.g mesh or variable)
     {
-        auto em = msg.unpackOrCast< message::SetPorts>();
+        auto em = msg.unpackOrCast< SetPorts>();
         for (auto i = m_outputPorts.begin(); i != m_outputPorts.end(); ++i) {//destoy unnecessary ports
-            if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<string>& ports) {return std::find(ports.begin(), ports.end(), i->first) != ports.end();}) == em.value.end()) {
+            if (std::find_if(em.value.begin(), em.value.end(), [i](const std::vector<string>& ports) {return std::find(ports.begin(), ports.end(), i->first) != ports.end(); }) == em.value.end()) {
                 destroyPort(i->second);
                 i = m_outputPorts.erase(i);
             }
         }
-        for (auto portList : em.value)             {
+        for (auto portList : em.value) {
             for (size_t i = 0; i < portList.size() - 1; i++) {
                 auto lb = m_outputPorts.lower_bound(portList[i]);
                 if (!(lb != m_outputPorts.end() && !(m_outputPorts.key_comp()(portList[i], lb->first)))) {
@@ -142,10 +172,10 @@ void SenseiModule::recvAndhandleMessage()     {
         }
 
     }
-        break;
+    break;
     case InSituMessageType::SetCommands:
     {
-        auto em = msg.unpackOrCast< message::SetCommands>();
+        auto em = msg.unpackOrCast< SetCommands>();
         for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
             if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
                 removeParameter(*i);
@@ -153,23 +183,23 @@ void SenseiModule::recvAndhandleMessage()     {
 
             }
         }
-        for (auto portName : em.value)             {
+        for (auto portName : em.value) {
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(), [portName](const auto& val) {return val->getName() == portName; });
             if (lb == m_commandParameter.end()) {
                 m_commandParameter.insert(addIntParameter(portName, "trigger command on change", false, vistle::Parameter::Presentation::Boolean));
             }
         }
     }
-        break;
+    break;
     case InSituMessageType::Ready:
         break;
     case InSituMessageType::ExecuteCommand:
         break;
     case InSituMessageType::GoOn:
     {
-        m_messageHandler.send(message::GoOn{});
+        m_messageHandler.send(GoOn{});
     }
-        break;
+    break;
     case InSituMessageType::ConstGrids:
         break;
     case InSituMessageType::NthTimestep:
@@ -189,7 +219,7 @@ void SenseiModule::recvAndhandleMessage()     {
         disconnectSim();
 #endif
     }
-        break;
+    break;
     default:
         break;
     }

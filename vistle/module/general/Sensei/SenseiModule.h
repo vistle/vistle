@@ -27,15 +27,13 @@ public:
 private:
     insitu::message::InSituShmMessage m_messageHandler;
 
-#ifndef MODULE_THREAD
+
     vistle::StringParameter* m_filePath = nullptr;
-    vistle::StringParameter* m_simName = nullptr;
-#endif
-    bool m_terminateSocketThread = false; //set to true when when the module in closed to get out of loops in different threads
+    vistle::IntParameter* m_timeout = nullptr;
+
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
-    bool m_connectedToEngine = false; //wether the socket connection to the engine is running
+    bool m_connectedToSim = false; //wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
-    int m_numberOfConnections = 0; //number of times we have been connected with a simulation, used to rename reopend shm queues.
     std::map<std::string, vistle::Port*> m_outputPorts; //output ports for the data the simulation offers
     std::set<vistle::Parameter*> m_commandParameter; //buttons to trigger simulation commands
     //...................................................................................
@@ -79,6 +77,8 @@ private:
 
     
     void recvAndhandleMessage();
+
+    void handleMessage(insitu::message::Message& msg);
 
     void connectToSim();
 
