@@ -3,7 +3,7 @@
 void insitu::message::InSituShmMessage::initialize()
 {
 	bool error = false;
-	int iter = 0;
+	static int iter = 0;
 	do
 	{
 		error = false;
@@ -26,13 +26,16 @@ void insitu::message::InSituShmMessage::initialize(const std::string& msqName)
 {
 	try
 	{
-		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (m_msqName + "_send").c_str());
-		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (m_msqName + "_recv").c_str());
+		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + "_send").c_str());
+		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + "_recv").c_str());
+		boost::interprocess::message_queue::remove((msqName + "_send").c_str());
+		boost::interprocess::message_queue::remove((msqName + "_recv").c_str());
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
-		std::cerr << "ShmMessage " << m_msqName << " opening error: " << ex.what() << std::endl;
+		std::cerr << "ShmMessage " << msqName << " opening error: " << ex.what() << std::endl;
 	}
+	m_msqName = msqName;
 	m_order = { 1,0 };
 }
 
