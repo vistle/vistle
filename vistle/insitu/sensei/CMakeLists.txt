@@ -21,13 +21,13 @@ endif()
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 target_link_libraries(vistle_sensei
-		vistle_module
-		vistle_util
-		vistle_control
-        vistle_core
-        vistle_boost_mpi
-		vistle_insitu_message
-		vistle_insitu_core
-		${Boost_LIBRARIES}
-		${MPI_C_LIBRARIES}
+		PRIVATE vistle_module
+		PRIVATE vistle_util
+		PRIVATE vistle_control
+        PRIVATE vistle_core
+        PRIVATE vistle_boost_mpi
+		PRIVATE vistle_insitu_message
+		PUBLIC vistle_insitu_core
+		PRIVATE ${Boost_LIBRARIES}
+		PRIVATE ${MPI_C_LIBRARIES}
 		)
