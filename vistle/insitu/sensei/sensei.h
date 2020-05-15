@@ -56,7 +56,7 @@ namespace sensei{
 		Callbacks m_callbacks;
 		MetaData m_metaData;
 		ModuleInfo m_moduleInfo;
-		bool m_initialized = false; //Engine is initialized
+		bool m_connected = false; //If we are connected to the module
 		std::unique_ptr<AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to module
         //mpi info
         int m_rank = -1, m_mpiSize = 0;
@@ -65,15 +65,14 @@ namespace sensei{
         insitu::message::SyncShmIDs m_shmIDs;
 
 		message::InSituShmMessage m_messageHandler;
-
-
-
 		bool m_ready = false; //true if the module is connected and executing
-		
-		void startListening(); //wait for the senei module to connect
+		std::map<std::string, bool> m_commands; //commands and their current state
+
+
 		void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
-		void updateStatus();
 		bool recvAndHandeMessage(bool blocking = false);
+		bool initializeVistleEnv();
+		void addPorts();
 		void sendMeshToModule(const Mesh& mesh);
 		void sendVariableToModule(const Array& var);
 		void sendObject(const std::string& port, vistle::Object::const_ptr obj);

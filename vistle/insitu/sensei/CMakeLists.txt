@@ -15,6 +15,10 @@ set(SENSEI_HEADER
   unstructuredGrid.h
 )
 
+if (VISTLE_SHM_PER_RANK)
+   add_definitions(-DSHMPERRANK)
+endif()
+
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 target_link_libraries(vistle_sensei
 		vistle_module

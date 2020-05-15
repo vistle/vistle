@@ -33,7 +33,7 @@ namespace insitu {
 	};
 struct MetaData {
 	std::vector<std::string> meshes;
-	std::vector<std::tuple<std::string, int>> variables;
+	std::vector<std::pair<std::string, size_t>> variables; //variable and the index to the mesh it belongs to
 
 };
 
