@@ -173,7 +173,7 @@ struct VtkArray2VistleConverter {
 template<typename T, typename p_separator>
 struct Printer
 {
-    void operator()(const T* source, int size, const std::string& separeator = " ")
+    void operator()(const T* source, size_t size, const std::string& separeator = " ")
     {
         for (size_t i = 0; i < size; i++)
         {
