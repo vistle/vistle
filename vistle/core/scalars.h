@@ -1,10 +1,11 @@
 #ifndef SCALARS_H
 #define SCALARS_H
 
+#include <cstdint>
+#include <util/ssize_t.h>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/size.hpp>
 #include <array>
-#include <util/ssize_t.h>
 
 namespace vistle {
 

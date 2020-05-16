@@ -42,6 +42,7 @@
 #include <stdio.h>
 
 #include <core/vec.h>
+#include <core/parameter.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -61,7 +62,7 @@ bool ReadNek::read(Token& token, int timestep, int partition) {
     ++numReads;
     ++numReads;
     if (!myRead(token, timestep, partition)) {
-        sendError("nek: could not read: timestep = " + to_string(timestep) + ", partition = " + to_string(partition));
+        sendError("nek: could not read: timestep = %d, partition = %d", timestep, partition);
         finishRead();
     }
     return true;
@@ -101,7 +102,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
         int ghostHexes = pReader->getNumGhostHexes();
         UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
         Byte elemType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
-        Byte ghostType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD|| UnstructuredGrid::GHOST_BIT : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
+        Byte ghostType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD| UnstructuredGrid::GHOST_BIT : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
         std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
         std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
         pReader->fillConnectivityList(grid->cl().data());
