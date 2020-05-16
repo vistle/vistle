@@ -259,13 +259,13 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
        sendError("need per-vertex mapping on data_in");
       return true;
    }
-   auto grid = dataS->grid();
+   Object::const_ptr grid = dataS->grid();
    if (mapdata) {
        if (!mapdata->grid()) {
            sendError("no grid for mapped data");
            return true;
        }
-       if (mapdata->grid() != grid) {
+       if (mapdata->grid()->getHandle() != grid->getHandle()) {
            sendError("grids on mapped data and iso-data do not match");
            return true;
        }
