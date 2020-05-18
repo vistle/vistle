@@ -12,7 +12,7 @@
 #include <insitu/message/SyncShmIDs.h>
 #include <insitu/message/TcpMessage.h>
 
-class LibSimModule : public insitu::InSituReader
+class LibSimModule : public vistle::insitu::InSituReader
 {
 public:
 
@@ -27,7 +27,7 @@ public:
     
 
 private:
-    insitu::message::InSituTcp m_messageHandler;
+    vistle::insitu::message::InSituTcp m_messageHandler;
 #ifndef MODULE_THREAD
     vistle::StringParameter* m_filePath = nullptr;
     vistle::StringParameter* m_simName = nullptr;
@@ -57,16 +57,16 @@ private:
 
     template<typename T>
     struct IntParam : public IntParamBase {
-        IntParam(vistle::IntParameter* param, const insitu::message::InSituTcp& sender)
+        IntParam(vistle::IntParameter* param, const vistle::insitu::message::InSituTcp& sender)
             :IntParamBase(param) 
         , m_sender(sender){
         }
-        const insitu::message::InSituTcp& m_sender;
+        const vistle::insitu::message::InSituTcp& m_sender;
         virtual void send() override {
             m_sender.send(T{ static_cast<typename T::value_type>(param()->getValue()) });
         }
     };
-    std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
+    std::map<vistle::insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
 #ifndef MODULE_THREAD
     //.........................................................................
     //stuff to handle socket communication with Engine

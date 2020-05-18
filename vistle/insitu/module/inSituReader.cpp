@@ -3,7 +3,7 @@
 #include <util/sleep.h>
 
 using namespace vistle;
-using namespace insitu;
+using namespace vistle::insitu;
 using std::endl;
 #define CERR std::cerr << "inSituReader["<< rank() << "/" << size() << "] "
 

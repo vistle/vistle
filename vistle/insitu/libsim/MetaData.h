@@ -2,7 +2,9 @@
 #define SIMULATION_META_DATA_H
 
 #include "VisItDataTypes.h"
+namespace vistle {
 namespace insitu {
+namespace libsim {
 struct Metadata {
     bool timestepChanged = false;
     int  simMode = VISIT_SIMMODE_UNKNOWN;
@@ -11,7 +13,7 @@ struct Metadata {
     visit_handle handle = VISIT_INVALID_HANDLE;
 };
 }
-
-
+}
+}
 
 #endif // !SIMULATION_META_DATA_H

@@ -12,7 +12,7 @@
 #include <insitu/message/TcpMessage.h>
 
 #include <insitu/core/moduleInfo.h>
-#include <insitu/core/addObjectMsq.h>
+#include <insitu/message/addObjectMsq.h>
 
 #include <core/uniformgrid.h>
 
@@ -35,18 +35,19 @@ namespace vistle {
 namespace message {
 class  MessageQueue;
 }
-}
+
 namespace insitu {
+namespace libsim{
 enum class SimulationDataTyp {
-     mesh
-    ,variable
-    ,material
-    ,curve
-    ,expression
-    ,species
-    ,genericCommand
-    ,customCommand
-    ,message
+    mesh
+    , variable
+    , material
+    , curve
+    , expression
+    , species
+    , genericCommand
+    , customCommand
+    , message
 
 };
 #ifdef MODULE_THREAD
@@ -55,15 +56,15 @@ class V_VISITXPORT Engine {
 class V_VISITXPORT Engine {
 #endif
 public:
-    
+
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
 
     static Engine* EngineInstance();
     static void DisconnectSimulation();
     bool initialize(int argC, char** argV);
-	bool initializeVistleEnv();
-	bool isInitialized() const noexcept;
+    bool initializeVistleEnv();
+    bool isInitialized() const noexcept;
     bool setMpiComm(void* newConn);
 
     void ConnectMySelf();
@@ -108,7 +109,7 @@ private:
     const int zero = 0;
     static Engine* instance;
     bool m_initialized = false; //Engine is initialized
-    std::unique_ptr<AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to LibSImController module
+    std::unique_ptr<vistle::insitu::message::AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to LibSImController module
     //mpi info
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
@@ -120,7 +121,7 @@ private:
     insitu::message::InSituTcp m_messageHandler;
     insitu::message::SyncShmIDs m_shmIDs;
 
-//Port info to comunicate with the vistle module
+    //Port info to comunicate with the vistle module
     unsigned short m_port = 31099;
     boost::asio::io_service m_ioService;
 
@@ -161,8 +162,8 @@ private:
 
     };
     template<typename T>
-    struct IntOption : public IntOptionBase  {
-        IntOption(int initialVal, std::function<void()> cb = nullptr):callback(cb) {
+    struct IntOption : public IntOptionBase {
+        IntOption(int initialVal, std::function<void()> cb = nullptr) :callback(cb) {
             val = initialVal;
         }
         virtual void setVal(insitu::message::Message& msg) override
@@ -174,7 +175,7 @@ private:
             }
         }
         std::function<void()> callback = nullptr;
-     };
+    };
     std::map<insitu::message::InSituMessageType, std::unique_ptr<IntOptionBase>> m_intOptions; // options that can be set in the module
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
@@ -196,9 +197,9 @@ private:
     //get the data types that the simulation implements and send them to the module to create output ports
     void addPorts();
     //...................................................................
-        
+
     void sendDataToModule();//create all data objects and send them to vistle
-    
+
     void sendMeshesToModule();
     void makeRectilinearMesh(MeshInfo meshInfo);
     void makeUnstructuredMesh(MeshInfo meshInfo);
@@ -209,20 +210,20 @@ private:
 
     void combineRectilinearToUnstructured(MeshInfo meshInfo);
 
-    
+
     void sendVarablesToModule();
 
     void sendTestData(); //testing only
 
-    void connectToModule(const std::string &hostname, int port);
-   
+    void connectToModule(const std::string& hostname, int port);
+
     void finalizeInit();  //if not already done, initializes the things that require the simulation 
 
     void addObject(const std::string& name, vistle::Object::ptr obj); //send addObject message to module, from where it gets passed to Vistle
 
     void makeStructuredGridConnectivityList(const int* dims, vistle::Index* elementList, vistle::Index startOfGridIndex);
 
-    void makeVTKStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, vistle::Index(*vertexIdex)(vistle::Index, vistle::Index, vistle::Index, vistle::Index[3])  = nullptr);
+    void makeVTKStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, vistle::Index(*vertexIdex)(vistle::Index, vistle::Index, vistle::Index, vistle::Index[3]) = nullptr);
 
     void setTimestep(vistle::Object::ptr data);
 
@@ -234,7 +235,7 @@ private:
 
     ~Engine();
 
-    
+
     template<typename T, typename ...Args>
     typename T::ptr createVistleObject(Args&& ...args);
 
@@ -242,8 +243,8 @@ private:
 
 
 
-
-
-}
+}//libsim
+}//insitu
+}//vistle
 
 #endif // !VISIT_VISTLE_ENGINE_H

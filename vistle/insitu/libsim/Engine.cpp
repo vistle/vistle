@@ -62,8 +62,9 @@
 
 using std::string; using std::vector;
 using std::endl;
-using namespace insitu;
-using namespace insitu::message;
+using namespace vistle::insitu;
+using namespace vistle::insitu::message;
+using namespace vistle::insitu::libsim;
 namespace asio = boost::asio;
 Engine* Engine::instance = nullptr;
 
@@ -321,7 +322,7 @@ void Engine::DeleteData() {
     sendData();
 }
 
-bool insitu::Engine::recvAndhandleVistleMessage() {
+bool Engine::recvAndhandleVistleMessage() {
     static int counter = 0;
     DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
     ++counter;
@@ -418,12 +419,12 @@ void Engine::SetSimulationCommandCallback(void(*sc)(const char*, const char*, vo
     simulationCommandCallbackData = scdata;
 }
 
-void insitu::Engine::setSlaveComandCallback(void(*sc)(void)) {
+void Engine::setSlaveComandCallback(void(*sc)(void)) {
     DEBUG_CERR << "setSlaveComandCallback" << endl;
     slaveCommandCallback = sc;
 }
 
-int insitu::Engine::GetInputSocket() {
+int Engine::GetInputSocket() {
     if (m_rank == 0 && m_socket) {
         return m_socket->native_handle();
     }
@@ -436,7 +437,7 @@ int insitu::Engine::GetInputSocket() {
 //----------------private----------------------------------------------------------------------------
 //...............get meta date.......................................................................
 
-void insitu::Engine::getMetaData() {
+void Engine::getMetaData() {
     m_metaData.handle = simv2_invoke_GetMetaData(); //somehow 0 is valid
     v2check(simv2_SimulationMetaData_getData, m_metaData.handle, m_metaData.simMode, m_metaData.currentCycle, m_metaData.currentTime);
 }
@@ -558,7 +559,7 @@ visit_handle Engine::getNthObject(SimulationDataTyp type, int n) {
     return obj;
 }
 
-std::vector<std::string> insitu::Engine::getDataNames(SimulationDataTyp type) {
+std::vector<std::string> Engine::getDataNames(SimulationDataTyp type) {
     std::function<int(visit_handle, char**)> getName;
     switch (type) {
     case SimulationDataTyp::mesh:
@@ -623,7 +624,7 @@ std::vector<std::string> insitu::Engine::getDataNames(SimulationDataTyp type) {
     return names;
 }
 
-void insitu::Engine::getRegisteredGenericCommands() {
+void Engine::getRegisteredGenericCommands() {
     int numRegisteredCommands = getNumObjects(SimulationDataTyp::genericCommand);
     bool found = false;
     std::vector<std::string> commands;
@@ -668,7 +669,7 @@ void Engine::addPorts() {
     }
 }
 //...................................................................................................
-void insitu::Engine::sendDataToModule() {
+void Engine::sendDataToModule() {
     try {
         sendMeshesToModule();
     } catch (const InsituExeption & exept) {
@@ -682,7 +683,7 @@ void insitu::Engine::sendDataToModule() {
     }
 }
 
-void insitu::Engine::sendMeshesToModule()     {
+void Engine::sendMeshesToModule()     {
     int numMeshes = getNumObjects(SimulationDataTyp::mesh);
 
     for (size_t i = 0; i < numMeshes; i++) {
@@ -776,7 +777,7 @@ void insitu::Engine::sendMeshesToModule()     {
     }
 }
 
-void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
+void Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
@@ -836,7 +837,7 @@ void insitu::Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     m_meshes[meshInfo.name] = meshInfo;
 }
 
-void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
+void Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
 
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
@@ -963,7 +964,7 @@ void insitu::Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
     return;
 }
 
-void insitu::Engine::makeAmrMesh(MeshInfo meshInfo) {
+void Engine::makeAmrMesh(MeshInfo meshInfo) {
     if (m_intOptions[message::InSituMessageType::CombineGrids]->val) {
         combineRectilinearToUnstructured(meshInfo);
     } else {
@@ -974,7 +975,7 @@ void insitu::Engine::makeAmrMesh(MeshInfo meshInfo) {
 
 }
 
-void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
+void Engine::makeStructuredMesh(MeshInfo meshInfo) {
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, currDomain, meshInfo.name);
@@ -1033,7 +1034,7 @@ void insitu::Engine::makeStructuredMesh(MeshInfo meshInfo) {
     m_meshes[meshInfo.name] = meshInfo;
 }
 
-void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)     {
+void Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)     {
     using namespace vistle;
 
     size_t totalNumElements = 0, totalNumVerts = 0;
@@ -1134,7 +1135,7 @@ void insitu::Engine::combineStructuredMeshesToUnstructured(MeshInfo meshInfo)   
     DEBUG_CERR << "added unstructured mesh " << meshInfo.name << " with " << totalNumVerts << " vertices and " << totalNumElements << " elements " << endl;
    }
 
-void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
+void Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
     using namespace vistle;
 
     size_t totalNumElements = 0, totalNumVerts = 0;
@@ -1224,7 +1225,7 @@ void insitu::Engine::combineRectilinearToUnstructured(MeshInfo meshInfo) {
     DEBUG_CERR << "added unstructured mesh " << meshInfo.name << " with " << totalNumVerts << " vertices and " << totalNumElements << " elements " << endl;
 }
 
-void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to vectors
+void Engine::sendVarablesToModule()     { //todo: combine variables to vectors
     int numVars = getNumObjects(SimulationDataTyp::variable);
     for (size_t i = 0; i < numVars; i++) {
         visit_handle varMetaHandle = getNthObject(SimulationDataTyp::variable, i);
@@ -1336,7 +1337,7 @@ void insitu::Engine::sendVarablesToModule()     { //todo: combine variables to v
 
 }
 
-void insitu::Engine::sendTestData() {
+void Engine::sendTestData() {
 
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -1365,7 +1366,7 @@ void insitu::Engine::sendTestData() {
     addObject("AMR_mesh", grid);
 }
 
-void insitu::Engine::connectToModule(const std::string& hostname, int port) {
+void Engine::connectToModule(const std::string& hostname, int port) {
 
     boost::system::error_code ec;
     asio::ip::tcp::resolver resolver(m_ioService);
@@ -1387,7 +1388,7 @@ void insitu::Engine::connectToModule(const std::string& hostname, int port) {
 
 }
 
-void insitu::Engine::finalizeInit()     {
+void Engine::finalizeInit()     {
     if (!m_moduleInfo.initialized) {
         try {
             getMetaData();
@@ -1402,7 +1403,7 @@ void insitu::Engine::finalizeInit()     {
     }
 }
 
-void insitu::Engine::addObject(const std::string& port, vistle::Object::ptr obj) {
+void Engine::addObject(const std::string& port, vistle::Object::ptr obj) {
     if (m_sendMessageQueue) {
         m_sendMessageQueue->addObject(port, obj);
     }
@@ -1410,7 +1411,7 @@ void insitu::Engine::addObject(const std::string& port, vistle::Object::ptr obj)
 
 }
 
-void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle::Index * connectivityList, vistle::Index startOfGridIndex)     {
+void Engine::makeStructuredGridConnectivityList(const int* dims, vistle::Index * connectivityList, vistle::Index startOfGridIndex)     {
     // construct connectivity list (all hexahedra)
     using namespace vistle;
     Index numVert[3];
@@ -1455,7 +1456,7 @@ void insitu::Engine::makeStructuredGridConnectivityList(const int* dims, vistle:
     } 
 }
 
-void insitu::Engine::makeVTKStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, vistle::Index(*vertexIndex)(vistle::Index, vistle::Index, vistle::Index, vistle::Index[3])) {
+void Engine::makeVTKStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, vistle::Index(*vertexIndex)(vistle::Index, vistle::Index, vistle::Index, vistle::Index[3])) {
     // construct connectivity list (all hexahedra)
     using namespace vistle;
     

@@ -4,10 +4,14 @@
 #include <insitu/core/dataAdaptor.h>
 #include <core/structuredgrid.h>
 
+namespace vistle {
 namespace insitu {
+namespace sensei {
 	vistle::StructuredGrid::const_ptr makeStructuredGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep);
 
 
-}
+}//sensei
+}//insitu
+}//vistle
 
 #endif

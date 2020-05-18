@@ -6,10 +6,8 @@
 
 
 
-using namespace insitu;
-using namespace insitu::message;
-using namespace vistle::message;
-
+using namespace vistle::insitu;
+using namespace vistle::insitu::message;
 
 //bool insitu::message::InSituTcpMessage::m_initialized = false;
 //boost::mpi::communicator insitu::message::InSituTcpMessage::m_comm;
@@ -31,22 +29,22 @@ InSituMessageType InSituMessageBase::type() const {
     return m_type;
 }
 
-InSituMessageType insitu::message::Message::type() const {
+InSituMessageType Message::type() const {
     return m_type;
 }
 
-insitu::message::Message insitu::message::Message::errorMessage()
+Message Message::errorMessage()
 {
     return Message{};
 }
 
-insitu::message::Message::Message(InSituMessageType type, vistle::buffer&& payload)
+Message::Message(InSituMessageType type, vistle::buffer&& payload)
     :m_type(type)
     , m_payload(payload) {
 }
 
 
-insitu::message::Message::Message()
+Message::Message()
     : m_type(InSituMessageType::Invalid) {
 
 }

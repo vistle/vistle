@@ -20,7 +20,7 @@
 #include <iostream>
 
 extern void DataCallbacksCleanup(void);
-using insitu::Engine;
+using vistle::insitu::libsim::Engine;
 // Engine creation callback.
 static Engine *
 simv2_create_engine(void *)

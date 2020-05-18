@@ -1,15 +1,16 @@
 #ifndef VISTLE_SENSEI_EXEPTION_H
 #define VISTLE_SENSEI_EXEPTION_H
 #include <insitu/core/exeption.h>
-
+namespace vistle {
 namespace insitu {
-	namespace sensei {
-		struct Exeption : public insitu::InsituExeption {
-			Exeption() {
-				*this << "VistleSenseiAdapter: ";
-			};
+namespace sensei {
+struct Exeption : public InsituExeption {
+	Exeption() {
+		*this << "VistleSenseiAdapter: ";
+	};
 
-		};
-	}
-}
+};
+}//sensei
+}//insitu
+}//vistle
 #endif

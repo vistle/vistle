@@ -4,8 +4,12 @@
 #include <insitu/core/dataAdaptor.h>
 
 #include <core/rectilineargrid.h>
+namespace vistle {
 namespace insitu {
-	vistle::RectilinearGrid::const_ptr makeRectilinearGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep);
-}
+namespace sensei {
+vistle::RectilinearGrid::const_ptr makeRectilinearGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep);
+}//sensei
+}//insitu
+}//vistle
 
 #endif

@@ -24,8 +24,8 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
-
-namespace insitu{
+namespace vistle {
+namespace insitu {
 
 namespace message {
 
@@ -92,16 +92,16 @@ DECLARE_ENGINE_MESSAGE(Invalid)
 DECLARE_ENGINE_MESSAGE(GoOn)
 
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConnectionClosed, bool) //true -> disconnected on purpose
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit,  std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject,  std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts,  std::vector<std::vector<std::string>>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetCommands,  std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready,  bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand,  std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids,  bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(CombineGrids,  bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep,  size_t)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables,  bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInit, std::vector<std::string>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject, std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts, std::vector<std::vector<std::string>>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetCommands, std::vector<std::string>)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, std::string)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConstGrids, bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(CombineGrids, bool)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(NthTimestep, size_t)
+DECLARE_ENGINE_MESSAGE_WITH_PARAM(VTKVariables, bool)
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(KeepTimesteps, bool)
 #ifdef MODULE_THREAD
 DECLARE_ENGINE_MESSAGE_WITH_PARAM(ModuleID, int)
@@ -159,7 +159,7 @@ private:
 
 } //message
 } //insitu
-
+} //vistle
 
 
 #endif // !ENGINE_MESSAGE_H

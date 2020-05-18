@@ -3,15 +3,16 @@
 #include "InSituMessage.h"
 #include "export.h"
 #include <boost/interprocess/ipc/message_queue.hpp>
+namespace vistle {
 namespace insitu {
 namespace message {
-    constexpr unsigned int ShmMessageMaxSize = 1000;
-    constexpr unsigned int ShmMessageQueueLenght = 20;
-    struct ShmMsg {
-        int type = 0;
-        size_t size = 0;
-        char buf[ShmMessageMaxSize];
-    };
+constexpr unsigned int ShmMessageMaxSize = 1000;
+constexpr unsigned int ShmMessageQueueLenght = 20;
+struct ShmMsg {
+    int type = 0;
+    size_t size = 0;
+    char buf[ShmMessageMaxSize];
+};
 
 class V_INSITUMESSAGEEXPORT InSituShmMessage {
 public:
@@ -40,10 +41,11 @@ public:
             if (i += ShmMessageMaxSize < vec.size())
             {
                 end += ShmMessageMaxSize;
-            }  else {
+            }
+            else {
                 end = vec.end();
             }
-            std::copy(start, end, mm.buf); 
+            std::copy(start, end, mm.buf);
         }
 
         try
@@ -65,9 +67,9 @@ public:
     void initialize(const std::string& msqName);
     bool isInitialized();
     std::string name();
-    Message recv();
-    Message tryRecv();
-    Message timedRecv(size_t timeInSec);
+    insitu::message::Message recv();
+    insitu::message::Message tryRecv();
+    insitu::message::Message timedRecv(size_t timeInSec);
 private:
     bool m_initialized = false;
     std::array<std::unique_ptr<boost::interprocess::message_queue>, 2> m_msqs;
@@ -79,6 +81,6 @@ private:
 
 } //message
 } //insitu
-
+} //vistle
 
 #endif // !INSITU_SHM_MESSAGE_H

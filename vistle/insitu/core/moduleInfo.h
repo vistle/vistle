@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <string>
+namespace vistle {
 namespace insitu {
     struct ModuleInfo {
         bool initialized = false; //Module is initialized(sent port and command info)
@@ -11,7 +12,7 @@ namespace insitu {
         bool ready = false; //wether the module is executing or not
         std::vector<std::string> connectedPorts;
     };
-}
-
+}//insitu
+}//vistle
 
 #endif

@@ -10,6 +10,10 @@
 #include <insitu/message/SyncShmIDs.h>
 #include <insitu/message/ShmMessage.h>
 
+namespace vistle {
+namespace insitu {
+namespace sensei {
+
 class SenseiModule : public insitu::InSituReader
 {
 public:
@@ -22,7 +26,7 @@ public:
     SenseiModule(const std::string& name, int moduleID, mpi::communicator comm);
     ~SenseiModule();
 
-    
+
 
 private:
     insitu::message::InSituShmMessage m_messageHandler;
@@ -56,8 +60,8 @@ private:
     template<typename T>
     struct IntParam : public IntParamBase {
         IntParam(vistle::IntParameter* param, const insitu::message::InSituShmMessage& sender)
-            :IntParamBase(param) 
-        , m_sender(sender){
+            :IntParamBase(param)
+            , m_sender(sender) {
         }
         const insitu::message::InSituShmMessage& m_sender;
         virtual void send() override {
@@ -75,7 +79,7 @@ private:
 
 
 
-    
+
     void recvAndhandleMessage();
 
     void handleMessage(insitu::message::Message& msg);
@@ -85,6 +89,8 @@ private:
     void disconnectSim();
 
 };
-
+}//sensei
+}//insitu
+}//vistle
 
 #endif // !SENSEI_CONTROL_MODULE_H

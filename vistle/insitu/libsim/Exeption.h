@@ -9,12 +9,8 @@
 #include "VisItDataTypes.h"
 
 #include <insitu/core/exeption.h>
-
+namespace vistle{
 namespace insitu {
-    class Test : public InsituExeption
-    {
-
-    };
 
 struct SimV2Exeption : public InsituExeption {
     const char* what() const noexcept override;
@@ -89,8 +85,8 @@ inline visit_handle v2check(std::function<visit_handle()>fnct) {
 inline visit_handle v2check(visit_handle(fnct)()) {
     return v2check(std::function<visit_handle()>(fnct));
 }
-
-}
+}//insitu
+}//vistle
 #endif // !SIMV2_EXEPTION
 
 
