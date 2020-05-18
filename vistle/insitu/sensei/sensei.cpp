@@ -220,7 +220,7 @@ bool SenseiAdapter::initializeVistleEnv()
 	}
 
 	m_connected = true;
-
+	return true;
 }
 
 void SenseiAdapter::addPorts()

@@ -67,7 +67,7 @@ struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
     friend class insitu::message::Message; \
     messageType(const payloadType& payloadName):InSituMessageBase(type), value(payloadName){}\
      static const InSituMessageType type = InSituMessageType::messageType;\
-    payloadType value; \
+    payloadType value{}; \
     ARCHIVE_ACCESS\
     template<class Archive>\
     void serialize(Archive& ar) {\
