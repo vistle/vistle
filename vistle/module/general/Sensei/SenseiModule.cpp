@@ -126,7 +126,7 @@ void SenseiModule::connectToSim() {
     
     m_messageHandler.initialize(key);
     vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
-    insitu::message::ShmInit init();
+    insitu::message::ShmInit init{args};
 
    }
 
