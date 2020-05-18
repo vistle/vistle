@@ -1,9 +1,7 @@
 #include "TcpMessage.h"
 #include <boost/asio.hpp>
-using namespace insitu;
-using namespace insitu::message;
-using namespace vistle::message;
-
+using namespace vistle::insitu;
+using namespace vistle::insitu::message;
 
 
 void InSituTcp::initialize(std::shared_ptr<boost::asio::ip::tcp::socket> socket, boost::mpi::communicator comm) {
@@ -17,7 +15,7 @@ bool InSituTcp::isInitialized() {
 }
 
 
-insitu::message::Message InSituTcp::recv() {
+Message InSituTcp::recv() {
     vistle::buffer payload;
     bool error = false;
 

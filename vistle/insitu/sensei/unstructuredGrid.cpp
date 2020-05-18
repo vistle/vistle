@@ -2,23 +2,24 @@
 #include <insitu/core/transformArray.h>
 #include "exeption.h"
 
-using namespace insitu;
-vistle::UnstructuredGrid::const_ptr insitu::makeUnstructuredGrid(const UnstructuredMesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
+using namespace vistle::insitu::sensei;
+using namespace vistle::insitu;
+vistle::UnstructuredGrid::const_ptr  vistle::insitu::sensei::makeUnstructuredGrid(const UnstructuredMesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
 {
 	auto grid = syncIDs.createVistleObject<vistle::UnstructuredGrid>(mesh.el.size, mesh.cl.size, mesh.numVerts());
 	
 	vistle::UnstructuredGrid::ptr g = std::make_shared<vistle::UnstructuredGrid>(mesh.el.size, mesh.cl.size, mesh.numVerts());
-	if (!mesh.elToVistle && !mesh.elToVistle(grid->el().data()))
+	if (!mesh.elToVistle || !mesh.elToVistle(grid->el().data()))
 	{
-		throw sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
+		throw vistle::insitu::sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
 	}
-	if (!mesh.tlToVistle && !mesh.tlToVistle(grid->tl().data()))
+	if (!mesh.tlToVistle || !mesh.tlToVistle(grid->tl().data()))
 	{
-		throw sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
+		throw vistle::insitu::sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
 	}
-	if (!mesh.clToVistle && !mesh.clToVistle(grid->cl().data()))
+	if (!mesh.clToVistle || !mesh.clToVistle(grid->cl().data()))
 	{
-		throw sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
+		throw vistle::insitu::sensei::Exeption() << "makeUnstructuredGrid failed to convert type list";
 	}
 	if (mesh.interleaved)
 	{
@@ -35,3 +36,5 @@ vistle::UnstructuredGrid::const_ptr insitu::makeUnstructuredGrid(const Unstructu
 	grid->setTimestep(timestep);
 	return grid;
 }
+
+

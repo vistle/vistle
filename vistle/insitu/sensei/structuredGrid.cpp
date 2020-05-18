@@ -1,7 +1,8 @@
 #include "structuredGrid.h"		
 #include <insitu/core/transformArray.h>
-
-vistle::StructuredGrid::const_ptr insitu::makeStructuredGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
+using namespace vistle::insitu::sensei;
+using namespace vistle::insitu;
+vistle::StructuredGrid::const_ptr vistle::insitu::sensei::makeStructuredGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
 {
 	assert(mesh.type == vistle::Object::STRUCTUREDGRID);
 

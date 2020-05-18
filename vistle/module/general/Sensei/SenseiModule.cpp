@@ -16,7 +16,8 @@
 
 
 using namespace std;
-using namespace insitu::message;
+using namespace vistle::insitu::sensei;
+using namespace vistle::insitu::message;
 
 #define CERR cerr << "SenseiModule["<< rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance

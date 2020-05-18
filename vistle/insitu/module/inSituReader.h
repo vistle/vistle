@@ -5,7 +5,7 @@
 #include "export.h"
 #include<core/messagequeue.h>
 #include <insitu/message/SyncShmIDs.h>
-
+namespace vistle{
 namespace insitu {
 
 
@@ -40,8 +40,8 @@ public:
     insitu::message::SyncShmIDs m_shmIDs;
 };
 
-
-}
+}//insitu
+}//vistle
 
 
 

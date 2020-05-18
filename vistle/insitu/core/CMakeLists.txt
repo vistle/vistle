@@ -1,11 +1,9 @@
 set(SOURCES
-  addObjectMsq.cpp
   dataAdaptor.cpp
   dataAdaptorToVistle.cpp
   exeption.cpp
   )
 set(HEADER
-  addObjectMsq.h
   dataAdaptor.h
   dataAdaptorToVistle.h
   exeption.h

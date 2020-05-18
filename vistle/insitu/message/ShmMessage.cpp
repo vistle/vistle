@@ -1,6 +1,6 @@
 #include "ShmMessage.h"
-
-void insitu::message::InSituShmMessage::initialize()
+using namespace vistle::insitu::message;
+void InSituShmMessage::initialize()
 {
 	bool error = false;
 	static int iter = 0;
@@ -22,7 +22,7 @@ void insitu::message::InSituShmMessage::initialize()
 	m_order = { 0,1 };
 }
 
-void insitu::message::InSituShmMessage::initialize(const std::string& msqName)
+void InSituShmMessage::initialize(const std::string& msqName)
 {
 	try
 	{
@@ -39,17 +39,17 @@ void insitu::message::InSituShmMessage::initialize(const std::string& msqName)
 	m_order = { 1,0 };
 }
 
-bool insitu::message::InSituShmMessage::isInitialized()
+bool InSituShmMessage::isInitialized()
 {
 	return m_initialized;
 }
 
-std::string insitu::message::InSituShmMessage::name()
+std::string InSituShmMessage::name()
 {
 	return m_msqName;
 }
 
-insitu::message::Message insitu::message::InSituShmMessage::recv()
+Message InSituShmMessage::recv()
 {
 	vistle::buffer payload;
 	int type = 0;
@@ -90,7 +90,7 @@ insitu::message::Message insitu::message::InSituShmMessage::recv()
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
 
-insitu::message::Message insitu::message::InSituShmMessage::tryRecv()
+Message InSituShmMessage::tryRecv()
 {
 	vistle::buffer payload;
 	int type = 0;
@@ -146,7 +146,7 @@ insitu::message::Message insitu::message::InSituShmMessage::tryRecv()
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
 
-insitu::message::Message insitu::message::InSituShmMessage::timedRecv(size_t timeInSec)
+Message InSituShmMessage::timedRecv(size_t timeInSec)
 {
 	vistle::buffer payload;
 	int type = 0;

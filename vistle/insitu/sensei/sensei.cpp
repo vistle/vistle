@@ -14,9 +14,10 @@
 
 #define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] SenseiAdapter: "
 using std::endl;
-using namespace insitu;
-using namespace insitu::message;
-bool insitu::sensei::SenseiAdapter::Initialize(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo)
+using namespace vistle::insitu;
+using namespace vistle::insitu::sensei;
+using namespace vistle::insitu::message;
+bool SenseiAdapter::Initialize(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo)
 {
 	m_callbacks = cbs;
 	m_metaData = std::move(meta);
@@ -43,7 +44,7 @@ bool insitu::sensei::SenseiAdapter::Initialize(bool paused, size_t rank, size_t 
 	return true;
 }
 
-bool insitu::sensei::SenseiAdapter::Execute(size_t timestep)
+bool SenseiAdapter::Execute(size_t timestep)
 {
 	m_currTimestep = timestep;
 	recvAndHandeMessage(); //catch newest state
@@ -60,19 +61,19 @@ bool insitu::sensei::SenseiAdapter::Execute(size_t timestep)
 	return false;
 }
 
-insitu::sensei::SenseiAdapter::~SenseiAdapter()
+SenseiAdapter::~SenseiAdapter()
 {
 }
 
 
-void insitu::sensei::SenseiAdapter::dumpConnectionFile()
+void SenseiAdapter::dumpConnectionFile()
 {
 	std::ofstream outfile("sensei.vistle");
 	outfile << m_messageHandler.name() << endl;
 	outfile.close();
 }
 
-bool insitu::sensei::SenseiAdapter::recvAndHandeMessage(bool blocking)
+bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 {
 	message::Message msg = blocking ? m_messageHandler.recv() : m_messageHandler.tryRecv();
 	switch (msg.type())
@@ -171,7 +172,7 @@ bool insitu::sensei::SenseiAdapter::recvAndHandeMessage(bool blocking)
 	return true;
 }
 
-bool insitu::sensei::SenseiAdapter::initializeVistleEnv()
+bool SenseiAdapter::initializeVistleEnv()
 {
 	vistle::registerTypes();
 #ifdef SHMPERRANK
@@ -222,7 +223,7 @@ bool insitu::sensei::SenseiAdapter::initializeVistleEnv()
 
 }
 
-void insitu::sensei::SenseiAdapter::addPorts()
+void SenseiAdapter::addPorts()
 {
 	SetPorts::value_type ports;
 	auto meshNames = m_metaData.meshes;
@@ -253,7 +254,7 @@ void insitu::sensei::SenseiAdapter::addPorts()
 
 
 
-void insitu::sensei::SenseiAdapter::sendMeshToModule(const Mesh& mesh)
+void SenseiAdapter::sendMeshToModule(const Mesh& mesh)
 {
 	switch (mesh.type)
 	{
@@ -303,11 +304,11 @@ void insitu::sensei::SenseiAdapter::sendMeshToModule(const Mesh& mesh)
 
 }
 
-void insitu::sensei::SenseiAdapter::sendVariableToModule(const Array& var)
+void SenseiAdapter::sendVariableToModule(const Array& var)
 {
 }
 
-void insitu::sensei::SenseiAdapter::sendObject(const std::string& port, vistle::Object::const_ptr obj)
+void SenseiAdapter::sendObject(const std::string& port, vistle::Object::const_ptr obj)
 {
 	if (m_sendMessageQueue)
 	{
@@ -326,12 +327,12 @@ sensei::Callbacks::Callbacks(insitu::Mesh(*getMesh)(const std::string&), insitu:
 	
 }
 
-Mesh insitu::sensei::Callbacks::getMesh(const std::string& name)
+Mesh Callbacks::getMesh(const std::string& name)
 {
 	return m_getMesh(name);
 }
 
-Array insitu::sensei::Callbacks::getVar(const std::string& name)
+Array Callbacks::getVar(const std::string& name)
 {
 	return m_getVar(name);
 }

@@ -1,6 +1,6 @@
 #include "dataAdaptorToVistle.h"
-using namespace insitu;
-void insitu::createVistleObjects(const DataAdaptor* data, message::SyncShmIDs* sync, vistle::message::MessageQueue* sender)
+using namespace vistle::insitu;
+void createVistleObjects(const DataAdaptor* data, vistle::insitu::message::SyncShmIDs* sync, vistle::message::MessageQueue* sender)
 {
 	
 	

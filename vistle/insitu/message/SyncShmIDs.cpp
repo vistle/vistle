@@ -1,9 +1,9 @@
 #include "SyncShmIDs.h"
 #include <core/messagequeue.h>
 
-using namespace insitu;
-using namespace insitu::message;
-using namespace vistle::message;
+using namespace vistle::insitu;
+using namespace vistle::insitu::message;
+
 
 
 void SyncShmIDs::initialize(int moduleID, int rank, int instance, Mode mode) {
@@ -32,7 +32,7 @@ bool SyncShmIDs::isInitialized() {
     return m_initialized;
 }
 
-void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
+void SyncShmIDs::set(int objID, int arrayID) {
 #ifdef MODULE_THREAD
     //do nothing
 #else
@@ -51,7 +51,7 @@ void insitu::message::SyncShmIDs::set(int objID, int arrayID) {
 
 }
 
-int insitu::message::SyncShmIDs::objectID() {
+int SyncShmIDs::objectID() {
 #ifndef MODULE_THREAD
     if (m_initialized) {
         try {
@@ -67,7 +67,7 @@ int insitu::message::SyncShmIDs::objectID() {
 
 }
 
-int insitu::message::SyncShmIDs::arrayID() {
+int SyncShmIDs::arrayID() {
 #ifndef MODULE_THREAD
     if (m_initialized) {
     }try {
@@ -85,7 +85,7 @@ int insitu::message::SyncShmIDs::arrayID() {
 
 #ifndef MODULE_THREAD
 
-insitu::message::SyncShmIDs::ShmSegment::ShmSegment(insitu::message::SyncShmIDs::ShmSegment&& other)
+SyncShmIDs::ShmSegment::ShmSegment(SyncShmIDs::ShmSegment&& other)
     :m_name(std::move(other.m_name))
     , m_region(std::move(other.m_region))
 
@@ -93,7 +93,7 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(insitu::message::SyncShmIDs:
 
 }
 
-insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mode mode)
+SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mode mode)
     :m_name(name) {
     using namespace boost::interprocess;
     std::cerr << "trying to create shm segment with name " << name << std::endl;
@@ -137,18 +137,18 @@ insitu::message::SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mod
 
 
 
-insitu::message::SyncShmIDs::ShmSegment::~ShmSegment() {
+SyncShmIDs::ShmSegment::~ShmSegment() {
     boost::interprocess::shared_memory_object::remove(m_name.c_str());
 }
 
-const insitu::message::SyncShmIDs::ShmData* insitu::message::SyncShmIDs::ShmSegment::data() const {
+const SyncShmIDs::ShmData* SyncShmIDs::ShmSegment::data() const {
     return static_cast<ShmData*>(m_region.get_address());
 }
-insitu::message::SyncShmIDs::ShmData* insitu::message::SyncShmIDs::ShmSegment::data() {
+SyncShmIDs::ShmData* SyncShmIDs::ShmSegment::data() {
     return static_cast<ShmData*>(m_region.get_address());
 }
 
-insitu::message::SyncShmIDs::ShmSegment& insitu::message::SyncShmIDs::ShmSegment::operator=(insitu::message::SyncShmIDs::ShmSegment&& other) noexcept {
+SyncShmIDs::ShmSegment& SyncShmIDs::ShmSegment::operator=(insitu::message::SyncShmIDs::ShmSegment&& other) noexcept {
     m_name = std::move(other.m_name);
     m_region = std::move(other.m_region);
     return *this;

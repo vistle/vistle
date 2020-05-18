@@ -4,9 +4,9 @@
 
 
 
-using namespace insitu;
-
-vistle::RectilinearGrid::const_ptr insitu::makeRectilinearGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
+using namespace vistle::insitu::sensei;
+using namespace vistle::insitu;
+vistle::RectilinearGrid::const_ptr vistle::insitu::sensei::makeRectilinearGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
 {
 	assert(mesh.type == vistle::Object::RECTILINEARGRID);
 	
