@@ -1,4 +1,4 @@
-set(LIBSIM_SOURCES
+set(SOURCES
   addObjectMsq.cpp
   InSituMessage.cpp
   ShmMessage.cpp
@@ -6,16 +6,19 @@ set(LIBSIM_SOURCES
   TcpMessage.cpp
 )
 
-set(LIBSIM_HEADER
+set(HEADER
   addObjectMsq.h
-  export.h
   InSituMessage.h
   ShmMessage.h
   SyncShmIDs.h
   TcpMessage.h
 )
 
-vistle_add_library(vistle_insitu_message ${LIBSIM_SOURCES} ${LIBSIM_HEADER})
+vistle_add_library(vistle_insitu_message ${SOURCES} ${HEADER})
+include(GenerateExportHeader)
+GENERATE_EXPORT_HEADER(vistle_insitu_message
+)
+target_include_directories(vistle_insitu_message PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(vistle_insitu_message
 		PRIVATE vistle_util
 		PRIVATE vistle_insitu_core

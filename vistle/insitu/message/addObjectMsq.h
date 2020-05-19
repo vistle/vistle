@@ -1,6 +1,6 @@
 #ifndef ADD_OBJECT_MSQ_H
 #define ADD_OBJECT_MSQ_H
-#include "export.h"
+#include <vistle_insitu_message_export.h>
 #include <insitu/core/moduleInfo.h>
 #include <core/object.h>
 
@@ -10,7 +10,7 @@ class MessageQueue;
 }
 namespace insitu {
 namespace message {
-	class V_INSITUMESSAGEEXPORT AddObjectMsq {
+	class VISTLE_INSITU_MESSAGE_EXPORT AddObjectMsq {
 	public:
 		AddObjectMsq(const vistle::insitu::ModuleInfo& moduleInfo, size_t rank);
 		~AddObjectMsq();
