@@ -36,7 +36,8 @@ public:
         auto end = vec.begin();
         while (end != vec.end())
         {
-            auto mm = msgs.emplace_back(ShmMsg{ static_cast<int>(msg.type), vec.size() });
+            msgs.emplace_back(ShmMsg{ static_cast<int>(msg.type), vec.size() });
+            auto& mm = msgs[msgs.size() - 1];
             start += i;
             if (i += ShmMessageMaxSize < vec.size())
             {
