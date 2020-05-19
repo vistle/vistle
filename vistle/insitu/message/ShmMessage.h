@@ -11,7 +11,7 @@ constexpr unsigned int ShmMessageQueueLenght = 20;
 struct ShmMsg {
     int type = 0;
     size_t size = 0;
-    char buf[ShmMessageMaxSize];
+    std::array<char, ShmMessageMaxSize> buf;
 };
 
 class VISTLE_INSITU_MESSAGE_EXPORT InSituShmMessage {
@@ -45,7 +45,7 @@ public:
             else {
                 end = vec.end();
             }
-            std::copy(start, end, mm.buf);
+            std::copy(start, end, mm.buf.begin());
         }
 
         try
