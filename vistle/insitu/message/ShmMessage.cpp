@@ -84,7 +84,7 @@ Message InSituShmMessage::recv()
 		{
 			left = m.size - (i - 1) * ShmMessageMaxSize;
 		}
-		std::copy(m.buf, m.buf + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
 		iter += left;
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
@@ -115,7 +115,7 @@ Message InSituShmMessage::tryRecv()
 		{
 			left = m.size - (i - 1) * ShmMessageMaxSize;
 		}
-		std::copy(m.buf, m.buf + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
@@ -141,7 +141,7 @@ Message InSituShmMessage::tryRecv()
 		{
 			left = m.size - (i - 1) * ShmMessageMaxSize;
 		}
-		std::copy(m.buf, m.buf + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
@@ -172,7 +172,7 @@ Message InSituShmMessage::timedRecv(size_t timeInSec)
 		{
 			left = m.size - (i - 1) * ShmMessageMaxSize;
 		}
-		std::copy(m.buf, m.buf + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
@@ -201,7 +201,7 @@ Message InSituShmMessage::timedRecv(size_t timeInSec)
 		{
 			left = m.size - (i - 1) * ShmMessageMaxSize;
 		}
-		std::copy(m.buf, m.buf + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
