@@ -1,12 +1,13 @@
 #ifndef INSITU_SYNC_SHM_IDS_H
 #define INSITU_SYNC_SHM_IDS_H
 #include "InSituMessage.h"
-#include "export.h"
+#include <vistle_insitu_message_export.h>
+
 namespace vistle {
 namespace insitu {
 namespace message {
 
-    class V_INSITUMESSAGEEXPORT SyncShmIDs {
+    class VISTLE_INSITU_MESSAGE_EXPORT SyncShmIDs {
     public:
         enum class Mode {
             Create

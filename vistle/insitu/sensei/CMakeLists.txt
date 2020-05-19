@@ -7,7 +7,6 @@ set(SENSEI_SOURCES
 
 set(SENSEI_HEADER
   exeption.h
-  export.h  
   metaData.h
   rectilinerGrid.h
   sensei.h
@@ -20,6 +19,14 @@ if (VISTLE_SHM_PER_RANK)
 endif()
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
+include(GenerateExportHeader)
+GENERATE_EXPORT_HEADER( vistle_sensei
+             BASE_NAME V_INSITU_SENSEI
+             EXPORT_MACRO_NAME V_INSITU_SENSEI_EXPORT
+             EXPORT_FILE_NAME vistle_sensei_Export.h
+             STATIC_DEFINE vistle_sensei_BUILT_AS_STATIC
+)
+target_include_directories(vistle_sensei PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(vistle_sensei
 		PRIVATE vistle_module
 		PRIVATE vistle_util

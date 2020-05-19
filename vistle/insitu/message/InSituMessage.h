@@ -1,7 +1,7 @@
 #ifndef INSITU_MESSAGE_H
 #define INSITU_MESSAGE_H
 
-#include "export.h"
+#include <vistle_insitu_message_export.h>
 
 #include <string>
 #include <array>
@@ -29,7 +29,7 @@ namespace insitu {
 
 namespace message {
 
-enum class V_INSITUMESSAGEEXPORT InSituMessageType {
+enum class VISTLE_INSITU_MESSAGE_EXPORT InSituMessageType {
     Invalid
     , ShmInit
     , AddObject
@@ -50,7 +50,7 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
 };
 
 class Message;
-struct V_INSITUMESSAGEEXPORT InSituMessageBase {
+struct VISTLE_INSITU_MESSAGE_EXPORT InSituMessageBase {
     InSituMessageBase(InSituMessageType t) :m_type(t) {};
     InSituMessageType type() const;
 protected:
@@ -61,7 +61,7 @@ protected:
 #define COMMA ,
 
 #define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType,  payloadType)\
-struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
+struct VISTLE_INSITU_MESSAGE_EXPORT messageType : public InSituMessageBase\
 {\
     typedef payloadType value_type;\
     friend class insitu::message::Message; \
@@ -80,7 +80,7 @@ private:\
 
 
 #define DECLARE_ENGINE_MESSAGE(messageType)\
-struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase {\
+struct VISTLE_INSITU_MESSAGE_EXPORT messageType : public InSituMessageBase {\
      const InSituMessageType type = InSituMessageType::messageType;\
     messageType() :InSituMessageBase(type) {}\
     ARCHIVE_ACCESS\
@@ -108,7 +108,7 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(ModuleID, int)
 #endif
 
 
-struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
+struct VISTLE_INSITU_MESSAGE_EXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
     InSituMessage(InSituMessageType t) :m_ismType(t) {}
     InSituMessageType ismType() const {
         return m_ismType;
@@ -118,7 +118,7 @@ private:
 };
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");
 
-class V_INSITUMESSAGEEXPORT Message {
+class VISTLE_INSITU_MESSAGE_EXPORT Message {
 
 public:
     InSituMessageType type() const;

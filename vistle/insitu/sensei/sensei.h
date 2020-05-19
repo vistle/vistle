@@ -1,8 +1,8 @@
 #ifndef VISTLE_SENSEI_H
 #define VISTLE_SENSEI_H
 
-#include "export.h"
 
+#include <vistle_sensei_Export.h>
 #include <mpi.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
@@ -30,7 +30,7 @@ private:
 	Mesh(*m_getMesh)(const std::string&) = nullptr;
 	Array(*m_getVar)(const std::string&) = nullptr;
 };
-class V_SENSEIEXPORT SenseiAdapter
+class V_INSITU_SENSEI_EXPORT SenseiAdapter
 {
 public:
 
