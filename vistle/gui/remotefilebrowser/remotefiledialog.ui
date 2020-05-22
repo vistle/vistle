@@ -180,7 +180,7 @@
      <property name="childrenCollapsible">
       <bool>false</bool>
      </property>
-     <widget class="QSidebar" name="sidebar">
+     <widget class="RFBSidebar" name="sidebar">
       <property name="accessibleName">
        <string>Sidebar</string>
       </property>
@@ -347,7 +347,7 @@
    <header>remotefiledialog_p.h</header>
   </customwidget>
   <customwidget>
-   <class>QSidebar</class>
+   <class>RFBSidebar</class>
    <extends>QListWidget</extends>
    <header>qsidebar_p.h</header>
   </customwidget>

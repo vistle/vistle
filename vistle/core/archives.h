@@ -15,8 +15,10 @@
 #include "message.h"
 
 #ifdef USE_BOOST_ARCHIVE
+#ifndef NO_MPI
 #include <boost/mpi/packed_iarchive.hpp>
 #include <boost/mpi/packed_oarchive.hpp>
+#endif
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>

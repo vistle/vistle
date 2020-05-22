@@ -4,7 +4,8 @@
 
 #include <boost/lexical_cast.hpp>
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#define HAVE_EXECINFO
 #include <execinfo.h>
 #include <unistd.h>
 #include <signal.h>
@@ -20,7 +21,7 @@ std::string backtrace()
 {
    std::stringstream str;
 
-#ifndef _WIN32
+#ifdef HAVE_EXECINFO
    const int MaxFrames = 32;
 
    void* buffer[MaxFrames] = { 0 };
@@ -76,8 +77,10 @@ bool attach_debugger() {
       exit(1);
 #endif
    } else {
+#ifndef __EMSCRIPTEN__
       kill(getpid(), SIGSTOP);
       sleep(1);
+#endif
 #if 0
       const int wait = 30;
       unsigned int remain = sleep(wait);
@@ -94,7 +97,7 @@ bool attach_debugger() {
 
 bool parentProcessDied() {
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
     // no implementation
     return false;
 #elif defined (__linux__)

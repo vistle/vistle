@@ -70,6 +70,5 @@ add_library(vistle_propertybrowser STATIC
 qt_use_modules(vistle_propertybrowser Widgets)
 
 target_link_libraries(vistle_propertybrowser
-  ${QT_LIBRARIES}
-  vistle_core
+    PRIVATE ${QT_LIBRARIES} vistle_core
 )

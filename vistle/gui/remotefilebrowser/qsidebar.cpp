@@ -56,7 +56,7 @@ QT_BEGIN_NAMESPACE
 const QLatin1String HomeScheme("home");
 const QUrl HomeUrl(HomeScheme+QLatin1String(":"));
 
-void QSideBarDelegate::initStyleOption(QStyleOptionViewItem *option,
+void RFBSideBarDelegate::initStyleOption(QStyleOptionViewItem *option,
                                          const QModelIndex &index) const
 {
     QStyledItemDelegate::initStyleOption(option,index);
@@ -455,11 +455,11 @@ void RemoteUrlModel::changed(const QString &path)
     }
 }
 
-QSidebar::QSidebar(QWidget *parent) : QListView(parent)
+RFBSidebar::RFBSidebar(QWidget *parent) : QListView(parent)
 {
 }
 
-void QSidebar::setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl> &newUrls)
+void RFBSidebar::setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl> &newUrls)
 {
     // ### TODO make icon size dynamic
     setIconSize(QSize(24,24));
@@ -467,7 +467,7 @@ void QSidebar::setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl>
     urlModel = new RemoteUrlModel(this);
     urlModel->setFileSystemModel(model);
     setModel(urlModel);
-    setItemDelegate(new QSideBarDelegate(this));
+    setItemDelegate(new RFBSideBarDelegate(this));
 
     connect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
             this, SLOT(clicked(QModelIndex)));
@@ -481,26 +481,26 @@ void QSidebar::setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl>
     setCurrentIndex(this->model()->index(0,0));
 }
 
-QSidebar::~QSidebar()
+RFBSidebar::~RFBSidebar()
 {
 }
 
 #ifndef QT_NO_DRAGANDDROP
-void QSidebar::dragEnterEvent(QDragEnterEvent *event)
+void RFBSidebar::dragEnterEvent(QDragEnterEvent *event)
 {
     if (urlModel->canDrop(event))
         QListView::dragEnterEvent(event);
 }
 #endif // QT_NO_DRAGANDDROP
 
-QSize QSidebar::sizeHint() const
+QSize RFBSidebar::sizeHint() const
 {
     if (model())
         return QListView::sizeHintForIndex(model()->index(0, 0)) + QSize(2 * frameWidth(), 2 * frameWidth());
     return QListView::sizeHint();
 }
 
-void QSidebar::selectUrl(const QUrl &url)
+void RFBSidebar::selectUrl(const QUrl &url)
 {
     disconnect(selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
                this, SLOT(clicked(QModelIndex)));
@@ -526,7 +526,7 @@ void QSidebar::selectUrl(const QUrl &url)
 
     \sa removeEntry()
 */
-void QSidebar::showContextMenu(const QPoint &position)
+void RFBSidebar::showContextMenu(const QPoint &position)
 {
     QList<QAction *> actions;
     if (indexAt(position).isValid()) {
@@ -546,7 +546,7 @@ void QSidebar::showContextMenu(const QPoint &position)
 
     \sa showContextMenu()
 */
-void QSidebar::removeEntry()
+void RFBSidebar::removeEntry()
 {
     QList<QModelIndex> idxs = selectionModel()->selectedIndexes();
     QList<QPersistentModelIndex> indexes;
@@ -566,7 +566,7 @@ void QSidebar::removeEntry()
 
     \sa goToUrl()
 */
-void QSidebar::clicked(const QModelIndex &index)
+void RFBSidebar::clicked(const QModelIndex &index)
 {
     QUrl url = model()->index(index.row(), 0).data(RemoteUrlModel::UrlRole).toUrl();
     emit goToUrl(url);
@@ -577,7 +577,7 @@ void QSidebar::clicked(const QModelIndex &index)
     \reimp
     Don't automatically select something
  */
-void QSidebar::focusInEvent(QFocusEvent *event)
+void RFBSidebar::focusInEvent(QFocusEvent *event)
 {
     QAbstractScrollArea::focusInEvent(event);
     viewport()->update();
@@ -586,7 +586,7 @@ void QSidebar::focusInEvent(QFocusEvent *event)
 /*!
     \reimp
  */
-bool QSidebar::event(QEvent * event)
+bool RFBSidebar::event(QEvent * event)
 {
     if (event->type() == QEvent::KeyRelease) {
         QKeyEvent* ke = (QKeyEvent*) event;

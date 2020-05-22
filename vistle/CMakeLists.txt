@@ -68,6 +68,7 @@ macro(vistle_add_executable targetname)
 endmacro(vistle_add_executable)
 
 set(ALL_MODULES "" CACHE INTERNAL "")
+if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 macro(add_module targetname)
     set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
     if(VISTLE_MULTI_PROCESS)
@@ -100,6 +101,7 @@ macro(add_module targetname)
         vistle_boost_mpi
     )
 endmacro(add_module)
+endif()
 
 
 set (VISTLE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
@@ -138,7 +140,6 @@ endif()
 option(VISTLE_SHM_PER_RANK "Don't share shared memory segments between MPI ranks on same node" OFF)
 
 set(ENABLE_INSTALLER TRUE)
-vistle_find_package(TBB)
 #vistle_find_package(Thrust REQUIRED)
 set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
@@ -146,8 +147,12 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
 include_directories(SYSTEM ${EIGEN3_INCLUDE_PATH})
 
-#Boost.MPI is compiled with Vistle - for easy switching of MPI versions
-include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+if (VISTLE_GUI_ONLY)
+    add_definitions(-DNO_MPI)
+else()
+    #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
+    include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
+endif()
 if(Boost_FOUND)
     include_directories(AFTER SYSTEM ${Boost_INCLUDE_DIRS}) 
 endif()
@@ -170,10 +175,12 @@ set(ZFP_FOUND TRUE)
 add_definitions(-DHAVE_ZFP)
 include_directories(SYSTEM "${ZFP_INCLUDE_DIRS}")
 
-vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
-   osgText osgParticle osgSim osgFX)
-set(OpenGL_GL_PREFERENCE LEGACY)
-vistle_find_package(OpenGL)
+if (NOT VISTLE_GUI_ONLY)
+    vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
+        osgText osgParticle osgSim osgFX)
+    set(OpenGL_GL_PREFERENCE LEGACY)
+    vistle_find_package(OpenGL)
+endif()
 
 set (CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set (THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -188,10 +195,16 @@ include_directories(.)
 add_subdirectory(util)
 add_subdirectory(core)
 add_subdirectory(net)
-add_subdirectory(rhr)
-add_subdirectory(control)
 add_subdirectory(userinterface)
+add_subdirectory(gui)
+
+if (VISTLE_GUI_ONLY)
+    return()
+endif()
+
+add_subdirectory(rhr)
 add_subdirectory(bin)
+add_subdirectory(control)
 add_subdirectory(hub)
 add_subdirectory(insitu)
 add_subdirectory(module)
@@ -201,7 +214,5 @@ add_subdirectory(renderer)
 add_subdirectory(manager)
 
 add_subdirectory(cover)
-
-add_subdirectory(gui)
 
 add_subdirectory(test)

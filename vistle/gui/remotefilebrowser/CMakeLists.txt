@@ -54,6 +54,5 @@ add_library(vistle_remotefiledialog STATIC
 qt_use_modules(vistle_remotefiledialog Widgets)
 
 target_link_libraries(vistle_remotefiledialog
-  ${QT_LIBRARIES}
-  vistle_core
+    PRIVATE ${QT_LIBRARIES} vistle_core
 )
