@@ -1122,7 +1122,7 @@ QList<QUrl> RemoteFileDialog::selectedUrls() const
     Makes a list of filters from ;;-separated text.
     Used by the mac and windows implementations
 */
-QStringList qt_make_filter_list(const QString &filter)
+QStringList rfb_make_filter_list(const QString &filter)
 {
     QString f(filter);
 
@@ -1157,7 +1157,7 @@ QStringList qt_make_filter_list(const QString &filter)
 */
 void RemoteFileDialog::setNameFilter(const QString &filter)
 {
-    setNameFilters(qt_make_filter_list(filter));
+    setNameFilters(rfb_make_filter_list(filter));
 }
 
 
@@ -1187,7 +1187,7 @@ bool RemoteFileDialog::isNameFilterDetailsVisible() const
 /*
     Strip the filters by removing the details, e.g. (*.*).
 */
-QStringList qt_strip_filters(const QStringList &filters)
+QStringList rfb_strip_filters(const QStringList &filters)
 {
     QStringList strippedFilters;
     QRegExp r(QString::fromLatin1(remoteFilterRegExp));
@@ -1239,7 +1239,7 @@ void RemoteFileDialog::setNameFilters(const QStringList &filters)
         return;
 
     if (testOption(HideNameFilterDetails))
-        d->qFileDialogUi->fileTypeCombo->addItems(qt_strip_filters(cleanedFilters));
+        d->qFileDialogUi->fileTypeCombo->addItems(rfb_strip_filters(cleanedFilters));
     else
         d->qFileDialogUi->fileTypeCombo->addItems(cleanedFilters);
 
@@ -1271,7 +1271,7 @@ void RemoteFileDialog::selectNameFilter(const QString &filter)
     d->options->setInitiallySelectedNameFilter(filter);
     int i = -1;
     if (testOption(HideNameFilterDetails)) {
-        const QStringList filters = qt_strip_filters(qt_make_filter_list(filter));
+        const QStringList filters = rfb_strip_filters(rfb_make_filter_list(filter));
         if (!filters.isEmpty())
             i = d->qFileDialogUi->fileTypeCombo->findText(filters.first());
     } else {

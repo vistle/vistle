@@ -63,10 +63,10 @@ QT_BEGIN_NAMESPACE
 
 class AbstractFileSystemModel;
 
-class QSideBarDelegate : public QStyledItemDelegate
+class RFBSideBarDelegate : public QStyledItemDelegate
 {
  public:
-     QSideBarDelegate(QWidget *parent = 0) : QStyledItemDelegate(parent) {}
+     RFBSideBarDelegate(QWidget *parent = 0) : QStyledItemDelegate(parent) {}
      void initStyleOption(QStyleOptionViewItem *option,
                           const QModelIndex &index) const override;
 };
@@ -74,7 +74,7 @@ class QSideBarDelegate : public QStyledItemDelegate
 class Q_AUTOTEST_EXPORT RemoteUrlModel : public QStandardItemModel
 {
     Q_OBJECT
-    friend class QSidebar;
+    friend class RFBSidebar;
 
 public:
     enum Roles {
@@ -122,7 +122,7 @@ private:
 };
 Q_DECLARE_TYPEINFO(RemoteUrlModel::WatchItem, Q_MOVABLE_TYPE);
 
-class Q_AUTOTEST_EXPORT QSidebar : public QListView
+class Q_AUTOTEST_EXPORT RFBSidebar : public QListView
 {
     Q_OBJECT
 
@@ -130,9 +130,9 @@ Q_SIGNALS:
     void goToUrl(const QUrl &url);
 
 public:
-    QSidebar(QWidget *parent = 0);
+    RFBSidebar(QWidget *parent = 0);
     void setModelAndUrls(AbstractFileSystemModel *model, const QList<QUrl> &newUrls);
-    ~QSidebar();
+    ~RFBSidebar();
 
     QSize sizeHint() const override;
 

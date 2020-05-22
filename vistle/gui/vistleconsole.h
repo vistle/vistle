@@ -83,20 +83,22 @@ private:
 
     //! the instance
     static VistleConsole *s_instance;
-    pybind11::object &locals();
-
-
-private:
-    //! function to check if current command compiled and if not hinted for a multiline statement
-    bool py_check_for_unexpected_eof();
 
     //! string holding the current command
     QString command;
 
     //! number of lines associated with current command
     int lines = 0;
+
+#ifdef HAVE_PYTHON
+    pybind11::object &locals();
     std::unique_ptr<pybind11::object> m_locals;
+
+    //! function to check if current command compiled and if not hinted for a multiline statement
+    bool py_check_for_unexpected_eof();
+#endif
 };
 
 } // namespace gui
+
 #endif

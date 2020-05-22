@@ -1,5 +1,7 @@
+#ifdef HAVE_PYTHON
 #include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
+#endif
 #include "uicontroller.h"
 #include "modifieddialog.h"
 #include "dataflownetwork.h"
@@ -56,12 +58,16 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_mainWindow->setQuitOnExit(quitOnExit);
 
    m_ui = new vistle::UserInterface(host, port, &m_observer);
+#ifdef HAVE_PYTHON
    m_python = new vistle::PythonInterface("Vistle GUI");
+#endif
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
+#ifdef HAVE_PYTHON
    m_pythonMod = new vistle::PythonModule(m_vistleConnection);
    m_pythonDir = dir::share(dir::prefix(argc, argv));
+#endif
    m_thread = new std::thread(std::ref(*m_vistleConnection));
 
    m_mainWindow->parameters()->setVistleConnection(m_vistleConnection);
@@ -132,9 +138,13 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 }
 
 void UiController::init() {
+#ifdef HAVE_PYTHON
    m_python->init();
+#endif
    m_mainWindow->m_console->init();
+#ifdef HAVE_PYTHON
    m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
+#endif
 
    moduleSelectionChanged();
 }
@@ -157,11 +167,13 @@ void UiController::finish() {
 
    m_mainWindow->m_console->finish();
 
+#ifdef HAVE_PYTHON
    delete m_pythonMod;
    m_pythonMod = nullptr;
 
    delete m_python;
    m_python = nullptr;
+#endif
 
    delete m_mainWindow;
    m_mainWindow = nullptr;
@@ -222,7 +234,9 @@ void UiController::loadDataFlowNetwork()
    m_observer.resetModificationCount();
    clearDataFlowNetwork();
 
+#ifdef HAVE_PYTHON
    vistle::PythonInterface::the().exec_file(filename.toStdString());
+#endif
 
    setCurrentFile(filename);
    m_observer.resetModificationCount();
@@ -241,7 +255,9 @@ void UiController::saveDataFlowNetwork(const QString &filename)
       std::string cmd = "save(\"";
       cmd += filename.toStdString();
       cmd += "\")";
+#ifdef HAVE_PYTHON
       vistle::PythonInterface::the().exec(cmd);
+#endif
       m_observer.resetModificationCount();
    }
 }

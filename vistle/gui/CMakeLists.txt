@@ -26,9 +26,13 @@ add_subdirectory(remotefilebrowser)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-include_directories(SYSTEM
-  ${PYTHON_INCLUDE_PATH}
-)
+if (PYTHONLIBS_FOUND)
+    add_definitions(-DHAVE_PYTHON)
+    include_directories(SYSTEM
+        ${PYTHON_INCLUDE_PATH}
+        )
+endif()
+
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
   .
@@ -108,9 +112,9 @@ vistle_add_executable(${gui_name}
 qt_use_modules(${gui_name} Widgets)
 
 target_link_libraries(${gui_name}
+  PRIVATE
   ${QT_LIBRARIES}
   ${Boost_LIBRARIES}
-  ${PYTHON_LIBRARIES}
   vistle_util
   vistle_core
   vistle_userinterface
@@ -118,6 +122,13 @@ target_link_libraries(${gui_name}
   vistle_remotefiledialog
 )
 
+if (PYTHONLIBS_FOUND)
+    target_link_libraries(${gui_name}
+        PRIVATE
+        ${PYTHON_LIBRARIES}
+    )
+endif()
+
 if (APPLE)
-  target_link_libraries(${gui_name} "-framework AppKit")
+    target_link_libraries(${gui_name} PRIVATE "-framework AppKit")
 endif()

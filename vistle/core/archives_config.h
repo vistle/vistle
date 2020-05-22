@@ -79,8 +79,10 @@ typename archive_helper<typename archive_tag<Archive>::type>::template ArrayWrap
 } // namespace vistle
 
 #ifdef USE_BOOST_ARCHIVE
+#ifndef NO_MPI
 #include <boost/mpi/packed_iarchive.hpp>
 #include <boost/mpi/packed_oarchive.hpp>
+#endif
 
 #include <boost/serialization/nvp.hpp>
 #include <boost/serialization/array.hpp>
@@ -104,6 +106,7 @@ template<>
 struct archive_tag<boost_iarchive> {
     typedef boost_tag type;
 };
+#ifndef NO_MPI
 template<>
 struct archive_tag<boost::mpi::packed_oarchive> {
     typedef boost_tag type;
@@ -112,6 +115,7 @@ template<>
 struct archive_tag<boost::mpi::packed_iarchive> {
     typedef boost_tag type;
 };
+#endif
 
 template <>
 struct archive_helper<boost_tag> {

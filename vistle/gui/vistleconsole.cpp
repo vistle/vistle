@@ -27,25 +27,33 @@
 
 // modified by YoungTaek Oh.
 
+
 #include <cstdio>
+#ifdef HAVE_PYTHON
 #include <pybind11/eval.h>
 #include <pybind11/embed.h>
 #include <util/pybind.h>
+#endif
 #include "vistleconsole.h"
+#ifdef HAVE_PYTHON
 #include <userinterface/pythonmodule.h>
 #include <userinterface/pythoninterface.h>
+#endif
 #include <core/message.h>
 #include <core/messages.h>
 
 #include <QApplication>
 #include <QDebug>
 
+#ifdef HAVE_PYTHON
 namespace py = pybind11;
+#endif
 
 namespace gui {
 
 static QString resultString;
 
+#ifdef HAVE_PYTHON
 class Redirector {
    bool m_stderr;
 
@@ -82,6 +90,7 @@ PYBIND11_EMBEDDED_MODULE(_redirector, m)
             .def(py::init<bool>())
             .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
 }
+#endif
 
 static void clear()
 {
@@ -128,6 +137,7 @@ static std::string raw_input(const std::string &prompt)
    return ret;
 }
 
+#ifdef HAVE_PYTHON
 PYBIND11_EMBEDDED_MODULE(_console, m)
 {
    m.def("clear", clear, "clear the console");
@@ -138,6 +148,7 @@ PYBIND11_EMBEDDED_MODULE(_console, m)
    m.def("quit", quit, "print information about quitting");
    m.def("raw_input", raw_input, "handle raw input");
 }
+#endif
 
 void VistleConsole::printHistory()
 {
@@ -218,6 +229,8 @@ VistleConsole::VistleConsole(QWidget *parent)
 
 void VistleConsole::init() {
 
+#ifdef HAVE_PYTHON
+
 #if 0
 #if PY_VERSION_HEX >= 0x03000000
     PyImport_AppendInittab("_redirector", PyInit__redirector);
@@ -281,13 +294,17 @@ void VistleConsole::init() {
     } catch (...) {
        std::cerr << "error running Python initialisation" << std::endl;
     }
+#endif
 }
 
 void VistleConsole::finish()
 {
+#ifdef HAVE_PYTHON
     m_locals.reset();
+#endif
 }
 
+#ifdef HAVE_PYTHON
 namespace {
 
 std::string python2String(PyObject *obj, bool *ok=nullptr) {
@@ -352,6 +369,7 @@ VistleConsole::py_check_for_unexpected_eof()
     Py_XDECREF(errtraceback);    /* already NULL'd out */
     return false;
 }
+#endif
 
 //Desctructor
 VistleConsole::~VistleConsole()
@@ -363,6 +381,7 @@ VistleConsole::~VistleConsole()
 //retrieve back results using the python internal stdout/err redirectory (see above)
 QString VistleConsole::interpretCommand(const QString &command, int *res)
 {
+#ifdef HAVE_PYTHON
     PyObject* py_result = nullptr;
     bool multiline=false;
     *res = 0;
@@ -437,10 +456,12 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
         QConsole::interpretCommand(command, res);
         return "";
     }
+#endif
 
     return "";
 }
 
+#ifdef HAVE_PYTHON
 pybind11::object &VistleConsole::locals()
 {
     if (!m_locals)
@@ -455,15 +476,16 @@ pybind11::object &VistleConsole::locals()
             std::cerr << "error importing __main__" << std::endl;
         }
     }
-
     return *m_locals.get();
 }
+#endif
 
 QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
 {
    prefix = "";
 
    QStringList completions;
+#ifdef HAVE_PYTHON
    if (!cmd.isEmpty()) {
       for (int n=0; ; ++n) {
          std::stringstream str;
@@ -501,6 +523,7 @@ QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
       }
    }
    completions.removeDuplicates();
+#endif
    return completions;
 }
 
