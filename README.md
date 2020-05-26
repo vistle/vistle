@@ -17,7 +17,10 @@ Getting Vistle
 
 Getting Vistle is as easy as
 
-      git clone https://github.com/vistle/vistle.git --recursive
+		git clone --recursive https://github.com/vistle/vistle.git
+      
+If you need to update an existing working copy, then change to its directory and issue the following commands:
+      
 	  git submodule sync
 	  git submodule update --init --recursive
 
@@ -56,12 +59,9 @@ Build Requirements
 
 - **COVISE/OpenCOVER**:
   a version of COVISE including OpenCOVER compiled by you is necessary, get it from
-  [GitHub](https://github.com/hlrs-vis/covise), needed for:
-  
-    - ReadCovise module
-    - COVER module and COVER plug-ins
+  [GitHub](https://github.com/hlrs-vis/covise), needed for the COVER module and COVER plug-ins
 
-  In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug=ins
+  In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins
   should go.
 
 - **OpenSceneGraph**:
@@ -127,6 +127,7 @@ on Windows) somewhere in your `PATH`. It could be as simple as
       mpirun "$@"
 
 But it also might require invoking your batch system.
+An example is provided in `vistle/bin`.
 
 For COVER to find its plug-ins, you should add the directory from
 `COVISEDESTDIR` to `COVISE_PATH`.
