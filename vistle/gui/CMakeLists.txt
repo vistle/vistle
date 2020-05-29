@@ -110,12 +110,12 @@ vistle_add_executable(${gui_name}
   ${GUI_QRC_SOURCES})
 
 target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
-target_link_libraries(${gui_name} PRIVATE PRIVATE Threads::Threads)
+target_link_libraries(${gui_name} PRIVATE Threads::Threads)
 
 target_link_libraries(${gui_name}
   PRIVATE
   ${QT_LIBRARIES}
-  ${Boost_LIBRARIES}
+  Boost::boost
   vistle_util
   vistle_core
   vistle_userinterface

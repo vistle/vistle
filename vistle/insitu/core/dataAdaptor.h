@@ -1,12 +1,18 @@
 #ifndef VISTLE_SENSEI_DATAADAPTOR_H
 #define VISTLE_SENSEI_DATAADAPTOR_H
 
+#include "export.h"
+
 #include <string>
 #include <vector>
 #include <map>
-#include <core/object.h>
-#include <core/database.h>
-#include <core/unstr.h>
+#include <array>
+
+
+#include <core/index.h>
+#include <core/scalar.h>
+
+
 namespace vistle {
 namespace insitu {
 	enum class Dimension { //castable to int
@@ -32,52 +38,48 @@ namespace insitu {
 		, Simulation
 		, Vistle
 	};
-	struct MetaData {
+	enum class DataMapping {
+		Unspecified
+		, Element
+		,Vertex
+
+	};
+
+	enum class MeshType {
+		Unknown
+		,Unstructured
+		,Uniform
+		,Rectilinear
+		,Structured
+		,Multi
+	};
+
+
+	struct V_INSITUCOREEXPORT MetaData {
 		std::vector<std::string> meshes;
 		std::vector<std::pair<std::string, size_t>> variables; //variable and the index to the mesh it belongs to
 
 	};
 
-	struct Array {
+	struct V_INSITUCOREEXPORT Array {
 		std::string name;
 		size_t size;
-		vistle::DataBase::Mapping centering = vistle::DataBase::Mapping::Unspecified;
+		DataMapping mapping = DataMapping::Unspecified;
 		Owner owner = Owner::Unknown;
 		DataType dataType = DataType::INVALID;
 		void* data;
-		~Array() {
-			if (owner == Owner::Vistle)
-			{
-				free(data);
-			}
-		}
+		~Array();
 	};
 
-	struct Mesh {
+	struct V_INSITUCOREEXPORT Mesh {
 		Dimension dim = Dimension::d3D;
 		bool globalView = false;
 		bool interleaved = false; // if true x,y and z coordinates are interleaved in data[0]
 		std::string name;
-		vistle::Object::Type type = vistle::Object::Type::UNKNOWN;
-		size_t numVerts() const {
-			if (interleaved)
-			{
-				size_t s = 1;
-				for (size_t i = 0; i < 3; i++)
-				{
-					s *= std::max(sizes[0], (size_t)1);
-				}
-				assert(data[0].size * static_cast<int>(dim) == s);
-				return s;
-			}
-			else
-			{
-				assert(data[0].size == data[1].size && data[0].size == data[2].size);
-				return data[0].size;
-			}
-		}
+		MeshType type = MeshType::Unknown;
+		size_t numVerts() const;
 
-		vistle::DataBase::Mapping coordinateType = vistle::DataBase::Mapping::Unspecified;
+		DataMapping mapping = DataMapping::Unspecified;
 		size_t blockNumber = 0;
 		size_t numPoints = 0; // total number of points in all blocks
 		size_t numCells = 0; // total number of cells in all blocks 
@@ -90,7 +92,7 @@ namespace insitu {
 
 	};
 
-	struct UnstructuredMesh : public Mesh
+	struct V_INSITUCOREEXPORT UnstructuredMesh : public Mesh
 	{
 		//types are void and will be converted with ...ToVistle function;
 		Array cl;
@@ -103,10 +105,10 @@ namespace insitu {
 
 	};
 
-	struct MultiMesh : public Mesh
+	struct V_INSITUCOREEXPORT MultiMesh : public Mesh
 	{
 
-		vistle::Object::Type type = vistle::Object::Type::PLACEHOLDER;
+		MeshType type = MeshType::Multi;
 
 		const int* blockIndices = nullptr; //global block indicees for the local blocks
 		size_t numBlocks = 0;
@@ -119,7 +121,7 @@ namespace insitu {
 		bool combine = false; //the meshes shall be combined to a single unstructured grid
 		std::vector<Mesh> meshes;
 	};
-	struct DataAdaptor {
+	struct V_INSITUCOREEXPORT DataAdaptor {
 		std::vector<Mesh> meshes;
 		std::map<std::string, std::vector<Array>> fieldData; //mapped to the according mesh
 

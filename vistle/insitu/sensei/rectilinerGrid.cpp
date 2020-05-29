@@ -8,7 +8,7 @@ using namespace vistle::insitu::sensei;
 using namespace vistle::insitu;
 vistle::RectilinearGrid::const_ptr vistle::insitu::sensei::makeRectilinearGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
 {
-	assert(mesh.type == vistle::Object::RECTILINEARGRID);
+	assert(mesh.type == MeshType::Rectilinear);
 	
 	vistle::RectilinearGrid::ptr grid;
 	if (mesh.interleaved)

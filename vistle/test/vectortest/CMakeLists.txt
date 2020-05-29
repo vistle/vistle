@@ -1,14 +1,11 @@
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-)
-include_directories(
-        ../..
-)
 
 add_executable(vectortest vectortest.cpp)
 target_link_libraries(vectortest
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_core
+        PRIVATE Boost::boost
+        PRIVATE Boost::serialization
+        PRIVATE MPI::MPI_C
+        PRIVATE vistle_core
+)
+target_include_directories(vectortest
+        PRIVATE ../..
 )

@@ -15,7 +15,7 @@ target_link_libraries(LibSimController
 	vistle_insitu_message
 	vistle_insitu_module
 	vistle_libsim_connect
-	${Boost_LIBRARIES}
+	Boost::boost
 	)
 
 if(NOT VISTLE_MULTI_PROCESS)
@@ -23,4 +23,5 @@ target_link_libraries(LibSimController
 		vistle_libsim_engine_interface
 		)
 endif()
+vistle_install_docs(README.md)
 

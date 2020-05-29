@@ -1,19 +1,12 @@
 vistle_find_package(XCB)
 vistle_find_package(X11)
 
-include_directories(SYSTEM
-        ${MPI_C_INCLUDE_PATH}
-)
-
-if (VISTLE_SHM_PER_RANK)
-   add_definitions(-DSHMPERRANK)
-endif()
 
 # Vistle cleaner
 vistle_add_executable(clean_vistle clean_vistle.cpp)
 target_link_libraries(clean_vistle
-        ${Boost_SYSTEM_LIBRARY}
-        ${MPI_C_LIBRARIES}
+        Boost::system
+        MPI::MPI_C
         vistle_core
         vistle_boost_mpi
 )
@@ -24,23 +17,7 @@ set(SOURCES
 )
 
 if (NOT VISTLE_MULTI_PROCESS)
-    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
-    if (APPLE)
-        set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
-    endif()
-    set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
-    vistle_find_package(Qt5Core)
-    vistle_find_package(Qt5Widgets)
-    if (Qt5Widgets_FOUND)
-        if (APPLE OR WIN32 OR XCB_FOUND)
-            set(USE_QT TRUE)
-            add_definitions(-DHAVE_QT)
-            if (X11_ICE_FOUND)
-		add_definitions(-DHAVE_X11_ICE)
-                include_directories(X11_ICE_INCLUDE_PATH)
-            endif()
-        endif()
-    endif()
+
 endif()
 
 set(LIB_SOURCES
@@ -69,18 +46,38 @@ if (USE_QT)
 endif()
 
 if (NOT VISTLE_MULTI_PROCESS)
-vistle_add_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
-
-target_link_libraries(vistle_clustermanager
-        vistle_boost_mpi
-        ${Boost_SYSTEM_LIBRARY}
-        ${MPI_C_LIBRARIES}
-        vistle_control
-        vistle_util
-        vistle_core
-        vistle_boost_mpi
-        Threads::Threads
-)
+	vistle_add_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
+	vistle_export_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
+    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+    if (APPLE)
+        set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
+    endif()
+    set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
+    vistle_find_package(Qt5Core)
+    vistle_find_package(Qt5Widgets)
+    if (Qt5Widgets_FOUND)
+        if (APPLE OR WIN32 OR XCB_FOUND)
+            set(USE_QT TRUE)
+            target_compile_definitions(vistle_clustermanager 
+                PRIVATE -DHAVE_QT)
+            if (X11_ICE_FOUND)
+				target_compile_definitions(vistle_clustermanager
+                    PRIVATE -DHAVE_X11_ICE)
+                target_include_directories(vistle_clustermanager 
+                    PRIVATE X11_ICE_INCLUDE_PATH)
+            endif()
+        endif()
+    endif()
+	target_link_libraries(vistle_clustermanager
+		vistle_boost_mpi
+		Boost::system
+		MPI::MPI_C
+		vistle_control
+		vistle_util
+		vistle_core
+		vistle_boost_mpi
+		Threads::Threads
+	)
 endif()
 
 if(VISTLE_MULTI_PROCESS)
@@ -91,14 +88,14 @@ endif()
 vistle_add_executable(vistle_manager ${SOURCES})
 
 target_link_libraries(vistle_manager
-		vistle_boost_mpi
-        ${Boost_SYSTEM_LIBRARY}
-        ${MPI_C_LIBRARIES}
-        vistle_control
-        vistle_util
-        vistle_core
-        vistle_boost_mpi
-        Threads::Threads
+	vistle_boost_mpi
+	Boost::system
+	MPI::MPI_C
+	vistle_control
+	vistle_util
+	vistle_core
+	vistle_boost_mpi
+	Threads::Threads
 )
 
 if (NOT VISTLE_MULTI_PROCESS)
@@ -130,4 +127,15 @@ if (NOT VISTLE_MULTI_PROCESS)
             #target_link_libraries(vistle_clustermanager $<TARGET_OBJECTS:${m}>)
         endforeach()
     endif()
+endif()
+
+if (VISTLE_SHM_PER_RANK)
+   target_compile_definitions(clean_vistle
+        PRIVATE -DSHMPERRANK)
+
+    target_compile_definitions(vistle_clustermanager
+                            PRIVATE -DSHMPERRANK)
+
+    target_compile_definitions(vistle_manager
+        PRIVATE -DSHMPERRANK)
 endif()

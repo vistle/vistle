@@ -1,14 +1,7 @@
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-include_directories(SYSTEM
-   ${Boost_INCLUDE_DIRS}
-   ../../../3rdparty/qt-solutions/qtpropertybrowser/src
-)
-include_directories(
-   ../..
-   ${CMAKE_CURRENT_BINARY_DIR}
-)
+
 set(CMAKE_INCLUDE_CURRENT_DIR TRUE)
 
 set(SOURCES
@@ -45,11 +38,22 @@ set(FORMS
 )
 
 qt5_wrap_ui(UI_SRCS ${FORMS})
-add_definitions(${QT_DEFINITIONS})
-add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+
 add_library(vistle_remotefiledialog STATIC
   ${SOURCES} 
   ${UI_SRCS})
+
+target_compile_definitions(vistle_remotefiledialog PRIVATE ${QT_DEFINITIONS})
+target_compile_definitions(vistle_remotefiledialog PRIVATE "-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+
+target_include_directories(vistle_remotefiledialog SYSTEM
+   #PRIVATE ${Boost_INCLUDE_DIRS}
+   PRIVATE ../../../3rdparty/qt-solutions/qtpropertybrowser/src
+)
+target_include_directories(vistle_remotefiledialog 
+   PRIVATE ../..
+   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
 

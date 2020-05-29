@@ -2,7 +2,9 @@
 #define VISTLE_SENSEI_H
 
 
-#include <vistle_sensei_Export.h>
+#include "export.h"
+#include "senseiInterface.h"
+
 #include <mpi.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
@@ -21,20 +23,12 @@ class  MessageQueue;
 
 namespace insitu {
 namespace sensei {
-class Callbacks {
-public:
-	Callbacks(Mesh(*getMesh)(const std::string&), Array(*getVar)(const std::string&));
-	Mesh getMesh(const std::string& name);
-	Array getVar(const std::string& name);
-private:
-	Mesh(*m_getMesh)(const std::string&) = nullptr;
-	Array(*m_getVar)(const std::string&) = nullptr;
-};
-class V_INSITU_SENSEI_EXPORT SenseiAdapter
+
+class SenseiAdapter : public SenseiInterface
 {
 public:
 
-	bool Initialize(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo);
+	SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo);
 	bool Execute(size_t timestep);
 	bool Finalize();
 

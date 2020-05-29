@@ -4,7 +4,7 @@ using namespace vistle::insitu::sensei;
 using namespace vistle::insitu;
 vistle::StructuredGrid::const_ptr vistle::insitu::sensei::makeStructuredGrid(const Mesh& mesh, message::SyncShmIDs& syncIDs, size_t timestep)
 {
-	assert(mesh.type == vistle::Object::STRUCTUREDGRID);
+	assert(mesh.type == MeshType::Structured);
 
 	vistle::StructuredGrid::ptr grid;
 	if (mesh.interleaved)

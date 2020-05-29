@@ -1,7 +1,6 @@
 #ifndef INSITU_MESSAGE_H
 #define INSITU_MESSAGE_H
-
-#include <vistle_insitu_message_export.h>
+#include "export.h"
 
 #include <string>
 #include <array>
@@ -29,7 +28,7 @@ namespace insitu {
 
 namespace message {
 
-enum class VISTLE_INSITU_MESSAGE_EXPORT InSituMessageType {
+enum class V_INSITUMESSAGEEXPORT InSituMessageType {
     Invalid
     , ShmInit
     , AddObject
@@ -50,7 +49,7 @@ enum class VISTLE_INSITU_MESSAGE_EXPORT InSituMessageType {
 };
 
 class Message;
-struct VISTLE_INSITU_MESSAGE_EXPORT InSituMessageBase {
+struct V_INSITUMESSAGEEXPORT InSituMessageBase {
     InSituMessageBase(InSituMessageType t) :m_type(t) {};
     InSituMessageType type() const;
 protected:
@@ -61,7 +60,7 @@ protected:
 #define COMMA ,
 
 #define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType,  payloadType)\
-struct VISTLE_INSITU_MESSAGE_EXPORT messageType : public InSituMessageBase\
+struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase\
 {\
     typedef payloadType value_type;\
     friend class insitu::message::Message; \
@@ -80,7 +79,7 @@ private:\
 
 
 #define DECLARE_ENGINE_MESSAGE(messageType)\
-struct VISTLE_INSITU_MESSAGE_EXPORT messageType : public InSituMessageBase {\
+struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase {\
      const InSituMessageType type = InSituMessageType::messageType;\
     messageType() :InSituMessageBase(type) {}\
     ARCHIVE_ACCESS\
@@ -108,7 +107,7 @@ DECLARE_ENGINE_MESSAGE_WITH_PARAM(ModuleID, int)
 #endif
 
 
-struct VISTLE_INSITU_MESSAGE_EXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
+struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
     InSituMessage(InSituMessageType t) :m_ismType(t) {}
     InSituMessageType ismType() const {
         return m_ismType;
@@ -118,7 +117,7 @@ private:
 };
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");
 
-class VISTLE_INSITU_MESSAGE_EXPORT Message {
+class V_INSITUMESSAGEEXPORT Message {
 
 public:
     InSituMessageType type() const;

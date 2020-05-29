@@ -1,12 +1,8 @@
 vistle_find_package(GLEW)
 using(GLEW)
 
-include_directories(
-   .. # for VistlePluginUtil
-)
-include_directories(SYSTEM
-   ${Boost_INCLUDE_DIRS}
-)
+
+
 
 set(HEADERS
   DecodeTask.h
@@ -31,6 +27,10 @@ if(NOT WIN32)
 endif()
 
 cover_add_plugin(RhrClient ${HEADER} ${SOURCES})
+
+target_include_directories(RhrClient
+   PRIVATE .. # for VistlePluginUtil
+)
 target_link_libraries(RhrClient VistlePluginUtil ${COVISE_NET_LIBRARY} vistle_rhr vistle_boost_mpi)
 if(UNIX)
    target_link_libraries(RhrClient Threads::Threads)

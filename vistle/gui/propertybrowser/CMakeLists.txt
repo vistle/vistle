@@ -1,13 +1,6 @@
 set(CMAKE_AUTOMOC ON)
 
-include_directories(SYSTEM
-   ${Boost_INCLUDE_DIRS}
-   ../../../3rdparty/qt-solutions/qtpropertybrowser/src
-)
-include_directories(
-   ../..
-   ${CMAKE_CURRENT_BINARY_DIR}
-)
+
 
 set(SOURCES
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src/qtbuttonpropertybrowser.cpp
@@ -61,14 +54,24 @@ set(FORMS
 )
 
 qt5_wrap_ui(UI_SRCS ${FORMS})
-add_definitions(${QT_DEFINITIONS})
-add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+
 add_library(vistle_propertybrowser STATIC
   ${SOURCES} 
   ${UI_SRCS})
 
-target_link_libraries(vistle_propertybrowser PRIVATE Qt5::Widgets)
+target_compile_definitions(vistle_propertybrowser PRIVATE ${QT_DEFINITIONS})
+target_compile_definitions(vistle_propertybrowser PRIVATE "-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+
+
+target_include_directories(vistle_propertybrowser SYSTEM
+   #PRIVATE ${Boost_INCLUDE_DIRS}
+   PRIVATE ../../../3rdparty/qt-solutions/qtpropertybrowser/src
+)
+target_include_directories(vistle_propertybrowser
+   PRIVATE ../..
+   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 target_link_libraries(vistle_propertybrowser
-    PRIVATE ${QT_LIBRARIES} vistle_core
+    PRIVATE ${QT_LIBRARIES} vistle_core Qt5::Widgets
 )

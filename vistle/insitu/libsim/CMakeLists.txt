@@ -3,15 +3,18 @@ option(LIBSIM_PARALLEL "build parallel instead of serial LibSim Interface" ON)
 
 if(NOT VISTLE_MULTI_PROCESS)
 vistle_add_library(vistle_libsim_engine_interface EngineInterface.h EngineInterface.cpp)
-target_link_libraries(vistle_libsim_engine_interface
-        ${Boost_LIBRARIES}
+vistle_export_library(vistle_libsim_engine_interface EngineInterface.h EngineInterface.cpp)
+vistle_link_libraries(vistle_libsim_engine_interface
+        PRIVATE Boost::boost
+        PRIVATE Threads::Threads
 )
 endif()
 
 vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
+vistle_export_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
 target_link_libraries(vistle_libsim_connect
-        ${Boost_LIBRARIES}
-        Threads::Threads
+        PRIVATE Boost::boost
+        PRIVATE Threads::Threads
 )
 
 if(LIBSIM_DEBUG)
@@ -111,25 +114,26 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 endif()
 
 vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
-
-target_link_libraries(${LIBNAME}
-		vistle_insitu_core
-		vistle_module
-		vistle_util
-		vistle_control
-        vistle_core
-        vistle_boost_mpi
-		vistle_insitu_message
-		${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        Threads::Threads
+vistle_export_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
+vistle_link_libraries(${LIBNAME}
+		PRIVATE vistle_insitu_core
+		PRIVATE vistle_module
+		PRIVATE vistle_util
+		#PRIVATE vistle_control
+        PRIVATE vistle_core
+        PRIVATE vistle_boost_mpi
+		PRIVATE vistle_insitu_message
+		PRIVATE Boost::boost
+        PRIVATE MPI::MPI_C
+        PRIVATE Threads::Threads
 		)
 		
 if(NOT VISTLE_MULTI_PROCESS)
 target_link_libraries(${LIBNAME}
-		vistle_clustermanager
-		vistle_libsim_engine_interface
+		PRIVATE vistle_clustermanager
+		PRIVATE vistle_libsim_engine_interface
 		)
 endif()
 
+vistle_install_docs(README.md)
 

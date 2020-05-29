@@ -14,7 +14,7 @@ target_link_libraries(SenseiController
 	vistle_util
 	vistle_insitu_message
 	vistle_insitu_module
-	${Boost_LIBRARIES}
+	Boost::boost
 	)
 
 

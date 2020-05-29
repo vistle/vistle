@@ -1,5 +1,5 @@
-#include "sensei.h"
-
+#include "senseiImpl.h"
+#include "exeption.h"
 #include "rectilinerGrid.h"
 #include "unstructuredGrid.h"
 #include "structuredGrid.h"
@@ -17,14 +17,14 @@ using std::endl;
 using namespace vistle::insitu;
 using namespace vistle::insitu::sensei;
 using namespace vistle::insitu::message;
-bool SenseiAdapter::Initialize(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo)
+SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo)
+	:m_callbacks(cbs)
+	,m_metaData(std::move(meta))
+	,m_moduleInfo(moduleInfo)
+	,m_rank(rank)
+	,m_mpiSize(mpiSize)
 {
-	m_callbacks = cbs;
-	m_metaData = std::move(meta);
-	m_moduleInfo = moduleInfo;
-	m_rank = rank;
-	m_mpiSize = mpiSize;
-	
+
 	try
 	{
 		m_messageHandler.initialize();
@@ -32,7 +32,7 @@ bool SenseiAdapter::Initialize(bool paused, size_t rank, size_t mpiSize, MetaDat
 	}
 	catch (...)
 	{
-		return false;
+		throw vistle::insitu::sensei::Exeption() << "failed to crate connection facilities for Vistle";
 	}
 	if (paused) //let the simulation wait for the module
 	{
@@ -41,7 +41,6 @@ bool SenseiAdapter::Initialize(bool paused, size_t rank, size_t mpiSize, MetaDat
 			recvAndHandeMessage(true);
 		}
 	}
-	return true;
 }
 
 bool SenseiAdapter::Execute(size_t timestep)
@@ -58,6 +57,16 @@ bool SenseiAdapter::Execute(size_t timestep)
 			sendMeshToModule(mesh);
 		}
 	}
+	return false;
+}
+
+bool vistle::insitu::sensei::SenseiAdapter::Finalize()
+{
+	return false;
+}
+
+bool vistle::insitu::sensei::SenseiAdapter::processTimestep(size_t timestep)
+{
 	return false;
 }
 
@@ -258,7 +267,7 @@ void SenseiAdapter::sendMeshToModule(const Mesh& mesh)
 {
 	switch (mesh.type)
 	{
-	case vistle::Object::PLACEHOLDER:
+	case MeshType::Multi:
 	{
 		auto multiMesh = dynamic_cast<const MultiMesh*>(&mesh);
 		if (multiMesh)
@@ -270,7 +279,7 @@ void SenseiAdapter::sendMeshToModule(const Mesh& mesh)
 		}
 	}
 		break;
-		case vistle::Object::UNSTRUCTUREDGRID:
+		case MeshType::Unstructured:
 	{
 		auto unstr = dynamic_cast<const UnstructuredMesh*>(&mesh);
 		if (unstr)
@@ -285,20 +294,20 @@ void SenseiAdapter::sendMeshToModule(const Mesh& mesh)
 
 	}
 		break;
-	case vistle::Object::RECTILINEARGRID:
+	case MeshType::Rectilinear:
 	{
 		auto m = makeRectilinearGrid(mesh, m_shmIDs, m_currTimestep);
 		sendObject(mesh.name, m);
 	}
 		break;
-	case vistle::Object::STRUCTUREDGRID:
+	case MeshType::Structured:
 	{
 		auto m = makeStructuredGrid(mesh, m_shmIDs, m_currTimestep);
 		sendObject(mesh.name, m);
 	}
 		break;
 	default:
-		CERR << "sendMeshToModule: mesh type " << mesh.type << " not implemented!" << endl;
+		CERR << "sendMeshToModule: mesh type " << static_cast<int>(mesh.type) << " not implemented!" << endl;
 		break;
 	}
 
