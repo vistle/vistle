@@ -130,6 +130,7 @@ endif()
 add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
 # use this instead of FIND_PACKAGE to prefer Package in $PACKAGE_HOME and $EXTERNLIBS/package
+
 macro(vistle_find_package package)
    set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
    set(SAVED_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
@@ -208,9 +209,8 @@ endif(WIN32)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 if (NOT VISTLE_GUI_ONLY)
-
     find_package(OpenMP)
-
+    
     option(VISTLE_USE_PYTHON3 "use Python 3" ON)
     if(VISTLE_USE_PYTHON3)
         set(PythonLibs_FIND_VERSION_MAJOR 3)
@@ -284,10 +284,31 @@ set (Boost_USE_STATIC_RUNTIME OFF)
 ENDIF(WIN32)
 
 vistle_find_package(Boost 1.59 REQUIRED
-    COMPONENTS system serialization program_options date_time filesystem
-    chrono thread regex
+    COMPONENTS 
+        system 
+        serialization 
+        program_options 
+        date_time 
+        filesystem
+        chrono 
+        thread 
+        regex
     OPTIONAL_COMPONENTS ${BOOST_OPT})
 	
+if( BOOST_FOUND )
+	set_target_properties( Boost::boost
+		Boost::system
+		Boost::serialization
+		Boost::program_options
+		Boost::date_time
+		Boost::filesystem
+
+		Boost::chrono
+
+		Boost::thread
+		Boost::regex
+		PROPERTIES IMPORTED_GLOBAL TRUE )
+endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
@@ -349,7 +370,10 @@ if (NOT CRAY AND NOT VISTLE_GUI_ONLY)
     add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
     add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
     vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
-
+   if(MPI_FOUND)
+       set_target_properties( MPI::MPI_C MPI::MPI_CXX
+		    PROPERTIES IMPORTED_GLOBAL TRUE )
+   endif()
     include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
@@ -395,17 +419,159 @@ if (VISTLE_USE_CUDA AND NOT VISTLE_GUI_ONLY)
    endif (APPLE)
 endif()
 
+
+include(GNUInstallDirs)
 macro(vistle_add_library targetname)
-    add_library(${targetname} ${ARGN})
+
+	add_library(${targetname} ${ARGN})
     set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
+	string(FIND ${targetname} "vistle_" vistle_prefix)
+	if(NOT ${vistle_prefix} EQUAL 0)
+		message(WARNING " missing prefix for " ${targetname} " vistle libraries must be prefixed with vistle_")
+	elseif() #change the vistle_libname to vistle::libname in exported target
+		string(REPLACE "vistle_" "" target_suffix ${targetname})
+		set_target_properties(${targetname} PROPERTIES 
+			EXPORT_NAME ${target_suffix}
+		)
+		add_library(vistle::${target_suffix} ALIAS ${targetname})
+	endif()
+	
     if (CRAY)
        set_property(TARGET ${targetname} APPEND_STRING PROPERTY LINK_FLAGS -Wl,-soname=lib${targetname}.so)
     endif()
-    install(TARGETS ${targetname}
-       LIBRARY DESTINATION ${INSTALL_LIB_DIR}
-       ARCHIVE DESTINATION ${INSTALL_LIB_DIR})
+    if(${CMAKE_VERSION} VERSION_LESS "3.12.4")
+        install(TARGETS ${targetname} EXPORT ${targetname}Targets
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+				     COMPONENT	${targetname}_Runtime
+		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Runtime
+		    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Development
+        )
+    else()
+            install(TARGETS ${targetname} EXPORT ${targetname}Targets
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+				     COMPONENT	${targetname}_Runtime
+		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+					 COMPONENT 	${targetname}_Runtime
+                     NAMELINK_COMPONENT ${targetname}_Development
+		    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Development
+        )
+    endif()
 endmacro(vistle_add_library)
 
+set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
+
+macro(vistle_export_library targetname)
+	
+	
+	string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
+
+	target_include_directories(${targetname}  
+        PRIVATE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/vistle> 
+        PRIVATE  $<INSTALL_INTERFACE:include/vistle> 
+        INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/vistle> 
+        INTERFACE  $<INSTALL_INTERFACE:include/vistle> 
+		)
+	
+	set(header "${ARGN}")
+	list(FILTER	header INCLUDE	REGEX "(\.(h|H|hpp|HPP)$)"	)
+
+	install(
+	  FILES
+		${header}
+	  DESTINATION
+		include/vistle/${directory}
+	  COMPONENT
+		Devel
+	) 
+	set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
+	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")") 
+	message("wrote file " ${config_in_file}) 	
+	configure_file(${config_in_file}
+		"${buildPackageLocation}/${targetname}Config.cmake"
+		COPYONLY)  
+	include(CMakePackageConfigHelpers)
+	write_basic_package_version_file("${targetname}ConfigVersion.cmake"
+	  VERSION "1.0.0"
+	  COMPATIBILITY ExactVersion
+    )
+    configure_file(${CMAKE_CURRENT_BINARY_DIR}/${targetname}ConfigVersion.cmake
+        ${buildPackageLocation}/${targetname}ConfigVersion.cmake
+        COPYONLY)
+	export(EXPORT ${targetname}Targets
+		FILE 		"${buildPackageLocation}/${targetname}Targets.cmake"
+		NAMESPACE 	Vistle::
+	)
+	set(Vislte_ConfigPackageLocation 
+	    ${CMAKE_INSTALL_LIBDIR}/cmake#/${directory}
+	    #CACHE STRING "Path to " ${targetname} " cmake files"
+) 	
+	install(EXPORT ${targetname}Targets
+		FILE		${targetname}Targets.cmake
+		NAMESPACE	Vistle::
+		DESTINATION	${Vislte_ConfigPackageLocation}
+		COMPONENT	${targetname}_Development
+	)
+#	configure_package_config_file(${config_in_file}
+#	"${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
+#	INSTALL_DESTINATION "${Vislte_ConfigPackageLocation}/${targetname}Config.cmake")  
+	install(
+		FILES 
+			"${buildPackageLocation}/${targetname}Config.cmake"
+			"${buildPackageLocation}/${targetname}ConfigVersion.cmake"
+		DESTINATION ${Vislte_ConfigPackageLocation}
+		COMPONENT ${targetname}_Development
+	)
+endmacro(vistle_export_library)
+
+function(prepend_file filename)
+    file(READ ${filename} old_content)
+    file(WRITE ${filename} ${ARGN}  ${old_content})
+endfunction()
+
+
+#additionally adds public and interface dependencies to Config.cmake file
+macro(vistle_target_link_libraries targetname)
+	target_link_libraries(${targetname}
+		${ARGN})
+	set(file_content "include(CMakeFindDependencyMacro)\n")
+    set(file_content ${file_content} "set(oldCMAKE_PREFIX_PATH \${CMAKE_PREFIX_PATH})\n")
+    set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${CMAKE_CURRENT_LIST_DIR} \${CMAKE_PREFIX_PATH})\n") 
+	set(add_next_arg false)
+    set(hasPublicDependencies false)
+    foreach(arg IN ITEMS ${ARGN})
+        if(add_next_arg)
+        	#set(file_content ${file_content} "set(" ${arg} "_DIR \"\${CMAKE_CURRENT_LIST_DIR}\")\n")
+			set(file_content ${file_content} "find_dependency(" ${arg} ")\n") 
+            set(add_next_arg false)
+        elseif(${arg} MATCHES "PUBLIC|INTERFACE")
+            set(add_next_arg true)
+            set(hasPublicDependencies true)
+		endif()
+	endforeach()
+    set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${oldCMAKE_PREFIX_PATH})\n")
+    if(hasPublicDependencies)
+	    prepend_file(${buildPackageLocation}/${targetname}Config.cmake ${file_content})
+    endif()
+endmacro()
+
+macro(vistle_install_docs)
+	string(REPLACE ${PROJECT_BINARY_DIR} "" directory  ${CMAKE_CURRENT_BINARY_DIR})
+	install(
+	  FILES
+		"${ARGN}"
+	  DESTINATION
+		doc/${directory}
+	  COMPONENT
+		Devel
+	) 
+endmacro(vistle_install_docs) 
+
+vistle_install_docs(README.md) 	
 macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
 endmacro(vistle_install_headers)

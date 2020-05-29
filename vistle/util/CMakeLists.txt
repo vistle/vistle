@@ -37,6 +37,7 @@ set(util_HEADERS
    spawnprocess.h
    directory.h
    sleep.h
+   ssize_t.h
    pybind.h
    netpbmimage.h
    listenv4v6.h
@@ -48,26 +49,21 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
-vistle_install_headers(util ${util_HEADERS})
+vistle_export_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
-include_directories(SYSTEM ${BOTAN_INCLUDE_DIRS})
+target_include_directories(vistle_util SYSTEM PRIVATE ${BOTAN_INCLUDE_DIRS})
 
-target_link_libraries(vistle_util
-    PRIVATE ${Boost_SYSTEM_LIBRARY}
+vistle_target_link_libraries(vistle_util
+    PRIVATE Boost::system
+	PUBLIC Boost::filesystem
+	PRIVATE Threads::Threads
+	PRIVATE ${BOTAN_LIBRARIES}
 )
-target_link_libraries(vistle_util
-    PUBLIC ${Boost_FILESYSTEM_LIBRARY}
-)
-target_link_libraries(vistle_util
-    PRIVATE Threads::Threads
-)
-target_link_libraries(vistle_util
-    PRIVATE ${BOTAN_LIBRARIES}
-)
+
 
 find_library(LIBEXECINFO execinfo)
 if (LIBEXECINFO)
-    target_link_libraries(vistle_util
+    vistle_target_link_libraries(vistle_util
         PRIVATE execinfo
     )
 endif()

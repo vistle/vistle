@@ -6,8 +6,8 @@ set(SENSEI_SOURCES
 )
 
 set(SENSEI_HEADER
-  export.h
   exeption.h
+  export.h
   metaData.h
   rectilinerGrid.h
   sensei.h
@@ -15,20 +15,21 @@ set(SENSEI_HEADER
   unstructuredGrid.h
 )
 
-if (VISTLE_SHM_PER_RANK)
-   add_definitions(-DSHMPERRANK)
-endif()
+
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
-target_include_directories(vistle_sensei PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(vistle_sensei
-		PRIVATE vistle_module
+vistle_export_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
+vistle_target_link_libraries(vistle_sensei
 		PRIVATE vistle_util
-		PRIVATE vistle_control
         PRIVATE vistle_core
-        PRIVATE vistle_boost_mpi
 		PRIVATE vistle_insitu_message
 		PUBLIC vistle_insitu_core
-		PRIVATE ${Boost_LIBRARIES}
-		PRIVATE ${MPI_C_LIBRARIES}
+		PRIVATE Boost::boost
+        PRIVATE Boost::serialization
+		PRIVATE MPI::MPI_C
 		)
+
+if (VISTLE_SHM_PER_RANK)
+    target_compile_definitions(vistle_sensei 
+        PRIVATE -DSHMPERRANK)
+endif()

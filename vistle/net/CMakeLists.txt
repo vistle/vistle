@@ -10,14 +10,12 @@ set(net_HEADERS
 )
 
 vistle_add_library(vistle_net ${VISTLE_LIB_TYPE} ${net_SOURCES} ${net_HEADERS})
-vistle_install_headers(net ${net_HEADERS})
+vistle_export_library(vistle_net ${VISTLE_LIB_TYPE} ${net_SOURCES} ${net_HEADERS})
 
 target_link_libraries(vistle_net
-    PRIVATE ${Boost_SYSTEM_LIBRARY}
+    PRIVATE Boost::system
     PRIVATE vistle_util
     PRIVATE vistle_core
+	PRIVATE Threads::Threads
 )
 
-target_link_libraries(vistle_net
-    PRIVATE Threads::Threads
-)

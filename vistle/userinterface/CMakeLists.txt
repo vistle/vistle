@@ -26,10 +26,11 @@ if (PYTHONLIBS_FOUND)
 endif()
 
 vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
-vistle_install_headers(userinterface ${userinterface_HEADERS})
+vistle_export_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+#vistle_install_headers(userinterface ${userinterface_HEADERS})
 target_compile_definitions(vistle_userinterface PRIVATE -DEMBED_PYTHON)
 target_link_libraries(vistle_userinterface
-    PRIVATE ${Boost_SYSTEM_LIBRARY}
+    PRIVATE Boost::system
     PRIVATE ${EXTRA_LIBRARIES}
     PRIVATE vistle_core
     PRIVATE vistle_util
@@ -43,7 +44,7 @@ if (PYTHONLIBS_FOUND)
     pybind11_add_module(_vistle NO_EXTRAS ${userinterface_SOURCES} ${userinterface_HEADERS})
     target_compile_definitions(_vistle PRIVATE -Dvistle_userinterface_EXPORTS)
     target_link_libraries(_vistle PRIVATE
-        PRIVATE ${Boost_SYSTEM_LIBRARY}
+        PRIVATE Boost::system
         PRIVATE ${EXTRA_LIBRARIES}
         PRIVATE vistle_core
         PRIVATE vistle_util

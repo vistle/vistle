@@ -2,18 +2,18 @@ if(NOT VISTLE_USE_SHARED_MEMORY AND NOT VISTLE_MULTI_PROCESS)
     return()
 endif()
 
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-)
-include_directories(
-        ../..
-)
+
 
 add_executable(vistle_shmperf shmperf.cpp)
+
+
+target_include_directories(vistle_shmperf
+        PRIVATE ../..
+)
 target_link_libraries(vistle_shmperf
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_core
-        Threads::Threads
+        PRIVATE Boost::boost
+        PRIVATE Boost::serialization
+        PRIVATE MPI::MPI_C
+        PRIVATE vistle_core
+        PRIVATE Threads::Threads
 )

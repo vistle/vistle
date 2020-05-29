@@ -6,20 +6,6 @@ vistle_find_package(JPEGTURBO)
 
 #use_openmp()
 
-if(JPEGTURBO_FOUND)
-   if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
-      message("vistle_rhr: turbojpeg w/o tjMcuWidth")
-   else()
-      add_definitions(-DHAVE_TURBOJPEG)
-      include_directories(SYSTEM ${JPEGTURBO_INCLUDE_DIR})
-   endif()
-endif()
-
-if(ZFP_FOUND)
-   add_definitions(-DHAVE_ZFP)
-   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
-endif()
-
 set(RHR_SOURCES
    compdecomp.cpp
    depthquant.cpp
@@ -38,9 +24,7 @@ set(RHR_HEADERS
 if(TBB_FOUND)
    set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
-   include_directories(SYSTEM
-        ${TBB_INCLUDE_DIRS}
-   )
+
 endif()
 
 set(RHR_CUDA_SOURCES
@@ -61,35 +45,61 @@ vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} $
 vistle_install_headers(rhr ${RHR_HEADERS})
 
 if(USE_CUDA)
-   target_link_libraries(vistle_rhr ${CUDA_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
+    target_link_libraries(vistle_rhr 
+        PRIVATE ${CUDA_LIBRARIES}
+        PRIVATE ${GLEW_LIBRARIES}
+        PRIVATE ${OPENGL_LIBRARIES})
 endif()
 
 target_link_libraries(vistle_rhr
-        vistle_util
-        vistle_core
-        ${Boost_LIBRARIES}
-        ${JPEG_LIBRARIES}
+       PUBLIC vistle_util
+       PUBLIC vistle_core
+       PRIVATE Boost::boost
+       PRIVATE Boost::serialization
+       PRIVATE ${JPEG_LIBRARIES}
 )
 
+
+if(JPEGTURBO_FOUND)
+   if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
+      message("vistle_rhr: turbojpeg w/o tjMcuWidth")
+   else()
+      target_compile_definitions(vistle_rhr
+        PRIVATE -DHAVE_TURBOJPEG)
+      target_include_directories(vistle_rhr SYSTEM 
+        PRIVATE ${JPEGTURBO_INCLUDE_DIR})
+   endif()
+
+      target_link_libraries(vistle_rhr 
+        PRIVATE ${TURBOJPEG_LIBRARIES})
+endif()
 if (ZLIB_FOUND)
-    target_link_libraries(vistle_rhr ${ZLIB_LIBRARIES})
+    target_link_libraries(vistle_rhr PRIVATE ${ZLIB_LIBRARIES})
 endif()
 
-if (JPEGTURBO_FOUND)
-   target_link_libraries(vistle_rhr ${TURBOJPEG_LIBRARIES})
-endif()
 
 if(TBB_FOUND)
-   target_link_libraries(vistle_rhr ${TBB_LIBRARIES})
+   target_include_directories(vistle_rhr SYSTEM
+        PUBLIC ${TBB_INCLUDE_DIRS}
+   )
+    target_link_libraries(vistle_rhr
+        PUBLIC ${TBB_LIBRARIES})
 endif()
 
 
 if (ZFP_FOUND)
-   target_link_libraries(vistle_rhr ${ZFP_LIBRARIES})
+   target_compile_definitions(vistle_rhr
+        PRIVATE -DHAVE_ZFP)
+   target_include_directories(vistle_rhr SYSTEM 
+        PRIVATE ${ZFP_INCLUDE_DIRS})
+   target_link_libraries(vistle_rhr 
+        PRIVATE ${ZFP_LIBRARIES})
 endif()
 
 add_executable(depthtest depthtest.cpp depthcompare.cpp)
-target_link_libraries(depthtest vistle_rhr)
+target_link_libraries(depthtest 
+    PRIVATE vistle_rhr)
 
 add_executable(depthbench depthbench.cpp depthcompare.cpp)
-target_link_libraries(depthbench vistle_rhr)
+target_link_libraries(depthbench 
+    PRIVATE vistle_rhr)

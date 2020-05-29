@@ -8,25 +8,26 @@ set(pluginutil_HEADERS
    VistleInteractor.h
    VistleRenderObject.h
 )
-include_directories(SYSTEM
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
-        ${OPENSCENEGRAPH_INCLUDE_DIRS}
-        ${GLEW_INCLUDE_DIR}
-        ${OPENGL_INCLUDE_DIRS}
-)
-include_directories(
-        ${COVISE_INCLUDE_DIRS}
-        ${COVER_INCLUDE_DIRS}
-)
+
 
 vistle_add_library(VistlePluginUtil ${VISTLE_LIB_TYPE} ${pluginutil_SOURCES} ${pluginutil_HEADERS})
 
+target_include_directories(VistlePluginUtil SYSTEM
+        PRIVATE ${MPI_C_INCLUDE_PATH}
+        PRIVATE ${OPENSCENEGRAPH_INCLUDE_DIRS}
+        PRIVATE ${GLEW_INCLUDE_DIR}
+        PRIVATE ${OPENGL_INCLUDE_DIRS}
+)
+target_include_directories(VistlePluginUtil 
+       PRIVATE ${COVISE_INCLUDE_DIRS}
+       PRIVATE ${COVER_INCLUDE_DIRS}
+)
+
 target_link_libraries(VistlePluginUtil
-        ${Boost_LIBRARIES}
-        ${OPENSCENEGRAPH_LIBRARIES}
-        ${COVER_LIBRARY}
-        ${OPENGL_LIBRARIES}
-        vistle_core
-        vistle_module
+        PRIVATE Boost::boost
+        PRIVATE ${OPENSCENEGRAPH_LIBRARIES}
+        PRIVATE ${COVER_LIBRARY}
+        PRIVATE ${OPENGL_LIBRARIES}
+        PRIVATE vistle_core
+        PRIVATE vistle_module
 )

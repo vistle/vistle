@@ -58,14 +58,12 @@ set(boost_mpi_HEADERS
 
 include_directories(SYSTEM
         "${BOOST_MPI_DIR}/include"
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
 )
 
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
-
+vistle_export_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 target_link_libraries(vistle_boost_mpi
-    PRIVATE ${Boost_SYSTEM_LIBRARY}
-    PUBLIC ${Boost_SERIALIZATION_LIBRARY}
-    PUBLIC ${MPI_C_LIBRARIES}
+    PRIVATE Boost::system
+    PUBLIC Boost::serialization
+    PUBLIC MPI::MPI_C
 )

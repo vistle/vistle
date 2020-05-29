@@ -14,30 +14,36 @@ set(control_HEADERS
 )
 
 if(PYTHONLIBS_FOUND)
-   include_directories(SYSTEM ${PYTHON_INCLUDE_DIRS})
-   add_definitions(-DHAVE_PYTHON)
-   add_definitions(-DVISTLE_CONTROL)
-   add_definitions(-Dvistle_userinterface_EXPORTS)
-   add_definitions(-DEMBED_PYTHON)
    set(control_SOURCES ${control_SOURCES} ../userinterface/pythoninterface.cpp ../userinterface/pythonmodule.cpp pythoninterpreter.cpp)
    set(control_HEADERS ${control_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
 vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
-vistle_install_headers(control ${control_HEADERS})
+vistle_export_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 target_link_libraries(vistle_control
-    PRIVATE ${Boost_SYSTEM_LIBRARY}
-    PRIVATE ${Boost_PROGRAM_OPTIONS_LIBRARY}
+    PRIVATE Boost::system
+    PRIVATE Boost::program_options
     PRIVATE ${EXTRA_LIBRARIES}
     PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE vistle_net
     PRIVATE vistle_libsim_connect
-)
-target_link_libraries(vistle_control
     PRIVATE Threads::Threads
 )
+
+if(PYTHONLIBS_FOUND)
+   target_include_directories(vistle_control SYSTEM 
+        PRIVATE ${PYTHON_INCLUDE_DIRS})
+   target_compile_definitions(vistle_control
+    PRIVATE -DHAVE_PYTHON
+    PRIVATE -DVISTLE_CONTROL
+    PRIVATE -Dvistle_userinterface_EXPORTS
+    PRIVATE -DEMBED_PYTHON)
+
+endif()
+
+
 if(UNIX)
     target_link_libraries(vistle_control PRIVATE ${CMAKE_DL_LIBS})
 endif()

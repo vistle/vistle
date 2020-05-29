@@ -54,4 +54,4 @@ if (ZLIB_FOUND)
 endif()
 
 #add_executable(foambounds bounds.cpp foamtoolbox.cpp)
-#target_link_libraries(foambounds ${Boost_LIBRARIES} ${ZLIB_LIBRARIES})
+#target_link_libraries(foambounds Boost::boost ${ZLIB_LIBRARIES})

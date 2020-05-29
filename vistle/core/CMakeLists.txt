@@ -2,25 +2,7 @@ vistle_find_package(Zstd)
 vistle_find_package(LZ4)
 vistle_find_package(SNAPPY)
 
-if(ZFP_FOUND)
-   add_definitions(-DHAVE_ZFP)
-   include_directories(SYSTEM ${ZFP_INCLUDE_DIRS})
-endif()
 
-if (ZSTD_FOUND)
-   add_definitions(-DHAVE_ZSTD)
-   include_directories(SYSTEM ${ZSTD_INCLUDE_DIRS})
-endif()
-
-if (LZ4_FOUND)
-   add_definitions(-DHAVE_LZ4)
-   include_directories(SYSTEM ${LZ4_INCLUDE_DIRS})
-endif()
-
-if (SNAPPY_FOUND)
-   add_definitions(-DHAVE_SNAPPY)
-   include_directories(SYSTEM ${SNAPPY_INCLUDE_DIRS})
-endif()
 
 set(core_SOURCES
    archives.cpp
@@ -184,12 +166,11 @@ if (MSVC)
   set_source_files_properties(cellalgorithm.cpp PROPERTIES COMPILE_FLAGS /bigobj)
 endif()
 
-if (VISTLE_SHM_PER_RANK)
-   add_definitions(-DSHMPERRANK)
-endif()
+
 
 vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
-vistle_install_headers(core ${core_HEADERS})
+vistle_export_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
+#vistle_install_headers(core ${core_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core
@@ -202,29 +183,38 @@ if (WIN32)
 	)
 endif()
 
-target_link_libraries(vistle_core
+vistle_target_link_libraries(vistle_core
         PRIVATE vistle_util
-        PRIVATE ${Boost_SYSTEM_LIBRARY}
-        PRIVATE ${Boost_SERIALIZATION_LIBRARY}
-        PRIVATE ${Boost_DATE_TIME_LIBRARY}
+        PRIVATE Boost::system
+        PRIVATE Boost::serialization
+        PRIVATE Boost::date_time
+		PRIVATE Threads::Threads
 )
 
-target_link_libraries(vistle_core
-    PRIVATE Threads::Threads
-)
-
-if (ZFP_FOUND)
-    target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
+if (VISTLE_SHM_PER_RANK)
+   target_compile_definitions(vistle_core PRIVATE -DSHMPERRANK)
+endif()
+if(ZFP_FOUND)
+   target_compile_definitions(vistle_core PRIVATE -DHAVE_ZFP)
+   target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
+   vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
 endif()
 
 if (ZSTD_FOUND)
-    target_link_libraries(vistle_core PRIVATE ${ZSTD_LIBRARIES})
+   target_compile_definitions(vistle_core PRIVATE -DHAVE_ZSTD)
+   target_include_directories(vistle_core SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
+   vistle_target_link_libraries(vistle_core PRIVATE ${ZSTD_LIBRARIES})
 endif()
 
 if (LZ4_FOUND)
-    target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
+   target_compile_definitions(vistle_core PRIVATE -DHAVE_LZ4)
+   target_include_directories(vistle_core SYSTEM PRIVATE ${LZ4_INCLUDE_DIRS})
+   vistle_target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
 endif()
 
 if (SNAPPY_FOUND)
-    target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
+   target_compile_definitions(vistle_core PRIVATE -DHAVE_SNAPPY)
+   target_include_directories(vistle_core SYSTEM PRIVATE ${SNAPPY_INCLUDE_DIRS})
+   vistle_target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()
+

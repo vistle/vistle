@@ -1,7 +1,7 @@
 vistle_add_executable(vistle hubmain.cpp)
 target_link_libraries(vistle
-        ${Boost_SYSTEM_LIBRARY}
-        ${Boost_PROGRAM_OPTIONS_LIBRARY}
+        Boost::system
+        Boost::program_options
         ${EXTRA_LIBRARIES}
         vistle_control
         vistle_util
