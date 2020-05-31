@@ -247,6 +247,7 @@ bool ReadCovise::prepareRead()
 
 bool ReadCovise::read(Reader::Token &token, int timestep, int block)
 {
+    std::cerr << "reading t=" << timestep << ", block=" << block << std::endl;
     Element *elem[NumPorts];
     int fd[NumPorts];
     for (int port=0; port<NumPorts; ++port) {
@@ -316,10 +317,13 @@ void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &e
    bool isTimestep = false;
    for (size_t i=0; i<elem.attribs.size(); ++i) {
       const std::pair<std::string, std::string> &att = elem.attribs[i];
-      if (att.first == "TIMESTEP")
+      if (att.first == "TIMESTEP") {
          isTimestep = true;
-      else
-         obj->addAttribute(att.first, att.second);
+      } else if (att.first == "COLOR") {
+          obj->addAttribute("_color", att.second);
+      } else {
+          obj->addAttribute(att.first, att.second);
+      }
    }
 
    if (index != -1) {
@@ -327,7 +331,7 @@ void ReadCovise::applyAttributes(Token &token, Object::ptr obj, const Element &e
          if (obj->getTimestep() != -1) {
             std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
          }
-#if 0
+#if 1
          if (elem.parent)
             obj->setNumTimesteps(elem.parent->subelems.size());
 #endif
@@ -793,59 +797,48 @@ Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const b
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readGEOTEX(Token &token, const int port, int fd, const bool skeleton, Element *elem, int timestep) {
+bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem) {
 
-   vassert(elem);
-   vassert(port == 0);
-   // FIXME: handle sets in GEOTEX
+    vassert(elem);
+    vassert(port == 0);
 
-   const size_t ncomp = 4;
-   int contains[ncomp] = { 0, 0, 0, 0 };
-   covReadGeometryBegin(fd, &contains[0], &contains[1], &contains[2], &contains[3]);
+    const size_t ncomp = 4;
+    int contains[ncomp] = { 0, 0, 0, 0 };
+    covReadGeometryBegin(fd, &contains[0], &contains[1], &contains[2], &contains[3]);
+    elem->is_geometry = true;
 
-   if (skeleton) {
+    bool ok = true;
+    for (size_t i=0; i<ncomp; ++i) {
+        Element *e = new Element();
+        e->offset = mytell(fd);
+        if (contains[i])
+            ok &= readSkeleton(port, e);
+        elem->subelems.push_back(e);
+    }
 
-      for (size_t i=0; i<ncomp; ++i) {
-         Element *e = new Element();
-         e->in_geometry = true;
-         e->offset = mytell(fd);
-         if (contains[i])
-            readSkeleton(port, e);
-         elem->subelems.push_back(e);
-      }
-   } else {
-      vassert(elem->subelems.size() == ncomp);
+    return ok;
+}
 
-      DataBase::ptr data;
-      Coords::ptr grid;
+bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem) {
 
-      if (contains[0]) {
-         grid = Coords::as(readObject(token, port, fd, elem->subelems[0], timestep));
-      }
+    vassert(elem);
+    vassert(port == 0);
 
-      if (contains[2]) {
-         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(token, port, fd, elem->subelems[2], timestep)));
-         if (grid)
-             grid->setNormals(normals);
-      }
+    const size_t ncomp = 3;
+    int contains[ncomp] = { 0, 0, 0 };
+    covReadOldGeometryBegin(fd, &contains[0], &contains[1], &contains[2]);
+    elem->is_geometry = true;
 
-      if (contains[3]) {
-         data = DataBase::as(readObject(token, port, fd, elem->subelems[3], timestep));
-      }
+    bool ok = true;
+    for (size_t i=0; i<ncomp; ++i) {
+        Element *e = new Element();
+        e->offset = mytell(fd);
+        if (contains[i])
+            ok &= readSkeleton(port, e);
+        elem->subelems.push_back(e);
+    }
 
-      if (!data && contains[1]) {
-         data = DataBase::as(readObject(token, port, fd, elem->subelems[1], timestep));
-      }
-
-      if (data) {
-          data->setGrid(grid);
-          return data;
-      }
-
-      return grid;
-   }
-
-   return Object::ptr();
+    return ok;
 }
 
 vistle::Object::ptr ReadCovise::readOBJREF(Token &token, const int port, int fd, bool skeleton, Element *elem) {
@@ -948,11 +941,17 @@ Object::ptr ReadCovise::readObjectIntern(Token &token, const int port, int fd, c
        }
    } else {
       if (type == "GEOTEX") {
-         object = readGEOTEX(token, port, fd, skeleton, elem, timestep);
+          if (skeleton) {
+              readGEOTEX(token, port, fd, elem);
+          }
+      } else if (type == "GEOMET") {
+          if (skeleton) {
+              readGEOMET(token, port, fd, elem);
+          }
       } else if (type == "SETELE") {
-            if (skeleton) {
-               readSETELE(token, port, fd, elem);
-            }
+          if (skeleton) {
+              readSETELE(token, port, fd, elem);
+          }
       } else {
           std::stringstream str;
           str << "Object type not supported: " << buf;
@@ -997,83 +996,131 @@ bool ReadCovise::readSkeleton(const int port, Element *elem) {
 
 bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int timestep, int targetTimestep) {
 
-   if (timestep != -1 && timestep != targetTimestep) {
-       return true;
-   }
+    if (!elem[0]->is_geometry && timestep != -1 && timestep != targetTimestep) {
+        std::cerr << "ReadCovise: skipping read: timstep " << timestep << " != targetTimestep " << targetTimestep << std::endl;
+        return true;
+    }
 
-   Object::ptr obj[NumPorts];
-   Object::ptr grid;
-   std::future<Object::ptr> fut[NumPorts];
-   if (timestep == targetTimestep) {
+    Object::ptr obj[NumPorts];
+    Object::ptr grid;
+    std::future<Object::ptr> fut[NumPorts];
+    if (elem[0]->is_geometry) {
+        if (!fd[0])
+            return false;
+        int subfd[NumPorts];
+        for (int port=0; port<NumPorts; ++port) {
+            if (port >= elem[0]->subelems.size() || !elem[0]->subelems[port]) {
+                subfd[port] = 0;
+            } else if (port==0) {
+                subfd[0] = fd[0];
+            } else if (fd[0]) {
+                subfd[port] = covOpenInFile(m_filename[0].c_str());
+            }
+        }
+        bool ok = readRecursive(token, subfd, elem[0]->subelems.data(), timestep, targetTimestep);
+        for (size_t port=1; port<NumPorts; ++port) {
+            if (subfd[port]) {
+                covCloseInFile(subfd[port]);
+            }
+        }
+        return ok;
+    }
 
-      // obj is regular
-      // do not recurse as subelems are abused for Geometry components
+    if (timestep == targetTimestep) {
 
-       obj[0] = grid = readObject(token, 0, fd[0], elem[0], timestep);
-      for (int port=0; port<NumPorts; ++port) {
-          if (fd[port]) {
-              fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
-                  return readObject(token, port, fd[port], elem[port], timestep);
-              });
-          }
-      }
-      for (int port=0; port<NumPorts; ++port) {
-          if (fd[port]) {
-              obj[port] = fut[port].get();
-          }
-          if (port == 0) {
-              grid = obj[port];
-          } else if (port == 1) {
-              if (auto normals = Normals::as(obj[port])) {
-                  if (auto coords = Coords::as(grid)) {
-                      coords->setNormals(normals);
-                  } else if (auto str = StructuredGridBase::as(grid)) {
-                      //str->setNormals(normals);
-                  }
-              }
-          } else {
-              if (auto data = DataBase::as(obj[port])) {
-                  data->setGrid(grid);
-              }
-          }
-      }
-      token.wait();
-      for (int port=0; port<NumPorts; ++port) {
-          if (m_out[port] && obj[port]) {
-              obj[port]->addAttribute("_species", m_species[port]);
-              addObject(m_out[port], obj[port]);
-          }
-      }
-   }
+        // obj is regular
+        // do not recurse as subelems are abused for Geometry components
 
-   if (!grid) {
-      const bool inTimeset = elem[0]->is_timeset;
-      //std::cerr << "processing SET w/ " << elem->subelems.size() << " elements, timeset=" << inTimeset << std::endl;
-      // obj corresponds to a Set, recurse
-      for (size_t i=0; i<elem[0]->subelems.size(); ++i) {
-         Element *subelems[NumPorts];
-         for (int port=0; port<NumPorts; ++port) {
-             if (!fd[port])
-                 continue;
+        bool gridOnPort0 = false;
+        for (int port=0; port<NumPorts; ++port) {
+            if (fd[port]) {
+                assert(elem[port]);
+                fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
+                    auto obj = readObject(token, port, fd[port], elem[port], timestep);
+                    if (obj)
+                    {
+                        std::cerr << "read obj " << obj->getName() << " for timestep " << timestep <<  " on port " << port << std::endl;
+                    }
+                    else
+                    {
+                        std::cerr << "no data for timestep " << timestep << " on port " << port << std::endl;
+                    }
+                    return obj;
+                });
+            }
+        }
+        for (int port=0; port<NumPorts; ++port) {
+            if (fd[port]) {
+                obj[port] = fut[port].get();
+            }
+            if (port == 0) {
+                grid = obj[port];
+                if (auto coords = Coords::as(grid)) {
+                    gridOnPort0 = true;
+                } else if (auto str = StructuredGridBase::as(grid)) {
+                    gridOnPort0 = true;
+                }
+            } else if (port == 1) {
+                if (auto normals = Normals::as(obj[port])) {
+                    if (auto coords = Coords::as(grid)) {
+                        coords->setNormals(normals);
+                    } else if (auto str = StructuredGridBase::as(grid)) {
+                        //str->setNormals(normals);
+                    }
+                }
+            } else {
+                if (auto data = DataBase::as(obj[port])) {
+                    data->setGrid(grid);
+                }
+            }
+        }
+        token.wait();
+        for (int port=0; port<NumPorts; ++port) {
+            if (m_out[port] && obj[port]) {
+                if (port > 1 || !gridOnPort0)
+                    obj[port]->addAttribute("_species", m_species[port]);
+                addObject(m_out[port], obj[port]);
+            }
+        }
+    }
 
-             if (elem[port]->subelems.size() != elem[0]->subelems.size()) {
-                 sendError("mismatch in object structure (size)");
-                 return false;
-             }
-             if (inTimeset != elem[port]->is_timeset) {
-                 sendError("mismatch in object structure (time)");
-                 return false;
-             }
-             if (elem[port]->subelems[i]->referenced) {
-                 subelems[port] = elem[port]->subelems[i]->referenced;
-             } else {
-                 subelems[port] = elem[port]->subelems[i];
-             }
-         }
-         readRecursive(token, fd, subelems, inTimeset ? i : timestep, targetTimestep);
-      }
-   }
-   return true;
+    if (!grid) {
+        const bool inTimeset = elem[0]->is_timeset;
+        //std::cerr << "processing SET w/ " << elem->subelems.size() << " elements, timeset=" << inTimeset << std::endl;
+        // obj corresponds to a Set, recurse
+        bool ok = true;
+        for (size_t i=0; i<elem[0]->subelems.size(); ++i) {
+            Element *subelems[NumPorts];
+            for (int port=0; port<NumPorts; ++port) {
+                if (!fd[port])
+                    continue;
+
+                if (!elem[port] || elem[port]->subelems.empty()) {
+                    fd[port] = 0;
+                    continue;
+                }
+
+                if (elem[port]->subelems.size() != elem[0]->subelems.size()) {
+                    sendError("mismatch in object structure (size): %d != %d", (int)elem[port]->subelems.size(), (int)elem[0]->subelems.size());
+                    return false;
+                }
+                if (inTimeset != elem[port]->is_timeset) {
+                    sendError("mismatch in object structure (time)");
+                    return false;
+                }
+                if (elem[port]->subelems[i]->referenced) {
+                    subelems[port] = elem[port]->subelems[i]->referenced;
+                } else {
+                    subelems[port] = elem[port]->subelems[i];
+                }
+            }
+            ok &= readRecursive(token, fd, subelems, inTimeset ? i : timestep, targetTimestep);
+        }
+
+        return ok;
+    }
+
+    return true;
 }
 
 void ReadCovise::deleteRecursive(Element &elem) {

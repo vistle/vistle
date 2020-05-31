@@ -14,7 +14,7 @@ struct Element {
       : parent(NULL)
       , referenced(NULL)
       , is_timeset(false)
-      , in_geometry(false)
+      , is_geometry(false)
       , objnum(-1)
       , index(-1)
       , block(-1)
@@ -28,7 +28,7 @@ struct Element {
       , type(other.type)
       , obj(other.obj)
       , is_timeset(other.is_timeset)
-      , in_geometry(other.in_geometry)
+      , is_geometry(other.is_geometry)
       , objnum(other.objnum)
       , index(other.index)
       , block(other.block)
@@ -45,7 +45,7 @@ struct Element {
          type = rhs.type;
          obj = rhs.obj;
          is_timeset = rhs.is_timeset;
-         in_geometry = rhs.in_geometry;
+         is_geometry = rhs.is_geometry;
          objnum = rhs.objnum;
          index = rhs.index;
          block = rhs.block;
@@ -56,15 +56,15 @@ struct Element {
       return *this;
    }
 
-   Element *parent;
-   Element *referenced;
+   Element *parent = nullptr;
+   Element *referenced = nullptr;
    std::string type;
    vistle::Object::ptr obj;
-   bool is_timeset;
-   bool in_geometry;
-   ssize_t objnum;
-   int index, block;
-   off_t offset;
+   bool is_timeset = false;
+   bool is_geometry = false;
+   ssize_t objnum = -1;
+   int index = -1, block = -1;
+   off_t offset = 0;
    std::vector<Element *> subelems;
    AttributeList attribs;
 
@@ -89,7 +89,8 @@ class ReadCovise: public vistle::Reader {
    void applyAttributes(Token &token, vistle::Object::ptr obj, const Element &elem, int index=-1);
 
    bool readSETELE(Token &token, const int port, int fd, Element *parent);
-   vistle::Object::ptr readGEOTEX(Token &token, const int port, int fd, bool skeleton, Element *elem, int timestep);
+   bool readGEOMET(Token &token, const int port, int fd, Element *parent);
+   bool readGEOTEX(Token &token, const int port, int fd, Element *parent);
    vistle::Object::ptr readUNIGRD(Token &token, const int port, int fd, bool skeleton);
    vistle::Object::ptr readRCTGRD(Token &token, const int port, int fd, bool skeleton);
    vistle::Object::ptr readSTRGRD(Token &token, const int port, int fd, bool skeleton);
