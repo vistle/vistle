@@ -8,6 +8,75 @@
 
 namespace vistle {
 
+namespace {
+std::mutex rgb_txt_mutex;
+bool rgb_initialized = false;
+std::map<std::string, Vector4> rgb_name;
+
+std::string rgb_normalize_name(std::string name) {
+    const char *p = name.c_str();
+    std::string colorname;
+    while (*p) {
+        if (!isspace(*p))
+            colorname.push_back(tolower(*p));
+        ++p;
+    }
+    return colorname;
+}
+
+bool rgb_txt_init_from_file() {
+
+    std::lock_guard<std::mutex> guard(rgb_txt_mutex);
+    if (rgb_initialized)
+        return rgb_name.size() > 1;
+
+    rgb_initialized = true;
+
+    std::string filename;
+    if (const char *cd = getenv("COVISEDIR")) {
+        filename = cd;
+    } else {
+        filename = "/usr/share/X11";
+    }
+    filename += "/share/covise/rgb.txt";
+
+    if (FILE *fp = fopen(filename.c_str(), "r")) {
+
+        char line[500];
+        while (fgets(line, sizeof(line), fp)) {
+            if (line[0] == '!')
+                continue;
+            int r=255, g=255, b=255;
+            char name[150];
+            sscanf(line, "%d%d%d %100[a-zA-z0-9 ]", &r, &g, &b, name);
+            std::string colorname = rgb_normalize_name(name);
+            rgb_name[colorname] = Vector4(r/255.f, g/255.f, b/255.f, 1.f);
+            //std::cerr << "color " << colorname << " -> " << rgb_name[colorname] << std::endl;
+        }
+        fclose(fp);
+    }
+
+    rgb_name["white"] = Vector4(150/255.f, 150/255.f, 150/255.f, 1.f);
+
+    return rgb_name.size() > 1;
+}
+
+bool rgb_color(const std::string color, Vector4 &rgb) {
+
+    if (!rgb_txt_init_from_file())
+        return false;
+
+    std::string colorname = rgb_normalize_name(color);
+    auto it = rgb_name.find(colorname);
+    if (it == rgb_name.end())
+        return false;
+
+    rgb = it->second;
+    return true;
+}
+
+}
+
 RenderObject::RenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
@@ -53,6 +122,10 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 
          hasSolidColor = true;
          solidColor = Vector4(r, g, b, a);
+      } else {
+          if (rgb_color(color, solidColor)) {
+              hasSolidColor = true;
+          }
       }
    }
    if (timestep < 0 && texture) {
