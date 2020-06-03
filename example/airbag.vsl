@@ -1,0 +1,29 @@
+import os
+
+covisedir = os.getenv("COVISEDIR")
+
+MasterHub=getMasterHub()
+VistleSession=getVistleSession()
+uuids = {}
+
+
+# spawn all local modules
+umReadCovise1 = spawnAsync(MasterHub, 'ReadCovise')
+umCOVER2 = spawnAsync(MasterHub, 'COVER')
+
+mReadCovise1 = waitForSpawn(umReadCovise1)
+setVectorParam(mReadCovise1, '_position', 737.0, -101.0, True)
+setStringParam(mReadCovise1, 'filename', covisedir + '/share/covise/example-data/COVISE/airbag.covise', True)
+applyParameters(mReadCovise1)
+
+mCOVER2 = waitForSpawn(umCOVER2)
+setVectorParam(mCOVER2, '_position', 737.0, 101.0, True)
+setIntParam(mCOVER2, 'render_mode', 2, True)
+applyParameters(mCOVER2)
+
+# all local connections
+connect(mReadCovise1,'grid_out', mCOVER2,'data_in')
+
+# spawn all remote modules
+
+# connections between local and remote
