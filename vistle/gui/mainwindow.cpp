@@ -83,6 +83,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->actionDelete->setShortcuts(deleteKeys);
     connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
 
+    connect(ui->actionNative_Menubar, &QAction::toggled, [this](bool native){
+        if (menuBar())
+            menuBar()->setNativeMenuBar(native);
+    });
+
     //setFocusProxy(ui->modulesDock);
     ui->modulesDock->setFocusProxy(ui->moduleBrowser);
     ui->modulesDock->show();
@@ -90,6 +95,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->modulesDock->setFocus();
 
     readSettings();
+
+    if (menuBar())
+        ui->actionNative_Menubar->setChecked(menuBar()->isNativeMenuBar());
 }
 
 MainWindow::~MainWindow()
@@ -99,9 +107,17 @@ MainWindow::~MainWindow()
     /// scene; QDrag; mimeData;
 }
 
+QMenu *MainWindow::createPopupMenu()
+{
+    auto menu = QMainWindow::createPopupMenu();
+    menu->addAction(ui->actionNative_Menubar);
+    return menu;
+}
+
 void MainWindow::setQuitOnExit(bool qoe)
 {
    if (ui->actionQuit) {
+      ui->actionQuit->setMenuRole(QAction::QuitRole);
       if (qoe) {
          ui->actionQuit->setText("Quit");
          ui->actionQuit->setToolTip("Quit Vistle session");
@@ -194,6 +210,9 @@ void MainWindow::readSettings()
 
     restoreState(settings.value("windowState").toByteArray());
 
+    if (menuBar())
+        menuBar()->setNativeMenuBar(settings.value("nativeMenuBar", true).toBool());
+
     settings.endGroup();
 }
 
@@ -206,6 +225,9 @@ void MainWindow::writeSettings()
     settings.setValue("pos", pos());
 
     settings.setValue("windowState", saveState());
+
+    if (menuBar())
+        settings.setValue("nativeMenuBar", menuBar()->isNativeMenuBar());
 
     settings.endGroup();
 }

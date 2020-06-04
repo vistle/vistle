@@ -52,6 +52,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_mainWindow = new MainWindow();
    m_mainWindow->parameters()->setVistleObserver(&m_observer);
    m_mainWindow->setQuitOnExit(quitOnExit);
+
    m_ui = new vistle::UserInterface(host, port, &m_observer);
    m_python = new vistle::PythonInterface("Vistle GUI");
    m_ui->registerObserver(&m_observer);
