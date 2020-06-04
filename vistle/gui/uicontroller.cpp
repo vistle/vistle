@@ -15,6 +15,7 @@
 #include <QDockWidget>
 #include <QGuiApplication>
 #include <QStatusBar>
+#include <QMenuBar>
 
 namespace dir = vistle::directory;
 
@@ -81,6 +82,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(m_mainWindow, SIGNAL(saveDataFlowAs()), SLOT(saveDataFlowNetworkAs()));
    connect(m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
    connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
+   connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
+   connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
 
    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 

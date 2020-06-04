@@ -73,8 +73,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
+    ui->actionSelect_All->setShortcut(QKeySequence::StandardKey::SelectAll);
+    connect(ui->actionSelect_All, SIGNAL(triggered()), SIGNAL(selectAllModules()));
+    QList<QKeySequence> deleteKeys;
+    deleteKeys.push_back(QKeySequence::StandardKey::Delete);
+#ifdef Q_OS_MAC
+    deleteKeys.push_back(Qt::Key_Backspace);
+#endif
+    ui->actionDelete->setShortcuts(deleteKeys);
+    connect(ui->actionDelete, SIGNAL(triggered()), SIGNAL(deleteSelectedModules()));
 
-    setFocusProxy(ui->modulesDock);
+    //setFocusProxy(ui->modulesDock);
     ui->modulesDock->setFocusProxy(ui->moduleBrowser);
     ui->modulesDock->show();
     ui->modulesDock->raise();
@@ -95,7 +104,7 @@ void MainWindow::setQuitOnExit(bool qoe)
    if (ui->actionQuit) {
       if (qoe) {
          ui->actionQuit->setText("Quit");
-         ui->actionQuit->setToolTip("Quit Vistle Session");
+         ui->actionQuit->setToolTip("Quit Vistle session");
       } else {
          ui->actionQuit->setText("Leave");
          ui->actionQuit->setToolTip("Quit Vistle GUI");

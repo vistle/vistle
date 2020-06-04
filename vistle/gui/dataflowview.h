@@ -33,6 +33,7 @@ public slots:
     void execModules();
     void cancelExecModules();
     void deleteModules();
+    void selectAllModules();
 
 protected:
    void dragEnterEvent(QDragEnterEvent *e);

@@ -99,6 +99,7 @@ void DataFlowView::createActions()
 {
     m_deleteAct = new QAction("Delete Selected", this);
     m_deleteAct->setShortcuts(QKeySequence::Delete);
+    m_deleteAct->setShortcutContext(Qt::ApplicationShortcut);
     m_deleteAct->setStatusTip("Delete the selected modules and all their connections");
     connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModules()));
 
@@ -180,6 +181,16 @@ void DataFlowView::deleteModules()
 {
     for (auto m: selectedModules())
         m->deleteModule();
+}
+
+void DataFlowView::selectAllModules()
+{
+   if (scene()) {
+       for (auto item: scene()->items()) {
+           if (auto module = dynamic_cast<Module *>(item))
+               module->setSelected(true);
+       }
+   }
 }
 
 

@@ -48,6 +48,8 @@ signals:
     void saveDataFlowAs();
     void executeDataFlow();
     void connectVistle();
+    void selectAllModules();
+    void deleteSelectedModules();
 
 protected:
     void closeEvent(QCloseEvent *);
