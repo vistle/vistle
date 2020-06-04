@@ -87,7 +87,7 @@
      <x>0</x>
      <y>0</y>
      <width>857</width>
-     <height>30</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHello_World">
@@ -110,6 +110,7 @@
     <addaction name="separator"/>
     <addaction name="actionSelect_All"/>
     <addaction name="separator"/>
+    <addaction name="actionDelete"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -261,15 +262,24 @@
    <property name="text">
     <string>&amp;New</string>
    </property>
+   <property name="toolTip">
+    <string>Remove all modules from workflow</string>
+   </property>
   </action>
   <action name="actionOpen">
    <property name="text">
     <string>&amp;Open...</string>
    </property>
+   <property name="toolTip">
+    <string>Open existing workflow</string>
+   </property>
   </action>
   <action name="actionSave">
    <property name="text">
     <string>&amp;Save</string>
+   </property>
+   <property name="toolTip">
+    <string>Save workflow</string>
    </property>
   </action>
   <action name="actionQuit">
@@ -299,6 +309,9 @@
    <property name="text">
     <string>&amp;Select All</string>
    </property>
+   <property name="toolTip">
+    <string>Select all modules</string>
+   </property>
   </action>
   <action name="actionDelete">
    <property name="text">
@@ -306,9 +319,6 @@
    </property>
    <property name="toolTip">
     <string>Delete selected modules</string>
-   </property>
-   <property name="shortcut">
-    <string>Del</string>
    </property>
   </action>
   <action name="actionUndo">
@@ -319,6 +329,9 @@
   <action name="actionSave_As">
    <property name="text">
     <string>Sa&amp;ve As...</string>
+   </property>
+   <property name="toolTip">
+    <string>Save workflow as a new file</string>
    </property>
   </action>
   <action name="actionSettings">
@@ -345,6 +358,9 @@
   <action name="actionExecute">
    <property name="text">
     <string>&amp;Execute</string>
+   </property>
+   <property name="toolTip">
+    <string>Execute all source modules</string>
    </property>
   </action>
  </widget>
