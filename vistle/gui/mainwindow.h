@@ -26,6 +26,8 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    QMenu *createPopupMenu();
+
     QDockWidget *consoleDock() const;
     QDockWidget *parameterDock() const;
     QDockWidget *modulesDock() const;

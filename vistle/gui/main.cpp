@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
       QApplication a(argc, argv);
 
       QCoreApplication::setOrganizationName("HLRS");
-      QCoreApplication::setOrganizationDomain("de.hlrs");
+      QCoreApplication::setOrganizationDomain("hlrs.de");
       QCoreApplication::setApplicationName("Vistle");
 
 	  // we want decimal points rather than commas

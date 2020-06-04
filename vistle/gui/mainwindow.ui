@@ -363,6 +363,20 @@
     <string>Execute all source modules</string>
    </property>
   </action>
+  <action name="actionNative_Menubar">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Native Menubar</string>
+   </property>
+   <property name="toolTip">
+    <string>Use native menubar</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <customwidgets>
