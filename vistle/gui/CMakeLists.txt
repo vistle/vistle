@@ -74,6 +74,7 @@ set(gui_HEADERS
 
 set(gui_FORMS
   mainwindow.ui
+  about.ui
   modulebrowser.ui
   modifieddialog.ui
 )
@@ -96,7 +97,7 @@ endif(APPLE)
 
 
 qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
-qt_add_resources(GUI_QRC_SOURCES gui.qrc)
+qt_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
 add_definitions(${QT_DEFINITIONS})
 vistle_add_executable(${gui_name}
   MACOSX_BUNDLE

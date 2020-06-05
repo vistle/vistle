@@ -88,6 +88,11 @@ MainWindow::MainWindow(QWidget *parent)
             menuBar()->setNativeMenuBar(native);
     });
 
+    connect(ui->actionAbout, SIGNAL(triggered()), SIGNAL(aboutVistle()));
+    ui->actionAbout->setMenuRole(QAction::AboutRole);
+    connect(ui->actionAbout_Qt, SIGNAL(triggered()), SIGNAL(aboutQt()));
+    ui->actionAbout_Qt->setMenuRole(QAction::AboutQtRole);
+
     //setFocusProxy(ui->modulesDock);
     ui->modulesDock->setFocusProxy(ui->moduleBrowser);
     ui->modulesDock->show();
