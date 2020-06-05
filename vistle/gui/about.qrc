@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="aboutData" >
+    <file>../../README.md</file>
+    <file>../../lgpl-2.1.txt</file>
+  </qresource>
+</RCC>

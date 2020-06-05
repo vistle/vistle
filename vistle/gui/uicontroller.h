@@ -33,6 +33,9 @@ signals:
 public slots:
    void quitRequested(bool &allowed);
 
+   void aboutVistle();
+   void aboutQt();
+
 private slots:
     void setModified(bool mod);
    bool checkModified(const QString &reason);

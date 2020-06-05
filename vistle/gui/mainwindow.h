@@ -52,6 +52,8 @@ signals:
     void connectVistle();
     void selectAllModules();
     void deleteSelectedModules();
+    void aboutQt();
+    void aboutVistle();
 
 protected:
     void closeEvent(QCloseEvent *);

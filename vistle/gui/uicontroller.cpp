@@ -17,6 +17,8 @@
 #include <QStatusBar>
 #include <QMenuBar>
 
+#include "ui_about.h"
+
 namespace dir = vistle::directory;
 
 namespace gui {
@@ -85,6 +87,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
    connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
    connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
+   connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
+   connect(m_mainWindow, SIGNAL(aboutVistle()), SLOT(aboutVistle()));
 
    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
@@ -350,5 +354,43 @@ void UiController::setCurrentFile(QString file) {
 void UiController::setModified(bool modified) {
     m_modified = modified;
 }
+
+void UiController::aboutVistle()
+{
+    QDialog *aboutDialog = new QDialog;
+    ::Ui::AboutDialog *ui = new ::Ui::AboutDialog;
+    ui->setupUi(aboutDialog);
+
+#if 0
+    QFile file(":/aboutData/README.md");
+    if (file.open(QIODevice::ReadOnly))
+    {
+        QString data(file.readAll());
+        ui->textEdit->setMarkdown(data);
+    }
+#else
+    QFile file(":/aboutData/lgpl-2.1.txt");
+    if (file.open(QIODevice::ReadOnly))
+    {
+        QString data(file.readAll());
+        ui->textEdit->setPlainText(data);
+    }
+#endif
+
+    QString text("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a>!");
+    text.append("<br>You can follow Vistle developement on <a href='https://github.com/vistle/vistle'>GitHub</a>.");
+
+    ui->label->setText(text);
+    ui->label->setTextInteractionFlags(Qt::TextBrowserInteraction | Qt::LinksAccessibleByMouse);
+    ui->label->setOpenExternalLinks(true);
+
+    aboutDialog->exec();
+}
+
+void UiController::aboutQt()
+{
+    QMessageBox::aboutQt(new QDialog, "Qt");
+}
+
 
 } // namespace gui
