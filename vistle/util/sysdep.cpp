@@ -141,7 +141,7 @@ uid_t GetUID(HANDLE token)
 	return ret;
 }
 
-uid_t V_UTILEXPORT getuid()
+uid_t getuid()
 {
 	HANDLE process = ::GetCurrentProcess();
 	handle_unique_ptr processPtr(process);
@@ -157,7 +157,7 @@ uid_t V_UTILEXPORT getuid()
 	return ret;
 }
 
-uid_t V_UTILEXPORT geteuid()
+uid_t geteuid()
 {
 	HANDLE process = ::GetCurrentProcess();
 	HANDLE thread = ::GetCurrentThread();
