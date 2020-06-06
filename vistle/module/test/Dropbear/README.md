@@ -1,6 +1,6 @@
 # Getting Up and Running
 
-- get (Dropbear)[https://matt.ucc.asn.au/dropbear/dropbear.html] SSH tools from (Github)[https://github.com/mkj/dropbear.git]
+- get (Dropbear)[https://matt.ucc.asn.au/dropbear/dropbear.html] SSH tools from (GitHub)[https://github.com/mkj/dropbear.git]
 - build
     - `autoconf`
     - `autoheader`
