@@ -67,7 +67,7 @@ add_library(vistle_propertybrowser STATIC
   ${SOURCES} 
   ${UI_SRCS})
 
-qt_use_modules(vistle_propertybrowser Widgets)
+target_link_libraries(vistle_propertybrowser PRIVATE Qt5::Widgets)
 
 target_link_libraries(vistle_propertybrowser
     PRIVATE ${QT_LIBRARIES} vistle_core
