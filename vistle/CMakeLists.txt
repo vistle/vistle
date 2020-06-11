@@ -6,8 +6,6 @@ if(POLICY CMP0043)
    cmake_policy(SET CMP0043 NEW)
 endif()
 
-include(cmake/Qt4-5.cmake)
-
 add_compile_options("$<$<CONFIG:DEBUG>:-DPy_DEBUG>")
 
 enable_testing()

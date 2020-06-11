@@ -44,14 +44,14 @@ set(FORMS
    remotefiledialog.ui
 )
 
-qt_wrap_ui(UI_SRCS ${FORMS})
+qt5_wrap_ui(UI_SRCS ${FORMS})
 add_definitions(${QT_DEFINITIONS})
 add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
 add_library(vistle_remotefiledialog STATIC
   ${SOURCES} 
   ${UI_SRCS})
 
-qt_use_modules(vistle_remotefiledialog Widgets)
+target_link_libraries(vistle_remotefiledialog PRIVATE Qt5::Widgets)
 
 target_link_libraries(vistle_remotefiledialog
     PRIVATE ${QT_LIBRARIES} vistle_core

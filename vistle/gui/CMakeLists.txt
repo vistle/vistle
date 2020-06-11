@@ -100,8 +100,8 @@ if (APPLE)
 endif(APPLE)
 
 
-qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
-qt_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
+qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+qt5_add_resources(GUI_QRC_SOURCES gui.qrc about.qrc)
 add_definitions(${QT_DEFINITIONS})
 vistle_add_executable(${gui_name}
   MACOSX_BUNDLE
@@ -109,7 +109,7 @@ vistle_add_executable(${gui_name}
   ${GUI_UI_SRCS}
   ${GUI_QRC_SOURCES})
 
-qt_use_modules(${gui_name} Widgets)
+target_link_libraries(${gui_name} PRIVATE Qt5::Widgets)
 
 target_link_libraries(${gui_name}
   PRIVATE
