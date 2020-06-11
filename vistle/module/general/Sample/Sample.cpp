@@ -65,9 +65,9 @@ int Sample::SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBa
      Vec<Scalar>::ptr dataOut(new Vec<Scalar>(numVert));
      Scalar *ptrOnData = dataOut->x().data();
 
-     for (unsigned int i=0; i < numVert; ++i) {
+     for (Index i=0; i < numVert; ++i) {
          Vector v = target->getVertex(i);
-         Index cellIdxIn = inGrid->findCell(v,InvalidIndex,useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
+         Index cellIdxIn = inGrid->findCell(v,InvalidIndex,m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
          if (cellIdxIn != InvalidIndex) {
              GridInterface::Interpolator interp = inGrid->getInterpolator(cellIdxIn, v, DataBase::Vertex, mode);
              Scalar p = interp(data);
@@ -93,7 +93,7 @@ bool Sample::reduce(int timestep) {
             valOut = m_userDef->getValue();
     }
     if (m_createCelltree->getValue())
-        useCelltree = true;
+        m_useCelltree = true;
     int nProcs = 1;
     if (comm().size() > 0)
         nProcs = comm().size();
@@ -153,7 +153,7 @@ bool Sample::reduce(int timestep) {
                 auto globDatVec = outData->x().data();
                 if (m_hits->getValue()==Average) {
                     if (!sampledDataList.empty()) {
-                        for (unsigned int bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
+                        for (Index bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
                             globDatVec[bIdx] = 0 ;
                         }
                         std::vector<int> numHits(geo->getNumVertices(),0);
@@ -161,26 +161,26 @@ bool Sample::reduce(int timestep) {
                             auto locDat = Vec<Scalar,1>::as(elem);
                             auto locDatVec = &locDat->x()[0];
 
-                            for (unsigned int bIdx = 0; bIdx <  locDat->getSize(); ++bIdx) {
+                            for (Index bIdx = 0; bIdx <  locDat->getSize(); ++bIdx) {
                                if (locDatVec[bIdx] != NO_VALUE) {
                                    numHits[bIdx] += 1;
                                    globDatVec[bIdx] += locDatVec[bIdx];
                                }
                             }
                         }
-                        for (unsigned int bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
+                        for (Index bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
                             if (numHits[bIdx] > 0)
                                 globDatVec[bIdx] /= numHits[bIdx];
                             else globDatVec[bIdx] = valOut;
                         }
                         numHits.clear();
                     }else {
-                        for (unsigned int bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
+                        for (Index bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
                             globDatVec[bIdx] = valOut ;
                         }
                     }
                 }else {
-                    for (unsigned int bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
+                    for (Index bIdx = 0; bIdx < geo->getNumVertices() ; ++bIdx) {
                         globDatVec[bIdx] = valOut ;
                     }
 
@@ -189,7 +189,7 @@ bool Sample::reduce(int timestep) {
                             auto locDat = Vec<Scalar,1>::as(elem);
                             auto locDatVec = &locDat->x()[0];
 
-                            for (unsigned int bIdx = 0; bIdx <  locDat->getSize(); ++bIdx) {
+                            for (Index bIdx = 0; bIdx <  locDat->getSize(); ++bIdx) {
                                if (locDatVec[bIdx] != NO_VALUE) {
                                    globDatVec[bIdx] = locDatVec[bIdx];
                                }
