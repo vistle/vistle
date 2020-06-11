@@ -50,7 +50,7 @@ endif()
 vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 vistle_install_headers(util ${util_HEADERS})
 
-include_directories(${BOTAN_INCLUDE_DIRS})
+include_directories(SYSTEM ${BOTAN_INCLUDE_DIRS})
 
 target_link_libraries(vistle_util
     PRIVATE ${Boost_SYSTEM_LIBRARY}
