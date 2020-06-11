@@ -61,7 +61,6 @@ addons:
             - libboost-timer-dev
             - libboost-tools-dev
             - libboost-dev
-            - libvtk7-dev
             - libtinyxml2-dev
             - libturbojpeg0-dev
             - liblz4-dev
@@ -69,6 +68,7 @@ addons:
             - libzip-dev
             - libarchive-dev
             - libbotan-2-dev
+            #- libvtk7-dev
 
 
 before_install:
