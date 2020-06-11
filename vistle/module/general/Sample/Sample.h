@@ -21,7 +21,7 @@ private:
     virtual bool compute(std::shared_ptr<vistle::PortTask> task) const override;
 
     virtual bool reduce(int timestep) override;
-    bool objectAdded(int sender, const std::string &senderPort, const vistle::Port *port);
+    bool objectAdded(int sender, const std::string &senderPort, const vistle::Port *port) override;
     bool changeParameter(const vistle::Parameter *p) override;
 
     int SampleToGrid(const vistle::GeometryInterface *target, vistle::DataBase::const_ptr inData, vistle::DataBase::ptr &sampled );
@@ -36,7 +36,7 @@ private:
     std::vector<vistle::DataBase::const_ptr> dataList;
     std::vector<int> blockIdx;
 
-    bool useCelltree = false;
+    bool m_useCelltree = false;
 
     float NO_VALUE = 0.0;
 };
