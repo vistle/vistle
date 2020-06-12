@@ -108,7 +108,7 @@ std::vector<uint8_t> compute_mac(const void *data, size_t length, const std::vec
     mac_algo->start();
 #endif
     mac_algo->update(static_cast<const char *>(data));
-    Botan::secure_vector<uint8_t> tag = mac_algo->final();
+    auto tag = mac_algo->final();
     return from_secure<uint8_t>(tag);
 }
 
