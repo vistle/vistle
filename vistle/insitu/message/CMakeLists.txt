@@ -25,4 +25,5 @@ target_link_libraries(vistle_insitu_message
 		PRIVATE vistle_boost_mpi
 		PRIVATE ${Boost_LIBRARIES}
 		PRIVATE ${MPI_C_LIBRARIES}
+		PRIVATE Threads::Threads
 		)

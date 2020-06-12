@@ -121,6 +121,7 @@ target_link_libraries(${LIBNAME}
 		vistle_insitu_message
 		${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
+        Threads::Threads
 		)
 		
 if(NOT VISTLE_MULTI_PROCESS)
