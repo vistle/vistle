@@ -65,7 +65,10 @@ public:
    typedef size_t size_type;
    typedef size_t index_type;
    typedef ssize_t difference_type;
-   bool empty() const { return dim > 0; }
+   bool empty() const { return dim == 0; }
+   void clear() const {
+         throw vistle::exception("not supported");
+   }
    size_t size() const { return dim; }
    typedef typename std::vector<S>::iterator iterator;
    typedef typename std::vector<S>::const_iterator const_iterator;
