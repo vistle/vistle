@@ -45,6 +45,7 @@ Build Requirements
   Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
 
 - **Boost**:
+  At least 1.59.00 is required.
   Build boost with the following options:
 
          b2 --with-filesystem --with-iostreams --with-python \
@@ -54,7 +55,6 @@ Build Requirements
      Notes:
 
      - in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle
-     - Intel compiler (at least 14.0.2) does not work with 1.55 because of missing `std::nullptr_t`, use 1.52
 
 - **Python**:
   for interpreting Vistle scripts (.vsl), Python 2.7 and 3 should work.

@@ -47,7 +47,7 @@ if (BOOST_MPI_DIR STREQUAL "boost-mpi-1.69")
    )
 endif()
 
-if (NOT BOOST_MPI_DIR STREQUAL "boost-mpi-1.55")
+if (NOT BOOST_MPI_DIR STREQUAL "boost-mpi-1.58")
    set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
       ${BOOST_MPI_DIR}/src/error_string.cpp
    )
