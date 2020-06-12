@@ -4,6 +4,7 @@
 
 notifications:
   email:
+    - covise-commits@listserv.uni-stuttgart.de
     - aumuell@reserv.at
 
 sudo: required
