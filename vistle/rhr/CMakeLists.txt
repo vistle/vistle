@@ -21,12 +21,14 @@ if(ZFP_FOUND)
 endif()
 
 set(RHR_SOURCES
+   compdecomp.cpp
    depthquant.cpp
    predict.cpp
    rfbext.cpp
    )
 
 set(RHR_HEADERS
+   compdecomp.h
    depthquant.h
    predict.h
    rfbext.h
@@ -34,8 +36,8 @@ set(RHR_HEADERS
    )
 
 if(TBB_FOUND)
-   set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp compdecomp.cpp)
-   set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h compdecomp.h)
+   set(RHR_SOURCES ${RHR_SOURCES} rhrserver.cpp)
+   set(RHR_HEADERS ${RHR_HEADERS} rhrserver.h)
    include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
    )
