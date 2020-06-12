@@ -11,6 +11,7 @@ endif()
 vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
 target_link_libraries(vistle_libsim_connect
         ${Boost_LIBRARIES}
+        Threads::Threads
 )
 
 if(LIBSIM_DEBUG)
