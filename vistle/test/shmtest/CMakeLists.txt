@@ -11,4 +11,5 @@ target_link_libraries(vistle_shmtest
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_core
+        Threads::Threads
 )
