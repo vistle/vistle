@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/vistle/vistle.svg?branch=master)](https://travis-ci.org/vistle/vistle)
+
 Vistle - A Modular Data-Parallel Visualization System
 =====================================================
 
@@ -37,7 +39,7 @@ Build Requirements
   - Microsoft Visual Studio 2017 (15.1)
   
 - **CMake**:
-  at least 3.0
+  at least 3.3
 
 - **MPI**:
   Microsoft MPI, Open MPI, MPICH and MVAPICH2 has been used successfully.
