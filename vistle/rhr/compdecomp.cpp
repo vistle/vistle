@@ -10,7 +10,6 @@
 #endif
 
 #ifdef HAVE_TURBOJPEG
-#include <tbb/enumerable_thread_specific.h>
 #include <turbojpeg.h>
 
 
@@ -29,9 +28,6 @@ struct TjComp {
     tjhandle handle;
 };
 
-typedef tbb::enumerable_thread_specific<TjComp> TjContext;
-static TjContext tjContexts;
-
 struct TjDecomp {
 
     TjDecomp()
@@ -46,6 +42,7 @@ struct TjDecomp {
 };
 
 std::mutex tjMutex;
+std::vector<std::shared_ptr<TjComp>> tjCompContexts;
 std::vector<std::shared_ptr<TjDecomp>> tjDecompContexts;
 }
 #endif
@@ -166,7 +163,15 @@ buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int s
     if (param.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || param.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
 #ifdef HAVE_TURBOJPEG
         TJSAMP sampling = param.rgbaCodec==vistle::CompressionParameters::Jpeg_YUV411 ? TJSAMP_420 : TJSAMP_444;
-        TjContext::reference tj = tjContexts.local();
+        std::shared_ptr<TjComp> tjc;
+        std::unique_lock<std::mutex> locker(tjMutex);
+        if (tjCompContexts.empty()) {
+            tjc = std::make_shared<TjComp>();
+        } else {
+            tjc = tjCompContexts.back();
+            tjCompContexts.pop_back();
+        }
+        locker.unlock();
         size_t maxsize = tjBufSize(w, h, sampling);
         buffer jpegbuf(maxsize);
         unsigned long sz = 0;
@@ -174,8 +179,10 @@ buffer compressRgba(const unsigned char *rgba, int x, int y, int w, int h, int s
 #ifdef TIMING
         double start = vistle::Clock::time();
 #endif
-        int ret = tjCompress(tj.handle, const_cast<unsigned char *>(col), w, stride*bpp, h, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, param.rgbaCodec==vistle::CompressionParameters::Jpeg_YUV411, 90, TJ_BGR);
+        int ret = tjCompress(tjc->handle, const_cast<unsigned char *>(col), w, stride*bpp, h, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, param.rgbaCodec==vistle::CompressionParameters::Jpeg_YUV411, 90, TJ_BGR);
         jpegbuf.resize(sz);
+        locker.lock();
+        tjCompContexts.push_back(tjc);
 #ifdef TIMING
         double dur = vistle::Clock::time() - start;
         std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
@@ -283,23 +290,23 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
 
         if (p.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411 || p.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV444) {
 #ifdef HAVE_TURBOJPEG
-            std::shared_ptr<TjDecomp> tjc;
+            std::shared_ptr<TjDecomp> tjd;
             {
-                std::lock_guard<std::mutex> locker(tjMutex);
+                std::unique_lock<std::mutex> locker(tjMutex);
                 if (tjDecompContexts.empty()) {
-                    tjc = std::make_shared<TjDecomp>();
+                    tjd = std::make_shared<TjDecomp>();
                 } else {
-                    tjc = tjDecompContexts.back();
+                    tjd = tjDecompContexts.back();
                     tjDecompContexts.pop_back();
                 }
             }
             int ww=-1, hh=-1;
             const unsigned char *rgba = reinterpret_cast<const unsigned char *>(input.data());
-            tjDecompressHeader(tjc->handle, const_cast<unsigned char *>(rgba), input.size(), &ww, &hh);
+            tjDecompressHeader(tjd->handle, const_cast<unsigned char *>(rgba), input.size(), &ww, &hh);
             dest += (y*stride+x)*bpp;
-            int ret = tjDecompress(tjc->handle, const_cast<unsigned char *>(rgba), input.size(), reinterpret_cast<unsigned char *>(dest), w, stride*bpp, h, bpp, TJPF_BGR);
-            std::lock_guard<std::mutex> locker(tjMutex);
-            tjDecompContexts.push_back(tjc);
+            int ret = tjDecompress(tjd->handle, const_cast<unsigned char *>(rgba), input.size(), reinterpret_cast<unsigned char *>(dest), w, stride*bpp, h, bpp, TJPF_BGR);
+            std::unique_lock<std::mutex> locker(tjMutex);
+            tjDecompContexts.push_back(tjd);
             if (ret == -1) {
                 CERR << "DecodeTask: JPEG error: " << tjGetErrorStr() << std::endl;
                 return false;
