@@ -39,8 +39,6 @@ addons:
             - libpng-dev
             - libopenscenegraph-3.4-dev
             - libtbb-dev
-            - libmpich-dev
-            - mpich
             - libjpeg-dev
             - libsnappy-dev
             - zlib1g-dev
@@ -68,7 +66,7 @@ addons:
             - libzip-dev
             - libarchive-dev
             - libbotan-2-dev
-            #- libvtk7-dev
+            - libvtk7-dev # also install OpenMPI
 
 
 before_install:
