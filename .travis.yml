@@ -53,7 +53,6 @@ addons:
             - libboost-log-dev
             - libboost-math-dev
             - libboost-program-options-dev
-            - libboost-python-dev
             - libboost-random-dev
             - libboost-serialization-dev
             - libboost-system-dev
