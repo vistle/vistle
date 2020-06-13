@@ -16,6 +16,9 @@ os:
     - linux
     - osx
 
+osx_image: xcode11.5
+osx_image: xcode10.3
+
 env:
     #- BUILD_TYPE="Debug"
     - BUILD_TYPE="Release"
@@ -62,13 +65,26 @@ addons:
             - libarchive-dev
             - libbotan-2-dev
             - libvtk7-dev # also install OpenMPI
+    homebrew:
+        packages:
+            - cmake
+            - ninja
+            - open-mpi
+            - boost
+            - python3
+            - glew
+            - jpeg
+            - qt5
+            - tbb
+            #- embree
+            #- ispc
 
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "linux" ]; then rm -f ${HOME}/.ccache/ccache.conf; ccache --set-config=sloppiness=file_macro,time_macros; fi
     #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew unlink python@2; fi
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install glew jpeg boost python3 qt5 open-mpi; fi
+    #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew unlink python@2; fi
+    #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install glew jpeg boost python3 qt5 open-mpi; fi
     #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install embree ispc; fi
 
 script:
@@ -76,4 +92,4 @@ script:
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
-    - ninja
+    - ninja -v
