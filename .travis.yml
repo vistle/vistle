@@ -86,7 +86,7 @@ before_install:
 
 script:
 
-    - export PATH="/opt/python/3.7.6/bin:$PATH"
+    - export PATH="/opt/python/3.8.1/bin:$PATH"
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
