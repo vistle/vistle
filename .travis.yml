@@ -11,13 +11,15 @@ sudo: required
 dist: bionic
 
 language: cpp
+cache: ccache
+
 os:
     - linux
     - osx
 
 env:
     matrix:
-        # - APP="vistle" BUILD_TYPE="Debug"
+        - APP="vistle" BUILD_TYPE="Debug"
         - APP="vistle" BUILD_TYPE="Release"
 
 matrix:
