@@ -4,10 +4,8 @@
 
 notifications:
   email:
-    #- covise-commits@listserv.uni-stuttgart.de
+    - covise-commits@listserv.uni-stuttgart.de
     - aumuell@reserv.at
-
-dist: bionic
 
 language: cpp
 cache: ccache
@@ -19,6 +17,8 @@ os:
 env:
     #- BUILD_TYPE="Debug"
     - BUILD_TYPE="Release"
+
+dist: bionic
 
 osx_image:
     - xcode11.5
@@ -71,16 +71,24 @@ addons:
         packages:
             - cmake
             - ninja
+            - libomp
             - botan
             - open-mpi
             - boost
             - python3
             - glew
-            - jpeg
+            - jpeg-turbo
             - qt5
             - tbb
-            #- embree
-            #- ispc
+            - zstd
+            - lz4
+            - libzip
+            - assimp
+            - embree
+            - ispc
+            - tinyxml2
+            - vtk
+            - open-scene-graph
 
 
 before_install:
