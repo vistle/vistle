@@ -16,12 +16,13 @@ os:
     - linux
     - osx
 
-osx_image: xcode11.5
-osx_image: xcode10.3
-
 env:
     #- BUILD_TYPE="Debug"
     - BUILD_TYPE="Release"
+
+osx_image:
+    - xcode11.5
+    - xcode10.3
 
 addons:
     apt:
@@ -66,6 +67,7 @@ addons:
             - libbotan-2-dev
             - libvtk7-dev # also install OpenMPI
     homebrew:
+        update: true # necessary for 'brew bundle'
         packages:
             - cmake
             - ninja
