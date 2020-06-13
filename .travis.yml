@@ -14,17 +14,11 @@ cache: ccache
 
 os:
     - linux
-    - osx
+    #- osx
 
 env:
-    matrix:
-        - APP="vistle" BUILD_TYPE="Debug"
-        - APP="vistle" BUILD_TYPE="Release"
-
-matrix:
-    exclude:
-        # FIXME
-        - os: osx
+    - APP="vistle" BUILD_TYPE="Debug"
+    - APP="vistle" BUILD_TYPE="Release"
 
 addons:
     apt:
