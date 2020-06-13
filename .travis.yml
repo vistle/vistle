@@ -4,10 +4,9 @@
 
 notifications:
   email:
-    - covise-commits@listserv.uni-stuttgart.de
+    #- covise-commits@listserv.uni-stuttgart.de
     - aumuell@reserv.at
 
-sudo: required
 dist: bionic
 
 language: cpp
@@ -20,7 +19,7 @@ os:
 env:
     matrix:
         - APP="vistle" BUILD_TYPE="Debug"
-        - APP="vistle" BUILD_TYPE="Release"
+        #- APP="vistle" BUILD_TYPE="Release"
 
 matrix:
     exclude:
@@ -86,7 +85,8 @@ before_install:
 
 script:
 
-    - export PATH="/opt/python/3.8.1/bin:$PATH"
+    #- export PATH="/opt/python/3.8.1/bin:$PATH"
+    - printenv
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
     - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
