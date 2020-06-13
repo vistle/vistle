@@ -4,7 +4,7 @@
 
 notifications:
   email:
-    - covise-commits@listserv.uni-stuttgart.de
+    #- covise-commits@listserv.uni-stuttgart.de
     - aumuell@reserv.at
 
 dist: bionic
@@ -66,8 +66,10 @@ addons:
 
 before_install:
     - if [ "$TRAVIS_OS_NAME" = "linux" ]; then rm -f ${HOME}/.ccache/ccache.conf; ccache --set-config=sloppiness=file_macro,time_macros; fi
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
-    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew reinstall glew jpeg boost python3 qt5 embree ispc open-mpi; fi
+    #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew update; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew unlink python@2; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install glew jpeg boost python3 qt5 open-mpi; fi
+    #- if [ "$TRAVIS_OS_NAME" = "osx" ]; then travis_retry brew install embree ispc; fi
 
 script:
 
