@@ -86,9 +86,9 @@ addons:
             - assimp
             - embree
             - ispc
-            - tinyxml2
-            - vtk
-            - open-scene-graph
+            #- vtk # problems because of messy include path due to xcode & cmd line dev tools
+            #- tinyxml2
+            #- open-scene-graph
 
 
 before_install:
