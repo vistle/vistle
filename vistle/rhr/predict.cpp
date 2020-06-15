@@ -339,7 +339,7 @@ void transform_unpredict<3,true,true>(unsigned char *output, const unsigned char
 
             uint8_t b = y;
             uint8_t g = u + b;
-            uint8_t r = v + g;
+            uint8_t r = g - v;
             *out++ = r;
             *out++ = g;
             *out++ = b;
@@ -379,7 +379,7 @@ void transform_unpredict<4,true,true>(unsigned char *output, const unsigned char
 
             uint8_t b = y;
             uint8_t g = u + b;
-            uint8_t r = v + g;
+            uint8_t r = g - v;
             *out++ = r;
             *out++ = g;
             *out++ = b;
