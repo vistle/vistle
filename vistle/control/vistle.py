@@ -104,7 +104,7 @@ def getParameter(id, name):
 def getSavableParam(id, name):
    t = _vistle.getParameterType(id, name)
    if t == "String":
-      return "'"+getStringParam(id, name)+"'"
+      return "'"+_vistle.getEscapedStringParam(id, name)+"'"
    elif t == "Vector":
       v = _vistle.getVectorParam(id, name)
       s = ''
@@ -374,6 +374,7 @@ getFloatParam = _vistle.getFloatParam
 getVectorParam = _vistle.getVectorParam
 getIntVectorParam = _vistle.getIntVectorParam
 getStringParam = _vistle.getStringParam
+getEscapedStringParam = _vistle.getEscapedStringParam
 Id = _vistle.Id
 Message = _vistle.Message
 StateObserver = _vistle.StateObserver

@@ -423,6 +423,61 @@ static T getParameterValue(int id, const std::string &name) {
    return tparam->getValue();
 }
 
+static std::string getEscapedStringParam(int id, const std::string &name) {
+
+    std::string val = getParameterValue<std::string>(id, name);
+    std::vector<char> escaped;
+
+    for (auto c: val) {
+        switch(c) {
+        case '\"':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('\"');
+            break;
+        case '\'':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('\'');
+            break;
+        case '\\':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('\\');
+            break;
+        case '\a':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('a');
+            break;
+        case '\b':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('b');
+            break;
+        case '\n':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('n');
+            break;
+        case '\r':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('r');
+            break;
+        case '\t':
+            escaped.emplace_back('\\');
+            escaped.emplace_back('t');
+            break;
+        default:
+            if (iscntrl(c)) {
+                escaped.emplace_back('\\');
+                escaped.emplace_back('0'+c/8/8);
+                escaped.emplace_back('0'+(c/8)%8);
+                escaped.emplace_back('0'+c%8);
+            } else {
+                escaped.emplace_back(c);
+            }
+            break;
+        }
+    }
+
+    return std::string(escaped.data(), escaped.size());
+}
+
 static std::string getModuleName(int id) {
 
    LOCKED();
@@ -1079,6 +1134,7 @@ PY_MODULE(_vistle, m) {
     m.def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getIntVectorParam", getParameterValue<IntParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     m.def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
+    m.def("getEscapedStringParam", getEscapedStringParam, "get value of parameter named `arg2` of module with ID `arg1`");
 
 #ifndef EMBED_PYTHON
     m.def("sessionConnect", &sessionConnect, "connect to running Vistle instance", "host"_a="localhost", "port"_a=31093);
