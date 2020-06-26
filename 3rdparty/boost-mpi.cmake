@@ -56,9 +56,6 @@ endif()
 set(boost_mpi_HEADERS
 )
 
-include_directories(SYSTEM
-        "${BOOST_MPI_DIR}/include"
-)
 
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 vistle_export_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
@@ -66,4 +63,19 @@ target_link_libraries(vistle_boost_mpi
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C
+)
+string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
+message("directory= " ${directory})
+message("BOOST_MPI_DIR = " ${BOOST_MPI_DIR})
+install(
+	DIRECTORY 
+		 ${BOOST_MPI_DIR}/include/boost
+	DESTINATION
+		include/3rdarty/${BOOST_MPI_DIR}
+	  COMPONENT
+		Devel
+)
+target_include_directories(vistle_boost_mpi SYSTEM
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${BOOST_MPI_DIR}/include>
+		PUBLIC $<INSTALL_INTERFACE:include/3rdarty/${BOOST_MPI_DIR}>
 )
