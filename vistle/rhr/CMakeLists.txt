@@ -69,8 +69,11 @@ target_link_libraries(vistle_rhr
         vistle_core
         ${Boost_LIBRARIES}
         ${JPEG_LIBRARIES}
-        ${ZLIB_LIBRARIES}
 )
+
+if (ZLIB_FOUND)
+    target_link_libraries(vistle_rhr ${ZLIB_LIBRARIES})
+endif()
 
 if (JPEGTURBO_FOUND)
    target_link_libraries(vistle_rhr ${TURBOJPEG_LIBRARIES})
