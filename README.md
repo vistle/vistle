@@ -50,7 +50,7 @@ Build Requirements
 
          b2 --with-filesystem --with-iostreams --with-python \
              --with-serialization --with-system --with-thread \
-             --with-date_time \
+             --with-date_time --with-chrono --with-regex \
              --with-program_options
      Notes:
 
