@@ -4,43 +4,45 @@ set(util_SOURCES
    affinity.cpp
    coRestraint.cpp
    crypto.cpp
+   directory.cpp
    exception.cpp
    fileio.cpp
    findself.cpp
    hostname.cpp
-   stopwatch.cpp
-   tools.cpp
-   spawnprocess.cpp
-   directory.cpp
-   sleep.cpp
-   sysdep.cpp
-   netpbmimage.cpp
    listenv4v6.cpp
+   netpbmimage.cpp
+   sleep.cpp
+   spawnprocess.cpp
+   stopwatch.cpp
+   sysdep.cpp
+   tools.cpp
 )
 
 set(util_HEADERS
-   export.h
    affinity.h
+   allocator.h
+   buffer.h
    coRestraint.h
    crypto.h
+   directory.h
    enum.h
    exception.h
+   export.h
    fileio.h
    findself.h
    hostname.h
+   listenv4v6.h
    math.h
+   netpbmimage.h
+   pybind.h
+   sleep.h
+   spawnprocess.h
+   ssize_t.h
+   stopwatch.h
    sysdep.h
    tools.h
-   stopwatch.h
    valgrind.h
    vecstreambuf.h
-   spawnprocess.h
-   directory.h
-   sleep.h
-   ssize_t.h
-   pybind.h
-   netpbmimage.h
-   listenv4v6.h
 )
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "")
