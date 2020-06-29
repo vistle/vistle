@@ -345,9 +345,10 @@ endif()
 
 if (NOT CRAY AND NOT VISTLE_GUI_ONLY)
     set(MPI_SKIP_MPICXX TRUE)
+    #set(MPI_FIND_COMPONENTS "C CXX")
     add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
     add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
-    vistle_find_package(MPI REQUIRED COMPONENTS C)
+    vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
 
     include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
