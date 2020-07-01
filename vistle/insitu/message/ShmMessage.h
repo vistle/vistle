@@ -6,7 +6,7 @@
 namespace vistle {
 namespace insitu {
 namespace message {
-constexpr unsigned int ShmMessageMaxSize = 1000;
+constexpr size_t ShmMessageMaxSize = 1000;
 constexpr unsigned int ShmMessageQueueLenght = 20;
 struct ShmMsg {
     int type = 0;
@@ -26,6 +26,7 @@ public:
             std::cerr << "ShmMessage : can not send invalid message!" << std::endl;
             return false;
         }
+        std::cerr << "sending message of type " << static_cast<int>(msg.type) << std::endl;
         vistle::vecostreambuf<vistle::buffer> buf;
         vistle::oarchive ar(buf);
         ar& msg;
@@ -53,7 +54,7 @@ public:
         {
             for (auto msg : msgs)
             {
-                m_msqs[m_order[1]]->send((void*)&msg, sizeof(msg), 0);
+                m_msqs[1]->send((void*)&msg, sizeof(msg), 0);
             }
         }
         catch (const boost::interprocess::interprocess_exception& ex)
@@ -64,19 +65,24 @@ public:
 
         return true;
     }
-    void initialize();
-    void initialize(const std::string& msqName);
+    void initialize(); //create a msq
+    void initialize(const std::string& msqName); //connect to a msq
+    void reset(); //set the state back to uninitialized
     bool isInitialized();
+    void removeShm();
     std::string name();
     insitu::message::Message recv();
     insitu::message::Message tryRecv();
     insitu::message::Message timedRecv(size_t timeInSec);
+    ~InSituShmMessage();
 private:
     bool m_initialized = false;
     std::array<std::unique_ptr<boost::interprocess::message_queue>, 2> m_msqs;
-    std::array<int, 2> m_order; //0: recv queu 1: send queue
-    std::string m_msqName = "vislte_sensei_shmMessage_";
-
+    bool m_creator = false; //if true we created shm objects which we have to remove
+    const std::string m_msqName = "vistle_shmMessage_";
+    const std::string m_recvSuffix = "_recv_sensei"; //signature must contain _recv_ for shm::cleanAll to remove these files
+    const std::string m_sendSuffix = "_send_sensei"; //signature must contain _send_ for shm::cleanAll to remove these files
+    size_t m_iteration = 0;
 };
 
 

@@ -4,27 +4,30 @@
 #include "unstructuredGrid.h"
 #include "structuredGrid.h"
 
-#include <insitu/core/dataAdaptor.h>
 #include <insitu/core/exeption.h>
+#include <insitu/core/mesh.h>
+#include <insitu/core/transformArray.h>
 
 #include <util/hostname.h>
 
 #include <iostream>
 #include <fstream>
+#include <cassert>
 
 #define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] SenseiAdapter: "
 using std::endl;
 using namespace vistle::insitu;
 using namespace vistle::insitu::sensei;
 using namespace vistle::insitu::message;
-SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo)
-	:m_callbacks(cbs)
-	,m_metaData(std::move(meta))
-	,m_moduleInfo(moduleInfo)
-	,m_rank(rank)
-	,m_mpiSize(mpiSize)
-{
 
+SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs)
+	:m_callbacks(cbs)
+	, m_metaData(std::move(meta))
+	, m_rank(rank)
+	, m_mpiSize(mpiSize)
+{
+	m_commands["run/paused"] = !paused; //if true run else wait
+	m_commands["exit"] = false; //let the simulation know that vistle wants to exit by returning false from execute
 	try
 	{
 		m_messageHandler.initialize();
@@ -34,35 +37,58 @@ SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&
 	{
 		throw vistle::insitu::sensei::Exeption() << "failed to crate connection facilities for Vistle";
 	}
-	if (paused) //let the simulation wait for the module
-	{
-		while (!m_moduleInfo.ready)
-		{
-			recvAndHandeMessage(true);
-		}
-	}
 }
 
 bool SenseiAdapter::Execute(size_t timestep)
 {
-	m_currTimestep = timestep;
-	recvAndHandeMessage(); //catch newest state
 
-	for (std::string name : m_moduleInfo.connectedPorts)
+	m_currTimestep++;
+	while (recvAndHandeMessage()) {} //catch newest state
+	auto it = m_commands.find("run/paused");
+	while (!it->second)//let the simulation wait for the module if initialized with paused
 	{
-		auto it = std::find(m_metaData.meshes.begin(), m_metaData.meshes.end(), name);
-		if (it != m_metaData.meshes.end())
+		recvAndHandeMessage(true);
+		if (m_commands["exit"])
 		{
-			auto mesh = m_callbacks.getMesh(name);
-			sendMeshToModule(mesh);
+			m_messageHandler.send(insitu::message::ConnectionClosed{ true });
+			return false;
 		}
 	}
-	return false;
+	if (m_commands["exit"])
+	{
+		m_messageHandler.send(insitu::message::ConnectionClosed{ true });
+		return false;
+	}
+	if (!m_connected)
+	{
+		CERR << "sensei controller is disconnected" << endl;
+		return false;
+	}
+	if (!m_moduleInfo.ready)
+	{
+		CERR << "can not process data if the sensei controller is not executing!" << endl;
+		return true;
+	}
+	for (const VariablesUsedByMesh& data : m_usedData)
+	{
+		std::vector<Array> arrays;
+		for (auto name : data.varNames)
+		{
+			arrays.push_back(m_callbacks.getVar(*name));
+		}
+		sendMeshToModule(m_callbacks.getGrid(*data.mesh), arrays);
+	}
+
+	return true;
 }
 
 bool vistle::insitu::sensei::SenseiAdapter::Finalize()
 {
-	return false;
+	if (m_moduleInfo.initialized)
+	{
+		m_messageHandler.send(vistle::insitu::message::ConnectionClosed{ true });
+	}
+	return true;
 }
 
 bool vistle::insitu::sensei::SenseiAdapter::processTimestep(size_t timestep)
@@ -75,6 +101,28 @@ SenseiAdapter::~SenseiAdapter()
 }
 
 
+void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
+{
+	m_usedData.clear();
+	std::sort(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end());
+	for (auto mesh = m_metaData.begin(); mesh != m_metaData.end(); ++mesh)
+	{
+		std::vector<MetaData::VarIter> varNames;
+		for (auto name : m_moduleInfo.connectedPorts)
+		{
+			auto it = std::find(m_metaData.getVariables(mesh).begin(), m_metaData.getVariables(mesh).end(), name);
+			if (it != m_metaData.getVariables(mesh).end())
+			{
+				varNames.push_back(it);
+			}
+		}
+		if (varNames.size() > 0 || std::binary_search(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end(), *mesh)) //if at least one variable of the mesh is used create the mesh and all its used variables
+		{
+			m_usedData.push_back({ mesh, varNames });
+		}
+	}
+}
+
 void SenseiAdapter::dumpConnectionFile()
 {
 	std::ofstream outfile("sensei.vistle");
@@ -85,6 +133,7 @@ void SenseiAdapter::dumpConnectionFile()
 bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 {
 	message::Message msg = blocking ? m_messageHandler.recv() : m_messageHandler.tryRecv();
+	std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
 	switch (msg.type())
 	{
 	case insitu::message::InSituMessageType::Invalid:
@@ -93,8 +142,8 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 	{
 		if (m_connected)
 		{
-			CERR << "warning: received conncetion attempt but we are already connectted with module " << m_moduleInfo.name << m_moduleInfo.id << endl;
-
+			CERR << "warning: received connection attempt but we are already connectted with module " << m_moduleInfo.name << m_moduleInfo.id << endl;
+			return false;
 		}
 		message::ShmInit init = msg.unpackOrCast<message::ShmInit>();
 		//vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
@@ -103,23 +152,31 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		if (m_mpiSize != mpisize)
 		{
 			CERR << "Vistle's mpi = " << mpisize << " and this mpi size = " << m_mpiSize << " do not match" << endl;
+			return false;
 		}
 		m_moduleInfo.shmName = argV[1];
 		m_moduleInfo.name = argV[2];
 		m_moduleInfo.id = std::stoi(argV[3]);
 		m_moduleInfo.hostname = argV[4];
-		m_moduleInfo.numCons = argV[6];
+		m_moduleInfo.numCons = argV[5];
 		if (m_rank == 0 && argV[4] != vistle::hostname()) {
 			CERR << "this " << vistle::hostname() << "trying to connect to " << argV[4] << endl;
 			CERR << "Wrong host: must connect to Vistle on the same machine!" << endl;
 			return false;
 		}
-		initializeVistleEnv();
-		m_messageHandler.send(SetCommands{ std::vector<std::string>{"run", "stop"} });
-		m_commands["run"] = true;
-		m_commands["stop"] = false;
+		if (!initializeVistleEnv())
+		{
+			return false;
+		}
+		std::vector<std::string> commands;
+		for (const auto& command : m_commands)
+		{
+			commands.push_back(command.first);
+		}
+		m_messageHandler.send(SetCommands{ commands });
+		addPorts();
 	}
-		break;
+	break;
 	case insitu::message::InSituMessageType::AddObject:
 		break;
 	case insitu::message::InSituMessageType::SetPorts:
@@ -132,12 +189,27 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 				m_moduleInfo.connectedPorts.push_back(port);
 			}
 		}
+		calculateUsedData();
 	}
 	break;
 	case insitu::message::InSituMessageType::SetCommands:
 		break;
 	case insitu::message::InSituMessageType::Ready:
-		break;
+	{
+
+		Ready em = msg.unpackOrCast<Ready>();
+		m_moduleInfo.ready = em.value;
+		if (m_moduleInfo.ready) {
+			m_currTimestep = 0; //always start from timestep 0 to override data from last execution
+			vistle::Shm::the().setObjectID(m_shmIDs.objectID());
+			vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
+		}
+		else {
+			m_shmIDs.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
+			m_messageHandler.send(Ready{ false }); //confirm that we are done creating vistle objects
+		}
+	}
+	break;
 	case insitu::message::InSituMessageType::ExecuteCommand:
 	{
 		ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
@@ -152,7 +224,7 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		}
 
 	}
-		break;
+	break;
 	case insitu::message::InSituMessageType::GoOn:
 		break;
 	case insitu::message::InSituMessageType::ConstGrids:
@@ -166,7 +238,7 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		m_shmIDs.close();
 		CERR << "connection closed" << endl;
 	}
-		break;
+	break;
 	case insitu::message::InSituMessageType::VTKVariables:
 		break;
 	case insitu::message::InSituMessageType::CombineGrids:
@@ -214,7 +286,7 @@ bool SenseiAdapter::initializeVistleEnv()
 	try {
 		m_sendMessageQueue.reset(new AddObjectMsq(m_moduleInfo, m_rank));
 	}
-	catch (InsituExeption& ex) {
+	catch (const InsituExeption& ex) {
 		CERR << "failed to create AddObjectMsq numCons =  " << m_moduleInfo.numCons << " module id = " << m_moduleInfo.id << " : " << ex.what() << endl;
 		return false;
 	}
@@ -229,21 +301,26 @@ bool SenseiAdapter::initializeVistleEnv()
 	}
 
 	m_connected = true;
+	CERR << "connection to module " << m_moduleInfo.name << m_moduleInfo.id << " established!" << endl;
 	return true;
 }
 
 void SenseiAdapter::addPorts()
 {
-	SetPorts::value_type ports;
-	auto meshNames = m_metaData.meshes;
+	std::vector<std::vector<std::string>> ports;
+	std::vector<std::string> meshNames{ m_metaData.begin(), m_metaData.end() };
+
 
 	meshNames.push_back("mesh");
 	ports.push_back(meshNames);
 
 	std::vector<std::string> varNames;
-	for (auto name : m_metaData.variables)
+	for (auto m = m_metaData.begin(); m != m_metaData.end(); ++m)
 	{
-		varNames.push_back(name.first);
+		for (auto name : m_metaData.getVariables(m))
+		{
+			varNames.push_back(name);
+		}
 	}
 	varNames.push_back("variable");
 	ports.push_back(varNames);
@@ -263,61 +340,62 @@ void SenseiAdapter::addPorts()
 
 
 
-void SenseiAdapter::sendMeshToModule(const Mesh& mesh)
+void SenseiAdapter::sendMeshToModule(const Grid& grid, const std::vector<Array>& data)
 {
-	switch (mesh.type)
+	if (!grid)
 	{
-	case MeshType::Multi:
+		throw Exeption{} << "sendMeshToModule called without grid";
+	}
+	if (grid->numGrids() > 0)
 	{
-		auto multiMesh = dynamic_cast<const MultiMesh*>(&mesh);
-		if (multiMesh)
+		for (const auto& d : data)
 		{
-			for (auto m : multiMesh->meshes)
+			if (d.dataType() != DataType::ARRAY || d.size() != grid->numGrids())
 			{
-				sendMeshToModule(m);
+				throw Exeption() << "data does not fit to Multimesh " << grid->name();
+			}
+		}
+		for (size_t i = 0; i < grid->numGrids(); i++)
+		{
+			std::vector<Array> d;
+			for (auto& array : data)
+			{
+				d.push_back(std::move(((Array*)array.data())[i]));
+			}
+			auto g = grid->getGrid(i);
+			if (g)
+			{
+				sendMeshToModule(*g, d);
+			}
+			else
+			{
+				throw Exeption{} << "grid " << grid->name() << ": missing sub grid [" << i << "/" << grid->numGrids() << "]";
 			}
 		}
 	}
-		break;
-		case MeshType::Unstructured:
-	{
-		auto unstr = dynamic_cast<const UnstructuredMesh*>(&mesh);
-		if (unstr)
+	else {
+		auto vistleGrid = grid->toVistle(m_currTimestep, m_shmIDs);
+		addObject(grid->name(), vistleGrid);
+		for (auto& d : data)
 		{
-			auto m = makeUnstructuredGrid(*unstr, m_shmIDs, m_currTimestep);
-			sendObject(mesh.name, m);
+			sendVariableToModule(d, vistleGrid);
 		}
-		else
-		{
-			CERR << "failed dynamic_cast: mesh of type UNSTRUCTUREDGRID is expected to be a UnstructuredMesh" << endl;
-		}
-
 	}
-		break;
-	case MeshType::Rectilinear:
-	{
-		auto m = makeRectilinearGrid(mesh, m_shmIDs, m_currTimestep);
-		sendObject(mesh.name, m);
-	}
-		break;
-	case MeshType::Structured:
-	{
-		auto m = makeStructuredGrid(mesh, m_shmIDs, m_currTimestep);
-		sendObject(mesh.name, m);
-	}
-		break;
-	default:
-		CERR << "sendMeshToModule: mesh type " << static_cast<int>(mesh.type) << " not implemented!" << endl;
-		break;
-	}
-
 }
 
-void SenseiAdapter::sendVariableToModule(const Array& var)
+void SenseiAdapter::sendVariableToModule(const Array& variable, vistle::obj_const_ptr mesh)
 {
+	assert(variable.dataType() != DataType::ARRAY);
+	auto var = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(variable.size());
+	transformArray(variable, var->x().data());
+	var->setGrid(mesh);
+	var->setTimestep(m_currTimestep);
+	var->setMapping(static_cast<vistle::DataBase::Mapping>(variable.mapping()));
+	var->addAttribute("_species", variable.name());
+	addObject(variable.name(), var);
 }
 
-void SenseiAdapter::sendObject(const std::string& port, vistle::Object::const_ptr obj)
+void SenseiAdapter::addObject(const std::string& port, vistle::Object::const_ptr obj)
 {
 	if (m_sendMessageQueue)
 	{
@@ -329,19 +407,5 @@ void SenseiAdapter::sendObject(const std::string& port, vistle::Object::const_pt
 	}
 }
 
-sensei::Callbacks::Callbacks(insitu::Mesh(*getMesh)(const std::string&), insitu::Array(*getVar)(const std::string&))
-	:m_getMesh(getMesh)
-	,m_getVar(getVar)
-{
-	
-}
 
-Mesh Callbacks::getMesh(const std::string& name)
-{
-	return m_getMesh(name);
-}
 
-Array Callbacks::getVar(const std::string& name)
-{
-	return m_getVar(name);
-}

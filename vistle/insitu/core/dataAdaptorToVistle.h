@@ -1,7 +1,8 @@
 #ifndef VISTLE_INSITU_DATAADAPTORTOVISTLE_H
 #define VISTLE_INSITU_DATAADAPTORTOVISTLE_H
-#include "dataAdaptor.h"
 #include "export.h"
+
+
 namespace vistle {
 namespace message {
 	class  MessageQueue;
@@ -14,7 +15,7 @@ namespace insitu
 		class SyncShmIDs;
 	} //vistle::insitu::message
 
-	void V_INSITUCOREEXPORT createVistleObjects(const DataAdaptor* data, message::SyncShmIDs* sync, vistle::message::MessageQueue* sender);
+	//void V_INSITUCOREEXPORT createVistleObjects(const DataAdaptor* data, message::SyncShmIDs* sync, vistle::message::MessageQueue* sender);
 }//vistle::insitu
 }//vistle
 

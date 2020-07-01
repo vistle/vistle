@@ -1,13 +1,17 @@
 set(SOURCES
-  dataAdaptor.cpp
+  array.cpp
   dataAdaptorToVistle.cpp
   exeption.cpp
+  metaData.cpp
   )
 set(HEADER
-  dataAdaptor.h
+  array.h
+  callFunctionWithVoidToTypeCast.h
   dataAdaptorToVistle.h
+  dataType.h
   exeption.h
   export.h
+  metaData.h
   moduleInfo.h
   transformArray.h
   )

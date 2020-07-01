@@ -14,8 +14,6 @@ InSituReader::InSituReader(const std::string& description, const std::string& na
     setReducePolicy(vistle::message::ReducePolicy::OverAll);
 }
 
-
-
 bool InSituReader::isExecuting() {
     return m_isExecuting;
 }
@@ -57,6 +55,10 @@ bool InSituReader::handleExecute(const vistle::message::Execute* exec) {
     return ret;
 }
 
+bool InSituReader::operate() {
+    return false;
+}
+
 bool InSituReader::dispatch(bool block, bool* messageReceived) {
     bool passMsg = false;
     bool msgRecv = false;
@@ -68,7 +70,7 @@ bool InSituReader::dispatch(bool block, bool* messageReceived) {
         passMsg = true;
     }
     bool retval = Module::dispatch(false, &msgRecv);
-    vistle::adaptive_wait((msgRecv || passMsg));
+    vistle::adaptive_wait(operate() ||msgRecv || passMsg);
     if (messageReceived) {
         *messageReceived = msgRecv;
     }
@@ -96,12 +98,13 @@ bool InSituReader::prepare() {
 void InSituReader::cancelExecuteMessageReceived(const vistle::message::Message* msg) {
     if (m_isExecuting) {
         bool finished = false;
+       
         vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
         vistle::Shm::the().setObjectID(m_shmIDs.objectID());
         if (!endExecute()) {
             sendError("failed to prepare reduce");
-            return;
         }
+        assert(m_exec);
         reduceWrapper(m_exec);
         m_isExecuting = false;
     }
@@ -114,9 +117,21 @@ size_t InSituReader::InstanceNum() const {
 void insitu::InSituReader::reconnect()
 {
     initRecvFromSimQueue();
+    m_shmIDs.close();
     m_shmIDs.initialize(id(), rank(), m_numInstances, insitu::message::SyncShmIDs::Mode::Create);
     m_instanceNum = m_numInstances;
     ++m_numInstances;
+}
+
+bool vistle::insitu::InSituReader::sendMessage(const vistle::message::Message& message, const buffer* payload) const
+{
+    if (payload && m_isExecuting)
+    {
+        CERR << "InSituReader: can't send message with payload while executing because that would create a vistle-object" << endl;
+        return false;
+    }
+    CERR << "vistle::insitu::InSituReader::sendMessage called" << endl;
+    return Module::sendMessage(message, payload);
 }
 
 void InSituReader::initRecvFromSimQueue() {

@@ -34,7 +34,7 @@ private:
 
     vistle::StringParameter* m_filePath = nullptr;
     vistle::IntParameter* m_timeout = nullptr;
-
+    vistle::IntParameter* m_deleteShm = nullptr;
     bool m_simInitSent = false; //to prevent caling attemptLibSImConnection twice
     bool m_connectedToSim = false; //wether the socket connection to the engine is running
     bool m_firstConnectionAttempt = true;
@@ -75,14 +75,15 @@ private:
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
     virtual bool changeParameter(const vistle::Parameter* param);
+    virtual bool operate() override;
     //..........................................................................
 
 
 
 
-    void recvAndhandleMessage();
+    bool recvAndhandleMessage();
 
-    void handleMessage(insitu::message::Message& msg);
+    bool handleMessage(insitu::message::Message& msg);
 
     void connectToSim();
 

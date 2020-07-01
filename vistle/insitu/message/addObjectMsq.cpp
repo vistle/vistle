@@ -1,12 +1,14 @@
 #include "addObjectMsq.h"
-#include "exeption.h"
+#include <insitu/core/exeption.h>
 #include <core/messagequeue.h>
 #include <core/messages.h>
-using namespace insitu;
+using namespace vistle::insitu::message;
+using namespace vistle::insitu;
 
 
-
-insitu::AddObjectMsq::AddObjectMsq(const ModuleInfo& moduleInfo, size_t rank)
+AddObjectMsq::AddObjectMsq(const ModuleInfo& moduleInfo, size_t rank)
+    :m_moduleInfo(moduleInfo)
+    , m_rank(rank)
 {
     vistle::message::DefaultSender::init(moduleInfo.id, rank);
     // names are swapped relative to communicator
@@ -15,29 +17,29 @@ insitu::AddObjectMsq::AddObjectMsq(const ModuleInfo& moduleInfo, size_t rank)
         m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
     }
     catch (boost::interprocess::interprocess_exception& ex) {
-        throw InsituExeption() << "opening add object message queue with name " << mqName << ": " << ex.what();
+        throw vistle::insitu::InsituExeption() << "opening add object message queue with name " << mqName << ": " << ex.what();
     }
 }
 
-insitu::AddObjectMsq::~AddObjectMsq()
+AddObjectMsq::~AddObjectMsq()
 {
     delete m_sendMessageQueue;
 }
 
-insitu::AddObjectMsq::AddObjectMsq(AddObjectMsq&& other) noexcept
+AddObjectMsq::AddObjectMsq(AddObjectMsq&& other) noexcept
     :m_sendMessageQueue(other.m_sendMessageQueue)
 {
     other.m_sendMessageQueue = nullptr;
 }
 
-AddObjectMsq &insitu::AddObjectMsq::operator=(AddObjectMsq&& other) noexcept
+AddObjectMsq& AddObjectMsq::operator=(AddObjectMsq&& other) noexcept
 {
     m_sendMessageQueue = other.m_sendMessageQueue;
     other.m_sendMessageQueue = nullptr;
     return *this;
 }
 
-void insitu::AddObjectMsq::addObject(const std::string& port, vistle::Object::const_ptr obj)
+void AddObjectMsq::addObject(const std::string& port, vistle::Object::const_ptr obj)
 {
     vistle::message::AddObject msg(port, obj);
     vistle::message::Buffer buf(msg);

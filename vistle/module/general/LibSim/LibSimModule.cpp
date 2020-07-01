@@ -290,7 +290,7 @@ void LibSimModule::connectToSim() {
 
 void LibSimModule::disconnectSim() {
     if (rank() == 0) {
-        sendInfo("LibSimController is disconnecting from simulation");
+        CERR << "LibSimController is disconnecting from simulation" << endl;
     }
     {
         Guard g(m_socketMutex);
@@ -374,7 +374,7 @@ void LibSimModule::recvAndhandleMessage()     {
         auto state = msg.unpackOrCast<vistle::insitu::message::ConnectionClosed>();
         if (state.value)
         {
-            sendInfo("the simulation disconnected properly");
+            CERR << "the simulation disconnected properly" << endl;
         }
         else
         {

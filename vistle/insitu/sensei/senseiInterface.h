@@ -2,23 +2,32 @@
 #define VISTLE_SENSEI_INTERFACE_H
 
 #include "export.h"
-#include <insitu/core/dataAdaptor.h>
-#include <insitu/core/moduleInfo.h>
+#include "gridInterface.h"
 
-#include<memory>
+#include <insitu/core/moduleInfo.h>
+#include <insitu/core/metaData.h>
+#include <insitu/core/dataType.h>
+#include <insitu/core/array.h>
+
+#include <string>
+#include <memory>
+#include <functional>
+
 
 namespace vistle {
 namespace insitu {
 namespace sensei {
 
-class V_SENSEIEXPORT Callbacks {
+
+class V_SENSEIEXPORT Callbacks {//callbacks to retrieve GridInterfacees and Arrays from sensei
 public:
-	Callbacks(Mesh(*getMesh)(const std::string&), Array(*getVar)(const std::string&));
-	Mesh getMesh(const std::string& name);
+	Callbacks(std::function<Grid(const std::string&)> getGrid, std::function<Array(const std::string&)> getVar);
+	Grid getGrid(const std::string& name);
 	Array getVar(const std::string& name);
+	
 private:
-	Mesh(*m_getMesh)(const std::string&) = nullptr;
-	Array(*m_getVar)(const std::string&) = nullptr;
+	std::function<Grid(const std::string&)> m_getGrid;
+	std::function<Array(const std::string&)>m_getVar;
 };
 
 class V_SENSEIEXPORT SenseiInterface {
@@ -28,9 +37,11 @@ public:
 	virtual bool Finalize() = 0;
 
 	virtual bool processTimestep(size_t timestep) = 0; //true if we have sth to do for the given timestep
+	virtual ~SenseiInterface();
 };
 
-std::unique_ptr<SenseiInterface> V_SENSEIEXPORT createSenseiInterface(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo);
+std::unique_ptr<SenseiInterface> V_SENSEIEXPORT createSenseiInterface(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs); 
+
 }//sensei
 }//insitu
 }//vistle

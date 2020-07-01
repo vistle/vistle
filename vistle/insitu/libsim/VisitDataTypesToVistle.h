@@ -2,7 +2,7 @@
 #define VISITDATATYPESTOVISTLE_H
 
 #include "VisItDataTypes.h"
-#include <insitu/core/dataAdaptor.h>
+#include <insitu/core/dataType.h>
 #include <core/database.h>
 #include "Exeption.h"
 #include <core/object.h>
