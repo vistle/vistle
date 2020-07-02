@@ -14,7 +14,7 @@ vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnec
 vistle_export_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
 target_link_libraries(vistle_libsim_connect
         PRIVATE Boost::boost
-        Private Boost::system
+        PRIVATE Boost::system
         PRIVATE Threads::Threads
 )
 
