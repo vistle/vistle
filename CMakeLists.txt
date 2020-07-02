@@ -420,7 +420,7 @@ if (VISTLE_USE_CUDA AND NOT VISTLE_GUI_ONLY)
 endif()
 
 
-
+include(GNUInstallDirs)
 macro(vistle_add_library targetname)
 
 	add_library(${targetname} ${ARGN})
@@ -466,7 +466,7 @@ endmacro(vistle_add_library)
 set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
 
 macro(vistle_export_library targetname)
-	include(GNUInstallDirs)
+	
 	
 	string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
 
