@@ -183,7 +183,7 @@ if (WIN32)
 	)
 endif()
 
-vistle_link_libraries(vistle_core
+vistle_target_link_libraries(vistle_core
         PRIVATE vistle_util
         PRIVATE Boost::system
         PRIVATE Boost::serialization
@@ -197,24 +197,24 @@ endif()
 if(ZFP_FOUND)
    target_compile_definitions(vistle_core PRIVATE -DHAVE_ZFP)
    target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
-   vistle_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
+   vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
 endif()
 
 if (ZSTD_FOUND)
    target_compile_definitions(vistle_core PRIVATE -DHAVE_ZSTD)
    target_include_directories(vistle_core SYSTEM PRIVATE ${ZSTD_INCLUDE_DIRS})
-   vistle_link_libraries(vistle_core PRIVATE ${ZSTD_LIBRARIES})
+   vistle_target_link_libraries(vistle_core PRIVATE ${ZSTD_LIBRARIES})
 endif()
 
 if (LZ4_FOUND)
    target_compile_definitions(vistle_core PRIVATE -DHAVE_LZ4)
    target_include_directories(vistle_core SYSTEM PRIVATE ${LZ4_INCLUDE_DIRS})
-   vistle_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
+   vistle_target_link_libraries(vistle_core PRIVATE ${LZ4_LIBRARIES})
 endif()
 
 if (SNAPPY_FOUND)
    target_compile_definitions(vistle_core PRIVATE -DHAVE_SNAPPY)
    target_include_directories(vistle_core SYSTEM PRIVATE ${SNAPPY_INCLUDE_DIRS})
-   vistle_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
+   vistle_target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()
 

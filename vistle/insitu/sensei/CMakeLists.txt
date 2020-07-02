@@ -21,7 +21,7 @@ set(SENSEI_HEADER
 
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 vistle_export_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
-vistle_link_libraries(vistle_sensei
+vistle_target_link_libraries(vistle_sensei
 		PRIVATE vistle_util
         PRIVATE vistle_core
 		PRIVATE vistle_insitu_message

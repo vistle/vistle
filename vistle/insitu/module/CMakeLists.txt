@@ -9,7 +9,7 @@ set(LIBSIM_HEADER
 message("calling vistle_add_library")
 vistle_add_library(vistle_insitu_module ${LIBSIM_SOURCES} ${LIBSIM_HEADER})
 vistle_export_library(vistle_insitu_module ${LIBSIM_SOURCES} ${LIBSIM_HEADER})
-vistle_link_libraries(vistle_insitu_module
+vistle_target_link_libraries(vistle_insitu_module
 		PRIVATE vistle_module
 		PUBLIC vistle_insitu_message
 		)

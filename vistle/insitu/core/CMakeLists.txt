@@ -13,7 +13,7 @@ set(HEADER
   )
 vistle_add_library(vistle_insitu_core ${SOURCES} ${HEADER})
 vistle_export_library(vistle_insitu_core ${SOURCES} ${HEADER})
-vistle_link_libraries(vistle_insitu_core 
+vistle_target_link_libraries(vistle_insitu_core 
 	PUBLIC vistle_core
 	PRIVATE Boost::boost
     PRIVATE Boost::serialization

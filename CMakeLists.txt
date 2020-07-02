@@ -535,7 +535,7 @@ endfunction()
 
 
 #additionally adds public and interface dependencies to Config.cmake file
-macro(vistle_link_libraries targetname)
+macro(vistle_target_link_libraries targetname)
 	target_link_libraries(${targetname}
 		${ARGN})
 	set(file_content "include(CMakeFindDependencyMacro)\n")

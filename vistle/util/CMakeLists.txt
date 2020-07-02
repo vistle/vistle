@@ -53,7 +53,7 @@ vistle_export_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEAD
 
 target_include_directories(vistle_util SYSTEM PRIVATE ${BOTAN_INCLUDE_DIRS})
 
-vistle_link_libraries(vistle_util
+vistle_target_link_libraries(vistle_util
     PRIVATE Boost::system
 	PUBLIC Boost::filesystem
 	PRIVATE Threads::Threads
@@ -63,7 +63,7 @@ vistle_link_libraries(vistle_util
 
 find_library(LIBEXECINFO execinfo)
 if (LIBEXECINFO)
-    vistle_link_libraries(vistle_util
+    vistle_target_link_libraries(vistle_util
         PRIVATE execinfo
     )
 endif()

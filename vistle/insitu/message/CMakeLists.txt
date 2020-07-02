@@ -18,7 +18,7 @@ set(HEADER
 vistle_add_library(vistle_insitu_message ${SOURCES} ${HEADER})
 vistle_export_library(vistle_insitu_message ${SOURCES} ${HEADER})
 
-vistle_link_libraries(vistle_insitu_message
+vistle_target_link_libraries(vistle_insitu_message
 		PRIVATE vistle_core
 		PRIVATE vistle_util
 		PRIVATE vistle_boost_mpi
