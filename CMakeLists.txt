@@ -439,15 +439,28 @@ macro(vistle_add_library targetname)
     if (CRAY)
        set_property(TARGET ${targetname} APPEND_STRING PROPERTY LINK_FLAGS -Wl,-soname=lib${targetname}.so)
     endif()
-    install(TARGETS ${targetname} EXPORT ${targetname}Targets
-		INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
-		RUNTIME                 DESTINATION ${CMAKE_INSTALL_BINDIR}
-				                COMPONENT	${targetname}_Runtime
-		LIBRARY NAMELINK_SKIP 	DESTINATION ${CMAKE_INSTALL_LIBDIR}
-								COMPONENT 	${targetname}_Runtime
-		ARCHIVE                 DESTINATION ${CMAKE_INSTALL_LIBDIR}
-				                COMPONENT 	${targetname}_Development
-    )
+    if(${CMAKE_VERSION} VERSION_LESS "3.12.4")
+        install(TARGETS ${targetname} EXPORT ${targetname}Targets
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+				     COMPONENT	${targetname}_Runtime
+		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Runtime
+		    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Development
+        )
+    else()
+            install(TARGETS ${targetname} EXPORT ${targetname}Targets
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+				     COMPONENT	${targetname}_Runtime
+		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+					 COMPONENT 	${targetname}_Runtime
+                     NAMELINK_COMPONENT ${targetname}_Development
+		    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+				     COMPONENT 	${targetname}_Development
+        )
+    endif()
 endmacro(vistle_add_library)
 
 set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
