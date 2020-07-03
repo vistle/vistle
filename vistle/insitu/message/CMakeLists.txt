@@ -7,17 +7,14 @@ set(SOURCES
 )
 
 set(HEADER
+  export.h
   addObjectMsq.h
   InSituMessage.h
   ShmMessage.h
   SyncShmIDs.h
   TcpMessage.h
 )
-
 vistle_add_library(vistle_insitu_message ${SOURCES} ${HEADER})
-include(GenerateExportHeader)
-GENERATE_EXPORT_HEADER(vistle_insitu_message
-)
 target_include_directories(vistle_insitu_message PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(vistle_insitu_message
 		PRIVATE vistle_util

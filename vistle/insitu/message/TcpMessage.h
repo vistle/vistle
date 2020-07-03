@@ -1,7 +1,7 @@
 #ifndef INSITU_TCP_MESSAGE_H
 #define INSITU_TCP_MESSAGE_H
 #include "InSituMessage.h"
-#include <vistle_insitu_message_export.h>
+#include "export.h"
 namespace vistle{
 namespace insitu {
 namespace message {
@@ -10,7 +10,7 @@ namespace message {
     //When the connection is closed returns EngineMEssageType::ConnectionClosed and becomes uninitialized.
     //while uninitialized calls to send and received are ignored.
     //Received Messages are broadcasted to all ranks so make sure they all call receive together.
-    class VISTLE_INSITU_MESSAGE_EXPORT InSituTcp {
+    class V_INSITUMESSAGEEXPORT InSituTcp {
     public:
 
 

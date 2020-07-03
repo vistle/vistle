@@ -1,7 +1,7 @@
 #ifndef INSITU_SHM_MESSAGE_H
 #define INSITU_SHM_MESSAGE_H
 #include "InSituMessage.h"
-#include <vistle_insitu_message_export.h>
+#include "export.h"
 #include <boost/interprocess/ipc/message_queue.hpp>
 namespace vistle {
 namespace insitu {
@@ -14,7 +14,7 @@ struct ShmMsg {
     std::array<char, ShmMessageMaxSize> buf;
 };
 
-class VISTLE_INSITU_MESSAGE_EXPORT InSituShmMessage {
+class V_INSITUMESSAGEEXPORT InSituShmMessage {
 public:
     template<typename SomeMessage>
     bool send(const SomeMessage& msg) const { //not thread safe
