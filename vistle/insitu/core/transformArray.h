@@ -2,6 +2,9 @@
 #define TRANSFORM_ARRAY_H
 
 #include "exeption.h"
+#include "callFunctionWithVoidToTypeCast.h"
+#include "array.h"
+
 #include <algorithm>
 #include <array>
 #include <core/object.h>
@@ -9,7 +12,7 @@
 #include <core/uniformgrid.h>
 #include <type_traits>
 #include <cassert>
-#include "dataAdaptor.h"
+
 namespace vistle {
 namespace insitu {
 
@@ -22,55 +25,18 @@ struct TransformArrayExeption : public InsituExeption {
 };
 
 namespace detail {
-    //cast the void* to dataType* and call Func(dataType*, size, Args2)
-    //Args1 must be equal to Args2 without pointer or reference
-template<typename RetVal, template<typename...Args1> typename Func, typename ...Args2>
-RetVal callFunctionWithVoidToTypeCast(const void* source, DataType dataType, size_t size, Args2&&...args) {
 
-    switch (dataType) {
-    case DataType::CHAR:
-    {
-        const char* f = static_cast<const char*>(source);
-        return Func<char, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
-    }
-    break;
-    case DataType::INT:
-    {
-        const int* f = static_cast<const int*>(source);
-        return Func<int, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
-    }
-    break;
-    case DataType::FLOAT:
-    {
-        const float* f = static_cast<const float*>(source);
-        return Func<float, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
-    }
-    break;
-    case DataType::DOUBLE:
-    {
-        const double* f = static_cast<const double*>(source);
-        return Func<double, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
-    }
-    break;
-    case DataType::LONG:
-    {
-        const long* f = static_cast<const long*>(source);
-        return Func<long, typename std::decay<Args2>::type...>()(f, size, std::forward<Args2>(args)...);
-    }
-    break;
-    default:
-    {
-        throw TransformArrayExeption("callFunctionWithVoidToTypeCast: non-numeric data types can not be converted");
-    }
-    break;
-    }
-}
 
 template<typename Source, typename Dest>
 void transformArray(const Source* source, size_t size, Dest d) {
-    std::transform(source, source + size, d, [](Source val) {
-        return static_cast<typename std::remove_pointer<Dest>::type>(val);
-        });
+    for (size_t i = 0; i < size; i++)
+    {
+        d[i] = static_cast<typename std::remove_pointer<Dest>::type>(source[i]);
+    }
+
+    //std::transform(source, source + size, d, [](Source val) {
+    //    return static_cast<typename std::remove_pointer<Dest>::type>(val);
+    //    });
 }
 
 template<typename T>
@@ -196,7 +162,7 @@ struct ConversionInserter {
 
     template<typename T>
     void transformArray(const Array& source, T* dest) {
-        detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source.data, source.dataType, source.size, dest);
+        detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source.data(), source.dataType(), source.size(), dest);
     }
 
     //copies array from source to dest and converts from dataType to T
@@ -204,12 +170,6 @@ struct ConversionInserter {
     void transformArray(const void* source, T* dest, size_t size, DataType dataType) {
         detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source, dataType, size, dest);
     }
-
-
-
-
-
-
 
 
 
@@ -228,7 +188,7 @@ struct ConversionInserter {
         if (dim > I) {
             throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
         }
-        detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source.data, source.dataType, source.size, dest, dim);
+        detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source.data(), source.dataType(), source.size(), dest, dim);
     }
 
 

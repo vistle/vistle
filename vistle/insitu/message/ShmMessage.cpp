@@ -1,42 +1,82 @@
 #include "ShmMessage.h"
+#include <fstream>
+
 using namespace vistle::insitu::message;
 void InSituShmMessage::initialize()
 {
+	if (m_initialized)
+	{
+		std::cerr << "ShmMessage already initialized"<< std::endl;
+		return;
+	}
+	m_creator = true;
 	bool error = false;
-	static int iter = 0;
+	std::string msqName;
 	do
 	{
 		error = false;
+		msqName = m_msqName + std::to_string(++m_iteration);
 		try
 		{
-			m_msqName += std::to_string(iter++);
-			m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, (m_msqName + "_recv" ).c_str(), ShmMessageQueueLenght, sizeof(ShmMsg));
-			m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, (m_msqName +  "_send").c_str(), ShmMessageQueueLenght, sizeof(ShmMsg));
-		}
+			std::cerr << "creating msq " << (msqName + m_recvSuffix).c_str() << std::endl;
+			m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, (msqName + m_recvSuffix ).c_str(), ShmMessageQueueLenght, sizeof(ShmMsg));
+			std::cerr << "creating msq " << (msqName + m_sendSuffix).c_str() << std::endl;
+			m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::create_only, (msqName + m_sendSuffix).c_str(), ShmMessageQueueLenght, sizeof(ShmMsg));
+			{
+				std::ofstream f;
+				f.open(Shm::shmIdFilename().c_str(), std::ios::app);
+				f << msqName + m_recvSuffix << std::endl;
+				f << msqName + m_sendSuffix << std::endl;
+			}
+		}	
 		catch (const boost::interprocess::interprocess_exception& ex)
 		{
-			std::cerr << "ShmMessage " << m_msqName << " creation error: " << ex.what() << std::endl;
+			std::cerr << "ShmMessage " << msqName << " creation error: " << ex.what() << std::endl;
 			error = true;
 		}
 	} while (error);
-	m_order = { 0,1 };
+
+	std::cerr << "ShmMessage " << msqName << " creation successful!" << std::endl;
+
+	m_initialized = true;
 }
 
 void InSituShmMessage::initialize(const std::string& msqName)
 {
+	if (m_initialized)
+	{
+		std::cerr << "ShmMessage already initialized" << std::endl;
+		return;
+	}
 	try
 	{
-		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + "_send").c_str());
-		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + "_recv").c_str());
-		boost::interprocess::message_queue::remove((msqName + "_send").c_str());
-		boost::interprocess::message_queue::remove((msqName + "_recv").c_str());
+		std::cerr << "trying to open " << (msqName + m_sendSuffix).c_str() << std::endl;
+		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + m_sendSuffix).c_str());
+		std::cerr << "trying to open " << (msqName + m_recvSuffix).c_str() << std::endl;
+		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + m_recvSuffix).c_str());
+
+		boost::interprocess::message_queue::remove((msqName + m_sendSuffix).c_str());
+		boost::interprocess::message_queue::remove((msqName + m_recvSuffix).c_str());
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
 		std::cerr << "ShmMessage " << msqName << " opening error: " << ex.what() << std::endl;
+		return;
 	}
-	m_msqName = msqName;
-	m_order = { 1,0 };
+	m_initialized = true;
+}
+
+void vistle::insitu::message::InSituShmMessage::reset()
+{
+	m_initialized = false;
+	if (m_creator)
+	{
+		m_creator = false;
+		std::string msqName = m_msqName + std::to_string(m_iteration);
+		std::cerr << "removing shm for " << msqName << std::endl;
+		boost::interprocess::shared_memory_object::remove((msqName + m_recvSuffix).c_str());
+		boost::interprocess::shared_memory_object::remove((msqName + m_sendSuffix).c_str());
+	}
 }
 
 bool InSituShmMessage::isInitialized()
@@ -44,147 +84,150 @@ bool InSituShmMessage::isInitialized()
 	return m_initialized;
 }
 
+void vistle::insitu::message::InSituShmMessage::removeShm()
+{
+	if (m_initialized)
+	{
+		for (size_t i = 0; i < 100; i++)
+		{
+			std::string msqName = m_msqName + std::to_string(i);
+			boost::interprocess::shared_memory_object::remove((msqName + m_recvSuffix).c_str());
+			boost::interprocess::shared_memory_object::remove((msqName + m_sendSuffix).c_str());
+		}
+	}
+}
+
 std::string InSituShmMessage::name()
 {
+	if (m_creator)
+	{
+		return m_msqName + std::to_string(m_iteration);
+	}
 	return m_msqName;
 }
 
 Message InSituShmMessage::recv()
 {
+	if (!m_initialized)
+	{
+		//std::cerr << "ShmMessage uninitialized: can not recv message!" << std::endl;
+		return Message::errorMessage();
+	}
 	vistle::buffer payload;
 	int type = 0;
-	bool first = true;
-	auto iter = payload.begin();
-	unsigned int i = 0;
+	vistle::buffer::iterator iter;
 
 	ShmMsg m;
 	size_t recvSize = 0;
 	unsigned int prio = 0;
 
-	while (iter != payload.end())
+	size_t left = ShmMessageMaxSize;
+	size_t i = 0;
+	while (left > 0)
 	{
 		try
 		{
-			m_msqs[m_order[0]]->receive((void*)&m, sizeof(m), recvSize, prio);
+			m_msqs[0]->receive((void*)&m, sizeof(m), recvSize, prio);
 		}
 		catch (const boost::interprocess::interprocess_exception& ex)
 		{
-			std::cerr << "ShmMessage receive error: " << ex.what() << std::endl;
+			std::cerr << "ShmMessage recv error: " << ex.what() << std::endl;
 			return Message::errorMessage();
 		}
-		if (first)
+		if (i == 0)
 		{
 			payload.resize(m.size);
-			type = m.type;
 			iter = payload.begin();
+			type = m.type;
+			left = m.size;
 		}
 		assert(type == m.type);
-		int left = ShmMessageMaxSize;
-		if (m.size < i++ * ShmMessageMaxSize)
-		{
-			left = m.size - (i - 1) * ShmMessageMaxSize;
-		}
-		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
-		iter += left;
+		std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+		left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+		++i;
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
 
 Message InSituShmMessage::tryRecv()
 {
+	if (!m_initialized)
+	{
+		//std::cerr << "ShmMessage uninitialized: can not tryRecv message!" << std::endl;
+		return Message::errorMessage();
+	}
 	vistle::buffer payload;
 	int type = 0;
 	auto iter = payload.begin();
-	unsigned int i = 0;
+	unsigned int i = 1;
 
 	ShmMsg m;
 	size_t recvSize = 0;
 	unsigned int prio = 0;
-
+	size_t left = 0;
 	try
 	{
-		if (!m_msqs[m_order[0]]->try_receive((void*)&m, sizeof(m), recvSize, prio))
+		if (!m_msqs[0]->try_receive((void*)&m, sizeof(m), recvSize, prio))
 		{
 			return Message::errorMessage();
 		}
 		payload.resize(m.size);
 		type = m.type;
 		iter = payload.begin();
-		int left = ShmMessageMaxSize;
-		if (m.size < i++ * ShmMessageMaxSize)
-		{
-			left = m.size - (i - 1) * ShmMessageMaxSize;
-		}
-		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
+		left = m.size;
+
+		std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter);
+		left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
 		std::cerr << "ShmMessage tryReceive error: " << ex.what() << std::endl;
 		return Message::errorMessage();
 	}
-
-	while (i * ShmMessageMaxSize < payload.size())
+	while (left > 0)
 	{
 		try
 		{
-			m_msqs[m_order[0]]->receive((void*)&m, sizeof(m), recvSize, prio);
+			m_msqs[0]->receive((void*)&m, sizeof(m), recvSize, prio);
 		}
 		catch (const boost::interprocess::interprocess_exception& ex)
 		{
-			std::cerr << "ShmMessage tryReceive error: " << ex.what() << std::endl;
+			std::cerr << "ShmMessage tryRecv error: " << ex.what() << std::endl;
 			return Message::errorMessage();
 		}
-
 		assert(type == m.type);
-		int left = ShmMessageMaxSize;
-		if (m.size < i++ * ShmMessageMaxSize)
-		{
-			left = m.size - (i - 1) * ShmMessageMaxSize;
-		}
-		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
+		std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+		left = left > ShmMessageMaxSize? left - ShmMessageMaxSize :0;
+		++i;
 	}
+
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
 }
 
 Message InSituShmMessage::timedRecv(size_t timeInSec)
 {
+	if (!m_initialized)
+	{
+		//std::cerr << "ShmMessage uninitialized: can not timedRecv message!" << std::endl;
+		return Message::errorMessage();
+	}
 	vistle::buffer payload;
 	int type = 0;
-	auto iter = payload.begin();
-	unsigned int i = 0;
+	vistle::buffer::iterator iter;
 
 	ShmMsg m;
 	size_t recvSize = 0;
 	unsigned int prio = 0;
-	boost::posix_time::ptime endTime(boost::posix_time::second_clock::local_time());
-	endTime += boost::posix_time::seconds(timeInSec);
-	try
-	{
-		if (!m_msqs[m_order[0]]->timed_receive((void*)&m, sizeof(m), recvSize, prio, endTime))
-		{
-			return Message::errorMessage();
-		}
-		payload.resize(m.size);
-		type = m.type;
-		iter = payload.begin();
-		int left = ShmMessageMaxSize;
-		if (m.size < i++ * ShmMessageMaxSize)
-		{
-			left = m.size - (i - 1) * ShmMessageMaxSize;
-		}
-		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
-	}
-	catch (const boost::interprocess::interprocess_exception& ex)
-	{
-		std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
-		return Message::errorMessage();
-	}
+	auto now = boost::posix_time::microsec_clock::universal_time();
+	auto endTime = now + boost::posix_time::seconds(timeInSec);
 
-	while (i * ShmMessageMaxSize < payload.size())
+	size_t left = ShmMessageMaxSize;
+	size_t i = 0;
+	while (left > 0)
 	{
 		try
 		{
-			if (!m_msqs[m_order[0]]->timed_receive((void*)&m, sizeof(m), recvSize, prio, endTime))
+			if (!m_msqs[0]->timed_receive((void*)&m, sizeof(m), recvSize, prio, endTime))
 			{
 				return Message::errorMessage();
 			}
@@ -194,14 +237,29 @@ Message InSituShmMessage::timedRecv(size_t timeInSec)
 			std::cerr << "ShmMessage timedRecv error: " << ex.what() << std::endl;
 			return Message::errorMessage();
 		}
-
-		assert(type == m.type);
-		int left = ShmMessageMaxSize;
-		if (m.size < i++ * ShmMessageMaxSize)
+		if (i == 0)
 		{
-			left = m.size - (i - 1) * ShmMessageMaxSize;
+			payload.resize(m.size);
+			iter = payload.begin();
+			type = m.type;
+			left = m.size;
 		}
-		std::copy(m.buf.begin(), m.buf.begin() + left, iter);
+		assert(type == m.type);
+		std::copy(m.buf.begin(), m.buf.begin() + std::min(left, ShmMessageMaxSize), iter + i * ShmMessageMaxSize);
+		left = left > ShmMessageMaxSize ? left - ShmMessageMaxSize : 0;
+		++i;
 	}
 	return Message{ static_cast<InSituMessageType>(type), std::move(payload) };
+}
+
+vistle::insitu::message::InSituShmMessage::~InSituShmMessage()
+{
+	if (!m_creator)
+	{
+		return;
+	}
+	std::string msqName = m_msqName + std::to_string(m_iteration);
+	std::cerr << "removing shm for " << msqName << std::endl;
+	boost::interprocess::shared_memory_object::remove((msqName + m_recvSuffix).c_str());
+	boost::interprocess::shared_memory_object::remove((msqName + m_sendSuffix).c_str());
 }

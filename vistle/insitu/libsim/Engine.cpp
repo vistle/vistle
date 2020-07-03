@@ -215,7 +215,7 @@ bool Engine::isInitialized() const noexcept {
 }
 
 bool Engine::setMpiComm(void* newconn) {
-    comm = (MPI_Comm)newconn;
+    comm = *static_cast<MPI_Comm*>(newconn);
 
 return true;
 
@@ -364,6 +364,7 @@ bool Engine::recvAndhandleVistleMessage() {
         }
         else {
             sendShmIds();
+            m_messageHandler.send(Ready{ false }); //confirm that we are done creating vistle objects
         }
     }
     break;
@@ -795,11 +796,6 @@ void Engine::makeRectilinearMesh(MeshInfo meshInfo) {
                     return;
                 }
             }
-            //std::reverse(owner.begin(), owner.end());
-            //std::reverse(dataType.begin(), dataType.end());
-            //std::reverse(nComps.begin(), nComps.end());
-            //std::reverse(nTuples.begin(), nTuples.end());
-            //std::reverse(data.begin(), data.end());
 
             vistle::RectilinearGrid::ptr grid = m_shmIDs.createVistleObject<vistle::RectilinearGrid>(nTuples[0], nTuples[1], nTuples[2]);
             setTimestep(grid);

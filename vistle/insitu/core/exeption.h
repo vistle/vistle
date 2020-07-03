@@ -25,5 +25,3 @@ namespace insitu {
 
 
 #endif // !SIMV2_EXEPTION
-
-

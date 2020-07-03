@@ -1,17 +1,23 @@
 set(SENSEI_SOURCES
+  multiGrid.cpp
   rectilinerGrid.cpp
-  sensei.cpp
+  senseiInterface.cpp
+  senseiImpl.cpp
   structuredGrid.cpp
+  structuredGridBase.cpp
   unstructuredGrid.cpp
 )
 
 set(SENSEI_HEADER
   exeption.h
   export.h
-  metaData.h
+  gridInterface.h
+  multiGrid.h
   rectilinerGrid.h
-  sensei.h
+  senseiInterface.h
+  senseiImpl.h
   structuredGrid.h
+  structuredGridBase.h
   unstructuredGrid.h
 )
 
@@ -28,6 +34,8 @@ vistle_target_link_libraries(vistle_sensei
         PRIVATE Boost::serialization
 		PRIVATE MPI::MPI_C
 		)
+
+target_compile_features(vistle_sensei PUBLIC cxx_std_14)
 
 if (VISTLE_SHM_PER_RANK)
     target_compile_definitions(vistle_sensei 

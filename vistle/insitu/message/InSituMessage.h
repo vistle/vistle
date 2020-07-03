@@ -128,7 +128,7 @@ public:
     SomeMessage& unpackOrCast() {
 
 
-        assert(SomeMessage::type != type());
+        assert(SomeMessage::type == type());
         if (!m_msg) {
             vistle::vecistreambuf<vistle::buffer> buf(m_payload);
             m_msg.reset(new SomeMessage{});
@@ -152,10 +152,6 @@ private:
     vistle::buffer m_payload;
     std::unique_ptr<InSituMessageBase> m_msg;
 };
-
-
-
-
 
 } //message
 } //insitu

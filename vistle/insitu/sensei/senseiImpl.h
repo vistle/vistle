@@ -3,6 +3,8 @@
 
 
 #include "export.h"
+#include "senseiInterface.h"
+
 #include <mpi.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
@@ -11,8 +13,7 @@
 #include <insitu/message/ShmMessage.h>
 #include <insitu/message/addObjectMsq.h>
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include <insitu/core/moduleInfo.h>
-#include <insitu/core/dataAdaptor.h>
+
 
 namespace vistle {
 namespace message {
@@ -21,20 +22,13 @@ class  MessageQueue;
 
 namespace insitu {
 namespace sensei {
-class V_SENSEIEXPORT Callbacks {
-public:
-	Callbacks(Mesh(*getMesh)(const std::string&), Array(*getVar)(const std::string&));
-	Mesh getMesh(const std::string& name);
-	Array getVar(const std::string& name);
-private:
-	Mesh(*m_getMesh)(const std::string&) = nullptr;
-	Array(*m_getVar)(const std::string&) = nullptr;
-};
-class V_SENSEIEXPORT SenseiAdapter
+
+class SenseiAdapter : public SenseiInterface
+
 {
 public:
 
-	bool Initialize(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs, ModuleInfo moduleInfo);
+	SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs);
 	bool Execute(size_t timestep);
 	bool Finalize();
 
@@ -54,6 +48,11 @@ private:
 	Callbacks m_callbacks;
 	MetaData m_metaData;
 	ModuleInfo m_moduleInfo;
+	struct VariablesUsedByMesh {
+		MetaData::MeshIter mesh;
+		std::vector<MetaData::VarIter> varNames;//all used variables of mesh
+	};
+	std::vector<VariablesUsedByMesh> m_usedData;
 	bool m_connected = false; //If we are connected to the module
 	std::unique_ptr<vistle::insitu::message::AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to module
 	//mpi info
@@ -66,14 +65,14 @@ private:
 	bool m_ready = false; //true if the module is connected and executing
 	std::map<std::string, bool> m_commands; //commands and their current state
 
-
+	void calculateUsedData(); //calculate and store which meshes and variables are requested by Vistle's connected ports
 	void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
 	bool recvAndHandeMessage(bool blocking = false);
 	bool initializeVistleEnv();
 	void addPorts();
-	void sendMeshToModule(const Mesh& mesh);
-	void sendVariableToModule(const Array& var);
-	void sendObject(const std::string& port, vistle::Object::const_ptr obj);
+	void sendMeshToModule(const Grid& grid, const std::vector<Array>& data);
+	void sendVariableToModule(const Array& variable, vistle::obj_const_ptr mesh);
+	void addObject(const std::string& port, vistle::Object::const_ptr obj);
 
 };
 }//sensei
