@@ -465,6 +465,10 @@ endmacro(vistle_add_library)
 
 set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
 
+
+option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install directory" OFF)
+option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
+
 macro(vistle_export_library targetname)
 	
 	
@@ -479,15 +483,16 @@ macro(vistle_export_library targetname)
 	
 	set(header "${ARGN}")
 	list(FILTER	header INCLUDE	REGEX "(\.(h|H|hpp|HPP)$)"	)
-
-	install(
-	  FILES
-		${header}
-	  DESTINATION
-		include/vistle/${directory}
-	  COMPONENT
-		Devel
-	) 
+        if(VISTLE_INSTALL_HEADER)
+	    install(
+	      FILES
+		    ${header}
+	      DESTINATION
+		    include/vistle/${directory}
+	      COMPONENT
+		    Devel
+	    ) 
+    endif()
 	set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
 	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")") 
 

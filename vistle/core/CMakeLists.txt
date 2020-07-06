@@ -201,19 +201,19 @@ if(ZFP_FOUND)
    target_compile_definitions(vistle_core PRIVATE -DHAVE_ZFP)
    target_include_directories(vistle_core SYSTEM PRIVATE ${ZFP_INCLUDE_DIRS})
    vistle_target_link_libraries(vistle_core PRIVATE ${ZFP_LIBRARIES})
-
-   install(
-	DIRECTORY 
-		 ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
-	DESTINATION
-		include/3rdarty/
-	  COMPONENT
-		Devel
-)
-target_include_directories(vistle_core SYSTEM
-        PUBLIC $<BUILD_INTERFACE:${ZFP_INCLUDE_DIRS}>
-		PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
-)
+   if(VISTLE_INSTALL_3RDPARTY)
+       install(
+	    DIRECTORY 
+		     ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
+	    DESTINATION
+		    include/3rdarty/
+	      COMPONENT
+		    Devel
+    )
+    target_include_directories(vistle_core SYSTEM
+		    PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
+    )
+    endif()
 endif()
 
 if (ZSTD_FOUND)
@@ -234,31 +234,37 @@ if (SNAPPY_FOUND)
    vistle_target_link_libraries(vistle_core PRIVATE ${SNAPPY_LIBRARIES})
 endif()
 
-#yas
-install(
-	DIRECTORY 
-		 ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
-	DESTINATION
-		include/3rdarty/
-	  COMPONENT
-		Devel
+target_include_directories(vistle_core SYSTEM
+        PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/3rdparty>
 )
 target_include_directories(vistle_core SYSTEM
         PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/3rdparty/yas/include>
-		PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
-)
-#eigen3
-install(
-	DIRECTORY 
-		 ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
-	DESTINATION
-		include/3rdarty/
-	  COMPONENT
-		Devel
-)
-target_include_directories(vistle_core SYSTEM
-        PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/3rdparty>
-		PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
 )
 
+if(VISTLE_INSTALL_3RDPARTY)
+    #yas
+    install(
+	    DIRECTORY 
+		     ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
+	    DESTINATION
+		    include/3rdarty/
+	      COMPONENT
+		    Devel
+    )
+    target_include_directories(vistle_core SYSTEM
+		    PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
+    )
+    #eigen3
+    install(
+	    DIRECTORY 
+		     ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
+	    DESTINATION
+		    include/3rdarty/
+	      COMPONENT
+		    Devel
+    )
+    target_include_directories(vistle_core SYSTEM
+		    PUBLIC $<INSTALL_INTERFACE:include/3rdarty>
+    )
+endif()
 

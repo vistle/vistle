@@ -64,18 +64,19 @@ target_link_libraries(vistle_boost_mpi
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C
 )
-string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
-message("directory= " ${directory})
-message("BOOST_MPI_DIR = " ${BOOST_MPI_DIR})
-install(
-	DIRECTORY 
-		 ${BOOST_MPI_DIR}/include/boost
-	DESTINATION
-		include/3rdarty/${BOOST_MPI_DIR}
-	  COMPONENT
-		Devel
-)
 target_include_directories(vistle_boost_mpi SYSTEM
         PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${BOOST_MPI_DIR}/include>
-		PUBLIC $<INSTALL_INTERFACE:include/3rdarty/${BOOST_MPI_DIR}>
 )
+if(VISTLE_INSTALL_3RDPARTY)
+    install(
+	    DIRECTORY 
+		     ${BOOST_MPI_DIR}/include/boost
+	    DESTINATION
+		    include/3rdarty/${BOOST_MPI_DIR}
+	      COMPONENT
+		    Devel
+    )
+    target_include_directories(vistle_boost_mpi SYSTEM
+		    PUBLIC $<INSTALL_INTERFACE:include/3rdarty/${BOOST_MPI_DIR}>
+    )
+endif()
