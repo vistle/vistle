@@ -1,9 +1,11 @@
 #ifndef SENSEI_STRUCTURED_GRID_H
 #define SENSEI_STRUCTURED_GRID_H
+
 #include "structuredGridBase.h"
 #include "gridInterface.h"
 
 #include <insitu/core/array.h>
+
 namespace vistle {
 namespace insitu {
 namespace sensei{

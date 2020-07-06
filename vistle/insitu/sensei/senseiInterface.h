@@ -13,7 +13,6 @@
 #include <memory>
 #include <functional>
 
-
 namespace vistle {
 namespace insitu {
 namespace sensei {

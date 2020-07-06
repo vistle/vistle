@@ -1,16 +1,12 @@
 #ifndef SENSEI_UNSTRUCTURED_GRID_H
 #define SENSEI_UNSTRUCTURED_GRID_H
 
-
-
 #include "export.h"
 #include "gridInterface.h"
-
 #include "structuredGridBase.h"
-#include <insitu/core/array.h>
 
-#include <core/index.h>
-#include <core/scalar.h>
+#include <insitu/core/dataType.h>
+#include <insitu/core/array.h>
 
 namespace vistle {
 namespace insitu {
