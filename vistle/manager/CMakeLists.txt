@@ -133,8 +133,10 @@ if (VISTLE_SHM_PER_RANK)
    target_compile_definitions(clean_vistle
         PRIVATE -DSHMPERRANK)
 
+if (NOT VISTLE_MULTI_PROCESS)
     target_compile_definitions(vistle_clustermanager
                             PRIVATE -DSHMPERRANK)
+endif()
 
     target_compile_definitions(vistle_manager
         PRIVATE -DSHMPERRANK)
