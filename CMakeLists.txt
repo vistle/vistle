@@ -465,6 +465,10 @@ endmacro(vistle_add_library)
 
 set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
 
+
+option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install directory" OFF)
+option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
+
 macro(vistle_export_library targetname)
 	
 	
@@ -479,18 +483,19 @@ macro(vistle_export_library targetname)
 	
 	set(header "${ARGN}")
 	list(FILTER	header INCLUDE	REGEX "(\.(h|H|hpp|HPP)$)"	)
-
-	install(
-	  FILES
-		${header}
-	  DESTINATION
-		include/vistle/${directory}
-	  COMPONENT
-		Devel
-	) 
+        if(VISTLE_INSTALL_HEADER)
+	    install(
+	      FILES
+		    ${header}
+	      DESTINATION
+		    include/vistle/${directory}
+	      COMPONENT
+		    Devel
+	    ) 
+    endif()
 	set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
 	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")") 
-	message("wrote file " ${config_in_file}) 	
+
 	configure_file(${config_in_file}
 		"${buildPackageLocation}/${targetname}Config.cmake"
 		COPYONLY)  
@@ -506,24 +511,24 @@ macro(vistle_export_library targetname)
 		FILE 		"${buildPackageLocation}/${targetname}Targets.cmake"
 		NAMESPACE 	Vistle::
 	)
-	set(Vislte_ConfigPackageLocation 
+	set(Vistle_ConfigPackageLocation 
 	    ${CMAKE_INSTALL_LIBDIR}/cmake#/${directory}
 	    #CACHE STRING "Path to " ${targetname} " cmake files"
 ) 	
 	install(EXPORT ${targetname}Targets
 		FILE		${targetname}Targets.cmake
 		NAMESPACE	Vistle::
-		DESTINATION	${Vislte_ConfigPackageLocation}
+		DESTINATION	${Vistle_ConfigPackageLocation}
 		COMPONENT	${targetname}_Development
 	)
 #	configure_package_config_file(${config_in_file}
 #	"${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
-#	INSTALL_DESTINATION "${Vislte_ConfigPackageLocation}/${targetname}Config.cmake")  
+#	INSTALL_DESTINATION "${Vistle_ConfigPackageLocation}/${targetname}Config.cmake")  
 	install(
 		FILES 
 			"${buildPackageLocation}/${targetname}Config.cmake"
 			"${buildPackageLocation}/${targetname}ConfigVersion.cmake"
-		DESTINATION ${Vislte_ConfigPackageLocation}
+		DESTINATION ${Vistle_ConfigPackageLocation}
 		COMPONENT ${targetname}_Development
 	)
 endmacro(vistle_export_library)
@@ -531,6 +536,25 @@ endmacro(vistle_export_library)
 function(prepend_file filename)
     file(READ ${filename} old_content)
     file(WRITE ${filename} ${ARGN}  ${old_content})
+endfunction()
+
+function(getPublicBoostComponents PublicBoostComponents)
+    set(addNext FALSE)
+    foreach(Comp IN LISTS ARGN)
+		if(addNext)
+			string(REGEX REPLACE "::.*" "" TARGET_NAME ${Comp})
+			if(${TARGET_NAME} STREQUAL "Boost")
+				string(REGEX REPLACE ".*::" "" COMPONENT_NAME ${Comp})
+				LIST(APPEND LocalPublicBoostComponents ${COMPONENT_NAME})
+			endif()
+			set(addNext FALSE)
+		else()
+			if( ${Comp} MATCHES "PUBLIC|INTERFACE")
+				set(addNext TRUE)
+			endif()
+		endif()
+    endforeach()
+    set(${PublicBoostComponents} ${LocalPublicBoostComponents} PARENT_SCOPE)
 endfunction()
 
 
@@ -546,13 +570,25 @@ macro(vistle_target_link_libraries targetname)
     foreach(arg IN ITEMS ${ARGN})
         if(add_next_arg)
         	#set(file_content ${file_content} "set(" ${arg} "_DIR \"\${CMAKE_CURRENT_LIST_DIR}\")\n")
-			set(file_content ${file_content} "find_dependency(" ${arg} ")\n") 
-            set(add_next_arg false)
+            if(${arg} MATCHES "vistle_.*")
+	            set(file_content ${file_content} "find_dependency(" ${arg} ")\n") 
+                set(add_next_arg false)
+            endif()
         elseif(${arg} MATCHES "PUBLIC|INTERFACE")
             set(add_next_arg true)
             set(hasPublicDependencies true)
 		endif()
 	endforeach()
+
+    getPublicBoostComponents(public_boost_componets ${ARGN})
+    list(LENGTH public_boost_componets num_PUBLIC_Boost_componets)
+    if(num_PUBLIC_Boost_componets GREATER 0)
+        set(file_content ${file_content} "find_dependency( Boost " ${BOOST_MINIMUM_REQUIRED_VERSION} " REQUIRED COMPONENTS \n")
+        foreach(item IN LISTS public_boost_componets)
+            set(file_content ${file_content} "\t" ${item} "\n")
+        endforeach()
+        set(file_content ${file_content} ")\n") 
+    endif()
     set(file_content ${file_content} "set(CMAKE_PREFIX_PATH \${oldCMAKE_PREFIX_PATH})\n")
     if(hasPublicDependencies)
 	    prepend_file(${buildPackageLocation}/${targetname}Config.cmake ${file_content})

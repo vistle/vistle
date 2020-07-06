@@ -148,7 +148,7 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
-include_directories(SYSTEM ${EIGEN3_INCLUDE_PATH})
+
 
 if (VISTLE_GUI_ONLY)
     add_definitions(-DNO_MPI)
@@ -165,7 +165,7 @@ endif()
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 
 # replacement for Boost.Serialization
-include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
+#include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/yas/include")
 
 # lossy floating point compression
 #vistle_find_package(ZFP)
