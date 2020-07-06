@@ -238,12 +238,12 @@ int Shm::arrayID() const {
 }
 
 void Shm::setObjectID(int id) {
-    vassert(id >= m_objectId);
+    vassert(id > m_objectId);
     m_objectId = id;
 }
 
 void Shm::setArrayID(int id) {
-    vassert(id >= m_arrayId);
+    vassert(id > m_arrayId);
     m_arrayId = id;
 }
 

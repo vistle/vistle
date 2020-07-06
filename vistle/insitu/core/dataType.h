@@ -2,14 +2,10 @@
 #define INSITU_DATA_TYPE_H
 #include "export.h"
 
-#include <stdint.h>
-
-//#include <core/scalar.h>
-//#include <core/index.h>
+#include <core/scalar.h>
+#include <core/index.h>
 
 namespace vistle {
-typedef uint32_t Index;
-typedef unsigned char Byte;
 namespace insitu {
 enum class DataType
 {
@@ -48,7 +44,7 @@ constexpr DataType V_INSITUCOREEXPORT getDataType<double>() {
 	return DataType::DOUBLE;
 }
 template<>
-constexpr DataType V_INSITUCOREEXPORT getDataType<vistle::Index>() { 
+constexpr DataType V_INSITUCOREEXPORT getDataType<vistle::Index>() {
 	return DataType::INDEX;
 }
 template<>
