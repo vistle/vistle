@@ -11,7 +11,7 @@
 #include <renderer/renderer.h>
 #include <core/texture1d.h>
 #include <core/message.h>
-#include <core/assert.h>
+#include <cassert>
 
 #include <util/stopwatch.h>
 
@@ -152,7 +152,7 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 #endif
 
 #ifdef ICET_CALLBACK
-   vassert(s_instance == nullptr);
+   assert(s_instance == nullptr);
    s_instance = this;
 #endif
 
@@ -289,7 +289,7 @@ struct TileTask {
    }
 
    void operator()() const {
-      vassert(tile >= 0);
+      assert(tile >= 0);
       render(tile);
    }
 
@@ -688,7 +688,7 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
       rtcReleaseGeometry(geom_0);
       if (instances.size() <= rod->instID)
          instances.resize(rod->instID+1);
-      vassert(!instances[rod->instID]);
+      assert(!instances[rod->instID]);
       instances[rod->instID] = rod;
 
       float transform[16];

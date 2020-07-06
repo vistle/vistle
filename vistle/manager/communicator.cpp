@@ -16,7 +16,7 @@
 #include <core/tcpmessage.h>
 #include <core/object.h>
 #include <core/parameter.h>
-#include <core/assert.h>
+#include <cassert>
 #include <core/shm.h>
 #include <core/messagepayload.h>
 #include <util/sleep.h>
@@ -57,7 +57,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 {
    crypto::initialize();
 
-   vassert(s_singleton == NULL);
+   assert(s_singleton == NULL);
    s_singleton = this;
 
    message::DefaultSender::init(m_hubId, m_rank);
@@ -72,7 +72,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 
 Communicator &Communicator::the() {
 
-   vassert(s_singleton && "make sure to use the vistle Python module only from within vistle");
+   assert(s_singleton && "make sure to use the vistle Python module only from within vistle");
    if (!s_singleton)
       exit(1);
    return *s_singleton;
@@ -90,7 +90,7 @@ int Communicator::hubId() const {
 
 bool Communicator::isMaster() const {
 
-   vassert(m_hubId <= Id::MasterHub); // make sure that hub id has already been set
+   assert(m_hubId <= Id::MasterHub); // make sure that hub id has already been set
    return m_hubId == Id::MasterHub;
 }
 
@@ -280,7 +280,7 @@ bool Communicator::dispatch(bool *work) {
          if (m_recvSize > m_recvBufToAny.bufferSize()) {
             CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
          }
-         vassert(m_recvSize <= m_recvBufToAny.bufferSize());
+         assert(m_recvSize <= m_recvBufToAny.bufferSize());
          MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE, status.MPI_SOURCE, m_comm);
 
          unsigned recvSize = m_recvSize;
@@ -426,7 +426,7 @@ bool Communicator::forwardToMaster(const message::Message &message, const Messag
         assert(payload->size() == message.payloadSize());
     }
 
-   vassert(m_rank != 0);
+   assert(m_rank != 0);
    if (m_rank != 0) {
       auto p = m_ongoingSends.emplace(new SendRequest(message));
       auto it = p.first;
@@ -520,7 +520,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
       case message::IDENTIFY: {
          auto &id = message.as<message::Identify>();
          CERR << "Identify message: " << id << std::endl;
-         vassert(id.identity() == message::Identify::REQUEST);
+         assert(id.identity() == message::Identify::REQUEST);
          if (getRank() == 0) {
              message::Identify ident(id, message::Identify::MANAGER);
              ident.setNumRanks(m_size);

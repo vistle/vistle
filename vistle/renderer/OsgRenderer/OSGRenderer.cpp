@@ -74,7 +74,7 @@ public:
        const auto &vd = renderMgr.viewData(viewIdx);
        const auto w = vd.width, h = vd.height;
 
-       vassert(ovd.pboDepth.size() == ovd.pboColor.size());
+       assert(ovd.pboDepth.size() == ovd.pboColor.size());
 
        if (release || init) {
           glewInit();
@@ -633,15 +633,15 @@ void OSGRenderer::flush() {
     for (size_t f=m_asyncFrames; f>0; --f) {
        composite(f-1);
     }
-    vassert(m_numFramesToComposite == 0);
+    assert(m_numFramesToComposite == 0);
 }
 
 
 bool OSGRenderer::composite(size_t maxQueued) {
 
-   vassert(maxQueued >= 0);
-   vassert(maxQueued <= MaxAsyncFrames);
-   vassert(m_viewData.size()*m_numFramesToComposite == m_numViewsToComposite);
+   assert(maxQueued >= 0);
+   assert(maxQueued <= MaxAsyncFrames);
+   assert(m_viewData.size()*m_numFramesToComposite == m_numViewsToComposite);
 
    //CERR << "composite(maxQueued=" << maxQueued <<"), to composite: frames=" << m_numFramesToComposite << ", views=" << m_numViewsToComposite << std::endl;
 
@@ -656,11 +656,11 @@ bool OSGRenderer::composite(size_t maxQueued) {
 
    for (size_t i=0; i<m_viewData.size(); ++i) {
       const bool progress = m_viewData[i]->composite(maxQueued, m_previousTimesteps.front());
-      vassert(progress);
+      assert(progress);
       --m_numViewsToComposite;
    }
 
-   vassert(m_numViewsToComposite%m_viewData.size() == 0);
+   assert(m_numViewsToComposite%m_viewData.size() == 0);
    --m_numFramesToComposite;
    CERR << "composite(queued=" << maxQueued << "): finishFrame(t=" << m_previousTimesteps.front() << "), #frames to composite=" << m_numFramesToComposite << std::endl;
    m_renderManager.finishFrame(m_previousTimesteps.front());
@@ -725,7 +725,7 @@ bool OSGRenderer::render() {
              scene->addChild(lights.back());
           }
        }
-       vassert(l.size() == lights.size());
+       assert(l.size() == lights.size());
        for (size_t i=0; i<l.size(); ++i) {
           osg::Light *light = lights[i]->getLight();
           if (!light)

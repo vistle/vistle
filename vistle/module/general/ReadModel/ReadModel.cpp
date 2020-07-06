@@ -159,7 +159,7 @@ Object::ptr ReadModel::load(const std::string &name) const {
                         Index vertCount=0;
                         for (unsigned int f=0; f<numFace; ++f) {
                             const auto &face = mesh->mFaces[f];
-                            vassert(face.mNumIndices == 3);
+                            assert(face.mNumIndices == 3);
                             for (unsigned int i=0; i<face.mNumIndices; ++i) {
                                 cl[vertCount++] = face.mIndices[i];
                             }

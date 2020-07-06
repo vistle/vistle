@@ -9,7 +9,7 @@
 #include "object_impl.h"
 
 #include "shm.h"
-#include "assert.h"
+#include <cassert>
 
 #include "archives.h"
 #include <iostream>
@@ -210,7 +210,7 @@ bool Object::Data::isComplete() const {
 
 void ObjectData::referenceResolved(const std::function<void()> &completeCallback) {
     //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
-    vassert(unresolvedReferences > 0);
+    assert(unresolvedReferences > 0);
     if (unresolvedReferences.fetch_sub(1) == 1 && completeCallback) {
         completeCallback();
     }
@@ -285,7 +285,7 @@ Object::ptr Object::clone() const {
 
 Object *Object::createEmpty(const std::string &name) {
 
-   vassert("cannot create generic Object" == nullptr);
+   assert("cannot create generic Object" == nullptr);
    return nullptr;
 }
 

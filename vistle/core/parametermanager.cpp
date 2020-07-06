@@ -77,7 +77,7 @@ bool ParameterManager::handleMessage(const message::SetParameter &param) {
         break;
     default:
         CERR << "handleMessage: unknown parameter type " << param.getParameterType() << std::endl;
-        vassert("unknown parameter type" == 0);
+        assert("unknown parameter type" == 0);
         break;
     }
 

@@ -5,7 +5,7 @@
 //-------------------------------------------------------------------------
 
 #include "uniformgrid.h"
-#include "assert.h"
+#include <cassert>
 
 namespace vistle {
 
@@ -231,7 +231,7 @@ void UniformGrid::copyAttributes(Object::const_ptr src, bool replace) {
 //-------------------------------------------------------------------------
 GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
-   vassert(inside(elem, point));
+   assert(inside(elem, point));
 
 #ifdef INTERPOL_DEBUG
    if (!inside(elem, point)) {
@@ -265,7 +265,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
            weights[i] = w;
        }
    } else if (mode == Linear && nvert == 8) {
-       vassert(nvert == 8);
+       assert(nvert == 8);
        for (Index i=0; i<nvert; ++i) {
            indices[i] = cl[i];
        }

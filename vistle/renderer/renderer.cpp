@@ -311,7 +311,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    std::shared_ptr<RenderObject> ro = addObjectWrapper(sender, senderPort,
                                                        object, geo_norm_tex[0], geo_norm_tex[1], geo_norm_tex[2]);
    if (ro) {
-      vassert(ro->timestep >= -1);
+      assert(ro->timestep >= -1);
       if (m_objectList.size() <= size_t(ro->timestep+1))
          m_objectList.resize(ro->timestep+2);
       m_objectList[ro->timestep+1].push_back(ro);

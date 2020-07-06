@@ -373,9 +373,9 @@ AttributeList ReadCovise::readAttributes(const int fd) {
    std::vector<std::pair<std::string, std::string> > attributes;
    int num, size;
    covReadNumAttributes(fd, &num, &size);
-   vassert(num >= 0);
+   assert(num >= 0);
    if (num > 0) {
-      vassert(size >= 0);
+      assert(size >= 0);
    }
 
    if (num > 0 && size > 0) {
@@ -396,7 +396,7 @@ bool ReadCovise::readSETELE(Token &token, const int port, int fd, Element *paren
 
    int num=-1;
    covReadSetBegin(fd, &num);
-   vassert(num >= 0);
+   assert(num >= 0);
 
    for (int index = 0; index < num; index ++) {
 
@@ -489,9 +489,9 @@ Object::ptr ReadCovise::readUNSGRD(Token &token, const int port, int fd, const b
    int numVertices=-1;
 
    covReadSizeUNSGRD(fd, &numElements, &numCorners, &numVertices);
-   vassert(numElements>=0);
-   vassert(numCorners>=0);
-   vassert(numVertices>=0);
+   assert(numElements>=0);
+   assert(numCorners>=0);
+   assert(numVertices>=0);
 
    if (skeleton) {
 
@@ -569,7 +569,7 @@ Object::ptr ReadCovise::readUSTSDT(Token &token, const int port, int fd, const b
 
    int numElements=-1;
    covReadSizeUSTSDT(fd, &numElements);
-   vassert(numElements>=0);
+   assert(numElements>=0);
 
    if (skeleton) {
 
@@ -593,7 +593,7 @@ Object::ptr ReadCovise::readUSTVDT(Token &token, const int port, int fd, const b
 
    int numElements=-1;
    covReadSizeUSTVDT(fd, &numElements);
-   vassert(numElements>=0);
+   assert(numElements>=0);
 
    if (skeleton) {
 
@@ -623,9 +623,9 @@ Object::ptr ReadCovise::readSTRSDT(Token &token, const int port, int fd, const b
    int numElements=-1;
    int sx=-1, sy=-1, sz=-1;
    covReadSizeSTRSDT(fd, &numElements, &sx, &sy, &sz);
-   vassert(sx >= 0);
-   vassert(sy >= 0);
-   vassert(sz >= 0);
+   assert(sx >= 0);
+   assert(sy >= 0);
+   assert(sz >= 0);
    size_t n = sx*sy*sz;
 
    if (skeleton) {
@@ -651,9 +651,9 @@ Object::ptr ReadCovise::readSTRVDT(Token &token, const int port, int fd, const b
    int numElements=-1;
    int sx=-1, sy=-1, sz=-1;
    covReadSizeSTRVDT(fd, &numElements, &sx, &sy, &sz);
-   vassert(sx >= 0);
-   vassert(sy >= 0);
-   vassert(sz >= 0);
+   assert(sx >= 0);
+   assert(sy >= 0);
+   assert(sz >= 0);
    size_t n = sx*sy*sz;
 
    if (skeleton) {
@@ -683,7 +683,7 @@ Object::ptr ReadCovise::readPOINTS(Token &token, const int port, int fd, const b
 
    int numCoords=-1;
    covReadSizePOINTS(fd, &numCoords);
-   vassert(numCoords>=0);
+   assert(numCoords>=0);
 
    if (skeleton) {
 
@@ -715,9 +715,9 @@ Object::ptr ReadCovise::readLINES(Token &token, const int port, int fd, const bo
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
-   vassert(numElements>=0);
-   vassert(numCorners>=0);
-   vassert(numVertices>=0);
+   assert(numElements>=0);
+   assert(numCorners>=0);
+   assert(numVertices>=0);
 
    if (skeleton) {
 
@@ -758,9 +758,9 @@ Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const b
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
-   vassert(numElements>=0);
-   vassert(numCorners>=0);
-   vassert(numVertices>=0);
+   assert(numElements>=0);
+   assert(numCorners>=0);
+   assert(numVertices>=0);
 
    if (skeleton) {
 
@@ -799,8 +799,8 @@ Object::ptr ReadCovise::readPOLYGN(Token &token, const int port, int fd, const b
 
 bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem) {
 
-    vassert(elem);
-    vassert(port == 0);
+    assert(elem);
+    assert(port == 0);
 
     const size_t ncomp = 4;
     int contains[ncomp] = { 0, 0, 0, 0 };
@@ -821,8 +821,8 @@ bool ReadCovise::readGEOTEX(Token &token, const int port, int fd, Element *elem)
 
 bool ReadCovise::readGEOMET(Token &token, const int port, int fd, Element *elem) {
 
-    vassert(elem);
-    vassert(port == 0);
+    assert(elem);
+    assert(port == 0);
 
     const size_t ncomp = 3;
     int contains[ncomp] = { 0, 0, 0 };

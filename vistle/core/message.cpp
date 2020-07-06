@@ -3,7 +3,7 @@
 #include "shm.h"
 #include "parameter.h"
 #include "port.h"
-#include "assert.h"
+#include <cassert>
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/nil_generator.hpp>
@@ -78,14 +78,14 @@ Message::Message(const Type t, const unsigned int s)
 , m_pad{0}
 {
 
-   vassert(m_size <= MESSAGE_SIZE);
-   vassert(m_type > INVALID);
-   vassert(m_type < NumMessageTypes);
+   assert(m_size <= MESSAGE_SIZE);
+   assert(m_type > INVALID);
+   assert(m_type < NumMessageTypes);
 }
 
 unsigned long Message::typeFlags() const {
 
-   vassert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
+   assert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
    if (type() <= ANY || type() <= INVALID) {
       return 0;
    }

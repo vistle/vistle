@@ -87,7 +87,7 @@ bool ReadVistle::load(const std::string & name) {
             obj = Object::load(*xia);
             delete xia;
          } else {
-            vassert("add support for another archive format" == NULL);
+            assert("add support for another archive format" == NULL);
             return false;
          }
          ia = NULL;

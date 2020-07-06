@@ -278,10 +278,10 @@ class PlaneClip {
 #pragma omp parallel for schedule(dynamic)
          for (ssize_t i=0; i<nCoord; ++i) {
             Index idx = vertexMap[i];
-            vassert(idx >= 0);
+            assert(idx >= 0);
             if (idx > 0) {
                --idx;
-               vassert(idx < numIn);
+               assert(idx < numIn);
                out_x[idx] = x[i];
                out_y[idx] = y[i];
                out_z[idx] = z[i];
@@ -372,16 +372,16 @@ class PlaneClip {
          if (numIn == 1) {
             // in0 is the only pre-existing corner inside
             const Index in0 = haveCornerList ? cl[start+cornerIn] : start+cornerIn;
-            vassert(vertexMap[in0] > 0);
+            assert(vertexMap[in0] > 0);
             const Index out0 = haveCornerList ? cl[start + (cornerIn+1)%3] : start + (cornerIn+1)%3;
-            vassert(vertexMap[out0] == 0);
+            assert(vertexMap[out0] == 0);
             const Vector v0 = splitEdge(in0, out0);
             out_x[outIdxCoord] = v0[0];
             out_y[outIdxCoord] = v0[1];
             out_z[outIdxCoord] = v0[2];
 
             const Index out1 = haveCornerList ? cl[start+(cornerIn+2)%3] : start+(cornerIn+2)%3;
-            vassert(vertexMap[out1] == 0);
+            assert(vertexMap[out1] == 0);
             const Vector v1 = splitEdge(in0, out1);
             out_x[outIdxCoord+1] = v1[0];
             out_y[outIdxCoord+1] = v1[1];
@@ -395,7 +395,7 @@ class PlaneClip {
                ++n;
                out_cl[outIdxCorner+n] = outIdxCoord+1;
                ++n;
-               vassert(n == totalCorner);
+               assert(n == totalCorner);
             } else {
                out_x[outIdxCoord+2] = x[in0];
                out_y[outIdxCoord+2] = y[in0];
@@ -406,14 +406,14 @@ class PlaneClip {
             if (haveCornerList) {
                const Index out0 = cl[start + cornerOut];
                const Index in0 = cl[start+(cornerOut+2)%3];
-               vassert(vertexMap[out0] == 0);
+               assert(vertexMap[out0] == 0);
                const Vector v0 = splitEdge(in0, out0);
                out_x[outIdxCoord] = v0[0];
                out_y[outIdxCoord] = v0[1];
                out_z[outIdxCoord] = v0[2];
 
                const Index in1 = cl[start+(cornerOut+1)%3];
-               vassert(vertexMap[in1] > 0);
+               assert(vertexMap[in1] > 0);
                const Vector v1 = splitEdge(in1, out0);
                out_x[outIdxCoord+1] = v1[0];
                out_y[outIdxCoord+1] = v1[1];
@@ -447,11 +447,11 @@ class PlaneClip {
                ++n;
                out_cl[outIdxCorner+n] = vertexMap[in1]-1;
                ++n;
-               vassert(n == totalCorner);
+               assert(n == totalCorner);
             } else {
                const Index out0 = start + cornerOut;
                const Index in0 = start+(cornerOut+2)%3;
-               vassert(vertexMap[out0] == 0);
+               assert(vertexMap[out0] == 0);
                const Vector v0 = splitEdge(in0, out0);
 
                out_x[outIdxCoord] = v0[0];
@@ -459,7 +459,7 @@ class PlaneClip {
                out_z[outIdxCoord] = v0[2];
 
                const Index in1 = start+(cornerOut+1)%3;
-               vassert(vertexMap[in1] > 0);
+               assert(vertexMap[in1] > 0);
                const Vector v1 = splitEdge(in1, out0);
                out_x[outIdxCoord+1] = v1[0];
                out_y[outIdxCoord+1] = v1[1];
@@ -589,8 +589,8 @@ class PlaneClip {
          //     between the line formed by the two vertices and the
          //     plane
 
-         vassert(numCreate%2 == 0);
-         vassert(numCreate == 2); // we only handle convex polygons
+         assert(numCreate%2 == 0);
+         assert(numCreate == 2); // we only handle convex polygons
          if (numVertsOnly) {
             outIdxPoly = numCreate/2;
             outIdxPoly = 1;
@@ -631,8 +631,8 @@ class PlaneClip {
             prevIdx = idx;
             prevIn = in;
          }
-         vassert(numCreated == numCreate);
-         vassert(n == numIn+numCreate);
+         assert(numCreated == numCreate);
+         assert(n == numIn+numCreate);
       }
    }
 };

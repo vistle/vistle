@@ -7,7 +7,7 @@
 #include "structuredgrid.h"
 #include "celltree_impl.h"
 #include "unstr.h" // for hexahedron topology
-#include <core/assert.h>
+#include <cassert>
 #include "cellalgorithm.h"
 
 //#define INTERPOL_DEBUG
@@ -120,7 +120,7 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
    }
 
    m_celltree = Celltree::as(getAttachment("celltree"));
-   vassert(m_celltree);
+   assert(m_celltree);
    return m_celltree;
 }
 
@@ -366,7 +366,7 @@ void StructuredGrid::copyAttributes(Object::const_ptr src, bool replace) {
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
 #ifdef INTERPOL_DEBUG
-   vassert(inside(elem, point));
+   assert(inside(elem, point));
 
    if (!inside(elem, point)) {
       return Interpolator();
@@ -401,7 +401,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
            weights[i] = w;
        }
    } else if (mode == Linear && nvert == 8) {
-       vassert(nvert == 8);
+       assert(nvert == 8);
        for (Index i=0; i<nvert; ++i) {
            indices[i] = cl[i];
        }

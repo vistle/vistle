@@ -5,7 +5,7 @@
 #include "shm.h"
 #include "parameter.h"
 #include "port.h"
-#include "assert.h"
+#include <cassert>
 
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/nil_generator.hpp>
@@ -31,7 +31,7 @@ static T min(T a, T b) { return a<b ? a : b; }
       const size_t size = min(src.size(), dst.size()-1); \
       src.copy(dst.data(), size); \
       dst[size] = '\0'; \
-      vassert(src.size() < dst.size()); \
+      assert(src.size() < dst.size()); \
    } while(false)
 
 template<class Payload>
@@ -105,7 +105,7 @@ Identify::Identify(const Identify &request, Identity id, int rank)
    setReferrer(request.uuid());
    m_session_data = request.m_session_data;
 
-   vassert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
+   assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
 
    memset(m_name.data(), 0, m_name.size());
 
@@ -217,7 +217,7 @@ std::string AddHub::host() const {
 }
 
 boost::asio::ip::address AddHub::address() const {
-   vassert(hasAddress());
+   assert(hasAddress());
    if (addressType() == IPv6)
       return addressV6();
    else
@@ -225,12 +225,12 @@ boost::asio::ip::address AddHub::address() const {
 }
 
 boost::asio::ip::address_v6 AddHub::addressV6() const {
-   vassert(m_addrType == IPv6);
+   assert(m_addrType == IPv6);
    return boost::asio::ip::address_v6::from_string(m_address.data());
 }
 
 boost::asio::ip::address_v4 AddHub::addressV4() const {
-   vassert(m_addrType == IPv4);
+   assert(m_addrType == IPv4);
    return boost::asio::ip::address_v4::from_string(m_address.data());
 }
 
@@ -247,7 +247,7 @@ void AddHub::setDataPort(unsigned short port) {
 }
 
 void AddHub::setAddress(boost::asio::ip::address addr) {
-   vassert(addr.is_v4() || addr.is_v6());
+   assert(addr.is_v4() || addr.is_v6());
 
    if (addr.is_v4())
       setAddress(addr.to_v4());
@@ -647,7 +647,7 @@ bool AddObject::handleValid() const {
 
 const shm_handle_t & AddObject::getHandle() const {
 
-   vassert(m_handleValid);
+   assert(m_handleValid);
    return handle;
 }
 
@@ -683,7 +683,7 @@ void AddObject::setObject(Object::const_ptr obj) {
 
 Object::const_ptr AddObject::takeObject() const {
 
-   vassert(m_handleValid);
+   assert(m_handleValid);
    if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
       vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
       if (obj) {
@@ -826,11 +826,11 @@ AddParameter::AddParameter(const Parameter &param, const std::string &modname)
 : paramtype(param.type())
 , presentation(param.presentation())
 {
-   vassert(paramtype > Parameter::Unknown);
-   vassert(paramtype < Parameter::Invalid);
+   assert(paramtype > Parameter::Unknown);
+   assert(paramtype < Parameter::Invalid);
 
-   vassert(presentation >= Parameter::Generic);
-   vassert(presentation <= Parameter::InvalidPresentation);
+   assert(presentation >= Parameter::Generic);
+   assert(presentation <= Parameter::InvalidPresentation);
 
    COPY_STRING(name, param.getName());
    COPY_STRING(m_group, param.group());
@@ -902,7 +902,7 @@ std::shared_ptr<Parameter> AddParameter::getParameter() const {
       std::cerr << "AddParameter::getParameter (" <<
          moduleName() << ":" << getName()
          << ": type " << getParameterType() << " not handled" << std::endl;
-      vassert("parameter type not supported" == 0);
+      assert("parameter type not supported" == 0);
    }
 
    return p;
@@ -911,8 +911,8 @@ std::shared_ptr<Parameter> AddParameter::getParameter() const {
 RemoveParameter::RemoveParameter(const Parameter &param, const std::string &modname)
 : paramtype(param.type())
 {
-   vassert(paramtype > Parameter::Unknown);
-   vassert(paramtype < Parameter::Invalid);
+   assert(paramtype > Parameter::Unknown);
+   assert(paramtype < Parameter::Invalid);
 
    COPY_STRING(name, param.getName());
    COPY_STRING(module, modname);
@@ -1003,7 +1003,7 @@ SetParameter::SetParameter(int module, const std::string &n, const std::shared_p
       COPY_STRING(v_string, (initialize ? pstring->getDefaultValue() : pstring->getValue(rt)));
    } else {
       std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
-      vassert("invalid parameter type" == 0);
+      assert("invalid parameter type" == 0);
    }
 }
 
@@ -1108,8 +1108,8 @@ int SetParameter::getModule() const {
 
 void SetParameter::setRangeType(int rt) {
 
-   vassert(rt >= Parameter::Minimum);
-   vassert(rt <= Parameter::Maximum);
+   assert(rt >= Parameter::Minimum);
+   assert(rt <= Parameter::Maximum);
    rangetype = rt;
 }
 
@@ -1130,31 +1130,31 @@ int SetParameter::getParameterType() const {
 
 Integer SetParameter::getInteger() const {
 
-   vassert(paramtype == Parameter::Integer);
+   assert(paramtype == Parameter::Integer);
    return v_int;
 }
 
 Float SetParameter::getFloat() const {
 
-   vassert(paramtype == Parameter::Float);
+   assert(paramtype == Parameter::Float);
    return v_scalar;
 }
 
 ParamVector SetParameter::getVector() const {
 
-   vassert(paramtype == Parameter::Vector);
+   assert(paramtype == Parameter::Vector);
    return ParamVector(dim, &v_vector[0]);
 }
 
 IntParamVector SetParameter::getIntVector() const {
 
-   vassert(paramtype == Parameter::IntVector);
+   assert(paramtype == Parameter::IntVector);
    return IntParamVector(dim, &v_ivector[0]);
 }
 
 std::string SetParameter::getString() const {
 
-   vassert(paramtype == Parameter::String);
+   assert(paramtype == Parameter::String);
    return v_string.data();
 }
 
@@ -1188,7 +1188,7 @@ bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
       if (rt == Parameter::Maximum) pstring->setMaximum(v_string.data());
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
-      vassert("invalid parameter type" == 0);
+      assert("invalid parameter type" == 0);
    }
    
    return true;
@@ -1496,7 +1496,7 @@ void RequestTunnel::setDestAddr(boost::asio::ip::address_v6 addr) {
 }
 
 boost::asio::ip::address RequestTunnel::destAddr() const {
-   vassert(destIsAddress());
+   assert(destIsAddress());
    if (destType() == IPv6)
       return destAddrV6();
    else
@@ -1504,12 +1504,12 @@ boost::asio::ip::address RequestTunnel::destAddr() const {
 }
 
 boost::asio::ip::address_v6 RequestTunnel::destAddrV6() const {
-   vassert(m_destType == IPv6);
+   assert(m_destType == IPv6);
    return boost::asio::ip::address_v6::from_string(m_destAddr.data());
 }
 
 boost::asio::ip::address_v4 RequestTunnel::destAddrV4() const {
-   vassert(m_destType == IPv4);
+   assert(m_destType == IPv4);
    return boost::asio::ip::address_v4::from_string(m_destAddr.data());
 }
 

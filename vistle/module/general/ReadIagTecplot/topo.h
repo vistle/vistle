@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <iomanip>
 #include "coord.h"
-#include "assert.h"
+#include <cassert>
 
 
 typedef Coordinate Position;

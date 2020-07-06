@@ -2,7 +2,7 @@
 #include "triangles.h"
 #include "quads.h"
 #include "celltree_impl.h"
-#include <core/assert.h>
+#include <cassert>
 
 namespace vistle {
 
@@ -110,7 +110,7 @@ Ngons<N>::Celltree::const_ptr Ngons<N>::getCelltree() const {
    }
 
    m_celltree = Celltree::as(getAttachment("celltree"));
-   vassert(m_celltree);
+   assert(m_celltree);
    return m_celltree;
 }
 

@@ -2,7 +2,7 @@
 #include <core/coords.h>
 #include <core/coordswradius.h>
 #include <core/vec.h>
-#include <core/assert.h>
+#include <cassert>
 
 #include "renderobject.h"
 

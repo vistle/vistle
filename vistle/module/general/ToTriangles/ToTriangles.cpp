@@ -51,7 +51,7 @@ struct ReplicateData {
       , nStart(nStart)
       , nEnd(nEnd)
       {
-         vassert(nElem==0 || el);
+         assert(nElem==0 || el);
       }
    template<typename S> void operator()(S) {
 
@@ -102,7 +102,7 @@ DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem=0, Ind
    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
    if (auto tex = Texture1D::as(src)) {
        auto vec1 = Vec<Scalar, 1>::as(Object::ptr(result));
-       vassert(vec1);
+       assert(vec1);
        auto result2 = tex->clone();
        result2->d()->x[0] = vec1->d()->x[0];
        result = result2;
@@ -161,7 +161,7 @@ bool ToTriangles::compute() {
             tcl[i++] = cl[begin+v+2];
          }
       }
-      vassert(i == 3*ntri);
+      assert(i == 3*ntri);
    } else if (auto quads = Quads::as(obj)) {
 
       Index nelem = quads->getNumElements();
@@ -185,7 +185,7 @@ bool ToTriangles::compute() {
             tcl[i++] = cl[begin+v+2];
          }
       }
-      vassert(i == 3*ntri);
+      assert(i == 3*ntri);
    }  else if (sphere && p_transformSpheres->getValue()) {
 
       const int NumLat = 8;
@@ -240,7 +240,7 @@ bool ToTriangles::compute() {
             nx[ci] = ny[ci] = 0.f;
             nz[ci] = 1.f;
             ++ci;
-            vassert(ci == (i+1)*CoordPerSphere);
+            assert(ci == (i+1)*CoordPerSphere);
          }
 
          // create coordinates from normals
@@ -274,8 +274,8 @@ bool ToTriangles::compute() {
                }
                ci += NumLong;
             }
-            vassert(ci == i*CoordPerSphere + 1 + NumLong*(NumLat-3));
-            vassert(ci + NumLong + 1 == (i+1)*CoordPerSphere);
+            assert(ci == i*CoordPerSphere + 1 + NumLong*(NumLat-3));
+            assert(ci + NumLong + 1 == (i+1)*CoordPerSphere);
 
             // indices for ring around north pole
             for (Index k=0; k<NumLong; ++k) {
@@ -283,11 +283,11 @@ bool ToTriangles::compute() {
                ti[ii++] = ci+k;
                ti[ii++] = (i+1)*CoordPerSphere-1;
             }
-            vassert(ii == (i+1)*3*TriPerSphere);
+            assert(ii == (i+1)*3*TriPerSphere);
 
             for (Index j=0; j<3*TriPerSphere; ++j) {
-               vassert(ti[i*3*TriPerSphere + j] >= i*CoordPerSphere);
-               vassert(ti[i*3*TriPerSphere + j] < (i+1)*CoordPerSphere);
+               assert(ti[i*3*TriPerSphere + j] >= i*CoordPerSphere);
+               assert(ti[i*3*TriPerSphere + j] < (i+1)*CoordPerSphere);
             }
          }
       }
@@ -336,7 +336,7 @@ bool ToTriangles::compute() {
       auto ti = tri->cl().data();
 
       Normals::ptr norm(new Normals(numCoord));
-      vassert(norm->getSize() == tri->getSize());
+      assert(norm->getSize() == tri->getSize());
       auto nx = norm->x().data();
       auto ny = norm->y().data();
       auto nz = norm->z().data();
@@ -519,8 +519,8 @@ bool ToTriangles::compute() {
             }
          }
       }
-      vassert(ci == numCoord);
-      vassert(ii == numSeg);
+      assert(ci == numCoord);
+      assert(ii == numSeg);
 
       norm->setMeta(obj->meta());
       tri->setNormals(norm);
@@ -566,7 +566,7 @@ bool ToTriangles::compute() {
               tcl[i++] = cl[begin+3];
           }
       }
-      vassert(i == 3*ntri);
+      assert(i == 3*ntri);
    }
 
    if (tri) {

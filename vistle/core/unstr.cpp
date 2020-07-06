@@ -1,5 +1,5 @@
 #include "unstr.h"
-#include <core/assert.h>
+#include <cassert>
 #include <algorithm>
 #include "cellalgorithm.h"
 #include <set>
@@ -692,7 +692,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
 #ifdef INTERPOL_DEBUG
-   vassert(inside(elem, point));
+   assert(inside(elem, point));
 
    if (!inside(elem, point)) {
       return Interpolator();
@@ -731,7 +731,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
    } else if (mode == Linear) {
       switch(tl[elem] & TYPE_MASK) {
          case TETRAHEDRON: {
-            vassert(nvert == 4);
+            assert(nvert == 4);
             Vector coord[4];
             for (int i=0; i<4; ++i) {
                const Index ind = cl[i];
@@ -751,7 +751,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             break;
          }
          case PYRAMID: {
-            vassert(nvert == 5);
+            assert(nvert == 5);
             Vector coord[5];
             for (int i=0; i<5; ++i) {
                const Index ind = cl[i];
@@ -779,7 +779,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             break;
          }
          case PRISM: {
-            vassert(nvert == 6);
+            assert(nvert == 6);
             Vector coord[8];
             for (int i=0; i<3; ++i) {
                const Index ind1 = cl[i];
@@ -804,7 +804,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             break;
          }
          case HEXAHEDRON: {
-            vassert(nvert == 8);
+            assert(nvert == 8);
             Vector coord[8];
             for (int i=0; i<8; ++i) {
                const Index ind = cl[i];

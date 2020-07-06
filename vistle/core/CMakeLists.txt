@@ -65,7 +65,6 @@ if(${TEMPLATES_IN_HEADERS})
 endif()
 
 set(core_HEADERS
-   assert.h
    archives.h
    archives_config.h
    archive_loader.h

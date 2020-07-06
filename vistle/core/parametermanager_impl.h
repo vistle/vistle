@@ -1,7 +1,7 @@
 #ifndef VISTLE_PARAMETER_MANAGER_IMPL_H
 #define VISTLE_PARAMETER_MANAGER_IMPL_H
 
-#include <core/assert.h>
+#include <cassert>
 
 namespace vistle {
 
@@ -94,7 +94,7 @@ bool ParameterManager::getParameter(const std::string &name, T &value) const {
       value = p->getValue();
    } else {
       std::cerr << "ParameterManager::getParameter(" << name << "): type failure" << std::endl;
-      vassert("dynamic_cast failed" == 0);
+      assert("dynamic_cast failed" == 0);
       return false;
    }
 

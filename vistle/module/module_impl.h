@@ -3,7 +3,7 @@
 
 #include <core/message.h>
 #include <core/messages.h>
-#include <core/assert.h>
+#include <cassert>
 
 namespace vistle {
 
@@ -19,7 +19,7 @@ typename Type::const_ptr PortTask::accept(const Port *port) {
       m_module->sendWarning(str.str());
       return nullptr;
    }
-   vassert(obj->check());
+   assert(obj->check());
    auto ret = Type::as(obj);
    if (ret)
        m_input.erase(it);
@@ -53,7 +53,7 @@ typename Type::const_ptr PortTask::expect(const Port *port) {
         m_module->sendWarning(str.str());
         return nullptr;
     }
-    vassert(obj->check());
+    assert(obj->check());
     return Type::as(obj);
 }
 template<class Type>
@@ -77,7 +77,7 @@ typename Type::const_ptr Module::accept(Port *port) {
       sendWarning(str.str());
       return nullptr;
    }
-   vassert(obj->check());
+   assert(obj->check());
    typename Type::const_ptr ret = Type::as(obj);
    if (ret)
       port->objects().pop_front();
@@ -86,7 +86,7 @@ typename Type::const_ptr Module::accept(Port *port) {
 template<class Type>
 typename Type::const_ptr Module::accept(const std::string &port) {
    Port *p = findInputPort(port);
-   vassert(p);
+   assert(p);
    return accept<Type>(p);
 }
 
@@ -115,7 +115,7 @@ typename Type::const_ptr Module::expect(Port *port) {
       sendError(str.str());
       return ret;
    }
-   vassert(obj->check());
+   assert(obj->check());
    if (!ret) {
       std::stringstream str;
       str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Type::typeName() << " is required" << std::endl;
@@ -126,7 +126,7 @@ typename Type::const_ptr Module::expect(Port *port) {
 template<class Type>
 typename Type::const_ptr Module::expect(const std::string &port) {
    Port *p = findInputPort(port);
-   vassert(p);
+   assert(p);
    return expect<Type>(p);
 }
 

@@ -1,7 +1,7 @@
 #include "portmanager.h"
 #include "clustermanager.h"
 #include <core/message.h>
-#include <core/assert.h>
+#include <cassert>
 #include <iostream>
 #include <algorithm>
 
@@ -64,7 +64,7 @@ bool PortManager::hasObject(const Port *port) {
 
 void PortManager::popObject(const Port *port) {
 
-   vassert(m_numObject[port] > 0);
+   assert(m_numObject[port] > 0);
    --m_numObject[port];
 }
 

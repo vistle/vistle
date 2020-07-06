@@ -1,7 +1,7 @@
 #include "dataproxy.h"
 #include <core/tcpmessage.h>
 #include <core/message.h>
-#include <core/assert.h>
+#include <cassert>
 #include <core/statetracker.h>
 #include <condition_variable>
 #include <boost/asio/deadline_timer.hpp>

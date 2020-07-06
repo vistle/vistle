@@ -384,7 +384,7 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
 
    checkIceTError("setCurrentView");
 
-   vassert(m_currentView == -1);
+   assert(m_currentView == -1);
    auto rhr = m_rhrControl.server();
 
    int resetTiles = 0;
@@ -401,7 +401,7 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       //icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_DEBUG);
 #endif
    }
-   vassert(i < m_icet.size());
+   assert(i < m_icet.size());
    auto &icet = m_icet[i];
    //std::cerr << "setting IceT context: " << icet.ctx << " (valid: " << icet.ctxValid << ")" << std::endl;
    icetSetContext(icet.ctx);
@@ -430,7 +430,7 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
 
       std::vector<DisplayTile> icetTiles;
       mpi::all_gather(m_module->comm(), localTile, icetTiles);
-      vassert(icetTiles.size() == (unsigned)m_module->size());
+      assert(icetTiles.size() == (unsigned)m_module->size());
 
       icetResetTiles();
 
@@ -466,21 +466,21 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
 
    checkIceTError("before finishCurrentView");
 
-   vassert(m_currentView >= 0);
+   assert(m_currentView >= 0);
    const size_t i = m_currentView;
-   vassert(i < numViews());
+   assert(i < numViews());
 
    //std::cerr << "finishCurrentView: " << i << ", time=" << timestep << std::endl;
    if (m_module->rank() == rootRank()) {
        if (auto rhr = m_rhrControl.server()) {
-           vassert(rhr);
+           assert(rhr);
            if (i < rhr->numViews()) {
                // otherwise client just disconnected
                const int bpp = 4;
                const int w = rhr->width(i);
                const int h = rhr->height(i);
-               vassert(std::max(0,w) == icetImageGetWidth(img));
-               vassert(std::max(0,h) == icetImageGetHeight(img));
+               assert(std::max(0,w) == icetImageGetWidth(img));
+               assert(std::max(0,h) == icetImageGetHeight(img));
 
 
                const IceTUByte *color = nullptr;
@@ -523,7 +523,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
 
 bool ParallelRemoteRenderManager::finishFrame(int timestep) {
 
-   vassert(m_currentView == -1);
+   assert(m_currentView == -1);
 
    if (m_frameComplete)
       return false;
@@ -534,7 +534,7 @@ bool ParallelRemoteRenderManager::finishFrame(int timestep) {
 
    if (m_module->rank() == rootRank()) {
        if (auto rhr = m_rhrControl.server()) {
-           vassert(rhr);
+           assert(rhr);
            m_viewData[0].rhrParam.timestep = timestep;
            rhr->invalidate(-1, 0, 0, 0, 0, m_viewData[0].rhrParam, true);
        }

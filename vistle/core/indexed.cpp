@@ -1,6 +1,6 @@
 #include "indexed.h"
 #include "celltree_impl.h"
-#include "assert.h"
+#include <cassert>
 
 namespace vistle {
 
@@ -69,7 +69,7 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const {
    }
 
    m_celltree = Celltree::as(getAttachment("celltree"));
-   vassert(m_celltree);
+   assert(m_celltree);
    return m_celltree;
 }
 
@@ -152,7 +152,7 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
    }
 
    m_vertexOwnerList = VertexOwnerList::as(getAttachment("vertexownerlist"));
-   vassert(m_vertexOwnerList);
+   assert(m_vertexOwnerList);
    return m_vertexOwnerList;
 }
 
@@ -446,7 +446,7 @@ void Indexed::resetCorners() {
 }
 
 Object::Type Indexed::type() {
-   vassert("should not be called" == 0);
+   assert("should not be called" == 0);
    return Object::UNKNOWN;
 }
 

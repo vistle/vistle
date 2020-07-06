@@ -32,7 +32,7 @@
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
-#include <core/assert.h>
+#include <cassert>
 #include <util/directory.h>
 #include <util/enum.h>
 #include <util/stopwatch.h>
@@ -89,8 +89,8 @@ void ClusterManager::Module::block(const message::Message &msg) const {
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) const {
-    vassert(blocked);
-    vassert(!blockers.empty());
+    assert(blocked);
+    assert(!blockers.empty());
 
     if (!blocked)
         return;
@@ -112,7 +112,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
         std::cerr << "UNBLOCK: found as frontmost of " << blockers.size() << " blockers: " << msg << std::endl;
 #endif
         blockers.pop_front();
-        vassert(blockedMessages.front().buf.uuid() == msg.uuid()
+        assert(blockedMessages.front().buf.uuid() == msg.uuid()
                 && blockedMessages.front().buf.type() == msg.type());
         message::Buffer buf(msg);
         blockedMessages.front().payload.ref();
@@ -158,13 +158,13 @@ void ClusterManager::Module::unblock(const message::Message &msg) const {
             for (const auto &b: blockers) {
                 std::cerr << "   " << b << std::endl;
             }
-            vassert(it != blockers.end());
+            assert(it != blockers.end());
         } else {
             //std::cerr << "UNBLOCK: found in blockers" << std::endl;
             blockers.erase(it);
         }
         auto it2 = std::find_if(blockedMessages.begin(), blockedMessages.end(), hasSame);
-        vassert (it2 != blockedMessages.end());
+        assert (it2 != blockedMessages.end());
         if (it2 != blockedMessages.end()) {
             //std::cerr << "UNBLOCK: updating message" << std::endl;
             it2->buf = msg;
@@ -349,7 +349,7 @@ bool ClusterManager::isLocal(int id) const {
 
 bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 
-   vassert(m_barrierActive);
+   assert(m_barrierActive);
    size_t numLocal = 0;
    for (const auto &m: m_stateTracker.runningMap) {
        if (m.second.hub == Communicator::the().hubId() && Id::isModule(m.second.id)) {
@@ -367,7 +367,7 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
 
 void ClusterManager::barrierReached(const message::uuid_t &uuid) {
 
-   vassert(m_barrierActive);
+   assert(m_barrierActive);
    m_comm.barrier();
    reachedSet.clear();
    CERR << "Barrier [" << uuid << "] reached" << std::endl;
@@ -1124,7 +1124,7 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
 bool ClusterManager::handlePriv(const message::Execute &exec) {
 
-    vassert (exec.getModule() >= Id::ModuleBase);
+    assert (exec.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = runningMap.find(exec.getModule());
     if (i == runningMap.end()) {
         CERR << "did not find module to be executed: " << exec.getModule() << std::endl;
@@ -1134,8 +1134,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
     auto &mod = i->second;
     switch(exec.what()) {
     case message::Execute::Prepare: {
-        vassert(!mod.prepared);
-        vassert(mod.reduced);
+        assert(!mod.prepared);
+        assert(mod.reduced);
         mod.prepared = true;
         mod.reduced = false;
         mod.send(exec);
@@ -1144,8 +1144,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         break;
     }
     case message::Execute::Reduce: {
-        vassert(mod.prepared);
-        vassert(!mod.reduced);
+        assert(mod.prepared);
+        assert(!mod.reduced);
         mod.prepared = false;
         mod.reduced = true;
         mod.send(exec);
@@ -1161,7 +1161,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
             if (mod.ranksStarted > 0) {
                 mod.delay(exec);
             } else {
-                vassert(!mod.prepared);
+                assert(!mod.prepared);
                 mod.prepared = false;
                 mod.reduced = true;
                 Communicator::the().broadcastAndHandleMessage(exec);
@@ -1170,7 +1170,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
         break;
     }
     case message::Execute::ComputeObject: {
-        vassert(mod.prepared);
+        assert(mod.prepared);
         //CERR << exec << std::endl;
         auto it = m_stateTracker.runningMap.find(exec.getModule());
         auto pol = message::SchedulingPolicy::Single;
@@ -1216,7 +1216,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 
 bool ClusterManager::handlePriv(const message::CancelExecute &cancel) {
 
-    vassert (cancel.getModule() >= Id::ModuleBase);
+    assert (cancel.getModule() >= Id::ModuleBase);
     RunningMap::iterator i = runningMap.find(cancel.getModule());
     if (i == runningMap.end()) {
         CERR << "did not find module to cancel execution: " << cancel.getModule() << std::endl;
@@ -1241,14 +1241,14 @@ bool ClusterManager::addObjectSource(const message::AddObject &addObj) {
    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
       CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      //vassert(port);
+      //assert(port);
       return true;
    }
 
    const Port::ConstPortSet *list = portManager().getConnectionList(port);
    if (!list) {
       //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      vassert(list);
+      assert(list);
       return true;
    }
 
@@ -1280,13 +1280,13 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
    const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
       CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      //vassert(port);
+      //assert(port);
       return true;
    }
    const Port::ConstPortSet *list = portManager().getConnectionList(port);
    if (!list) {
       //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      vassert(list);
+      assert(list);
       return true;
    }
 
@@ -1299,7 +1299,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
        auto it = m_stateTracker.runningMap.find(destId);
        if (it == m_stateTracker.runningMap.end()) {
            CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
-           vassert("port connection to module that is not running" == 0);
+           assert("port connection to module that is not running" == 0);
            continue;
        }
        auto &destMod = it->second;
@@ -1334,7 +1334,7 @@ bool ClusterManager::addObjectDestination(const message::AddObject &addObj, Obje
 
        if (!obj) {
            // block messages of receiving module until remote object is available
-           vassert(!localAdd);
+           assert(!localAdd);
            auto it = runningMap.find(destId);
            if (it != runningMap.end()) {
                Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), [this, addObj, addObj2, broadcast](Object::const_ptr newobj) mutable {
@@ -1418,12 +1418,12 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       }
    }
 
-   vassert(onThisRank);
+   assert(onThisRank);
 
    if (localAdd && onThisRank) {
-      vassert(obj);
+      assert(obj);
    }
-   vassert(!obj || obj->refcount() >= 1);
+   assert(!obj || obj->refcount() >= 1);
 
    return addObjectDestination(addObj, obj);
 }
@@ -1454,7 +1454,7 @@ bool ClusterManager::checkExecuteObject(int destId) {
    auto it = m_stateTracker.runningMap.find(destId);
    if (it == m_stateTracker.runningMap.end()) {
       CERR << "port connection to module that is not running" << std::endl;
-      vassert("port connection to module that is not running" == 0);
+      assert("port connection to module that is not running" == 0);
       return true;
    }
    auto &destMod = it->second;
@@ -1491,7 +1491,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    RunningMap::iterator i = runningMap.find(prog.senderId());
    ClusterManager::Module* mod = nullptr;
    if (i == runningMap.end()) {
-      vassert(localSender == false);
+      assert(localSender == false);
    }
    else {
        mod = &i->second;
@@ -1523,7 +1523,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                 CERR << "did not find " << destId << " in runningMap, but it is connected to " << prog.senderId() << ":" << output->getName() << std::endl;
                 abort();
             }
-            vassert(it != m_stateTracker.runningMap.end());
+            assert(it != m_stateTracker.runningMap.end());
             const auto &destState = it->second;
             if (destState.reducePolicy != message::ReducePolicy::Never) {
                 bool gang = destState.schedulingPolicy == message::SchedulingPolicy::Gang
@@ -1557,7 +1557,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-             vassert(mod->ranksFinished < m_size);
+             assert(mod->ranksFinished < m_size);
              ++mod->ranksStarted;
              readyForPrepare = mod->ranksStarted==m_size;
          }
@@ -1572,7 +1572,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                 if (mod->ranksStarted != m_size) {
                    CERR << "ExecutionProgress::Finish: mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod->ranksStarted << std::endl;
                 }
-                vassert(mod->ranksStarted >= m_size);
+                assert(mod->ranksStarted >= m_size);
                 mod->ranksStarted -= m_size;
                 mod->ranksFinished = 0;
                 unqueueExecute = true;
@@ -1589,7 +1589,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    if (readyForPrepare || readyForReduce) {
-       vassert(!(readyForPrepare && readyForReduce));
+       assert(!(readyForPrepare && readyForReduce));
        for (auto hub: receivingHubs) {
            message::Buffer buf(prog);
            buf.setForBroadcast(false);
@@ -1628,7 +1628,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             }
             //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
-            vassert(it != m_stateTracker.runningMap.end());
+            assert(it != m_stateTracker.runningMap.end());
             if (it->second.reducePolicy != message::ReducePolicy::Never
                     || it->second.schedulingPolicy == message::SchedulingPolicy::Gang
                     || it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
@@ -1656,18 +1656,18 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                }
                if (allReadyForReduce) {
                   if (handleOnMaster && localSender) {
-                     vassert(mod->ranksFinished==0);
+                     assert(mod->ranksFinished==0);
                   }
                   // process all objects which are still in the queue befor calling reduce()
                   if (isLocal(destId)) {
                      if (it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
                          broadcast = true;
                          RunningMap::iterator i = runningMap.find(destId);
-                         vassert(i != runningMap.end());
+                         assert(i != runningMap.end());
                          auto &destMod = i->second;
 
-                         vassert(destMod.prepared);
-                         vassert(!destMod.reduced);
+                         assert(destMod.prepared);
+                         assert(!destMod.reduced);
                          if (m_rank == 0) {
                              if (ssize_t(destMod.objectCount.size()) < getSize())
                                  destMod.objectCount.resize(getSize());
@@ -1687,7 +1687,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                                  if (!Communicator::the().broadcastAndHandleMessage(exec))
                                      return false;
                              }
-                             vassert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) == 0);
+                             assert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) == 0);
                          }
                      }
                   }
@@ -1759,7 +1759,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    CERR << "SetParameter: " << setParam << std::endl;
 #endif
 
-   vassert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
+   assert (setParam.getModule() >= Id::ModuleBase || setParam.getModule() == Id::Vistle || Id::isHub(setParam.getModule()));
    int sender = setParam.senderId();
    int dest = setParam.destId();
     RunningMap::iterator i = runningMap.find(setParam.getModule());
@@ -1908,13 +1908,13 @@ bool ClusterManager::handlePriv(const message::Barrier &barrier) {
 
 bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
 
-   vassert(m_barrierActive);
+   assert(m_barrierActive);
 #ifdef BARRIER_DEBUG
    CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]" << std::endl;
 #endif
 
    if (barrReached.senderId() >= Id::ModuleBase) {
-      vassert(isLocal(barrReached.senderId()));
+      assert(isLocal(barrReached.senderId()));
       reachedSet.insert(barrReached.senderId());
       if (checkBarrier(m_barrierUuid)) {
          barrierReached(m_barrierUuid);
@@ -2116,7 +2116,7 @@ bool ClusterManager::isReadyForExecute(int modId) const {
    }
 
    if (!mod.reduced && mod.prepared) {
-      vassert(mod.ranksFinished <= m_size);
+      assert(mod.ranksFinished <= m_size);
       //std::cerr << "prepared & not reduced" << std::endl;
       return true;
    }

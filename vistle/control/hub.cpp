@@ -7,8 +7,8 @@
 #include <exception>
 #include <cstdlib>
 #include <sstream>
+#include <cassert>
 
-#include <core/assert.h>
 #include <util/hostname.h>
 #include <util/directory.h>
 #include <util/spawnprocess.h>
@@ -91,7 +91,7 @@ Hub::Hub(bool inManager)
 , m_ioThread([this](){ m_ioService.run(); })
 {
 
-   vassert(!hub_instance);
+   assert(!hub_instance);
    hub_instance = this;
 
    if (!inManager) {
@@ -465,7 +465,7 @@ void Hub::handleAccept(std::shared_ptr<acceptor> a, shared_ptr<asio::ip::tcp::so
 void Hub::addSocket(shared_ptr<asio::ip::tcp::socket> sock, message::Identify::Identity ident) {
 
    bool ok = m_sockets.insert(std::make_pair(sock, ident)).second;
-   vassert(ok);
+   assert(ok);
    (void)ok;
 }
 
@@ -502,7 +502,7 @@ void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock) {
 
 void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> sock) {
 
-   vassert(m_isMaster);
+   assert(m_isMaster);
    ++m_slaveCount;
    const int slaveid = Id::MasterHub - m_slaveCount;
    m_slaves[slaveid].sock = sock;
@@ -522,8 +522,8 @@ void Hub::slaveReady(Slave &slave) {
 
    CERR << "slave hub '" << slave.name << "' ready" << std::endl;
 
-   vassert(m_isMaster);
-   vassert(!slave.ready);
+   assert(m_isMaster);
+   assert(!slave.ready);
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
@@ -676,7 +676,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
 
 bool Hub::sendMaster(const message::Message &msg, const buffer *payload) const {
 
-   vassert(!m_isMaster);
+   assert(!m_isMaster);
    if (m_isMaster) {
       return false;
    }
@@ -689,14 +689,14 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload) const {
          ++numSent;
       }
    }
-   vassert(numSent == 1);
+   assert(numSent == 1);
    return numSent == 1;
 }
 
 bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload) const {
 
    if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
-      vassert(m_managerConnected);
+      assert(m_managerConnected);
       if (!m_managerConnected) {
          CERR << "sendManager: no connection, cannot send " << msg << std::endl;
          return false;
@@ -710,7 +710,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
             ++numSent;
          }
       }
-      vassert(numSent == 1);
+      assert(numSent == 1);
       return numSent == 1;
    }
 
@@ -719,7 +719,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
 
 bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buffer *payload) const {
 
-   vassert(m_isMaster);
+   assert(m_isMaster);
    if (!m_isMaster)
       return false;
 
@@ -764,7 +764,7 @@ bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) c
 
 bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload) const {
 
-   vassert(m_isMaster);
+   assert(m_isMaster);
    if (!m_isMaster)
       return false;
 
@@ -814,7 +814,7 @@ int Hub::id() const {
 }
 
 void Hub::hubReady() {
-    vassert(m_managerConnected);
+    assert(m_managerConnected);
     if (m_isMaster) {
         m_ready = true;
 
@@ -874,7 +874,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    message::Identify::Identity senderType = message::Identify::UNKNOWN;
    auto it = m_sockets.find(sock);
    if (sock) {
-      vassert(it != m_sockets.end());
+      assert(it != m_sockets.end());
       if (it != m_sockets.end())
          senderType = it->second;
    }
@@ -957,7 +957,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          switch(id.identity()) {
             case Identify::MANAGER: {
-               vassert(!m_managerConnected);
+               assert(!m_managerConnected);
                m_managerConnected = true;
                m_localRanks = id.numRanks();
                m_dataProxy->setNumRanks(id.numRanks());
@@ -1001,7 +1001,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    removeSocket(sock);
                    return true;
                }
-               vassert(!m_isMaster);
+               assert(!m_isMaster);
                CERR << "master hub connected" << std::endl;
                break;
             }
@@ -1011,7 +1011,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    removeSocket(sock);
                    return true;
                }
-               vassert(m_isMaster);
+               assert(m_isMaster);
                CERR << "slave hub '" << id.name() << "' connected" << std::endl;
                addSlave(id.name(), sock);
                break;
@@ -1182,7 +1182,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                sendSlaves(msg, msg.destId()==Id::Broadcast /* return to sender */, payload);
                slave = true;
            }
-           vassert(!(slave && master));
+           assert(!(slave && master));
        } else {
            if (dest != m_hubId) {
                if (m_isMaster) {
@@ -1223,7 +1223,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                notify.setSenderId(m_hubId);
                bool doSpawn = false;
                if (spawn.spawnId() == Id::Invalid) {
-                  vassert(spawn.spawnId() == Id::Invalid);
+                  assert(spawn.spawnId() == Id::Invalid);
                   notify.setSpawnId(Id::ModuleBase + m_moduleCount);
                   ++m_moduleCount;
                   doSpawn = true;
@@ -1312,8 +1312,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                  }
              } else {
 #ifndef MODULE_THREAD
-                 vassert(spawn.hubId() == m_hubId);
-                 vassert(m_ready);
+                 assert(spawn.hubId() == m_hubId);
+                 assert(m_ready);
 
                  std::string name = spawn.getName();
                  AvailableModule::Key key(spawn.hubId(), name);
@@ -1396,7 +1396,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          case message::SETID: {
 
-            vassert(!m_isMaster);
+            assert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
             m_hubId = set.getId();
             if (!m_inManager) {
@@ -1615,7 +1615,7 @@ void Hub::clearStatus() {
 
 bool Hub::connectToMaster(const std::string &host, unsigned short port) {
 
-   vassert(!m_isMaster);
+   assert(!m_isMaster);
 
    CERR << "connecting to master at " << host << ":" << port << std::flush;
    bool connected = false;
@@ -1703,7 +1703,7 @@ bool Hub::startPythonUi() {
 
 bool Hub::processScript() {
 
-   vassert(m_uiManager.isLocked());
+   assert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
       setStatus("Loading "+m_scriptPath+"...");
@@ -1772,8 +1772,8 @@ bool Hub::handlePriv(const message::CancelExecute &cancel) {
 bool Hub::handlePriv(const message::Barrier &barrier) {
 
    CERR << "Barrier request: " << barrier.uuid() << " by " << barrier.senderId() << std::endl;
-   vassert(!m_barrierActive);
-   vassert(m_barrierReached == 0);
+   assert(!m_barrierActive);
+   assert(m_barrierReached == 0);
    m_barrierActive = true;
    m_barrierUuid = barrier.uuid();
    message::Buffer buf(barrier);
@@ -1788,8 +1788,8 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
 
    ++m_barrierReached;
    CERR << "Barrier " << reached.uuid() << " reached by " << reached.senderId() << " (now " << m_barrierReached << ")" << std::endl;
-   vassert(m_barrierActive);
-   vassert(m_barrierUuid == reached.uuid());
+   assert(m_barrierActive);
+   assert(m_barrierUuid == reached.uuid());
    // message must be received from local manager and each slave
    if (m_isMaster) {
       if (m_barrierReached == m_slaves.size()+1) {

@@ -8,7 +8,7 @@
  */
 
 #include <iostream>
-#include <core/assert.h>
+#include <cassert>
 #include <cmath>
 #include <boost/lexical_cast.hpp>
 
@@ -1036,7 +1036,7 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
     if (finish) {
-        vassert(m_queuedTiles == 0);
+        assert(m_queuedTiles == 0);
         m_resizeBlocked = false;
         deferredResize();
     }

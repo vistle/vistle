@@ -7,7 +7,7 @@
 #include <core/points.h>
 #include <core/vec.h>
 
-#include <core/assert.h>
+#include <cassert>
 
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_device.h>
@@ -196,7 +196,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
    } else if (auto poly = Polygons::as(geometry)) {
 
       Index ntri = poly->getNumCorners()-2*poly->getNumElements();
-      vassert(ntri >= 0);
+      assert(ntri >= 0);
 
       geom = rtcNewGeometry (data->device, RTC_GEOMETRY_TYPE_TRIANGLE);
       rtcSetGeometryBuildQuality(geom,RTC_BUILD_QUALITY_MEDIUM);
@@ -236,7 +236,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             ++t;
          }
       }
-      vassert(t == ntri);
+      assert(t == ntri);
       
    } else if (auto sph = Spheres::as(geometry)) {
       useNormals = false;
@@ -307,7 +307,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
             ++idx;
          }
       }
-      vassert(idx == nPoints);
+      assert(idx == nPoints);
       data->lighted = 0;
       geom = newTubes(data.get(), nPoints-1);
    } else if (auto tube = Tubes::as(geometry)) {
@@ -330,7 +330,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
       Index idx=0;
       for (Index strip=0; strip<nStrips; ++strip) {
          const Index begin = el[strip], end = el[strip+1];
-         vassert(idx == begin);
+         assert(idx == begin);
          for (Index i=begin; i<end; ++i) {
             
             s[idx].p.x = x[i];
@@ -376,9 +376,9 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
             ++idx;
          }
-         vassert(idx == end);
+         assert(idx == end);
       }
-      vassert(idx == nPoints);
+      assert(idx == nPoints);
       geom = newTubes(data.get(), nPoints > 0 ? nPoints-1 : 0);
    }
 

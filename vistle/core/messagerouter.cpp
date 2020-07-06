@@ -1,6 +1,6 @@
 #include "message.h"
 #include "messagerouter.h"
-#include "assert.h"
+#include <cassert>
 
 
 namespace vistle {
@@ -72,7 +72,7 @@ void Router::initRoutingTable() {
       if (rt[i] == 0) {
          std::cerr << "message routing table not initialized for " << (Type)i << std::endl;
       }
-      vassert(rt[i] != 0);
+      assert(rt[i] != 0);
    }
 }
 

@@ -4,7 +4,7 @@
 #include <util/listenv4v6.h>
 
 #include <core/messages.h>
-#include <core/assert.h>
+#include <cassert>
 
 
 namespace asio = boost::asio;
@@ -70,8 +70,8 @@ bool TunnelManager::processRequest(const message::RequestTunnel &msg) {
 }
 
 bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
-   vassert(!msg.remove());
-   vassert(msg.destType() != RequestTunnel::Unspecified);
+   assert(!msg.remove());
+   assert(msg.destType() != RequestTunnel::Unspecified);
    unsigned short listenPort = msg.srcPort();
    unsigned short destPort = msg.destPort();
    asio::ip::address destAddr;
@@ -106,7 +106,7 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
 }
 
 bool TunnelManager::removeTunnel(const message::RequestTunnel &msg) {
-   vassert(msg.remove());
+   assert(msg.remove());
    unsigned short listenPort = msg.srcPort();
    auto it = m_tunnels.find(listenPort);
    if (it == m_tunnels.end()) {

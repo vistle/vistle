@@ -59,7 +59,7 @@ bool AttachGrid::compute() {
        auto &pin = m_dataIn[i];
        auto &pout = m_dataOut[i];
        if (isConnected(*pin)) {
-           vassert(data[i]);
+           assert(data[i]);
            auto out = data[i]->clone();
            out->copyAttributes(data[i]);
            out->setGrid(grid);

@@ -6,7 +6,7 @@
 #include "parameter.h"
 #include "port.h"
 #include "porttracker.h"
-#include "assert.h"
+#include <cassert>
 
 #include "statetracker.h"
 
@@ -702,7 +702,7 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
    auto result = runningMap.emplace(moduleId, Module(moduleId, hub));
    Module &mod = result.first->second;
-   vassert(hub <= Id::MasterHub);
+   assert(hub <= Id::MasterHub);
    mod.hub = hub;
    mod.name = spawn.getName();
 
@@ -730,7 +730,7 @@ bool StateTracker::handlePriv(const message::Started &started) {
        }
        std::cerr << std::endl;
    }
-   vassert(it != runningMap.end());
+   assert(it != runningMap.end());
    auto &mod = it->second;
    mod.initialized = true;
 
@@ -853,7 +853,7 @@ bool StateTracker::handlePriv(const message::Busy &busy) {
    }
    auto it = runningMap.find(id);
    if (it == runningMap.end()) {
-       vassert(quitMap.find(id) != quitMap.end());
+       assert(quitMap.find(id) != quitMap.end());
        return false;
    }
    auto &mod = it->second;
@@ -878,7 +878,7 @@ bool StateTracker::handlePriv(const message::Idle &idle) {
    }
    auto rit = runningMap.find(id);
    if (rit == runningMap.end()) {
-       vassert(quitMap.find(id) != quitMap.end());
+       assert(quitMap.find(id) != quitMap.end());
        return false;
    }
    auto &mod = rit->second;
@@ -903,7 +903,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
       CERR << addParam << ": did not find sending module" << std::endl;
       return true;
    }
-   vassert(mit != runningMap.end());
+   assert(mit != runningMap.end());
    auto &mod = mit->second;
    ParameterMap &pm = mod.parameters;
    ParameterOrder &po = mod.paramOrder;
@@ -947,7 +947,7 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
    auto mit = runningMap.find(removeParam.senderId());
    if (mit == runningMap.end())
        return false;
-   vassert(mit != runningMap.end());
+   assert(mit != runningMap.end());
    auto &mod = mit->second;
    ParameterMap &pm = mod.parameters;
    ParameterOrder &po = mod.paramOrder;
@@ -1051,7 +1051,7 @@ bool StateTracker::handlePriv(const message::Kill &kill) {
    auto it = runningMap.find(id);
    if (it == runningMap.end()) {
       it = quitMap.find(id);
-      vassert(it != quitMap.end());
+      assert(it != quitMap.end());
    }
    auto &mod = it->second;
    mod.killed = true;
@@ -1467,7 +1467,7 @@ void StateTracker::computeHeights() {
                   continue;
                }
                isSink = false;
-               vassert(it != runningMap.end());
+               assert(it != runningMap.end());
                const auto &otherMod = it->second;
                if (otherMod.height != -1 && (height == -1 || otherMod.height+1 < height)) {
                   height = otherMod.height + 1;

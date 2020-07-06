@@ -231,11 +231,11 @@ bool ReadFOAM::prepareRead()
 
 bool ReadFOAM::finishRead()
 {
-   vassert(m_requests.empty());
-   vassert(m_GhostCellsOut.empty());
-   vassert(m_GhostDataOut.empty());
-   vassert(m_GhostCellsIn.empty());
-   vassert(m_GhostDataIn.empty());
+   assert(m_requests.empty());
+   assert(m_GhostCellsOut.empty());
+   assert(m_GhostDataOut.empty());
+   assert(m_GhostCellsIn.empty());
+   assert(m_GhostDataIn.empty());
 
    m_currentbound.clear();
    m_currentgrid.clear();
@@ -828,7 +828,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
           std::cerr << "MISMATCH: trying to load field " << field << " in " << meshdir << " on proc " << processor << " for t=" << timestep << std::endl;
           std::cerr << "MISMATCH: fields.size()=" << fields.size() << ", curbound[proc].size()=" << m_currentbound[processor].size() << std::endl;
       }
-      vassert(fields.size() == m_currentbound[processor].size());
+      assert(fields.size() == m_currentbound[processor].size());
       for (size_t j=0; j<fields.size(); ++j) {
           auto &obj = fields[j];
           setMeta(obj, processor, timestep);
@@ -1124,7 +1124,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
 bool ReadFOAM::buildGhostCellData(int processor) {
    //std::cerr << "buildGhostCellsData(p=" << processor << ")" << std::endl;
-   vassert(m_buildGhost);
+   assert(m_buildGhost);
    auto &boundaries = *m_boundaries[processor];
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
@@ -1188,7 +1188,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
 }
 
 void ReadFOAM::processAllRequests() {
-   vassert(m_buildGhost);
+   assert(m_buildGhost);
    mpi::wait_all(m_requests.begin(), m_requests.end());
    m_requests.clear();
    m_GhostCellsOut.clear();
@@ -1196,7 +1196,7 @@ void ReadFOAM::processAllRequests() {
 }
 
 void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
-   vassert(m_buildGhost);
+   assert(m_buildGhost);
    auto &boundaries = *m_boundaries[processor];
    UnstructuredGrid::ptr grid = m_currentgrid[processor];
    auto &el = grid->el();

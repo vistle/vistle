@@ -1,5 +1,5 @@
 #include "scalars.h"
-#include "assert.h"
+#include <cassert>
 #include "database.h"
 #include "geometry.h"
 #include "coords.h"
