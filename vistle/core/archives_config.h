@@ -354,13 +354,13 @@ extern template
 bool V_COREEXPORT compressZfp<zfp_type_float>(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
 extern template
 bool V_COREEXPORT compressZfp<zfp_type_double>(buffer &compressed, const void *src, const Index dim[3], const ZfpParameters &param);
-#endif
+
 } // namespace detail
 
 using detail::ZfpParameters;
 using detail::compressZfp;
 using detail::decompressZfp;
-
+#endif
 } // namespace vistle
 #endif
 
