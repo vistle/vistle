@@ -172,6 +172,11 @@ vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS
 vistle_export_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 #vistle_install_headers(core ${core_HEADERS})
 
+if(${TEMPLATES_IN_HEADERS})
+   target_compile_definitions(vistle_core PUBLIC -DTEMPLATES_IN_HEADERS)
+   target_compile_definitions(vistle_core PUBLIC -DVISTLE_IMPL)
+endif()
+
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core
         PUBLIC -lrt

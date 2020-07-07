@@ -47,10 +47,6 @@ if (VISTLE_DOUBLE_PRECISION)
 endif()
 
 option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
-if(${TEMPLATES_IN_HEADERS})
-   add_definitions(-DTEMPLATES_IN_HEADERS)
-   add_definitions(-DVISTLE_IMPL)
-endif()
 
 macro(USE_OPENMP)
    if (OPENMP_FOUND)
