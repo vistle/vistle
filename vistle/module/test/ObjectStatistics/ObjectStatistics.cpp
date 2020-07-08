@@ -14,6 +14,7 @@
 #include <core/triangles.h>
 #include <core/quads.h>
 #include <core/indexed.h>
+#include <core/structuredgridbase.h>
 
 using namespace vistle;
 

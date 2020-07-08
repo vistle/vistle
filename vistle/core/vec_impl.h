@@ -1,14 +1,6 @@
 #ifndef VEC_IMPL_H
 #define VEC_IMPL_H
 
-#include "scalars.h"
-#include "structuredgridbase.h"
-
-#include <limits>
-#include <type_traits>
-
-#include <boost/mpl/size.hpp>
-
 namespace vistle {
 
 template <class T, int Dim>

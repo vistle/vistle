@@ -1,12 +1,6 @@
 #ifndef VISTLE_DATABASE_IMPL_H
 #define VISTLE_DATABASE_IMPL_H
 
-#include "scalars.h"
-
-#include <limits>
-
-#include <boost/mpl/size.hpp>
-
 namespace vistle {
 
 template<class Archive>
