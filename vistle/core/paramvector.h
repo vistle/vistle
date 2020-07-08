@@ -15,7 +15,7 @@
 namespace vistle {
 
 template<typename S>
-class V_CORETEMPLATE_EXPORT ParameterVector {
+class ParameterVector {
 public:
    typedef S Scalar;
    static const int MaxDimension = vistle::MaxDimension;
@@ -118,17 +118,17 @@ public:
 };
 
 template<typename S>
-V_CORETEMPLATE_EXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 template<typename S>
-V_CORETEMPLATE_EXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 template<typename S>
-V_CORETEMPLATE_EXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 template<typename S>
-V_CORETEMPLATE_EXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 template<typename S>
-V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
+std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
 
 #define V_DECLARE_PARAMVEC(S) \
     extern template class V_COREEXPORT ParameterVector<S>; \

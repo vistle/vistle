@@ -105,7 +105,7 @@ class SetParameter;
 }
 
 template<typename T>
-class V_CORETEMPLATE_EXPORT ParameterBase: public Parameter {
+class ParameterBase: public Parameter {
 
    friend class ParameterManager;
    friend class Module;

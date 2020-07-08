@@ -84,7 +84,6 @@ extern template class detail::common_oarchive<vistle::boost_oarchive>;
 #endif
 #endif // VISTLE_ARCHIVES_H
 
-#ifdef VISTLE_IMPL
 #ifndef ARCHIVES_IMPL_H
 #define ARCHIVES_IMPL_H
 
@@ -435,4 +434,3 @@ BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::boost_iarchive)
 #endif
 
 #endif // ARCHIVES_IMPL_H
-#endif // VISTLE_IMPL

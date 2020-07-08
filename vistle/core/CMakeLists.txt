@@ -35,34 +35,32 @@ set(core_SOURCES
    geometry.cpp
 )
 
-if(${TEMPLATES_IN_HEADERS})
-   # but just one file including all the others for faster compilation
-   set(core_SOURCES ${core_SOURCES}
-      vec.cpp
-      database.cpp
-      celltree.cpp
-      vertexownerlist.cpp
-      coords.cpp
-      coordswradius.cpp
-      normals.cpp
-      points.cpp
-      spheres.cpp
-      tubes.cpp
-      indexed.cpp
-      lines.cpp
-      ngons.cpp
-      polygons.cpp
-      texture1d.cpp
-      empty.cpp
-      placeholder.cpp
-      unstr.cpp
-      structuredgridbase.cpp
-      uniformgrid.cpp
-      rectilineargrid.cpp
-      structuredgrid.cpp
-      grid.cpp
-   )
-endif()
+# but just one file including all the others for faster compilation
+set(core_SOURCES ${core_SOURCES}
+  vec.cpp
+  database.cpp
+  celltree.cpp
+  vertexownerlist.cpp
+  coords.cpp
+  coordswradius.cpp
+  normals.cpp
+  points.cpp
+  spheres.cpp
+  tubes.cpp
+  indexed.cpp
+  lines.cpp
+  ngons.cpp
+  polygons.cpp
+  texture1d.cpp
+  empty.cpp
+  placeholder.cpp
+  unstr.cpp
+  structuredgridbase.cpp
+  uniformgrid.cpp
+  rectilineargrid.cpp
+  structuredgrid.cpp
+  grid.cpp
+)
 
 set(core_HEADERS
    archives.h
@@ -171,11 +169,6 @@ endif()
 vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 vistle_export_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 #vistle_install_headers(core ${core_HEADERS})
-
-if(${TEMPLATES_IN_HEADERS})
-   target_compile_definitions(vistle_core PUBLIC -DTEMPLATES_IN_HEADERS)
-   target_compile_definitions(vistle_core PUBLIC -DVISTLE_IMPL)
-endif()
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core

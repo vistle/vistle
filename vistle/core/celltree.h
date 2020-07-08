@@ -181,7 +181,5 @@ class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 // include only where actually required
 //#include "celltree_impl.h"
-#endif

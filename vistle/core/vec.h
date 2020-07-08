@@ -115,6 +115,3 @@ V_VEC_TEMPLATE(double)
 #endif
 
 #include "vec_impl.h"
-#ifdef VISTLE_IMPL
-//#include "vec_impl.h"
-#endif

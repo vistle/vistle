@@ -94,6 +94,4 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "unstr_impl.h"
-#endif

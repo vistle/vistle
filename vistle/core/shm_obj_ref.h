@@ -60,6 +60,4 @@ class shm_obj_ref {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "shm_obj_ref_impl.h"
-#endif

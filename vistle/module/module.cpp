@@ -40,9 +40,6 @@
 
 #include "objectcache.h"
 
-#ifndef TEMPLATES_IN_HEADERS
-#define VISTLE_IMPL
-#endif
 #include "module.h"
 
 #include <boost/serialization/vector.hpp>

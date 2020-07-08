@@ -52,6 +52,4 @@ class V_COREEXPORT PlaceHolder: public Object {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "placeholder_impl.h"
-#endif

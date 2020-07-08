@@ -54,6 +54,4 @@ V_COREEXPORT std::ostream &operator<<(std::ostream &out, const Meta &meta);
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "objectmeta_impl.h"
-#endif

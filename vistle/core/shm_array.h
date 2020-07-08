@@ -219,8 +219,6 @@ class shm_array: public ShmData {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
-
 #ifndef SHM_ARRAY_IMPL_H
 #define SHM_ARRAY_IMPL_H
 
@@ -260,6 +258,4 @@ void shm_array<T, allocator>::load(Archive &ar) {
 }
 
 } // namespace vistle
-#endif
-
 #endif

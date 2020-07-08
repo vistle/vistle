@@ -22,11 +22,6 @@ use_openmp()
 vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 vistle_export_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 
-if(${TEMPLATES_IN_HEADERS})
-   target_compile_definitions(vistle_module PRIVATE -DTEMPLATES_IN_HEADERS)
-   target_compile_definitions(vistle_module PRIVATE -DVISTLE_IMPL)
-endif()
-
 if(UNIX AND NOT APPLE)
 	vistle_target_link_libraries(vistle_module
         PRIVATE -lrt

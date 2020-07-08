@@ -15,10 +15,6 @@
 #include "scalars.h"
 #include <cassert>
 
-#ifndef TEMPLATES_IN_HEADERS
-#define VISTLE_IMPL
-#endif
-
 #include "archives.h"
 #include "shm.h"
 #include "shm_reference.h"

@@ -54,9 +54,6 @@ vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS
 vistle_export_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_include_directories(vistle_util SYSTEM PRIVATE ${BOTAN_INCLUDE_DIRS})
-if(${TEMPLATES_IN_HEADERS})
-   target_compile_definitions(vistle_util PUBLIC -DTEMPLATES_IN_HEADERS)
-endif()
 vistle_target_link_libraries(vistle_util
     PRIVATE Boost::system
 	PUBLIC Boost::filesystem

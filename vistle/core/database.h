@@ -53,6 +53,4 @@ private:
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "database_impl.h"
-#endif

@@ -32,6 +32,4 @@ class V_COREEXPORT Polygons: public Indexed {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "polygons_impl.h"
-#endif

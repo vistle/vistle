@@ -51,6 +51,4 @@ class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterfac
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "coords_impl.h"
-#endif

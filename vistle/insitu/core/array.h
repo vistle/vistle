@@ -40,12 +40,12 @@ public:
 	~Array();
 
 	template<typename T>
-	static auto V_INSITU_CORETEMPLATE_EXPORT create(const std::string& name, size_t size, DataMapping mapping = DataMapping::Unspecified) {
+	static auto create(const std::string& name, size_t size, DataMapping mapping = DataMapping::Unspecified) {
 		T* data = new T[size];
 		return Array(name, (void*) data, size, getDataType<T>(), mapping, Owner::Vistle);
 	}
 	template<typename T>
-	static auto V_INSITU_CORETEMPLATE_EXPORT create(const std::string& name, T* data, size_t size, DataMapping mapping = DataMapping::Unspecified) {
+	static auto create(const std::string& name, T* data, size_t size, DataMapping mapping = DataMapping::Unspecified) {
 		return Array(name, (void*)data, size, getDataType<T>(), mapping, Owner::Simulation);
 	}
 	template<typename T>
@@ -82,17 +82,17 @@ private:
 
 
 template<>
-constexpr DataType V_INSITU_CORETEMPLATE_EXPORT getDataType<Array>() {
+constexpr DataType getDataType<Array>() {
 	return DataType::ARRAY;
 }
 
 //template<typename T>
-//auto V_INSITU_CORETEMPLATE_EXPORT createArray(const std::string& name, size_t size, DataMapping mapping = DataMapping::Unspecified) {
+//auto createArray(const std::string& name, size_t size, DataMapping mapping = DataMapping::Unspecified) {
 //	return std::make_unique<detail::ArrayImpl<T>>( name, size, mapping, Owner::Vistle );
 //}
 //
 //template<typename T>
-//auto V_INSITU_CORETEMPLATE_EXPORT createArray(const std::string& name, T* data, size_t size, DataMapping mapping = DataMapping::Unspecified) {
+//auto createArray(const std::string& name, T* data, size_t size, DataMapping mapping = DataMapping::Unspecified) {
 //	return std::make_unique<detail::ArrayImpl<T>>( name, data, size, mapping, Owner::Simulation );
 //
 //}

@@ -1,10 +1,4 @@
-#ifndef TEMPLATES_IN_HEADERS
-#define VISTLE_IMPL
-#endif
 #include "object.h"
-#ifndef TEMPLATES_IN_HEADERS
-#undef VISTLE_IMPL
-#endif
 
 #include "object_impl.h"
 

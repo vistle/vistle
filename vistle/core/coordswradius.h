@@ -41,6 +41,4 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "coordswradius_impl.h"
-#endif

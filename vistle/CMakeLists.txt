@@ -46,8 +46,6 @@ if (VISTLE_DOUBLE_PRECISION)
     add_definitions(-DVISTLE_SCALAR_DOUBLE)
 endif()
 
-option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
-
 macro(USE_OPENMP)
    if (OPENMP_FOUND)
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")

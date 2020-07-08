@@ -440,7 +440,5 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 #define MODULE_MAIN(X) MODULE_MAIN_THREAD(X, MPI_THREAD_FUNNELED)
 
-#ifdef VISTLE_IMPL
 #include "module_impl.h"
-#endif
 #endif

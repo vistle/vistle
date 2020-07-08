@@ -1,33 +1,4 @@
 // fewer files compile faster
-#ifndef TEMPLATES_IN_HEADERS
-
-#define VISTLE_IMPL
-#include "archives.h"
-#include "vec.cpp"
-#include "coords.cpp"
-#include "coordswradius.cpp"
-#include "normals.cpp"
-#include "points.cpp"
-#include "spheres.cpp"
-#include "tubes.cpp"
-#include "indexed.cpp"
-#include "lines.cpp"
-#include "ngons.cpp"
-#include "polygons.cpp"
-#include "texture1d.cpp"
-#include "empty.cpp"
-#include "placeholder.cpp"
-#include "celltree.cpp"
-#include "vertexownerlist.cpp"
-#include "unstr.cpp"
-#include "structuredgridbase.cpp"
-#include "uniformgrid.cpp"
-#include "rectilineargrid.cpp"
-#include "structuredgrid.cpp"
-#include "findobjectreferenceoarchive.cpp"
-
-#else
-
 #include "object.h"
 #include "empty.h"
 #include "archives.h"
@@ -55,8 +26,6 @@
 #include "rectilineargrid.h"
 #include "structuredgrid.h"
 #include "findobjectreferenceoarchive.h"
-
-#endif
 
 namespace vistle {
 

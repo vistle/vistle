@@ -332,6 +332,4 @@ namespace vistle {
 
 }
 
-#ifdef VISTLE_IMPL
 #include "shm_impl.h"
-#endif

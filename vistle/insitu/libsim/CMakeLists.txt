@@ -117,10 +117,6 @@ endif()
 vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 vistle_export_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
-if(${TEMPLATES_IN_HEADERS})
-   target_compile_definitions(${LIBNAME} PRIVATE -DTEMPLATES_IN_HEADERS)
-endif()
-
 
 vistle_target_link_libraries(${LIBNAME}
 		PRIVATE vistle_insitu_core

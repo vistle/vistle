@@ -95,6 +95,4 @@ private:
 } // namespace vistle
 #endif /* UNIFORM_GRID_H */
 
-#ifdef VISTLE_IMPL
 #include "uniformgrid_impl.h"
-#endif

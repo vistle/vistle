@@ -485,6 +485,4 @@ V_ENUM_OUTPUT_OP(Type, Object)
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "object_impl.h"
-#endif

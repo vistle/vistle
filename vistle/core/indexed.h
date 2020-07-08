@@ -98,6 +98,4 @@ ARCHIVE_ASSUME_ABSTRACT(Indexed)
 } // namespace vistle
 #endif
 
-#ifdef VISTLE_IMPL
 #include "indexed_impl.h"
-#endif
