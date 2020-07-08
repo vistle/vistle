@@ -119,11 +119,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
-   # disable rpath - only rely on LD_LIBRARY_PATH and the likes
-   set(CMAKE_SKIP_RPATH TRUE)
 else()
    add_definitions(-DEIGEN_INITIALIZE_MATRICES_BY_NAN)
-   set(CMAKE_SKIP_RPATH FALSE)
 endif()
 
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
