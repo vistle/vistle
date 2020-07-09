@@ -1,8 +1,9 @@
 #ifndef INSITU_MODULEINFO_H
 #define INSITU_MODULEINFO_H
 
-#include <vector>
 #include <string>
+#include <vector>
+
 namespace vistle {
 namespace insitu {
     struct ModuleInfo {

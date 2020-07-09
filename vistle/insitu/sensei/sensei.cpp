@@ -1,12 +1,5 @@
-#include "senseiImpl.h"
+#include "sensei.h"
 #include "exeption.h"
-#include "rectilinerGrid.h"
-#include "unstructuredGrid.h"
-#include "structuredGrid.h"
-
-#include <insitu/core/exeption.h>
-#include <insitu/core/mesh.h>
-#include <insitu/core/transformArray.h>
 
 #include <util/hostname.h>
 
@@ -34,7 +27,7 @@ SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&
 	}
 	catch (...)
 	{
-		throw vistle::insitu::sensei::Exeption() << "failed to crate connection facilities for Vistle";
+		throw vistle::insitu::sensei::Exeption() << "failed to create connection facilities for Vistle";
 	}
 }
 
@@ -42,9 +35,20 @@ bool SenseiAdapter::Execute(size_t timestep)
 {
 
 	m_currTimestep++;
+	bool wasConnected = m_connected;
 	while (recvAndHandeMessage()) {} //catch newest state
+	if (wasConnected && !m_connected)
+	{
+		CERR << "sensei controller disconnected" << endl;
+		return false;
+	}
+	if (m_commands["exit"])
+	{
+		m_messageHandler.send(insitu::message::ConnectionClosed{ true });
+		return false;
+	}
 	auto it = m_commands.find("run/paused");
-	while (!it->second)//let the simulation wait for the module if initialized with paused
+	while (!it->second)//also let the simulation wait for the module if initialized with paused
 	{
 		recvAndHandeMessage(true);
 		if (m_commands["exit"])
@@ -52,17 +56,13 @@ bool SenseiAdapter::Execute(size_t timestep)
 			m_messageHandler.send(insitu::message::ConnectionClosed{ true });
 			return false;
 		}
+		if (!m_connected)
+		{
+			CERR << "sensei controller disconnected" << endl;
+			return false;
+		}
 	}
-	if (m_commands["exit"])
-	{
-		m_messageHandler.send(insitu::message::ConnectionClosed{ true });
-		return false;
-	}
-	if (!m_connected)
-	{
-		CERR << "sensei controller is disconnected" << endl;
-		return false;
-	}
+
 	if (!m_moduleInfo.ready)
 	{
 		CERR << "can not process data if the sensei controller is not executing!" << endl;
@@ -70,12 +70,17 @@ bool SenseiAdapter::Execute(size_t timestep)
 	}
 	for (const VariablesUsedByMesh& data : m_usedData)
 	{
-		std::vector<Array> arrays;
+		vistle::Object::ptr grid = m_callbacks.getGrid(*data.mesh);
+		grid->setTimestep(m_currTimestep);
+		addObject(*data.mesh, grid);
 		for (auto name : data.varNames)
 		{
-			arrays.push_back(m_callbacks.getVar(*name));
+			auto var = m_callbacks.getVar(*name);
+			var->addAttribute("_species", *name);
+			var->setTimestep(m_currTimestep);
+			var->setGrid(grid);
+			addObject(*name, var);
 		}
-		sendMeshToModule(m_callbacks.getGrid(*data.mesh), arrays);
 	}
 
 	return true;
@@ -309,7 +314,6 @@ void SenseiAdapter::addPorts()
 	std::vector<std::vector<std::string>> ports;
 	std::vector<std::string> meshNames{ m_metaData.begin(), m_metaData.end() };
 
-
 	meshNames.push_back("mesh");
 	ports.push_back(meshNames);
 
@@ -335,63 +339,6 @@ void SenseiAdapter::addPorts()
 	ports.push_back(debugNames);
 
 	m_messageHandler.send(SetPorts{ ports });
-}
-
-
-
-void SenseiAdapter::sendMeshToModule(const Grid& grid, const std::vector<Array>& data)
-{
-	if (!grid)
-	{
-		throw Exeption{} << "sendMeshToModule called without grid";
-	}
-	if (grid->numGrids() > 0)
-	{
-		for (const auto& d : data)
-		{
-			if (d.dataType() != DataType::ARRAY || d.size() != grid->numGrids())
-			{
-				throw Exeption() << "data does not fit to Multimesh " << grid->name();
-			}
-		}
-		for (size_t i = 0; i < grid->numGrids(); i++)
-		{
-			std::vector<Array> d;
-			for (auto& array : data)
-			{
-				d.push_back(std::move(((Array*)array.data())[i]));
-			}
-			auto g = grid->getGrid(i);
-			if (g)
-			{
-				sendMeshToModule(*g, d);
-			}
-			else
-			{
-				throw Exeption{} << "grid " << grid->name() << ": missing sub grid [" << i << "/" << grid->numGrids() << "]";
-			}
-		}
-	}
-	else {
-		auto vistleGrid = grid->toVistle(m_currTimestep, m_shmIDs);
-		addObject(grid->name(), vistleGrid);
-		for (auto& d : data)
-		{
-			sendVariableToModule(d, vistleGrid);
-		}
-	}
-}
-
-void SenseiAdapter::sendVariableToModule(const Array& variable, vistle::obj_const_ptr mesh)
-{
-	assert(variable.dataType() != DataType::ARRAY);
-	auto var = m_shmIDs.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(variable.size());
-	transformArray(variable, var->x().data());
-	var->setGrid(mesh);
-	var->setTimestep(m_currTimestep);
-	var->setMapping(static_cast<vistle::DataBase::Mapping>(variable.mapping()));
-	var->addAttribute("_species", variable.name());
-	addObject(variable.name(), var);
 }
 
 void SenseiAdapter::addObject(const std::string& port, vistle::Object::const_ptr obj)

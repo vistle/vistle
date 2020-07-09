@@ -1,24 +1,15 @@
 set(SENSEI_SOURCES
-  multiGrid.cpp
-  rectilinerGrid.cpp
-  senseiInterface.cpp
-  senseiImpl.cpp
-  structuredGrid.cpp
-  structuredGridBase.cpp
-  unstructuredGrid.cpp
+  callbacks.cpp
+  metaData.cpp
+  sensei.cpp
 )
 
 set(SENSEI_HEADER
+  callbacks.h
   exeption.h
   export.h
-  gridInterface.h
-  multiGrid.h
-  rectilinerGrid.h
-  senseiInterface.h
-  senseiImpl.h
-  structuredGrid.h
-  structuredGridBase.h
-  unstructuredGrid.h
+  metaData.h
+  sensei.h
 )
 
 
@@ -26,13 +17,13 @@ set(SENSEI_HEADER
 vistle_add_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 vistle_export_library(vistle_sensei ${SENSEI_SOURCES} ${SENSEI_HEADER})
 vistle_target_link_libraries(vistle_sensei
-		PRIVATE vistle_util
-        PRIVATE vistle_core
-		PRIVATE vistle_insitu_message
-		PUBLIC vistle_insitu_core
 		PRIVATE Boost::boost
         PRIVATE Boost::serialization
 		PRIVATE MPI::MPI_C
+        PRIVATE vistle_core
+		PRIVATE vistle_util
+		PUBLIC vistle_insitu_core
+		PUBLIC vistle_insitu_message
 		)
 
 target_compile_features(vistle_sensei PUBLIC cxx_std_14)

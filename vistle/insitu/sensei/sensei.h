@@ -2,17 +2,15 @@
 #define VISTLE_SENSEI_H
 
 
+#include "callbacks.h"
 #include "export.h"
-#include "senseiInterface.h"
+#include "metaData.h"
 
-#include <mpi.h>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/io_service.hpp>
-
-#include <insitu/message/SyncShmIDs.h>
-#include <insitu/message/ShmMessage.h>
 #include <insitu/message/addObjectMsq.h>
-#include <boost/interprocess/ipc/message_queue.hpp>
+#include <insitu/message/ShmMessage.h>
+#include <insitu/message/SyncShmIDs.h>
+
+
 
 
 namespace vistle {
@@ -23,7 +21,7 @@ class  MessageQueue;
 namespace insitu {
 namespace sensei {
 
-class SenseiAdapter : public SenseiInterface
+class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 
 {
 public:
@@ -41,7 +39,17 @@ public:
 	SenseiAdapter(SenseiAdapter& other) = delete;
 	~SenseiAdapter();
 
-
+	template<typename T, typename...Args>
+	typename T::ptr createVistleObject(Args&&... args) {
+		if (m_moduleInfo.ready)
+		{
+			return m_shmIDs.createVistleObject<T>(std::forward<Args>(args)...);
+		}
+		else
+		{
+			return nullptr;
+		}
+	}
 
 private:
 	size_t m_currTimestep = 0;
@@ -70,8 +78,6 @@ private:
 	bool recvAndHandeMessage(bool blocking = false);
 	bool initializeVistleEnv();
 	void addPorts();
-	void sendMeshToModule(const Grid& grid, const std::vector<Array>& data);
-	void sendVariableToModule(const Array& variable, vistle::obj_const_ptr mesh);
 	void addObject(const std::string& port, vistle::Object::const_ptr obj);
 
 };

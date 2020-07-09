@@ -1,17 +1,18 @@
 #ifndef TRANSFORM_ARRAY_H
 #define TRANSFORM_ARRAY_H
 
-#include "exeption.h"
-#include "callFunctionWithVoidToTypeCast.h"
 #include "array.h"
+#include "callFunctionWithVoidToTypeCast.h"
+#include "exeption.h"
+
+#include <core/database.h>
+#include <core/object.h>
+#include <core/uniformgrid.h>
 
 #include <algorithm>
 #include <array>
-#include <core/object.h>
-#include <core/database.h>
-#include <core/uniformgrid.h>
-#include <type_traits>
 #include <cassert>
+#include <type_traits>
 
 namespace vistle {
 namespace insitu {
@@ -33,10 +34,6 @@ void transformArray(const Source* source, size_t size, Dest d) {
     {
         d[i] = static_cast<typename std::remove_pointer<Dest>::type>(source[i]);
     }
-
-    //std::transform(source, source + size, d, [](Source val) {
-    //    return static_cast<typename std::remove_pointer<Dest>::type>(val);
-    //    });
 }
 
 template<typename T>
@@ -214,10 +211,6 @@ struct ConversionInserter {
                 for (Index k = 0; k < dim[2]; k++) {
                     const Index insertionIndex = UniformGrid::vertexIndex(i, j, k, dim);
 
-                    //unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
-                    //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
-                    //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
-
                     detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
                     detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);
                     detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[2], dataType, k, dest[2], insertionIndex);
@@ -239,10 +232,6 @@ struct ConversionInserter {
             for (Index j = 0; j < dim[1]; ++j) {
                 for (Index i = 0; i < dim[0]; ++i) {
                     const Index insertionIndex = VTKVertexIndex(i, j, k, dim);
-
-                    //unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
-                    //unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
-                    //unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
 
                     detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[0], dataType, i, dest[0], insertionIndex);
                     detail::callFunctionWithVoidToTypeCast<void, detail::ConversionInserter>(source[1], dataType, j, dest[1], insertionIndex);

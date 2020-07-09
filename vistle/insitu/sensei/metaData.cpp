@@ -1,12 +1,11 @@
-#include "metaData.h"
 #include "exeption.h"
+#include "metaData.h"
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 
 using namespace vistle::insitu;
-
 
 MetaData::MeshIter vistle::insitu::MetaData::addMesh(const std::string& name)
 {
