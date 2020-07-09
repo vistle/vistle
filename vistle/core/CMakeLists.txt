@@ -162,6 +162,7 @@ if (MSVC)
   set_source_files_properties(unstr.cpp PROPERTIES COMPILE_FLAGS /bigobj)
   set_source_files_properties(vec.cpp PROPERTIES COMPILE_FLAGS /bigobj)
   set_source_files_properties(cellalgorithm.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+    set_source_files_properties(allobjects.cpp PROPERTIES COMPILE_FLAGS /bigobj)
 endif()
 
 

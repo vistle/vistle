@@ -1,11 +1,5 @@
 #vistle_find_package(Boost 1.53 REQUIRED COMPONENTS serialization system)
 
-add_definitions(-DBOOST_MPI_SOURCE)
-if(NOT WIN32)
-add_definitions(-DBOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
-endif(NOT WIN32)
-
-
 
 set(boost_mpi_SOURCES
    ${BOOST_MPI_DIR}/src/broadcast.cpp
@@ -59,6 +53,13 @@ set(boost_mpi_HEADERS
 
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 vistle_export_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
+
+target_compile_definitions(vistle_boost_mpi PUBLIC -DBOOST_MPI_SOURCE)
+if(NOT WIN32)
+target_compile_definitions(vistle_boost_mpi PUBLIC -DBOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
+endif(NOT WIN32)
+
+
 target_link_libraries(vistle_boost_mpi
     PRIVATE Boost::system
     PUBLIC Boost::serialization
