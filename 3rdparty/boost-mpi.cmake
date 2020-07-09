@@ -60,11 +60,15 @@ target_compile_definitions(vistle_boost_mpi PUBLIC -DBOOST_MPI_DECL=__attribute_
 endif(NOT WIN32)
 
 
-target_link_libraries(vistle_boost_mpi
+target_link_libraries(vistle_boost_mpi #don't use vistle_target_link_libraries here bacause adding dependency for boost_mpi_HEADERS::serialization brings arrors. 
     PRIVATE Boost::system
     PUBLIC Boost::serialization
     PUBLIC MPI::MPI_C
 )
+
+get_target_property(BOOST_SERIALIZATION_INCLUDES Boost::serialization INTERFACE_INCLUDE_DIRECTORIES) 
+target_include_directories(vistle_boost_mpi SYSTEM  INTERFACE ${BOOST_SERIALIZATION_INCLUDES}) 
+
 target_include_directories(vistle_boost_mpi SYSTEM
         PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/${BOOST_MPI_DIR}/include>
 )
