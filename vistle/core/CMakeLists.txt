@@ -189,11 +189,11 @@ vistle_target_link_libraries(vistle_core
         PUBLIC Boost::date_time
         PUBLIC Boost::serialization
         PUBLIC Boost::system
-        PUBLIC vistle_boost_mpi
 )
 
 get_target_property(vistle_boost_mpi_includes vistle_boost_mpi INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(vistle_core PRIVATE ${vistle_boost_mpi_includes})
+#message("Boost_INCLUDE_DIRS = " ${INTERFACE_INCLUDE_DIRECTORIES})
+target_include_directories(vistle_core SYSTEM PRIVATE ${vistle_boost_mpi_includes})
 
 if (VISTLE_SHM_PER_RANK)
    target_compile_definitions(vistle_core PRIVATE -DSHMPERRANK)
