@@ -1,96 +1,104 @@
-vistle_find_package(Zstd)
 vistle_find_package(LZ4)
 vistle_find_package(SNAPPY)
+vistle_find_package(Zstd)
 
 
 
 set(core_SOURCES
-   archives.cpp
+   allobjects.cpp # just one file including all the others for faster compilation
    archive_loader.cpp
    archive_saver.cpp
-   shm.cpp
-   shmname.cpp
-   shm_reference.cpp
-   shm_obj_ref.cpp
-   objectmeta.cpp
-   object.cpp
-   allobjects.cpp # just one file including all the others for faster compilation
+   archives.cpp
+   cellalgorithm.cpp
+   filequery.cpp
+   findobjectreferenceoarchive.cpp
+   geometry.cpp
    message.cpp
-   messages.cpp
+   messagepayload.cpp
    messagequeue.cpp
    messagerouter.cpp
+   messages.cpp
    messagesender.cpp
-   messagepayload.cpp
-   tcpmessage.cpp
-   filequery.cpp
-   port.cpp
+   object.cpp
+   objectmeta.cpp
    parameter.cpp
    parametermanager.cpp
    paramvector.cpp
-   vector.cpp
+   port.cpp
    porttracker.cpp
+   shm.cpp
+   shm_obj_ref.cpp
+   shm_reference.cpp
+   shmname.cpp
    statetracker.cpp
-   findobjectreferenceoarchive.cpp
-   cellalgorithm.cpp
-   geometry.cpp
+   tcpmessage.cpp
+   vector.cpp
 )
 
 # but just one file including all the others for faster compilation
 set(core_SOURCES ${core_SOURCES}
-  vec.cpp
-  database.cpp
   celltree.cpp
-  vertexownerlist.cpp
   coords.cpp
   coordswradius.cpp
-  normals.cpp
-  points.cpp
-  spheres.cpp
-  tubes.cpp
+  database.cpp
+  empty.cpp
+  grid.cpp
   indexed.cpp
   lines.cpp
   ngons.cpp
-  polygons.cpp
-  texture1d.cpp
-  empty.cpp
+  normals.cpp
   placeholder.cpp
-  unstr.cpp
-  structuredgridbase.cpp
-  uniformgrid.cpp
+  points.cpp
+  polygons.cpp
   rectilineargrid.cpp
+  spheres.cpp
   structuredgrid.cpp
-  grid.cpp
+  structuredgridbase.cpp
+  texture1d.cpp
+  tubes.cpp
+  uniformgrid.cpp
+  unstr.cpp
+  vec.cpp
+  vertexownerlist.cpp
 )
 
 set(core_HEADERS
+      archive_loader.h
+   archive_saver.h
    archives.h
    archives_config.h
-   archive_loader.h
-   archive_saver.h
+   cellalgorithm.h
    celltree.h
    celltree_impl.h
-   vertexownerlist.h
-   vertexownerlist_impl.h
    celltreenode.h
    celltypes.h
    coords.h
    coords_impl.h
    coordswradius.h
    coordswradius_impl.h
+   database.h
+   database_impl.h
    dimensions.h
+   empty.h
+   empty_impl.h
    export.h
+   filequery.h
+   findobjectreferenceoarchive.h
    geometry.h
+   grid.h
    index.h
    indexed.h
    indexed_impl.h
    lines.h
    lines_impl.h
    message.h
-   messages.h
+   messagepayload.h
    messagequeue.h
    messagerouter.h
+   messages.h
    messagesender.h
-   messagepayload.h
+   ngons.h
+   ngons_impl.h
    normals.h
    normals_impl.h
    object.h
@@ -102,67 +110,60 @@ set(core_HEADERS
    parametermanager_impl.h
    paramvector.h
    paramvector_impl.h
-   empty.h
-   empty_impl.h
    placeholder.h
    placeholder_impl.h
    points.h
    points_impl.h
-   spheres.h
-   spheres_impl.h
-   tubes.h
-   tubes_impl.h
    polygons.h
    polygons_impl.h
    port.h
    porttracker.h
+   quads.h
    rectilineargrid.h
    rectilineargrid_impl.h
    scalar.h
    scalars.h
    serialize.h
    shm.h
+   shm_array.h
+   shm_impl.h
+   shm_obj_ref.h
+   shm_obj_ref_impl.h
+   shm_reference.h
+   shm_reference_impl.h
    shmdata.h
    shmname.h
    shmvector.h
-   shm_array.h
-   shm_impl.h
-   shm_reference.h
-   shm_reference_impl.h
-   shm_obj_ref.h
-   findobjectreferenceoarchive.h
+   spheres.h
+   spheres_impl.h
+   statetracker.h
    structuredgrid.h
    structuredgrid_impl.h
    structuredgridbase.h
    structuredgridbase_impl.h
-   statetracker.h
    tcpmessage.h
-   filequery.h
    texture1d.h
    texture1d_impl.h
    triangles.h
-   quads.h
-   ngons.h
-   ngons_impl.h
+   tubes.h
+   tubes_impl.h
+   uniformgrid.h
+   uniformgrid_impl.h
    unstr.h
    unstr_impl.h
-   database.h
-   database_impl.h
+   uuid.h
    vec.h
    vec_impl.h
    vec_template.h
    vector.h
-   uniformgrid.h
-   uniformgrid_impl.h
-   uuid.h
-   grid.h
-   cellalgorithm.h
+   vertexownerlist.h
+   vertexownerlist_impl.h
 )
 if (MSVC)
+  set_source_files_properties(allobjects.cpp PROPERTIES COMPILE_FLAGS /bigobj)
+  set_source_files_properties(cellalgorithm.cpp PROPERTIES COMPILE_FLAGS /bigobj)
   set_source_files_properties(unstr.cpp PROPERTIES COMPILE_FLAGS /bigobj)
   set_source_files_properties(vec.cpp PROPERTIES COMPILE_FLAGS /bigobj)
-  set_source_files_properties(cellalgorithm.cpp PROPERTIES COMPILE_FLAGS /bigobj)
-    set_source_files_properties(allobjects.cpp PROPERTIES COMPILE_FLAGS /bigobj)
 endif()
 
 
@@ -183,12 +184,12 @@ if (WIN32)
 endif()
 
 vistle_target_link_libraries(vistle_core
-        PRIVATE vistle_util
-        PUBLIC vistle_boost_mpi
-        PUBLIC Boost::system
-        PUBLIC Boost::serialization
-        PUBLIC Boost::date_time
 		PRIVATE Threads::Threads
+        PRIVATE vistle_util
+        PUBLIC Boost::date_time
+        PUBLIC Boost::serialization
+        PUBLIC Boost::system
+        PUBLIC vistle_boost_mpi
 )
 
 get_target_property(vistle_boost_mpi_includes vistle_boost_mpi INTERFACE_INCLUDE_DIRECTORIES)
