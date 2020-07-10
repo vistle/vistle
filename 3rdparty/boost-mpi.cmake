@@ -77,11 +77,11 @@ if(VISTLE_INSTALL_3RDPARTY)
 	    DIRECTORY 
 		     ${BOOST_MPI_DIR}/include/boost
 	    DESTINATION
-		    include/3rdarty/${BOOST_MPI_DIR}
+		    include/3rdparty/${BOOST_MPI_DIR}
 	      COMPONENT
 		    Devel
     )
     target_include_directories(vistle_boost_mpi SYSTEM
-		    PUBLIC $<INSTALL_INTERFACE:include/3rdarty/${BOOST_MPI_DIR}>
+		    PUBLIC $<INSTALL_INTERFACE:include/3rdparty/${BOOST_MPI_DIR}>
     )
 endif()
