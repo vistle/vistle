@@ -1,14 +1,14 @@
 #ifndef SENSEI_CONTROL_MODULE_H
 #define SENSEI_CONTROL_MODULE_H
-#include <insitu/module/inSituReader.h>
+#include <vistle/insitu/module/inSituReader.h>
 
 
-#include <core/message.h>
-#include <core/messagequeue.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagequeue.h>
 
-#include <insitu/message/InSituMessage.h>
-#include <insitu/message/SyncShmIDs.h>
-#include <insitu/message/ShmMessage.h>
+#include <vistle/insitu/message/InSituMessage.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
+#include <vistle/insitu/message/ShmMessage.h>
 
 namespace vistle {
 namespace insitu {

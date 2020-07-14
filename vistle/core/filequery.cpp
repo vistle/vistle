@@ -1,5 +1,5 @@
 #include "filequery.h"
-#include <util/vecstreambuf.h>
+#include <vistle/util/vecstreambuf.h>
 #include "archives_config.h"
 #include "archives.h"
 

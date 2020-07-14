@@ -1,7 +1,7 @@
 #ifndef PRINTATTRIBUTES_H
 #define PRINTATTRIBUTES_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class PrintAttributes: public vistle::Module {
 

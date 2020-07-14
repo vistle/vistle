@@ -6,12 +6,12 @@
 #include <map>
 #include <string>
 
-#include <util/enum.h>
-#include <core/vec.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <core/celltree.h>
-#include <module/module.h>
+#include <vistle/util/enum.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/core/celltree.h>
+#include <vistle/module/module.h>
 #include "Integrator.h"
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,

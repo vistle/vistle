@@ -1,7 +1,7 @@
 #ifndef TESTDYNAMICPORTS_H
 #define TESTDYNAMICPORTS_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class TestDynamicPorts: public vistle::Module {
 

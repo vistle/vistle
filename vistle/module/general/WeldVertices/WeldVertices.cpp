@@ -1,11 +1,11 @@
-#include <module/module.h>
-#include <core/triangles.h>
-#include <core/quads.h>
-#include <core/indexed.h>
-#include <core/normals.h>
-#include <core/grid.h>
-#include <core/database.h>
-#include <core/unstr.h>
+#include <vistle/module/module.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/indexed.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/grid.h>
+#include <vistle/core/database.h>
+#include <vistle/core/unstr.h>
 
 class WeldVertices: public vistle::Module {
   static const int NumPorts = 3;

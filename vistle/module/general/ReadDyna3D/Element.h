@@ -26,9 +26,9 @@
 \**************************************************************************/
 
 
-#include <core/scalar.h>
-#include <core/index.h>
-#include <core/unstr.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/index.h>
+#include <vistle/core/unstr.h>
 
 struct Element
 {

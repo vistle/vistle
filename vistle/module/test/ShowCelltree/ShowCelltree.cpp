@@ -1,9 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/unstr.h>
-#include <core/lines.h>
+#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/lines.h>
 
 #include "ShowCelltree.h"
 

@@ -1,7 +1,7 @@
 #ifndef TESTCELLSEARCH_H
 #define TESTCELLSEARCH_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class TestCellSearch: public vistle::Module {
 

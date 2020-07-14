@@ -12,9 +12,10 @@
 
 
 #include <cstdlib>
-#include <core/object.h>
-#include <core/scalar.h>
-#include <core/vec.h>
+
+#include <vistle/core/object.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/vec.h>
 
 using namespace vistle;
 

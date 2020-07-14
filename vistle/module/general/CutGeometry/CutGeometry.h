@@ -1,8 +1,8 @@
 #ifndef CUTGEOMETRY_H
 #define CUTGEOMETRY_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
 #include "../IsoSurface/IsoDataFunctor.h"
 
 class CutGeometry: public vistle::Module {

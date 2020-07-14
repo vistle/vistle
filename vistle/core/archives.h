@@ -10,8 +10,8 @@
 #include <vector>
 #include <memory>
 #include <iostream>
-#include <util/vecstreambuf.h>
-#include <util/buffer.h>
+#include <vistle/util/vecstreambuf.h>
+#include <vistle/util/buffer.h>
 #include "message.h"
 
 #ifdef USE_BOOST_ARCHIVE
@@ -46,7 +46,7 @@
 
 #include <boost/mpl/vector.hpp>
 
-#include <util/vecstreambuf.h>
+#include <vistle/util/vecstreambuf.h>
 //#include "findobjectreferenceoarchive.h"
 #include "shm_array.h"
 #include "object.h"

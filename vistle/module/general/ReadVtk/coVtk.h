@@ -19,8 +19,8 @@ class vtkImageData;
 #include <string>
 #include <vector>
 
-#include <core/object.h>
-#include <core/database.h>
+#include <vistle/core/object.h>
+#include <vistle/core/database.h>
 
 namespace vistle {
 namespace vtk {

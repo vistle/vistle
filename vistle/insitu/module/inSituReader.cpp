@@ -1,6 +1,6 @@
 #include "inSituReader.h"
-#include <core/message.h>
-#include <util/sleep.h>
+#include <vistle/core/message.h>
+#include <vistle/util/sleep.h>
 
 using namespace vistle;
 using namespace vistle::insitu;

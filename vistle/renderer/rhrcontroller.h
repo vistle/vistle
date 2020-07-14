@@ -2,7 +2,7 @@
 #define VISTLE_RHRCONTROLLER_H
 
 #include "renderer.h"
-#include <rhr/rhrserver.h>
+#include <vistle/rhr/rhrserver.h>
 #include <boost/asio/ip/address.hpp>
 #include <string>
 

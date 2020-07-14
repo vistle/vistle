@@ -5,12 +5,12 @@
 
 #include <cover/RenderObject.h>
 
-#include <core/polygons.h>
-#include <core/normals.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/normals.h>
 
 #include <osg/ref_ptr>
 #include <osg/Node>
-#include <renderer/renderobject.h>
+#include <vistle/renderer/renderobject.h>
 #include <memory>
 
 namespace opencover {

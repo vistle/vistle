@@ -5,8 +5,8 @@
 #include <vector>
 #include <utility> // std::pair
 
-#include <util/sysdep.h>
-#include <module/reader.h>
+#include <vistle/util/sysdep.h>
+#include <vistle/module/reader.h>
 
 typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {

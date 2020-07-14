@@ -9,17 +9,17 @@
 #include <mutex>
 
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/polygons.h>
-#include <core/triangles.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <core/normals.h>
-#include <core/unstr.h>
-#include <core/lines.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/lines.h>
 
-#include <util/coRestraint.h>
+#include <vistle/util/coRestraint.h>
 
 // Includes for the CFX application programming interface (API)
 #include <cstdio>
@@ -35,7 +35,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/cstdint.hpp>
 
-#include <util/stopwatch.h>
+#include <vistle/util/stopwatch.h>
 
 
 #include "ReadCFX.h"

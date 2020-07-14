@@ -4,7 +4,7 @@
 #include "export.h"
 #include "message.h"
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 namespace vistle {
 

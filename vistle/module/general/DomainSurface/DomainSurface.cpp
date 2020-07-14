@@ -1,11 +1,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/unstr.h>
-#include <core/polygons.h>
-#include <core/structuredgrid.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/structuredgrid.h>
 
 #include "DomainSurface.h"
 

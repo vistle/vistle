@@ -3,14 +3,14 @@
 
 #include <boost/mpl/for_each.hpp>
 
-#include <core/object.h>
-#include <core/triangles.h>
-#include <core/quads.h>
-#include <core/normals.h>
-#include <core/polygons.h>
-#include <core/spheres.h>
-#include <core/tubes.h>
-#include <core/texture1d.h>
+#include <vistle/core/object.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/tubes.h>
+#include <vistle/core/texture1d.h>
 
 #include "FlattenTriangles.h"
 

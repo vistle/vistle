@@ -5,14 +5,14 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 
-#include <core/vec.h>
-#include <module/module.h>
-#include <core/scalars.h>
-#include <core/paramvector.h>
-#include <core/message.h>
-#include <core/coords.h>
-#include <core/lines.h>
-#include <core/structuredgridbase.h>
+#include <vistle/core/vec.h>
+#include <vistle/module/module.h>
+#include <vistle/core/scalars.h>
+#include <vistle/core/paramvector.h>
+#include <vistle/core/message.h>
+#include <vistle/core/coords.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/structuredgridbase.h>
 
 #ifdef BOUNDINGBOX
 #define Extrema BoundingBox

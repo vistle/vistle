@@ -1,6 +1,6 @@
 #include "portmanager.h"
 #include "clustermanager.h"
-#include <core/message.h>
+#include <vistle/core/message.h>
 #include <cassert>
 #include <iostream>
 #include <algorithm>

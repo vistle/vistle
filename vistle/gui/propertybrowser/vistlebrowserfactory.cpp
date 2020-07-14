@@ -8,7 +8,7 @@
 #include <QDebug>
 
 #include "vistlebrowseredit.h"
-#include <userinterface/userinterface.h>
+#include <vistle/userinterface/userinterface.h>
 
 #if QT_VERSION >= 0x040400
 QT_BEGIN_NAMESPACE

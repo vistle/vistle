@@ -2,9 +2,9 @@
 #include <vector>
 #include <mutex>
 
-#include <rhr/rfbext.h>
-#include <rhr/compdecomp.h>
-#include <core/messages.h>
+#include <vistle/rhr/rfbext.h>
+#include <vistle/rhr/compdecomp.h>
+#include <vistle/core/messages.h>
 #include <PluginUtil/MultiChannelDrawer.h>
 
 #include <osg/Geometry>

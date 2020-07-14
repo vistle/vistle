@@ -6,7 +6,7 @@
 #include "indexed.h"
 #include "grid.h"
 #include "celltypes.h"
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 namespace vistle {
 

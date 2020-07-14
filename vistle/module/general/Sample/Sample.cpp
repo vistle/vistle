@@ -1,5 +1,5 @@
 #include "Sample.h"
-#include <core/object.h>
+#include <vistle/core/object.h>
 
 using namespace vistle;
 

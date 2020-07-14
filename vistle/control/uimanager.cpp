@@ -1,9 +1,9 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#include <core/statetracker.h>
-#include <core/messagequeue.h>
-#include <core/tcpmessage.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/tcpmessage.h>
 
 #include "uimanager.h"
 #include "uiclient.h"

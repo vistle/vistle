@@ -3,12 +3,12 @@
 
 #include <memory>
 #include <boost/asio/ip/tcp.hpp>
-#include <core/statetracker.h>
-#include <util/spawnprocess.h>
-#include <util/buffer.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/util/spawnprocess.h>
+#include <vistle/util/buffer.h>
 #include "uimanager.h"
-#include <net/tunnel.h>
-#include <net/dataproxy.h>
+#include <vistle/net/tunnel.h>
+#include <vistle/net/dataproxy.h>
 
 #include "export.h"
 

@@ -1,32 +1,32 @@
 #ifndef REMOTECONNECTION_H
 #define REMOTECONNECTION_H
 
-#include <string>
-#include <mutex>
-#include <thread>
 #include <deque>
 #include <map>
-#include <vector>
 #include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include <boost/asio/ip/tcp.hpp>
 
-#include <osg/ref_ptr>
-#include <osg/Node>
 #include <osg/Group>
 #include <osg/Matrix>
+#include <osg/Node>
+#include <osg/ref_ptr>
 
 #include <PluginUtil/MultiChannelDrawer.h>
 
-#include <rhr/rfbext.h>
-#include <renderer/renderobject.h>
+#include <vistle/renderer/renderobject.h>
+#include <vistle/rhr/rfbext.h>
+#include <vistle/util/buffer.h>
 
 #include "TileMessage.h"
 #include "NodeConfig.h"
 
 #include <boost/mpi.hpp>
 
-#include <util/buffer.h>
 
 namespace opencover {
 class MultiChannelDrawer;

@@ -1,7 +1,7 @@
 #ifndef TESTINTERPOLATION_H
 #define TESTINTERPOLATION_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class TestInterpolation: public vistle::Module {
 

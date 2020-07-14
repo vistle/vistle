@@ -4,15 +4,15 @@
 #include <string>
 #include <vector>
 #include <utility> // std::pair
-#include <util/coRestraint.h>
-#include <core/unstr.h>
-#include <core/index.h>
-#include <core/polygons.h>
+#include <vistle/util/coRestraint.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/index.h>
+#include <vistle/core/polygons.h>
 //#include <map>
-#include <core/lines.h>
+#include <vistle/core/lines.h>
 
-#include <util/sysdep.h>
-#include <module/module.h>
+#include <vistle/util/sysdep.h>
+#include <vistle/module/module.h>
 
 #include <boost/config.hpp>
 

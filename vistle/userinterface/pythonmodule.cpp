@@ -7,15 +7,15 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 #include <pybind11/eval.h>
-#include <util/pybind.h>
+#include <vistle/util/pybind.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/asio.hpp>
 
-#include <core/uuid.h>
-#include <core/message.h>
-#include <core/parameter.h>
-#include <core/port.h>
+#include <vistle/core/uuid.h>
+#include <vistle/core/message.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/port.h>
 
 #include "pythonmodule.h"
 #ifdef EMBED_PYTHON
@@ -25,8 +25,8 @@
 //#define DEBUG
 //#define OBSERVER_DEBUG
 
-#include <core/statetracker.h>
-#include <core/porttracker.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/porttracker.h>
 
 namespace py = pybind11;
 
@@ -40,7 +40,7 @@ namespace py = pybind11;
 #ifdef VISTLE_CONTROL
 
 // if embedded in Vistle hub
-#include <control/hub.h>
+#include <vistle/control/hub.h>
 #define MODULEMANAGER (Hub::the().stateTracker())
 #define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
 

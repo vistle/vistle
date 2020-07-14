@@ -1,16 +1,16 @@
 #ifndef LIBSIM_CONTROL_MODULE_H
 #define LIBSIM_CONTROL_MODULE_H
-#include <insitu/module/inSituReader.h>
+#include <vistle/insitu/module/inSituReader.h>
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio.hpp>
 
-#include <core/message.h>
-#include <core/messagequeue.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagequeue.h>
 
-#include <insitu/message/SyncShmIDs.h>
-#include <insitu/message/TcpMessage.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
+#include <vistle/insitu/message/TcpMessage.h>
 
 class LibSimModule : public vistle::insitu::InSituReader
 {

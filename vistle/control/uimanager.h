@@ -6,7 +6,7 @@
 #include <memory>
 #include <boost/asio.hpp>
 
-#include <core/message.h>
+#include <vistle/core/message.h>
 
 namespace vistle {
 

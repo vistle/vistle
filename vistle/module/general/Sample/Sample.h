@@ -1,13 +1,13 @@
 #ifndef SAMPLE_H
 #define SAMPLE_H
 
-#include <module/module.h>
-#include <core/object.h>
-#include <core/grid.h>
-#include <core/uniformgrid.h>
-#include <core/structuredgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/unstr.h>
+#include <vistle/module/module.h>
+#include <vistle/core/object.h>
+#include <vistle/core/grid.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/unstr.h>
 
 namespace mpi = boost::mpi;
 

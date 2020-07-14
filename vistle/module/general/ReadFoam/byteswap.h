@@ -1,7 +1,7 @@
 #ifndef FOAM_BYTESWAP_H
 #define FOAM_BYTESWAP_H
 
-#include <util/byteswap.h>
+#include <vistle/util/byteswap.h>
 
 using vistle::byte_swap;
 using vistle::endianness;

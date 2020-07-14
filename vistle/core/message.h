@@ -4,9 +4,9 @@
 #include <array>
 #include <cassert>
 
-#include <util/enum.h>
-#include <util/directory.h> // ModuleNameLength
-#include <util/buffer.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/directory.h> // ModuleNameLength
+#include <vistle/util/buffer.h>
 #include "uuid.h"
 #include "export.h"
 #include "shmname.h"

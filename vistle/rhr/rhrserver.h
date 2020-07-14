@@ -17,10 +17,10 @@
 
 #include <boost/asio.hpp>
 
-#include <rhr/rfbext.h>
+#include <vistle/rhr/rfbext.h>
 
-#include <core/vector.h>
-#include <renderer/renderobject.h>
+#include <vistle/core/vector.h>
+#include <vistle/renderer/renderobject.h>
 
 #include <tbb/concurrent_queue.h>
 

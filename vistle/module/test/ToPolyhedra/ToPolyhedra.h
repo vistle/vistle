@@ -1,7 +1,7 @@
 #ifndef TOPOLYHEDRA_H
 #define TOPOLYHEDRA_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ToPolyhedra: public vistle::Module {
 

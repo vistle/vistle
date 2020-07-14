@@ -1,11 +1,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/lines.h>
-#include <core/unstr.h>
-#include <core/structuredgridbase.h>
-#include <core/structuredgrid.h>
+#include <vistle/core/object.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/structuredgrid.h>
 
 #include "ShowGrid.h"
 

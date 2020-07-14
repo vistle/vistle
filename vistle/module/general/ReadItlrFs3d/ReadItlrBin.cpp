@@ -18,12 +18,12 @@
 #include <cstdlib>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <util/filesystem.h>
-#include <util/byteswap.h>
+#include <vistle/util/filesystem.h>
+#include <vistle/util/byteswap.h>
 
 
 #include "ReadItlrBin.h"
-#include <core/rectilineargrid.h>
+#include <vistle/core/rectilineargrid.h>
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>

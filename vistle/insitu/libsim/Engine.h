@@ -8,28 +8,26 @@
 #include "MetaData.h"
 #include "export.h"
 
-#include <insitu/message/SyncShmIDs.h>
-#include <insitu/message/TcpMessage.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/vec.h>
+#include <vistle/insitu/core/moduleInfo.h>
+#include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
+#include <vistle/insitu/message/TcpMessage.h>
 
-#include <insitu/core/moduleInfo.h>
-#include <insitu/message/addObjectMsq.h>
-
-#include <core/uniformgrid.h>
-
-#include <string>
-#include <vector>
-#include <memory>
-#include <functional>
-#include <mutex>
-#include <thread>
 #include <condition_variable>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 #ifdef MODULE_THREAD
-#include <manager/manager.h>
+#include <vistle/manager/manager.h>
 #endif // MODULE_THREAD
 
 
-#include <core/vec.h>
 
 namespace vistle {
 namespace message {

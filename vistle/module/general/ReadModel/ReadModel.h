@@ -2,11 +2,11 @@
 #define READMODEL_H
 
 #include <string>
-#include <vector>
 #include <utility> // std::pair
+#include <vector>
 
-#include <util/sysdep.h>
-#include <module/reader.h>
+#include <vistle/module/reader.h>
+#include <vistle/util/sysdep.h>
 
 class ReadModel: public vistle::Reader {
 

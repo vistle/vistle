@@ -1,6 +1,6 @@
 ﻿#include "BlockData.h"
 #include "Integrator.h"
-#include <core/vec.h>
+#include <vistle/core/vec.h>
 #include <mutex>
 
 

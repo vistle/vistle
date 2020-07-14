@@ -1,8 +1,8 @@
 #include "TileMessage.h"
 
 #include <cassert>
-#include <core/message.h>
-#include <rhr/rfbext.h>
+#include <vistle/core/message.h>
+#include <vistle/rhr/rfbext.h>
 
 using namespace vistle;
 

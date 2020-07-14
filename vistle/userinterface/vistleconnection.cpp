@@ -8,7 +8,7 @@
  */
 /**********************************************************************************/
 #include "vistleconnection.h"
-#include <userinterface/userinterface.h>
+#include <vistle/userinterface/userinterface.h>
 
 namespace vistle {
 

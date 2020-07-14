@@ -1,7 +1,7 @@
 #ifndef TOTRIANGLES_H
 #define TOTRIANGLES_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ToTriangles: public vistle::Module {
 

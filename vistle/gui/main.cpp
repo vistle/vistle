@@ -6,8 +6,8 @@
  */
 /**********************************************************************************/
 #include "uicontroller.h"
-#include <util/exception.h>
-#include <core/uuid.h>
+#include <vistle/util/exception.h>
+#include <vistle/core/uuid.h>
 #include <QApplication>
 #include <QIcon>
 #include <QDebug>

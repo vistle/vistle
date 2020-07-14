@@ -1,6 +1,6 @@
 #ifndef VISTLE_SENSEI_EXEPTION_H
 #define VISTLE_SENSEI_EXEPTION_H
-#include <insitu/core/exeption.h>
+#include <vistle/insitu/core/exeption.h>
 namespace vistle {
 namespace insitu {
 namespace sensei {

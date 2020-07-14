@@ -42,14 +42,14 @@
 #include <vtkMultiPieceDataSet.h>
 
 #include "coVtk.h"
-#include <core/coords.h>
-#include <core/unstr.h>
-#include <core/polygons.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <core/structuredgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/uniformgrid.h>
+#include <vistle/core/coords.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/uniformgrid.h>
 
 namespace vistle {
 

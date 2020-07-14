@@ -4,12 +4,12 @@
 
 #include <sstream>
 #include <iomanip>
-#include <core/index.h>
-#include <core/scalar.h>
-#include <core/unstr.h>
-#include <core/triangles.h>
-#include <core/lines.h>
-#include <core/shm.h>
+#include <vistle/core/index.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/shm.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 #include <thrust/transform.h>

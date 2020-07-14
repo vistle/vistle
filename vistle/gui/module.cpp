@@ -13,7 +13,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>
 
-#include <userinterface/vistleconnection.h>
+#include <vistle/userinterface/vistleconnection.h>
 
 #include <boost/uuid/nil_generator.hpp>
 

@@ -9,22 +9,22 @@
 #include <sstream>
 #include <cassert>
 
-#include <util/hostname.h>
-#include <util/directory.h>
-#include <util/spawnprocess.h>
-#include <util/sleep.h>
-#include <util/listenv4v6.h>
-#include <util/crypto.h>
-#include <core/object.h>
-#include <core/message.h>
-#include <core/tcpmessage.h>
-#include <core/messagerouter.h>
-#include <core/porttracker.h>
-#include <core/statetracker.h>
-#include <core/shm.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/directory.h>
+#include <vistle/util/spawnprocess.h>
+#include <vistle/util/sleep.h>
+#include <vistle/util/listenv4v6.h>
+#include <vistle/util/crypto.h>
+#include <vistle/core/object.h>
+#include <vistle/core/message.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/messagerouter.h>
+#include <vistle/core/porttracker.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/shm.h>
 
 #ifdef MODULE_THREAD
-#include <insitu/libsim/EstablishConnection.h>
+#include <vistle/insitu/libsim/EstablishConnection.h>
 #endif // MODULE_THREAD
 
 

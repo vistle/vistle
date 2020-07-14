@@ -8,7 +8,7 @@
 #include "archives_config.h"
 #include "export.h"
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 namespace vistle {
 

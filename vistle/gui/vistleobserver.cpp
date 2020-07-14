@@ -10,7 +10,7 @@
 
 #include <QString>
 
-#include <userinterface/vistleconnection.h>
+#include <vistle/userinterface/vistleconnection.h>
 
 #include "vistleobserver.h"
 

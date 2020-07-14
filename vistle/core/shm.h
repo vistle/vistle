@@ -25,8 +25,8 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 
 #include "archives_config.h"
 
-#include <util/exception.h>
-#include <util/allocator.h>
+#include <vistle/util/exception.h>
+#include <vistle/util/allocator.h>
 
 #include "export.h"
 #include "index.h"

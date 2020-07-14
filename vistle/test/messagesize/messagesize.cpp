@@ -1,7 +1,7 @@
 #include <iostream>
-#include <core/message.h>
-#include <core/messages.h>
-#include <rhr/rfbext.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
+#include <vistle/rhr/rfbext.h>
 
 using namespace vistle;
 using namespace vistle::message;

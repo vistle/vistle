@@ -1,7 +1,7 @@
 #ifndef READIAGTECPLOT_H
 #define READIAGTECPLOT_H
 
-#include <module/reader.h>
+#include <vistle/module/reader.h>
 
 class ReadIagTecplot: public vistle::Reader {
 

@@ -1,5 +1,5 @@
-#include <module/module.h>
-#include <core/object.h>
+#include <vistle/module/module.h>
+#include <vistle/core/object.h>
 #include <sstream>
 
 using namespace vistle;

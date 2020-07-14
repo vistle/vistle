@@ -1,7 +1,7 @@
 #ifndef SHOWUSG_H
 #define SHOWUSG_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ShowGrid: public vistle::Module {
 

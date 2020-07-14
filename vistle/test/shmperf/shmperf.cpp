@@ -14,11 +14,11 @@
 
 #include <mpi.h>
 
-#include <core/shm_array.h>
-#include <core/shm.h>
-#include <core/vec.h>
+#include <vistle/core/shm_array.h>
+#include <vistle/core/shm.h>
+#include <vistle/core/vec.h>
 
-#include <util/allocator.h>
+#include <vistle/util/allocator.h>
 
 using namespace vistle;
 

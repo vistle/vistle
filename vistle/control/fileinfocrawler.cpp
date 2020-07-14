@@ -1,6 +1,6 @@
 #include "fileinfocrawler.h"
-#include <core/filequery.h>
-#include <util/filesystem.h>
+#include <vistle/core/filequery.h>
+#include <vistle/util/filesystem.h>
 
 #include <future>
 

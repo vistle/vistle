@@ -10,11 +10,11 @@
 
 #include <vector>
 
-#include <module/module.h>
-#include <core/object.h>
-#include <core/index.h>
-#include <core/unstr.h>
-#include <core/vec.h>
+#include <vistle/module/module.h>
+#include <vistle/core/object.h>
+#include <vistle/core/index.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
 
 //-------------------------------------------------------------------------
 // PRINT METADATA CLASS DECLARATION

@@ -1,8 +1,8 @@
 #include <thread>
 #include <mutex>
 
-#include <userinterface/pythoninterface.h>
-#include <userinterface/pythonmodule.h>
+#include <vistle/userinterface/pythoninterface.h>
+#include <vistle/userinterface/pythonmodule.h>
 
 #include "pythoninterpreter.h"
 

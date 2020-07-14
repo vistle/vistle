@@ -8,21 +8,20 @@
 #define NO_PORT_REMOVAL
 #define HIDE_REFERENCE_WARNINGS
 
-#include <sstream>
-#include <iomanip>
 #include <cfloat>
+#include <ctime>
+#include <iomanip>
 #include <limits>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <ctime>
 
 #include <hdf5.h>
 
-#include <util/filesystem.h>
-#include <core/findobjectreferenceoarchive.h>
-#include <core/placeholder.h>
-
-#include <util/stopwatch.h>
+#include <vistle/core/findobjectreferenceoarchive.h>
+#include <vistle/core/placeholder.h>
+#include <vistle/util/filesystem.h>
+#include <vistle/util/stopwatch.h>
 
 #include "WriteHDF5.h"
 

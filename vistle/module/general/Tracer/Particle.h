@@ -8,11 +8,11 @@
 
 #include <boost/serialization/split_free.hpp>
 
-#include <util/enum.h>
-#include <core/vector.h>
-#include <core/scalars.h>
-#include <core/index.h>
-#include <core/lines.h>
+#include <vistle/core/index.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/scalars.h>
+#include <vistle/core/vector.h>
+#include <vistle/util/enum.h>
 
 #include "Integrator.h"
 

@@ -1,11 +1,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/triangles.h>
-#include <core/unstr.h>
-#include <core/vec.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
+#include <vistle/util/math.h>
 #include "tables.h"
 
 #include "CuttingSurface.h"

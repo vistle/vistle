@@ -15,7 +15,7 @@
 #include "depthquant.h"
 #include "export.h"
 
-#include <core/message.h>
+#include <vistle/core/message.h>
 
 namespace vistle {
 

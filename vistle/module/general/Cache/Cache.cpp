@@ -1,12 +1,12 @@
 #include <boost/lexical_cast.hpp>
-#include <module/module.h>
+#include <vistle/module/module.h>
 
-#include <core/archive_saver.h>
-#include <core/archive_loader.h>
+#include <vistle/core/archive_saver.h>
+#include <vistle/core/archive_loader.h>
 
-#include <util/enum.h>
-#include <util/byteswap.h>
-#include <util/fileio.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/byteswap.h>
+#include <vistle/util/fileio.h>
 
 using namespace vistle;
 

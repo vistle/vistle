@@ -1,6 +1,6 @@
 #include "predict.h"
 
-#include <util/math.h>
+#include <vistle/util/math.h>
 #include <cstdint>
 #include <cassert>
 

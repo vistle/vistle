@@ -2,7 +2,7 @@
 #define VISTLE_MANAGER_EXPORT_H
 
 #ifdef MODULE_THREAD
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 #if defined (vistle_clustermanager_EXPORTS)
 #define V_MANAGEREXPORT V_EXPORT

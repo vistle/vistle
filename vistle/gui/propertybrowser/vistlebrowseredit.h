@@ -5,7 +5,7 @@
 #include <QLineEdit>
 
 #include "../remotefilebrowser/remotefiledialog.h"
-#include <core/message.h>
+#include <vistle/core/message.h>
 
 class QHBoxLayout;
 class QLineEdit;

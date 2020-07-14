@@ -13,9 +13,9 @@
 
 #include <mpi.h>
 
-#include <core/shm.h>
-#include <core/vec.h>
-#include <core/points.h>
+#include <vistle/core/shm.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/points.h>
 
 using namespace vistle;
 

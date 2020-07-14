@@ -12,7 +12,7 @@
 #include "connection.h"
 #include "vistleconsole.h"
 
-#include <core/statetracker.h>
+#include <vistle/core/statetracker.h>
 
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>

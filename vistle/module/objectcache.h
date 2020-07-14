@@ -5,8 +5,8 @@
 #include <map>
 #include <deque>
 
-#include <util/enum.h>
-#include <core/object.h>
+#include <vistle/util/enum.h>
+#include <vistle/core/object.h>
 
 namespace vistle {
 

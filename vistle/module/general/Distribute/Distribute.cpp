@@ -1,5 +1,5 @@
 #include <boost/lexical_cast.hpp>
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 using namespace vistle;
 namespace mpi = boost::mpi;

@@ -6,13 +6,13 @@
 #include <cmath>
 #include <ctime>
 #include <boost/mpi/collectives.hpp>
-#include <core/message.h>
-#include <core/object.h>
-#include <core/unstr.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
-#include <core/vec.h>
+#include <vistle/core/message.h>
+#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/vec.h>
 
 #ifdef CUTTINGSURFACE
 #define IsoSurface CuttingSurface

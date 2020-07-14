@@ -1,9 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/spheres.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/spheres.h>
+#include <vistle/util/math.h>
 
 #include "Spheres.h"
 

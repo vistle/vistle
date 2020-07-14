@@ -2,8 +2,8 @@
 #define INSITU_DATA_TYPE_H
 #include "export.h"
 
-#include <core/scalar.h>
-#include <core/index.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/index.h>
 
 namespace vistle {
 namespace insitu {

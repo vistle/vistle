@@ -3,7 +3,7 @@
 
 #include "archives.h"
 #include "shmvector.h"
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 #include <boost/mpl/for_each.hpp>
 

@@ -1,4 +1,4 @@
-#include <util/tools.h>
+#include <vistle/util/tools.h>
 
 #include "message.h"
 #include "messages.h"
@@ -14,9 +14,9 @@
 #include <boost/archive/basic_archive.hpp>
 
 #include "archives.h"
-#include <util/vecstreambuf.h>
-#include <util/crypto.h>
-#include <util/tools.h>
+#include <vistle/util/vecstreambuf.h>
+#include <vistle/util/crypto.h>
+#include <vistle/util/tools.h>
 
 #include <algorithm>
 

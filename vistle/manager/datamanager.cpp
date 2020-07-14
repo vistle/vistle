@@ -5,16 +5,16 @@
 #include "datamanager.h"
 #include "clustermanager.h"
 #include "communicator.h"
-#include <util/vecstreambuf.h>
-#include <util/sleep.h>
-#include <core/archives.h>
-#include <core/archive_loader.h>
-#include <core/archive_saver.h>
-#include <core/statetracker.h>
-#include <core/object.h>
-#include <core/tcpmessage.h>
-#include <core/messages.h>
-#include <core/shmvector.h>
+#include <vistle/util/vecstreambuf.h>
+#include <vistle/util/sleep.h>
+#include <vistle/core/archives.h>
+#include <vistle/core/archive_loader.h>
+#include <vistle/core/archive_saver.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/object.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/shmvector.h>
 #include <iostream>
 #include <functional>
 

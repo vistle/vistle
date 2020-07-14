@@ -1,7 +1,7 @@
 #ifndef TOTUBES_H
 #define TOTUBES_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ToTubes: public vistle::Module {
 

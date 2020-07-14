@@ -16,11 +16,12 @@
 
 
 #include "ReadWRFChem.h"
-#include <netcdfcpp.h>
 
-#include <core/structuredgrid.h>
-#include <core/uniformgrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/uniformgrid.h>
+
 #include <boost/filesystem.hpp>
+#include <netcdfcpp.h>
 
 using namespace vistle;
 namespace bf = boost::filesystem;

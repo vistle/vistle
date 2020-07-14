@@ -3,19 +3,19 @@
 
 #include <boost/lexical_cast.hpp>
 
-#include <VistlePluginUtil/VistleRenderObject.h>
+#include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 
 #include <config/CoviseConfig.h>
 #include <cover/coVRAnimationManager.h>
+#include <cover/coVRConfig.h>
 #include <cover/coVRMSController.h>
 #include <cover/coVRPluginList.h>
 #include <cover/coVRPluginSupport.h>
-#include <cover/coVRConfig.h>
 #include <cover/VRViewer.h>
 
-#include <util/listenv4v6.h>
-#include <core/tcpmessage.h>
-#include <core/messages.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/util/listenv4v6.h>
 
 #include <osg/io_utils>
 

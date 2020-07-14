@@ -1,19 +1,19 @@
-#include <core/message.h>
-#include <core/messagequeue.h>
-#include <core/statetracker.h>
-#include <core/object.h>
-#include <core/empty.h>
-#include <core/placeholder.h>
-#include <core/coords.h>
-#include <core/archives.h>
-#include <core/archive_loader.h>
-#include <core/archive_saver.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/object.h>
+#include <vistle/core/empty.h>
+#include <vistle/core/placeholder.h>
+#include <vistle/core/coords.h>
+#include <vistle/core/archives.h>
+#include <vistle/core/archive_loader.h>
+#include <vistle/core/archive_saver.h>
 
 #include "renderer.h"
 
-#include <util/vecstreambuf.h>
-#include <util/sleep.h>
-#include <util/stopwatch.h>
+#include <vistle/util/vecstreambuf.h>
+#include <vistle/util/sleep.h>
+#include <vistle/util/stopwatch.h>
 
 namespace mpi = boost::mpi;
 

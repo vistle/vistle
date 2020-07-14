@@ -3,8 +3,8 @@
 
 #include "export.h"
 
-#include <core/messages.h>
-#include <core/parameter.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/parameter.h>
 
 #include <string>
 #include <memory>

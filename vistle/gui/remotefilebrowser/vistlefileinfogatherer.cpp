@@ -38,7 +38,7 @@
 ****************************************************************************/
 
 #include "vistlefileinfogatherer.h"
-#include <core/filequery.h>
+#include <vistle/core/filequery.h>
 
 #include <qdebug.h>
 #include <qdiriterator.h>

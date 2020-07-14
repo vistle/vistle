@@ -5,7 +5,7 @@
 #include "qtlongpropertymanager.h"
 #include <QLineEdit>
 
-#include <core/paramvector.h>
+#include <vistle/core/paramvector.h>
 
 #if QT_VERSION >= 0x040400
 QT_BEGIN_NAMESPACE

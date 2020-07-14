@@ -3,7 +3,7 @@
 
 
 #include "coordswradius.h"
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 namespace vistle {
 

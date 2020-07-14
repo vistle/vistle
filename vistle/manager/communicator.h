@@ -7,9 +7,9 @@
 #include <boost/asio.hpp>
 #include <boost/mpi.hpp>
 
-#include <core/message.h>
-#include <core/messagepayload.h>
-#include <util/directory.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagepayload.h>
+#include <vistle/util/directory.h>
 
 namespace vistle {
 

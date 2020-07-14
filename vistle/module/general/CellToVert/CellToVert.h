@@ -1,8 +1,8 @@
 #ifndef CELLTOVERT_H
 #define CELLTOVERT_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
 
 class CellToVert: public vistle::Module {
 

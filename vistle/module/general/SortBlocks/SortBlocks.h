@@ -1,9 +1,9 @@
 #ifndef SORTBLOCKS_H
 #define SORTBLOCKS_H
 
-#include <module/module.h>
-#include <core/vector.h>
-#include <core/vec.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/vec.h>
 
 class SortBlocks: public vistle::Module {
 

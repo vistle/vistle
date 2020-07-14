@@ -8,7 +8,7 @@
 
 #include "VisItDataTypes.h"
 
-#include <insitu/core/exeption.h>
+#include <vistle/insitu/core/exeption.h>
 namespace vistle{
 namespace insitu {
 

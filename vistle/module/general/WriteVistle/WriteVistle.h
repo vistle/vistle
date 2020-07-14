@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include <module/module.h>
-#include <core/object.h>
+#include <vistle/core/object.h>
+#include <vistle/module/module.h>
 
 class WriteVistle: public vistle::Module {
 

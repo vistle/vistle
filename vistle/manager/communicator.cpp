@@ -12,24 +12,24 @@
 #include <iostream>
 #include <iomanip>
 
-#include <core/message.h>
-#include <core/tcpmessage.h>
-#include <core/object.h>
-#include <core/parameter.h>
+#include <vistle/core/message.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/object.h>
+#include <vistle/core/parameter.h>
 #include <cassert>
-#include <core/shm.h>
-#include <core/messagepayload.h>
-#include <util/sleep.h>
-#include <util/tools.h>
-#include <util/hostname.h>
-#include <util/crypto.h>
+#include <vistle/core/shm.h>
+#include <vistle/core/messagepayload.h>
+#include <vistle/util/sleep.h>
+#include <vistle/util/tools.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/crypto.h>
 
 #include "communicator.h"
 #include "clustermanager.h"
 #include "datamanager.h"
 
 #if defined(MODULE_THREAD) && defined(MODULE_STATIC)
-#include <module/moduleregistry.h>
+#include <vistle/module/moduleregistry.h>
 #endif
 
 #define CERR \

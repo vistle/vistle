@@ -10,9 +10,9 @@
 #include <QGraphicsRectItem>
 #include <QAction>
 
-#include <core/uuid.h>
+#include <vistle/core/uuid.h>
 
-#include <userinterface/vistleconnection.h>
+#include <vistle/userinterface/vistleconnection.h>
 
 #include "port.h"
 

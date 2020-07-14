@@ -8,13 +8,13 @@
 #ifndef TO_UNSTRUCTURED_H
 #define TO_UNSTRUCTURED_H
 
-#include <module/module.h>
-#include <core/object.h>
-#include <core/unstr.h>
-#include <core/structuredgridbase.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
+#include <vistle/core/object.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/unstr.h>
+#include <vistle/module/module.h>
 
 #include "Cartesian3.h"
 

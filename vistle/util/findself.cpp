@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #else
-#include <util/sysdep.h>
+#include <vistle/util/sysdep.h>
 #include <direct.h>
 #endif
 #include <errno.h>

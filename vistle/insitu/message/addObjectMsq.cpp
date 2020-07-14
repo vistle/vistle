@@ -1,7 +1,7 @@
 #include "addObjectMsq.h"
-#include <insitu/core/exeption.h>
-#include <core/messagequeue.h>
-#include <core/messages.h>
+#include <vistle/insitu/core/exeption.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/messages.h>
 using namespace vistle::insitu::message;
 using namespace vistle::insitu;
 

@@ -16,9 +16,9 @@
 
 #include <boost/mpl/for_each.hpp>
 
-#include <util/tools.h>
+#include <vistle/util/tools.h>
 
-#include <util/exception.h>
+#include <vistle/util/exception.h>
 
 using namespace boost::interprocess;
 

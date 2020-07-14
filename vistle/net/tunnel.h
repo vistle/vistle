@@ -5,8 +5,8 @@
 #include <boost/asio.hpp>
 #include <thread>
 
-#include <core/message.h>
-#include <core/messages.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
 
 #include "export.h"
 

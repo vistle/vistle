@@ -1,7 +1,7 @@
 #include "sensei.h"
 #include "exeption.h"
 
-#include <util/hostname.h>
+#include <vistle/util/hostname.h>
 
 #include <iostream>
 #include <fstream>

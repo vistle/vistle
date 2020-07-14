@@ -33,11 +33,11 @@
 #endif
 
 #include "Dyna3DReader.h"
-#include <util/byteswap.h>
-#include <core/unstr.h>
+#include <vistle/util/byteswap.h>
+#include <vistle/core/unstr.h>
 #include <iostream>
-#include <util/filesystem.h>
-#include <util/enum.h>
+#include <vistle/util/filesystem.h>
+#include <vistle/util/enum.h>
 
 namespace fs = vistle::filesystem;
 using namespace vistle;

@@ -19,12 +19,12 @@
 #include <vector>
 #include <map>
 
-#include <module/reader.h>
-#include <core/unstr.h>
-#include <core/polygons.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/unstr.h>
+#include <vistle/module/reader.h>
+#include <vistle/util/coRestraint.h>
 
 #include "foamtoolbox.h"
-#include <util/coRestraint.h>
 #include <boost/mpi/request.hpp>
 #include <unordered_set>
 

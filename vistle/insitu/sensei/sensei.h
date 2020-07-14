@@ -6,9 +6,9 @@
 #include "export.h"
 #include "metaData.h"
 
-#include <insitu/message/addObjectMsq.h>
-#include <insitu/message/ShmMessage.h>
-#include <insitu/message/SyncShmIDs.h>
+#include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/insitu/message/ShmMessage.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
 
 
 

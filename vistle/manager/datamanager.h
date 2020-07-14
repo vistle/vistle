@@ -1,21 +1,23 @@
 #ifndef DATAMANAGER_H
 #define DATAMANAGER_H
 
+#include <deque>
 #include <functional>
+#include <future>
 #include <set>
 #include <thread>
-#include <deque>
-#include <future>
 
-#include <util/buffer.h>
-#include <core/message.h>
-#include <core/messages.h>
-#include <core/object.h>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/object.h>
+#include <vistle/util/buffer.h>
+
 #if BOOST_VERSION >= 106600
 #include <boost/asio/executor_work_guard.hpp>
 #endif
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/io_service.hpp>
+
 #include <boost/mpi/request.hpp>
 #include <boost/mpi/communicator.hpp>
 

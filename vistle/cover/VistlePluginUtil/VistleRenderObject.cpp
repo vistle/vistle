@@ -2,9 +2,9 @@
 
 #include <cover/coVRPluginList.h>
 
-#include <core/placeholder.h>
-#include <core/uniformgrid.h>
-#include <core/message.h>
+#include <vistle/core/placeholder.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/message.h>
 
 using namespace opencover;
 

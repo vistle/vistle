@@ -29,13 +29,13 @@
 
 #include "PartitionReader.h"
 
-#include <util/coRestraint.h>
+#include <vistle/util/coRestraint.h>
 
-#include <core/vec.h>
-//#include <core/structuredgrid.h>
-#include <core/unstr.h>
-#include<core/index.h>
-#include <module/reader.h>
+#include <vistle/core/vec.h>
+//#include <vistle/core/structuredgrid.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/index.h>
+#include <vistle/module/reader.h>
 
 #include <vector>
 #include <map>

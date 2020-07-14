@@ -3,7 +3,7 @@
 
 #include "scalar.h"
 #include <cmath>
-#include <util/math.h>
+#include <vistle/util/math.h>
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>

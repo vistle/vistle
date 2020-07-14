@@ -6,13 +6,13 @@
 
 #include <boost/format.hpp>
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/polygons.h>
-#include <core/triangles.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <core/normals.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/core/normals.h>
 
 #include "ReadModel.h"
 

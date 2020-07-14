@@ -8,17 +8,17 @@
 #include <cover/coVRFileManager.h>
 
 // vistle
-#include <core/messages.h>
-#include <core/object.h>
-#include <core/placeholder.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/object.h>
+#include <vistle/core/placeholder.h>
 
 #include <osg/Node>
 #include <osg/Group>
 #include <osg/Sequence>
 #include <osg/MatrixTransform>
 
-#include <VistlePluginUtil/VistleRenderObject.h>
-#include <VistlePluginUtil/VistleInteractor.h>
+#include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
+#include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
 #include <PluginUtil/StaticSequence.h>
 #include "VistleGeometryGenerator.h"
 
@@ -36,10 +36,10 @@
 #include <algorithm>
 #include <map>
 
-#include <util/findself.h>
-#include <util/sysdep.h>
+#include <vistle/util/findself.h>
+#include <vistle/util/sysdep.h>
 
-#include <manager/run_on_main_thread.h>
+#include <vistle/manager/run_on_main_thread.h>
 
 #if defined(WIN32)
     const char libcover[] = "mpicover.dll";

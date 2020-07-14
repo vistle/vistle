@@ -56,16 +56,16 @@
 // a frequency greater than 1.
 /////////////////////////////////////////////////////////
 
-#include <util/coRestraint.h>
+#include <vistle/util/coRestraint.h>
 
-#include <module/reader.h>
+#include <vistle/module/reader.h>
 
 #include "Element.h"
 
 #include <vector>
 #include <shared_mutex>
 
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(NodalDataType,
                                     (No_Node_Data)

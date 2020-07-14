@@ -1,7 +1,7 @@
 #ifndef VISTLE_PLUGIN_UTIL_EXPORT_H
 #define VISTLE_PLUGIN_UTIL_EXPORT_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 #if defined (VistlePluginUtil_EXPORTS)
 #define V_PLUGINUTILEXPORT V_EXPORT

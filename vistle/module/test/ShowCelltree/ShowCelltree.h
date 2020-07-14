@@ -1,7 +1,7 @@
 #ifndef SHOWCELLTREE_H
 #define SHOWCELLTREE_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ShowCelltree: public vistle::Module {
 

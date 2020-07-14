@@ -10,7 +10,7 @@
 
 #include "statetracker.h"
 
-#include <util/vecstreambuf.h>
+#include <vistle/util/vecstreambuf.h>
 #include "archives.h"
 
 #define CERR \

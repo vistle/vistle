@@ -3,8 +3,8 @@
 
 #include <boost/mpl/for_each.hpp>
 
-#include <core/object.h>
-#include <core/unstr.h>
+#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
 
 #include "ToPolyhedra.h"
 

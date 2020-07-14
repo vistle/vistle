@@ -28,15 +28,15 @@
 #include <mutex>
 #include <future>
 
-#include <core/paramvector.h>
-#include <core/object.h>
-#include <core/parameter.h>
-#include <core/port.h>
-#include <core/grid.h>
-#include <core/message.h>
-#include <core/parametermanager.h>
-#include <core/messagesender.h>
-#include <core/messagepayload.h>
+#include <vistle/core/paramvector.h>
+#include <vistle/core/object.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/port.h>
+#include <vistle/core/grid.h>
+#include <vistle/core/message.h>
+#include <vistle/core/parametermanager.h>
+#include <vistle/core/messagesender.h>
+#include <vistle/core/messagepayload.h>
 
 #include "objectcache.h"
 #include "export.h"

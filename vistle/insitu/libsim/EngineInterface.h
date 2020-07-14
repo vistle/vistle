@@ -1,7 +1,7 @@
 #ifndef LIBSIM_ENGINE_INTERFACE_H
 #define LIBSIM_ENGINE_INTERFACE_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 #include <boost/asio/ip/tcp.hpp>
 

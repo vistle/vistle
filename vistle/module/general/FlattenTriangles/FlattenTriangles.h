@@ -1,7 +1,7 @@
 #ifndef FLATTENTRIANGLES_H
 #define FLATTENTRIANGLES_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class FlattenTriangles: public vistle::Module {
 

@@ -7,8 +7,8 @@
 #include <thread>
 #include <set>
 
-#include <core/message.h>
-#include <util/enum.h>
+#include <vistle/core/message.h>
+#include <vistle/util/enum.h>
 
 #include "export.h"
 

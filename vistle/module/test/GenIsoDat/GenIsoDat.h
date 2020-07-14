@@ -1,7 +1,7 @@
 #ifndef GENISODAT_H
 #define GENISODAT_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class GenIsoDat: public vistle::Module {
 

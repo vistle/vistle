@@ -1,9 +1,9 @@
 #include "tunnel.h"
 #include <thread>
 #include <boost/system/error_code.hpp>
-#include <util/listenv4v6.h>
+#include <vistle/util/listenv4v6.h>
 
-#include <core/messages.h>
+#include <vistle/core/messages.h>
 #include <cassert>
 
 

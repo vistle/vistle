@@ -3,8 +3,8 @@
 
 #include <QObject>
 
-#include <userinterface/userinterface.h>
-#include <userinterface/vistleconnection.h>
+#include <vistle/userinterface/userinterface.h>
+#include <vistle/userinterface/vistleconnection.h>
 
 #include "module.h"
 

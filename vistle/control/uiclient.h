@@ -3,8 +3,8 @@
 
 #include <boost/asio.hpp>
 #include <memory>
-#include <core/message.h>
-#include <core/messagequeue.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagequeue.h>
 
 namespace vistle {
 

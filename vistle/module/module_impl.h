@@ -1,8 +1,8 @@
 #ifndef MODULE_IMPL_H
 #define MODULE_IMPL_H
 
-#include <core/message.h>
-#include <core/messages.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
 #include <cassert>
 
 namespace vistle {

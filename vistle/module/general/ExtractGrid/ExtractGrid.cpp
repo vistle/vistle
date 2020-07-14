@@ -1,6 +1,6 @@
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/coords.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/coords.h>
 
 #include "ExtractGrid.h"
 

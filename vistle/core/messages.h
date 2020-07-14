@@ -8,7 +8,7 @@
 #include <boost/asio/ip/address_v6.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 #include "uuid.h"
 #include "shmname.h"
 #include "object.h"

@@ -1,7 +1,7 @@
 #ifndef READVTK_H
 #define READVTK_H
 
-#include <module/reader.h>
+#include <vistle/module/reader.h>
 
 class vtkDataSet;
 struct ReadVtkData;

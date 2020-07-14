@@ -5,8 +5,8 @@
 #include <osg/Sequence>
 #include <osg/MatrixTransform>
 
-#include <renderer/renderer.h>
-#include <renderer/parrendmgr.h>
+#include <vistle/renderer/renderer.h>
+#include <vistle/renderer/parrendmgr.h>
 
 namespace osg {
    class Group;

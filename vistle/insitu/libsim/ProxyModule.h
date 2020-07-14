@@ -2,7 +2,7 @@
 #define PROXY_MODULE_H
 
 #include <string>
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 namespace insitu{
 class ProxyModule : public vistle::Module{

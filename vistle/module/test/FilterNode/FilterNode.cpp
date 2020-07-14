@@ -1,11 +1,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/vec.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
 
 #include "FilterNode.h"
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 using namespace vistle;
 

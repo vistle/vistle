@@ -1,8 +1,8 @@
 #include "rhrcontroller.h"
-#include <core/parameter.h>
-#include <core/statetracker.h>
-#include <core/points.h>
-#include <util/hostname.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/core/points.h>
+#include <vistle/util/hostname.h>
 
 #define CERR std::cerr << "RhrController(" << m_module->id() << "): "
 

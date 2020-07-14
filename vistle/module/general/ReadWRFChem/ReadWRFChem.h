@@ -17,9 +17,10 @@
  ** Date:  31.07.2019                                                      **
 \**************************************************************************/
 
-#include <module/reader.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/module/reader.h>
+
 #include <netcdfcpp.h>
-#include <core/structuredgrid.h>
 
 #define NUMPARAMS 6
 

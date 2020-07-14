@@ -1,8 +1,8 @@
 ﻿#include <limits>
 #include <algorithm>
 #include <boost/mpi/collectives/broadcast.hpp>
-#include <core/vec.h>
-#include <util/math.h>
+#include <vistle/core/vec.h>
+#include <vistle/util/math.h>
 #include "Tracer.h"
 #include "Integrator.h"
 #include "Particle.h"

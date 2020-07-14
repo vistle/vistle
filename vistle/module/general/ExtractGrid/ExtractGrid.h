@@ -1,8 +1,8 @@
 #ifndef EXTRACTGRID_H
 #define EXTRACTGRID_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
 
 class ExtractGrid: public vistle::Module {
 

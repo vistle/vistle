@@ -1,17 +1,16 @@
 #include <cstdio>
 #include <cstdlib>
-
-#include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
-#include <core/archives.h>
-#include <core/object.h>
+#include <vistle/core/archives.h>
+#include <vistle/core/object.h>
 
 #include "WriteVistle.h"
 

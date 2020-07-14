@@ -1,7 +1,7 @@
 #ifndef GENDAT_H
 #define GENDAT_H
 
-#include <module/reader.h>
+#include <vistle/module/reader.h>
 
 class Gendat: public vistle::Reader {
 

@@ -1,7 +1,7 @@
 #ifndef SHOW_GRID_INDEX_H
 #define SHOW_GRID_INDEX_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ShowGridIndex : public vistle::Module {
 public:

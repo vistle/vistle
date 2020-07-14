@@ -1,9 +1,9 @@
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/unstr.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <util/enum.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/util/enum.h>
 #include <bitset>
 
 #include "GenIsoDat.h"

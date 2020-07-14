@@ -1,32 +1,31 @@
 #ifndef CLUSTERMANAGER_H
 #define CLUSTERMANAGER_H
 
-#include <vector>
-#include <unordered_map>
+#include <mutex>
 #include <queue>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
-#include <util/directory.h>
-#include <util/enum.h>
-
-#include <core/statetracker.h>
-#include <core/message.h>
-#include <core/messagequeue.h>
-#include <core/parametermanager.h>
-#include <core/parameter.h>
-#include <core/messagepayload.h>
+#include <vistle/core/archives_config.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagepayload.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/parametermanager.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/util/directory.h>
+#include <vistle/util/enum.h>
 
 #include "portmanager.h"
 
 #include <boost/mpi.hpp>
 
 #ifdef MODULE_THREAD
-#include <module/module.h>
+#include <vistle/module/module.h>
 #include <boost/function.hpp>
-#include <thread>
 #endif
 
-#include <mutex>
-#include <core/archives_config.h>
 
 namespace vistle {
 

@@ -8,14 +8,14 @@
 
 #include <boost/mpi.hpp>
 
-#include <renderer/renderer.h>
-#include <core/texture1d.h>
-#include <core/message.h>
+#include <vistle/renderer/renderer.h>
+#include <vistle/core/texture1d.h>
+#include <vistle/core/message.h>
 #include <cassert>
 
-#include <util/stopwatch.h>
+#include <vistle/util/stopwatch.h>
 
-#include <renderer/parrendmgr.h>
+#include <vistle/renderer/parrendmgr.h>
 #include "rayrenderobject.h"
 #include "common.h"
 

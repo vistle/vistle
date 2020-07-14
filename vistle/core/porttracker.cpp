@@ -1,10 +1,10 @@
 #include "porttracker.h"
 #include "statetracker.h"
 #include "parameter.h"
-#include <core/message.h>
+#include <vistle/core/message.h>
 #include <iostream>
 #include <algorithm>
-#include <util/tools.h>
+#include <vistle/util/tools.h>
 
 #define CERR std::cerr << "Port@" << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
 

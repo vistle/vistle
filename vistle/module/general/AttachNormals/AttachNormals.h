@@ -1,8 +1,8 @@
 #ifndef ATTACHNORMALS_H
 #define ATTACHNORMALS_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
 
 class AttachNormals: public vistle::Module {
 

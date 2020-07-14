@@ -13,9 +13,9 @@
  *\**************************************************************************/
 
 #include "ReadFOAM.h"
-#include <core/unstr.h>
-#include <core/vec.h>
-#include <core/message.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/message.h>
 
 //Includes copied from covise ReadFOAM.cpp
 #include <sstream>
@@ -36,7 +36,7 @@
 #include <memory>
 
 #include "foamtoolbox.h"
-#include <util/coRestraint.h>
+#include <vistle/util/coRestraint.h>
 #include <boost/serialization/vector.hpp>
 #include <boost/mpi.hpp>
 #include <unordered_set>

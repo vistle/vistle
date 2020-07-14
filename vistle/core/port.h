@@ -8,7 +8,7 @@
 #include <ostream>
 #include <memory>
 
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 #include "export.h"
 
 namespace vistle {

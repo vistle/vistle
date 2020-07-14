@@ -1,8 +1,8 @@
 #ifndef ADD_OBJECT_MSQ_H
 #define ADD_OBJECT_MSQ_H
 #include "export.h"
-#include <insitu/core/moduleInfo.h>
-#include <core/object.h>
+#include <vistle/insitu/core/moduleInfo.h>
+#include <vistle/core/object.h>
 
 namespace vistle {
 namespace message {

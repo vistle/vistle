@@ -2,9 +2,9 @@
 #define VISTLE_INTERACTOR_H
 
 #include <cover/coInteractor.h>
-#include <core/message.h>
-#include <core/messages.h>
-#include <core/messagesender.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/messagesender.h>
 
 #include "export.h"
 #include "VistleRenderObject.h"

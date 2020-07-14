@@ -1,12 +1,12 @@
-﻿#include <core/object.h>
-#include <core/grid.h>
-#include <core/message.h>
-#include <core/celltree.h>
-#include <core/vec.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
+﻿#include <vistle/core/object.h>
+#include <vistle/core/grid.h>
+#include <vistle/core/message.h>
+#include <vistle/core/celltree.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
 #include "TestInterpolation.h"
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 #include <random>
 
 MODULE_MAIN(TestInterpolation)

@@ -1,11 +1,11 @@
 #include "dataproxy.h"
-#include <core/tcpmessage.h>
-#include <core/message.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/message.h>
 #include <cassert>
-#include <core/statetracker.h>
+#include <vistle/core/statetracker.h>
 #include <condition_variable>
 #include <boost/asio/deadline_timer.hpp>
-#include <util/listenv4v6.h>
+#include <vistle/util/listenv4v6.h>
 
 #define CERR std::cerr << "DataProxy: "
 

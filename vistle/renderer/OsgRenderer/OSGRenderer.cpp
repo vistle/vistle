@@ -22,7 +22,7 @@
 #include <osgViewer/Renderer>
 #include <osg/TextureRectangle>
 #include <osg/FrameBufferObject>
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 #ifdef USE_X11
 #include <X11/Xlib.h>

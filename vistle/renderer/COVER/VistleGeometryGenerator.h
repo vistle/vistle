@@ -1,8 +1,8 @@
 #ifndef VISTLEGEOMETRYGENERATOR_H
 #define VISTLEGEOMETRYGENERATOR_H
 
-#include <core/object.h>
-#include <renderer/renderobject.h>
+#include <vistle/core/object.h>
+#include <vistle/renderer/renderobject.h>
 #include <mutex>
 #include <memory>
 #include <osg/StateSet>

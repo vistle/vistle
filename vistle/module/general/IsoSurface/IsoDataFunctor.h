@@ -3,13 +3,13 @@
 
 #include <algorithm>
 #include <thrust/execution_policy.h>
-#include <util/enum.h>
-#include <util/math.h>
-#include <core/scalar.h>
-#include <core/index.h>
-#include <core/vector.h>
-#include <core/parameter.h>
-#include <core/structuredgridbase.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/math.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/index.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/structuredgridbase.h>
 
 namespace vistle {
 class Module;

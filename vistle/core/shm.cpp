@@ -1,5 +1,5 @@
 
-#include <util/sysdep.h>
+#include <vistle/util/sysdep.h>
 
 #include <iostream>
 #include <fstream>
@@ -10,7 +10,7 @@
 
 #include <limits.h>
 
-#include <util/valgrind.h>
+#include <vistle/util/valgrind.h>
 #include "messagequeue.h"
 #include "scalars.h"
 #include <cassert>

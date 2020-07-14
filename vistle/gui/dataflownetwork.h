@@ -6,7 +6,7 @@
 #include <QGraphicsScene>
 
 #include "port.h"
-#include <core/uuid.h>
+#include <vistle/core/uuid.h>
 
 #include <cassert>
 

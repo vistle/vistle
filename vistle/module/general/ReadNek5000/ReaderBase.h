@@ -7,8 +7,8 @@
 #include <array>
 #include <set>
 
-#include <util/byteswap.h>
-#include<core/index.h>
+#include <vistle/util/byteswap.h>
+#include <vistle/core/index.h>
 
 namespace nek5000 {
 typedef std::array<int, 2> Edge;

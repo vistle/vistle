@@ -1,6 +1,6 @@
 #ifdef HAVE_PYTHON
-#include <userinterface/pythoninterface.h>
-#include <userinterface/pythonmodule.h>
+#include <vistle/userinterface/pythoninterface.h>
+#include <vistle/userinterface/pythonmodule.h>
 #endif
 #include "uicontroller.h"
 #include "modifieddialog.h"
@@ -8,7 +8,7 @@
 #include "dataflowview.h"
 #include "parameters.h"
 #include "vistleconsole.h"
-#include <util/directory.h>
+#include <vistle/util/directory.h>
 
 #include <thread>
 

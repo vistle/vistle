@@ -1,7 +1,7 @@
 #ifndef TRACER_INTEGRATOR_H
 #define TRACER_INTEGRATOR_H
 
-#include <core/vec.h>
+#include <vistle/core/vec.h>
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(IntegrationMethod,
    (Euler)

@@ -5,8 +5,8 @@
 #include <boost/asio.hpp>
 #include <mutex>
 
-#include <util/tools.h>
-#include <util/buffer.h>
+#include <vistle/util/tools.h>
+#include <vistle/util/buffer.h>
 #include "tcpmessage.h"
 #include "message.h"
 #include "messages.h"

@@ -1,7 +1,7 @@
 #ifndef THICKEN_H
 #define THICKEN_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class Thicken: public vistle::Module {
 

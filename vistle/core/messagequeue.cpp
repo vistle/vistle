@@ -5,7 +5,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/thread/thread_time.hpp>
 
-#include <util/tools.h>
+#include <vistle/util/tools.h>
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"

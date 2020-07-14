@@ -1,5 +1,5 @@
 #include "IsoDataFunctor.h"
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 using namespace vistle;
 

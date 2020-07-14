@@ -1,5 +1,5 @@
-#include <module/module.h>
-#include <core/object.h>
+#include <vistle/module/module.h>
+#include <vistle/core/object.h>
 #include <sstream>
 
 const int NumAttributes = 3;

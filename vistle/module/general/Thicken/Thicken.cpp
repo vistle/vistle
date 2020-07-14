@@ -1,13 +1,13 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/coords.h>
-#include <core/points.h>
-#include <core/spheres.h>
-#include <core/lines.h>
-#include <core/tubes.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/coords.h>
+#include <vistle/core/points.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/tubes.h>
+#include <vistle/util/math.h>
 
 #include "Thicken.h"
 

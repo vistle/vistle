@@ -1,9 +1,9 @@
 #ifndef VISTLE_FILEINFO_CRAWLER_H
 #define VISTLE_FILEINFO_CRAWLER_H
 
-#include <core/filequery.h>
-#include <core/messages.h>
-#include <util/buffer.h>
+#include <vistle/core/filequery.h>
+#include <vistle/core/messages.h>
+#include <vistle/util/buffer.h>
 
 #include "hub.h"
 

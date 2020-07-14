@@ -1,10 +1,10 @@
 #ifndef SPLITDIMENSIONS_H
 #define SPLITDIMENSIONS_H
 
-#include <module/module.h>
-#include <core/unstr.h>
-#include <core/polygons.h>
-#include <core/quads.h>
+#include <vistle/module/module.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/quads.h>
 
 class SplitDimensions: public vistle::Module {
 

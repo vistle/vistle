@@ -14,7 +14,7 @@
 
 #include <osg/MatrixTransform>
 
-#include <rhr/ReadBackCuda.h>
+#include <vistle/rhr/ReadBackCuda.h>
 #include <sysdep/opengl.h>
 
 

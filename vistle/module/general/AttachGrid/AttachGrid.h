@@ -1,8 +1,8 @@
 #ifndef ATTACHGRID_H
 #define ATTACHGRID_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/core/vector.h>
+#include <vistle/module/module.h>
 
 class AttachGrid: public vistle::Module {
 

@@ -1,7 +1,7 @@
 #include "cellalgorithm.h"
 #include "unstr.h"
 #include "celltypes.h"
-#include <util/math.h>
+#include <vistle/util/math.h>
 
 namespace vistle {
 

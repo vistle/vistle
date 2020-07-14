@@ -32,15 +32,15 @@
 #ifdef HAVE_PYTHON
 #include <pybind11/eval.h>
 #include <pybind11/embed.h>
-#include <util/pybind.h>
+#include <vistle/util/pybind.h>
 #endif
 #include "vistleconsole.h"
 #ifdef HAVE_PYTHON
-#include <userinterface/pythonmodule.h>
-#include <userinterface/pythoninterface.h>
+#include <vistle/userinterface/pythonmodule.h>
+#include <vistle/userinterface/pythoninterface.h>
 #endif
-#include <core/message.h>
-#include <core/messages.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
 
 #include <QApplication>
 #include <QDebug>

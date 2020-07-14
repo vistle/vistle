@@ -5,10 +5,10 @@
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
 
-#include <renderer/COVER/COVER.h>
+#include <vistle/renderer/COVER/COVER.h>
 
 // vistle
-#include <util/exception.h>
+#include <vistle/util/exception.h>
 
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>

@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QAbstractSpinBox>
 
-#include <core/scalar.h>
+#include <vistle/core/scalar.h>
  
 class QLongSpinBox: public QAbstractSpinBox
 {

@@ -2,7 +2,7 @@
 #define SCALARS_H
 
 #include <cstdint>
-#include <util/ssize_t.h>
+#include <vistle/util/ssize_t.h>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/size.hpp>
 #include <array>

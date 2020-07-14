@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 namespace vistle {
 struct tileMsg;

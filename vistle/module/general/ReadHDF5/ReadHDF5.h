@@ -14,12 +14,11 @@
 
 #include <boost/mpl/for_each.hpp>
 
-#include <module/module.h>
-
-#include <core/object.h>
-#include <core/object_impl.h>
-#include <core/findobjectreferenceoarchive.h>
-#include <core/shm.h>
+#include <vistle/core/findobjectreferenceoarchive.h>
+#include <vistle/core/object.h>
+#include <vistle/core/object_impl.h>
+#include <vistle/core/shm.h
+#include <vistle/module/module.h>>
 
 #include "hdf5.h"
 

@@ -2,12 +2,12 @@
 #include <iomanip>
 #include <cfloat>
 #include <limits>
-#include <core/vector.h>
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/texture1d.h>
-#include <core/coords.h>
-#include <util/math.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/texture1d.h>
+#include <vistle/core/coords.h>
+#include <vistle/util/math.h>
 
 #include "Color.h"
 

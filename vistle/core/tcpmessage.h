@@ -3,7 +3,7 @@
 
 #include <boost/asio/ip/tcp.hpp>
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 #include "export.h"
 

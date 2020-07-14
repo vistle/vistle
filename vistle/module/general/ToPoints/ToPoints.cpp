@@ -1,8 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/points.h>
+#include <vistle/core/object.h>
+#include <vistle/core/points.h>
 
 #include "ToPoints.h"
 

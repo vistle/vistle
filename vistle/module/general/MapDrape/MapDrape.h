@@ -1,9 +1,9 @@
 #ifndef MAPDRAPE_H
 #define MAPDRAPE_H
 
-#include <module/module.h>
-#include <core/vector.h>
-#include <core/coords.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/coords.h>
 
 using namespace vistle;
 

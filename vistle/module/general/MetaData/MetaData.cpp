@@ -1,12 +1,12 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/triangles.h>
-#include <core/geometry.h>
-#include <core/vec.h>
-#include <core/unstr.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/geometry.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/unstr.h>
+#include <vistle/util/math.h>
 
 #include "MetaData.h"
 

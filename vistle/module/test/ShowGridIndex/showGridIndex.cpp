@@ -1,6 +1,6 @@
 #include "showGridIndex.h"
 
-#include <core/unstr.h>
+#include <vistle/core/unstr.h>
 
 using namespace vistle;
 ShowGridIndex::ShowGridIndex(const std::string& name, int moduleID, boost::mpi::communicator comm)

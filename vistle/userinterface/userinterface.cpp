@@ -4,14 +4,14 @@
 #include <iomanip>
 #include <string>
 
-#include <util/hostname.h>
-#include <util/sleep.h>
-#include <util/spawnprocess.h>
-#include <util/crypto.h>
-#include <core/message.h>
-#include <core/tcpmessage.h>
-#include <core/parameter.h>
-#include <core/port.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/sleep.h>
+#include <vistle/util/spawnprocess.h>
+#include <vistle/util/crypto.h>
+#include <vistle/core/message.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/port.h>
 #include "userinterface.h"
 
 namespace asio = boost::asio;

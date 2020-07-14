@@ -1,22 +1,23 @@
 #ifndef USERINTERFACE_H
 #define USERINTERFACE_H
 
+#include <condition_variable>
+#include <exception>
 #include <iostream>
 #include <list>
 #include <map>
-#include <exception>
+#include <mutex>
 
 #include "export.h"
-#include <util/buffer.h>
-#include <core/parameter.h>
-#include <core/port.h>
-#include <core/porttracker.h>
-#include <core/statetracker.h>
-#include <core/message.h>
+
+#include <vistle/core/message.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/port.h>
+#include <vistle/core/porttracker.h>
+#include <vistle/core/statetracker.h>
+#include <vistle/util/buffer.h>
 
 #include <boost/asio.hpp>
-#include <mutex>
-#include <condition_variable>
 
 namespace vistle {
 

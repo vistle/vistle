@@ -4,12 +4,12 @@
 #include <vector>
 #include <memory>
 
-#include <core/vector.h>
-#include <core/object.h>
-#include <core/normals.h>
-#include <core/texture1d.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/object.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/texture1d.h>
 
-#include <renderer/renderobject.h>
+#include <vistle/renderer/renderobject.h>
 
 #include "renderobjectdata_ispc.h"
 #include "render_ispc.h"

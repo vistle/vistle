@@ -10,15 +10,15 @@
 #include <boost/asio/streambuf.hpp>
 
 #include <boost/mpi.hpp>
-#include <core/message.h>
-#include <core/messages.h>
-#include <core/messagepayload.h>
-#include <core/tcpmessage.h>
-#include <core/archives_config.h>
-#include <core/archives.h>
-#include <core/shm.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messages.h>
+#include <vistle/core/messagepayload.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/archives_config.h>
+#include <vistle/core/archives.h>
+#include <vistle/core/shm.h>
 
-#include <util/vecstreambuf.h>
+#include <vistle/util/vecstreambuf.h>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>

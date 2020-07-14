@@ -3,10 +3,10 @@
 #include <algorithm>
 #include <cstdlib>
 
-#include <module/module.h>
-#include <util/hostname.h>
-#include <util/spawnprocess.h>
-#include <util/sleep.h>
+#include <vistle/module/module.h>
+#include <vistle/util/hostname.h>
+#include <vistle/util/spawnprocess.h>
+#include <vistle/util/sleep.h>
 
 #include <sys/types.h>
 #ifndef WIN32

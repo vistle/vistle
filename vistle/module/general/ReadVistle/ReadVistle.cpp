@@ -1,10 +1,10 @@
-#include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 
-#include <core/archives.h>
-#include <core/object.h>
+#include <vistle/core/archives.h>
+#include <vistle/core/object.h>
 
 #include "ReadVistle.h"
 

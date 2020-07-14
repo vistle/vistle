@@ -9,7 +9,7 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 #include "paramvector.h"
 #include "export.h"
 

@@ -1,10 +1,10 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/polygons.h>
-#include <core/triangles.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/triangles.h>
+#include <vistle/util/math.h>
 
 #include "CutGeometry.h"
 #include "../IsoSurface/IsoDataFunctor.h"

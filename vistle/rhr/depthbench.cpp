@@ -2,7 +2,7 @@
 #include "depthquant.h"
 #include "compdecomp.h"
 #include "depthcompare.h"
-#include <util/stopwatch.h>
+#include <vistle/util/stopwatch.h>
 #include <cstring>
 #include <cstdlib>
 #include <vector>
@@ -10,9 +10,9 @@
 #include <iostream>
 #include <random>
 #include <string>
-#include <core/message.h>
+#include <vistle/core/message.h>
 
-#include <util/netpbmimage.h>
+#include <vistle/util/netpbmimage.h>
 
 using vistle::Clock;
 using vistle::DepthFloat;

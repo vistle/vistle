@@ -6,8 +6,8 @@
 #include <cstring>
 #include <type_traits>
 
-#include <util/exception.h>
-#include <util/tools.h>
+#include <vistle/util/exception.h>
+#include <vistle/util/tools.h>
 #include "export.h"
 #include "index.h"
 #include "archives_config.h"

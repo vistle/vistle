@@ -1,11 +1,11 @@
 #ifndef RHR_DECODETASK_H
 #define RHR_DECODETASK_H
 
+#include <future>
 #include <memory>
 #include <vector>
-#include <future>
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 #include <PluginUtil/MultiChannelDrawer.h>
 

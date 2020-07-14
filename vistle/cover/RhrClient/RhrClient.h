@@ -16,7 +16,7 @@
 #include <cover/coVRPlugin.h>
 #include <cover/ui/Owner.h>
 
-#include <rhr/rfbext.h>
+#include <vistle/rhr/rfbext.h>
 
 #include <boost/asio.hpp>
 

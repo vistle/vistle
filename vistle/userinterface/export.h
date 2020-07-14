@@ -1,7 +1,7 @@
 #ifndef USERINTERFACE_EXPORT_H
 #define USERINTERFACE_EXPORT_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 #if defined (vistle_userinterface_EXPORTS)
 #define V_UIEXPORT V_EXPORT

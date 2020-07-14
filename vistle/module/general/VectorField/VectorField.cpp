@@ -1,10 +1,10 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/lines.h>
-#include <core/coords.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/coords.h>
+#include <vistle/util/math.h>
 
 #include "VectorField.h"
 

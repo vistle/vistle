@@ -1,9 +1,9 @@
 #ifndef ISOSURFACE_H
 #define ISOSURFACE_H
 
-#include <module/module.h>
-#include <core/vec.h>
-#include <core/unstr.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/unstr.h>
 #include "IsoDataFunctor.h"
 
 class IsoSurface: public vistle::Module {

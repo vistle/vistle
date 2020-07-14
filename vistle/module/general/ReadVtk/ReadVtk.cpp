@@ -1,28 +1,30 @@
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/polygons.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <core/unstr.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/object.h>
+#include <vistle/core/points.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
 
-#include <vtkDataSetReader.h>
-#include <vtkXMLGenericDataObjectReader.h>
-#include <vtkDataSet.h>
-#include <vtkPointData.h>
+#include <vistle/util/filesystem.h>
+
 #include <vtkCellData.h>
-#include <vtkXMLUnstructuredGridReader.h>
-#include <vtkXMLMultiBlockDataReader.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkInformation.h>
+#include <vtkCompositeDataIterator.h>
 #include <vtkCompositeDataPipeline.h>
 #include <vtkCompositeDataSet.h>
+#include <vtkDataSet.h>
+#include <vtkDataSetReader.h>
 #include <vtkGenericDataSet.h>
-#include <vtkCompositeDataIterator.h>
+#include <vtkInformation.h>
+#include <vtkPointData.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkXMLGenericDataObjectReader.h>
+#include <vtkXMLMultiBlockDataReader.h>
+#include <vtkXMLUnstructuredGridReader.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
 #endif
@@ -30,8 +32,9 @@
 #include <vtkSmartPointer.h>
 
 #include "ReadVtk.h"
+
 #include "coVtk.h"
-#include <util/filesystem.h>
+
 
 #ifdef HAVE_TINYXML2
 #include <tinyxml2.h>

@@ -2,8 +2,8 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 
-#include <util/sysdep.h>
-#include <util/hostname.h>
+#include <vistle/util/sysdep.h>
+#include <vistle/util/hostname.h>
 
 #include <sys/types.h>
 
@@ -17,10 +17,10 @@
 #include <boost/mpi.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <core/message.h>
-#include <core/messagequeue.h>
-#include <core/object.h>
-#include <core/shm.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/object.h>
+#include <vistle/core/shm.h>
 
 #include "communicator.h"
 #include "executor.h"

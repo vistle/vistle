@@ -7,7 +7,7 @@
 #include "port.h"
 #include "module.h"
 #include "dataflownetwork.h"
-#include <core/port.h>
+#include <vistle/core/port.h>
 #include <cassert>
 
 #include <QCursor>

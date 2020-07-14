@@ -2,8 +2,8 @@
 #include <iostream>
 #include <sstream>
 
-#include <util/affinity.h>
-#include <util/hostname.h>
+#include <vistle/util/affinity.h>
+#include <vistle/util/hostname.h>
 
 int main(int argc, char *argv[]) {
 

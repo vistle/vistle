@@ -52,21 +52,21 @@
 //
 
 #include "abstractfileinfogatherer.h"
-#include <qthread.h>
-#include <qmutex.h>
-#include <qwaitcondition.h>
-#include <qfilesystemwatcher.h>
-#include <qpair.h>
-#include <qstack.h>
 #include <qdatetime.h>
 #include <qdir.h>
 #include <qelapsedtimer.h>
-#include <QSet>
+#include <qfilesystemwatcher.h>
 #include <QMap>
+#include <qmutex.h>
+#include <qpair.h>
+#include <QSet>
+#include <qstack.h>
+#include <qthread.h>
+#include <qwaitcondition.h>
 
-#include <userinterface/userinterface.h>
+#include <vistle/userinterface/userinterface.h>
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 QT_REQUIRE_CONFIG(filesystemmodel);
 

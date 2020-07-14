@@ -1,7 +1,7 @@
 #ifndef TOPOINTS_H
 #define TOPOINTS_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ToPoints: public vistle::Module {
 

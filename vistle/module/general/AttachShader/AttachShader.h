@@ -1,7 +1,7 @@
 #ifndef ATTACHSHADER_H
 #define ATTACHSHADER_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class AttachShader: public vistle::Module {
 

@@ -33,7 +33,7 @@
 
 #include "ReadDyna3D.h"
 
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 
 using namespace vistle;
 

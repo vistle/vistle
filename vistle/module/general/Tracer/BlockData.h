@@ -1,12 +1,12 @@
 #ifndef TRACER_BLOCKDATA_H
 #define TRACER_BLOCKDATA_H
 
+#include <mutex>
 #include <vector>
 
-#include <core/object.h>
-#include <core/grid.h>
-#include <core/lines.h>
-#include <mutex>
+#include <vistle/core/grid.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/object.h>
 
 
 class BlockData{

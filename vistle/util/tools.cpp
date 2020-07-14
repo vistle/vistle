@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <signal.h>
 #else
-#include <util/sysdep.h>
+#include <vistle/util/sysdep.h>
 #endif
 
 #include "tools.h"

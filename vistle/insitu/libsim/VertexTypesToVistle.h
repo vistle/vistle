@@ -1,6 +1,6 @@
 #ifndef VERTEX_TYPES_TO_VISTLE_H
 #define VERTEX_TYPES_TO_VISTLE_H
-#include <core/unstr.h>
+#include <vistle/core/unstr.h>
 #include "VisItDataTypes.h"
 namespace vistle{
 namespace insitu {

@@ -1,6 +1,6 @@
-#include <module/module.h>
-#include <core/points.h>
-#include <util/enum.h>
+#include <vistle/module/module.h>
+#include <vistle/core/points.h>
+#include <vistle/util/enum.h>
 
 using namespace vistle;
 

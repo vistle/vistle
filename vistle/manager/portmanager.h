@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <core/porttracker.h>
+#include <vistle/core/porttracker.h>
 
 namespace vistle {
 

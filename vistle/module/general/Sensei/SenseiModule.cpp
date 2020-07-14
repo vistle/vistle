@@ -1,18 +1,18 @@
 #include "SenseiModule.h"
 
 
-#include <util/listenv4v6.h>
-#include <util/hostname.h>
+#include <vistle/util/listenv4v6.h>
+#include <vistle/util/hostname.h>
 
 
-#include <core/rectilineargrid.h>
+#include <vistle/core/rectilineargrid.h>
 #include <sstream>
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 
 
-#include <insitu/util/print.h>
+#include <vistle/insitu/util/print.h>
 
 
 using namespace std;

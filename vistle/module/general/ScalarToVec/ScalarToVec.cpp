@@ -1,11 +1,11 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/vec.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
 
 #include "ScalarToVec.h"
-#include <util/enum.h>
+#include <vistle/util/enum.h>
 #include <algorithm>
 using namespace vistle;
 

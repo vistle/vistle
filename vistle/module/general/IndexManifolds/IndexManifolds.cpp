@@ -1,12 +1,12 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/structuredgridbase.h>
-#include <core/quads.h>
-#include <core/lines.h>
-#include <core/points.h>
-#include <util/enum.h>
+#include <vistle/core/object.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/points.h>
+#include <vistle/util/enum.h>
 
 #include "IndexManifolds.h"
 

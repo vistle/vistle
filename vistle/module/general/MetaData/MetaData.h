@@ -1,8 +1,8 @@
 #ifndef METADATA_H
 #define METADATA_H
 
-#include <module/module.h>
-#include <core/vector.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
 
 class MetaData: public vistle::Module {
 

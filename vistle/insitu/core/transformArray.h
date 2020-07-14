@@ -5,9 +5,9 @@
 #include "callFunctionWithVoidToTypeCast.h"
 #include "exeption.h"
 
-#include <core/database.h>
-#include <core/object.h>
-#include <core/uniformgrid.h>
+#include <vistle/core/database.h>
+#include <vistle/core/object.h>
+#include <vistle/core/uniformgrid.h>
 
 #include <algorithm>
 #include <array>

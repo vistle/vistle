@@ -438,7 +438,7 @@ macro(vistle_add_library targetname)
     endif()
     if(${CMAKE_VERSION} VERSION_LESS "3.12.4")
         install(TARGETS ${targetname} EXPORT ${targetname}Targets
-		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
 				     COMPONENT	${targetname}_Runtime
 		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -448,7 +448,7 @@ macro(vistle_add_library targetname)
         )
     else()
             install(TARGETS ${targetname} EXPORT ${targetname}Targets
-		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vistle
+		    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 		    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
 				     COMPONENT	${targetname}_Runtime
 		    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -472,10 +472,10 @@ macro(vistle_export_library targetname)
 	string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
 
 	target_include_directories(${targetname}  
-        PRIVATE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/vistle> 
-        PRIVATE  $<INSTALL_INTERFACE:include/vistle> 
-        INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/vistle> 
-        INTERFACE  $<INSTALL_INTERFACE:include/vistle> 
+        PRIVATE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}> 
+        PRIVATE  $<INSTALL_INTERFACE:include> 
+        INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}> 
+        INTERFACE  $<INSTALL_INTERFACE:include> 
 		)
 	
 	set(header "${ARGN}")

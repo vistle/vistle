@@ -1,9 +1,9 @@
 #ifndef RHR_COMPDECOMP_H
 #define RHR_COMPDECOMP_H
 
-#include <core/message.h>
-#include <util/enum.h>
-#include <util/buffer.h>
+#include <vistle/core/message.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/buffer.h>
 #include <vector>
 #include "export.h"
 

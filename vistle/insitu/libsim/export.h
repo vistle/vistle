@@ -1,7 +1,7 @@
 #ifndef VISIT_RUNTIME_EXPORT_H
 #define VISIT_RUNTIME_EXPORT_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 
 #if defined (LIBSIM_EXPORT)

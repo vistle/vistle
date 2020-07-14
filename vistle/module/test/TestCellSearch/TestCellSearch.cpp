@@ -1,8 +1,8 @@
-﻿#include <core/object.h>
-#include <core/unstr.h>
-#include <core/structuredgrid.h>
-#include <core/celltree.h>
-#include <core/message.h>
+﻿#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/celltree.h>
+#include <vistle/core/message.h>
 #include "TestCellSearch.h"
 
 MODULE_MAIN(TestCellSearch)

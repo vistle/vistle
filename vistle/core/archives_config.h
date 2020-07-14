@@ -20,8 +20,8 @@
 #include <iostream>
 #include <vector>
 
-#include <util/enum.h>
-#include <util/buffer.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/buffer.h>
 
 #include "export.h"
 #include "index.h"

@@ -1,12 +1,14 @@
 #ifndef VISTLE_MODULE_REGISTRY_H
 #define VISTLE_MODULE_REGISTRY_H
 
-#include <string>
-#include <boost/mpi.hpp>
-#include <boost/function.hpp>
-#include <util/directory.h>
-
 #include "export.h"
+
+#include <boost/function.hpp>
+#include <boost/mpi.hpp>
+
+#include <string>
+
+#include <vistle/util/directory.h>
 
 namespace mpi = boost::mpi;
 

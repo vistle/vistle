@@ -13,22 +13,22 @@
 #include <string>
 #include <vector>
 
-#include <util/hostname.h>
+#include <vistle/util/hostname.h>
 
-#include <core/unstr.h>
-#include <core/points.h>
-#include <core/normals.h>
-#include <core/texture1d.h>
-#include <core/spheres.h>
-#include <core/tubes.h>
-#include <core/triangles.h>
-#include <core/quads.h>
-#include <core/polygons.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
-#include <core/message.h>
-#include <core/index.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/points.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/texture1d.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/tubes.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/message.h>
+#include <vistle/core/index.h>
 
 #include <boost/mpi/collectives.hpp>
 

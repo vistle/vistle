@@ -12,25 +12,24 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <boost/mpl/for_each.hpp>
 #include <boost/config.hpp>
-#include <boost/type_traits/is_enum.hpp>
 #include <boost/mpl/bool.hpp>
-#include <boost/mpl/eval_if.hpp>
-#include <boost/mpl/int.hpp>
 #include <boost/mpl/equal_to.hpp>
-#include <boost/serialization/nvp.hpp>
-#include <boost/serialization/array.hpp>
-#include <boost/serialization/string.hpp>
+#include <boost/mpl/eval_if.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/int.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/array.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/string.hpp>
 #include <boost/serialization/version.hpp>
+#include <boost/type_traits/is_enum.hpp>
 
-#include <module/module.h>
-
-#include <core/vec.h>
-#include <core/unstr.h>
-#include <core/findobjectreferenceoarchive.h>
-#include <core/shm.h>
+#include <vistle/core/findobjectreferenceoarchive.h>
+#include <vistle/core/shm.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
+#include <vistle/module/module.h>
 
 #include "hdf5.h"
 

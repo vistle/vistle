@@ -8,13 +8,13 @@
 #include <cstdlib>
 #include <sstream>
 #include "run_on_main_thread.h"
-#include <util/directory.h>
-#include <core/objectmeta.h>
-#include <core/object.h>
+#include <vistle/util/directory.h>
+#include <vistle/core/objectmeta.h>
+#include <vistle/core/object.h>
 #include "executor.h"
 #include "communicator.h"
-#include <util/hostname.h>
-#include <control/hub.h>
+#include <vistle/util/hostname.h>
+#include <vistle/control/hub.h>
 #include <boost/mpi.hpp>
 
 

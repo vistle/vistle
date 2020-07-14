@@ -2,18 +2,18 @@
 #define LEVELLER_H
 
 #include <vector>
-#include <core/index.h>
-#include <core/vec.h>
-#include <core/scalar.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
-#include <core/unstr.h>
-#include <core/polygons.h>
-#include <core/quads.h>
-#include <core/triangles.h>
-#include <core/lines.h>
-#include <util/enum.h>
+#include <vistle/core/index.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/lines.h>
+#include <vistle/util/enum.h>
 
 #ifdef CUTTINGSURFACE
 #define Leveller CutLeveller

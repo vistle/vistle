@@ -3,11 +3,11 @@
 
 #include <vector>
 
-#include <util/enum.h>
-#include <core/vector.h>
-#include <core/object.h>
-#include <core/normals.h>
-#include <core/texture1d.h>
+#include <vistle/util/enum.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/object.h>
+#include <vistle/core/normals.h>
+#include <vistle/core/texture1d.h>
 
 #include "export.h"
 

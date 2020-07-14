@@ -3,7 +3,7 @@
 
 #include <string>
 #include <mutex>
-#include <userinterface/userinterface.h>
+#include <vistle/userinterface/userinterface.h>
 
 namespace vistle {
 

@@ -1,5 +1,5 @@
 #include "SyncShmIDs.h"
-#include <core/messagequeue.h>
+#include <vistle/core/messagequeue.h>
 
 using namespace vistle::insitu;
 using namespace vistle::insitu::message;

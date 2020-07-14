@@ -1,4 +1,4 @@
-#include <control/hub.h>
+#include <vistle/control/hub.h>
 
 #include <iostream>
 

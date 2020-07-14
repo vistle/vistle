@@ -3,18 +3,18 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/triangles.h>
-#include <core/polygons.h>
-#include <core/uniformgrid.h>
-#include <core/rectilineargrid.h>
-#include <core/structuredgrid.h>
-#include <core/unstr.h>
-#include <core/points.h>
-#include <core/spheres.h>
-#include <core/coordswradius.h>
-#include <util/enum.h>
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/uniformgrid.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/points.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/coordswradius.h>
+#include <vistle/util/enum.h>
 
 #include "Gendat.h"
 

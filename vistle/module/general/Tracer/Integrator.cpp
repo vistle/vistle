@@ -2,7 +2,7 @@
 #include "Particle.h"
 #include "BlockData.h"
 #include "Tracer.h"
-#include <core/vec.h>
+#include <vistle/core/vec.h>
 
 
 using namespace vistle;

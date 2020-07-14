@@ -1,14 +1,14 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/message.h>
-#include <core/object.h>
-#include <core/unstr.h>
-#include <core/rectilineargrid.h>
-#include <core/vec.h>
-#include <core/triangles.h>
-#include <core/vector.h>
-#include <util/math.h>
+#include <vistle/core/message.h>
+#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/vector.h>
+#include <vistle/util/math.h>
 
 #include <boost/mpi/collectives.hpp>
 

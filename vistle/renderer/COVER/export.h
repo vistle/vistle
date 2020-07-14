@@ -1,7 +1,7 @@
 #ifndef VISTLE_COVER_EXPORT_H
 #define VISTLE_COVER_EXPORT_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 #if defined (vistle_cover_EXPORTS)
 #define V_COVEREXPORT V_EXPORT

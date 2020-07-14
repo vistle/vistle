@@ -5,16 +5,16 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 
-#include <module/module.h>
-#include <core/vec.h>
-#include <core/scalars.h>
-#include <core/message.h>
-#include <core/coords.h>
-#include <core/lines.h>
-#include <core/triangles.h>
-#include <core/quads.h>
-#include <core/indexed.h>
-#include <core/structuredgridbase.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/scalars.h>
+#include <vistle/core/message.h>
+#include <vistle/core/coords.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/indexed.h>
+#include <vistle/core/structuredgridbase.h>
 
 using namespace vistle;
 

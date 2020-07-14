@@ -1,6 +1,6 @@
 #include "MapDrape.h"
-#include <core/structuredgrid.h>
-#include <core/object.h>
+#include <vistle/core/structuredgrid.h>
+#include <vistle/core/object.h>
 #include <proj_api.h>
 
 using namespace vistle;

@@ -8,11 +8,11 @@
 #include <QTextEdit>
 #include <QDebug>
 
-#include <userinterface/vistleconnection.h>
+#include <vistle/userinterface/vistleconnection.h>
 
 #include "parameters.h"
 #include "vistleobserver.h"
-#include <core/message.h>
+#include <vistle/core/message.h>
 
 #include <QtGroupPropertyManager>
 #include <QtBoolPropertyManager>

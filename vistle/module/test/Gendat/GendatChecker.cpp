@@ -1,9 +1,9 @@
-#include <sstream>
 #include <iomanip>
+#include <sstream>
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/triangles.h>
+#include <vistle/core/object.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/vec.h>
 
 #include "GendatChecker.h"
 

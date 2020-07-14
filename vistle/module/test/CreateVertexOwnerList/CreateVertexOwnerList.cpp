@@ -1,6 +1,6 @@
-#include <module/module.h>
-#include <core/unstr.h>
-#include <core/vertexownerlist.h>
+#include <vistle/module/module.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vertexownerlist.h>
 #include <ctime>
 
 using namespace vistle;

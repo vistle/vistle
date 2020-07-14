@@ -7,7 +7,7 @@
 #include <limits>
 #include <sstream>
 
-#include <util/netpbmimage.h>
+#include <vistle/util/netpbmimage.h>
 
 //#define TIMING
 

@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include <core/scalar.h>
-#include <core/paramvector.h>
+#include <vistle/core/scalar.h>
+#include <vistle/core/paramvector.h>
 
 namespace vistle {
 

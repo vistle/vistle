@@ -19,16 +19,16 @@
 #include <osg/LineWidth>
 #include <osg/MatrixTransform>
 
-#include <util/math.h>
-#include <core/polygons.h>
-#include <core/points.h>
-#include <core/spheres.h>
-#include <core/lines.h>
-#include <core/triangles.h>
-#include <core/quads.h>
-#include <core/texture1d.h>
-#include <core/placeholder.h>
-#include <core/normals.h>
+#include <vistle/util/math.h>
+#include <vistle/core/polygons.h>
+#include <vistle/core/points.h>
+#include <vistle/core/spheres.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/triangles.h>
+#include <vistle/core/quads.h>
+#include <vistle/core/texture1d.h>
+#include <vistle/core/placeholder.h>
+#include <vistle/core/normals.h>
 
 #ifdef COVER_PLUGIN
 #include <cover/RenderObject.h>

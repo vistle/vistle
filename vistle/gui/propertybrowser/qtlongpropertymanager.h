@@ -2,7 +2,7 @@
 #define QT_LONG_PROPERTY_MANAGER
 
 #include <QtAbstractPropertyManager>
-#include <core/scalar.h>
+#include <vistle/core/scalar.h>
 
 class QtLongPropertyManagerPrivate;
 

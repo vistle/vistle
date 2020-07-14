@@ -1,9 +1,9 @@
 #include "VistleInteractor.h"
 #include "VistleRenderObject.h"
 #include <cover/coVRAnimationManager.h>
-#include <core/parameter.h>
-#include <module/module.h>
-#include <core/statetracker.h>
+#include <vistle/core/parameter.h>
+#include <vistle/module/module.h>
+#include <vistle/core/statetracker.h>
 
 using namespace vistle;
 

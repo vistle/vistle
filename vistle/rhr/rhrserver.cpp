@@ -21,12 +21,12 @@
 #include <tbb/concurrent_queue.h>
 #include <tbb/enumerable_thread_specific.h>
 
-#include <util/stopwatch.h>
-#include <util/netpbmimage.h>
-#include <util/crypto.h>
-#include <core/tcpmessage.h>
-#include <core/messages.h>
-#include <util/listenv4v6.h>
+#include <vistle/util/stopwatch.h>
+#include <vistle/util/netpbmimage.h>
+#include <vistle/util/crypto.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/core/messages.h>
+#include <vistle/util/listenv4v6.h>
 
 //#define QUANT_ERROR
 //#define TIMING

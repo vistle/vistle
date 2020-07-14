@@ -9,12 +9,12 @@
 #include <boost/mpi/collectives/all_gather.hpp>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/mpi/operations.hpp>
-#include <core/vec.h>
-#include <core/paramvector.h>
-#include <core/lines.h>
-#include <core/unstr.h>
-#include <core/structuredgridbase.h>
-#include <core/structuredgrid.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/paramvector.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/structuredgridbase.h>
+#include <vistle/core/structuredgrid.h>
 
 MODULE_MAIN(Tracer)
 

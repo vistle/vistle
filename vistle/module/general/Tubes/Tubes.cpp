@@ -1,10 +1,10 @@
 #include <sstream>
 #include <iomanip>
 
-#include <core/object.h>
-#include <core/lines.h>
-#include <core/tubes.h>
-#include <util/math.h>
+#include <vistle/core/object.h>
+#include <vistle/core/lines.h>
+#include <vistle/core/tubes.h>
+#include <vistle/util/math.h>
 
 #include "Tubes.h"
 

@@ -1,7 +1,7 @@
 #ifndef LIBSIM_ESTABLISH_CONNECTION_EXPORT_H
 #define LIBSIM_ESTABLISH_CONNECTION_EXPORT_H
 
-#include <util/export.h>
+#include <vistle/util/export.h>
 
 
 #if defined (vistle_libsim_connect_EXPORTS)

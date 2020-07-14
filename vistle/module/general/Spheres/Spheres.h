@@ -1,7 +1,7 @@
 #ifndef TOSPHERES_H
 #define TOSPHERES_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class ToSpheres: public vistle::Module {
 

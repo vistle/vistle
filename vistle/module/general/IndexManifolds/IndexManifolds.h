@@ -1,7 +1,7 @@
 #ifndef INDEXMANIFOLDS_H
 #define INDEXMANIFOLDS_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 class IndexManifolds: public vistle::Module {
 

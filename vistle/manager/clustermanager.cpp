@@ -11,41 +11,41 @@
 #include <pthread.h>
 #endif
 
-#include <util/sysdep.h>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <sys/types.h>
 
-#include <cstdlib>
-#include <sstream>
-#include <iostream>
-#include <iomanip>
-#include <queue>
-#include <future>
-#include <numeric>
-
-#include <core/message.h>
-#include <core/messagequeue.h>
-#include <core/messagerouter.h>
-#include <core/messagepayload.h>
-#include <core/object.h>
-#include <core/shm.h>
-#include <core/parameter.h>
 #include <cassert>
-#include <util/directory.h>
-#include <util/enum.h>
-#include <util/stopwatch.h>
+#include <cstdlib>
+#include <future>
+#include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <queue>
+#include <sstream>
+
+#include <vistle/core/message.h>
+#include <vistle/core/messagepayload.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/core/messagerouter.h>
+#include <vistle/core/object.h>
+#include <vistle/core/parameter.h>
+#include <vistle/core/shm.h>
+#include <vistle/util/directory.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/stopwatch.h>
+#include <vistle/util/sysdep.h>
 
 #include "clustermanager.h"
-#include "datamanager.h"
 #include "communicator.h"
+#include "datamanager.h"
 
 #ifdef MODULE_THREAD
-#include <util/filesystem.h>
-#include <module/module.h>
+#include <vistle/module/module.h>
+#include <vistle/util/filesystem.h>
 #ifdef MODULE_STATIC
-#include <module/moduleregistry.h>
+#include <vistle/module/moduleregistry.h>
 #else
 #include <boost/dll/import.hpp>
 #endif

@@ -8,7 +8,7 @@
 
 #include <mpi.h>
 
-#include <core/shm.h>
+#include <vistle/core/shm.h>
 
 int main(int argc, char ** argv) {
 

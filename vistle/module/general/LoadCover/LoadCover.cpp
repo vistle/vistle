@@ -2,8 +2,8 @@
 
 #include <boost/format.hpp>
 
-#include <core/points.h>
-#include <util/filesystem.h>
+#include <vistle/core/points.h>
+#include <vistle/util/filesystem.h>
 
 #include "LoadCover.h"
 

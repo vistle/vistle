@@ -1,10 +1,11 @@
 #ifndef READITLRBIN_H
 #define READITLRBIN_H
 
-#include <module/reader.h>
-#include <util/filesystem.h>
-#include <core/rectilineargrid.h>
-#include <core/vec.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/vec.h>
+#include <vistle/module/reader.h>
+#include <vistle/util/filesystem.h>
+
 #include <string>
 #include <vector>
 

@@ -1,5 +1,5 @@
-﻿#include <core/object.h>
-#include <core/message.h>
+﻿#include <vistle/core/object.h>
+#include <vistle/core/message.h>
 #include "AttachShader.h"
 
 MODULE_MAIN(AttachShader)

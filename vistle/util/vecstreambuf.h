@@ -4,7 +4,7 @@
 #include <streambuf>
 #include <vector>
 #include <cstring>
-#include <util/allocator.h>
+#include <vistle/util/allocator.h>
 
 namespace vistle {
 

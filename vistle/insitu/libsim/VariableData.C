@@ -13,7 +13,7 @@
 #include <sstream>
 #include <utility>
 
-#include <core/vec.h>
+#include <vistle/core/vec.h>
 using std::ostringstream;
 using std::map;
 using std::pair;

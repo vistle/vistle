@@ -1,9 +1,9 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-#include <module/module.h>
-#include <core/vector.h>
-#include <core/texture1d.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/texture1d.h>
 
 #include <deque>
 

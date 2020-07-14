@@ -1,8 +1,8 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include <module/module.h>
-#include <util/enum.h>
+#include <vistle/module/module.h>
+#include <vistle/util/enum.h>
 #include "renderobject.h"
 #include "export.h"
 

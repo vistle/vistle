@@ -9,9 +9,9 @@
 
 #include <mpi.h>
 
-#include <core/shm.h>
-#include <core/object.h>
-#include <core/shmvector.h>
+#include <vistle/core/shm.h>
+#include <vistle/core/object.h>
+#include <vistle/core/shmvector.h>
 
 using namespace vistle;
 

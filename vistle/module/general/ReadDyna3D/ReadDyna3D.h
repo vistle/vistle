@@ -57,11 +57,11 @@
 
 //#include <appl/ApplInterface.h>
 
-#include <util/coRestraint.h>
-#include <core/unstr.h>
-#include <core/vec.h>
+#include <vistle/util/coRestraint.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/vec.h>
 
-#include <module/reader.h>
+#include <vistle/module/reader.h>
 
 #include "Element.h"
 #include "Dyna3DReader.h"

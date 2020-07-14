@@ -1,7 +1,7 @@
 #ifndef TRANSFORMGRID_H
 #define TRANSFORMGRID_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(DimensionOrder, (XYZ)(XZY)(YXZ)(YZX)(ZXY)(ZYX))
 

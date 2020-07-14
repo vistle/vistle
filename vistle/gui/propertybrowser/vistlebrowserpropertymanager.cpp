@@ -1,7 +1,7 @@
 #include "vistlebrowserpropertymanager.h"
 #include "qtpropertymanager_helpers.cpp"
 
-#include <core/message.h>
+#include <vistle/core/message.h>
 
 #include <QDebug>
 

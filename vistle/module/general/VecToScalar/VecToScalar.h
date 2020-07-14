@@ -1,9 +1,9 @@
 #ifndef VECTOSCALAR_H
 #define VECTOSCALAR_H
 
-#include <module/module.h>
-#include <core/vector.h>
-#include <core/vec.h>
+#include <vistle/module/module.h>
+#include <vistle/core/vector.h>
+#include <vistle/core/vec.h>
 
 class VecToScalar: public vistle::Module {
 

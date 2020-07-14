@@ -33,16 +33,16 @@
 
 #include "ReadNek5000.h"
 
-#include <util/enum.h>
-#include <util/byteswap.h>
+#include <vistle/util/enum.h>
+#include <vistle/util/byteswap.h>
 
 #include "ReadNek5000.h"
 #include "PartitionReader.h"
 
 #include <stdio.h>
 
-#include <core/vec.h>
-#include <core/parameter.h>
+#include <vistle/core/vec.h>
+#include <vistle/core/parameter.h>
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>

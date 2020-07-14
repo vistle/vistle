@@ -1,6 +1,6 @@
-﻿#include <core/object.h>
-#include <core/unstr.h>
-#include <core/message.h>
+﻿#include <vistle/core/object.h>
+#include <vistle/core/unstr.h>
+#include <vistle/core/message.h>
 #include "PrintAttributes.h"
 
 MODULE_MAIN(PrintAttributes)

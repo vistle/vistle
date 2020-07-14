@@ -9,7 +9,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <util/buffer.h>
+#include <vistle/util/buffer.h>
 
 #include "export.h"
 #include "message.h"

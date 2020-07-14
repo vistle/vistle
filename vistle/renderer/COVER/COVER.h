@@ -8,10 +8,10 @@
 #include <osg/Sequence>
 #include <osg/Texture1D>
 
-#include <renderer/renderobject.h>
-#include <renderer/renderer.h>
-#include <core/messages.h>
-#include <VistlePluginUtil/VistleRenderObject.h>
+#include <vistle/renderer/renderobject.h>
+#include <vistle/renderer/renderer.h>
+#include <vistle/core/messages.h>
+#include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 #include "VistleGeometryGenerator.h"
 
 #include "export.h"

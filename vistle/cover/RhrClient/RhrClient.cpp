@@ -11,20 +11,20 @@
 
 #include <net/tokenbuffer.h>
 
+#include <cover/coVRAnimationManager.h>
 #include <cover/coVRConfig.h>
-#include <cover/OpenCOVER.h>
+#include <cover/coVRLighting.h>
 #include <cover/coVRMSController.h>
 #include <cover/coVRPluginSupport.h>
-#include <cover/VRViewer.h>
-#include <cover/coVRLighting.h>
-#include <cover/coVRAnimationManager.h>
-#include <cover/RenderObject.h>
 #include <cover/coVRStatsDisplay.h>
-
+#include <cover/input/input.h>
+#include <cover/OpenCOVER.h>
+#include <cover/RenderObject.h>
 #include <cover/ui/Button.h>
 #include <cover/ui/Menu.h>
 #include <cover/ui/SelectionList.h>
 #include <cover/ui/Slider.h>
+#include <cover/VRViewer.h>
 
 #include <OpenVRUI/osg/mathUtils.h>
 
@@ -32,20 +32,19 @@
 
 #include <osg/io_utils>
 
-#include <memory>
-#include <limits>
 #include <algorithm>
 #include <cctype>
+#include <limits>
+#include <memory>
 
-#include <core/tcpmessage.h>
-#include <util/hostname.h>
-#include <util/crypto.h>
-#include <rhr/rfbext.h>
+#include <vistle/core/tcpmessage.h>
+#include <vistle/rhr/rfbext.h>
+#include <vistle/util/crypto.h>
+#include <vistle/util/hostname.h>
 
-#include <VistlePluginUtil/VistleRenderObject.h>
-#include <VistlePluginUtil/VistleInteractor.h>
+#include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
+#include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 
-#include <cover/input/input.h>
 
 #include "RemoteConnection.h"
 #include "RhrClient.h"

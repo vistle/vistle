@@ -1,10 +1,10 @@
 #ifndef INSITU_READER_H
 #define INSITU_READER_H
 
-#include <module/module.h>
+#include <vistle/module/module.h>
 #include "export.h"
-#include<core/messagequeue.h>
-#include <insitu/message/SyncShmIDs.h>
+#include <vistle/core/messagequeue.h>
+#include <vistle/insitu/message/SyncShmIDs.h>
 
 
 
