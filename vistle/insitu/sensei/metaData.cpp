@@ -9,13 +9,12 @@ using namespace vistle::insitu;
 
 MetaData::MeshIter vistle::insitu::MetaData::addMesh(const std::string& name)
 {
-	m_variables.push_back(std::vector<std::string>());
-	return m_meshes.emplace(end(), name);
+	return m_meshes.insert({ name, std::vector<std::string>() }).first;
 }
 
 MetaData::MeshIter vistle::insitu::MetaData::getMesh(const std::string& name)
 {
-	return std::find(begin(), end(), name);
+	return m_meshes.find(name);
 }
 
 MetaData::MeshIter vistle::insitu::MetaData::begin()
@@ -32,7 +31,7 @@ void vistle::insitu::MetaData::addVariable(const std::string& varName, const Mes
 {
 	if (mesh != end())
 	{
-		m_variables[mesh - begin()].push_back(varName);
+		mesh->second.push_back(varName);
 	}
 	else
 	{
@@ -42,16 +41,15 @@ void vistle::insitu::MetaData::addVariable(const std::string& varName, const Mes
 
 void vistle::insitu::MetaData::addVariable(const std::string& varName, const std::string& meshName)
 {
-	addVariable(varName, getMesh(meshName));
+	m_meshes[meshName].push_back(varName);
 }
 
-MetaData::MetaVar vistle::insitu::MetaData::getVariables(const MeshIter& mesh)
+MetaData::MetaVar vistle::insitu::MetaData::getVariables(const MetaData::MeshIter& mesh)
 {
 
 	if (mesh != end())
 	{
-		auto& vars = m_variables[mesh - begin()];
-		return MetaVar{ vars.begin(), vars.end() };
+		return MetaVar{ mesh->second.begin(), mesh->second.end() };
 	}
 	else
 	{

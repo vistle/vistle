@@ -68,21 +68,12 @@ bool SenseiAdapter::Execute(size_t timestep)
 		CERR << "can not process data if the sensei controller is not executing!" << endl;
 		return true;
 	}
-	for (const VariablesUsedByMesh& data : m_usedData)
+	auto dataObjects = m_callbacks.getData(m_usedData);
+	for (const auto dataObject : dataObjects)
 	{
-		vistle::Object::ptr grid = m_callbacks.getGrid(*data.mesh);
-		grid->setTimestep(m_currTimestep);
-		addObject(*data.mesh, grid);
-		for (auto name : data.varNames)
-		{
-			auto var = m_callbacks.getVar(*name);
-			var->addAttribute("_species", *name);
-			var->setTimestep(m_currTimestep);
-			var->setGrid(grid);
-			addObject(*name, var);
-		}
+		addObject(dataObject.portName, dataObject.data);
 	}
-
+	
 	return true;
 }
 
@@ -107,22 +98,24 @@ SenseiAdapter::~SenseiAdapter()
 
 void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
 {
-	m_usedData.clear();
+	m_usedData = MetaData{};
 	std::sort(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end());
-	for (auto mesh = m_metaData.begin(); mesh != m_metaData.end(); ++mesh)
+	for (auto simMesh = m_metaData.begin(); simMesh != m_metaData.end(); ++simMesh)
 	{
-		std::vector<MetaData::VarIter> varNames;
-		for (auto name : m_moduleInfo.connectedPorts)
+		for (auto connectedData : m_moduleInfo.connectedPorts)
 		{
-			auto it = std::find(m_metaData.getVariables(mesh).begin(), m_metaData.getVariables(mesh).end(), name);
-			if (it != m_metaData.getVariables(mesh).end())
+			if (connectedData == simMesh->first) //the mesh is connected directly
 			{
-				varNames.push_back(it);
+				m_usedData.addMesh(simMesh->first);
 			}
-		}
-		if (varNames.size() > 0 || std::binary_search(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end(), *mesh)) //if at least one variable of the mesh is used create the mesh and all its used variables
-		{
-			m_usedData.push_back({ mesh, varNames });
+			else
+			{
+				auto it = std::find(m_metaData.getVariables(simMesh).begin(), m_metaData.getVariables(simMesh).end(), connectedData); //find out if a variable of this mesh is connected
+				if (it != m_metaData.getVariables(simMesh).end())
+				{
+					m_usedData.addVariable(*it, simMesh->first);
+				}
+			}
 		}
 	}
 }
@@ -312,19 +305,20 @@ bool SenseiAdapter::initializeVistleEnv()
 void SenseiAdapter::addPorts()
 {
 	std::vector<std::vector<std::string>> ports;
-	std::vector<std::string> meshNames{ m_metaData.begin(), m_metaData.end() };
+	std::vector<std::string> meshNames;
+	std::vector<std::string> varNames;
+	for (const auto& mesh : m_metaData)
+	{
+		meshNames.push_back(mesh.first);
+		for (const auto& var : mesh.second)
+		{
+			varNames.push_back(var);
+		}
+	}
 
 	meshNames.push_back("mesh");
 	ports.push_back(meshNames);
-
-	std::vector<std::string> varNames;
-	for (auto m = m_metaData.begin(); m != m_metaData.end(); ++m)
-	{
-		for (auto name : m_metaData.getVariables(m))
-		{
-			varNames.push_back(name);
-		}
-	}
+		
 	varNames.push_back("variable");
 	ports.push_back(varNames);
 

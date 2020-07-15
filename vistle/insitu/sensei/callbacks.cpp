@@ -10,6 +10,16 @@ sensei::Callbacks::Callbacks(std::function<vistle::Object::ptr(const std::string
 {
 }
 
+vistle::insitu::sensei::Callbacks::Callbacks(std::function<std::vector<Callbacks::OutputData>(const MetaData& usedData)> getData)
+	:m_getData(getData)
+{
+}
+
+std::vector<Callbacks::OutputData> vistle::insitu::sensei::Callbacks::getData(const MetaData& usedData)
+{
+	return m_getData(usedData);
+}
+
 vistle::Object::ptr sensei::Callbacks::getGrid(const std::string& name)
 {
 	return m_getGrid(name);

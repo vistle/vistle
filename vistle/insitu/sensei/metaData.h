@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace vistle {
 namespace insitu {
@@ -12,7 +13,7 @@ namespace insitu {
 class V_SENSEIEXPORT MetaData { //This contains the names of all meshes and their linked data fields and must be provided before the connection to Vistle
 public:
 
-	typedef std::vector<std::string>::iterator MeshIter;
+	typedef std::unordered_map<std::string, std::vector<std::string>>::iterator MeshIter;
 	typedef std::vector<std::string>::iterator VarIter;
 
 	struct V_SENSEIEXPORT MetaVar {//this only contains the begin and end iterators for the variables of a mesh
@@ -36,9 +37,7 @@ public:
 	MetaVar getVariables(const std::string& mesh);
 
 private:
-
-	std::vector<std::string> m_meshes;
-	std::vector<std::vector<std::string>> m_variables;
+	std::unordered_map<std::string, std::vector<std::string>> m_meshes;
 };
 
 } //insitu

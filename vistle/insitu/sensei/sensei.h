@@ -60,7 +60,7 @@ private:
 		MetaData::MeshIter mesh;
 		std::vector<MetaData::VarIter> varNames;//all used variables of mesh
 	};
-	std::vector<VariablesUsedByMesh> m_usedData;
+	MetaData m_usedData;
 	bool m_connected = false; //If we are connected to the module
 	std::unique_ptr<vistle::insitu::message::AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to module
 	//mpi info
