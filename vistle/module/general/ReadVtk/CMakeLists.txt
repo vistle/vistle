@@ -22,8 +22,6 @@ endif()
 add_module(ReadVtk
    ReadVtk.cpp
    ReadVtk.h
-   coVtk.cpp
-   coVtk.h
 )
 
 include_directories(SYSTEM
@@ -32,6 +30,7 @@ include_directories(SYSTEM
 
 target_link_libraries(ReadVtk
    ${VTK_LIBRARIES}
+   vistle_vtk
 )
 
 if (TINYXML2_FOUND)

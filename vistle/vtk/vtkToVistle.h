@@ -16,6 +16,8 @@ class vtkDataArray;
 class vtkInformation;
 class vtkImageData;
 
+#include "export.h"
+
 #include <string>
 #include <vector>
 
@@ -25,9 +27,9 @@ class vtkImageData;
 namespace vistle {
 namespace vtk {
 
-Object::ptr toGrid(vtkDataObject *ds, bool checkConvex = false);
-DataBase::ptr getField(vtkDataSetAttributes *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
-DataBase::ptr getField(vtkFieldData *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
+Object::ptr V_VTK_EXPORT toGrid(vtkDataObject *ds, bool checkConvex = false);
+DataBase::ptr V_VTK_EXPORT getField(vtkDataSetAttributes *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
+DataBase::ptr V_VTK_EXPORT getField(vtkFieldData *ds, const std::string &name, Object::const_ptr grid=Object::const_ptr());
 
 } // namespace vtk
 } // namespace vistle

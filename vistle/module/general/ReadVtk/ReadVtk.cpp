@@ -33,7 +33,7 @@
 
 #include "ReadVtk.h"
 
-#include "coVtk.h"
+#include <vistle/vtk/vtkToVistle.h>
 
 
 #ifdef HAVE_TINYXML2
