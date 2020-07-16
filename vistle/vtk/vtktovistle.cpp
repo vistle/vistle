@@ -41,7 +41,7 @@
 #endif
 #include <vtkMultiPieceDataSet.h>
 
-#include "coVtk.h"
+#include "vtktovistle.h"
 #include <vistle/core/coords.h>
 #include <vistle/core/unstr.h>
 #include <vistle/core/polygons.h>

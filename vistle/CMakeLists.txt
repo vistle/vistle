@@ -204,6 +204,7 @@ add_subdirectory(hub)
 add_subdirectory(insitu)
 add_subdirectory(module)
 add_subdirectory(renderer)
+add_subdirectory(vtk)
 #message("Vistle modules: ${ALL_MODULES}")
 # keep after module and renderer, as ALL_MODULES will be populated within those two directories
 add_subdirectory(manager)
