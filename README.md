@@ -56,6 +56,10 @@ Build Requirements
 
      - in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle
 
+- Botan:
+  [Crypto and TLS for Modern C++](https://botan.randombit.net/) is used for verifying HMACs during connection establishment,
+  version 1 or 2 should work
+
 - **Python**:
   for interpreting Vistle scripts (.vsl), Python 2.7 and 3 should work.
 
