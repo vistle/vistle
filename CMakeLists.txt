@@ -1,7 +1,7 @@
 IF(WIN32)
 cmake_minimum_required(VERSION 3.15.2 FATAL_ERROR)
 ELSE(WIN32)
-cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 ENDIF()
 
 if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 
@@ -292,20 +292,7 @@ vistle_find_package(Boost 1.59 REQUIRED
         regex
     OPTIONAL_COMPONENTS ${BOOST_OPT})
 	
-if( BOOST_FOUND )
-	set_target_properties( Boost::boost
-		Boost::system
-		Boost::serialization
-		Boost::program_options
-		Boost::date_time
-		Boost::filesystem
 
-		Boost::chrono
-
-		Boost::thread
-		Boost::regex
-		PROPERTIES IMPORTED_GLOBAL TRUE )
-endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
@@ -367,10 +354,7 @@ if (NOT CRAY AND NOT VISTLE_GUI_ONLY)
     add_definitions(-DOMPI_SKIP_MPICXX) # OpenMPI
     add_definitions(-DMPI_NO_CPPBIND) # HPE MPT
     vistle_find_package(MPI REQUIRED COMPONENTS C CXX)
-   if(MPI_FOUND)
-       set_target_properties( MPI::MPI_C MPI::MPI_CXX
-		    PROPERTIES IMPORTED_GLOBAL TRUE )
-   endif()
+
     include_directories(SYSTEM ${MPI_C_INCLUDE_PATH})
     set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
