@@ -14,6 +14,7 @@
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/TcpMessage.h>
+#include <vistle/insitu/message/sharedOption.h>
 
 #include <condition_variable>
 #include <functional>
@@ -153,28 +154,8 @@ private:
     ModuleInfo m_moduleInfo;
     size_t m_timestep = 0; //timestep couter for module
 
-    struct IntOptionBase
-    {
-        virtual void setVal(insitu::message::Message& msg) {};
-        int val = 0;
 
-    };
-    template<typename T>
-    struct IntOption : public IntOptionBase {
-        IntOption(int initialVal, std::function<void()> cb = nullptr) :callback(cb) {
-            val = initialVal;
-        }
-        virtual void setVal(insitu::message::Message& msg) override
-        {
-            auto m = msg.unpackOrCast<T>();
-            val = static_cast<typename T::value_type>(m.value);
-            if (callback) {
-                callback();
-            }
-        }
-        std::function<void()> callback = nullptr;
-    };
-    std::map<insitu::message::InSituMessageType, std::unique_ptr<IntOptionBase>> m_intOptions; // options that can be set in the module
+    std::map<message::InSituMessageType, std::unique_ptr<message::IntOptionBase>> m_intOptions; // options that can be set in the module
     //callbacks from simulation
     void (*simulationCommandCallback)(const char*, const char*, void*) = nullptr;
     void* simulationCommandCallbackData = nullptr;

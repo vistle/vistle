@@ -53,7 +53,7 @@ struct ArrayTransformer {
 template<typename Source, typename Dest, typename p_Dim>
 struct InterleavedArrayTransformer {
     void operator()(const Source* source, size_t size, Dest dest, int dim) {
-        assert(dest.size() < dim);
+        assert(dest.size() >= dim);
         for (size_t j = 0; j < size; ++j) {
             for (size_t i = 0; i < dim; ++i) {
                 dest[i][0] = static_cast<typename std::remove_pointer<typename Dest::value_type>::type>(source[0]);

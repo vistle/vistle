@@ -13,6 +13,7 @@ set(HEADER
   ShmMessage.h
   SyncShmIDs.h
   TcpMessage.h
+  sharedOption.h
 )
 
 vistle_add_library(vistle_insitu_message ${SOURCES} ${HEADER})

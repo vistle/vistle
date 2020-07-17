@@ -9,7 +9,7 @@
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/insitu/message/ShmMessage.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
-
+#include <vistle/insitu/message/sharedOption.h>
 
 
 
@@ -52,16 +52,16 @@ public:
 	}
 
 private:
-	size_t m_currTimestep = 0;
 	Callbacks m_callbacks;
 	MetaData m_metaData;
 	ModuleInfo m_moduleInfo;
 	struct VariablesUsedByMesh {
-		MetaData::MeshIter mesh;
+		MetaData::ConstMeshIter mesh;
 		std::vector<MetaData::VarIter> varNames;//all used variables of mesh
 	};
 	MetaData m_usedData;
 	bool m_connected = false; //If we are connected to the module
+	size_t m_timestep = 0;
 	std::unique_ptr<vistle::insitu::message::AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to module
 	//mpi info
 	int m_rank = -1, m_mpiSize = 0;
@@ -72,7 +72,7 @@ private:
 	message::InSituShmMessage m_messageHandler;
 	bool m_ready = false; //true if the module is connected and executing
 	std::map<std::string, bool> m_commands; //commands and their current state
-
+	std::map<message::InSituMessageType, std::unique_ptr<message::IntOptionBase>> m_intOptions; // options that can be set in the module
 	void calculateUsedData(); //calculate and store which meshes and variables are requested by Vistle's connected ports
 	void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
 	bool recvAndHandeMessage(bool blocking = false);

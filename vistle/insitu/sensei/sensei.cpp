@@ -29,12 +29,13 @@ SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&
 	{
 		throw vistle::insitu::sensei::Exeption() << "failed to create connection facilities for Vistle";
 	}
+
+	m_intOptions[message::InSituMessageType::KeepTimesteps] = std::unique_ptr< IntOption<message::KeepTimesteps>>(new IntOption<message::KeepTimesteps>{ true });
+
 }
 
 bool SenseiAdapter::Execute(size_t timestep)
 {
-
-	m_currTimestep++;
 	bool wasConnected = m_connected;
 	while (recvAndHandeMessage()) {} //catch newest state
 	if (wasConnected && !m_connected)
@@ -71,9 +72,15 @@ bool SenseiAdapter::Execute(size_t timestep)
 	auto dataObjects = m_callbacks.getData(m_usedData);
 	for (const auto dataObject : dataObjects)
 	{
-		addObject(dataObject.portName, dataObject.data);
+		if (m_intOptions[message::InSituMessageType::KeepTimesteps]->val) {
+			dataObject.object()->setTimestep(m_timestep);
+		}
+		else {
+			dataObject.object()->setIteration(m_timestep);
+		}
+		addObject(dataObject.portName(), dataObject.object());
 	}
-	
+	++m_timestep;
 	return true;
 }
 
@@ -99,10 +106,9 @@ SenseiAdapter::~SenseiAdapter()
 void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
 {
 	m_usedData = MetaData{};
-	std::sort(m_moduleInfo.connectedPorts.begin(), m_moduleInfo.connectedPorts.end());
 	for (auto simMesh = m_metaData.begin(); simMesh != m_metaData.end(); ++simMesh)
 	{
-		for (auto connectedData : m_moduleInfo.connectedPorts)
+		for (const auto &connectedData : m_moduleInfo.connectedPorts)
 		{
 			if (connectedData == simMesh->first) //the mesh is connected directly
 			{
@@ -110,6 +116,15 @@ void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
 			}
 			else
 			{
+				for (const auto& varName : m_metaData.getVariables(simMesh))
+				{
+					if (connectedData == simMesh->first + "_" + varName)
+					{
+						m_usedData.addVariable(varName, simMesh->first);
+						break;
+					}
+				}
+				
 				auto it = std::find(m_metaData.getVariables(simMesh).begin(), m_metaData.getVariables(simMesh).end(), connectedData); //find out if a variable of this mesh is connected
 				if (it != m_metaData.getVariables(simMesh).end())
 				{
@@ -183,7 +198,7 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		{
 			for (auto port : portList)
 			{
-				m_moduleInfo.connectedPorts.push_back(port);
+				m_moduleInfo.connectedPorts.insert(port);
 			}
 		}
 		calculateUsedData();
@@ -193,11 +208,10 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		break;
 	case insitu::message::InSituMessageType::Ready:
 	{
-
+		m_timestep = 0;
 		Ready em = msg.unpackOrCast<Ready>();
 		m_moduleInfo.ready = em.value;
 		if (m_moduleInfo.ready) {
-			m_currTimestep = 0; //always start from timestep 0 to override data from last execution
 			vistle::Shm::the().setObjectID(m_shmIDs.objectID());
 			vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
 		}
@@ -241,7 +255,10 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 	case insitu::message::InSituMessageType::CombineGrids:
 		break;
 	case insitu::message::InSituMessageType::KeepTimesteps:
-		break;
+	{
+		m_intOptions[msg.type()]->setVal(msg);
+	}
+	break;
 	default:
 		CERR << "received message with unknown type " << static_cast<int>(msg.type()) << endl;
 		return false;
@@ -312,7 +329,7 @@ void SenseiAdapter::addPorts()
 		meshNames.push_back(mesh.first);
 		for (const auto& var : mesh.second)
 		{
-			varNames.push_back(var);
+			varNames.push_back(mesh.first + "_" + var);
 		}
 	}
 

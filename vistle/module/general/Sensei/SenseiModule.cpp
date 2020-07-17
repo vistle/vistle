@@ -36,8 +36,6 @@ SenseiModule::SenseiModule(const string& name, int moduleID, mpi::communicator c
 
     m_deleteShm = addIntParameter("deleteShm", "delete the shm potentially used for communication with sensei", false, vistle::Parameter::Presentation::Boolean);
 
-    m_intOptions[InSituMessageType::VTKVariables] = std::unique_ptr< IntParam<insitu::message::VTKVariables>>(new IntParam<insitu::message::VTKVariables>{ addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean), m_messageHandler });
-    m_intOptions[InSituMessageType::ConstGrids] = std::unique_ptr< IntParam<insitu::message::ConstGrids>>(new IntParam<insitu::message::ConstGrids>{ addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean) , m_messageHandler });
     m_intOptions[InSituMessageType::NthTimestep] = std::unique_ptr< IntParam<insitu::message::NthTimestep>>(new IntParam<insitu::message::NthTimestep>{ addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1) , m_messageHandler });
     m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<insitu::message::CombineGrids>>(new IntParam<insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) , m_messageHandler });
     m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<insitu::message::KeepTimesteps>>(new IntParam<insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) , m_messageHandler });

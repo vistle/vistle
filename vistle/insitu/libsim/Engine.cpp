@@ -348,7 +348,7 @@ bool Engine::recvAndhandleVistleMessage() {
     {
         SetPorts ap = msg.unpackOrCast<SetPorts>();
         m_moduleInfo.connectedPorts.clear();
-        m_moduleInfo.connectedPorts = ap.value[0];
+        m_moduleInfo.connectedPorts.insert(ap.value[0].begin(), ap.value[0].end());
     }
         break;
     case InSituMessageType::SetCommands:
