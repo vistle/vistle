@@ -2,7 +2,7 @@
 #define INSITU_MODULEINFO_H
 
 #include <string>
-#include <vector>
+#include <set>
 
 namespace vistle {
 namespace insitu {
@@ -11,7 +11,7 @@ namespace insitu {
         std::string shmName, name, numCons, hostname;
         int id = 0, port = 0;
         bool ready = false; //wether the module is executing or not
-        std::vector<std::string> connectedPorts;
+        std::set<std::string> connectedPorts;
     };
 }//insitu
 }//vistle

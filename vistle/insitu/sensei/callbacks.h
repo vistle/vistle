@@ -14,18 +14,22 @@ namespace sensei {
 
 class V_SENSEIEXPORT Callbacks {//callbacks to retrieve GridInterfacees and Arrays from sensei
 public:
-	struct OutputData {
-		std::string portName;
-		vistle::Object::const_ptr data;
+	struct V_SENSEIEXPORT OutputData {
+		OutputData() = default;
+		OutputData(const std::string& gridName, vistle::Object::ptr obj);
+		OutputData(const std::string& gridName, const std::string& varName, vistle::Object::ptr obj);
+		const std::string& portName() const;
+		vistle::Object::ptr object() const;
+		operator bool() const;
+	private:
+		std::string m_portName;
+		vistle::Object::ptr m_obj;
 	};
-	Callbacks(std::function<vistle::Object::ptr(const std::string&)> getGrid, std::function<vistle::DataBase::ptr(const std::string&)> getVar);
 	Callbacks(std::function<std::vector<OutputData>(const MetaData& usedData)> getData);
 	std::vector<OutputData> getData(const MetaData& usedData);
-	vistle::Object::ptr getGrid(const std::string& name);
-	vistle::DataBase::ptr getVar(const std::string& name);
+
 	
 private:
-	std::function<vistle::Object::ptr(const std::string&)> m_getGrid;
 	std::function<vistle::DataBase::ptr(const std::string&)> m_getVar;
 	std::function<std::vector<OutputData>(const MetaData& usedData)> m_getData;
 };

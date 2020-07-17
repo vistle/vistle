@@ -4,13 +4,7 @@ using namespace vistle::insitu;
 using namespace vistle::insitu::sensei;
 
 
-sensei::Callbacks::Callbacks(std::function<vistle::Object::ptr(const std::string&)> getGrid, std::function<vistle::DataBase::ptr(const std::string&)> getVar)
-	:m_getGrid(getGrid)
-	,m_getVar(getVar)
-{
-}
-
-vistle::insitu::sensei::Callbacks::Callbacks(std::function<std::vector<Callbacks::OutputData>(const MetaData& usedData)> getData)
+vistle::insitu::sensei::Callbacks::Callbacks(std::function<std::vector<OutputData>(const MetaData& usedData)> getData)
 	:m_getData(getData)
 {
 }
@@ -20,14 +14,32 @@ std::vector<Callbacks::OutputData> vistle::insitu::sensei::Callbacks::getData(co
 	return m_getData(usedData);
 }
 
-vistle::Object::ptr sensei::Callbacks::getGrid(const std::string& name)
+
+vistle::insitu::sensei::Callbacks::OutputData::OutputData(const std::string& gridName, vistle::Object::ptr obj)
+	: m_portName(gridName)
+	, m_obj(obj)
 {
-	return m_getGrid(name);
 }
 
-vistle::DataBase::ptr sensei::Callbacks::getVar(const std::string& name)
+vistle::insitu::sensei::Callbacks::OutputData::OutputData(const std::string& gridName, const std::string& varName, vistle::Object::ptr obj)
+	: m_portName(gridName + "_" + varName)
+	, m_obj(obj)
 {
-	return m_getVar(name);
+}
+
+const std::string& vistle::insitu::sensei::Callbacks::OutputData::portName() const
+{
+	return m_portName;
+}
+
+vistle::Object::ptr vistle::insitu::sensei::Callbacks::OutputData::object() const
+{
+	return m_obj;
+}
+
+vistle::insitu::sensei::Callbacks::OutputData::operator bool() const
+{
+	return m_obj != nullptr;
 }
 
 
