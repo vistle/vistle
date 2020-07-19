@@ -30,5 +30,3 @@ class V_COREEXPORT Lines: public Indexed {
 
 } // namespace vistle
 #endif
-
-#include "lines_impl.h"

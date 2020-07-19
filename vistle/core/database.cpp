@@ -1,8 +1,10 @@
 #include "scalars.h"
 #include <cassert>
 #include "database.h"
+#include "database_impl.h"
 #include "geometry.h"
 #include "coords.h"
+#include "archives.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -178,5 +180,8 @@ DataBase::Data *DataBase::Data::createNamed(Object::Type id, const std::string &
     return t;
 }
 #endif
+
+V_OBJECT_IMPL(DataBase)
+V_OBJECT_INST(DataBase)
 
 } // namespace vistle

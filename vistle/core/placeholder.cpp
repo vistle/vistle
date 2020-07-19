@@ -1,4 +1,6 @@
 #include "placeholder.h"
+#include "placeholder_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -154,5 +156,6 @@ const Meta &PlaceHolder::originalMeta() const {
 
 V_OBJECT_TYPE(PlaceHolder, Object::PLACEHOLDER)
 V_OBJECT_CTOR(PlaceHolder)
+V_OBJECT_IMPL(PlaceHolder)
 
 } // namespace vistle

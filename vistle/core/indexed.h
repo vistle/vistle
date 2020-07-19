@@ -94,8 +94,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
 };
 
 ARCHIVE_ASSUME_ABSTRACT(Indexed)
+V_OBJECT_DECL(Indexed)
 
 } // namespace vistle
 #endif
-
-#include "indexed_impl.h"

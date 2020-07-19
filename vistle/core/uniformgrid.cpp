@@ -5,6 +5,8 @@
 //-------------------------------------------------------------------------
 
 #include "uniformgrid.h"
+#include "uniformgrid_impl.h"
+#include "archives.h"
 #include <cassert>
 
 namespace vistle {
@@ -363,5 +365,6 @@ UniformGrid::Data * UniformGrid::Data::create(Index xdim, Index ydim, Index zdim
 //-------------------------------------------------------------------------
 V_OBJECT_TYPE(UniformGrid, Object::UNIFORMGRID)
 V_OBJECT_CTOR(UniformGrid)
+V_OBJECT_IMPL(UniformGrid)
 
 } // namespace vistle

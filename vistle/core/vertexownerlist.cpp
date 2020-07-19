@@ -1,4 +1,6 @@
 #include "vertexownerlist.h"
+#include "vertexownerlist_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -109,5 +111,6 @@ bool VertexOwnerList::checkImpl() const {
 
 V_OBJECT_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
 V_OBJECT_CTOR(VertexOwnerList)
+V_OBJECT_IMPL(VertexOwnerList)
 
 } // namespace vistle

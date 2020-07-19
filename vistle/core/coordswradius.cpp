@@ -1,4 +1,6 @@
 #include "coordswradius.h"
+#include "coordswradius_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -82,5 +84,7 @@ CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId,
 
 V_OBJECT_TYPE(CoordsWithRadius, Object::COORDWRADIUS)
 V_OBJECT_CTOR(CoordsWithRadius)
+V_OBJECT_IMPL(CoordsWithRadius)
+V_OBJECT_INST(CoordsWithRadius)
 
 } // namespace vistle

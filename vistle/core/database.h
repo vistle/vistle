@@ -48,9 +48,9 @@ private:
    V_DATA_END(DataBase);
 };
 
+V_OBJECT_DECL(DataBase)
+
 //ARCHIVE_ASSUME_ABSTRACT(DataBase)
 
 } // namespace vistle
 #endif
-
-#include "database_impl.h"

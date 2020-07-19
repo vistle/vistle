@@ -1,5 +1,7 @@
 #include "indexed.h"
 #include "celltree_impl.h"
+#include "indexed_impl.h"
+#include "archives.h"
 #include <cassert>
 
 namespace vistle {
@@ -451,5 +453,7 @@ Object::Type Indexed::type() {
 }
 
 V_OBJECT_CTOR(Indexed)
+V_OBJECT_IMPL(Indexed)
+V_OBJECT_INST(Indexed)
 
 } // namespace vistle

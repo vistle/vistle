@@ -36,9 +36,9 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
    V_DATA_END(CoordsWithRadius);
 };
 
+V_OBJECT_DECL(CoordsWithRadius)
+
 //ARCHIVE_ASSUME_ABSTRACT(CoordsWithRadius)
 
 } // namespace vistle
 #endif
-
-#include "coordswradius_impl.h"

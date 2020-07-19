@@ -1,4 +1,6 @@
 #include "unstr.h"
+#include "unstr_impl.h"
+#include "archives.h"
 #include <cassert>
 #include <algorithm>
 #include "cellalgorithm.h"
@@ -1314,5 +1316,6 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const Index numElements,
 
 V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID)
 V_OBJECT_CTOR(UnstructuredGrid)
+V_OBJECT_IMPL(UnstructuredGrid)
 
 } // namespace vistle

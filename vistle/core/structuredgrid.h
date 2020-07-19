@@ -86,5 +86,3 @@ ARCHIVE_ASSUME_ABSTRACT(StructuredGrid)
 
 } // namespace vistle
 #endif /* STRUCTURED_GRID_H */
-
-#include "structuredgrid_impl.h"

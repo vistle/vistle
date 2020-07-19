@@ -29,5 +29,3 @@ class  V_COREEXPORT Spheres: public CoordsWithRadius {
 
 } // namespace vistle
 #endif
-
-#include "spheres_impl.h"

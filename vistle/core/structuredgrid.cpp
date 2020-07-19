@@ -5,6 +5,8 @@
 //-------------------------------------------------------------------------
 
 #include "structuredgrid.h"
+#include "structuredgrid_impl.h"
+#include "archives.h"
 #include "celltree_impl.h"
 #include "unstr.h" // for hexahedron topology
 #include <cassert>
@@ -500,5 +502,6 @@ StructuredGrid::Data * StructuredGrid::Data::create(const Index numVert_x, const
 //-------------------------------------------------------------------------
 V_OBJECT_TYPE(StructuredGrid, Object::STRUCTUREDGRID)
 V_OBJECT_CTOR(StructuredGrid)
+V_OBJECT_IMPL(StructuredGrid)
 
 } // namespace vistle

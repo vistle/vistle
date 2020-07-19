@@ -2,9 +2,16 @@
 #include "triangles.h"
 #include "quads.h"
 #include "celltree_impl.h"
+#include "ngons_impl.h"
+#include "archives.h"
 #include <cassert>
 
 namespace vistle {
+
+template<int N>
+V_OBJECT_IMPL_LOAD(Ngons<N>)
+template<int N>
+V_OBJECT_IMPL_SAVE(Ngons<N>)
 
 template<int N>
 Ngons<N>::Ngons(const Index numCorners, const Index numCoords,
@@ -311,5 +318,8 @@ template class Ngons<4>;
 //V_OBJECT_TYPE(Quads, Object::QUADS)
 V_OBJECT_CTOR(Quads)
 #endif
+
+V_OBJECT_INST(Ngons<3>)
+V_OBJECT_INST(Ngons<4>)
 
 } // namespace vistle

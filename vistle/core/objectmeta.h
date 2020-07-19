@@ -51,7 +51,10 @@ class V_COREEXPORT Meta {
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &out, const Meta &meta);
 
+extern template void V_COREEXPORT Meta::serialize<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Meta::serialize<boost_iarchive>(boost_iarchive &ar);
+extern template void V_COREEXPORT Meta::serialize<yas_oarchive>(yas_oarchive &ar);
+extern template void V_COREEXPORT Meta::serialize<boost_oarchive>(boost_oarchive &ar);
+
 } // namespace vistle
 #endif
-
-#include "objectmeta_impl.h"

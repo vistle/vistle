@@ -25,5 +25,3 @@ class V_COREEXPORT Empty: public Object {
 
 } // namespace vistle
 #endif
-
-#include "empty_impl.h"

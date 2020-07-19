@@ -1,4 +1,6 @@
 #include "polygons.h"
+#include "polygons_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -62,5 +64,6 @@ Polygons::Data * Polygons::Data::create(const Index numElements,
 
 V_OBJECT_TYPE(Polygons, Object::POLYGONS)
 V_OBJECT_CTOR(Polygons)
+V_OBJECT_IMPL(Polygons)
 
 } // namespace vistle

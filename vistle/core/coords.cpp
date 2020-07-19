@@ -1,4 +1,7 @@
 #include "coords.h"
+#include "archives.h"
+
+#include "coords_impl.h"
 
 namespace vistle {
 
@@ -110,5 +113,7 @@ Vector3 Coords::getVertex(Index v) const {
 
 V_OBJECT_TYPE(Coords, Object::COORD)
 V_OBJECT_CTOR(Coords)
+V_OBJECT_IMPL(Coords)
+V_OBJECT_INST(Coords)
 
 } // namespace vistle

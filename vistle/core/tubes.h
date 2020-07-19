@@ -49,5 +49,3 @@ class  V_COREEXPORT Tubes: public CoordsWithRadius {
 
 } // namespace vistle
 #endif
-
-#include "tubes_impl.h"

@@ -95,11 +95,16 @@ class Vec: public DataBase {
    };
 };
 
+#define V_VEC_COMMA ,
 #define V_VEC_TEMPLATE(ValueType) \
     extern template class V_COREEXPORT Vec<ValueType,1>; \
+    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 1>) \
     extern template class V_COREEXPORT Vec<ValueType,2>; \
+    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 2>) \
     extern template class V_COREEXPORT Vec<ValueType,3>; \
-    extern template class V_COREEXPORT Vec<ValueType,4>;
+    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 3>) \
+    extern template class V_COREEXPORT Vec<ValueType,4>; \
+    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 4>)
 V_VEC_TEMPLATE(char)
 V_VEC_TEMPLATE(signed char)
 V_VEC_TEMPLATE(unsigned char)
@@ -110,8 +115,7 @@ V_VEC_TEMPLATE(uint64_t)
 V_VEC_TEMPLATE(float)
 V_VEC_TEMPLATE(double)
 #undef V_VEC_TEMPLATE
+#undef V_VEC_COMMA
 
 } // namespace vistle
 #endif
-
-#include "vec_impl.h"

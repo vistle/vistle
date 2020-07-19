@@ -1,4 +1,6 @@
 #include "empty.h"
+#include "empty_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -49,5 +51,6 @@ Empty::Data * Empty::Data::create(const std::string &objId) {
 
 V_OBJECT_TYPE(Empty, Object::EMPTY)
 V_OBJECT_CTOR(Empty)
+V_OBJECT_IMPL(Empty)
 
 } // namespace vistle

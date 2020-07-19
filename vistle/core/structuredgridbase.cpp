@@ -5,6 +5,8 @@
 //-------------------------------------------------------------------------
 
 #include "structuredgridbase.h"
+#include "structuredgridbase_impl.h"
+#include "archives.h"
 
 namespace vistle {
 

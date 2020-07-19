@@ -1,4 +1,6 @@
 #include "texture1d.h"
+#include "texture1d_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -80,5 +82,6 @@ Scalar Texture1D::getMax() const {
 
 V_OBJECT_TYPE(Texture1D, Object::TEXTURE1D)
 V_OBJECT_CTOR(Texture1D)
+V_OBJECT_IMPL(Texture1D)
 
 } // namespace vistle

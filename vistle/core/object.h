@@ -303,6 +303,19 @@ struct ObjectData: public ShmData {
     ObjectData &operator=(const ObjectData &) = delete;
 };
 
+extern template Object *Object::loadObject<yas_iarchive>(yas_iarchive &ar);
+extern template Object *Object::loadObject<boost_iarchive>(boost_iarchive &ar);
+extern template void V_COREEXPORT Object::saveObject<yas_oarchive>(yas_oarchive &ar) const;
+extern template void V_COREEXPORT Object::saveObject<boost_oarchive>(boost_oarchive &ar) const;
+extern template void V_COREEXPORT Object::serialize<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Object::serialize<boost_iarchive>(boost_iarchive &ar);
+extern template void V_COREEXPORT Object::serialize<yas_oarchive>(yas_oarchive &ar);
+extern template void V_COREEXPORT Object::serialize<boost_oarchive>(boost_oarchive &ar);
+extern template void V_COREEXPORT Object::Data::load<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Object::Data::load<boost_iarchive>(boost_iarchive &ar);
+extern template void V_COREEXPORT Object::Data::save<yas_oarchive>(yas_oarchive &ar) const;
+extern template void V_COREEXPORT Object::Data::save<boost_oarchive>(boost_oarchive &ar) const;
+
 typedef std::function<void(const std::string &name)> ArrayCompletionHandler;
 typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
 
@@ -419,24 +432,9 @@ private:
    private: \
    ARCHIVE_ACCESS_SPLIT \
    template<class Archive> \
-      void load(Archive &ar) { \
-         std::string name; \
-         ar & V_NAME(ar, "name", name); \
-         int type = Object::UNKNOWN; \
-         ar & V_NAME(ar, "type", type); \
-         if (!ar.currentObject()) \
-            ar.setCurrentObject(Object::m_data); \
-         d()->template serialize<Archive>(ar); \
-         assert(type == Object::getType()); \
-      } \
+      void load(Archive &ar); \
    template<class Archive> \
-      void save(Archive &ar) const { \
-         int type = Object::getType(); \
-         std::string name = d()->name; \
-         ar & V_NAME(ar, "name", name); \
-         ar & V_NAME(ar, "type", type); \
-         const_cast<Data *>(d())->template serialize<Archive>(ar); \
-      } \
+      void save(Archive &ar) const; \
    friend std::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
    friend shm_handle_t Shm::getHandleFromObject(std::shared_ptr<const Object>) const; \
    friend Object *Object::create(Object::Data *); \
@@ -458,6 +456,26 @@ private:
       void initData(); \
    }
 
+#define V_OBJECT_DECL(ObjType) \
+    extern template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive &ar) const; \
+    extern template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive &ar) const; \
+    extern template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive &ar); \
+    extern template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive &ar);
+
+#define V_OBJECT_INST(ObjType) \
+    template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive &ar); \
+    template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive &ar); \
+    template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive &ar) const; \
+    template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive &ar) const; \
+    template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive &ar); \
+    template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive &ar); \
+    template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive &ar); \
+    template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive &ar);
+
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \
    Object::Type ObjType::type() { \
@@ -478,11 +496,36 @@ private:
    ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) { refreshImpl(); } \
    ObjType::ObjType(): ObjType::Base() { refreshImpl(); }
 
+#define V_OBJECT_IMPL_LOAD(ObjType) \
+   template<class Archive> \
+      void ObjType::load(Archive &ar) { \
+         std::string name; \
+         ar & V_NAME(ar, "name", name); \
+         int type = Object::UNKNOWN; \
+         ar & V_NAME(ar, "type", type); \
+         if (!ar.currentObject()) \
+            ar.setCurrentObject(Object::m_data); \
+         d()->template serialize<Archive>(ar); \
+         assert(type == Object::getType()); \
+      }
+
+#define V_OBJECT_IMPL_SAVE(ObjType) \
+   template<class Archive> \
+      void ObjType::save(Archive &ar) const { \
+         int type = Object::getType(); \
+         std::string name = d()->name; \
+         ar & V_NAME(ar, "name", name); \
+         ar & V_NAME(ar, "type", type); \
+         const_cast<Data *>(d())->template serialize<Archive>(ar); \
+      }
+
+#define V_OBJECT_IMPL(ObjType) \
+   V_OBJECT_IMPL_LOAD(ObjType) \
+   V_OBJECT_IMPL_SAVE(ObjType)
+
 void V_COREEXPORT registerTypes();
 
 V_ENUM_OUTPUT_OP(Type, Object)
 
 } // namespace vistle
 #endif
-
-#include "object_impl.h"

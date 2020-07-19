@@ -1,4 +1,6 @@
 #include "normals.h"
+#include "normals_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -67,5 +69,6 @@ Normals::Data *Normals::Data::create(const Index numNormals, const Meta &meta) {
 
 V_OBJECT_TYPE(Normals, Object::NORMALS)
 V_OBJECT_CTOR(Normals)
+V_OBJECT_IMPL(Normals)
 
 } // namespace vistle

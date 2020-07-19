@@ -2,14 +2,31 @@
 #include "scalars.h"
 #include <cassert>
 #include "vec_template.h"
+#include "vec_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
+#define COMMA ,
+
 #define V_VEC_TEMPLATE_INST(ValueType) \
     template class Vec<ValueType,1>; \
+    V_OBJECT_INST(Vec<ValueType COMMA 1>) \
+    template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 1>) \
+    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 1>) \
     template class Vec<ValueType,2>; \
+    V_OBJECT_INST(Vec<ValueType COMMA 2>) \
+    template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 2>) \
+    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 2>) \
     template class Vec<ValueType,3>; \
-    template class Vec<ValueType,4>;
+    V_OBJECT_INST(Vec<ValueType COMMA 3>) \
+    template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 3>) \
+    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 3>) \
+    template class Vec<ValueType,4>; \
+    V_OBJECT_INST(Vec<ValueType COMMA 4>) \
+    template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 4>) \
+    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 4>)
+
 V_VEC_TEMPLATE_INST(char)
 V_VEC_TEMPLATE_INST(signed char)
 V_VEC_TEMPLATE_INST(unsigned char)

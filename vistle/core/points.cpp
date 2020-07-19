@@ -1,4 +1,6 @@
 #include "points.h"
+#include "points_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -71,5 +73,6 @@ Points::Data *Points::Data::create(const Index numPoints, const Meta &meta) {
 
 V_OBJECT_TYPE(Points, Object::POINTS)
 V_OBJECT_CTOR(Points)
+V_OBJECT_IMPL(Points)
 
 } // namespace vistle

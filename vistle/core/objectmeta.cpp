@@ -1,6 +1,7 @@
 #include "shm_array.h"
 #include "objectmeta.h"
 #include "objectmeta_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -47,5 +48,10 @@ std::ostream &operator<<(std::ostream &out, const Meta &meta) {
       << ", time: " << meta.timeStep() << "/" << meta.numTimesteps();
    return out;
 }
+
+template void V_COREEXPORT Meta::serialize<yas_iarchive>(yas_iarchive &ar);
+template void V_COREEXPORT Meta::serialize<boost_iarchive>(boost_iarchive &ar);
+template void V_COREEXPORT Meta::serialize<yas_oarchive>(yas_oarchive &ar);
+template void V_COREEXPORT Meta::serialize<boost_oarchive>(boost_oarchive &ar);
 
 } // namespace vistle

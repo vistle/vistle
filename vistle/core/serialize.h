@@ -15,6 +15,7 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/level.hpp>
 #include <boost/serialization/array.hpp>
+#include <boost/serialization/vector.hpp>
 #endif
 
 #ifndef NO_SHMEM

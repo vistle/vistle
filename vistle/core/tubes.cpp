@@ -1,4 +1,6 @@
 #include "tubes.h"
+#include "tubes_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -105,5 +107,6 @@ Tubes::Data *Tubes::Data::create(const Index numTubes, const Index numCoords, co
 
 V_OBJECT_TYPE(Tubes, Object::TUBES)
 V_OBJECT_CTOR(Tubes)
+V_OBJECT_IMPL(Tubes)
 
 } // namespace vistle

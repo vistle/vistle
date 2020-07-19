@@ -81,5 +81,3 @@ private:
 
 } // namespace vistle
 #endif /* RECTILINEAR_GRID_H */
-
-#include "rectilineargrid_impl.h"

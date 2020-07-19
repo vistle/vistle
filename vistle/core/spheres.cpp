@@ -1,4 +1,6 @@
 #include "spheres.h"
+#include "spheres_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -67,5 +69,6 @@ Spheres::Data *Spheres::Data::create(const Index numSpheres, const Meta &meta) {
 
 V_OBJECT_TYPE(Spheres, Object::SPHERES)
 V_OBJECT_CTOR(Spheres)
+V_OBJECT_IMPL(Spheres)
 
 } // namespace vistle

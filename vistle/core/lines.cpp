@@ -1,4 +1,6 @@
 #include "lines.h"
+#include "lines_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
@@ -61,5 +63,6 @@ Lines::Data * Lines::Data::create(const std::string &objId, const Index numEleme
 
 V_OBJECT_TYPE(Lines, Object::LINES)
 V_OBJECT_CTOR(Lines)
+V_OBJECT_IMPL(Lines)
 
 } // namespace vistle

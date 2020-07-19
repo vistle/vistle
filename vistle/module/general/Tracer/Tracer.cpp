@@ -15,6 +15,8 @@
 #include <vistle/core/unstr.h>
 #include <vistle/core/structuredgridbase.h>
 #include <vistle/core/structuredgrid.h>
+#include <vistle/core/serialize.h>
+#include <vistle/core/objectmeta_impl.h>
 
 MODULE_MAIN(Tracer)
 

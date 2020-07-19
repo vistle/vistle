@@ -58,5 +58,3 @@ class V_COREEXPORT Ngons: public Coords, virtual public CelltreeInterface<3> {
 
 } // namespace vistle
 #endif
-
-#include "ngons_impl.h"

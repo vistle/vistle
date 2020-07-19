@@ -5,6 +5,8 @@
 //-------------------------------------------------------------------------
 
 #include "rectilineargrid.h"
+#include "rectilineargrid_impl.h"
+#include "archives.h"
 #include "cellalgorithm.h"
 #include "unstr.h"
 #include <cassert>
@@ -360,5 +362,6 @@ RectilinearGrid::Data * RectilinearGrid::Data::create(const Index numDivX, const
 //-------------------------------------------------------------------------
 V_OBJECT_TYPE(RectilinearGrid, Object::RECTILINEARGRID)
 V_OBJECT_CTOR(RectilinearGrid)
+V_OBJECT_IMPL(RectilinearGrid)
 
 } // namespace vistle

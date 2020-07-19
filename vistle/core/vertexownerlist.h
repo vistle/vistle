@@ -50,5 +50,3 @@ private:
 
 } // namespace vistle
 #endif
-
-#include "vertexownerlist_impl.h"

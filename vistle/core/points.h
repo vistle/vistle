@@ -31,5 +31,3 @@ class  V_COREEXPORT Points: public Coords {
 
 } // namespace vistle
 #endif
-
-#include "points_impl.h"
