@@ -144,9 +144,7 @@ set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
 
 
-if (VISTLE_GUI_ONLY)
-    add_definitions(-DNO_MPI)
-else()
+if (NOT VISTLE_GUI_ONLY)
     #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
     include_directories(BEFORE SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/${BOOST_MPI_DIR}/include")
 endif()

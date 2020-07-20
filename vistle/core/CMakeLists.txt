@@ -191,10 +191,6 @@ vistle_target_link_libraries(vistle_core
         PUBLIC Boost::system
 )
 
-get_target_property(vistle_boost_mpi_includes vistle_boost_mpi INTERFACE_INCLUDE_DIRECTORIES)
-#message("Boost_INCLUDE_DIRS = " ${INTERFACE_INCLUDE_DIRECTORIES})
-target_include_directories(vistle_core SYSTEM PRIVATE ${vistle_boost_mpi_includes})
-
 if (VISTLE_SHM_PER_RANK)
    target_compile_definitions(vistle_core PRIVATE -DSHMPERRANK)
 endif()
