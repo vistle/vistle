@@ -4,7 +4,7 @@
 #include "index.h"
 #include "dimensions.h"
 #include "object.h"
-#include "archives.h"
+#include "archives_config.h"
 #include "vector.h"
 #include "shm_obj_ref.h"
 

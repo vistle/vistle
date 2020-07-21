@@ -3,7 +3,7 @@
 
 #include "shmname.h"
 #include "object.h"
-#include "archives.h"
+#include "archives_config.h"
 #include "shm_obj_ref.h"
 #include "export.h"
 

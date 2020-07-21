@@ -2,6 +2,7 @@
 #include "celltree_impl.h"
 #include "vec.h"
 #include "shm_reference_impl.h"
+#include "archives.h"
 
 namespace vistle {
 
