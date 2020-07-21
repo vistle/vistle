@@ -303,18 +303,22 @@ struct ObjectData: public ShmData {
     ObjectData &operator=(const ObjectData &) = delete;
 };
 
-extern template Object *Object::loadObject<yas_iarchive>(yas_iarchive &ar);
+#ifdef USE_BOOST_ARCHIVE
 extern template Object *Object::loadObject<boost_iarchive>(boost_iarchive &ar);
-extern template void V_COREEXPORT Object::saveObject<yas_oarchive>(yas_oarchive &ar) const;
 extern template void V_COREEXPORT Object::saveObject<boost_oarchive>(boost_oarchive &ar) const;
-extern template void V_COREEXPORT Object::serialize<yas_iarchive>(yas_iarchive &ar);
 extern template void V_COREEXPORT Object::serialize<boost_iarchive>(boost_iarchive &ar);
-extern template void V_COREEXPORT Object::serialize<yas_oarchive>(yas_oarchive &ar);
 extern template void V_COREEXPORT Object::serialize<boost_oarchive>(boost_oarchive &ar);
-extern template void V_COREEXPORT Object::Data::load<yas_iarchive>(yas_iarchive &ar);
 extern template void V_COREEXPORT Object::Data::load<boost_iarchive>(boost_iarchive &ar);
-extern template void V_COREEXPORT Object::Data::save<yas_oarchive>(yas_oarchive &ar) const;
 extern template void V_COREEXPORT Object::Data::save<boost_oarchive>(boost_oarchive &ar) const;
+#endif
+#ifdef USE_YAS
+extern template Object *Object::loadObject<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Object::saveObject<yas_oarchive>(yas_oarchive &ar) const;
+extern template void V_COREEXPORT Object::serialize<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Object::serialize<yas_oarchive>(yas_oarchive &ar);
+extern template void V_COREEXPORT Object::Data::load<yas_iarchive>(yas_iarchive &ar);
+extern template void V_COREEXPORT Object::Data::save<yas_oarchive>(yas_oarchive &ar) const;
+#endif
 
 typedef std::function<void(const std::string &name)> ArrayCompletionHandler;
 typedef std::function<void(Object::const_ptr)> ObjectCompletionHandler;
@@ -456,6 +460,8 @@ private:
       void initData(); \
    }
 
+#ifdef USE_BOOST_ARCHIVE
+#ifdef USE_YAS
 #define V_OBJECT_DECL(ObjType) \
     extern template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive &ar); \
     extern template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive &ar); \
@@ -475,6 +481,32 @@ private:
     template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive &ar); \
     template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive &ar); \
     template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive &ar);
+#else
+#define V_OBJECT_DECL(ObjType) \
+    extern template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive &ar) const; \
+    extern template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive &ar);
+
+#define V_OBJECT_INST(ObjType) \
+    template void V_COREEXPORT ObjType::load<boost_iarchive>(boost_iarchive &ar); \
+    template void V_COREEXPORT ObjType::save<boost_oarchive>(boost_oarchive &ar) const; \
+    template void V_COREEXPORT ObjType::Data::serialize<boost_iarchive>(boost_iarchive &ar); \
+    template void V_COREEXPORT ObjType::Data::serialize<boost_oarchive>(boost_oarchive &ar);
+#endif
+#else
+#define V_OBJECT_DECL(ObjType) \
+    extern template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive &ar) const; \
+    extern template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive &ar); \
+    extern template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive &ar);
+
+#define V_OBJECT_INST(ObjType) \
+    template void V_COREEXPORT ObjType::load<yas_iarchive>(yas_iarchive &ar); \
+    template void V_COREEXPORT ObjType::save<yas_oarchive>(yas_oarchive &ar) const; \
+    template void V_COREEXPORT ObjType::Data::serialize<yas_iarchive>(yas_iarchive &ar); \
+    template void V_COREEXPORT ObjType::Data::serialize<yas_oarchive>(yas_oarchive &ar);
+#endif
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \

@@ -49,9 +49,13 @@ std::ostream &operator<<(std::ostream &out, const Meta &meta) {
    return out;
 }
 
-template void V_COREEXPORT Meta::serialize<yas_iarchive>(yas_iarchive &ar);
+#ifdef USE_BOOST_ARCHIVE
 template void V_COREEXPORT Meta::serialize<boost_iarchive>(boost_iarchive &ar);
-template void V_COREEXPORT Meta::serialize<yas_oarchive>(yas_oarchive &ar);
 template void V_COREEXPORT Meta::serialize<boost_oarchive>(boost_oarchive &ar);
+#endif
+#ifdef USE_YAS
+template void V_COREEXPORT Meta::serialize<yas_iarchive>(yas_iarchive &ar);
+template void V_COREEXPORT Meta::serialize<yas_oarchive>(yas_oarchive &ar);
+#endif
 
 } // namespace vistle

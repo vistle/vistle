@@ -31,6 +31,7 @@
 #include <vistle/core/index.h>
 
 #include <boost/mpi/collectives.hpp>
+#include <boost/serialization/vector.hpp>
 
 #include "PrintMetaData.h"
 

@@ -9,6 +9,8 @@
 #include <boost/mpi/collectives/all_gather.hpp>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <boost/mpi/operations.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
 #include <vistle/core/vec.h>
 #include <vistle/core/paramvector.h>
 #include <vistle/core/lines.h>

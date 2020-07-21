@@ -162,6 +162,8 @@ class shm_array_ref {
 };
 
 
+#ifdef USE_BOOST_ARCHIVE
+#ifdef USE_YAS
 #define V_DECLARE_SHMREF(T) \
     extern template class V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
     extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
@@ -175,6 +177,28 @@ class shm_array_ref {
     template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
     template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const; \
     template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+#else
+#define V_DECLARE_SHMREF(T) \
+    extern template class V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+
+#define V_DEFINE_SHMREF(T) \
+    template class shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::boost_iarchive>(vistle::boost_iarchive &ar); \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::boost_oarchive>(vistle::boost_oarchive &ar) const;
+#endif
+#else
+#define V_DECLARE_SHMREF(T) \
+    extern template class V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    extern template void V_COREEXPORT shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const;
+
+#define V_DEFINE_SHMREF(T) \
+    template class shm_array_ref<shm_array<T, typename shm<T>::allocator>>; \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::load<vistle::yas_iarchive>(vistle::yas_iarchive &ar); \
+    template void shm_array_ref<shm_array<T, typename shm<T>::allocator>>::save<vistle::yas_oarchive>(vistle::yas_oarchive &ar) const;
+#endif
 
 V_DECLARE_SHMREF(char) // for MessagePayload
 V_DECLARE_SHMREF(signed char)

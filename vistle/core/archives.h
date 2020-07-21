@@ -138,6 +138,9 @@ public:
     boost_oarchive(std::streambuf &bsb, unsigned int flags=0);
     ~boost_oarchive();
 
+    void setCompressionMode(vistle::FieldCompressionMode mode);
+    void setCompressionSettings(const CompressionSettings &other);
+
     void setSaver(std::shared_ptr<Saver> saver);
 
     template<class T>

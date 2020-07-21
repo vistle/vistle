@@ -88,6 +88,12 @@ boost_oarchive::boost_oarchive(std::streambuf &bsb, unsigned int flags)
 boost_oarchive::~boost_oarchive()
 {}
 
+void boost_oarchive::setCompressionSettings(const CompressionSettings &other) {
+}
+
+void boost_oarchive::setCompressionMode(FieldCompressionMode mode) {
+}
+
 void boost_oarchive::setSaver(std::shared_ptr<Saver> saver) {
 
     m_saver = saver;

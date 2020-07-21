@@ -1,6 +1,7 @@
 ﻿#include <limits>
 #include <algorithm>
 #include <boost/mpi/collectives/broadcast.hpp>
+#include <boost/serialization/vector.hpp>
 #include <vistle/core/vec.h>
 #include <vistle/util/math.h>
 #include "Tracer.h"

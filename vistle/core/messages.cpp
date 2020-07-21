@@ -51,9 +51,13 @@ Payload getPayload(const buffer &data) {
     try {
         iarchive ar(buf);
         ar & payload;
+#ifdef USE_YAS
     } catch (::yas::io_exception &ex) {
         std::cerr << "ERROR: failed to get message payload from " << data.size() << " bytes: " << ex.what() << std::endl;
         std::cerr << vistle::backtrace() << std::endl;
+#endif
+    } catch (...) {
+        throw;
     }
 
     return payload;

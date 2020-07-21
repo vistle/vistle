@@ -3,11 +3,18 @@
 
 //#define USE_INTROSPECTION_ARCHIVE
 #define USE_BOOST_ARCHIVE
+#define USE_BOOST_ARCHIVE_MPI
 #define USE_YAS
 
 #ifdef USE_INTROSPECTION_ARCHIVE
 #ifndef USE_BOOST_ARCHIVE
 #define USE_BOOST_ARCHIVE
+#endif
+#endif
+
+#ifdef USE_BOOST_ARCHIVE
+#ifndef USE_BOOST_ARCHIVE_MPI
+#define USE_BOOST_ARCHIVE_MPI
 #endif
 #endif
 
@@ -363,13 +370,17 @@ typedef boost_iarchive iarchive;
 using detail::serialize_base;
 }
 
-#ifdef USE_BOOST_ARCHIVE
+#ifdef USE_BOOST_ARCHIVE_MPI
 #include <boost/serialization/access.hpp>
-#include <boost/serialization/assume_abstract.hpp>
 #include <boost/serialization/split_member.hpp>
+#endif
+#ifdef USE_BOOST_ARCHIVE
+#include <boost/serialization/assume_abstract.hpp>
 #include <boost/archive/archive_exception.hpp>
 
 #define ARCHIVE_ASSUME_ABSTRACT_BOOST(obj) BOOST_SERIALIZATION_ASSUME_ABSTRACT(obj)
+#else
+#define ARCHIVE_ASSUME_ABSTRACT_BOOST(obj)
 #endif
 
 #define ARCHIVE_ASSUME_ABSTRACT_YAS(obj)
@@ -404,13 +415,13 @@ boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t) {
 #endif
 #endif
 
-#ifdef USE_BOOST_ARCHIVE
+#ifdef USE_BOOST_ARCHIVE_MPI
 #define ARCHIVE_ACCESS_BOOST \
     friend class boost::serialization::access;
 #else
 #define ARCHIVE_ACCESS_BOOST
 #endif
-#if defined(USE_BOOST_ARCHIVE)
+#if defined(USE_BOOST_ARCHIVE_MPI)
 #define ARCHIVE_FORWARD_SERIALIZE \
     template<class Archive> \
     void serialize(Archive &ar, const unsigned int /* version */) { \
@@ -427,7 +438,7 @@ boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t) {
 #define ARCHIVE_ACCESS ARCHIVE_ACCESS_BOOST ARCHIVE_ACCESS_YAS ARCHIVE_FORWARD_SERIALIZE
 #define ARCHIVE_ASSUME_ABSTRACT(obj) ARCHIVE_ASSUME_ABSTRACT_BOOST(obj) ARCHIVE_ASSUME_ABSTRACT_YAS(obj)
 
-#ifdef USE_BOOST_ARCHIVE
+#ifdef USE_BOOST_ARCHIVE_MPI
 #define BOOST_ARCHIVE_ACCESS_SPLIT \
     friend class boost::serialization::access; \
     template<class Archive> \
