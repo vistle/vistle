@@ -22,10 +22,10 @@ namespace vistle {
     V_OBJECT_INST(Vec<ValueType COMMA 3>) \
     template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 3>) \
     template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 3>) \
-    template class Vec<ValueType,4>; \
+    /* template class Vec<ValueType,4>; \
     V_OBJECT_INST(Vec<ValueType COMMA 4>) \
     template <> V_OBJECT_IMPL_LOAD(Vec<ValueType COMMA 4>) \
-    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 4>)
+    template <> V_OBJECT_IMPL_SAVE(Vec<ValueType COMMA 4>) */
 
 V_VEC_TEMPLATE_INST(char)
 V_VEC_TEMPLATE_INST(signed char)

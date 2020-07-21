@@ -103,8 +103,8 @@ class Vec: public DataBase {
     V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 2>) \
     extern template class V_COREEXPORT Vec<ValueType,3>; \
     V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 3>) \
-    extern template class V_COREEXPORT Vec<ValueType,4>; \
-    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 4>)
+    /* extern template class V_COREEXPORT Vec<ValueType,4>; \
+    V_OBJECT_DECL(Vec<ValueType V_VEC_COMMA 4>) */
 V_VEC_TEMPLATE(char)
 V_VEC_TEMPLATE(signed char)
 V_VEC_TEMPLATE(unsigned char)
