@@ -411,16 +411,19 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
 {
     bool perCell = false;
     const Index n = vd->GetNumberOfTuples();
-    Index dim[3] = { n, 1, 1 };
+    std::array<Index, 3> dim = { n, 1, 1 };
     if (auto sgrid = StructuredGridBase::as(grid)) {
         for (int c = 0; c < 3; ++c)
             dim[c] = sgrid->getNumDivisions(c);
     }
+    auto dataDim = dim;
     if (n > 0 && n == (dim[0] - 1) * (dim[1] - 1) * (dim[2] - 1)) {
         perCell = true;
         // cell-mapped data
+        for (int c = 0; c < 3; ++c)
+            if (dataDim[c] > 1)
+                --dataDim[c];
     }
-
     switch (vd->GetNumberOfComponents())
     {
     case 1:
@@ -428,10 +431,10 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         Vec<Scalar, 1>::ptr cf = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 1>, n);
         float* x = cf->x().data();
         Index l = 0;
-        for (Index k = 0; k < dim[2]; ++k) {
-            for (Index j = 0; j < dim[1]; ++j) {
-                for (Index i = 0; i < dim[0]; ++i) {
-                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+        for (Index k = 0; k < dataDim[2]; ++k) {
+            for (Index j = 0; j < dataDim[1]; ++j) {
+                for (Index i = 0; i < dataDim[0]; ++i) {
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim.data()) : StructuredGridBase::vertexIndex(i, j, k, dim.data());
                     x[idx] = vd->GetValue(l);
                     ++l;
                 }
@@ -448,10 +451,10 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         float* y = cv->y().data();
         float* z = cv->z().data();
         Index l = 0;
-        for (Index k = 0; k < dim[2]; ++k) {
-            for (Index j = 0; j < dim[1]; ++j) {
-                for (Index i = 0; i < dim[0]; ++i) {
-                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+        for (Index k = 0; k < dataDim[2]; ++k) {
+            for (Index j = 0; j < dataDim[1]; ++j) {
+                for (Index i = 0; i < dataDim[0]; ++i) {
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim.data()) : StructuredGridBase::vertexIndex(i, j, k, dim.data());
 #if VTK_MAJOR_VERSION < 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION<1)
                     ValueType v[3];
                     vd->GetTupleValue(l, v);
@@ -496,7 +499,8 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray* varr, Object::const_p
     {
         // cell-mapped data
         for (int c = 0; c < 3; ++c)
-            --dim[c];
+            if (dim[c] > 1)
+                --dim[c];
     }
     if (dim[0] * dim[1] * dim[2] != n)
     {

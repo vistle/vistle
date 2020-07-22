@@ -68,9 +68,9 @@ target_include_directories(vistle_sensei_vtk SYSTEM
 
 vistle_target_link_libraries(vistle_sensei_vtk
    PRIVATE Threads::Threads
-   PRIVATE vistle_sensei
    PUBLIC ${VTK_LIBRARIES}
    PUBLIC vistle_core
+   PUBLIC vistle_sensei
 )
 target_compile_definitions(vistle_sensei_vtk 
 	PUBLIC ${VTK_DEFINITIONS}
