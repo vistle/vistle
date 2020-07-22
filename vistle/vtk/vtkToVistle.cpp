@@ -411,7 +411,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
 {
     bool perCell = false;
     const Index n = vd->GetNumberOfTuples();
-    Index dim[3] = { n, 1, 1 };
+    std::array<Index, 3> dim = { n, 1, 1 };
     if (auto sgrid = StructuredGridBase::as(grid)) {
         for (int c = 0; c < 3; ++c)
             dim[c] = sgrid->getNumDivisions(c);
@@ -420,7 +420,12 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         perCell = true;
         // cell-mapped data
     }
-
+    auto numGridDivisions = dim;
+    if (perCell)
+    {
+        for (int c = 0; c < 3; ++c)
+            dim[c] > 1 ? --dim[c] : dim[c];
+    }
     switch (vd->GetNumberOfComponents())
     {
     case 1:
@@ -431,7 +436,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         for (Index k = 0; k < dim[2]; ++k) {
             for (Index j = 0; j < dim[1]; ++j) {
                 for (Index i = 0; i < dim[0]; ++i) {
-                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions.data()) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions.data());
                     x[idx] = vd->GetValue(l);
                     ++l;
                 }
@@ -451,7 +456,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         for (Index k = 0; k < dim[2]; ++k) {
             for (Index j = 0; j < dim[1]; ++j) {
                 for (Index i = 0; i < dim[0]; ++i) {
-                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim) : StructuredGridBase::vertexIndex(i, j, k, dim);
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, numGridDivisions.data()) : StructuredGridBase::vertexIndex(i, j, k, numGridDivisions.data());
 #if VTK_MAJOR_VERSION < 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION<1)
                     ValueType v[3];
                     vd->GetTupleValue(l, v);
