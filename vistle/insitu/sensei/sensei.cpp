@@ -22,7 +22,7 @@ SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&
 	m_commands["exit"] = false; //let the simulation know that vistle wants to exit by returning false from execute
 	try
 	{
-		m_messageHandler.initialize();
+		m_messageHandler.initialize(m_rank);
 		dumpConnectionFile();
 	}
 	catch (...)
@@ -138,7 +138,7 @@ void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
 void SenseiAdapter::dumpConnectionFile()
 {
 	std::ofstream outfile("sensei.vistle");
-	outfile << m_messageHandler.name() << endl;
+	outfile << std::to_string(m_rank) << " " << m_messageHandler.name() << endl;
 	outfile.close();
 }
 

@@ -2,7 +2,7 @@
 #include <fstream>
 
 using namespace vistle::insitu::message;
-void InSituShmMessage::initialize()
+void InSituShmMessage::initialize(int rank)
 {
 	if (m_initialized)
 	{
@@ -15,7 +15,7 @@ void InSituShmMessage::initialize()
 	do
 	{
 		error = false;
-		msqName = m_msqName + std::to_string(++m_iteration);
+		msqName = m_msqName + std::to_string(++m_iteration) + "_r" + std::to_string(rank);
 		try
 		{
 			std::cerr << "creating msq " << (msqName + m_recvSuffix).c_str() << std::endl;
@@ -41,26 +41,27 @@ void InSituShmMessage::initialize()
 	m_initialized = true;
 }
 
-void InSituShmMessage::initialize(const std::string& msqName)
+void InSituShmMessage::initialize(const std::string& msqName, int rank)
 {
 	if (m_initialized)
 	{
 		std::cerr << "ShmMessage already initialized" << std::endl;
 		return;
 	}
+	auto msqRankName = msqName + "_r" + std::to_string(rank);
 	try
 	{
-		std::cerr << "trying to open " << (msqName + m_sendSuffix).c_str() << std::endl;
-		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + m_sendSuffix).c_str());
-		std::cerr << "trying to open " << (msqName + m_recvSuffix).c_str() << std::endl;
-		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqName + m_recvSuffix).c_str());
+		std::cerr << "trying to open " << (msqRankName + m_sendSuffix).c_str() << std::endl;
+		m_msqs[0] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqRankName + m_sendSuffix).c_str());
+		std::cerr << "trying to open " << (msqRankName + m_recvSuffix).c_str() << std::endl;
+		m_msqs[1] = std::make_unique<boost::interprocess::message_queue>(boost::interprocess::open_only, (msqRankName + m_recvSuffix).c_str());
 
-		boost::interprocess::message_queue::remove((msqName + m_sendSuffix).c_str());
-		boost::interprocess::message_queue::remove((msqName + m_recvSuffix).c_str());
+		boost::interprocess::message_queue::remove((msqRankName + m_sendSuffix).c_str());
+		boost::interprocess::message_queue::remove((msqRankName + m_recvSuffix).c_str());
 	}
 	catch (const boost::interprocess::interprocess_exception& ex)
 	{
-		std::cerr << "ShmMessage " << msqName << " opening error: " << ex.what() << std::endl;
+		std::cerr << "ShmMessage " << msqRankName << " opening error: " << ex.what() << std::endl;
 		return;
 	}
 	m_initialized = true;

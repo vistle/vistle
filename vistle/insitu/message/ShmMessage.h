@@ -65,8 +65,8 @@ public:
 
         return true;
     }
-    void initialize(); //create a msq
-    void initialize(const std::string& msqName); //connect to a msq
+    void initialize(int rank); //create a msq
+    void initialize(const std::string& msqName, int rank); //connect to a msq
     void reset(); //set the state back to uninitialized
     bool isInitialized();
     void removeShm();
