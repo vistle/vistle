@@ -147,12 +147,22 @@ void SenseiModule::connectToSim() {
     reconnect();
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
-    std::string key;
-    infile >> key;
+    std::string key, rankStr;
+    while (rankStr != std::to_string(rank()))
+    {
+        infile >> rankStr;
+        infile >> key;
+        if (infile.eof())
+        {
+            CERR << "missing conncection key for rank " << rank() << endl;
+            break;
+        }
+    }
+
     infile.close();
     
     CERR << " key = " << key << endl;
-    m_messageHandler.initialize(key);
+    m_messageHandler.initialize(key, m_rank);
     vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
     m_messageHandler.send(insitu::message::ShmInit{ args });
     m_connectedToSim = true;
