@@ -78,9 +78,9 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
 
     UnstructuredGrid::ptr cugrid = CREATE_VISTLE_OBJECT(UnstructuredGrid, nelem, nconn, ncoord);
 
-    float* xc = cugrid->x().data();
-    float* yc = cugrid->y().data();
-    float* zc = cugrid->z().data();
+    Scalar* xc = cugrid->x().data();
+    Scalar* yc = cugrid->y().data();
+    Scalar* zc = cugrid->z().data();
     Index* elems = cugrid->el().data();
     Index* connlist = cugrid->cl().data();
     Byte* typelist = cugrid->tl().data();
@@ -304,9 +304,9 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
         }
 
     if (coords) {
-        float* xc = coords->x().data();
-        float* yc = coords->y().data();
-        float* zc = coords->z().data();
+        Scalar* xc = coords->x().data();
+        Scalar* yc = coords->y().data();
+        Scalar* zc = coords->z().data();
 
         for (Index i = 0; i < ncoord; ++i)
         {
@@ -325,9 +325,9 @@ Object::ptr vtkSGrid2Vistle(SENSEI_ARGUMENT vtkStructuredGrid* vsgrid)
     vsgrid->GetDimensions(dim);
 
     StructuredGrid::ptr csgrid = CREATE_VISTLE_OBJECT(StructuredGrid, dim[0], dim[1], dim[2]);
-    float* xc = csgrid->x().data();
-    float* yc = csgrid->y().data();
-    float* zc = csgrid->z().data();
+    Scalar* xc = csgrid->x().data();
+    Scalar* yc = csgrid->y().data();
+    Scalar* zc = csgrid->z().data();
 
     Index l = 0;
     for (Index i = 0; i < Index(dim[0]); ++i)
@@ -429,7 +429,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
     case 1:
     {
         Vec<Scalar, 1>::ptr cf = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 1>, n);
-        float* x = cf->x().data();
+        Scalar* x = cf->x().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
@@ -447,9 +447,9 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
     case 3:
     {
         Vec<Scalar, 3>::ptr cv = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 3>, n);
-        float* x = cv->x().data();
-        float* y = cv->y().data();
-        float* z = cv->z().data();
+        Scalar* x = cv->x().data();
+        Scalar* y = cv->y().data();
+        Scalar* z = cv->z().data();
         Index l = 0;
         for (Index k = 0; k < dataDim[2]; ++k) {
             for (Index j = 0; j < dataDim[1]; ++j) {
