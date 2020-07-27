@@ -444,6 +444,32 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
         return cf;
     }
     break;
+    case 2:
+    {
+        Vec<Scalar, 2>::ptr cv = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 2>, n);
+        Scalar* x = cv->x().data();
+        Scalar* y = cv->y().data();
+        Index l = 0;
+        for (Index k = 0; k < dataDim[2]; ++k) {
+            for (Index j = 0; j < dataDim[1]; ++j) {
+                for (Index i = 0; i < dataDim[0]; ++i) {
+                    const Index idx = perCell ? StructuredGridBase::cellIndex(i, j, k, dim.data()) : StructuredGridBase::vertexIndex(i, j, k, dim.data());
+#if VTK_MAJOR_VERSION < 7 || (VTK_MAJOR_VERSION==7 && VTK_MINOR_VERSION<1)
+                    ValueType v[2];
+                    vd->GetTupleValue(l, v);
+                    x[idx] = v[0];
+                    y[idx] = v[1];
+#else
+                    x[idx] = vd->GetTypedComponent(l, 0);
+                    y[idx] = vd->GetTypedComponent(l, 1);
+#endif
+                    ++l;
+                }
+            }
+        }
+        cv->setGrid(grid);
+        return cv;
+    }
     case 3:
     {
         Vec<Scalar, 3>::ptr cv = CREATE_VISTLE_OBJECT(Vec<Scalar COMMA 3>, n);
