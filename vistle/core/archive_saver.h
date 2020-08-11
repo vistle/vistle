@@ -7,6 +7,12 @@
 
 #include <boost/mpl/for_each.hpp>
 
+#include <set>
+#include <map>
+#include <string>
+#include <memory>
+#include <iostream>
+
 namespace vistle {
 
 struct V_COREEXPORT ArraySaver {
