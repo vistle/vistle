@@ -304,7 +304,7 @@ struct ObjectData: public ShmData {
 };
 
 #ifdef USE_BOOST_ARCHIVE
-extern template Object *Object::loadObject<boost_iarchive>(boost_iarchive &ar);
+extern template Object V_COREEXPORT *V_COREEXPORT::loadObject<boost_iarchive>(boost_iarchive &ar);
 extern template void V_COREEXPORT Object::saveObject<boost_oarchive>(boost_oarchive &ar) const;
 extern template void V_COREEXPORT Object::serialize<boost_iarchive>(boost_iarchive &ar);
 extern template void V_COREEXPORT Object::serialize<boost_oarchive>(boost_oarchive &ar);
@@ -312,7 +312,7 @@ extern template void V_COREEXPORT Object::Data::load<boost_iarchive>(boost_iarch
 extern template void V_COREEXPORT Object::Data::save<boost_oarchive>(boost_oarchive &ar) const;
 #endif
 #ifdef USE_YAS
-extern template Object *Object::loadObject<yas_iarchive>(yas_iarchive &ar);
+extern template Object V_COREEXPORT *Object::loadObject<yas_iarchive>(yas_iarchive &ar);
 extern template void V_COREEXPORT Object::saveObject<yas_oarchive>(yas_oarchive &ar) const;
 extern template void V_COREEXPORT Object::serialize<yas_iarchive>(yas_iarchive &ar);
 extern template void V_COREEXPORT Object::serialize<yas_oarchive>(yas_oarchive &ar);
