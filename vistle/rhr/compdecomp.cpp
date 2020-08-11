@@ -147,6 +147,9 @@ buffer compressDepth(const float *depth, int x, int y, int w, int h, int stride,
         transform_predict_planar((unsigned char *)pbuf.data(), depth+stride*y+x, w, h, stride);
         return pbuf;
     }
+    case vistle::CompressionParameters::DepthRaw: {
+        break;
+    }
     }
 
     param.depthCodec = vistle::CompressionParameters::DepthRaw;

@@ -317,7 +317,7 @@ void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx
    //std::cerr << "R" << sockIdx << "(" << length << ")" << std::flush;
    async_write(*m_sock[other], asio::buffer(m_buf[sockIdx].data(), length),
          [this, self, sockIdx](boost::system::error_code error, size_t length) {
-            int other = (sockIdx+1)%2;
+            //int other = (sockIdx+1)%2;
             //std::cerr << "W" << other << "(" << length << ")" << std::flush;
             handleWrite(self, sockIdx, error);
          });
@@ -326,7 +326,6 @@ void TunnelStream::handleRead(std::shared_ptr<TunnelStream> self, size_t sockIdx
 void TunnelStream::handleWrite(std::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec) {
 
    //CERR << "handleWrite: sockIdx=" << sockIdx << std::endl;
-   int other = (sockIdx+1)%2;
    if (ec) {
       CERR << "write error on socket " << sockIdx << ": " << ec.message() << ", closing stream" << std::endl;
       destroy();

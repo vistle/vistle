@@ -737,7 +737,9 @@ class TrivialStateObserver: public StateObserver {
 public:
 
    TrivialStateObserver()
+#ifdef OBSERVER_DEBUG
       : m_out(std::cerr)
+#endif
       {}
 
    void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
@@ -841,8 +843,10 @@ public:
 #endif
    }
 
+#ifdef OBSERVER_DEBUG
  private:
    std::ostream &m_out;
+#endif
 
 };
 

@@ -387,7 +387,6 @@ public:
     const std::function<void()> &objectCompletionHandler() const;
 
 private:
-    bool m_rename = false;
     std::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject = nullptr;
     std::function<void()> m_completer;

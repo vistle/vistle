@@ -329,7 +329,6 @@ bool Reader::changeParameters(std::set<const Parameter *> params)
         ret &= Module::changeParameter(p);
     }
 
-    bool ex = false;
     for (auto &p: params) {
         auto it = m_observedParameters.find(p);
         if (it != m_observedParameters.end()) {
