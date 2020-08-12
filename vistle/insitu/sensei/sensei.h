@@ -11,7 +11,7 @@
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/sharedOption.h>
 
-
+#include <mpi.h>
 
 namespace vistle {
 namespace message {
@@ -26,7 +26,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 {
 public:
 
-	SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs);
+	SenseiAdapter(bool paused, MPI_Comm Comm, MetaData&& meta, Callbacks cbs);
 	bool Execute(size_t timestep);
 	bool Finalize();
 
@@ -74,7 +74,7 @@ private:
 	std::map<std::string, bool> m_commands; //commands and their current state
 	std::map<message::InSituMessageType, std::unique_ptr<message::IntOptionBase>> m_intOptions; // options that can be set in the module
 	void calculateUsedData(); //calculate and store which meshes and variables are requested by Vistle's connected ports
-	void dumpConnectionFile(); //create a file in which the sensei module can find the connection info
+	void dumpConnectionFile(MPI_Comm Comm); //create a file in which the sensei module can find the connection info
 	bool recvAndHandeMessage(bool blocking = false);
 	bool initializeVistleEnv();
 	void addPorts();

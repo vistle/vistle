@@ -7,23 +7,25 @@
 #include <fstream>
 #include <cassert>
 
+#include <boost/mpi/collectives.hpp>
+
 #define CERR std::cerr << "[" << m_rank << "/" << m_mpiSize << " ] SenseiAdapter: "
 using std::endl;
 using namespace vistle::insitu;
 using namespace vistle::insitu::sensei;
 using namespace vistle::insitu::message;
-SenseiAdapter::SenseiAdapter(bool paused, size_t rank, size_t mpiSize, MetaData&& meta, Callbacks cbs)
+SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData&& meta, Callbacks cbs)
 	:m_callbacks(cbs)
 	, m_metaData(std::move(meta))
-	, m_rank(rank)
-	, m_mpiSize(mpiSize)
 {
+	MPI_Comm_rank(Comm, &m_rank);
+	MPI_Comm_size(Comm, &m_mpiSize);
 	m_commands["run/paused"] = !paused; //if true run else wait
 	m_commands["exit"] = false; //let the simulation know that vistle wants to exit by returning false from execute
 	try
 	{
 		m_messageHandler.initialize(m_rank);
-		dumpConnectionFile();
+		dumpConnectionFile(comm);
 	}
 	catch (...)
 	{
@@ -135,11 +137,22 @@ void vistle::insitu::sensei::SenseiAdapter::calculateUsedData()
 	}
 }
 
-void SenseiAdapter::dumpConnectionFile()
+void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 {
-	std::ofstream outfile("sensei.vistle");
-	outfile << std::to_string(m_rank) << " " << m_messageHandler.name() << endl;
-	outfile.close();
+	
+	std::vector<std::string> names;
+	boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_messageHandler.name(), names, 0);
+	if (m_rank == 0)
+	{
+		std::ofstream outfile("sensei.vistle");
+		for (size_t i = 0; i < m_mpiSize; i++)
+		{
+			outfile << std::to_string(i) << " " << names[i] << endl;
+		}
+		outfile.close();
+
+	}
+
 }
 
 bool SenseiAdapter::recvAndHandeMessage(bool blocking)
