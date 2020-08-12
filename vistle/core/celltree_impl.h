@@ -106,7 +106,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
    // sort cells into buckets
    const Vector crange = cmax - cmin;
 
-   auto getBucket = [cmin, cmax, crange] (Vector center, int d) -> int { return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d])/crange[d] * NumBuckets), NumBuckets -1); };
+   auto getBucket = [cmin, cmax, crange, NumBuckets] (Vector center, int d) -> int { return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d])/crange[d] * NumBuckets), NumBuckets -1); };
 
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
@@ -173,7 +173,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vec
    const Index D = best_dim;
 
    auto centerD = [min, max, D](Index c) -> Scalar { return Scalar(0.5)*(min[c][D]+max[c][D]); };
-   auto getBucketD = [cmin, cmax, crange, D] (Scalar center) -> int { return crange[D] == 0 ? 0 : std::min(int((center - cmin[D])/crange[D] * NumBuckets), NumBuckets -1); };
+   auto getBucketD = [cmin, cmax, crange, D, NumBuckets] (Scalar center) -> int { return crange[D] == 0 ? 0 : std::min(int((center - cmin[D])/crange[D] * NumBuckets), NumBuckets -1); };
 
 #ifdef CT_DEBUG
    const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket+1);
