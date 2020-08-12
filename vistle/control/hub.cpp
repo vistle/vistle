@@ -374,6 +374,13 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
     args.push_back(spawn);
     std::copy(argv.begin(), argv.end(), std::back_inserter(args));
     auto pid = spawn_process(spawn, args);
+#ifndef _WIN32
+    if (pid == -1) {
+        std::cerr << "failed to execute " << argv[0] << " via spawn_vistle.sh, retrying with mpirun" << std::endl;
+        args[0] = "mpirun";
+        pid = spawn_process(args[0], args);
+    }
+#endif
     return pid;
 }
 
