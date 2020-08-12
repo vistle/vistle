@@ -12,10 +12,19 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
+
+#define USE_POSIX_SPAWN
+#ifdef USE_POSIX_SPAWN
+#include <spawn.h>
+#endif
 #endif
 
 #ifdef __linux__
 #include <sys/prctl.h>
+#endif
+
+#ifdef __APPLE__
+#include <crt_externs.h>
 #endif
 
 namespace vistle {
@@ -38,6 +47,29 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
    }
    childProcesses.push_back(pid);
 #else
+#ifdef USE_POSIX_SPAWN
+   pid_t pid = 0;
+   posix_spawnattr_t attr;
+   posix_spawnattr_init(&attr);
+   posix_spawn_file_actions_t file_actions;
+   posix_spawn_file_actions_init(&file_actions);
+#ifdef __APPLE__
+   char ***environp = _NSGetEnviron();
+   if (!environp) {
+       std::cerr << "Error when spawning " << executable << ": failed to get environment with _NSGetEnviron()" << std::endl;
+       return 0;
+   }
+   char **environ = *environp;
+#endif
+   int err = posix_spawnp(&pid, executable.c_str(), &file_actions, &attr, (char **)a.data(), environ);
+   posix_spawnattr_destroy(&attr);
+   posix_spawn_file_actions_destroy(&file_actions);
+   if (err != 0) {
+      std::cerr << "Error in posix_spawn for " << executable << ": " << strerror(errno) << std::endl;
+      return -1;
+   }
+   return pid;
+#else
    const pid_t ppid = getpid();
    const pid_t pid = fork();
    if (pid < 0) {
@@ -58,6 +90,7 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
       std::cerr << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
       exit(1);
    }
+#endif
 #endif
    return pid;
 }
