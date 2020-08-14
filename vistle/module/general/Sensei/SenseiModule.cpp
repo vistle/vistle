@@ -147,6 +147,11 @@ void SenseiModule::connectToSim() {
     reconnect();
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
+    if(infile.is_open())
+    {
+        CERR << "failed to open file " << m_filePath->getValue() << endl;
+        return;
+    }
     std::string key, rankStr;
     while (rankStr != std::to_string(rank()))
     {
