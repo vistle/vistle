@@ -75,9 +75,12 @@ bool SenseiModule::endExecute() {
         return true;
     }
     operate(); //catch newest state
+    if (!m_connectedToSim)
+    {
+        return true;
+    }
     m_messageHandler.send(Ready{ false });
-    std::unique_ptr<Message> msg;
-    while (true) //wait until we receive the confirmation that the sim stopped making vistle objects or timeout
+    while (m_connectedToSim) //wait until we receive the confirmation that the sim stopped making vistle objects or timeout
     {
         auto msg = m_messageHandler.timedRecv(m_timeout->getValue());
         if (msg.type() == InSituMessageType::Invalid)
@@ -94,13 +97,7 @@ bool SenseiModule::endExecute() {
         {
             handleMessage(msg);
         }
-        if (!m_connectedToSim)
-        {
-            return true;
-        }
     }
-    
-  
 
     return true;
 }
@@ -147,6 +144,11 @@ void SenseiModule::connectToSim() {
     reconnect();
     CERR << "trying to connect to sim with file " << m_filePath->getValue() << endl;
     std::ifstream infile(m_filePath->getValue());
+    if(infile.fail())
+    {
+        CERR << "failed to open file " << m_filePath->getValue() << endl;
+        return;
+    }
     std::string key, rankStr;
     while (rankStr != std::to_string(rank()))
     {
@@ -166,7 +168,11 @@ void SenseiModule::connectToSim() {
     vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
     m_messageHandler.send(ShmInit{ args });
     m_connectedToSim = true;
-   }
+    for (const auto &option : m_intOptions)
+    {
+        option.second->send();
+    }
+}
 
 
 
