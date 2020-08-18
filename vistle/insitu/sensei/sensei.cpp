@@ -163,7 +163,7 @@ void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 {
 	message::Message msg = blocking ? m_messageHandler.recv() : m_messageHandler.tryRecv();
-	if (msg.type != 0)
+	if (msg.type() != insitu::message::InSituMessageType::Invalid)
 	{
 		std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
 	}
