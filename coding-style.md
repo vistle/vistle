@@ -22,8 +22,7 @@ Source Code Formatting
 * avoid trailing spaces
 * files have to end with a new-line
 * only ASCII characters (no latin1 or unicode - their behaviour depends on character sets)
-* opening and closing braces on their own line
-* indent by 3 spaces
+* indent by 4 spaces
 * follow commas with a space, e.g.:
 
         printf("format: %s", parameter);
@@ -31,9 +30,9 @@ Source Code Formatting
 * put a space between keywords and opening parentheses, but not between function name and function arguments, e.g.:
 
         void recurse(int arg) {
-           if (condition) {
-              recurse(arg+1);
-           }
+            if (condition) {
+                recurse(arg+1);
+            }
         }
 
 * put opening braces on same line as keyword introducing the block (except for constructors),
@@ -104,21 +103,21 @@ Coding Style
   perhaps even with identical name, if necessary for another
   independent purpose - the compiler will reuse space if possible, e.g.:
 
-          if(something) {
-             bool important_flag = false;
-             // use important_flag
+          if (something) {
+              bool important_flag = false;
+              // use important_flag
           } else {
-             bool important_flag = false;
-             // use important_flag
+              bool important_flag = false;
+              // use important_flag
           }
 
   instead of:
 
           bool important_flag = false;
-          if(something) {
-             // use important_flag
+          if (something) {
+              // use important_flag
           } else {
-             // use important_flag for a different purpose
+              // use important_flag for a different purpose
           }                                                                                                                                                                                                                                                                                           
 
 * prefix class attributes with `m_`
