@@ -26,7 +26,7 @@ public:
             std::cerr << "ShmMessage : can not send invalid message!" << std::endl;
             return false;
         }
-        std::cerr << "sending message of type " << static_cast<int>(msg.type) << std::endl;
+        //std::cerr << "sending message of type " << static_cast<int>(msg.type) << std::endl;
         vistle::vecostreambuf<vistle::buffer> buf;
         vistle::oarchive ar(buf);
         ar& msg;

@@ -33,6 +33,7 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData&& meta, Callba
 	}
 
 	m_intOptions[message::InSituMessageType::KeepTimesteps] = std::unique_ptr< IntOption<message::KeepTimesteps>>(new IntOption<message::KeepTimesteps>{ true });
+	m_intOptions[message::InSituMessageType::NthTimestep] = std::unique_ptr<IntOption<message::NthTimestep>>(new IntOption<message::NthTimestep>{1});
 
 }
 
@@ -71,6 +72,9 @@ bool SenseiAdapter::Execute(size_t timestep)
 		CERR << "can not process data if the sensei controller is not executing!" << endl;
 		return true;
 	}
+	if (timestep % m_intOptions[message::InSituMessageType::NthTimestep]->val != 0) {
+        return true;
+    }
 	auto dataObjects = m_callbacks.getData(m_usedData);
 	for (const auto dataObject : dataObjects)
 	{
@@ -88,6 +92,7 @@ bool SenseiAdapter::Execute(size_t timestep)
 
 bool vistle::insitu::sensei::SenseiAdapter::Finalize()
 {
+	CERR << "Finalizing" << endl;
 	if (m_moduleInfo.initialized)
 	{
 		m_messageHandler.send(vistle::insitu::message::ConnectionClosed{ true });
@@ -145,7 +150,7 @@ void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 	if (m_rank == 0)
 	{
 		std::ofstream outfile("sensei.vistle");
-		for (size_t i = 0; i < m_mpiSize; i++)
+		for (int i = 0; i < m_mpiSize; i++)
 		{
 			outfile << std::to_string(i) << " " << names[i] << endl;
 		}
@@ -158,7 +163,11 @@ void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm)
 bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 {
 	message::Message msg = blocking ? m_messageHandler.recv() : m_messageHandler.tryRecv();
-	std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
+	if (msg.type != 0)
+	{
+		std::cerr << "received message of type " << static_cast<int>(msg.type()) << std::endl;
+	}
+	
 	switch (msg.type())
 	{
 	case insitu::message::InSituMessageType::Invalid:
@@ -177,6 +186,7 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		if (m_mpiSize != mpisize)
 		{
 			CERR << "Vistle's mpi = " << mpisize << " and this mpi size = " << m_mpiSize << " do not match" << endl;
+			m_messageHandler.send(ConnectionClosed{true});
 			return false;
 		}
 		m_moduleInfo.shmName = argV[1];
@@ -184,15 +194,19 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		m_moduleInfo.id = std::stoi(argV[3]);
 		m_moduleInfo.hostname = argV[4];
 		m_moduleInfo.numCons = argV[5];
-		if (m_rank == 0 && argV[4] != vistle::hostname()) {
+		if (m_rank == 0 && argV[4] != vistle::hostname())
+		{
 			CERR << "this " << vistle::hostname() << "trying to connect to " << argV[4] << endl;
 			CERR << "Wrong host: must connect to Vistle on the same machine!" << endl;
+			m_messageHandler.send(ConnectionClosed{true});
 			return false;
 		}
 		if (!initializeVistleEnv())
 		{
+			m_messageHandler.send(ConnectionClosed{true});
 			return false;
 		}
+		m_moduleInfo.initialized = true;
 		std::vector<std::string> commands;
 		for (const auto& command : m_commands)
 		{
@@ -253,8 +267,6 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		break;
 	case insitu::message::InSituMessageType::ConstGrids:
 		break;
-	case insitu::message::InSituMessageType::NthTimestep:
-		break;
 	case insitu::message::InSituMessageType::ConnectionClosed:
 	{
 		m_sendMessageQueue.reset(nullptr);
@@ -267,14 +279,9 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
 		break;
 	case insitu::message::InSituMessageType::CombineGrids:
 		break;
-	case insitu::message::InSituMessageType::KeepTimesteps:
-	{
-		m_intOptions[msg.type()]->setVal(msg);
-	}
 	break;
 	default:
-		CERR << "received message with unknown type " << static_cast<int>(msg.type()) << endl;
-		return false;
+        m_intOptions[msg.type()]->setVal(msg); //KeepTimesteps, NthTimestep
 		break;
 	}
 	return true;
@@ -353,7 +360,6 @@ void SenseiAdapter::addPorts()
 	ports.push_back(varNames);
 
 	std::vector<std::string> debugNames;
-	int i = 0;
 	for (auto mesh : meshNames)
 	{
 		debugNames.push_back(mesh + "_mpi_ranks");

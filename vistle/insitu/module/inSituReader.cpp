@@ -130,7 +130,6 @@ bool vistle::insitu::InSituReader::sendMessage(const vistle::message::Message& m
         CERR << "InSituReader: can't send message with payload while executing because that would create a vistle-object" << endl;
         return false;
     }
-    CERR << "vistle::insitu::InSituReader::sendMessage called" << endl;
     return Module::sendMessage(message, payload);
 }
 

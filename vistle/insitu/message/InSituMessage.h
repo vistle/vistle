@@ -82,7 +82,7 @@ private:\
 #define DECLARE_ENGINE_MESSAGE(messageType)\
 struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase {\
      const InSituMessageType type = InSituMessageType::messageType;\
-    messageType() :InSituMessageBase(type) {}\
+    messageType() :InSituMessageBase(InSituMessageType::messageType) {}\
     ARCHIVE_ACCESS\
     template<class Archive>\
     void serialize(Archive& ar) {}\

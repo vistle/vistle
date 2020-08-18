@@ -108,7 +108,7 @@ SyncShmIDs::ShmSegment::ShmSegment(const std::string& name, Mode mode)
             m_shmObj.truncate(sizeof(ShmData));
             m_region = mapped_region{ m_shmObj, read_write };
             void* addr = m_region.get_address();
-            auto data = new(addr)ShmData{ vistle::Shm::the().objectID(), vistle::Shm::the().arrayID() };
+            new (addr) ShmData{vistle::Shm::the().objectID(), vistle::Shm::the().arrayID()}; //create the ShmData object in the shared_memory_object
         }
         catch (boost::interprocess::interprocess_exception& ex) {
             throw vistle::exception(std::string("opening shm segment ") + name + ": " + ex.what());
