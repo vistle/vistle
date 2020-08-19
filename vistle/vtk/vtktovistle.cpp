@@ -368,14 +368,16 @@ Object::ptr vtkUniGrid2Vistle(SENSEI_ARGUMENT vtkUniformGrid* vugrid)
 {
     int n[3];
     vugrid->GetDimensions(n);
-    double origin[3] = { 0., 0., 0. };
+    int e[6];
+    vugrid->GetExtent(e);
+    double origin[3] = {0., 0., 0.};
     vugrid->GetOrigin(origin);
     double spacing[3] = { 1., 1., 1. };
     vugrid->GetSpacing(spacing);
     UniformGrid::ptr ug = CREATE_VISTLE_OBJECT(UniformGrid, n[0], n[1], n[2]);
     for (int c = 0; c < 3; ++c) {
-        ug->min()[c] = origin[c];
-        ug->max()[c] = origin[c] + (n[c] - 1) * spacing[c];
+        ug->min()[c] = origin[c] + e[2*c] * spacing[c];
+        ug->max()[c] = origin[c] + (e[2*c+1]) * spacing[c];
     }
     return ug;
 }
