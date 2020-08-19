@@ -554,6 +554,11 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray* varr, Object::const_p
     {
         return vtkArray2Vistle<unsigned int, vtkUnsignedIntArray>(SENSEI_PARAMETER vd, grid);
     }
+    else if (vtkUnsignedCharArray *vd = dynamic_cast<vtkUnsignedCharArray *>(varr))
+    {
+        return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(SENSEI_PARAMETER vd, grid);
+    }
+
     return NULL;
 }
 
