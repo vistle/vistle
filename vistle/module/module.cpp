@@ -491,9 +491,9 @@ bool Module::destroyPort(const Port *port) {
    assert(port);
    message::RemovePort message(*port);
    message.setDestId(Id::ForBroadcast);
-   if (const Port *p = findInputPort(port->getName())) {
+   if (findInputPort(port->getName())) {
        inputPorts.erase(port->getName());
-   } else if (const Port *p = findOutputPort(port->getName())) {
+   } else if (findOutputPort(port->getName())) {
        outputPorts.erase(port->getName());
    } else {
        return false;
@@ -2223,7 +2223,7 @@ bool Module::compute() {
     if (concurrency <= 1)
         concurrency = 1;
 
-    while (m_tasks.size() >= concurrency) {
+    while (m_tasks.size() >= unsigned(concurrency)) {
         m_tasks.front()->wait();
         m_tasks.pop_front();
     }

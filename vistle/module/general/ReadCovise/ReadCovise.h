@@ -72,7 +72,7 @@ struct Element {
 
 class ReadCovise: public vistle::Reader {
 
-   static const int NumPorts = 5;
+   static const unsigned NumPorts = 5;
 
  public:
    ReadCovise(const std::string &name, int moduleID, mpi::communicator comm);

@@ -363,7 +363,7 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
     case CompressionLz4: {
 #ifdef HAVE_LZ4
         int n = LZ4_decompress_safe(compressed, decompressed.data(), size, decompressed.size());
-        if (n != rawsize) {
+        if (size_t(n) != rawsize) {
             std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
         }
         if (n < 0) {

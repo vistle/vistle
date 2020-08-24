@@ -685,7 +685,7 @@ bool Tracer::reduce(int timestep) {
        maxTime = std::max(p->time(), maxTime);
    }
    maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
-   int numout = 1;
+   unsigned numout = 1;
    if (taskType != Streamlines) {
        numtime = maxTime / global.dt_step + 1;
        if (numtime < 1)
@@ -772,14 +772,14 @@ bool Tracer::reduce(int timestep) {
    }
 
    if (taskType == MovingPoints) {
-       assert(global.points.size() > timestep);
+       assert(global.points.size() > size_t(timestep));
        applyAttributes(global.points[timestep], m_gridAttr[timestep+1]);
    } else {
        if (taskType == Streamlines) {
            assert(!global.lines.empty());
            applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
        } else {
-           assert(global.lines.size() > timestep);
+           assert(global.lines.size() > size_t(timestep));
            applyAttributes(global.lines[timestep], m_gridAttr[timestep+1]);
        }
    }
@@ -788,7 +788,7 @@ bool Tracer::reduce(int timestep) {
            assert(!global.vecField.empty());
            applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
        } else {
-           assert(global.vecField.size() > timestep);
+           assert(global.vecField.size() > size_t(timestep));
            applyAttributes(global.vecField[timestep], m_data0Attr[timestep+1]);
        }
    }
@@ -797,7 +797,7 @@ bool Tracer::reduce(int timestep) {
            assert(!global.scalField.empty());
            applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
        } else {
-           assert(global.scalField.size() > timestep);
+           assert(global.scalField.size() > size_t(timestep));
            applyAttributes(global.scalField[timestep], m_data1Attr[timestep+1]);
        }
    }

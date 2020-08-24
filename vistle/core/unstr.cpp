@@ -58,7 +58,7 @@ const unsigned UnstructuredGrid::FaceSizes[UnstructuredGrid::NUM_TYPES][Unstruct
    { 4, 4, 4, 4, 4, 4 },
 };
 
-const int UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][UnstructuredGrid::MaxNumFaces][UnstructuredGrid::MaxNumVertices] = {
+const unsigned UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][UnstructuredGrid::MaxNumFaces][UnstructuredGrid::MaxNumVertices] = {
 { // none
 },
 { // bar

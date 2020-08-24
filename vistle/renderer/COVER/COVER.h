@@ -93,7 +93,7 @@ class V_COVEREXPORT COVER: public vistle::Renderer {
       std::shared_future<osg::MatrixTransform *> node_future;
    };
    std::deque<DelayedObject> m_delayedObjects;
-   int m_status = 0;
+   size_t m_status = 0;
 
  protected:
    struct Variant {

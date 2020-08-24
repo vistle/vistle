@@ -17,8 +17,6 @@
 
 namespace {
 
-const int TarHeaderSize = 512;
-
 struct Cleaner {
 
     Cleaner(std::function<void()> task)
@@ -330,7 +328,7 @@ Model::Model(const std::string &archiveOrDirectory, Format format)
             prev = nullptr;
 #endif
             if (type == AE_IFDIR) {
-                auto dir = dynamic_cast<Directory *>(addPath(pathname));
+                /* auto dir = dynamic_cast<Directory *>(addPath(pathname)); */
             } else if (type == AE_IFREG) {
                 auto file = dynamic_cast<File *>(addPath(pathname));
                 if (file) {
@@ -570,7 +568,7 @@ archive_streambuf::archive_streambuf(const fs::File *file) {
             if (pathname == file->pathname) {
                 auto type = archive_entry_filetype(entry);
                 assert(type == AE_IFREG);
-                size_t sz = archive_entry_size(entry);
+                /* size_t sz = archive_entry_size(entry); */
                 return;
             }
         }

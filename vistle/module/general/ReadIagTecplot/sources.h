@@ -40,7 +40,7 @@ inline void AcousticSourcesBase::setReferenceState(double iRho0, double iP0, dou
 }
 
 inline void AcousticSourcesBase::interpolate(AcousticSourcesBase const & iFrom, AcousticSourcesBase const & iTo, double iAt) {
-	static double const EPS=1e-8;
+    //static double const EPS=1e-8;
 	// BEWARE: mDoppler has to be interpolated backwards, to approximate reciprocal interpolation
 	mDoppler=iTo.mDoppler*(1-iAt)+iFrom.mDoppler*iAt;
 }

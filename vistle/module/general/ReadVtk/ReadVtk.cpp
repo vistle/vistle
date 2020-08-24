@@ -463,7 +463,7 @@ bool ReadVtk::read(Reader::Token &token, int timestep, int block)
         bool constant = true;
         double t = ConstantTime;
         if (timestep >= 0) {
-            if (timestep >= m_d->times.size())
+            if (size_t(timestep) >= m_d->times.size())
                 return false;
 
             constant = false;

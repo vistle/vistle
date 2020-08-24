@@ -178,7 +178,7 @@ bool ToTriangles::compute() {
       auto cl = &quads->cl()[0];
       auto tcl = &tri->cl()[0];
       for (Index e=0; e<nelem; ++e) {
-         const Index begin=e*N, end=begin+N;
+         const Index begin=e*N;
          for (Index v=0; v<N-2; ++v) {
             tcl[i++] = cl[begin];
             tcl[i++] = cl[begin+v+1];

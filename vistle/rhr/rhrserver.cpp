@@ -938,7 +938,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
     }
     m_resizeBlocked = true;
 
-    if (m_dumpImages && viewNum >= 0 && viewNum < m_viewData.size()) {
+    if (m_dumpImages && viewNum >= 0 && size_t(viewNum) < m_viewData.size()) {
         std::stringstream cn, dn, dnfull;
         cn << "color_frame" << m_framecount << "_view" << viewNum << ".ppm";
         dn << "depth_frame" << m_framecount << "_view" << viewNum << ".pgm";

@@ -2701,6 +2701,9 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                     // element data
                     switch (elementDataType)
                     {
+                    case No_Element_Data:
+                    case Thickness:
+                        break;
 
                     case Stress_Tensor: // element stress (tensor component)
 
@@ -2807,6 +2810,8 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                     }
                     switch (elementDataType)
                     {
+                    case No_Element_Data:
+                        break;
 
                     case Stress_Tensor: // element stress (tensor component)
                         float Sav[6];
@@ -2904,6 +2909,10 @@ void Dyna3DReader<wordsize,INTEGER,REAL>::createStateObjects(vistle::Reader::Tok
                     // element data
                     switch (elementDataType)
                     {
+
+                    case No_Element_Data:
+                    case Thickness:
+                        break;
 
                     case Stress_Tensor: // element stress (tensor component)
                         // For beams no stress available.

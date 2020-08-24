@@ -447,9 +447,7 @@ bool ReadItlrBin::prepareRead()
     }
 
     if (!m_haveListFile && m_incrementFilename->getValue()) {
-        int first = m_first->getValue();
         int last = m_last->getValue();
-        int step = m_increment->getValue();
         for (int port=0; port<NumPorts; ++port) {
             m_fileList[port].clear();
             auto file = m_scalarFile[port];
@@ -499,7 +497,7 @@ bool ReadItlrBin::prepareRead()
         m_nparts = m_numPartitions->getValue();
 
     m_grids = readGridBlocks(gridFile, m_nparts);
-    return (m_grids.size() == m_nparts);
+    return (ssize_t(m_grids.size()) == m_nparts);
 }
 
 bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
@@ -517,7 +515,7 @@ bool ReadItlrBin::read(Reader::Token &token, int timestep, int block)
     for (int port=0; port<NumPorts; ++port) {
         if (m_scalarFile[port].empty())
             continue;
-        if (m_fileList[port].size() <= timestep)
+        if (ssize_t(m_fileList[port].size()) <= timestep)
             continue;
         auto file = m_fileList[port][timestep];
         filesystem::path filename;
@@ -609,7 +607,10 @@ bool readGridSizeFromGrid(File &file, uint32_t dims[3]) {
     if (file.fp) {
         char header[80];
         size_t n = fread(header, 80, 1, file.fp);
-        std::string unit = header;
+        if (n != 1) {
+            std::cerr << "failed to read grid dimension" << std::endl;
+            return false;
+        }
 
         return readArray<uint32_t>(file, "gridsize", dims, 3);
     }
@@ -621,9 +622,11 @@ bool readGridSizeFromField(File &file, uint32_t dims[3]) {
     if (file.fp) {
         char header[80];
         size_t n = fread(header, 80, 1, file.fp);
-        std::string fieldname = header;
+        if (n != 1) {
+            std::cerr << "failed to read grid dimension" << std::endl;
+            return false;
+        }
         n = fread(header, 80, 1, file.fp);
-        std::string unit = header;
 
         std::vector<uint32_t> d(7);
         if (!readArray<uint32_t>(file, "dims", d.data(), 7)) {
@@ -755,7 +758,7 @@ DataBase::ptr ReadItlrBin::readFieldBlock(const std::string &filename, int part)
             offset *= m_dims[c];
         }
     }
-    Index rest = m_dims[0]*m_dims[1]*m_dims[2] - offset - size;
+    //Index rest = m_dims[0]*m_dims[1]*m_dims[2] - offset - size;
 
     const std::string arrayname1{"funs"};
     const std::string arraynames3[3]{"xval", "yval", "zval"};

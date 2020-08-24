@@ -70,7 +70,7 @@ bool Assemble::compute() {
     Normals::const_ptr normals;
     std::vector<const Scalar *> floats;
 
-    int t = -1;
+    int tt = -1;
     bool haveAttr = m_attribute.empty();
     std::string attr;
 
@@ -81,8 +81,8 @@ bool Assemble::compute() {
         oin[i] = expect<Object>(m_in[i]);
         din[i] = DataBase::as(oin[i]);
         Object::const_ptr g;
-        if (t == -1 && oin[i]) {
-            t = oin[i]->getTimestep();
+        if (tt == -1 && oin[i]) {
+            tt = oin[i]->getTimestep();
         }
         if (!haveAttr && oin[i] && oin[i]->hasAttribute(m_attribute)) {
             haveAttr = true;
@@ -108,16 +108,16 @@ bool Assemble::compute() {
                 return true;
             }
             grid = g;
-            if (t == -1 && grid) {
-                t = grid->getTimestep();
+            if (tt == -1 && grid) {
+                tt = grid->getTimestep();
             }
             if (!haveAttr && grid && grid->hasAttribute(m_attribute)) {
                 haveAttr = true;
                 attr = grid->getAttribute(m_attribute);
             }
             normals = gi->normals();
-            if (t == -1 && normals) {
-                t = normals->getTimestep();
+            if (tt == -1 && normals) {
+                tt = normals->getTimestep();
             }
             if (!haveAttr && normals && normals->hasAttribute(m_attribute)) {
                 haveAttr = true;
@@ -126,8 +126,8 @@ bool Assemble::compute() {
         }
     }
 
-    ++t; // make non-negative
-    assert(t >= 0);
+    assert(tt >= -1);
+    unsigned t = tt+1;
 
     for (int i=0; i<NumPorts; ++i) {
         if (!m_in[i]->isConnected())
@@ -154,7 +154,8 @@ bool Assemble::reduce(int tt) {
 
     std::cerr << "reduce(t=" << tt << ")" << std::endl;
 
-    int t = tt+1;
+    assert(tt >= -1);
+    unsigned t = tt+1;
 
     AssembleData comb;
     bool haveData = false;
@@ -245,7 +246,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
     }
 
     bool flatGeometry = false;
-    for (int n=0; n<numobj; ++n) {
+    for (size_t n=0; n<numobj; ++n) {
         Object::const_ptr oin[NumPorts];
         DataBase::const_ptr din[NumPorts];
         Object::const_ptr grid;
@@ -421,7 +422,7 @@ bool Assemble::assemble(const Assemble::AssembleData &d) {
             dout[i]->setSize(dataOff[i][numobj]);
     }
 
-    for (int n=0; n<numobj; ++n) {
+    for (size_t n=0; n<numobj; ++n) {
         Object::const_ptr oin[NumPorts];
         DataBase::const_ptr din[NumPorts];
         Object::const_ptr grid;

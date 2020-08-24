@@ -1997,7 +1997,7 @@ bool ClusterManager::handlePriv(const message::Ping &ping) {
 bool ClusterManager::handlePriv(const message::DataTransferState &state) {
 
     assert(m_rank == 0);
-    if (m_numTransfering.size() < m_size)
+    if (ssize_t(m_numTransfering.size()) < m_size)
         m_numTransfering.resize(m_size);
 
     int r = state.rank();

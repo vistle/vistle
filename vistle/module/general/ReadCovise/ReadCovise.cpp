@@ -65,7 +65,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
    setParameterFilters(m_fieldFile[1], "COVISE Files (*.covise)/All Files (*)");
 #endif
    m_out[1] = nullptr;
-   for (int i=2; i<NumPorts; ++i) {
+   for (unsigned i=2; i<NumPorts; ++i) {
 #ifdef READ_DIRECTORY
        m_fieldFile[i] = addStringParameter("field"+std::to_string(i-2), "name of COVISE file for field "+std::to_string(i), NONE, Parameter::Choice);
 #else
@@ -76,12 +76,12 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
    }
 
 #ifdef READ_DIRECTORY
-   for (int i=0; i<NumPorts; ++i) {
+   for (unsigned i=0; i<NumPorts; ++i) {
        setParameterChoices(m_fieldFile[i], std::vector<std::string>({NONE}));
    }
 #endif
 
-   for (int i=0; i<NumPorts; ++i) {
+   for (unsigned i=0; i<NumPorts; ++i) {
        m_fd[i] = 0;
        m_numObj[i] = 0;
        m_numTime[i] = -1;
@@ -92,7 +92,7 @@ ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator 
 #ifdef READ_DIRECTORY
    observeParameter(m_directory);
 #endif
-   for (int port=0; port<NumPorts; ++port) {
+   for (unsigned port=0; port<NumPorts; ++port) {
        observeParameter(m_fieldFile[port]);
    }
 }
@@ -141,12 +141,12 @@ bool ReadCovise::examine(const Parameter *param)
             choices.push_back(stem);
         }
 
-        for (int port=0; port<NumPorts; ++port) {
+        for (unsigned port=0; port<NumPorts; ++port) {
             setParameterChoices(m_fieldFile[port], choices);
         }
     }
 #else
-    for (int i=1; i<NumPorts; ++i) {
+    for (unsigned i=1; i<NumPorts; ++i) {
         if (param == m_fieldFile[i]) {
             std::string file = m_fieldFile[i]->getValue();
             int fd = covOpenInFile(file.c_str());
@@ -167,7 +167,7 @@ bool ReadCovise::prepareRead()
 #ifdef READ_DIRECTORY
     auto dir = filesystem::path(m_directory->getValue());
 #endif
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
 
         m_numTime[port] = -1;
 
@@ -208,7 +208,7 @@ bool ReadCovise::prepareRead()
         }
     }
 
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
         if (m_fd[port] == 0)
             continue;
 
@@ -231,7 +231,7 @@ bool ReadCovise::prepareRead()
         }
     }
 
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
         if (m_fd[port] != 0) {
             covCloseInFile(m_fd[port]);
             m_fd[port] = 0;
@@ -250,7 +250,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
     std::cerr << "reading t=" << timestep << ", block=" << block << std::endl;
     Element *elem[NumPorts];
     int fd[NumPorts];
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
         elem[port] = &m_rootElement[port];
         if (m_filename->empty()) {
             fd[port] = 0;
@@ -263,7 +263,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
         }
     }
     bool ret = readRecursive(token, fd, elem, -1, timestep);
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
         if (fd[port])
             covCloseInFile(fd[port]);
     }
@@ -272,7 +272,7 @@ bool ReadCovise::read(Reader::Token &token, int timestep, int block)
 
 bool ReadCovise::finishRead()
 {
-    for (int port=0; port<NumPorts; ++port) {
+    for (unsigned port=0; port<NumPorts; ++port) {
         if (m_fd[port]) {
             covCloseInFile(m_fd[port]);
             m_fd[port] = 0;
@@ -1008,7 +1008,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         if (!fd[0])
             return false;
         int subfd[NumPorts];
-        for (int port=0; port<NumPorts; ++port) {
+        for (unsigned port=0; port<NumPorts; ++port) {
             if (port >= elem[0]->subelems.size() || !elem[0]->subelems[port]) {
                 subfd[port] = 0;
             } else if (port==0) {
@@ -1018,7 +1018,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
             }
         }
         bool ok = readRecursive(token, subfd, elem[0]->subelems.data(), timestep, targetTimestep);
-        for (size_t port=1; port<NumPorts; ++port) {
+        for (unsigned port=1; port<NumPorts; ++port) {
             if (subfd[port]) {
                 covCloseInFile(subfd[port]);
             }
@@ -1032,7 +1032,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         // do not recurse as subelems are abused for Geometry components
 
         bool gridOnPort0 = false;
-        for (int port=0; port<NumPorts; ++port) {
+        for (unsigned port=0; port<NumPorts; ++port) {
             if (fd[port]) {
                 assert(elem[port]);
                 fut[port] = std::async(std::launch::async, [this, &token, port, fd, elem, timestep]() -> Object::ptr {
@@ -1049,7 +1049,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
                 });
             }
         }
-        for (int port=0; port<NumPorts; ++port) {
+        for (unsigned port=0; port<NumPorts; ++port) {
             if (fd[port]) {
                 obj[port] = fut[port].get();
             }
@@ -1075,7 +1075,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
             }
         }
         token.wait();
-        for (int port=0; port<NumPorts; ++port) {
+        for (unsigned port=0; port<NumPorts; ++port) {
             if (m_out[port] && obj[port]) {
                 if (port > 1 || !gridOnPort0)
                     obj[port]->addAttribute("_species", m_species[port]);
@@ -1091,7 +1091,7 @@ bool ReadCovise::readRecursive(Token &token, int fd[], Element *elem[], int time
         bool ok = true;
         for (size_t i=0; i<elem[0]->subelems.size(); ++i) {
             Element *subelems[NumPorts];
-            for (int port=0; port<NumPorts; ++port) {
+            for (unsigned port=0; port<NumPorts; ++port) {
                 if (!fd[port])
                     continue;
 

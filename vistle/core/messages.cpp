@@ -1827,6 +1827,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case SENDTEXT: {
          auto &mm = static_cast<const SendText &>(m);
+         s << ", type: " << mm.textType();
          break;
       }
       case UPDATESTATUS: {

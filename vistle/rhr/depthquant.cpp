@@ -310,13 +310,11 @@ void depthdequant_planar(char *zbuf, const char *quantbuf, DepthFormat format, i
    double start = Clock::time();
 #endif
 
-   size_t edge = 1, tile = depthps;
+   size_t edge = 1;
    if (depthps <= 2) {
       edge = DepthQuantize16::edge;
-      tile = sizeof(DepthQuantize16);
    } else {
       edge = DepthQuantize24::edge;
-      tile = sizeof(DepthQuantize24);
    }
    const size_t ntiles = ((width+edge-1)/edge) * ((height+edge-1)/edge);
    size_t mmsize16 = ntiles*sizeof(MinMaxDepth16);
@@ -697,13 +695,11 @@ void depthquant_planar(char *quantbufS, const char *zbufS, DepthFormat format, i
    uchar *quantbuf = (uchar *)quantbufS;
    const uchar *zbuf = (const uchar *)zbufS;
 
-   size_t edge = 1, tile = depthps;
+   size_t edge = 1;
    if (depthps <= 2) {
       edge = DepthQuantize16::edge;
-      tile = sizeof(DepthQuantize16);
    } else {
       edge = DepthQuantize24::edge;
-      tile = sizeof(DepthQuantize24);
    }
    const size_t ntiles = ((width+edge-1)/edge) * ((height+edge-1)/edge);
    size_t mmsize16 = ntiles*sizeof(MinMaxDepth16);

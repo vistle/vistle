@@ -125,8 +125,8 @@ bool originInsidePolygonZ2D(const Vector3 *corners, Index nCorners) {
     int    wn = 0;    // the  winding number counter
 
     // loop through all edges of the polygon
-    for (int i=0; i<nCorners; i++) {   // edge from V[i] to  V[i+1]
-        int next = i+1<nCorners ? i+1 : 0;
+    for (unsigned i=0; i<nCorners; i++) {   // edge from V[i] to  V[i+1]
+        unsigned next = i+1<nCorners ? i+1 : 0;
         if (corners[i][1] <= 0) {          // start y <= P.y
             if (corners[next][1] > 0)      // an upward crossing
                 if (originSideOfLineZ2D(corners[i], corners[next]) > 0)  // P left of  edge

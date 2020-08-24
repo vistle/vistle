@@ -44,7 +44,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    static const int NumVertices[NUM_TYPES];
    static const int NumFaces[NUM_TYPES];
    static const unsigned FaceSizes[NUM_TYPES][MaxNumFaces];
-   static const int FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices];
+   static const unsigned FaceVertices[NUM_TYPES][MaxNumFaces][MaxNumVertices];
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,

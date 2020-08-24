@@ -21,6 +21,9 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(OperationMode,
                                     (To_Disk)
                                     (Automatic))
 
+//#define DEBUG
+//#define UNUSED
+
 class Cache: public vistle::Module {
 
  public:
@@ -124,7 +127,7 @@ int Cache::archiveCompressionSpeed() const {
 namespace {
 
 ssize_t swrite(int fd, const void *buf, size_t n) {
-    ssize_t tot = 0;
+    size_t tot = 0;
     while (tot < n) {
         ssize_t result = write(fd, static_cast<const char *>(buf)+tot, n-tot);
         if (result < 0) {
@@ -138,7 +141,7 @@ ssize_t swrite(int fd, const void *buf, size_t n) {
 }
 
 ssize_t sread(int fd, void *buf, size_t n) {
-    ssize_t tot = 0;
+    size_t tot = 0;
     while (tot < n) {
         ssize_t result = read(fd, static_cast<char *>(buf)+tot, n-tot);
         if (result < 0) {
@@ -219,6 +222,7 @@ struct ChunkHeader {
     uint64_t size = 0;
 };
 
+#ifdef DEBUG
 std::ostream &operator<<(std::ostream &os, const ChunkHeader &ch) {
     os << "type " << toString(ChunkType(ch.type)) << "=" << int(ch.type);
     os << " version " << ch.version;
@@ -226,6 +230,7 @@ std::ostream &operator<<(std::ostream &os, const ChunkHeader &ch) {
 
     return os;
 }
+#endif
 
 template<>
 bool Write<ChunkHeader>(int fd, const ChunkHeader &h) {
@@ -278,12 +283,14 @@ struct ChunkFooter {
     {}
 };
 
+#ifdef DEBUG
 std::ostream &operator<<(std::ostream &os, const ChunkFooter &cf) {
     os << "type " << toString(ChunkType(cf.type)) << "=" << int(cf.type);
     os << " size " << cf.size;
 
     return os;
 }
+#endif
 
 template<>
 bool Write<ChunkFooter>(int fd, const ChunkFooter &f) {
@@ -331,6 +338,7 @@ struct PortObjectHeader {
     {}
 };
 
+#ifdef UNUSED
 std::ostream &operator<<(std::ostream &os, const PortObjectHeader &poh) {
 
     os << "version " << poh.port;
@@ -341,6 +349,7 @@ std::ostream &operator<<(std::ostream &os, const PortObjectHeader &poh) {
 
     return os;
 }
+#endif
 
 template<>
 bool Write<PortObjectHeader>(int fd, const PortObjectHeader &h) {
@@ -431,6 +440,7 @@ bool Read<ArchiveHeader>(int fd, ArchiveHeader &h) {
     return true;
 }
 
+#ifdef UNUSED
 template<>
 bool Write<std::string>(int fd, const std::string &s) {
     uint64_t l = s.length();
@@ -439,7 +449,7 @@ bool Write<std::string>(int fd, const std::string &s) {
         return false;
     }
     ssize_t n = swrite(fd, s.data(), s.length());
-    if (n != s.length()) {
+    if (n != ssize_t(s.length())) {
         CERR << "failed to write string data" << std::endl;
         return false;
     }
@@ -457,7 +467,7 @@ bool Read<std::string>(int fd, std::string &s) {
 
     buffer d(l);
     ssize_t n = sread(fd, d.data(), d.size());
-    if (n != d.size()) {
+    if (n != ssize_t(d.size())) {
         CERR << "failed to read string data of size " << l << std::endl;
         return false;
     }
@@ -475,7 +485,7 @@ bool Write<buffer>(int fd, const buffer &v) {
         return false;
     }
     ssize_t n = swrite(fd, v.data(), v.size());
-    if (n != v.size()) {
+    if (n != ssize_t(v.size())) {
         CERR << "failed to write vector data" << std::endl;
         return false;
     }
@@ -492,13 +502,14 @@ bool Read<buffer>(int fd, buffer &v) {
     }
     v.resize(l);
     ssize_t n = sread(fd, v.data(), v.size());
-    if (n != v.size()) {
+    if (n != ssize_t(v.size())) {
         CERR << "failed to read vector data of size " << l << std::endl;
         return false;
     }
 
     return true;
 }
+#endif
 
 template<class Chunk>
 struct ChunkTypeMap;
@@ -521,18 +532,22 @@ bool WriteChunk(Module *mod, int fd, const Chunk &chunk) {
 
     if (!Write(fd, cheader))
         return false;
+#ifdef DEBUG
     CERR << "WriteChunk: header=" << cheader << std::endl;
+#endif
     if (!Write(fd, chunk))
         return false;
     ChunkFooter cfooter(cheader);
     if (!Write(fd, cfooter))
         return false;
+#ifdef DEBUG
+    CERR << "WriteChunk: footer=" << cfooter << std::endl;
+#endif
     return true;
 }
 
 template<class Module, class Chunk>
 bool ReadChunk(Module *mod, int fd, const ChunkHeader &cheader, Chunk &chunk) {
-    ChunkHeader chgood;
     if (cheader.type != ChunkTypeMap<Chunk>::type) {
         CERR << "ReadChunk: chunk type mismatch" << std::endl;
         return false;
@@ -555,7 +570,6 @@ bool ReadChunk(Module *mod, int fd, const ChunkHeader &cheader, Chunk &chunk) {
 
 template<class Module>
 bool SkipChunk(Module *mod, int fd, const ChunkHeader &cheader) {
-    ChunkHeader chgood;
     if (!Skip(fd, cheader.size-sizeof(cheader)-sizeof(ChunkFooter)))
         return false;
     ChunkFooter cfgood(cheader), cfooter;
@@ -631,7 +645,7 @@ bool WriteChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const SubAr
     } else {
         n = swrite(fd, compressed.data(), compressed.size());
     }
-    if (n != compLength) {
+    if (n != ssize_t(compLength)) {
         CERR << "failed to write entry data of size " << compLength << " (raw: " << ent.size << "): result=" << n  << std::endl;
         if (n == -1)
             std::cerr << "  ERRNO=" << errno << ": " << strerror(errno) << std::endl;
@@ -693,7 +707,7 @@ bool ReadChunk<Cache, SubArchiveDirectoryEntry>(Cache *mod, int fd, const ChunkH
     ent.data = ent.storage->data();
 
     ssize_t n = sread(fd, ent.data, ent.compressedSize);
-    if (n != ent.compressedSize) {
+    if (n != ssize_t(ent.compressedSize)) {
         CERR << "failed to read entry data" << std::endl;
         return false;
     }
@@ -950,7 +964,7 @@ bool Cache::prepare() {
             assert(tplus >= 0);
             if (numTime < tplus)
                 numTime = tplus;
-            if (portObjects[poh.port].size() <= numTime) {
+            if (ssize_t(portObjects[poh.port].size()) <= numTime) {
                 portObjects[poh.port].resize(numTime+1);
             }
             portObjects[poh.port][tplus].push_back(poh.object);

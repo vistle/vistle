@@ -330,16 +330,12 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
         numCells = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
 
         Index numCellVert = 1;
-        int ndim = 0;
         if (dim[2]>1) {
             numCellVert = 8;
-            ndim = 3;
         } else if (dim[1]>1) {
             numCellVert = 4;
-            ndim = 2;
         } else if (dim[0]>1) {
             numCellVert = 2;
-            ndim = 1;
         }
 
         for (int c=0; c<3; ++c) {
