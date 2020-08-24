@@ -32,7 +32,8 @@ target_link_libraries(vistle_cover
     PRIVATE vistle_util
     PRIVATE ${CMAKE_DL_LIBS} 
     PRIVATE VistlePluginUtil 
-    PRIVATE ${COVER_PLUGINUTIL_LIBRARY})
+    PRIVATE ${COVER_PLUGINUTIL_LIBRARY}
+)
 
 if(NOT VISTLE_MULTI_PROCESS)
 	target_link_libraries(vistle_cover 
@@ -53,7 +54,9 @@ target_link_libraries(COVER
     ${EXTRA_LIBS} 
     vistle_util 
     ${CMAKE_DL_LIBS} 
-    vistle_cover)
+    vistle_cover
+    ${COVER_PLUGINUTIL_LIBRARY}
+)
 
 if(NOT VISTLE_MULTI_PROCESS)
 if(APPLE)
