@@ -26,6 +26,7 @@ set(boost_mpi_SOURCES
 if (BOOST_MPI_DIR STREQUAL "boost-mpi")
    set(boost_mpi_SOURCES ${boost_mpi_SOURCES}
       ${BOOST_MPI_DIR}/src/offsets.cpp
+      ${BOOST_MPI_DIR}/src/status.cpp
    )
 endif()
 
