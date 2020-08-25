@@ -359,15 +359,6 @@ void SenseiAdapter::addPorts()
 	varNames.push_back("variable");
 	ports.push_back(varNames);
 
-	std::vector<std::string> debugNames;
-	for (auto mesh : meshNames)
-	{
-		debugNames.push_back(mesh + "_mpi_ranks");
-	}
-
-	debugNames.push_back("debug");
-	ports.push_back(debugNames);
-
 	m_messageHandler.send(SetPorts{ ports });
 }
 
