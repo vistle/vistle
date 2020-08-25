@@ -3,7 +3,6 @@
 
 #include <vistle/util/export.h>
 
-
 #if defined(vistle_insitu_core_EXPORTS)
 #define V_INSITUCOREEXPORT V_EXPORT
 #else

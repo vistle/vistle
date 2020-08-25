@@ -2,6 +2,7 @@
 #define SENSEI_CONTROL_MODULE_H
 #include <vistle/insitu/module/inSituReader.h>
 
+#include <vistle/insitu/sensei/intOption.h>
 
 #include <vistle/core/message.h>
 #include <vistle/core/messagequeue.h>
@@ -68,7 +69,7 @@ private:
             m_sender.send(T{ static_cast<typename T::value_type>(param()->getValue()) });
         }
     };
-    std::map<insitu::message::InSituMessageType, std::unique_ptr<IntParamBase>> m_intOptions;
+    std::map<const vistle::IntParameter*, sensei::IntOptions> m_intOptions;
     //..........................................................................
     //module functions
 

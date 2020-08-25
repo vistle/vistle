@@ -1,70 +1,28 @@
-// Copyright (c) Lawrence Livermore National Security, LLC and other VisIt
-// Project developers.  See the top-level LICENSE file for dates and other
-// details.  No copyright assignment is required to contribute to VisIt.
+#ifndef VISLTLE_LIBSIM_VARIABLE_DATA_H
+#define VISLTLE_LIBSIM_VARIABLE_DATA_H
 
-#ifndef SIMV2_VARIABLEDATA_H
-#define SIMV2_VARIABLEDATA_H
-#include "export.h"
-#include "VisItDataTypes.h"
+#include "VariableInfo.h"
+#include <vistle/core/object.h>
+#include <vistle/core/vec.h>
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-V_VISITXPORT int simv2_VariableData_alloc(visit_handle *h);
-V_VISITXPORT int simv2_VariableData_free(visit_handle h);
-
-V_VISITXPORT int simv2_VariableData_setData(visit_handle h, int owner, int dataType,
-                                         int nComps, int nTuples, void *data);
-
-V_VISITXPORT int simv2_VariableData_setDataEx(visit_handle h, int owner,
-                                           int dataType, int nComps,
-                                           int nTuples, void *data,
-                                           void(*callback)(void*),
-                                           void *callbackData);
-
-V_VISITXPORT int simv2_VariableData_setArrayData(visit_handle h, 
-                                              int arrIndex,
-                                              int owner, int dataType,
-                                              int nTuples, int offset, int stride,
-                                              void *data);
-
-V_VISITXPORT int simv2_VariableData_setDeletionCallback(visit_handle h, 
-                                                     void(*callback)(void*),
-                                                     void *callbackData);
-
-V_VISITXPORT int simv2_VariableData_getData2(visit_handle h, int *owner,
-                                          int *dataType, int *nComps,
-                                          int *nTuples, void **data);
-
-#ifdef __cplusplus
+#include <memory>
+class visit_handle;
+namespace vistle {
+class UnstructuredGrid;
+namespace insitu {
+namespace message {
+class SyncShmIDs;
 }
-#endif
+namespace libsim {
+namespace VariableData {
+vistle::Object::ptr get(const visit_handle &varHandle, message::SyncShmIDs &creator);
+vistle::Vec<vistle::Scalar, 1>::ptr allocVarForCombinedMesh(const VariableInfo &varInfo, vistle::Object::ptr mesh,
+                                                            message::SyncShmIDs &creator);
 
-// These functions are only available in the runtime.
-//owner: VISIT_OWNER_, dataType: VISIT_DATATYPE_ , nComps: ? , nTuples : dimension , data : nTuples * sizeof(dataType) 
-V_VISITXPORT int simv2_VariableData_getData(visit_handle h, int &owner,
-                                         int &dataType, int &nComps,
-                                         int &nTuples, void *&data);
+} // namespace VariableData
 
-V_VISITXPORT int simv2_VariableData_getDataEx(visit_handle h, int &owner,
-                                           int &dataType, int &nComps,
-                                           int &nTuples, void *&data,
-                                           void(*&callback)(void*),
-                                           void *&callbackData);
+} // namespace libsim
+} // namespace insitu
+} // namespace vistle
 
-V_VISITXPORT int simv2_VariableData_getNumArrays(visit_handle h, int *nArrays);
-
-V_VISITXPORT int simv2_VariableData_getArrayData(visit_handle h, 
-                                              int arrIndex, int &memory,
-                                              int &owner,   int &dataType,
-                                              int &nComps,  int &nTuples,
-                                              int &offset,  int &stride,
-                                              void *&data);
-
-V_VISITXPORT int simv2_VariableData_getDeletionCallback(visit_handle h,
-                                                     void(*&callback)(void*),
-                                                     void *&callbackData);
-
-V_VISITXPORT int simv2_VariableData_nullData(visit_handle h);
 #endif

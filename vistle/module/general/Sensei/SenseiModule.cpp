@@ -2,8 +2,6 @@
 
 
 #include <vistle/util/listenv4v6.h>
-#include <vistle/util/hostname.h>
-
 
 #include <vistle/core/rectilineargrid.h>
 #include <sstream>
@@ -36,9 +34,8 @@ SenseiModule::SenseiModule(const string& name, int moduleID, mpi::communicator c
 
     m_deleteShm = addIntParameter("deleteShm", "delete the shm potentially used for communication with sensei", false, vistle::Parameter::Presentation::Boolean);
 
-    m_intOptions[InSituMessageType::NthTimestep] = std::unique_ptr< IntParam<NthTimestep>>(new IntParam<NthTimestep>{ addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1) , m_messageHandler });
-    m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<CombineGrids>>(new IntParam<CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) , m_messageHandler });
-    m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<KeepTimesteps>>(new IntParam<KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) , m_messageHandler });
+    m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)] = sensei::IntOptions::NthTimestep;
+    m_intOptions[addIntParameter("keep timesteps", "keep data of processed timestep during this execution", true, vistle::Parameter::Boolean)] = sensei::IntOptions::KeepTimesteps;
 
 }
 
@@ -116,11 +113,11 @@ bool SenseiModule::changeParameter(const vistle::Parameter* param) {
     } else if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
         m_messageHandler.send(ExecuteCommand(param->getName()));
     } else {
-        for (const auto &option : m_intOptions) {
-            if (option.second->param() == param) {
-                option.second->send();
-                continue;
-            }
+        auto option = dynamic_cast<const vistle::IntParameter *>(param);
+        auto it = m_intOptions.find(option);
+        if (it != m_intOptions.end())
+        {
+            m_messageHandler.send(SenseiIntOption{{it->second, option->getValue()}});
         }
     }
 
@@ -165,24 +162,18 @@ void SenseiModule::connectToSim() {
     
     CERR << " key = " << key << endl;
     m_messageHandler.initialize(key, m_rank);
-    vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(InstanceNum()) };
-    m_messageHandler.send(ShmInit{ args });
+    m_messageHandler.send(ShmInfo{gatherModuleInfo()});
     m_connectedToSim = true;
     for (const auto &option : m_intOptions)
     {
-        option.second->send();
+        m_messageHandler.send(SenseiIntOption{{option.second, option.first->getValue()}});
     }
 }
-
-
 
 void SenseiModule::disconnectSim() {
     m_connectedToSim = false;
     m_messageHandler.reset();
 }
-
-
-
 
 bool SenseiModule::recvAndhandleMessage()     {
 
@@ -201,11 +192,6 @@ bool SenseiModule::handleMessage(Message& msg) {
     switch (msg.type()) {
     case InSituMessageType::Invalid:
         return false;
-        break;
-    case InSituMessageType::ShmInit:
-        break;
-    case InSituMessageType::AddObject:
-        break;
     case InSituMessageType::SetPorts: //list of ports, last entry is the type description (e.g mesh or variable)
     {
         auto em = msg.unpackOrCast< SetPorts>();
@@ -225,7 +211,7 @@ bool SenseiModule::handleMessage(Message& msg) {
         }
 
     }
-    break;
+        break;
     case InSituMessageType::SetCommands:
     {
         auto em = msg.unpackOrCast< SetCommands>();
@@ -243,19 +229,11 @@ bool SenseiModule::handleMessage(Message& msg) {
             }
         }
     }
-    break;
-    case InSituMessageType::Ready:
-        break;
-    case InSituMessageType::ExecuteCommand:
         break;
     case InSituMessageType::GoOn:
     {
         m_messageHandler.send(GoOn{});
     }
-    break;
-    case InSituMessageType::ConstGrids:
-        break;
-    case InSituMessageType::NthTimestep:
         break;
     case InSituMessageType::ConnectionClosed:
     {
@@ -272,7 +250,7 @@ bool SenseiModule::handleMessage(Message& msg) {
         disconnectSim();
 #endif
     }
-    break;
+        break;
     default:
         break;
     }

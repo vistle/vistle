@@ -6,7 +6,7 @@
 #include <tuple>
 #include <functional>
 
-#include "VisItDataTypes.h"
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
 #include <vistle/insitu/core/exeption.h>
 namespace vistle{
@@ -15,7 +15,6 @@ namespace insitu {
 struct SimV2Exeption : public InsituExeption {
     const char* what() const noexcept override;
 };
-
 
 struct EngineExeption : public InsituExeption {
     EngineExeption(const std::string& message);

@@ -1,7 +1,7 @@
 #ifndef VERTEX_TYPES_TO_VISTLE_H
 #define VERTEX_TYPES_TO_VISTLE_H
 #include <vistle/core/unstr.h>
-#include "VisItDataTypes.h"
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 namespace vistle{
 namespace insitu {
 namespace libsim {
@@ -65,8 +65,6 @@ static vistle::Index getNumVertices(vistle::UnstructuredGrid::Type type)
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::VPOLYHEDRON] = -1;
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::POINT] = 1;
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::CPOLYHEDRON] = -1;
-
-
 		init = true;
 	}
 	return num_verts_of_elem[type];

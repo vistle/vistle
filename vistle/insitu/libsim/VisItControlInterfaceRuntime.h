@@ -5,7 +5,7 @@
 #ifndef VISIT_CONTROL_INTERFACE_RUNTIME_H
 #define VISIT_CONTROL_INTERFACE_RUNTIME_H
 #include "export.h"
-#include "VisItDataTypes.h"
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
 #ifdef __cplusplus
 extern "C" {

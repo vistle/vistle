@@ -1,14 +1,15 @@
 set(SENSEI_SOURCES
-  callbacks.cpp
   metaData.cpp
+  objectRetriever.cpp
   sensei.cpp
 )
 
 set(SENSEI_HEADER
-  callbacks.h
   exeption.h
   export.h
+  intOption.h
   metaData.h
+  objectRetriever.h
   sensei.h
 )
 
@@ -30,7 +31,3 @@ vistle_target_link_libraries(vistle_sensei
 
 target_compile_features(vistle_sensei PUBLIC cxx_std_14)
 
-if (VISTLE_SHM_PER_RANK)
-    target_compile_definitions(vistle_sensei 
-        PRIVATE -DSHMPERRANK)
-endif()

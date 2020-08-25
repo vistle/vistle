@@ -1,51 +1,60 @@
-// Copyright (c) Lawrence Livermore National Security, LLC and other VisIt
-// Project developers.  See the top-level LICENSE file for dates and other
-// details.  No copyright assignment is required to contribute to VisIt.
+#ifndef VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
+#define VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
 
-#ifndef SIMV2_UNSTRUCTUREDMESH_H
-#define SIMV2_UNSTRUCTUREDMESH_H
-#include "export.h"
-#include "VisItDataTypes.h"
+#include "ArrayStruct.h"
 
-// C-callable implementation of front end functions
-#ifdef __cplusplus
-extern "C"
-{
-#endif
+#include <vistle/core/index.h>
+#include <vistle/core/object.h>
 
-V_VISITXPORT int simv2_UnstructuredMesh_alloc(visit_handle*);
-V_VISITXPORT int simv2_UnstructuredMesh_free(visit_handle);
+#include <memory>
+#include <array>
 
-V_VISITXPORT int simv2_UnstructuredMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
-V_VISITXPORT int simv2_UnstructuredMesh_setCoordsXYZ(visit_handle obj, visit_handle x, visit_handle y, visit_handle z);
-V_VISITXPORT int simv2_UnstructuredMesh_setCoords(visit_handle obj, visit_handle xyz);
-V_VISITXPORT int simv2_UnstructuredMesh_setConnectivity(visit_handle obj, int nzones,
-                                                     visit_handle conn);
-V_VISITXPORT int simv2_UnstructuredMesh_setRealIndices(visit_handle obj, int,int);
-V_VISITXPORT int simv2_UnstructuredMesh_setGhostCells(visit_handle h, visit_handle gz);
-V_VISITXPORT int simv2_UnstructuredMesh_setGhostNodes(visit_handle h, visit_handle gn);
-V_VISITXPORT int simv2_UnstructuredMesh_setGlobalCellIds(visit_handle obj, visit_handle glz);
-V_VISITXPORT int simv2_UnstructuredMesh_setGlobalNodeIds(visit_handle obj, visit_handle gln);
-
-V_VISITXPORT int simv2_UnstructuredMesh_getCoords(visit_handle h,
-                                               int *ndims, int *coordMode,
-                                               visit_handle *x, 
-                                               visit_handle *y, 
-                                               visit_handle *z, 
-                                               visit_handle *coords);
-V_VISITXPORT int simv2_UnstructuredMesh_getConnectivity(visit_handle h, int *nzones,
-                                                     visit_handle *conn);
-V_VISITXPORT int simv2_UnstructuredMesh_getRealIndices(visit_handle obj, int *, int *);
-V_VISITXPORT int simv2_UnstructuredMesh_getGhostCells(visit_handle h, visit_handle *gz);
-V_VISITXPORT int simv2_UnstructuredMesh_getGhostNodes(visit_handle h, visit_handle *gn);
-V_VISITXPORT int simv2_UnstructuredMesh_getGlobalCellIds(visit_handle obj, visit_handle *glz);
-V_VISITXPORT int simv2_UnstructuredMesh_getGlobalNodeIds(visit_handle obj, visit_handle *gln);
-
-#ifdef __cplusplus
+class visit_handle;
+namespace vistle {
+class UnstructuredGrid;
+namespace insitu {
+namespace message {
+class SyncShmIDs;
 }
-#endif
+namespace libsim {
+namespace UnstructuredMesh  {
 
-// Callable from within the runtime and SimV2
-V_VISITXPORT int simv2_UnstructuredMesh_check(visit_handle h);
+	vistle::Object::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator);
 
-#endif
+namespace detail {
+    void SeparateAllocAndFill(int dim, const visit_handle coordHandles[4], std::shared_ptr<vistle::UnstructuredGrid> grid);
+    void InterleavedAllocAndFill(const visit_handle &coordHandle, std::shared_ptr<vistle::UnstructuredGrid> grid, int dim);
+    void addGhost(const visit_handle& meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
+    void fillTypeConnAndElemLists(const visit_handle& meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
+	struct connListData {
+		Array data;
+		int numElements = 0;
+	};
+	connListData getConListFromSim(const visit_handle &meshHandle);
+}
+
+size_t getNumVertices(int  dims[3]);
+void preventNull(int dims[3], void* data[3]);
+size_t getNumElements(int  dims[3]);
+void allocateFields(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumVerts, size_t numVertices, size_t iteration, int numIterations, std::array<float*, 3>& gridCoords, size_t totalNumElements, size_t numElements, int numCorners);
+void setFinalFildSizes(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumVerts, size_t totalNumElements, int numCorners);
+void fillRemainingFields(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumElements, int numCorners, int dim);
+
+
+struct ConnectivityListPattern {
+	ConnectivityListPattern();
+	ConnectivityListPattern(vistle::Index(*getVertexIndex)(vistle::Index, vistle::Index, vistle::Index, const vistle::Index[3]), std::array<int, 3> loopOrder);
+	vistle::Index(*vertexIndex)(vistle::Index, vistle::Index, vistle::Index, const vistle::Index[3]) = nullptr;
+	std::array<int, 3> order = { 0, 1, 2 }; //Vistle's loop order is x, y, z
+};
+struct VtkConListPattern : ConnectivityListPattern {
+	VtkConListPattern();
+
+};
+void fillStructuredGridConnectivityList(const int* dims, vistle::Index* connectivityList, vistle::Index startOfGridIndex, ConnectivityListPattern pattern = ConnectivityListPattern{});
+}//UnstructuredMesh
+}//libsim
+}//insitu
+}//vistle
+
+#endif // !VISTLE_LIBSIM_UNSTRUCTURED_MESH_H

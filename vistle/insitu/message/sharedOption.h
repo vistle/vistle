@@ -1,44 +1,66 @@
-#ifndef VISTLE_INSITU_MESSAGE_SHAREDOPTION
-#define VISTLE_INSITU_MESSAGE_SHAREDOPTION
-#include "InSituMessage.h"
+#pragma once
+#include <string>
+#include <vistle/core/object.h>
 
 namespace vistle {
 namespace insitu {
 namespace message {
 
-//Helper class to store the value of int option of the insitu module in the simulation interface
+// Helper class to store the value of int option of the insitu module in the simulation interface
 
-struct IntOptionBase
+template <typename Identifier, typename ValueType>
+struct SharedOption
 {
-    virtual void setVal(insitu::message::Message& msg) {};
-    int val = 0;
+  SharedOption() = default;
+  SharedOption(const char *name)
+      : m_name(name)
+  {
+  }
 
-};
-template<typename T>
-struct IntOption : public IntOptionBase {
-    IntOption(int initialVal, std::function<void()> cb = nullptr) :callback(cb) {
-        val = initialVal;
+  SharedOption(const Identifier &name, ValueType initialValue = ValueType{}, std::function<void()> callback = nullptr)
+      : m_name(name)
+      , m_val(initialValue)
+      , m_callback(callback)
+  {
+  }
+  void setVal(ValueType val) const
+  {
+    m_val = val;
+    if (m_callback) {
+      m_callback();
     }
-    virtual void setVal(insitu::message::Message& msg) override
-    {
-        auto m = msg.unpackOrCast<T>();
-        val = static_cast<typename T::value_type>(m.value);
-        if (callback) {
-            callback();
-        }
-    }
-    std::function<void()> callback = nullptr;
+  }
+  const Identifier name() const { return m_name; }
+
+  int value() const { return m_val; }
+  ARCHIVE_ACCESS
+  template <class Archive>
+  void serialize(Archive &ar)
+  {
+    ar &m_name;
+    ar &m_val;
+  }
+  bool operator==(const SharedOption &other) const { return other.m_name == m_name; }
+  bool operator<(const SharedOption &other) const { return other.m_name < m_name; }
+  bool operator>(const SharedOption &other) const { return other.m_name > m_name; }
+
+private:
+  Identifier m_name;
+  mutable ValueType m_val = ValueType{};
+  std::function<void()> m_callback = nullptr;
 };
 
+template <class Identifier, class ValueType, class Container>
+bool update(Container &container, const SharedOption<Identifier, ValueType> &newValue)
+{
+  auto option = std::find(container.begin(), container.end(), newValue);
+  if (option != container.end()) {
+    option->setVal(newValue.value());
+    return true;
+  }
+  return false;
 }
-}
-}
 
-
-
-#endif // !VISTLE_INSITU_MESSAGE_SHAREDOPTION
-
-
-
-
-
+} // namespace message
+} // namespace insitu
+} // namespace vistle

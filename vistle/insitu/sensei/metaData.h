@@ -3,51 +3,49 @@
 
 #include "export.h"
 
+#include <set>
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 namespace vistle {
 namespace insitu {
 namespace sensei {
-class V_SENSEIEXPORT MetaData { //This contains the names of all meshes and their linked data fields and must be provided before the connection to Vistle
+
+class V_SENSEIEXPORT MetaMesh
+{
 public:
-
-	typedef std::unordered_map<std::string, std::vector<std::string>>::const_iterator ConstMeshIter;
-	typedef std::unordered_map<std::string, std::vector<std::string>>::iterator MeshIter;
-	typedef std::vector<std::string>::const_iterator VarIter;
-
-	struct V_SENSEIEXPORT MetaVar {//this only contains the begin and end iterators for the variables of a mesh
-		VarIter begin();
-		VarIter end();
-		friend class MetaData;
-	private:
-		MetaVar(const VarIter& begin, const VarIter& end)
-			:m_begin(begin)
-			, m_end(end)
-		{};
-		const VarIter m_begin, m_end;
-	};
-	ConstMeshIter getMesh(const std::string& name) const;
-	MeshIter addMesh(const std::string& name);
-	MeshIter getMesh(const std::string& name);
-
-	ConstMeshIter begin() const;
-	ConstMeshIter end() const;
-	MeshIter begin() ;
-	MeshIter end() ;
-
-	void addVariable(const std::string& varName, const MeshIter& mesh);
-	void addVariable(const std::string& varName, const std::string& meshName);
-	MetaVar getVariables(const ConstMeshIter& mesh) const;
-	MetaVar getVariables(const std::string& mesh) const;
+  typedef std::set<std::string>::const_iterator Iter;
+  MetaMesh(const std::string &name);
+  bool operator==(const MetaMesh &other) const;
+  bool operator<(const MetaMesh &other) const;
+  Iter begin() const;
+  Iter end() const;
+  Iter addVar(const std::string &name);
+  const std::string &name() const;
+  bool empty();
 
 private:
-	std::unordered_map<std::string, std::vector<std::string>> m_meshes;
-
+  const std::string m_name;
+  std::set<std::string> m_variables;
 };
 
-} //sensei
-} //insitu
-} //vistle
+class V_SENSEIEXPORT MetaData
+{ // This contains the names of all meshes and their linked data fields and must be provided before the connection to
+  // Vistle
+public:
+  typedef std::set<MetaMesh>::const_iterator Iter;
+
+  Iter getMesh(const std::string &name) const;
+  Iter addMesh(const MetaMesh &mesh);
+
+  Iter begin() const;
+  Iter end() const;
+
+private:
+  std::set<MetaMesh> m_meshes;
+};
+
+} // namespace sensei
+} // namespace insitu
+} // namespace vistle
 #endif
