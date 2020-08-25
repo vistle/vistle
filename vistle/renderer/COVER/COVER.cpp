@@ -16,6 +16,7 @@
 #include <osg/Group>
 #include <osg/Sequence>
 #include <osg/MatrixTransform>
+#include <osg/PolygonOffset>
 
 #include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 #include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
@@ -485,7 +486,7 @@ std::shared_ptr<vistle::RenderObject> COVER::addObject(int senderId, const std::
        Creator &creator = getCreator(creatorId);
        coVRAnimationManager::instance()->addSequence(creator.animated(variant));
    }
-
+   
    coVRPluginList::instance()->addObject(cro.get(), parent, cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture());
    return pro;
 }
@@ -535,6 +536,16 @@ bool COVER::render() {
          const int t = ro->timestep;
          if (t >= 0) {
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
+         }
+         const char *polyOffset = ro->coverRenderObject->getAttribute("POLYGON_OFFSET");
+         if (polyOffset)
+         {
+             osg::StateSet *stateset;
+             stateset = transform->getOrCreateStateSet();
+             float factor = atof(polyOffset);
+             osg::PolygonOffset *po = new osg::PolygonOffset();
+             po->setFactor(factor);
+             stateset->setAttributeAndModes(po, osg::StateAttribute::ON);
          }
          const char *filename = ro->coverRenderObject->getAttribute("_model_file");
          if (filename) {
