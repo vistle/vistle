@@ -22,6 +22,7 @@ vistle_target_link_libraries(vistle_sensei
 		PRIVATE vistle_boost_mpi
         PRIVATE vistle_core
 		PRIVATE vistle_util
+        PRIVATE Threads::Threads
 		PUBLIC vistle_insitu_core
 		PUBLIC vistle_insitu_message
 		PUBLIC	MPI::MPI_C
