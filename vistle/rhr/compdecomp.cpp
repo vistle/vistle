@@ -251,7 +251,7 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
                 CERR << "DecodeTask: zfp type not float" << std::endl;
                 good = false;
             }
-            if (field->nx != w || field->ny != h) {
+            if (int(field->nx) != w || int(field->ny) != h) {
                 CERR << "DecodeTask: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << w << "x" << h << std::endl;
                 good = false;
             }

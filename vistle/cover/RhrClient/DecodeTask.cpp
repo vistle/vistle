@@ -46,19 +46,10 @@ bool DecodeTask::work() {
         return false;
     }
 
-    int bpp = 0;
     if (tile.format == rfbColorRGBA) {
         assert(rgba);
-        bpp = 4;
     } else {
         assert(depth);
-        switch (tile.format) {
-        case rfbDepthFloat: bpp=4; break;
-        case rfbDepth8Bit: bpp=1; break;
-        case rfbDepth16Bit: bpp=2; break;
-        case rfbDepth24Bit: bpp=4; break;
-        case rfbDepth32Bit: bpp=4; break;
-        }
     }
 
     vistle::CompressionParameters param;
@@ -94,7 +85,7 @@ bool DecodeTask::work() {
     param.isDepth = tile.format != rfbColorRGBA;
 
     auto decompbuf = message::decompressPayload(*msg, *payload);
-    if (decompbuf.size() != tile.unzippedsize) {
+    if (ssize_t(decompbuf.size()) != tile.unzippedsize) {
         CERR << "DecodeTask: invalid data: unzipped size wrong: " << decompbuf.size() << " != " << tile.unzippedsize << std::endl;
     }
 

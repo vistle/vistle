@@ -24,6 +24,7 @@ static const size_t buffersize = 16384;
 
 //#define USE_BUFFER_POOL
 
+#ifndef NDEBUG
 namespace {
 
 bool check(const Message &msg, const char *payload, size_t size) {
@@ -51,6 +52,7 @@ bool check(const Message &msg, const buffer *payload) {
 }
 
 }
+#endif
 
 #ifdef USE_BUFFER_POOL
 namespace  {

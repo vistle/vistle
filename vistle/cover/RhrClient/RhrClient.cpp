@@ -49,8 +49,6 @@
 #include "RemoteConnection.h"
 #include "RhrClient.h"
 
-//#define CONNDEBUG
-
 #define CERR std::cerr << "RhrClient: "
 
 using namespace opencover;
@@ -112,25 +110,25 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
        headMat = Input::instance()->getHeadMat();
    }
 
+   msg.eye = rfbEyeMiddle;
    osg::Matrix view, proj;
-   if (channel >= 0) {
-       const channelStruct &chan = conf.channels[channel];
-       auto wh = imageSizeForChannel(channel);
+   if (channel >= 0 || (m_geoMode == RemoteConnection::FirstScreen && !conf.channels.empty())) {
+       VRViewer::Eye eye = VRViewer::EyeMiddle;
+       int ch = channel>=0 ? channel : 0;
+       const channelStruct &chan = conf.channels[ch];
+       auto wh = imageSizeForChannel(ch);
        msg.width = wh.first;
        msg.height = wh.second;
 
        bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
        if (second)
            left = false;
-       VRViewer::Eye eye;
        if (chan.stereo) {
            msg.eye = left ? rfbEyeLeft : rfbEyeRight;
            eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
-       } else {
-           msg.eye = rfbEyeMiddle;
-           eye = VRViewer::EyeMiddle;
        }
-       if (cover->isViewerGrabbed()) {
+
+       if (channel>=0 && cover->isViewerGrabbed()) {
            osg::Vec3 off = VRViewer::instance()->eyeOffset(eye);
            auto &xyz = conf.screens[channel].xyz;
            auto &hpr = conf.screens[channel].hpr;
@@ -144,35 +142,8 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
            view = left ? chan.leftView : chan.rightView;
            proj = left ? chan.leftProj : chan.rightProj;
        }
-
 #if 0
-       CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
-       std::cerr << "  view mat: " << view << std::endl;
-       std::cerr << "  proj mat: " << proj << std::endl;
-#endif
-
-   } else if (m_geoMode == RemoteConnection::FirstScreen && !conf.channels.empty()) {
-       const channelStruct &chan = conf.channels[0];
-       auto wh = imageSizeForChannel(0);
-       msg.width = wh.first;
-       msg.height = wh.second;
-
-       bool left = chan.stereoMode != osg::DisplaySettings::RIGHT_EYE;
-       if (second)
-           left = false;
-       VRViewer::Eye eye;
-       if (chan.stereo) {
-           msg.eye = left ? rfbEyeLeft : rfbEyeRight;
-           eye = left ? VRViewer::EyeLeft : VRViewer::EyeRight;
-       } else {
-           msg.eye = rfbEyeMiddle;
-           eye = VRViewer::EyeMiddle;
-       }
-       view = left ? chan.leftView : chan.rightView;
-       proj = left ? chan.leftProj : chan.rightProj;
-
-#if 0
-       CERR << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
+       CERR << "retrieving matrices for channel: " << ch << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << ", eye=" << int(msg.eye) << std::endl;
        std::cerr << "  view mat: " << view << std::endl;
        std::cerr << "  proj mat: " << proj << std::endl;
 #endif
