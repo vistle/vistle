@@ -171,11 +171,11 @@ struct ConversionInserter {
 
 
     //copies the data from source to dest while transforming its type
-    //source : interleaved array, dest: separate destination arrays, size : number of entris in source, dim : number of arrays that are interleaved
+    //source : interleaved array, dest: separate destination arrays, size : number of entries in source, dim : number of arrays that are interleaved
     template<typename T, size_t I>
     void transformInterleavedArray(const void* source, std::array<T*, I> dest, int size, DataType dataType, int dim) {
         if (dim > I) {
-            throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
+            throw TransformArrayExeption("transformInterleavedArray: destination array is smaller than given dimension");
         }
         detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source, dataType, size, dest, dim);
     }
@@ -183,7 +183,7 @@ struct ConversionInserter {
     template<typename T, size_t I>
     void transformInterleavedArray(const Array& source, std::array<T*, I> dest, int dim) {
         if (dim > I) {
-            throw TransformArrayExeption("transformInterleavedArray: destination array is smaler than given dimension");
+            throw TransformArrayExeption("transformInterleavedArray: destination array is smaller than given dimension");
         }
         detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source.data(), source.dataType(), source.size(), dest, dim);
     }
