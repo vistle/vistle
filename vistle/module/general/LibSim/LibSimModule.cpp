@@ -4,7 +4,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/hostname.h>
 
-#include <vistle/insitu/libsim/EstablishConnection.h>
+#include <vistle/insitu/libsim/connectLibsim/connect.h>
 
 #include <vistle/core/rectilineargrid.h>
 #include <sstream>
@@ -22,9 +22,10 @@
 #include <vistle/insitu/libsim/EngineInterface.h>
 #endif
 using namespace std;
+namespace libsim = vistle::insitu::libsim;
 using vistle::insitu::message::InSituMessageType;
 
-#define CERR cerr << "LibSimModule["<< rank() << "/" << size() << "] "
+#define CERR cerr << "LibSimModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
 
@@ -54,15 +55,12 @@ LibSimModule::LibSimModule(const string& name, int moduleID, mpi::communicator c
     {
 #endif // !MODULE_THREAD
 
+    m_intOptions[addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean)]      = libsim::IntOptions::VtkFormat;
+    m_intOptions[addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean)]                          = libsim::IntOptions::ConstGrids;
+    m_intOptions[addIntParameter("frequency", "frequency in which data is retrieved from the simulation", 1)]                                                = libsim::IntOptions::NthTimestep;
+    m_intOptions[addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean)] = libsim::IntOptions::CombineGrids;
+    m_intOptions[addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean)]                   = libsim::IntOptions::KeepTimesteps;
 
-    
-
-
-    m_intOptions[InSituMessageType::VTKVariables] = std::unique_ptr< IntParam<vistle::insitu::message::VTKVariables>>(new IntParam<vistle::insitu::message::VTKVariables>{ addIntParameter("VTKVariables", "sort the variable data on the grid from VTK ordering to Vistles", false, vistle::Parameter::Boolean), m_messageHandler });
-    m_intOptions[InSituMessageType::ConstGrids] = std::unique_ptr< IntParam<vistle::insitu::message::ConstGrids>>(new IntParam<vistle::insitu::message::ConstGrids>{ addIntParameter("contant grids", "are the grids the same for every timestep?", false, vistle::Parameter::Boolean) , m_messageHandler });
-    m_intOptions[InSituMessageType::NthTimestep] = std::unique_ptr< IntParam<vistle::insitu::message::NthTimestep>>(new IntParam<vistle::insitu::message::NthTimestep>{ addIntParameter("frequency", "frequency in whic data is retrieved from the simulation", 1) , m_messageHandler });
-    m_intOptions[InSituMessageType::CombineGrids] = std::unique_ptr< IntParam<vistle::insitu::message::CombineGrids>>(new IntParam<vistle::insitu::message::CombineGrids>{ addIntParameter("combine grids", "combine all structure grids on a rank to a single unstructured grid", false, vistle::Parameter::Boolean) , m_messageHandler });
-    m_intOptions[InSituMessageType::KeepTimesteps] = std::unique_ptr< IntParam<vistle::insitu::message::KeepTimesteps>>(new IntParam<vistle::insitu::message::KeepTimesteps>{ addIntParameter("keep timesteps", "keep data of processed timestep of this execution", true, vistle::Parameter::Boolean) , m_messageHandler });
 #ifndef MODULE_THREAD
     if (rank() == 0)
     {
@@ -162,11 +160,13 @@ bool LibSimModule::changeParameter(const vistle::Parameter* param) {
 
         m_messageHandler.send(vistle::insitu::message::ExecuteCommand(param->getName()));
     } else {
-        for (const auto &option : m_intOptions) {
-            if (option.second->param() == param) {
-                option.second->send();
-                continue;
-            }
+        
+                auto option = dynamic_cast<const vistle::IntParameter *>(param);
+        auto it = m_intOptions.find(option);
+        if (it != m_intOptions.end())
+        {
+            m_messageHandler.send(vistle::insitu::message::LibSimIntOption{{it->second, option->getValue()}});
+
         }
     }
 
@@ -244,7 +244,7 @@ void LibSimModule::resetSocketThread()     {
     setBool(m_connectedToEngine, true);
     m_messageHandler.initialize(m_socket, m_socketComm);
     for (const auto& option : m_intOptions) {
-        option.second->send();
+        m_messageHandler.send(vistle::insitu::message::LibSimIntOption{{option.second, option.first->getValue()}});
     }
 }
 
@@ -274,8 +274,8 @@ void LibSimModule::connectToSim() {
             p = lastEditedFile;
         }
         CERR << "opening file: " << p.string() << endl;
-        vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(InstanceNum()) };
-        if (insitu::attemptLibSImConnection(p.string(), args)) {
+        vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(instanceNum()) };
+        if (vistle::insitu::libsim::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }
         else
@@ -310,14 +310,7 @@ void LibSimModule::recvAndhandleMessage()     {
     auto msg = m_messageHandler.recv();
     
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
-    using namespace insitu;
     switch (msg.type()) {
-    case InSituMessageType::Invalid:
-        break;
-    case InSituMessageType::ShmInit:
-        break;
-    case InSituMessageType::AddObject:
-        break;
     case InSituMessageType::SetPorts: //list of ports, last entry is the type description (e.g mesh or variable)
     {
         auto em = msg.unpackOrCast< vistle::insitu::message::SetPorts>();
@@ -356,18 +349,10 @@ void LibSimModule::recvAndhandleMessage()     {
         }
     }
         break;
-    case InSituMessageType::Ready:
-        break;
-    case InSituMessageType::ExecuteCommand:
-        break;
     case InSituMessageType::GoOn:
     {
         m_messageHandler.send(vistle::insitu::message::GoOn{});
     }
-        break;
-    case InSituMessageType::ConstGrids:
-        break;
-    case InSituMessageType::NthTimestep:
         break;
     case InSituMessageType::ConnectionClosed:
     {

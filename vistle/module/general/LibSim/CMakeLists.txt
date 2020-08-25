@@ -1,13 +1,5 @@
-# Copyright (c) Lawrence Livermore National Security, LLC and other VisIt
-# Project developers.  See the top-level LICENSE file for dates and other
-# details.  No copyright assignment is required to contribute to VisIt.
 
-#****************************************************************************
-# Modifications:
-#
-#****************************************************************************
 
-#LibSimModule
 add_module(LibSimController LibSimModule.h LibSimModule.cpp)
 target_link_libraries(LibSimController
 	vistle_module
@@ -17,6 +9,11 @@ target_link_libraries(LibSimController
 	vistle_libsim_connect
 	Boost::boost
 	)
+
+target_include_directories(LibSimController PRIVATE 
+$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/vistle/insitu/libsim>
+$<INSTALL_INTERFACE:include/vistle/insitu/libsim>  
+)
 
 if(NOT VISTLE_MULTI_PROCESS)
 target_link_libraries(LibSimController

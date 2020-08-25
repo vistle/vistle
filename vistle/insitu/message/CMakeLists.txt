@@ -1,18 +1,20 @@
 set(SOURCES
-  addObjectMsq.cpp
   InSituMessage.cpp
   ShmMessage.cpp
   SyncShmIDs.cpp
   TcpMessage.cpp
+  addObjectMsq.cpp
+  moduleInfo.cpp
 )
 
 set(HEADER
-  export.h
-  addObjectMsq.h
   InSituMessage.h
   ShmMessage.h
   SyncShmIDs.h
   TcpMessage.h
+  addObjectMsq.h
+  export.h
+  moduleInfo.h
   sharedOption.h
 )
 
@@ -26,6 +28,6 @@ vistle_target_link_libraries(vistle_insitu_message
 		PRIVATE vistle_insitu_core
 		PRIVATE Boost::boost
 		PRIVATE MPI::MPI_C
-        PRIVATE Threads::Threads
+    PRIVATE Threads::Threads
 		)
 vistle_install_docs(README.md)

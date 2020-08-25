@@ -4,13 +4,11 @@
 namespace vistle {
 namespace insitu {
 namespace sensei {
-struct Exeption : public InsituExeption {
-	Exeption() {
-		*this << "VistleSenseiAdapter: ";
-	};
-
+struct Exeption : public InsituExeption
+{
+  Exeption() { *this << "VistleSensei: "; };
 };
-}//sensei
-}//insitu
-}//vistle
+} // namespace sensei
+} // namespace insitu
+} // namespace vistle
 #endif

@@ -24,7 +24,7 @@
 #include <vistle/core/shm.h>
 
 #ifdef MODULE_THREAD
-#include <vistle/insitu/libsim/EstablishConnection.h>
+#include <vistle/insitu/libsim/connectLibsim/connect.h>
 #endif // MODULE_THREAD
 
 
@@ -317,7 +317,7 @@ bool Hub::init(int argc, char *argv[]) {
            sim2FilePath = vm["libsim"].as<std::string>();
 
            CERR << "starting manager in simulation" << std::endl;
-           if (insitu::attemptLibSImConnection(sim2FilePath, args)) {
+           if (vistle::insitu::libsim::attemptLibSImConnection(sim2FilePath, args)) {
                sendInfo("Successfully connected to simulation");
            } else {
                CERR << "failed to spawn Vistle manager in the simulation" << std::endl;
