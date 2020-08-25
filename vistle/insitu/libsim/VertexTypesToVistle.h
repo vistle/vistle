@@ -62,10 +62,10 @@ static vistle::Index getNumVertices(vistle::UnstructuredGrid::Type type)
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::PRISM] = 6;
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::HEXAHEDRON] = 8;
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::POLYGON] = -1;
-		num_verts_of_elem[vistle::UnstructuredGrid::Type::VPOLYHEDRON] =
-			num_verts_of_elem[vistle::UnstructuredGrid::Type::POINT] = 1;
+		num_verts_of_elem[vistle::UnstructuredGrid::Type::VPOLYHEDRON] = -1;
+		num_verts_of_elem[vistle::UnstructuredGrid::Type::POINT] = 1;
 		num_verts_of_elem[vistle::UnstructuredGrid::Type::CPOLYHEDRON] = -1;
-		num_verts_of_elem[vistle::UnstructuredGrid::Type::NUM_TYPES] = -1;
+
 
 		init = true;
 	}
