@@ -51,6 +51,8 @@ public:
     void setStatus(Module::Status status);
     void setStatusText(QString text, int prio);
 
+    bool isBusy();
+
     void addPort(const vistle::Port &port);
     void removePort(const vistle::Port &port);
 

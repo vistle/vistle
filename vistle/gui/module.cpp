@@ -526,4 +526,9 @@ void Module::setStatusText(QString text, int prio)
     }
 }
 
+bool Module::isBusy()
+{
+   return m_Status == Status::BUSY; 
+}
+
 } //namespace gui

@@ -206,6 +206,10 @@ void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToCon
 
    assert(portFrom);
    assert(portTo);
+   if (portFrom->module()->isBusy())
+   {
+      return;
+   }
 
    ConnectionKey key(portFrom, portTo);
    auto it = m_connections.end();
