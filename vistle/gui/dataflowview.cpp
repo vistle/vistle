@@ -127,7 +127,7 @@ void DataFlowView::createMenu()
 
 void DataFlowView::contextMenuEvent(QContextMenuEvent *event)
 {
-    if (auto item = itemAt(event->pos())) {
+    if (itemAt(event->pos())) {
         QGraphicsView::contextMenuEvent(event);
         return;
     }
