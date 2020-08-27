@@ -125,7 +125,10 @@ void Connection::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
 
 void Connection::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
 
-    scene()->removeConnection(source(), destination(), true);
+   if (!source()->module()->isBusy())
+   {
+      scene()->removeConnection(source(), destination(), true);
+   }
 }
 
 
