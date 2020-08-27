@@ -299,7 +299,6 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       }
    } else if (auto fp = std::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
       m_floatManager->setValue(prop, fp->getValue());
-      typedef vistle::FloatParameter::ValueType F;
       m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
       m_floatManager->setDecimals(prop, NumDec);
       double range = fp->maximum()-fp->minimum();
