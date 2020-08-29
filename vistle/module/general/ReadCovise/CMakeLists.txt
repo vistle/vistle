@@ -1,6 +1,6 @@
 include_directories(.)
 
-add_library(vistle_covise_file file/covFiles.c)
+add_library(vistle_covise_file STATIC file/covFiles.c)
 
 add_module(ReadCovise ReadCovise.cpp)
 target_link_libraries(ReadCovise vistle_covise_file)
