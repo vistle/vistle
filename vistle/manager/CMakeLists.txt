@@ -40,11 +40,6 @@ set(LIB_HEADERS
    run_on_main_thread.h
 )
 
-if (USE_QT)
-   qt_add_resources(QRC_SOURCES icons.qrc)
-   set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
-endif()
-
 if (NOT VISTLE_MULTI_PROCESS)
 	vistle_add_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
 	vistle_export_library(vistle_clustermanager ${LIB_SOURCES} ${LIB_HEADERS})
@@ -80,6 +75,11 @@ if (NOT VISTLE_MULTI_PROCESS)
 	)
 endif()
 
+if (USE_QT)
+   qt_add_resources(QRC_SOURCES icons.qrc)
+   set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
+endif()
+
 if(VISTLE_MULTI_PROCESS)
     set(SOURCES ${SOURCES} ${LIB_SOURCES})
     set(HEADERS ${HEADERS} ${LIB_HEADERS})
@@ -104,7 +104,7 @@ if (NOT VISTLE_MULTI_PROCESS)
         set_target_properties(vistle_clustermanager PROPERTIES LINK_FLAGS -Wl,-export_dynamic)
     endif()
     if (USE_QT)
-        qt_use_modules(vistle_clustermanager Core Widgets)
+        target_link_libraries(vistle_clustermanager Qt5::Core Qt5::Widgets)
         if (NOT APPLE AND NOT WIN32 AND XCB_FOUND)
             target_link_libraries(vistle_clustermanager ${XCB_LIBRARIES})
             if (X11_ICE_FOUND)
