@@ -54,7 +54,7 @@
 #if VTK_MAJOR_VERSION < 9
 #define IDCONST
 #else
-#define const
+#define IDCONST const
 #endif
 
 #ifdef SENSEI
