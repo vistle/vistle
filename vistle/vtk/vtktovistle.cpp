@@ -51,7 +51,11 @@
 #include <vistle/core/rectilineargrid.h>
 #include <vistle/core/uniformgrid.h>
 
-
+#if VTK_MAJOR_VERSION < 9
+#define IDCONST
+#else
+#define const
+#endif
 
 #ifdef SENSEI
 #include <vistle/insitu/sensei/sensei.h>
@@ -146,7 +150,7 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
             elems[i] = k;
 
             vtkIdType npts = 0;
-            vtkIdType* pts = nullptr;
+            IDCONST vtkIdType* pts = nullptr;
             vcellarray->GetNextCell(npts, pts);
             if (typelist[i] == UnstructuredGrid::VPOLYHEDRON) {
                 Index j = 0;
@@ -217,7 +221,8 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
             strips->InitTraversal();
             for (Index i = 0; i < nstrips; ++i)
             {
-                vtkIdType npts = 0, * pts = NULL;
+                vtkIdType npts = 0;
+                IDCONST vtkIdType *pts = nullptr;
                 strips->GetNextCell(npts, pts);
                 nstriptris += npts - 2;
             }
@@ -236,7 +241,8 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
             {
                 polylist[i] = k;
 
-                vtkIdType npts = 0, * pts = NULL;
+                vtkIdType npts = 0;
+                IDCONST vtkIdType *pts = nullptr;
                 polys->GetNextCell(npts, pts);
                 for (int j = 0; j < npts; ++j)
                 {
@@ -249,7 +255,8 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
             for (Index i = 0; i < nstrips; ++i)
             {
                 polylist[npolys + i] = k;
-                vtkIdType npts = 0, * pts = NULL;
+                vtkIdType npts = 0;
+                IDCONST vtkIdType *pts = nullptr;
                 strips->GetNextCell(npts, pts);
                 for (Index j = 0; j < npts - 2; ++j)
                 {
@@ -285,7 +292,8 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
             {
                 linelist[i] = k;
 
-                vtkIdType npts = 0, * pts = NULL;
+                vtkIdType npts = 0;
+                IDCONST vtkIdType *pts = nullptr;
                 lines->GetNextCell(npts, pts);
                 for (Index j = 0; j < npts; ++j)
                 {
@@ -504,7 +512,7 @@ DataBase::ptr vtkArray2Vistle(SENSEI_ARGUMENT vtkType* vd, Object::const_ptr gri
     break;
     }
 
-    return NULL;
+    return nullptr;
 }
 #ifdef SENSEI
 } // anonymous namespace
@@ -533,7 +541,7 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray* varr, Object::const_p
     if (dim[0] * dim[1] * dim[2] != n)
     {
         std::cerr << "coVtk::vtkData2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2] << "] != " << n << std::endl;
-        return NULL;
+        return nullptr;
     }
 
     if (vtkFloatArray* vd = dynamic_cast<vtkFloatArray*>(varr))
@@ -561,7 +569,7 @@ DataBase::ptr vtkData2Vistle(SENSEI_ARGUMENT vtkDataArray* varr, Object::const_p
         return vtkArray2Vistle<unsigned char, vtkUnsignedCharArray>(SENSEI_PARAMETER vd, grid);
     }
 
-    return NULL;
+    return nullptr;
 }
 
 
