@@ -17,7 +17,7 @@ namespace insitu {
         virtual ~InsituExeption() = default;
 
     protected:
-        std::string m_msg;
+        mutable std::string m_msg;
         int rank = -1, size = 0;
     };
 }//insitu
