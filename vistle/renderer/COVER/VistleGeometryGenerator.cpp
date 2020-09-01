@@ -45,7 +45,9 @@ namespace  {
 const int NumPrimitives = 100000;
 const bool IndexGeo = true;
 
+#ifdef COVER_PLUGIN
 const int TfTexUnit = 1;
+#endif
 const int DataAttrib = 10;
 }
 
