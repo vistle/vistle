@@ -74,19 +74,14 @@ namespace {
 Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool checkConvex) {
     Index ncoord = vugrid->GetNumberOfPoints();
     Index nelem = vugrid->GetNumberOfCells();
-    Index nconn = 0;
-    vtkCellArray* vcellarray = vugrid->GetCells();
-    if (vcellarray) {
-        nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
-    }
 
-    UnstructuredGrid::ptr cugrid = CREATE_VISTLE_OBJECT(UnstructuredGrid, nelem, nconn, ncoord);
+    UnstructuredGrid::ptr cugrid = CREATE_VISTLE_OBJECT(UnstructuredGrid, nelem, 0, ncoord);
 
     Scalar* xc = cugrid->x().data();
     Scalar* yc = cugrid->y().data();
     Scalar* zc = cugrid->z().data();
     Index* elems = cugrid->el().data();
-    Index* connlist = cugrid->cl().data();
+    auto &connlist = cugrid->cl();
     Byte* typelist = cugrid->tl().data();
 
     for (Index i = 0; i < ncoord; ++i) {
@@ -98,9 +93,11 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
 #if VTK_MAJOR_VERSION >= 7
     const auto* ghostArray = vugrid->GetCellGhostArray();
 #endif
-    vtkUnsignedCharArray* vtypearray = vugrid->GetCellTypesArray();
+
     for (Index i = 0; i < nelem; ++i) {
-        switch (vtypearray->GetValue(i))
+        elems[i] = connlist.size();
+
+        switch (vugrid->GetCellType(i))
         {
         case VTK_VERTEX:
         case VTK_POLY_VERTEX:
@@ -132,8 +129,8 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
             typelist[i] = UnstructuredGrid::POLYHEDRON;
             break;
         default:
-            std::cerr << "VTK cell type " << vtypearray->GetValue(i) << " not handled" << std::endl;
-            typelist[i] = 0;
+            std::cerr << "VTK cell type " << vugrid->GetCellType(i) << " not handled" << std::endl;
+            typelist[i] = UnstructuredGrid::NONE;
             break;
         }
 #if VTK_MAJOR_VERSION >= 7
@@ -141,59 +138,55 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
             typelist[i] |= UnstructuredGrid::GHOST_BIT;
         }
 #endif
-    }
 
-    if (vcellarray) {
-        vcellarray->InitTraversal();
-        Index k = 0;
-        for (Index i = 0; i < nelem; ++i) {
-            elems[i] = k;
+        assert((typelist[i] & UnstructuredGrid::TYPE_MASK) < UnstructuredGrid::NUM_TYPES);
 
-            vtkIdType npts = 0;
-            IDCONST vtkIdType* pts = nullptr;
-            vcellarray->GetNextCell(npts, pts);
-            if (typelist[i] == UnstructuredGrid::VPOLYHEDRON) {
-                Index j = 0;
-                Index nface = pts[j];
+        vtkIdType npts = 0;
+        IDCONST vtkIdType* pts = nullptr;
+        vugrid->GetFaceStream(i, npts, pts);
+        if (typelist[i] == UnstructuredGrid::VPOLYHEDRON) {
+            assert(UnstructuredGrid::POLYHEDRON == UnstructuredGrid::VPOLYHEDRON);
+            Index nface = npts;
+
+            vtkIdType j = 0;
+            for (Index f = 0; f < nface; ++f) {
+                assert(pts[j] >= 0);
+                Index nvert = pts[j];
                 ++j;
-                for (Index f = 0; f < nface; ++f) {
-                    Index nvert = pts[j];
+                connlist.emplace_back(nvert);
+                for (Index v = 0; v < nvert; ++v) {
+                    assert(pts[j] >= 0);
+                    connlist.emplace_back(pts[j]);
                     ++j;
-                    connlist[k] = nvert;
-                    ++k;
-                    for (Index v = 0; v < nvert; ++v) {
-                        connlist[k] = pts[j];
-                        ++k;
-                        ++j;
-                    }
-                }
-            }
-            else if (typelist[i] == UnstructuredGrid::CPOLYHEDRON) {
-                Index j = 0;
-                Index nface = pts[j];
-                ++j;
-                for (Index f = 0; f < nface; ++f) {
-                    Index nvert = pts[j];
-                    ++j;
-                    Index first = pts[j];
-                    for (Index v = 0; v < nvert; ++v) {
-                        connlist[k] = pts[j];
-                        ++k;
-                        ++j;
-                    }
-                    connlist[k] = first;
-                    ++k;
-                }
-            }
-            else {
-                for (int j = 0; j < npts; ++j) {
-                    connlist[k] = pts[j];
-                    ++k;
                 }
             }
         }
-        elems[nelem] = k;
+        else if (typelist[i] == UnstructuredGrid::CPOLYHEDRON) {
+            assert(UnstructuredGrid::POLYHEDRON == UnstructuredGrid::CPOLYHEDRON);
+            Index nface = npts;
+
+            vtkIdType j = 0;
+            for (Index f = 0; f < nface; ++f) {
+                assert(pts[j] >= 0);
+                Index nvert = pts[j];
+                ++j;
+                Index first = pts[j];
+                for (Index v = 0; v < nvert; ++v) {
+                    assert(pts[j] >= 0);
+                    connlist.emplace_back(pts[j]);
+                    ++j;
+                }
+                connlist.emplace_back(first);
+            }
+        }
+        else {
+            for (vtkIdType j = 0; j < npts; ++j) {
+                assert(pts[j] >= 0);
+                connlist.emplace_back(pts[j]);
+            }
+        }
     }
+    elems[nelem] = connlist.size();
 
     if (checkConvex) {
         auto nonConvex = cugrid->checkConvexity();
