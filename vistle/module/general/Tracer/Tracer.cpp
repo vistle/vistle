@@ -771,34 +771,39 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
-   if (taskType == MovingPoints) {
-       assert(global.points.size() > size_t(timestep));
-       applyAttributes(global.points[timestep], m_gridAttr[timestep+1]);
-   } else {
-       if (taskType == Streamlines) {
-           assert(!global.lines.empty());
-           applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
+   {
+       int idx = timestep;
+       if (idx < 0)
+           idx = 0;
+       if (taskType == MovingPoints) {
+           assert(global.points.size() > size_t(idx));
+           applyAttributes(global.points[idx], m_gridAttr[timestep+1]);
        } else {
-           assert(global.lines.size() > size_t(timestep));
-           applyAttributes(global.lines[timestep], m_gridAttr[timestep+1]);
+           if (taskType == Streamlines) {
+               assert(!global.lines.empty());
+               applyAttributes(global.lines.back(), m_gridAttr[timestep+1]);
+           } else {
+               assert(global.lines.size() > size_t(idx));
+               applyAttributes(global.lines[idx], m_gridAttr[timestep+1]);
+           }
        }
-   }
-   if (global.computeVector) {
-       if (taskType == Streamlines) {
-           assert(!global.vecField.empty());
-           applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
-       } else {
-           assert(global.vecField.size() > size_t(timestep));
-           applyAttributes(global.vecField[timestep], m_data0Attr[timestep+1]);
+       if (global.computeVector) {
+           if (taskType == Streamlines) {
+               assert(!global.vecField.empty());
+               applyAttributes(global.vecField.back(), m_data0Attr[timestep+1]);
+           } else {
+               assert(global.vecField.size() > size_t(idx));
+               applyAttributes(global.vecField[idx], m_data0Attr[timestep+1]);
+           }
        }
-   }
-   if (global.computeScalar) {
-       if (taskType == Streamlines) {
-           assert(!global.scalField.empty());
-           applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
-       } else {
-           assert(global.scalField.size() > size_t(timestep));
-           applyAttributes(global.scalField[timestep], m_data1Attr[timestep+1]);
+       if (global.computeScalar) {
+           if (taskType == Streamlines) {
+               assert(!global.scalField.empty());
+               applyAttributes(global.scalField.back(), m_data1Attr[timestep+1]);
+           } else {
+               assert(global.scalField.size() > size_t(idx));
+               applyAttributes(global.scalField[idx], m_data1Attr[timestep+1]);
+           }
        }
    }
 
