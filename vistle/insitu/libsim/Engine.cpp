@@ -282,7 +282,7 @@ void Engine::SimulationTimeStepChanged() {
     DEBUG_CERR << "SimulationTimeStepChanged counter = " << counter << endl;
     ++counter;
     getMetaData();
-    if (m_processedCycles >= m_metaData.currentCycle) {
+    if (m_processedCycles > 0 && m_processedCycles >= m_metaData.currentCycle) {
         DEBUG_CERR << "There is no new timestep but SimulationTimeStepChanged was called" << endl;
         return;
     }
@@ -752,7 +752,7 @@ void Engine::sendMeshesToModule()     {
         case VISIT_MESHTYPE_UNSTRUCTURED:
         {
             CERR << "making unstructured grid" << endl;
-            makeUnstructuredMesh(meshInfo);
+            makeUnstructuredMeshes(meshInfo);
         }
         break;
         case VISIT_MESHTYPE_POINT:
@@ -833,7 +833,7 @@ void Engine::makeRectilinearMesh(MeshInfo meshInfo) {
     m_meshes[meshInfo.name] = meshInfo;
 }
 
-void Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
+void Engine::makeUnstructuredMeshes(MeshInfo meshInfo) {
 
     for (size_t cd = 0; cd < meshInfo.numDomains; cd++) {
         int currDomain = meshInfo.domains[cd];
@@ -929,21 +929,26 @@ void Engine::makeUnstructuredMesh(MeshInfo meshInfo) {
             visit_handle ghostCellHandle;
             v2check(simv2_UnstructuredMesh_getGhostCells, meshHandle, &ghostCellHandle);
             data = nullptr;
-            v2check(simv2_VariableData_getData, ghostCellHandle, owner, dataType, nComps, nTuples, data);
-            if (dataType != VISIT_DATATYPE_CHAR)
+            if (ghostCellHandle != VISIT_INVALID_HANDLE)
             {
-                EngineExeption ex("expectet ghostCellData of type char, type is ");
-                ex << dataType;
-                throw ex;
-            }
-            char* c = static_cast<char*>(data);
-            for (int i = 0; i < nTuples; ++i)
-            {
-                if (c[i])
+                v2check(simv2_VariableData_getData, ghostCellHandle, owner, dataType, nComps, nTuples, data);
+                if (dataType != VISIT_DATATYPE_CHAR)
                 {
-                    grid->tl()[i] |= vistle::UnstructuredGrid::GHOST_BIT;
+                    EngineExeption ex("expectet ghostCellData of type char, type is ");
+                    ex << dataType;
+                    throw ex;
+                }
+                char* c = static_cast<char*>(data);
+                for (int i = 0; i < nTuples; ++i)
+                {
+                    if (c[i])
+                    {
+                        grid->tl()[i] |= vistle::UnstructuredGrid::GHOST_BIT;
+                    }
                 }
             }
+            
+            
             setTimestep(grid);
             grid->setBlock(currDomain);
             meshInfo.handles.push_back(meshHandle);
