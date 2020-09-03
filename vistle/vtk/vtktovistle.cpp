@@ -82,6 +82,10 @@ Object::ptr vtkUGrid2Vistle(SENSEI_ARGUMENT vtkUnstructuredGrid* vugrid, bool ch
     Scalar* zc = cugrid->z().data();
     Index* elems = cugrid->el().data();
     auto &connlist = cugrid->cl();
+    if (vtkCellArray* vcellarray = vugrid->GetCells()) {
+        auto nconn = vcellarray->GetNumberOfConnectivityEntries() - nelem;
+        connlist.reserve(nconn);
+    }
     Byte* typelist = cugrid->tl().data();
 
     for (Index i = 0; i < ncoord; ++i) {
