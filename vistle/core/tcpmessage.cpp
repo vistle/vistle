@@ -181,7 +181,9 @@ struct SendRequest {
 
 void submitSendRequest(std::shared_ptr<SendRequest> req) {
     //std::cerr << "submitSendRequest: " << sendQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-#if BOOST_VERSION >= 106900
+#if BOOST_VERSION >= 107400
+    asio::post(req->sock.get_executor(), *req);
+#elif BOOST_VERSION >= 106900
     req->sock.get_executor().post(*req, std::allocator<char>());
 #else
 	req->sock.get_io_service().post(*req);
@@ -269,7 +271,9 @@ struct RecvRequest {
 
 void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
     //std::cerr << "submitRecvRequest: " << recvQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
-#if BOOST_VERSION >= 106900
+#if BOOST_VERSION >= 107400
+    asio::post(req->sock.get_executor(), *req);
+#elif BOOST_VERSION >= 106900
     req->sock.get_executor().post(*req, std::allocator<char>());
 #else
 	req->sock.get_io_service().post(*req);
