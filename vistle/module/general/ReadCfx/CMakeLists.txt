@@ -12,8 +12,8 @@ include_directories(SYSTEM
 #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
 #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 
-add_module(ReadCFX ReadCFX.cpp)
+add_module(ReadCfx ReadCFX.cpp)
 
-target_link_libraries(ReadCFX
+target_link_libraries(ReadCfx
 	${CFX_LIBRARIES}
 )

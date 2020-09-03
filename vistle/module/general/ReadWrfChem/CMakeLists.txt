@@ -15,7 +15,7 @@ set(SOURCES
   ReadWRFChem.cpp
 )
 
-add_module(ReadWRFChem ${SOURCES} ${HEADERS})
+add_module(ReadWrfChem ${SOURCES} ${HEADERS})
 
-target_link_libraries(ReadWRFChem ${EXTRA_LIBS})
+target_link_libraries(ReadWrfChem ${EXTRA_LIBS})
 
