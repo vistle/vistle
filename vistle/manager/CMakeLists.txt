@@ -34,7 +34,6 @@ set(LIB_HEADERS
     export.h
    clustermanager.h
    datamanager.h
-   datamanager.h
    manager.h
    portmanager.h
    run_on_main_thread.h
