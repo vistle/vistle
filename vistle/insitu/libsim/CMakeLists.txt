@@ -1,104 +1,35 @@
 option(LIBSIM_DEBUG "print debug messages" OFF)
 option(LIBSIM_PARALLEL "build parallel instead of serial LibSim Interface" ON)
 
-if(NOT VISTLE_MULTI_PROCESS)
-vistle_add_library(vistle_libsim_engine_interface EngineInterface.h EngineInterface.cpp)
-vistle_export_library(vistle_libsim_engine_interface EngineInterface.h EngineInterface.cpp)
-vistle_target_link_libraries(vistle_libsim_engine_interface
-        PRIVATE Boost::boost
-        PRIVATE Threads::Threads
-)
-endif()
+add_subdirectory(engineInterface)
+add_subdirectory(connectLibsim)
+add_subdirectory(libsimInterface)
 
-vistle_add_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
-vistle_export_library(vistle_libsim_connect EstablishConnection.cpp EstablishConnection.h exportEC.h)
-target_link_libraries(vistle_libsim_connect
-        PRIVATE Boost::boost
-        PRIVATE Boost::system
-        PRIVATE Threads::Threads
-)
 
-if(LIBSIM_DEBUG)
-   add_definitions(-DLIBSIM_DEBUG)
-endif()
-if (VISTLE_SHM_PER_RANK)
-   add_definitions(-DSHMPERRANK)
-endif()
-add_definitions(-DLIBSIM_EXPORT)
 
 SET(RUNTIME_SOURCES 
-  VertexTypesToVistle.h
-  Exeption.cpp
-  VisItControlInterfaceRuntime.C 
-  VisItDataInterfaceRuntime.C 
-  VisItDataInterfaceRuntimeP.C 
-  CommandMetaData.C
-  CurveData.C
-  CurveMetaData.C
-  CurvilinearMesh.C
-  CSGMesh.C
-  #DomainBoundaries.C
-  DomainList.C 
-  #DomainNesting.C
+  DataProcessor.cpp
   Engine.cpp
-  ExpressionMetaData.C
-  MaterialData.C
-  MaterialMetaData.C
-  MeshMetaData.C
-  MessageMetaData.C
-  NameList.C
-  OptionList.C
-  PointMesh.C
-  ProxyModule.cpp
-  RectilinearMesh.C
-  SimulationMetaData.C
-  SpeciesData.C
-  SpeciesMetaData.C
-  UnstructuredMesh.C
-  VariableData.C
-  VariableMetaData.C
-  #View2D.C
-  #View3D.C
+  Exeption.cpp
+  RectilinearMesh.cpp
+  StructuredMesh.cpp
+  UnstructuredMesh.cpp
+  VisItControlInterfaceRuntime.C
 )
 
 SET(RUNTIME_HEADERS 
-  VertexTypesToVistle.h  
-  Exeption.h
-  VisItControlInterfaceRuntime.h
-  VisItDataInterfaceRuntime.h
-  VisItDataInterfaceRuntimeP.h
-  VisItDataTypes.h
-  VisitDataTypesToVistle.h  
-  CommandMetaData.h
-  CurveData.h
-  CurveMetaData.h
-  CurvilinearMesh.h
-  CSGMesh.h
-  #DomainBoundaries.h
-  DomainList.h 
-  #DomainNesting.h
+  MeshInfo.h
+  StructuredMesh.h  
   Engine.h
-  ExpressionMetaData.h
-  MaterialData.h
-  MaterialMetaData.h
-  MeshMetaData.h
-  MessageMetaData.h
-  MetaData.h
-  NameList.h
-  OptionList.h
-  PointMesh.h
-  ProxyModule.h
-  RectilinearMesh.h
-  SimulationMetaData.h
-  SpeciesData.h
-  SpeciesMetaData.h
-  UnstructuredMesh.h
-  VariableData.h
-  VariableMetaData.h
-  VectorTypes.h
-  #View2D.h
-  #View3D.h
+  DataProcessor.h
+  Exeption.h
   export.h
+  MetaData.h
+  RectilinearMesh.h
+  UnstructuredMesh.h
+  VertexTypesToVistle.h  
+  VisItControlInterfaceRuntime.h
+  VisitDataTypesToVistle.h  
 )
 
 set (LIBCORENAME simV2runtime_par) # use disable LIBSIM_PARALLEL CMake option for serial simulation
@@ -118,17 +49,27 @@ vistle_add_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 vistle_export_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 
 
+if(LIBSIM_DEBUG)
+   target_compile_definitions(${LIBNAME} PRIVATE -DLIBSIM_DEBUG)
+endif()
+if (VISTLE_SHM_PER_RANK)
+   target_compile_definitions(${LIBNAME} PRIVATE -DSHMPERRANK)
+endif()
+target_compile_definitions(${LIBNAME} PRIVATE -DLIBSIM_EXPORT)
+
+target_compile_features(${LIBNAME} PRIVATE cxx_std_14)
+
 vistle_target_link_libraries(${LIBNAME}
-		PRIVATE vistle_insitu_core
-		PRIVATE vistle_module
-		PRIVATE vistle_util
-		#PRIVATE vistle_control
-        PRIVATE vistle_core
-        PRIVATE vistle_boost_mpi
-		PRIVATE vistle_insitu_message
 		PRIVATE Boost::boost
         PRIVATE MPI::MPI_C
         PRIVATE Threads::Threads
+        PRIVATE vistle_boost_mpi
+        PRIVATE vistle_core
+		PRIVATE vistle_insitu_core
+		PRIVATE vistle_insitu_message
+		PRIVATE vistle_libsim
+		PRIVATE vistle_module
+		PRIVATE vistle_util
 		)
 		
 if(NOT VISTLE_MULTI_PROCESS)

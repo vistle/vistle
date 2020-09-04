@@ -3,7 +3,6 @@
 // details.  No copyright assignment is required to contribute to VisIt.
 
 #include "VisItControlInterfaceRuntime.h"
-#include "VisItDataTypes.h"
 
 #include "Engine.h"
 
@@ -11,15 +10,10 @@
 #include "vector"
 #include "cstring"
 
-
-
-#include "NameList.h"
-#include "OptionList.h"
-#include "View2D.h"
-#include "View3D.h"
 #include <iostream>
 
-extern void DataCallbacksCleanup(void);
+#include <vistle/insitu/libsim/libsimInterface/VisItDataInterfaceRuntime.h>
+
 using vistle::insitu::libsim::Engine;
 // Engine creation callback.
 static Engine *

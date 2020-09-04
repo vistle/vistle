@@ -4,7 +4,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/hostname.h>
 
-#include <vistle/insitu/libsim/EstablishConnection.h>
+#include <vistle/insitu/libsim/connectLibsim/connect.h>
 
 #include <vistle/core/rectilineargrid.h>
 #include <sstream>
@@ -275,7 +275,7 @@ void LibSimModule::connectToSim() {
         }
         CERR << "opening file: " << p.string() << endl;
         vector<string> args{ to_string(size()), vistle::Shm::the().instanceName(), name(), to_string(id()), vistle::hostname(), to_string(m_port), to_string(InstanceNum()) };
-        if (insitu::attemptLibSImConnection(p.string(), args)) {
+        if (vistle::insitu::libsim::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         }
         else
@@ -310,7 +310,6 @@ void LibSimModule::recvAndhandleMessage()     {
     auto msg = m_messageHandler.recv();
     
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
-    using namespace insitu;
     switch (msg.type()) {
     case InSituMessageType::Invalid:
         break;

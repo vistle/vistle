@@ -1,11 +1,14 @@
 #ifndef VISITDATATYPESTOVISTLE_H
 #define VISITDATATYPESTOVISTLE_H
 
-#include "VisItDataTypes.h"
-#include <vistle/insitu/core/dataType.h>
-#include <vistle/core/database.h>
 #include "Exeption.h"
+#include <vistle/core/database.h>
 #include <vistle/core/object.h>
+
+#include <vistle/insitu/core/dataType.h>
+#include <vistle/insitu/core/array.h>
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
+
 namespace vistle {
 namespace insitu {
 namespace libsim {

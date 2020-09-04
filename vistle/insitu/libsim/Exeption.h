@@ -6,7 +6,7 @@
 #include <tuple>
 #include <functional>
 
-#include "VisItDataTypes.h"
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
 #include <vistle/insitu/core/exeption.h>
 namespace vistle{

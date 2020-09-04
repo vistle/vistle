@@ -1,7 +1,8 @@
 #ifndef SIMULATION_META_DATA_H
 #define SIMULATION_META_DATA_H
 
-#include "VisItDataTypes.h"
+#include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
+
 namespace vistle {
 namespace insitu {
 namespace libsim {

@@ -1,20 +1,26 @@
 #ifndef VISIT_VISTLE_ENGINE_H
 #define VISIT_VISTLE_ENGINE_H
 
-#include <mpi.h>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/io_service.hpp>
-
-#include "MetaData.h"
 #include "export.h"
+#include "MetaData.h"
+#include "MeshInfo.h"
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <mpi.h>
+
+#include <vistle/core/objectforwarddecl.h>
+#include <vistle/core/rectilineargrid.h>
+#include <vistle/core/structuredgrid.h>
 #include <vistle/core/uniformgrid.h>
+#include <vistle/core/unstr.h>
 #include <vistle/core/vec.h>
+
 #include <vistle/insitu/core/moduleInfo.h>
 #include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/insitu/message/sharedOption.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/TcpMessage.h>
-#include <vistle/insitu/message/sharedOption.h>
 
 #include <condition_variable>
 #include <functional>
@@ -27,7 +33,6 @@
 #ifdef MODULE_THREAD
 #include <vistle/manager/manager.h>
 #endif // MODULE_THREAD
-
 
 
 namespace vistle {
@@ -105,7 +110,7 @@ public:
 
 
 private:
-    const int zero = 0;
+     
     static Engine* instance;
     bool m_initialized = false; //Engine is initialized
     std::unique_ptr<vistle::insitu::message::AddObjectMsq> m_sendMessageQueue; //Queue to send addObject messages to LibSImController module
@@ -140,15 +145,7 @@ private:
     size_t m_processedCycles = 0; //the last cycle that was processed
     Metadata m_metaData; //the meta data of the currenc cycle
     std::set<std::string> m_registeredGenericCommands; //the commands that are availiable for the sim
-    struct MeshInfo {
-        bool combined = false; //if the mesh is made of multiple smaler meshes
-        char* name = nullptr;
-        int dim = 0; //2D or 3D
-        int numDomains = 0;
-        const int* domains = nullptr;
-        std::vector<int> handles;
-        std::vector< vistle::obj_ptr> grids;
-    };
+   
     std::map<std::string, MeshInfo> m_meshes; //used to find the coresponding mesh for the variables
 
     ModuleInfo m_moduleInfo;
@@ -180,15 +177,24 @@ private:
     void sendDataToModule();//create all data objects and send them to vistle
 
     void sendMeshesToModule();
-    void makeRectilinearMesh(MeshInfo meshInfo);
-    void makeUnstructuredMeshes(MeshInfo meshInfo);
-    void makeAmrMesh(MeshInfo meshInfo);
-    void makeStructuredMesh(MeshInfo meshInfo);
+
+    void makeRectilinearMeshes(MeshInfo &meshInfo);
+    void makeRectilinearMesh(int currDomain, MeshInfo& meshInfo);
+
+    void makeUnstructuredMeshes(MeshInfo &meshInfo);
+    void makeUnstructuredMesh(int currDomain, MeshInfo& meshInfo);
+
+    void makeStructuredMeshes(MeshInfo &meshInfo);
+    void makeStructuredMesh(int currDomain, MeshInfo& meshInfo);
+
+    void makeAmrMesh(MeshInfo &meshInfo);
+
     //combine the structured meshes of one domain to a singe unstructured mesh. Points of adjacent faces will be doubled.
-    void combineStructuredMeshesToUnstructured(MeshInfo meshInfo);
+    void combineStructuredMeshesToUnstructured(MeshInfo &meshInfo);
 
-    void combineRectilinearToUnstructured(MeshInfo meshInfo);
+    void combineRectilinearToUnstructured(MeshInfo &meshInfo);
 
+    void finalizeGrid(vistle::Object::ptr grid, int block, MeshInfo& meshInfo, visit_handle meshHandle);
 
     void sendVarablesToModule();
 
