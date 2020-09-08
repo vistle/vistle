@@ -1,7 +1,10 @@
 #ifndef VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
 #define VISTLE_LIBSIM_UNSTRUCTURED_MESH_H
 
+#include "ArrayStruct.h"
+
 #include <vistle/core/index.h>
+#include <vistle/core/object.h>
 
 #include <memory>
 #include <array>
@@ -16,14 +19,18 @@ class SyncShmIDs;
 namespace libsim {
 namespace UnstructuredMesh  {
 
-	std::shared_ptr< UnstructuredGrid> get(const visit_handle& meshHandle, message::SyncShmIDs& creator);
+	vistle::Object::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator);
 
 namespace detail {
     void SeparateAllocAndFill(int dim, const visit_handle coordHandles[4], std::shared_ptr<vistle::UnstructuredGrid> grid);
     void InterleavedAllocAndFill(const visit_handle &coordHandle, std::shared_ptr<vistle::UnstructuredGrid> grid, int dim);
     void addGhost(const visit_handle& meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
     void fillTypeConnAndElemLists(const visit_handle& meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
-    void getConListFromSim(const visit_handle &meshHandle, void* data, int& lenght, int& numElements, int& owner);
+	struct connListData {
+		Array data;
+		int numElements = 0;
+	};
+	connListData getConListFromSim(const visit_handle &meshHandle);
 }
 
 size_t getNumVertices(int  dims[3]);

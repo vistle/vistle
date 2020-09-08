@@ -6,7 +6,6 @@
 #include <vistle/core/object.h>
 
 #include <vistle/insitu/core/dataType.h>
-#include <vistle/insitu/core/array.h>
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
 namespace vistle {
@@ -73,27 +72,8 @@ constexpr vistle::Object::Type objTypeToVistle(int objType)
 		break;
 	}
 }
-constexpr Owner ownerToVistle(int owner)
-{
-	switch (owner)
-	{
-	case VISIT_OWNER_SIM:
-		return Owner::Simulation;
-		break;
-	case VISIT_OWNER_VISIT:
-		return Owner::Vistle;
-		break;
-	case VISIT_OWNER_COPY:
-		return Owner::Vistle;
-		break;
-	case VISIT_OWNER_VISIT_EX:
-		return Owner::Unknown;
-		break;
-	default:
-		return Owner::Unknown;
-		break;
-	}
-}
+
+
 }//libsim
 }//insitu
 }//vistle

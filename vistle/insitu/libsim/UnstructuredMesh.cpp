@@ -2,6 +2,7 @@
 #include "Exeption.h"
 #include "VisitDataTypesToVistle.h"
 #include "VertexTypesToVistle.h"
+#include "ArrayStruct.h"
 
 #include <vistle/insitu/core/transformArray.h>
 
@@ -20,7 +21,7 @@ namespace vistle {
 namespace insitu {
 namespace libsim {
 namespace UnstructuredMesh {
-vistle::UnstructuredGrid::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator)
+vistle::Object::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator)
 {
     if (simv2_UnstructuredMesh_check(meshHandle) == VISIT_OKAY) {
         vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
@@ -56,31 +57,23 @@ namespace detail {
 
 void SeparateAllocAndFill(int dim, const visit_handle coordHandles[4], std::shared_ptr<vistle::UnstructuredGrid> grid)
 {
-    std::array<int, 3> owner{}, dataType{}, nComps{}, nTuples{ 1,1,1 };
-    std::array<void*, 3> data{};
-
-
     for (int i = 0; i < dim; ++i) {
-        v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
-        grid->x(i).resize(nTuples[i]);
-
-        transformArray(data[i], grid->x(i).data(), nTuples[i], dataTypeToVistle(dataType[i]));
+        auto a = getVariableData(coordHandles[i]);
+        grid->x(i).resize(a.size);
+        transformArray(a, grid->x(i).data());
     }
 }
 
 void InterleavedAllocAndFill(const visit_handle &coordHandle, std::shared_ptr<vistle::UnstructuredGrid> grid, int dim)
 {
-    int owner{}, dataType{}, nComps{}, nTuples{ 1 };
-    void* data{};
-    v2check(simv2_VariableData_getData, coordHandle, owner, dataType, nComps, nTuples, data);
+    auto a = getVariableData(coordHandle);
     std::array<vistle::Scalar*, 3> gridCoords;
-
     for (size_t i = 0; i < dim; ++i)
     {
-        grid->x(i).resize(nTuples);
+        grid->x(i).resize(a.size);
         gridCoords[i] = grid->x(i).data();
     }
-    transformInterleavedArray(data, gridCoords, nTuples, dataTypeToVistle(dataType), dim);
+    transformInterleavedArray(a.data, gridCoords, a.size, dataTypeToVistle(a.type), dim);
 }
 
 void addGhost(const visit_handle& meshHandle, vistle::UnstructuredGrid::ptr grid)
@@ -89,17 +82,15 @@ void addGhost(const visit_handle& meshHandle, vistle::UnstructuredGrid::ptr grid
     v2check(simv2_UnstructuredMesh_getGhostCells, meshHandle, &ghostCellHandle);
     if (ghostCellHandle != VISIT_INVALID_HANDLE)
     {
-        void* data = nullptr;
-        int owner{}, dataType{}, nComps{}, nTuples{ 1 };
-        v2check(simv2_VariableData_getData, ghostCellHandle, owner, dataType, nComps, nTuples, data);
-        if (dataType != VISIT_DATATYPE_CHAR)
+        auto ghostArray = getVariableData(ghostCellHandle);
+        if (ghostArray.type != VISIT_DATATYPE_CHAR)
         {
             EngineExeption ex("expectet ghostCellData of type char, type is ");
-            ex << dataType;
+            ex << ghostArray.type;
             throw ex;
         }
-        char* c = static_cast<char*>(data);
-        for (int i = 0; i < nTuples; ++i)
+        char* c = static_cast<char*>(ghostArray.data);
+        for (int i = 0; i < ghostArray.size; ++i)
         {
             if (c[i])
             {
@@ -111,18 +102,16 @@ void addGhost(const visit_handle& meshHandle, vistle::UnstructuredGrid::ptr grid
 
 void fillTypeConnAndElemLists(const visit_handle& meshHandle, vistle::UnstructuredGrid::ptr mesh)
 {
-    void* data{};
-    int dataLength{}, numElements{}, owner{};
-    getConListFromSim(meshHandle, data, dataLength, numElements, owner);
+    auto connListData = getConListFromSim(meshHandle);
 
-    mesh->tl().reserve(numElements);
-    mesh->el().reserve(numElements);
+    mesh->tl().reserve(connListData.numElements);
+    mesh->el().reserve(connListData.numElements);
     int idx = 0;
 
     size_t elemIndex = 0;
-    for (int i = 0; i < numElements; ++i)
+    for (int i = 0; i < connListData.numElements; ++i)
     {
-        auto type = static_cast<int*>(data)[idx];
+        auto type = static_cast<int*>(connListData.data.data)[idx];
         ++idx;
         auto elemType = vertexTypeToVistle(type);
         if (elemType == vistle::UnstructuredGrid::Type::NONE)
@@ -133,7 +122,7 @@ void fillTypeConnAndElemLists(const visit_handle& meshHandle, vistle::Unstructur
 
         elemIndex += libsim::getNumVertices(elemType);
 
-        if (idx + libsim::getNumVertices(elemType) > dataLength)
+        if (idx + libsim::getNumVertices(elemType) > connListData.data.size)
         {
             std::cerr << "element " << i << " with idx = " << idx << " and type " << elemType << "with typesize" << libsim::getNumVertices(elemType) << " is outside of given elementList data!" << std::endl;
             break;
@@ -143,23 +132,24 @@ void fillTypeConnAndElemLists(const visit_handle& meshHandle, vistle::Unstructur
 
         for (size_t i = 0; i < libsim::getNumVertices(elemType); i++)
         {
-            mesh->cl().push_back(static_cast<int*>(data)[idx]);
+            mesh->cl().push_back(static_cast<int*>(connListData.data.data)[idx]);
             ++idx;
         }
     }
 }
 
-void getConListFromSim(const visit_handle &meshHandle, void* data, int& lenght, int& numElements, int& owner) {
+connListData getConListFromSim(const visit_handle &meshHandle) {
     visit_handle connListHandle;
-    v2check(simv2_UnstructuredMesh_getConnectivity, meshHandle, &numElements, &connListHandle);
-    int dataType{}, nComps{};
-    v2check(simv2_VariableData_getData, connListHandle, owner, dataType, nComps, lenght, data);
-    if (dataType != VISIT_DATATYPE_INT)
+    connListData cld;
+    v2check(simv2_UnstructuredMesh_getConnectivity, meshHandle, &cld.numElements, &connListHandle);
+    cld.data = getVariableData(connListHandle);
+    if (cld.data.type != VISIT_DATATYPE_INT)
     {
         throw EngineExeption("element list is not of expected type (int)");
     }
-
+    return cld;
 }
+
 }//detail
 
 size_t getNumElements(int  dims[3])

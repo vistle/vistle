@@ -3,6 +3,7 @@
 #include "VisitDataTypesToVistle.h"
 #include "UnstructuredMesh.h"
 #include "MeshInfo.h"
+#include "ArrayStruct.h"
 
 #include <vistle/insitu/core/transformArray.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
@@ -21,7 +22,7 @@ namespace vistle {
 namespace insitu {
 namespace libsim {
 namespace StructuredMesh {
-vistle::StructuredGrid::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator)
+vistle::Object::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator)
 {
     int check = simv2_CurvilinearMesh_check(meshHandle);
     if (check == VISIT_OKAY) {
@@ -44,7 +45,7 @@ vistle::StructuredGrid::ptr get(const visit_handle& meshHandle, message::SyncShm
     return nullptr;
 }
 
-std::shared_ptr<vistle::UnstructuredGrid> getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat)
+vistle::Object::ptr getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat)
 {
     using namespace UnstructuredMesh;
 
@@ -112,27 +113,23 @@ void getMeshCoord(int currDomain, const char* name, int& ndims, int dims[3], int
 
 void separateFill(visit_handle  coordHandles[4], int numCoords, std::array<float*, 3Ui64>& meshCoords, int dim)
 {
-    int owner{}, dataType{}, nComps{}, nTuples{};
-    void* data{};
     for (int i = 0; i < dim; ++i) {
-        v2check(simv2_VariableData_getData, coordHandles[i], owner, dataType, nComps, nTuples, data);
-        if (nTuples != numCoords) {
+        auto meshArray = getVariableData(coordHandles[i]);
+        if (meshArray.size != numCoords) {
             throw EngineExeption("get(): received points in separate mesh do not match the mesh's dimension ") << i;
         }
-        transformArray(data, meshCoords[i], nTuples, dataTypeToVistle(dataType));
+        transformArray(meshArray, meshCoords[i]);
     }
 }
 
 void interleavedFill(visit_handle  coordHandle, int numCoords, const std::array<float*, 3Ui64>& meshCoords, int dim)
 {
-    int owner{}, dataType{}, nComps{}, nTuples{};
-    void* data{};
-    v2check(simv2_VariableData_getData, coordHandle, owner, dataType, nComps, nTuples, data);
-    if (nTuples != numCoords * dim) {
+    auto meshArray = getVariableData(coordHandle);
+    if (meshArray.size != numCoords * dim) {
         throw EngineExeption("get(): received points in interleaved mesh do not match the mesh's dimensions");
     }
 
-    transformInterleavedArray(data, meshCoords, numCoords, dataTypeToVistle(dataType), dim);
+    transformInterleavedArray(meshArray.data, meshCoords, numCoords, dataTypeToVistle(meshArray.type), dim);
 }
 
 void addGhost(const visit_handle& meshHandle, std::shared_ptr<vistle::StructuredGrid> mesh)

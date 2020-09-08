@@ -11,22 +11,27 @@ SET(RUNTIME_SOURCES
   DataProcessor.cpp
   Engine.cpp
   Exeption.cpp
+  MetaData.cpp
   RectilinearMesh.cpp
   StructuredMesh.cpp
   UnstructuredMesh.cpp
   VisItControlInterfaceRuntime.C
+  VariableData.cpp
 )
 
 SET(RUNTIME_HEADERS 
-  MeshInfo.h
-  StructuredMesh.h  
-  Engine.h
+  ArrayStruct.h
+  VariableData.h  
   DataProcessor.h
+  Engine.h
   Exeption.h
   export.h
+  MeshInfo.h
   MetaData.h
   RectilinearMesh.h
+  StructuredMesh.h  
   UnstructuredMesh.h
+  VariableInfo.h  
   VertexTypesToVistle.h  
   VisItControlInterfaceRuntime.h
   VisitDataTypesToVistle.h  

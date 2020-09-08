@@ -21,13 +21,11 @@ namespace insitu{
 namespace libsim {
 namespace RectilinearMesh {
 
-vistle::RectilinearGrid::ptr get(const visit_handle &meshHandle, message::SyncShmIDs& creator)
+vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs& creator)
 {
     if (simv2_RectilinearMesh_check(meshHandle) == VISIT_OKAY) {
-        int owners[3], dataTypes[3], dims[3]{ 1,1,1 };
-        void* data[3]{};
-        detail::getMeshFromSim(meshHandle, owners, dataTypes, dims, data);
-        auto mesh = detail::makeVistleMesh(data, dims, dataTypes, creator);
+        auto meshArray = detail::getMeshFromSim(meshHandle);
+        auto mesh = detail::makeVistleMesh(meshArray, creator);
         detail::addGhost(meshHandle, mesh);
         return mesh;
     }
@@ -35,7 +33,7 @@ vistle::RectilinearGrid::ptr get(const visit_handle &meshHandle, message::SyncSh
 
 }
 
-vistle::UnstructuredGrid::ptr getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat)
+vistle::Object::ptr getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat)
 {
     using namespace UnstructuredMesh;
     size_t totalNumElements = 0, totalNumVerts = 0;
@@ -46,23 +44,28 @@ vistle::UnstructuredGrid::ptr getCombinedUnstructured(const MeshInfo& meshInfo, 
     for (size_t iteration = 0; iteration < meshInfo.numDomains; iteration++) {
         
         visit_handle coordHandles[3]; 
-        int owners[3], dataTypes[3], dims[3]{ 1,1,1 };
-        void* data[3]{};
         visit_handle meshHandle = v2check(simv2_invoke_GetMesh, meshInfo.domains[iteration], meshInfo.name);
-        detail::getMeshFromSim(meshHandle, owners, dataTypes, dims, data);
-        
+        auto meshArrays = detail::getMeshFromSim(meshHandle);
+
+        int dims[3]{ 1,1,1 };
+        void* data[3];
+        for (size_t i = 0; i < 3; i++)
+        {
+            dims[i] = meshArrays[i].dim;
+            data[i] = meshArrays[i].data;
+        }
         size_t numVertices = getNumVertices(dims);
         size_t numElements = getNumElements(dims);
         preventNull(dims, data);
         allocateFields(mesh, totalNumVerts, numVertices, iteration, meshInfo.numDomains, gridCoords, totalNumElements, numElements, numCorners);
 
         if (vtkFormat) {
-            expandRectilinearToVTKStructured(data, dataTypeToVistle(dataTypes[0]), dims, gridCoords);
+            expandRectilinearToVTKStructured(data, dataTypeToVistle(meshArrays[0].type), dims, gridCoords);
             fillStructuredGridConnectivityList(dims, mesh->cl().begin() + totalNumElements * numCorners, totalNumVerts, VtkConListPattern{});
 
         }
         else {
-            expandRectilinearToStructured(data, dataTypeToVistle(dataTypes[0]), dims, gridCoords);
+            expandRectilinearToStructured(data, dataTypeToVistle(meshArrays[0].type), dims, gridCoords);
             fillStructuredGridConnectivityList(dims, mesh->cl().begin() + totalNumElements * numCorners, totalNumVerts);
 
         }
@@ -80,13 +83,13 @@ vistle::UnstructuredGrid::ptr getCombinedUnstructured(const MeshInfo& meshInfo, 
 
 namespace detail {
 
-vistle::RectilinearGrid::ptr makeVistleMesh(void* data[3], int sizes[3], int dataType[3], message::SyncShmIDs& creator)
+vistle::RectilinearGrid::ptr makeVistleMesh(const std::array<Array, 3>& meshData, message::SyncShmIDs& creator)
 {
-    vistle::RectilinearGrid::ptr mesh = creator.createVistleObject<vistle::RectilinearGrid>(sizes[0], sizes[1], sizes[2]);
+    vistle::RectilinearGrid::ptr mesh = creator.createVistleObject<vistle::RectilinearGrid>(meshData[0].size, meshData[1].size, meshData[2].size);
 
     for (size_t i = 0; i < 3; ++i) {
-        if (data[i]) {
-            transformArray(data[i], mesh->coords(i).begin(), sizes[i], dataTypeToVistle(dataType[i]));
+        if (meshData[i].data) {
+            transformArray(meshData[i], mesh->coords(i).begin());
         }
         else {
             mesh->coords(i)[0] = 0;
@@ -109,19 +112,20 @@ void addGhost(const visit_handle& meshHandle, std::shared_ptr<vistle::Rectilinea
     }
 }
 
-void getMeshFromSim(const visit_handle& meshHandle, int owner[3], int dataType[3], int nTuples[], void* data[])
+std::array<Array, 3> getMeshFromSim(const visit_handle& meshHandle)
 {
     visit_handle coordHandles[3]; //handles to variable data
     int ndims;
     v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
-    std::array<int, 3> nComps{};
+    std::array<Array, 3> meshData;
     assert(ndims <= 3);
     for (int i = 0; i < ndims; ++i) {
-        v2check(simv2_VariableData_getData, coordHandles[i], owner[i], dataType[i], nComps[i], nTuples[i], data[i]);
-        if (dataType[i] != dataType[0]) {
+        meshData[i] = getVariableData(coordHandles[i]);
+        if (meshData[i].type != meshData[0].type) {
             throw EngineExeption{ "mesh data type must be consistent within a domain" };
         }
     }
+    return meshData;
 }
 
 }//detail

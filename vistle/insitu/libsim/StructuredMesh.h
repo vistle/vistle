@@ -1,6 +1,8 @@
 #ifndef VISTLE_LIBSIM_STRUCTURED_MESH_H
 #define VISTLE_LIBSIM_STRUCTURED_MESH_H
 
+#include <vistle/core/object.h>
+
 #include <memory>
 
 class visit_handle;
@@ -14,11 +16,10 @@ class SyncShmIDs;
 namespace libsim {
 struct MeshInfo;
 namespace StructuredMesh  {
-	std::shared_ptr<vistle::StructuredGrid> get(const visit_handle& meshHandle, message::SyncShmIDs& creator);
+	vistle::Object::ptr get(const visit_handle& meshHandle, message::SyncShmIDs& creator);
 	//todo: concider ghost cells
-	std::shared_ptr<vistle::UnstructuredGrid> getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat = false);
+	vistle::Object::ptr getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat = false);
 
-	void Test(message::SyncShmIDs& creator, bool vtkFormat = false);
 
 namespace detail {
 	void getMeshCoord(int currDomain, const char* name, int& ndims, int  dims[3], int& coordMode, visit_handle  coordHandles[4]);

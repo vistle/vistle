@@ -1,14 +1,16 @@
 #ifndef INSITU_EXEPTION
 #define INSITU_EXEPTION
 
-#include <string>
-#include <exception>
-
 #include "export.h"
+
+#include <vistle/util/exception.h>
+
+#include <string>
+
 namespace vistle {
 namespace insitu {
     //base class that lets us catch all insitu exeptions
-    class V_INSITUCOREEXPORT InsituExeption :public std::exception {
+    class V_INSITUCOREEXPORT InsituExeption :public vistle::exception {
     public:
         InsituExeption();
 

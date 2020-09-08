@@ -1,7 +1,12 @@
 #ifndef VISTLE_LIBSIM_RECTILINEAR_MESH_H
 #define VISTLE_LIBSIM_RECTILINEAR_MESH_H
 
+#include "ArrayStruct.h"
+
+#include <vistle/core/object.h>
+
 #include <memory>
+
 class visit_handle;
 namespace vistle {
 class RectilinearGrid;
@@ -15,14 +20,14 @@ struct MeshInfo;
 namespace RectilinearMesh {
 
 	// Inherited via GetVistleObjectInterface
-	std::shared_ptr<vistle::RectilinearGrid> get(const visit_handle &meshHandle, message::SyncShmIDs& creator);
+	std::shared_ptr<vistle::Object> get(const visit_handle &meshHandle, message::SyncShmIDs& creator);
 
 	//todo: consider ghost cells
-	std::shared_ptr<vistle::UnstructuredGrid> getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat = false);
+	std::shared_ptr<vistle::Object> getCombinedUnstructured(const MeshInfo& meshInfo, message::SyncShmIDs& creator, bool vtkFormat = false);
 namespace detail {
-	static std::shared_ptr<vistle::RectilinearGrid> makeVistleMesh(void* data[3], int sizes[3], int dataType[3], message::SyncShmIDs& creator);
+	static std::shared_ptr<vistle::RectilinearGrid> makeVistleMesh(const std::array<Array, 3>& meshData, message::SyncShmIDs& creator);
 	static void addGhost(const visit_handle& meshHandle, std::shared_ptr<vistle::RectilinearGrid> mesh);
-	void getMeshFromSim(const visit_handle& meshHandle, int owner[3], int dataType[3], int nTuples[], void* data[]);
+	std::array<Array, 3> getMeshFromSim(const visit_handle& meshHandle);
 }//detail
 }//RectilinearMesh
 }//libsim

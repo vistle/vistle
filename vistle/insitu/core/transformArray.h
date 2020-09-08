@@ -1,7 +1,6 @@
 #ifndef TRANSFORM_ARRAY_H
 #define TRANSFORM_ARRAY_H
 
-#include "array.h"
 #include "callFunctionWithVoidToTypeCast.h"
 #include "exeption.h"
 
@@ -157,10 +156,6 @@ struct ConversionInserter {
 
 } //detail
 
-    template<typename T>
-    void transformArray(const Array& source, T* dest) {
-        detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source.data(), source.dataType(), source.size(), dest);
-    }
 
     //copies array from source to dest and converts from dataType to T
     template<typename T>
@@ -180,23 +175,10 @@ struct ConversionInserter {
         detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source, dataType, size, dest, dim);
     }
 
-    template<typename T, size_t I>
-    void transformInterleavedArray(const Array& source, std::array<T*, I> dest, int dim) {
-        if (dim > I) {
-            throw TransformArrayExeption("transformInterleavedArray: destination array is smaller than given dimension");
-        }
-        detail::callFunctionWithVoidToTypeCast<void, detail::InterleavedArrayTransformer>(source.data(), source.dataType(), source.size(), dest, dim);
-    }
-
-
 
     inline vistle::DataBase::ptr vtkData2Vistle(const void* source, size_t n, DataType dataType, vistle::Object::const_ptr grid, vistle::DataBase::Mapping m, bool interleaved = false) {
-        using namespace vistle;
-        DataBase::ptr data;
-
         if (!source)
-            return data;
-
+            return nullptr;
         return detail::callFunctionWithVoidToTypeCast< vistle::DataBase::ptr, detail::VtkArray2VistleConverter>(source, dataType, n, grid, m, interleaved);
     }
 
