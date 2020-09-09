@@ -101,7 +101,6 @@ IF (MAX_ISA GREATER 8 OR EMBREE_ISA_AVX512SKX)
 ENDIF ()
 
 set(__XEON__ 1)
-set(HAVE_ISPC ON)
 set(ENABLE_ISPC_SUPPORT ON)
 include (ispc)
 include_directories_ispc(${EMBREE_INCLUDE_DIRS})
@@ -122,7 +121,6 @@ set(ISPC_SOURCES
 
 set(ALL_MODULES ${ALL_MODULES} DisCOVERay CACHE INTERNAL "")
 add_definitions(-DVISTLE_MODULE_NAME="DisCOVERay")
-add_definitions(-DHAVE_ISPC)
 if ((CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") OR (CMAKE_BUILD_TYPE STREQUAL "Debug"))
     set(ISPC_COMPILE_FLAGS "-g")
 endif()
