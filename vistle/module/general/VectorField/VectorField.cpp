@@ -61,7 +61,7 @@ bool VectorField::compute() {
    }
    Index numPoints = coords->getNumCoords();
    if (vecs->getSize() != numPoints) {
-      sendError("geometry size does not match array size: #points=%d, but #vecs=%d", numPoints, vecs->getSize());
+      sendError("geometry size does not match array size: #points=%lu, but #vecs=%lu", (unsigned long)numPoints, (unsigned long)vecs->getSize());
       return true;
    }
 

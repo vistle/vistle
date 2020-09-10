@@ -587,14 +587,14 @@ bool ReadCFX::changeParameter(const Parameter *p) {
             }
             if(rank() == 0) {
                 //print out zone names
-                sendInfo("Found %d zones", m_nzones);
+                sendInfo("Found %ld zones", (long)m_nzones);
                 for(index_t i=1;i<=m_nzones;i++) {
                     cfxExportZoneSet(i,NULL);
                     sendInfo("zone no. %lu: %s", (unsigned long)i,cfxExportZoneName(i));
                     cfxExportZoneFree();
                 }
                 //print out 2D area names (boundaries and regions)
-                sendInfo("Found %d boundaries and %d regions", m_case.getNumberOfBoundaries(),m_case.getNumberOfRegions());
+                sendInfo("Found %ld boundaries and %ld regions", (long)m_case.getNumberOfBoundaries(), (long)m_case.getNumberOfRegions());
                 std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
                 for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
                     sendInfo("boundary no. %lu: %s",(unsigned long)i,(allBoundaries[i-1].boundName).c_str());
@@ -605,10 +605,11 @@ bool ReadCFX::changeParameter(const Parameter *p) {
                 }
                 //print variable names in .trn file
                 std::vector<std::string> trnVars = m_case.getCopyOfTrnVars();
-                sendInfo("Found %d variables in transient files", (int)trnVars.size());
+                sendInfo("Found %lu variables in transient files", (unsigned long)trnVars.size());
                 int j=1;
-                for(std::vector<std::string>::iterator it = trnVars.begin(); it != trnVars.end(); ++it, ++j) {
+                for(std::vector<std::string>::iterator it = trnVars.begin(); it != trnVars.end(); ++it) {
                     sendInfo("%d. %s",j,(*it).c_str());
+                    ++j;
                 }
                 //print particle type names
                 index_t nParticleTypes = cfxExportGetNumberOfParticleTypes();
