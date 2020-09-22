@@ -348,36 +348,27 @@ Object::ptr vtkSGrid2Vistle(SENSEI_ARGUMENT vtkStructuredGrid* vsgrid)
 
 Object::ptr vtkImage2Vistle(SENSEI_ARGUMENT vtkImageData* vimage)
 {
-    int n[3];
-    vimage->GetDimensions(n);
-    double origin[3] = { 0., 0., 0. };
-    vimage->GetOrigin(origin);
-    double spacing[3] = { 1., 1., 1. };
-    vimage->GetSpacing(spacing);
-    UniformGrid::ptr ug = CREATE_VISTLE_OBJECT(UniformGrid, n[0], n[1], n[2]);
-    for (int c = 0; c < 3; ++c) {
-        ug->min()[c] = origin[c];
-        ug->max()[c] = origin[c] + (n[c] - 1) * spacing[c];
-    }
-    return ug;
+  int n[3];
+  vimage->GetDimensions(n);
+  int e[6];
+  vimage->GetExtent(e);
+  double origin[3] = {0., 0., 0.};
+  vimage->GetOrigin(origin);
+  double spacing[3] = {1., 1., 1.};
+  vimage->GetSpacing(spacing);
+  UniformGrid::ptr ug = CREATE_VISTLE_OBJECT(UniformGrid, n[0], n[1], n[2]);
+  for (int c = 0; c < 3; ++c) {
+    ug->min()[c] = origin[c] + e[2 * c] * spacing[c];
+    ug->max()[c] = origin[c] + (e[2 * c + 1]) * spacing[c];
+  }
+  return ug;
 }
 
 Object::ptr vtkUniGrid2Vistle(SENSEI_ARGUMENT vtkUniformGrid* vugrid)
 {
-    int n[3];
-    vugrid->GetDimensions(n);
-    int e[6];
-    vugrid->GetExtent(e);
-    double origin[3] = {0., 0., 0.};
-    vugrid->GetOrigin(origin);
-    double spacing[3] = { 1., 1., 1. };
-    vugrid->GetSpacing(spacing);
-    UniformGrid::ptr ug = CREATE_VISTLE_OBJECT(UniformGrid, n[0], n[1], n[2]);
-    for (int c = 0; c < 3; ++c) {
-        ug->min()[c] = origin[c] + e[2*c] * spacing[c];
-        ug->max()[c] = origin[c] + (e[2*c+1]) * spacing[c];
-    }
-    return ug;
+  return vtkImage2Vistle(SENSEI_PARAMETER dynamic_cast<vtkImageData *>(vugrid));
+  //vtkUniformGrid is vtkImageData with additional ghost points which can be distributed over the whole grid.
+  //vistle::UniformGrid can only have ghost cells at the outside borders
 }
 
 Object::ptr vtkRGrid2Vistle(SENSEI_ARGUMENT vtkRectilinearGrid* vrgrid)
