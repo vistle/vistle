@@ -20,7 +20,7 @@ namespace libsim{
     typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
 }
 namespace message{
-    DECLARE_ENGINE_MESSAGE_WITH_PARAM(LibSimIntOption, libsim::IntOption)
+    DEFINE_IN_SITU_MESSAGE(LibSimIntOption, libsim::IntOption)
 }
 }
 }

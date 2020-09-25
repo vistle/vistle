@@ -15,6 +15,7 @@ SET(RUNTIME_SOURCES
   StructuredMesh.cpp
   UnstructuredMesh.cpp
   VariableData.cpp
+  VertexTypesToVistle.cpp
   VisItControlInterfaceRuntime.C
 )
 

@@ -465,6 +465,7 @@ Engine::Engine()
   m_intOptions.insert(IntOption{IntOptions::CombineGrids, false});
   m_intOptions.insert(IntOption{IntOptions::ConstGrids, false});
   m_intOptions.insert(IntOption{IntOptions::KeepTimesteps, 1});
+  m_intOptions.insert(IntOption{IntOptions::NthTimestep, 1});
   m_intOptions.insert(IntOption{IntOptions::VtkFormat, false, [this]() { resetDataTransmitter(); }});
 }
 

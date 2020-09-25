@@ -32,7 +32,7 @@ namespace insitu {
 
 namespace message {
 
-enum class V_INSITUMESSAGEEXPORT InSituMessageType {
+enum class InSituMessageType {
   Invalid,
   AddObject,
   ConnectionClosed,
@@ -42,13 +42,11 @@ enum class V_INSITUMESSAGEEXPORT InSituMessageType {
   Ready,
   SenseiIntOption,
   SetCommands,
-  SetPorts // detected ports from sim to module <--> connected ports from module
+  SetPorts, // detected ports from sim to module <--> connected ports from module
            // to Engine
-  ,
   ShmInfo
 #ifdef MODULE_THREAD
-  ,
-  ModuleID
+  , ModuleID
 #endif
 };
 
@@ -64,11 +62,11 @@ protected:
 };
 
 template <InSituMessageType Type, typename T>
-struct WhatEverToCallThis : InSituMessageBase
+struct InSituValueMessage : InSituMessageBase
 {
   typedef T value_type;
   friend class insitu::message::Message;
-  WhatEverToCallThis(const T &payload)
+  InSituValueMessage(const T &payload)
       : InSituMessageBase(Type)
       , value(payload)
   {
@@ -83,45 +81,53 @@ struct WhatEverToCallThis : InSituMessageBase
   }
 
 private:
-  WhatEverToCallThis()
+  InSituValueMessage()
       : InSituMessageBase(Type)
   {
   }
 };
 
+template <InSituMessageType Type>
+struct InSituPureMessage : InSituMessageBase
+{
+  InSituPureMessage()
+      : InSituMessageBase(Type)
+  {
+  }
+  static const InSituMessageType type = Type;
+  ARCHIVE_ACCESS
+  template <class Archive>
+  void serialize(Archive &ar)
+  {
+  }
+};
+
+
 #define COMMA ,
 
-#define DECLARE_ENGINE_MESSAGE_WITH_PARAM(messageType, payloadType)                                                    \
-  typedef V_INSITUMESSAGEEXPORT WhatEverToCallThis<InSituMessageType::messageType, payloadType> messageType;
+#define DEFINE_IN_SITU_MESSAGE_PARAM(messageType, payloadType)                                                    \
+  typedef InSituValueMessage<InSituMessageType::messageType, payloadType> messageType;
+#define DEFINE_IN_SITU_MESSAGE_NO_PARAM(messageType)                                                    \
+  typedef InSituPureMessage<InSituMessageType::messageType> messageType;
 
-#define DECLARE_ENGINE_MESSAGE(messageType)                                                                            \
-  struct V_INSITUMESSAGEEXPORT messageType : public InSituMessageBase                                                  \
-  {                                                                                                                    \
-    const InSituMessageType type = InSituMessageType::messageType;                                                     \
-    messageType()                                                                                                      \
-        : InSituMessageBase(InSituMessageType::messageType)                                                            \
-    {                                                                                                                  \
-    }                                                                                                                  \
-    ARCHIVE_ACCESS                                                                                                     \
-    template <class Archive>                                                                                           \
-    void serialize(Archive &ar)                                                                                        \
-    {                                                                                                                  \
-    }                                                                                                                  \
-  };
+#define GET_MESSAGE_MACRO(_1, _2, NAME, ...) NAME
 
-DECLARE_ENGINE_MESSAGE(Invalid)
-DECLARE_ENGINE_MESSAGE(GoOn)
+#define DEFINE_IN_SITU_MESSAGE(...)GET_MESSAGE_MACRO(__VA_ARGS__, DEFINE_IN_SITU_MESSAGE_PARAM, DEFINE_IN_SITU_MESSAGE_NO_PARAM, DUMMY)(__VA_ARGS__)
 
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ConnectionClosed, bool) // true -> disconnected on purpose
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ShmInfo, ModuleInfo::ShmInfo)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(AddObject, std::string)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetPorts, std::vector<std::vector<std::string>>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SetCommands, std::vector<std::string>)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(Ready, bool)
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ExecuteCommand, std::string)
+
+DEFINE_IN_SITU_MESSAGE(Invalid)
+DEFINE_IN_SITU_MESSAGE(GoOn)
+
+DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
+DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
+DEFINE_IN_SITU_MESSAGE(AddObject, std::string)
+DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
+DEFINE_IN_SITU_MESSAGE(SetCommands, std::vector<std::string>)
+DEFINE_IN_SITU_MESSAGE(Ready, bool)
+DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::string)
 
 #ifdef MODULE_THREAD
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(ModuleID, int)
+DEFINE_IN_SITU_MESSAGE(ModuleID, int)
 #endif
 
 struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU>

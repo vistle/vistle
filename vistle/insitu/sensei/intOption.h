@@ -12,7 +12,7 @@ enum class IntOptions { NthTimestep, KeepTimesteps };
 typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
 } // namespace sensei
 namespace message {
-DECLARE_ENGINE_MESSAGE_WITH_PARAM(SenseiIntOption, sensei::IntOption)
+DEFINE_IN_SITU_MESSAGE(SenseiIntOption, sensei::IntOption)
 }
 } // namespace insitu
 } // namespace vistle

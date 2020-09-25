@@ -6,8 +6,7 @@ namespace vistle {
 namespace insitu {
 namespace message {
 
-// Helper class to store the value of int option of the insitu module in the simulation interface
-
+// Creates a serializable type which can be used as InsituMesaage
 template <typename Identifier, typename ValueType>
 struct SharedOption
 {

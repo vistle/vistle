@@ -113,7 +113,7 @@ void fillTypeConnAndElemLists(const visit_handle& meshHandle, vistle::Unstructur
     {
         auto type = static_cast<int*>(connListData.data.data)[idx];
         ++idx;
-        auto elemType = vertexTypeToVistle(type);
+        auto elemType = libsim::vertexTypeToVistle(type);
         if (elemType == vistle::UnstructuredGrid::Type::NONE)
         {
             std::cerr << "UnstructuredMesh warning: type " << type << " is not converted to a vistle type...returning" << std::endl;
