@@ -32,7 +32,9 @@ target_link_libraries(vistle_cover
     PRIVATE vistle_util
     PRIVATE ${CMAKE_DL_LIBS} 
     PRIVATE VistlePluginUtil 
+    PRIVATE ${COVER_LIBRARY}
     PRIVATE ${COVER_PLUGINUTIL_LIBRARY}
+    PRIVATE ${OPENSCENEGRAPH_LIBRARIES}
 )
 
 if(NOT VISTLE_MULTI_PROCESS)
@@ -55,7 +57,9 @@ target_link_libraries(COVER
     vistle_util 
     ${CMAKE_DL_LIBS} 
     vistle_cover
+    ${COVER_LIBRARY}
     ${COVER_PLUGINUTIL_LIBRARY}
+    ${OPENSCENEGRAPH_LIBRARIES}
 )
 
 if(NOT VISTLE_MULTI_PROCESS)
