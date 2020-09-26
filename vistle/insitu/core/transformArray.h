@@ -97,9 +97,9 @@ struct VtkArray2VistleConverter
 
     if (interleaved) {
       Vec<Scalar, 3>::ptr cv(new Vec<Scalar, 3>(n));
-      float *x = cv->x().data();
-      float *y = cv->y().data();
-      float *z = cv->z().data();
+      Scalar *x = cv->x().data();
+      Scalar *y = cv->y().data();
+      Scalar *z = cv->z().data();
       Index l = 0;
       for (Index k = 0; k < dim[2]; ++k) {
         for (Index j = 0; j < dim[1]; ++j) {
@@ -119,7 +119,7 @@ struct VtkArray2VistleConverter
       return cv;
     } else {
       Vec<Scalar, 1>::ptr cf(new Vec<Scalar, 1>(n));
-      float *x = cf->x().data();
+      Scalar *x = cf->x().data();
       Index l = 0;
       for (Index k = 0; k < dim[2]; ++k) {
         for (Index j = 0; j < dim[1]; ++j) {

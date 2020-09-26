@@ -161,34 +161,56 @@ inline void shadeRay(uniform const SceneData *uniform scene, uniform const TileD
                     if (ro->normalsPerPrimitiveMapping) {
                         if (ro->indexBuffer) {
                             const unsigned int idx = ro->indexBuffer[hit.primID].v3;
-                            normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
+                            normal = make_Vec3f((float)ro->normals[0][idx],
+                                    (float)ro->normals[1][idx],
+                                    (float)ro->normals[2][idx]);
                         } else {
                             const unsigned int idx = hit.primID;
-                            normal = make_Vec3f(ro->normals[0][idx], ro->normals[1][idx], ro->normals[2][idx]);
+                            normal = make_Vec3f((float)ro->normals[0][idx],
+                                    (float)ro->normals[1][idx],
+                                    (float)ro->normals[2][idx]);
                         }
                     } else if (ro->triangles && ro->indexBuffer) {
                         unsigned int v0 = ro->indexBuffer[hit.primID].v0;
                         unsigned int v1 = ro->indexBuffer[hit.primID].v1;
                         unsigned int v2 = ro->indexBuffer[hit.primID].v2;
-                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
-                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
-                        const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
+                        const Vec3f n0 = make_Vec3f((float)ro->normals[0][v0],
+                                    (float)ro->normals[1][v0],
+                                    (float)ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f((float)ro->normals[0][v1],
+                                (float)ro->normals[1][v1],
+                                (float)ro->normals[2][v1]);
+                        const Vec3f n2 = make_Vec3f((float)ro->normals[0][v2],
+                                (float)ro->normals[1][v2],
+                                (float)ro->normals[2][v2]);
                         normal = w*n0 + u*n1 + v*n2;
                     } else if (ro->indexBuffer) {
                         unsigned int v0 = ro->indexBuffer[hit.primID].v0;
                         unsigned int v1 = ro->indexBuffer[hit.primID].v1;
                         unsigned int v2 = ro->indexBuffer[hit.primID].v2;
                         unsigned int v3 = ro->indexBuffer[hit.primID].v3;
-                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
-                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
-                        const Vec3f n2 = make_Vec3f(ro->normals[0][v2], ro->normals[1][v2], ro->normals[2][v2]);
-                        const Vec3f n3 = make_Vec3f(ro->normals[0][v3], ro->normals[1][v3], ro->normals[2][v3]);
+                        const Vec3f n0 = make_Vec3f((float)ro->normals[0][v0],
+                                (float)ro->normals[1][v0],
+                                (float)ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f((float)ro->normals[0][v1],
+                                (float)ro->normals[1][v1],
+                                (float)ro->normals[2][v1]);
+                        const Vec3f n2 = make_Vec3f((float)ro->normals[0][v2],
+                                (float)ro->normals[1][v2],
+                                (float)ro->normals[2][v2]);
+                        const Vec3f n3 = make_Vec3f((float)ro->normals[0][v3],
+                                (float)ro->normals[1][v3],
+                                (float)ro->normals[2][v3]);
                         normal = (1-v)*((1-u)*n0 + u*n1) + v*((1-u)*n3 + u*n2);
                     } else {
                         const unsigned int v0 = hit.primID;
                         const unsigned int v1 = hit.primID + 1;
-                        const Vec3f n0 = make_Vec3f(ro->normals[0][v0], ro->normals[1][v0], ro->normals[2][v0]);
-                        const Vec3f n1 = make_Vec3f(ro->normals[0][v1], ro->normals[1][v1], ro->normals[2][v1]);
+                        const Vec3f n0 = make_Vec3f((float)ro->normals[0][v0],
+                                (float)ro->normals[1][v0],
+                                (float)ro->normals[2][v0]);
+                        const Vec3f n1 = make_Vec3f((float)ro->normals[0][v1],
+                                (float)ro->normals[1][v1],
+                                (float)ro->normals[2][v1]);
                         normal = w*n0 + u*n1;
                     }
                 } else {

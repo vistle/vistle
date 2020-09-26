@@ -13,7 +13,7 @@ public:
    typedef vistle::Vector4 RGBA;
    typedef std::map<vistle::Scalar, RGBA> TF;
 
-   ColorMap(TF &pins, const size_t steps, const size_t width, float center=0.5f, float compress=1.f);
+   ColorMap(TF &pins, const size_t steps, const size_t width, vistle::Scalar center=0.5f, vistle::Scalar compress=1.f);
    ~ColorMap();
 
    std::vector<unsigned char> data;

@@ -49,10 +49,18 @@ struct RenderObjectData {
    unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
    float solidColor[4]; //!< object color (if there is no texture)
 
+#ifdef VISTLE_SCALAR_DOUBLE
+   const double *texCoords; //!< 1D texture coordinates (mapped data)
+#else
    const float *texCoords; //!< 1D texture coordinates (mapped data)
+#endif
    Vec3f normalTransform[3]; //!< how normals are to be transformed
    unsigned int normalsPerPrimitiveMapping; //!< whether normals are specified per primitive
+#ifdef VISTLE_SCALAR_DOUBLE
+   const double *normals[3]; //!< normals
+#else
    const float *normals[3]; //!< normals
+#endif
    ColorMapData *cmap; //!< color map
 };
 

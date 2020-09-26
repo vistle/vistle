@@ -38,7 +38,7 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
       std::fill(mesh->z().begin(), mesh->z().end(), 0);
     }
 
-    std::array<float *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
+    std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
     detail::fillMeshCoords(coordMode, coordHandles, mesh->getNumCoords(), gridCoords, ndims);
     detail::addGhost(meshHandle, mesh);
     return mesh;
@@ -53,7 +53,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
   size_t totalNumElements = 0, totalNumVerts = 0;
   const int numCorners = meshInfo.dim == 2 ? 4 : 8;
   vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
-  std::array<float *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
+  std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
   for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {
 
@@ -87,7 +87,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
 
 namespace detail {
 
-void fillMeshCoords(int coordMode, visit_handle coordHandles[4], size_t numVertices, std::array<float *, 3> &gridCoords,
+void fillMeshCoords(int coordMode, visit_handle coordHandles[4], size_t numVertices, std::array<vistle::Scalar *, 3> &gridCoords,
                     int dim)
 {
   switch (coordMode) {
@@ -115,7 +115,7 @@ void getMeshCoord(int currDomain, const char *name, int &ndims, int dims[3], int
   }
 }
 
-void separateFill(visit_handle coordHandles[4], int numCoords, std::array<float *, 3> &meshCoords, int dim)
+void separateFill(visit_handle coordHandles[4], int numCoords, std::array<vistle::Scalar *, 3> &meshCoords, int dim)
 {
   for (int i = 0; i < dim; ++i) {
     auto meshArray = getVariableData(coordHandles[i]);
@@ -126,7 +126,7 @@ void separateFill(visit_handle coordHandles[4], int numCoords, std::array<float 
   }
 }
 
-void interleavedFill(visit_handle coordHandle, int numCoords, const std::array<float *, 3> &meshCoords, int dim)
+void interleavedFill(visit_handle coordHandle, int numCoords, const std::array<vistle::Scalar *, 3> &meshCoords, int dim)
 {
   auto meshArray = getVariableData(coordHandle);
   if (meshArray.size != static_cast<size_t>(numCoords * dim)) {

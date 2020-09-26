@@ -103,7 +103,7 @@ RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::stri
 
        tcoord.resize(iscal->getSize());
        data->texCoords = tcoord.data();
-       float *d = tcoord.data();
+       vistle::Scalar *d = tcoord.data();
        for (const Index *i = &iscal->x()[0], *end = i+iscal->getSize(); i<end; ++i) {
            *d++ = *i;
        }

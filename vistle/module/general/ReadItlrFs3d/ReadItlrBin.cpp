@@ -665,7 +665,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
     }
 
     // read coordinates and prepare for transformation avoiding transposition
-    std::vector<float> coords[3];
+    std::vector<Scalar> coords[3];
     for (int i=0; i<3; ++i) {
         if (file.isHdf5())
             coords[i].resize(dims[i]+1);
@@ -683,7 +683,7 @@ std::vector<RectilinearGrid::ptr> ReadItlrBin::readGridBlocks(const std::string 
             }
             coords[i].resize(dims[i]);
         } else if (i==2) {
-            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](float z){return -z;});
+            std::transform(coords[i].begin(), coords[i].end(), coords[i].begin(), [](Scalar z){return -z;});
             std::reverse(coords[i].begin(), coords[i].end());
         }
     }

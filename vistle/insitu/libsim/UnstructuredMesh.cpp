@@ -185,7 +185,7 @@ void preventNull(int  dims[3], void* data[3])
     }
 }
 
-void allocateFields(vistle::UnstructuredGrid::ptr grid, size_t totalNumVerts, size_t numVertices, size_t iteration, int numIterations, std::array<float*, 3>& gridCoords, size_t totalNumElements, size_t numElements, int numCorners)
+void allocateFields(vistle::UnstructuredGrid::ptr grid, size_t totalNumVerts, size_t numVertices, size_t iteration, int numIterations, std::array<vistle::Scalar *, 3>& gridCoords, size_t totalNumElements, size_t numElements, int numCorners)
 {
     // reserve memory for the arrays, /assume we have the same sub-grid size for the rest to reduce the amout of re-allocations
     if (grid->x().size() < totalNumVerts + numVertices) {

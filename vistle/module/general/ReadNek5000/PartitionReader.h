@@ -17,9 +17,9 @@ public:
 
     PartitionReader(const ReaderBase &base);
 
-    bool fillMesh(float* x, float* y, float* z);
-    bool fillVelocity(int timestep, float* x, float* y, float* z);
-    bool fillScalarData(std::string varName, int timestep, float* data);
+    bool fillMesh(vistle::Scalar* x, vistle::Scalar* y, vistle::Scalar* z);
+    bool fillVelocity(int timestep, vistle::Scalar* x, vistle::Scalar* y, vistle::Scalar* z);
+    bool fillScalarData(std::string varName, int timestep, vistle::Scalar* data);
     bool fillBlockNumbers(vistle::Index* data);
     void fillConnectivityList(vistle::Index* connectivityList);
 //getter

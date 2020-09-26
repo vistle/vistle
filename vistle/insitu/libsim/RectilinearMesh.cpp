@@ -39,7 +39,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo& meshInfo, message::S
     size_t totalNumElements = 0, totalNumVerts = 0;
     const int numCorners = meshInfo.dim == 2 ? 4 : 8;
     vistle::UnstructuredGrid::ptr mesh = creator.createVistleObject<vistle::UnstructuredGrid>(0, 0, 0);
-    std::array<float*, 3> gridCoords{ mesh->x().data() ,mesh->y().data() ,mesh->z().data() };
+    std::array<vistle::Scalar*, 3> gridCoords{ mesh->x().data() ,mesh->y().data() ,mesh->z().data() };
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {
         

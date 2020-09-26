@@ -9,6 +9,7 @@
 
 #include <vistle/util/byteswap.h>
 #include <vistle/core/index.h>
+#include <vistle/core/scalar.h>
 
 namespace nek5000 {
 typedef std::array<int, 2> Edge;

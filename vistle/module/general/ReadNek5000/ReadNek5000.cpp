@@ -138,7 +138,7 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
                     sendError(".nek5000 did not find a matching grid for partition %d", partition);
                     return false;
                 }
-                Vec<float, 3>::ptr velocity(new Vec<Scalar, 3>(pReader->getGridSize()));
+                Vec<Scalar, 3>::ptr velocity(new Vec<Scalar, 3>(pReader->getGridSize()));
                 velocity->setMapping(DataBase::Vertex);
                 velocity->setGrid(grid);
                 velocity->setTimestep(timestep);
@@ -245,9 +245,9 @@ bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::s
 }
 
 int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)     {
-    std::set<std::array<float, 3>> uniquePts;
+    std::set<std::array<vistle::Scalar, 3>> uniquePts;
     for (size_t i = 0; i < grid->getNumCoords(); i++) {
-        uniquePts.insert(std::array<float, 3>{grid->x().data()[i], grid->y().data()[i], grid->z().data()[i]});
+        uniquePts.insert(std::array<vistle::Scalar, 3>{grid->x().data()[i], grid->y().data()[i], grid->z().data()[i]});
     }
     return uniquePts.size();
 }

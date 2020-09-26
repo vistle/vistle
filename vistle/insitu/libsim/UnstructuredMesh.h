@@ -36,7 +36,7 @@ namespace detail {
 size_t getNumVertices(int  dims[3]);
 void preventNull(int dims[3], void* data[3]);
 size_t getNumElements(int  dims[3]);
-void allocateFields(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumVerts, size_t numVertices, size_t iteration, int numIterations, std::array<float*, 3>& gridCoords, size_t totalNumElements, size_t numElements, int numCorners);
+void allocateFields(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumVerts, size_t numVertices, size_t iteration, int numIterations, std::array<vistle::Scalar *, 3>& gridCoords, size_t totalNumElements, size_t numElements, int numCorners);
 void setFinalFildSizes(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumVerts, size_t totalNumElements, int numCorners);
 void fillRemainingFields(std::shared_ptr<vistle::UnstructuredGrid> grid, size_t totalNumElements, int numCorners, int dim);
 

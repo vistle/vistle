@@ -17,16 +17,22 @@ PartitionReader::PartitionReader(const ReaderBase &base)
 
 }
 
-bool PartitionReader::fillMesh(float *x, float *y, float *z)
+bool PartitionReader::fillMesh(vistle::Scalar *x, vistle::Scalar *y, vistle::Scalar *z)
 {
-    memcpy(x, myGrid[0].data(), sizeof(float) * gridSize);
-    memcpy(y, myGrid[1].data(), sizeof(float) * gridSize);
-    memcpy(z, myGrid[2].data(), sizeof(float) * gridSize);
+    if (sizeof(*x) == sizeof(double)) {
+        std::copy(myGrid[0].begin(), myGrid[0].end(), x);
+        std::copy(myGrid[1].begin(), myGrid[1].end(), y);
+        std::copy(myGrid[2].begin(), myGrid[2].end(), z);
+    } else {
+        memcpy(x, myGrid[0].data(), sizeof(float) * gridSize);
+        memcpy(y, myGrid[1].data(), sizeof(float) * gridSize);
+        memcpy(z, myGrid[2].data(), sizeof(float) * gridSize);
+    }
     myGrid.fill(vector<float>());
     return true;
 }
 
-bool PartitionReader::fillVelocity(int timestep, float *x, float *y, float *z)
+bool PartitionReader::fillVelocity(int timestep, vistle::Scalar *x, vistle::Scalar *y, vistle::Scalar *z)
 {
     if (bHasVelocity) {
         int numCon = numCorners * hexesPerBlock;
@@ -47,7 +53,7 @@ bool PartitionReader::fillVelocity(int timestep, float *x, float *y, float *z)
     return true;
 }
 
-bool PartitionReader::fillScalarData(std::string varName, int timestep, float *data)
+bool PartitionReader::fillScalarData(std::string varName, int timestep, vistle::Scalar *data)
 {
     int numCon = numCorners * hexesPerBlock;
     for (int b = 0; b < myBlocksToRead.size(); b++) {

@@ -47,7 +47,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (RainbowPale)
                                     )
 
-ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, float center, float compress)
+ColorMap::ColorMap(TF &pins, const size_t steps, const size_t w, Scalar center, Scalar compress)
 : width(w)
 {
 
@@ -114,18 +114,18 @@ ColorMap::TF pinsFromArray(const float *data, size_t n) {
 
     ColorMap::TF tf;
     for (size_t i=0; i<n; ++i) {
-        float x = i/(n-1.f);
+        Scalar x = i/(n-1.f);
         tf[x] = Vector4(data[i*3+0], data[i*3+1], data[i*3+2], 1);
     }
 
     return tf;
 }
 
-ColorMap::TF pinsFromArrayWithCoord(const float *data, size_t n, float scale=1., float coordRangeMin=0.f, float coordRangeMax=1.f) {
+ColorMap::TF pinsFromArrayWithCoord(const float *data, size_t n, Scalar scale=1., Scalar coordRangeMin=0.f, Scalar coordRangeMax=1.f) {
 
     ColorMap::TF tf;
     for (size_t i=0; i<n; ++i) {
-        float x = data[i*4];
+        Scalar x = data[i*4];
         x -= coordRangeMin;
         x /= coordRangeMax-coordRangeMin;
         assert(x >= 0 && x <= 1);
@@ -612,8 +612,8 @@ void Color::computeMap() {
    if (pins.empty()) {
        pins = transferFunctions[COVISE];
    }
-   float op = m_opacity->getValue();
-   float inset_op = m_insetOpacity->getValue();
+   Scalar op = m_opacity->getValue();
+   Scalar inset_op = m_insetOpacity->getValue();
    int steps = getIntParameter("steps");
    int resolution = steps;
    bool relative = getIntParameter("inset_relative");
