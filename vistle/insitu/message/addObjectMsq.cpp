@@ -42,7 +42,7 @@ void AddObjectMsq::addObject(const std::string &port, vistle::Object::const_ptr 
   vistle::message::Buffer buf(msg);
 
 #ifdef MODULE_THREAD
-  buf.setSenderId(m_moduleInfo.id);
+  buf.setSenderId(m_moduleInfo.id());
   buf.setRank(m_rank);
 #endif
   m_sendMessageQueue->send(buf);

@@ -19,7 +19,7 @@
 #include <vistle/insitu/util/print.h>
 
 #ifdef MODULE_THREAD
-#include <vistle/insitu/libsim/EngineInterface.h>
+#include <vistle/insitu/libsim/engineInterface/EngineInterface.h>
 #endif
 using namespace std;
 namespace libsim = vistle::insitu::libsim;

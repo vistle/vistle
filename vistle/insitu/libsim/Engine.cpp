@@ -23,7 +23,7 @@
 #include <ostream>
 
 #ifdef MODULE_THREAD
-#include "EngineInterface.cpp"
+#include "engineInterface/EngineInterface.cpp"
 #include <vistle/control/hub.h>
 #endif // MODULE_THREAD
 
@@ -281,7 +281,6 @@ bool Engine::recvAndhandleVistleMessage()
   case InSituMessageType::ModuleID:
   {
     m_moduleInfo.setReadyState(false);
-    m_sendMessageQueue.reset(new AddObjectMsq(m_moduleInfo, m_rank));
     m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
     resetDataTransmitter();
 
