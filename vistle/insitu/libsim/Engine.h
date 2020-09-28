@@ -48,8 +48,6 @@ public:
   static Engine *EngineInstance();
   static void DisconnectSimulation();
   bool initialize(int argC, char **argV);
-  void collectModuleInfo(char **argV);
-
   bool isInitialized() const noexcept;
   bool setMpiComm(void *newConn);
 
@@ -60,7 +58,6 @@ public:
   bool sendData();
   // called from simulation when a timestep changed
   void SimulationTimeStepChanged();
-  void sendObjectsToModule();
   // called by the static LibSim library for syncing. So far only handles "INTERNALSYNC" commands.
   // When this function gets called, the simulationCommandCallback has been replaced with and internal callback for the
   // duration of the call.
@@ -71,7 +68,7 @@ public:
   // To distribude commands on all ranks, rank 0 calls slaveCommandCallback, reads from socked and broadcasts
   // while the other ranks only do the broadcast.
   // then handels the received Vistle message
-  bool recvAndhandleVistleMessage();
+  bool fetchNewModuleState();
 
   // set callbacks (from sim)
   void SetSimulationCommandCallback(void (*sc)(const char *, const char *, void *), void *scdata);
@@ -95,20 +92,6 @@ private:
   boost::asio::io_service m_ioService;
 
   std::shared_ptr<socket> m_socket;
-#ifdef MODULE_THREAD
-  std::thread m_managerThread;
-#if BOOST_VERSION >= 106600
-  boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
-#else
-  std::shared_ptr<boost::asio::io_service::work> m_workGuard;
-#endif
-  std::thread m_ioThread; // thread for io_service
-  std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
-  std::mutex m_asioMutex;
-  std::atomic<bool> m_waitingForAccept{true}; // condition
-  void ConnectMySelf();
-  bool startAccept(std::shared_ptr<acceptor> a);
-#endif
   // info from the simulation
   size_t m_processedCycles = 0; // the last cycle that was processed
   MetaData m_metaData;          // the meta data of the currenc cycle
@@ -124,15 +107,36 @@ private:
   void (*simulationCommandCallback)(const char *, const char *, void *) = nullptr;
   void *simulationCommandCallbackData = nullptr;
   void (*slaveCommandCallback)(void) = nullptr;
+#ifdef MODULE_THREAD
+  std::thread m_managerThread;
+#if BOOST_VERSION >= 106600
+  boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+#else
+  std::shared_ptr<boost::asio::io_service::work> m_workGuard;
+#endif
+  std::thread m_ioThread; // thread for io_service
+  std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+  std::mutex m_asioMutex;
+  std::atomic<bool> m_waitingForAccept{true}; // condition
+#endif
+  Engine();
+  ~Engine();
+#ifdef MODULE_THREAD
+  bool startVistle(int argC, char **argV);
+  void ConnectMySelf();
+  bool startAccept(std::shared_ptr<acceptor> a);
+#endif // MODULE_THREAD
 
+  bool checkInitArgs(int argC, char **argV);
+  void collectModuleInfo(char **argV);
   bool initializeVistleEnv();
   Rules gatherObjectRules();
   void connectToModule(const std::string &hostname, int port);
-  void finalizeInit(); // if not already done, initializes the things that require the simulation
+  void initializeSim(); // if not already done, initializes the things that require the simulation
+  void sendObjectsToModule();
   void resetDataTransmitter();
 
-  Engine();
-  ~Engine();
+
 };
 
 } // namespace libsim
