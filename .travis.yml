@@ -18,11 +18,19 @@ env:
     #- BUILD_TYPE="Debug"
     - BUILD_TYPE="Release"
 
+    - MULTI_PROCESS=ON LARGE_INDICES=OFF DOUBLE_PRECISION=OFF
+    - MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=OFF
+
 dist: bionic
 
 osx_image:
     - xcode11.5
     #- xcode10.3
+
+jobs:
+    exclude:
+        - env: MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=OFF
+        - env: MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=ON
 
 addons:
     apt:
@@ -102,5 +110,10 @@ script:
 
     - mkdir build-${BUILD_TYPE}
     - cd build-${BUILD_TYPE}
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE} ..
+    - cmake -G Ninja \
+      -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DVISTLE_MULTI_PROCESS=${MULTI_PROCESS} \
+      -DVISTLE_64BIT_INDICES=${LARGE_INDICES} \
+      -DVISTLE_DOUBLE_PRECISION=${DOUBLE_PRECISION} \
+      ..
     - ninja -v
