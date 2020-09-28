@@ -16,8 +16,6 @@ os:
 
 env:
     #- BUILD_TYPE="Debug"
-    - BUILD_TYPE="Release"
-
     - BUILD_TYPE="Release" MULTI_PROCESS=ON LARGE_INDICES=OFF DOUBLE_PRECISION=OFF
     - BUILD_TYPE="Release" MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=OFF
 
@@ -29,7 +27,7 @@ osx_image:
 
 jobs:
     exclude:
-        - osx:
+        - os: osx
           env: BUILD_TYPE="Release" MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=OFF
 
 addons:
@@ -108,8 +106,9 @@ before_install:
 
 script:
 
-    - mkdir build-${BUILD_TYPE}
-    - cd build-${BUILD_TYPE}
+    - BUILD=build-${BUILD_TYPE}-${MULTI_PROCESS}-${LARGE_INDICES}-${DOUBLE_PRECISION}
+    - mkdir $BUILD
+    - cd $BUILD
     - cmake -G Ninja \
       -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
       -DVISTLE_MULTI_PROCESS=${MULTI_PROCESS} \
