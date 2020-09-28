@@ -178,7 +178,7 @@ int simv2_process_input(void *e)
 {
     Engine *engine = (Engine*)(e);
 
-    return engine->recvAndhandleVistleMessage();
+    return engine->fetchNewModuleState();
 
 
 }
