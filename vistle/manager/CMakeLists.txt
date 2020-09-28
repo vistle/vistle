@@ -75,7 +75,7 @@ if (NOT VISTLE_MULTI_PROCESS)
 endif()
 
 if (USE_QT)
-   qt_add_resources(QRC_SOURCES icons.qrc)
+   qt5_add_resources(QRC_SOURCES icons.qrc)
    set(LIB_SOURCES ${LIB_SOURCES} ${QRC_SOURCES})
 endif()
 
