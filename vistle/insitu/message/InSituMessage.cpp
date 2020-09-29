@@ -15,11 +15,7 @@ Message Message::errorMessage() { return Message{}; }
 
 Message::Message(InSituMessageType type, vistle::buffer &&payload)
     : m_type(type)
-    , m_payload(payload)
-{
-}
+    , m_payload(payload) {}
 
 Message::Message()
-    : m_type(InSituMessageType::Invalid)
-{
-}
+    : m_type(InSituMessageType::Invalid) {}

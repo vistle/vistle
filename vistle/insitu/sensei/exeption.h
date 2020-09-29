@@ -6,7 +6,7 @@ namespace insitu {
 namespace sensei {
 struct Exeption : public InsituExeption
 {
-  Exeption() { *this << "VistleSensei: "; };
+    Exeption() { *this << "VistleSensei: "; };
 };
 } // namespace sensei
 } // namespace insitu

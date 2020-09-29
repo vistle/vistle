@@ -16,36 +16,36 @@ namespace insitu {
 // create vistle objects only if !m_isExecuting input ports are not tested on the InSituReader
 class V_INSITUMODULEEXPORT InSituReader : public vistle::Module
 {
-public:
-  InSituReader(const std::string &description, const std::string &name, const int moduleID, mpi::communicator comm);
-  bool isExecuting();
-  // use these function to make sure that the insitu process only creates vistle objects after beginExecute and before
-  // endExecute.
-  virtual bool beginExecute() = 0;
-  virtual bool endExecute() = 0;
-  virtual bool operate();
-  virtual void cancelExecuteMessageReceived(const vistle::message::Message *msg) override;
-  size_t instanceNum() const;
-  void reconnect();
-  message::ModuleInfo::ShmInfo gatherModuleInfo();
+  public:
+    InSituReader(const std::string &description, const std::string &name, const int moduleID, mpi::communicator comm);
+    bool isExecuting();
+    // use these function to make sure that the insitu process only creates vistle objects after beginExecute and before
+    // endExecute.
+    virtual bool beginExecute() = 0;
+    virtual bool endExecute() = 0;
+    virtual bool operate();
+    virtual void cancelExecuteMessageReceived(const vistle::message::Message *msg) override;
+    size_t instanceNum() const;
+    void reconnect();
+    message::ModuleInfo::ShmInfo gatherModuleInfo();
 
-  virtual bool sendMessage(const vistle::message::Message &message, const buffer *payload = nullptr) const override;
+    virtual bool sendMessage(const vistle::message::Message &message, const buffer *payload = nullptr) const override;
 
-private:
-  bool handleExecute(const vistle::message::Execute *exec) override final;
-  bool dispatch(bool block = true, bool *messageReceived = nullptr) override final;
-  bool prepare() override final;
-  void initRecvFromSimQueue();
+  private:
+    bool handleExecute(const vistle::message::Execute *exec) override final;
+    bool dispatch(bool block = true, bool *messageReceived = nullptr) override final;
+    bool prepare() override final;
+    void initRecvFromSimQueue();
 
-  bool m_isExecuting = false;
-  const vistle::message::Execute *m_exec = nullptr;
-  std::unique_ptr<vistle::message::MessageQueue>
-      m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
-  std::string m_receiveFromSimMessageQueueName = "recvFromSimMsq";
-  size_t m_instanceNum = 0;
-  static size_t m_numInstances;
+    bool m_isExecuting = false;
+    const vistle::message::Execute *m_exec = nullptr;
+    std::unique_ptr<vistle::message::MessageQueue>
+        m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
+    std::string m_receiveFromSimMessageQueueName = "recvFromSimMsq";
+    size_t m_instanceNum = 0;
+    static size_t m_numInstances;
 
-  insitu::message::SyncShmIDs m_shmIDs;
+    insitu::message::SyncShmIDs m_shmIDs;
 };
 
 } // namespace insitu
