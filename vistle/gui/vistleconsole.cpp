@@ -129,7 +129,6 @@ static std::string raw_input(const std::string &prompt)
    resultString = "";
    VistleConsole::the()->setPrompt(QString::fromStdString(prompt));
    QCoreApplication::processEvents();
-   QCoreApplication::flush();
    QCoreApplication::sendPostedEvents();
    std::string ret = VistleConsole::the()->getRawInput().toStdString();
    VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());

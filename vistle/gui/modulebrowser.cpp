@@ -107,7 +107,7 @@ void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString 
         it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
         ui->moduleListWidget->addTopLevelItem(it->second);
         it->second->setExpanded(hubItems.size() <= 1);
-        it->second->setBackgroundColor(0, Module::hubColor(hub));
+        it->second->setBackground(0, Module::hubColor(hub));
         it->second->setForeground(0, QColor(0,0,0));
         QString tt = hubName;
         tt += " (" + QString::number(hub) + ")";

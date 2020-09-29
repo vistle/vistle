@@ -312,7 +312,7 @@ bool CompositorIceT::init()
          viewBase += n;
          m_numViews.push_back(n);
       }
-      assert(m_numViews.size() == coVRMSController::instance()->getNumSlaves()+1);
+      assert(m_numViews.size() == size_t(coVRMSController::instance()->getNumSlaves()+1));
       coVRMSController::instance()->sendSlaves(&m_numViews[0], sizeof(m_numViews[0])*m_numViews.size());
       coVRMSController::instance()->sendSlaves(&m_viewBase[0], sizeof(m_viewBase[0])*m_viewBase.size());
       CERR << "compositing a total of " << viewBase << " views" << std::endl;
@@ -431,7 +431,7 @@ void CompositorIceT::preFrame()
 
 void CompositorIceT::checkResize(int view)
 {
-   assert(m_compositeData.size() > view);
+   assert(int(m_compositeData.size()) > view);
 
    CompositeData &cd = m_compositeData[view];
    int dim[2] = { 0, 0 }; // width, height;

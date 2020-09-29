@@ -141,7 +141,7 @@ public:
 public :
     bool m_valid = false;
     bool m_exists = false;
-    QFile::Permissions m_permissions = 0;
+    QFile::Permissions m_permissions = QFile::Permissions();
     bool m_isSymlink = false;
     Type m_type = Unknown;
     bool m_hidden = false;

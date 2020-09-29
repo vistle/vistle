@@ -382,7 +382,7 @@ bool ReaderBase::ParseGridMap() {
         int columns = dim == 2 ? 5 : 9;
         for (int i = 0; i < mapFileHeader[0]; ++i) {
             array<int, 9> line;
-            for (size_t j = 0; j < columns; j++) {
+            for (int j = 0; j < columns; j++) {
                 mptr >> line[j];
             }
             mapFileData.emplace_back(line);
@@ -410,15 +410,13 @@ bool ReaderBase::ParseGridMap() {
         ma2ptr.seekg((132 / 4  + 1) * sizeof(float), ios::beg);
         mapFileData.reserve(mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
-        float number = 66;
-
 
         int* map = new int[columns * mapFileHeader[0]];
         ma2ptr.read((char*)map, columns * mapFileHeader[0] * sizeof(float));
 
         for (int i = 0; i < mapFileHeader[0]; ++i) {
             array<int, 9> line;
-            for (size_t j = 0; j < columns; j++) {
+            for (int j = 0; j < columns; j++) {
                 line[j] = map[i * columns + j];
             }
             mapFileData.emplace_back(line);

@@ -34,7 +34,7 @@ class Parameters: public QtButtonPropertyBrowser
 public:
    typedef QtButtonPropertyBrowser PropertyBrowser;
 
-   Parameters(QWidget * parent = 0, Qt::WindowFlags f = 0);
+   Parameters(QWidget * parent = 0, Qt::WindowFlags f = Qt::WindowFlags());
    void setVistleObserver(VistleObserver *observer);
    void setVistleConnection(vistle::VistleConnection *conn);
    void setModule(int id);

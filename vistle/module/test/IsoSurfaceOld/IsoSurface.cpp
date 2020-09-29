@@ -158,7 +158,7 @@ class Leveller {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (ssize_t elem=0; elem<numElem; ++elem) {
+         for (ssize_t elem=0; elem<ssize_t(numElem); ++elem) {
 
             Index n = 0;
             switch (tl[elem]) {
@@ -201,7 +201,7 @@ class Leveller {
       }
 
 #pragma omp parallel for
-      for (ssize_t elem = 0; elem<numElem; ++elem) {
+      for (ssize_t elem = 0; elem<ssize_t(numElem); ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false, gmin, gmax);

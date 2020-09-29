@@ -60,13 +60,14 @@ bool IndexManifolds::compute(std::shared_ptr<PortTask> task) const
     Direction dir = static_cast<Direction>(p_direction->getValue());
     Direction dir1 = dir==X ? Y : X;
     Direction dir2 = dir==Z ? Y : Z;
-    auto coord = p_coord->getValue();
+    Index coord[3];
     Index c[3];
     Index off[3];
     Index bghost[3], tghost[3];
     Index dims[3];
     for (int d=0; d<3; ++d) {
         dims[d] = str->getNumDivisions(d);
+        coord[d] = p_coord->getValue()[d];
         c[d] = coord[d];
         off[d] = str->getGlobalIndexOffset(d);
         if (c[d] < off[d])

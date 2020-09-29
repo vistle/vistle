@@ -204,7 +204,7 @@ bool VistleFileInfoGatherer::handleMessage(const vistle::message::Message &msg, 
                 fi.m_type = FileInfo::File;
             fi.m_lastModified = QDateTime::fromTime_t(f.lastmod);
 
-            fi.m_permissions = 0;
+            fi.m_permissions = QFile::Permissions();
             if (f.permissions & 0400) fi.m_permissions |= QFile::Permission::ReadOwner;
             if (f.permissions & 0200) fi.m_permissions |= QFile::Permission::WriteOwner;
             if (f.permissions & 0100) fi.m_permissions |= QFile::Permission::ExeOwner;

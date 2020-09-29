@@ -137,7 +137,7 @@ class PlaneCut {
       auto outputIdx = outputIdxV.data();
       outputIdx[0] = 0;
 #pragma omp parallel for
-      for (ssize_t elem=0; elem<numElem; ++elem) {
+      for (ssize_t elem=0; elem<ssize_t(numElem); ++elem) {
 
          Index n = 0;
          switch (tl[elem]) {
@@ -170,7 +170,7 @@ class PlaneCut {
       }
 
 #pragma omp parallel for
-      for (ssize_t elem = 0; elem<numElem; ++elem) {
+      for (ssize_t elem = 0; elem<ssize_t(numElem); ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false);
