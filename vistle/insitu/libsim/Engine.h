@@ -23,6 +23,10 @@
 #include <thread>
 #include <vector>
 
+#ifdef MODULE_THREAD
+#include <vistle/manager/manager.h>
+#endif // MODULE_THREAD
+
 namespace vistle {
 namespace message {
 class MessageQueue;
@@ -31,13 +35,11 @@ namespace insitu {
 namespace libsim {
 
 #ifdef MODULE_THREAD
-class V_VISITXPORT Engine
-{
+class V_VISITXPORT Engine {
 #else
-class V_VISITXPORT Engine
-{
+class V_VISITXPORT Engine {
 #endif
-  public:
+public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
 
@@ -73,7 +75,7 @@ class V_VISITXPORT Engine
     // return the file descripter of m_socket so that LibSim can wait for messages on that socket
     int GetInputSocket();
 
-  private:
+private:
     static Engine *instance;
     bool m_initialized = false; // Engine is initialized
     // mpi info
@@ -90,7 +92,7 @@ class V_VISITXPORT Engine
     std::shared_ptr<socket> m_socket;
     // info from the simulation
     size_t m_processedCycles = 0; // the last cycle that was processed
-    MetaData m_metaData;          // the meta data of the currenc cycle
+    MetaData m_metaData; // the meta data of the currenc cycle
     std::unique_ptr<DataTransmitter> m_dataTransmitter;
 
     message::ModuleInfo m_moduleInfo;
@@ -106,13 +108,12 @@ class V_VISITXPORT Engine
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
 #if BOOST_VERSION >= 106600
-    typedef boost::asio::executor_work_guard<boost::asio::io_context::executor_type> WorkGuard;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
 #else
-    typedef boost::asio::io_service::work WorkGuard;
+    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
 #endif
-    std::unique_ptr<WorkGuard> m_workGuard;
-    std::unique_ptr<std::thread> m_ioThread; // thread for io_service
-    std::unique_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+    std::thread m_ioThread; // thread for io_service
+    std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::mutex m_asioMutex;
     std::atomic<bool> m_waitingForAccept{true}; // condition
 #endif
@@ -120,10 +121,8 @@ class V_VISITXPORT Engine
     ~Engine();
 #ifdef MODULE_THREAD
     bool startVistle(int argC, char **argV);
-    bool ConnectMySelf();
-    void initializeAsync();
-    bool startAccept(std::unique_ptr<acceptor> &a);
-    bool launchManager(int argC, char **argV);
+    void ConnectMySelf();
+    bool startAccept(std::shared_ptr<acceptor> a);
 #endif // MODULE_THREAD
 
     bool checkInitArgs(int argC, char **argV);

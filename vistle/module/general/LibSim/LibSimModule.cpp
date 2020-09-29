@@ -74,7 +74,6 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
         CERR << "can not start without running simulation" << endl;
         return;
     }
-    reconnect();
     m_connectedToEngine = true;
     m_messageHandler.initialize(insitu::EngineInterface::getControllSocket(),
                                 boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
@@ -276,7 +275,7 @@ void LibSimModule::connectToSim() {
         if (vistle::insitu::libsim::attemptLibSImConnection(p.string(), args)) {
             m_simInitSent = true;
         } else {
-            CERR << "attemptLibSimConnection failed " << endl;
+            CERR << "attemptLibSImConnection failed " << endl;
         }
     }
     boost::mpi::broadcast(comm(), m_simInitSent, 0);
