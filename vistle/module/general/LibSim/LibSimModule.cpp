@@ -131,17 +131,9 @@ bool LibSimModule::beginExecute() {
     if (!getBool(m_connectedToEngine)) {
         return true;
     }
-    vistle::insitu::message::SetPorts::value_type connectedPorts;
-    std::vector<string> p;
-    for (const auto port : m_outputPorts)         {
-        if (port.second->isConnected()) {
-            p.push_back(port.first);
-        }
-    }
-    connectedPorts.push_back(p);
-    m_messageHandler.send(vistle::insitu::message::SetPorts{ connectedPorts });
-    m_messageHandler.send(vistle::insitu::message::Ready{ true });
-    
+    sendConnectedPorts();
+    m_messageHandler.send(vistle::insitu::message::Ready{true});
+
     return true;
 }
 
@@ -191,6 +183,27 @@ void LibSimModule::startControllServer() {
 
     CERR << "listening for connections on port " << m_port << endl;
     return;
+}
+
+
+void LibSimModule::connectionAdded(const vistle::Port *from, const vistle::Port *to){
+    sendConnectedPorts();
+}
+
+void LibSimModule::connectionRemoved(const vistle::Port *from, const vistle::Port *to){
+    sendConnectedPorts();
+}
+
+void LibSimModule::sendConnectedPorts(){
+    vistle::insitu::message::SetPorts::value_type connectedPorts;
+    std::vector<string> p;
+    for (const auto port : m_outputPorts)         {
+        if (port.second->isConnected()) {
+            p.push_back(port.first);
+        }
+    }
+    connectedPorts.push_back(p);
+    m_messageHandler.send(vistle::insitu::message::SetPorts{ connectedPorts });
 }
 
 bool LibSimModule::startAccept(shared_ptr<acceptor> a) {

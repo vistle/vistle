@@ -31,7 +31,10 @@ private:
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
     virtual bool changeParameter(const vistle::Parameter* param);
+    virtual void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
+    virtual void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
 
+    void sendConnectedPorts();
     void startControllServer();
     bool startAccept(std::shared_ptr<acceptor> a); //async accept initiates handle message toop
     void startSocketThread();

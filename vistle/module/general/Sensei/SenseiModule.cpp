@@ -46,24 +46,23 @@ SenseiModule::~SenseiModule() {
     }
 }
 
+bool SenseiModule::cancelExecute(){
+    CERR << "cancelExecute called" << endl;
+    return endExecute();
+}
+
 bool SenseiModule::beginExecute() {
 
     if (!m_connectedToSim)
     {
         return true;
     }
-    SetPorts::value_type connectedPorts;
-    std::vector<string> p;
-    for (const auto port : m_outputPorts)         {
-        if (port.second->isConnected()) {
-            p.push_back(port.first);
-        }
-    }
-    connectedPorts.push_back(p);
-    m_messageHandler.send(SetPorts{ connectedPorts });
-    m_messageHandler.send(Ready{ true });
+    sendConnectedPorts();
+    m_messageHandler.send(Ready{true});
     return true;
 }
+
+
 
 bool SenseiModule::endExecute() {
 
@@ -79,6 +78,7 @@ bool SenseiModule::endExecute() {
     m_messageHandler.send(Ready{ false });
     while (m_connectedToSim) //wait until we receive the confirmation that the sim stopped making vistle objects or timeout
     {
+        CERR << "waiting for Simulation to stop sending objects" << endl;
         auto msg = m_messageHandler.timedRecv(m_timeout->getValue());
         if (msg.type() == InSituMessageType::Invalid)
         {
@@ -88,6 +88,7 @@ bool SenseiModule::endExecute() {
         }
         else if (msg.type() == InSituMessageType::Ready && !msg.unpackOrCast<Ready>().value)
         {
+            CERR << "Simulation stopped!" << endl;
             return true;
         }
         else
@@ -134,7 +135,13 @@ bool vistle::insitu::sensei::SenseiModule::operate()
     return didWork;
 }
 
+void SenseiModule::connectionAdded(const vistle::Port *from, const vistle::Port *to){
+    sendConnectedPorts();
+}
 
+void SenseiModule::connectionRemoved(const vistle::Port *from, const vistle::Port *to){
+    sendConnectedPorts();
+}
 
 void SenseiModule::connectToSim() {
 
@@ -173,6 +180,18 @@ void SenseiModule::connectToSim() {
 void SenseiModule::disconnectSim() {
     m_connectedToSim = false;
     m_messageHandler.reset();
+}
+
+void SenseiModule::sendConnectedPorts(){
+SetPorts::value_type connectedPorts;
+    std::vector<string> p;
+    for (const auto port : m_outputPorts)         {
+        if (port.second->isConnected()) {
+            p.push_back(port.first);
+        }
+    }
+    connectedPorts.push_back(p);
+    m_messageHandler.send(SetPorts{ connectedPorts });
 }
 
 bool SenseiModule::recvAndhandleMessage()     {

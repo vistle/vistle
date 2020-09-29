@@ -72,15 +72,16 @@ private:
     std::map<const vistle::IntParameter*, sensei::IntOptions> m_intOptions;
     //..........................................................................
     //module functions
-
+    virtual bool cancelExecute() override;
     virtual bool beginExecute() override;
     virtual bool endExecute() override;
     virtual bool changeParameter(const vistle::Parameter* param);
     virtual bool operate() override;
+    virtual void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
+    virtual void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
     //..........................................................................
 
-
-
+    void sendConnectedPorts();
 
     bool recvAndhandleMessage();
 
