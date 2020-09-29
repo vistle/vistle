@@ -11,29 +11,28 @@ namespace vistle {
 namespace insitu {
 namespace sensei {
 
-class V_SENSEIEXPORT ObjectRetriever
-{ // callbacks to retrieve GridInterfacees
-  // and Arrays from sensei
+class V_SENSEIEXPORT ObjectRetriever { // callbacks to retrieve GridInterfacees
+    // and Arrays from sensei
 public:
-  struct V_SENSEIEXPORT PortAssignedObject
-  {
-    PortAssignedObject() = default;
-    PortAssignedObject(const std::string &gridName, vistle::Object::ptr obj);
-    PortAssignedObject(const std::string &gridName, const std::string &varName, vistle::Object::ptr obj);
-    const std::string &portName() const;
-    vistle::Object::ptr object() const;
-    operator bool() const;
+    struct V_SENSEIEXPORT PortAssignedObject {
+        PortAssignedObject() = default;
+        PortAssignedObject(const std::string &gridName, vistle::Object::ptr obj);
+        PortAssignedObject(const std::string &gridName, const std::string &varName,
+                           vistle::Object::ptr obj);
+        const std::string &portName() const;
+        vistle::Object::ptr object() const;
+        operator bool() const;
 
-  private:
-    std::string m_portName;
-    vistle::Object::ptr m_obj;
-  };
-  typedef std::vector<PortAssignedObject> PortAssignedObjectList;
-  ObjectRetriever(std::function<PortAssignedObjectList(const MetaData &usedData)> getData);
-  PortAssignedObjectList getData(const MetaData &usedData);
+    private:
+        std::string m_portName;
+        vistle::Object::ptr m_obj;
+    };
+    typedef std::vector<PortAssignedObject> PortAssignedObjectList;
+    ObjectRetriever(std::function<PortAssignedObjectList(const MetaData &usedData)> getData);
+    PortAssignedObjectList getData(const MetaData &usedData);
 
 private:
-  std::function<PortAssignedObjectList(const MetaData &usedData)> m_getData;
+    std::function<PortAssignedObjectList(const MetaData &usedData)> m_getData;
 };
 
 } // namespace sensei

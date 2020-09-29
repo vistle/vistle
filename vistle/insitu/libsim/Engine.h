@@ -31,13 +31,11 @@ namespace insitu {
 namespace libsim {
 
 #ifdef MODULE_THREAD
-class V_VISITXPORT Engine
-{
+class V_VISITXPORT Engine {
 #else
-class V_VISITXPORT Engine
-{
+class V_VISITXPORT Engine {
 #endif
-  public:
+public:
     typedef boost::asio::ip::tcp::socket socket;
     typedef boost::asio::ip::tcp::acceptor acceptor;
 
@@ -73,7 +71,7 @@ class V_VISITXPORT Engine
     // return the file descripter of m_socket so that LibSim can wait for messages on that socket
     int GetInputSocket();
 
-  private:
+private:
     static Engine *instance;
     bool m_initialized = false; // Engine is initialized
     // mpi info
@@ -90,7 +88,7 @@ class V_VISITXPORT Engine
     std::shared_ptr<socket> m_socket;
     // info from the simulation
     size_t m_processedCycles = 0; // the last cycle that was processed
-    MetaData m_metaData;          // the meta data of the currenc cycle
+    MetaData m_metaData; // the meta data of the currenc cycle
     std::unique_ptr<DataTransmitter> m_dataTransmitter;
 
     message::ModuleInfo m_moduleInfo;
@@ -120,7 +118,7 @@ class V_VISITXPORT Engine
     ~Engine();
 #ifdef MODULE_THREAD
     bool startVistle(int argC, char **argV);
-    bool ConnectMySelf();
+    bool connectMySelf();
     void initializeAsync();
     bool startAccept(std::unique_ptr<acceptor> &a);
     bool launchManager(int argC, char **argV);

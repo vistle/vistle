@@ -7,9 +7,8 @@ namespace vistle {
 namespace insitu {
 namespace message {
 
-class V_INSITUMESSAGEEXPORT SyncShmIDs
-{
-  public:
+class V_INSITUMESSAGEEXPORT SyncShmIDs {
+public:
     enum class Mode { Create, Attach };
 #ifdef MODULE_THREAD
     typedef std::lock_guard<std::mutex> Guard;
@@ -25,14 +24,14 @@ class V_INSITUMESSAGEEXPORT SyncShmIDs
     void set(int objID, int arrayID);
     int objectID();
     int arrayID();
-    template <typename T, typename... Args>
-    typename T::ptr createVistleObject(Args &&... args) {
+    template<typename T, typename... Args>
+    typename T::ptr createVistleObject(Args &&... args)
+    {
         auto obj = typename T::ptr(new T(args...));
         set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID());
         return obj;
     }
-    struct ShmData
-    {
+    struct ShmData {
         int objID = -1;
         int arrayID = -1;
 #ifdef MODULE_THREAD
@@ -42,11 +41,10 @@ class V_INSITUMESSAGEEXPORT SyncShmIDs
 #endif
     };
 
-  private:
+private:
 #ifndef MODULE_THREAD
-    class ShmSegment
-    {
-      public:
+    class ShmSegment {
+    public:
         ShmSegment() {}
         ShmSegment(ShmSegment &&other);
         ShmSegment(const std::string &name, Mode mode);
@@ -55,18 +53,17 @@ class V_INSITUMESSAGEEXPORT SyncShmIDs
         ShmData *data();
         ShmSegment &operator=(ShmSegment &&other) noexcept;
 
-      private:
+    private:
         std::string m_name;
 
         boost::interprocess::mapped_region m_region;
     };
 #else
-    class ShmSegment
-    { // wrapper if we dont need shm
-      public:
+    class ShmSegment { // wrapper if we dont need shm
+    public:
         ShmData *data() { return &m_data; }
 
-      private:
+    private:
         ShmData m_data;
     };
 #endif

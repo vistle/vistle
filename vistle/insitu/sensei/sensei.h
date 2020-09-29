@@ -21,7 +21,7 @@ class Internals;
 class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 
 {
-  public:
+public:
     SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs);
     bool Execute(size_t timestep);
     bool Finalize();
@@ -32,8 +32,9 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
     SenseiAdapter(SenseiAdapter &other) = delete;
     ~SenseiAdapter();
 
-    template <typename T, typename... Args>
-    typename T::ptr createVistleObject(Args &&... args) {
+    template<typename T, typename... Args>
+    typename T::ptr createVistleObject(Args &&... args)
+    {
         if (isMOduleReady()) {
             auto obj = typename T::ptr(new T(args...));
             updateShmIDs();
@@ -43,7 +44,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
         }
     }
 
-  private:
+private:
     ObjectRetriever m_callbacks;
     MetaData m_metaData;
     MetaData m_usedData;
@@ -55,7 +56,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
     int m_rank = -1, m_mpiSize = 0;
     MPI_Comm comm = MPI_COMM_WORLD;
 
-    bool m_ready = false;                   // true if the module is connected and executing
+    bool m_ready = false; // true if the module is connected and executing
     std::map<std::string, bool> m_commands; // commands and their current state
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
@@ -72,7 +73,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
     bool objectRequested(const std::string &name, const std::string &meshName = "");
 
     void dumpConnectionFile(MPI_Comm Comm); // create a file in which the sensei
-                                            // module can find the connection info
+    // module can find the connection info
     bool recvAndHandeMessage(bool blocking = false);
     bool initModule(const vistle::insitu::message::Message &msg);
     bool checkHostName() const;

@@ -28,15 +28,15 @@
 #endif // MODULE_THREAD
 
 #ifdef LIBSIM_DEBUG
-#define DEBUG_CERR                                                                                                     \
-    std::cerr << "Engine: "                                                                                            \
+#define DEBUG_CERR \
+    std::cerr << "Engine: " \
               << " [" << m_rank << "/" << m_mpiSize << "] "
 #else
 #include <vistle/insitu/util/print.h>
 #define DEBUG_CERR vistle::DoNotPrintInstance
 #endif
-#define CERR                                                                                                           \
-    std::cerr << "Engine: "                                                                                            \
+#define CERR \
+    std::cerr << "Engine: " \
               << " [" << m_rank << "/" << m_mpiSize << "] "
 
 using std::endl;
@@ -48,21 +48,25 @@ using namespace vistle::insitu::libsim;
 namespace asio = boost::asio;
 Engine *Engine::instance = nullptr;
 
-Engine *Engine::EngineInstance() {
+Engine *Engine::EngineInstance()
+{
     if (!instance) {
         instance = new Engine{};
     }
     return instance;
 }
 
-void Engine::DisconnectSimulation() {
-    std::cerr << "Enigne [" << instance->m_rank  << "/"<< instance->m_mpiSize << "] disconnecting..." << endl;
+void Engine::DisconnectSimulation()
+{
+    std::cerr << "Enigne [" << instance->m_rank << "/" << instance->m_mpiSize
+              << "] disconnecting..." << endl;
     instance->m_messageHandler.send(ConnectionClosed{true});
     delete instance;
     instance = nullptr;
 }
 
-bool Engine::initialize(int argC, char **argV) {
+bool Engine::initialize(int argC, char **argV)
+{
     if (m_initialized) {
         CERR << "initialize called, but engine is already initialized" << endl;
         return false;
@@ -84,24 +88,31 @@ bool Engine::initialize(int argC, char **argV) {
 #endif
 }
 
-bool Engine::isInitialized() const noexcept { return m_initialized; }
+bool Engine::isInitialized() const noexcept
+{
+    return m_initialized;
+}
 
-bool Engine::setMpiComm(void *newconn) {
+bool Engine::setMpiComm(void *newconn)
+{
     comm = *static_cast<MPI_Comm *>(newconn);
     MPI_Comm_rank(comm, &m_rank);
     MPI_Comm_size(comm, &m_mpiSize);
     return true;
 }
 
-bool Engine::sendData() {
-
+bool Engine::sendData()
+{
     CERR << "sendData was called" << endl;
     return true;
 }
 
-void Engine::SimulationTimeStepChanged() {
+void Engine::SimulationTimeStepChanged()
+{
     if (!m_initialized || !m_moduleInfo.isInitialized()) {
-        CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation data in Vistle!" << endl;
+        CERR << "not connected with Vistle. \nStart the ConnectLibSIm module to use simulation "
+                "data in Vistle!"
+             << endl;
         return;
     }
 
@@ -119,8 +130,8 @@ void Engine::SimulationTimeStepChanged() {
     if (m_metaData.currentCycle() % m_intOptions.find(IntOptions::NthTimestep)->value()) {
         return;
     }
-    DEBUG_CERR << "Timestep " << m_metaData.currentCycle() << " has " << numMeshes << " meshes and " << numVars
-               << "variables" << endl;
+    DEBUG_CERR << "Timestep " << m_metaData.currentCycle() << " has " << numMeshes << " meshes and "
+               << numVars << "variables" << endl;
     if (m_moduleInfo.isReady()) { // only here vistle::objects are allowed to be made
         sendObjectsToModule();
 
@@ -131,12 +142,14 @@ void Engine::SimulationTimeStepChanged() {
     }
 }
 
-void Engine::SimulationInitiateCommand(const string &command) {
+void Engine::SimulationInitiateCommand(const string &command)
+{
     static int counter = 0;
     DEBUG_CERR << "SimulationInitiateCommand " << command << " counter = " << counter << endl;
     ++counter;
-    if (command.substr(0, 12) ==
-        "INTERNALSYNC") { // need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
+    if (
+    command.substr(0, 12) ==
+    "INTERNALSYNC") { // need to respond or LibSim gets stuck. see: SimEngine::SimulationInitiateCommand
         // Send the command back to the engine so it knows we're done syncing.
         string cmd("INTERNALSYNC");
         string args(command.substr(13, command.size() - 1));
@@ -145,13 +158,15 @@ void Engine::SimulationInitiateCommand(const string &command) {
     }
 }
 
-void Engine::DeleteData() {
+void Engine::DeleteData()
+{
     DEBUG_CERR << "DeleteData called" << endl;
     resetDataTransmitter();
     sendData();
 }
 
-bool Engine::fetchNewModuleState() {
+bool Engine::fetchNewModuleState()
+{
     static int counter = 0;
     DEBUG_CERR << "handleVistleMessage counter = " << counter << endl;
     ++counter;
@@ -162,7 +177,7 @@ bool Engine::fetchNewModuleState() {
             ;
         }
         slaveCommandCallback(); // let the slaves call visitProcessEngineCommand() -> simv2_process_input() ->
-                                // Engine::passCommandToSim() and therefore finalizeInit() if not already done
+        // Engine::passCommandToSim() and therefore finalizeInit() if not already done
     }
     m_metaData.fetchFromSim();
     initializeSim();
@@ -170,8 +185,7 @@ bool Engine::fetchNewModuleState() {
     DEBUG_CERR << "received message of type " << static_cast<int>(msg.type()) << endl;
     m_moduleInfo.update(msg);
     switch (msg.type()) {
-    case InSituMessageType::Ready:
-    {
+    case InSituMessageType::Ready: {
         if (m_moduleInfo.isReady()) {
             vistle::Shm::the().setObjectID(m_shmIDs.objectID());
             vistle::Shm::the().setArrayID(m_shmIDs.arrayID());
@@ -179,43 +193,38 @@ bool Engine::fetchNewModuleState() {
         } else {
             m_shmIDs.set(vistle::Shm::the().objectID(),
                          vistle::Shm::the().arrayID()); // send final state just to be safe
-            m_messageHandler.send(Ready{false});        // confirm that we are done creating vistle objects
+            m_messageHandler.send(Ready{false}); // confirm that we are done creating vistle objects
         }
     } break;
-    case InSituMessageType::ExecuteCommand:
-    {
+    case InSituMessageType::ExecuteCommand: {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
         if (simulationCommandCallback) {
             simulationCommandCallback(exe.value.c_str(), "", simulationCommandCallbackData);
         } else {
-
             CERR << "received command, but required callback is not set" << endl;
         }
         m_messageHandler.send(GoOn{});
     } break;
-    case InSituMessageType::GoOn:
-    {
+    case InSituMessageType::GoOn: {
         if (m_metaData.simMode() == VISIT_SIMMODE_RUNNING) {
             // m_messageHandler.send(GoOn{});
         }
     } break;
-    case InSituMessageType::ConnectionClosed:
-    {
+    case InSituMessageType::ConnectionClosed: {
         CERR << "connection closed" << endl;
         m_shmIDs.close();
         return false;
     } break;
-    case InSituMessageType::LibSimIntOption:
-    {
+    case InSituMessageType::LibSimIntOption: {
         auto &option = msg.unpackOrCast<LibSimIntOption>().value;
         update(m_intOptions, option);
 
     } break;
 #ifdef MODULE_THREAD
-    case InSituMessageType::ModuleID:
-    {
+    case InSituMessageType::ModuleID: {
         m_moduleInfo.setReadyState(false);
-        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
+        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(),
+                            SyncShmIDs::Mode::Attach);
         resetDataTransmitter();
 
     } break;
@@ -226,17 +235,21 @@ bool Engine::fetchNewModuleState() {
     return true;
 }
 
-void Engine::SetSimulationCommandCallback(void (*sc)(const char *, const char *, void *), void *scdata) {
+void Engine::SetSimulationCommandCallback(void (*sc)(const char *, const char *, void *),
+                                          void *scdata)
+{
     simulationCommandCallback = sc;
     simulationCommandCallbackData = scdata;
 }
 
-void Engine::setSlaveComandCallback(void (*sc)(void)) {
+void Engine::setSlaveComandCallback(void (*sc)(void))
+{
     DEBUG_CERR << "setSlaveComandCallback" << endl;
     slaveCommandCallback = sc;
 }
 
-int Engine::GetInputSocket() {
+int Engine::GetInputSocket()
+{
     if (m_rank == 0 && m_socket) {
         return m_socket->native_handle();
     } else {
@@ -246,19 +259,22 @@ int Engine::GetInputSocket() {
 
 //...................................................................................................
 //----------------private----------------------------------------------------------------------------
-Engine::Engine() {
-
+Engine::Engine()
+{
     m_intOptions.insert(IntOption{IntOptions::CombineGrids, false});
     m_intOptions.insert(IntOption{IntOptions::ConstGrids, false});
     m_intOptions.insert(IntOption{IntOptions::KeepTimesteps, 1});
     m_intOptions.insert(IntOption{IntOptions::NthTimestep, 1});
-    m_intOptions.insert(IntOption{IntOptions::VtkFormat, false, [this]() { resetDataTransmitter(); }});
+    m_intOptions.insert(IntOption{IntOptions::VtkFormat, false, [this]() {
+                                      resetDataTransmitter();
+                                  }});
 
     auto comm = MPI_COMM_WORLD;
     setMpiComm(static_cast<void *>(&comm));
 }
 
-Engine::~Engine() {
+Engine::~Engine()
+{
     m_messageHandler.send(ConnectionClosed{true});
 #ifndef MODULE_THREAD
     if (vistle::Shm::isAttached()) {
@@ -271,14 +287,16 @@ Engine::~Engine() {
 }
 
 #ifdef MODULE_THREAD
-bool Engine::startVistle(int argC, char **argV) {
+bool Engine::startVistle(int argC, char **argV)
+{
     if ((m_rank == 0 && connectMySelf()) || m_rank > 0) {
         m_messageHandler.initialize(
-            m_socket,
-            boost::mpi::communicator(
-                comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
-                                                                      // this point. Since most simulations never
-                                                                      // change comm, this is a easy cheat impl
+        m_socket,
+        boost::mpi::communicator(
+        comm,
+        boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
+        // this point. Since most simulations never
+        // change comm, this is a easy cheat impl
         if (launchManager(argC, argV)) {
             m_initialized = true;
         }
@@ -308,9 +326,8 @@ bool Engine::connectMySelf()
     return true;
 }
 
-void Engine::initializeAsync() {
-
-
+void Engine::initializeAsync()
+{
 #if BOOST_VERSION >= 106600
     m_workGuard = std::make_unique<WorkGuard>(m_ioService.get_executor());
 #else
@@ -326,8 +343,8 @@ void Engine::initializeAsync() {
     m_acceptorv6.reset(new acceptor(m_ioService));
 }
 
-bool Engine::startAccept(std::unique_ptr<acceptor> &a) {
-
+bool Engine::startAccept(std::unique_ptr<acceptor> &a)
+{
     if (!a->is_open())
         return false;
 
@@ -341,7 +358,8 @@ bool Engine::startAccept(std::unique_ptr<acceptor> &a) {
             }
             return;
         }
-        CERR << "server connected with engine, acceptor " << (a == m_acceptorv4 ? "v4" : "v6") << endl;
+        CERR << "server connected with engine, acceptor " << (a == m_acceptorv4 ? "v4" : "v6")
+             << endl;
         EngineInterface::setControllSocket(sock);
         m_waitingForAccept = false;
         a == m_acceptorv4 ? m_acceptorv6->close() : m_acceptorv4->close();
@@ -349,7 +367,8 @@ bool Engine::startAccept(std::unique_ptr<acceptor> &a) {
     return true;
 }
 
-bool Engine::launchManager(int argC, char **argV) {
+bool Engine::launchManager(int argC, char **argV)
+{
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
         CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
@@ -371,7 +390,8 @@ bool Engine::launchManager(int argC, char **argV) {
 }
 #endif
 
-bool Engine::checkInitArgs(int argC, char **argV) {
+bool Engine::checkInitArgs(int argC, char **argV)
+{
     if (argC != 7) {
         CERR << "simulation requires exactly 7 parameters" << endl;
         return false;
@@ -388,7 +408,8 @@ bool Engine::checkInitArgs(int argC, char **argV) {
     return true;
 }
 
-void Engine::collectModuleInfo(char **argV) {
+void Engine::collectModuleInfo(char **argV)
+{
     ModuleInfo::ShmInfo shmInfo;
     shmInfo.name = argV[2];
     shmInfo.id = atoi(argV[3]);
@@ -399,20 +420,23 @@ void Engine::collectModuleInfo(char **argV) {
     m_modulePort = atoi(argV[5]);
 }
 
-bool Engine::initializeVistleEnv() {
+bool Engine::initializeVistleEnv()
+{
     vistle::registerTypes();
     try {
         auto shmName = m_moduleInfo.shmName();
         shmName = cutRankSuffix(shmName);
-        CERR << "attaching to shm: name = " << shmName << " id = " << m_moduleInfo.id() << " rank = " << m_rank << endl;
+        CERR << "attaching to shm: name = " << shmName << " id = " << m_moduleInfo.id()
+             << " rank = " << m_rank << endl;
         vistle::Shm::attach(shmName, m_moduleInfo.id(), m_rank);
         if (m_rank == 0) {
             connectToModule(m_moduleInfo.hostname(), m_modulePort);
         }
-        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
+        m_shmIDs.initialize(m_moduleInfo.id(), m_rank, m_moduleInfo.uniqueSuffix(),
+                            SyncShmIDs::Mode::Attach);
         resetDataTransmitter();
-        m_messageHandler.initialize(m_socket,
-                                    boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
+        m_messageHandler.initialize(
+        m_socket, boost::mpi::communicator(comm, boost::mpi::comm_create_kind::comm_duplicate));
         m_messageHandler.send(GoOn());
     } catch (const vistle::exception &ex) {
         CERR << "initializeVistleEnv: " << ex.what() << endl;
@@ -423,7 +447,8 @@ bool Engine::initializeVistleEnv() {
     return true;
 }
 
-Rules Engine::gatherObjectRules() {
+Rules Engine::gatherObjectRules()
+{
     Rules rules;
     rules.combineGrid = m_intOptions.find(IntOptions::CombineGrids)->value();
     rules.constGrids = m_intOptions.find(IntOptions::ConstGrids)->value();
@@ -432,8 +457,8 @@ Rules Engine::gatherObjectRules() {
     return rules;
 }
 
-void Engine::connectToModule(const string &hostname, int port) {
-
+void Engine::connectToModule(const string &hostname, int port)
+{
     boost::system::error_code ec;
     asio::ip::tcp::resolver resolver(m_ioService);
     asio::ip::tcp::resolver::query query(hostname, boost::lexical_cast<string>(port));
@@ -450,7 +475,8 @@ void Engine::connectToModule(const string &hostname, int port) {
     }
 }
 
-void Engine::initializeSim() {
+void Engine::initializeSim()
+{
     if (!m_moduleInfo.isInitialized()) {
         try {
             m_metaData.fetchFromSim();
@@ -467,7 +493,8 @@ void Engine::initializeSim() {
     }
 }
 
-void Engine::sendObjectsToModule() {
+void Engine::sendObjectsToModule()
+{
     try {
         m_dataTransmitter->transferObjectsToVistle(m_timestep, m_moduleInfo, gatherObjectRules());
     } catch (const InsituExeption &ex) {
@@ -475,10 +502,12 @@ void Engine::sendObjectsToModule() {
     }
 }
 
-void Engine::resetDataTransmitter() {
+void Engine::resetDataTransmitter()
+{
     if (m_dataTransmitter) {
         m_dataTransmitter->resetCache();
     } else {
-        m_dataTransmitter = std::make_unique<DataTransmitter>(m_metaData, m_shmIDs, m_moduleInfo, m_rank);
+        m_dataTransmitter =
+        std::make_unique<DataTransmitter>(m_metaData, m_shmIDs, m_moduleInfo, m_rank);
     }
 }
