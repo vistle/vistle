@@ -456,7 +456,7 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, bool index
     if (numCorners > 0) {
         normals->resize(indexGeom ? numCoords : numCorners);
         for (Index prim=0; prim<numPrim; ++prim) {
-            const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim+1);
+            const Index begin = geo.getPrimitiveBegin(prim);
             Index v0 = cl[begin+0], v1 = cl[begin+1], v2 = cl[begin+2];
             osg::Vec3 u(x[v0], y[v0], z[v0]);
             osg::Vec3 v(x[v1], y[v1], z[v1]);
@@ -772,7 +772,9 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
    }
 
    vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_mapped);
+#ifdef COVER_PLUGIN
    const OsgColorMap *colormap = nullptr;
+#endif
    vistle::DataBase::const_ptr database = vistle::DataBase::as(m_mapped);
    vistle::Vec<Scalar>::const_ptr data = vistle::Vec<Scalar>::as(m_mapped);
    vistle::Vec<Scalar,3>::const_ptr vdata = vistle::Vec<Scalar,3>::as(m_mapped);
@@ -794,6 +796,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            debug << "NoIndex: tex/data ";
        }
 
+#ifdef COVER_PLUGIN
        s_coverMutex.lock();
        if (m_colormaps && !m_species.empty()) {
            auto it = m_colormaps->find(m_species);
@@ -802,6 +805,7 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
            }
        }
        s_coverMutex.unlock();
+#endif
    } else if (database) {
        debug << "Unsupported mapped data: type=" << Object::toString(database->getType()) << " (" << database->getType() << ")";
    }

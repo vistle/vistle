@@ -898,7 +898,6 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
        } catch (const std::exception &e) {
           CERR << "importing module " << name << "(" << m.path << ") failed: " << e.what() << std::endl;
           std::vector<const char *> vars;
-          const char *libpath = nullptr;
 #if defined(_WIN32)
           vars.push_back("PATH");
 #elif defined(__APPLE__)

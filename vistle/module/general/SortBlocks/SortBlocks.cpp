@@ -61,7 +61,7 @@ bool SortBlocks::compute() {
    const Integer max = m_maxParam->getValue();
    const Integer modulus = m_modulusParam->getValue();
 
-   Index select = InvalidIndex;
+   Integer select = InvalidIndex;
    switch (m_criterionParam->getValue()) {
    case Rank:
        select = rank();

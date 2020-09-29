@@ -178,17 +178,15 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
 
 void setDataCells(Scalar *d, const GridInterface *grid, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
 
-    ssize_t numElem = grid->getNumElements();
-//#pragma omp parallel for
-    for (ssize_t idx=0; idx<numElem; ++idx) {
+    Index numElem = grid->getNumElements();
+    for (Index idx=0; idx<numElem; ++idx) {
         auto c = grid->cellCenter(idx);
         d[idx] = computeData(c[0], c[1], c[2], mode, scale, anim, time);
     }
 }
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale, AnimDataMode anim, Index time) {
-//#pragma omp parallel for
-    for (ssize_t idx=0; idx<numVert; ++idx) {
+    for (Index idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
         d[idx] = computeData(x, y, z, mode, scale, anim, time);
     }
@@ -202,10 +200,9 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
         else
             dist[c] = 0.;
     }
-//#pragma omp parallel for
-    for (ssize_t i=0; i<dim[0]; ++i) {
-        for (ssize_t j=0; j<dim[1]; ++j) {
-            for (ssize_t k=0; k<dim[2]; ++k) {
+    for (Index i=0; i<dim[0]; ++i) {
+        for (Index j=0; j<dim[1]; ++j) {
+            for (Index k=0; k<dim[2]; ++k) {
                 Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                 Scalar x = min[0]+i*dist[0];
                 Scalar y = min[1]+j*dist[1];
@@ -446,12 +443,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
             Scalar *x = coords->x().data();
             Scalar *y = coords->y().data();
             Scalar *z = coords->z().data();
-//#pragma omp parallel for
-            for (ssize_t i=0; i<dim[0]; ++i) {
-//#pragma omp parallel for
-                for (ssize_t j=0; j<dim[1]; ++j) {
-//#pragma omp parallel for
-                    for (ssize_t k=0; k<dim[2]; ++k) {
+            for (Index i=0; i<dim[0]; ++i) {
+                for (Index j=0; j<dim[1]; ++j) {
+                    for (Index k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         x[idx] = min[0]+i*dist[0];
                         y[idx] = min[1]+j*dist[1];
@@ -463,9 +457,9 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
 
         if (auto rad = CoordsWithRadius::as(geoOut)) {
             Scalar *r = rad->r().data();
-            for (ssize_t i=0; i<dim[0]; ++i) {
-                for (ssize_t j=0; j<dim[1]; ++j) {
-                    for (ssize_t k=0; k<dim[2]; ++k) {
+            for (Index i=0; i<dim[0]; ++i) {
+                for (Index j=0; j<dim[1]; ++j) {
+                    for (Index k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                         r[idx] = dist[0] * 0.2;
                     }

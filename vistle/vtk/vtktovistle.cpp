@@ -248,7 +248,7 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
                 vtkIdType npts = 0;
                 IDCONST vtkIdType *pts = nullptr;
                 strips->GetNextCell(npts, pts);
-                for (Index j = 0; j < npts - 2; ++j)
+                for (vtkIdType j = 0; j < npts - 2; ++j)
                 {
                     if (j % 2)
                     {
@@ -285,7 +285,7 @@ Object::ptr vtkPoly2Vistle(SENSEI_ARGUMENT vtkPolyData* vpolydata) {
                 vtkIdType npts = 0;
                 IDCONST vtkIdType *pts = nullptr;
                 lines->GetNextCell(npts, pts);
-                for (Index j = 0; j < npts; ++j)
+                for (vtkIdType j = 0; j < npts; ++j)
                 {
                     cornerlist[k] = pts[j];
                     ++k;

@@ -15,12 +15,7 @@
 #include <vistle/insitu/libsim/libsimInterface/VisItDataInterfaceRuntime.h>
 
 using vistle::insitu::libsim::Engine;
-// Engine creation callback.
-static Engine *
-simv2_create_engine(void *)
-{
-    return Engine::EngineInstance();
-}
+
 
 // ****************************************************************************
 // Method: simv2_get_engine
@@ -40,11 +35,19 @@ simv2_create_engine(void *)
 //
 // ****************************************************************************
 
+#if 0
+// Engine creation callback.
+static Engine *
+simv2_create_engine(void *)
+{
+    return Engine::EngineInstance();
+}
+#endif
+
 void *simv2_get_engine()
 {
     // Set the engine creation callback so it will create our Engine subclass.
     //EngineBase::SetEngineCreationCallback(simv2_create_engine, NULL);
-
 
     //Engine::createEngine()->EnableSimulationPlugins();
     return (void*)Engine::EngineInstance();

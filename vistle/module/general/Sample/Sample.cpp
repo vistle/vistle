@@ -115,10 +115,10 @@ bool Sample::reduce(int timestep) {
 
             const GeometryInterface *geo = objAtIdx->getInterface<GeometryInterface>();
             DataBase::ptr sampledData;
-            std::vector<int> foundList;
+            std::vector<unsigned> foundList;
             std::vector<Object::const_ptr> sampledDataList;
 
-            int found = 0;
+            unsigned found = 0;
             if (!dataList.empty()) {
                 DataBase::const_ptr data = dataList.at(0);
 
@@ -140,9 +140,9 @@ bool Sample::reduce(int timestep) {
 
             if (rank() == r) {
                 for (unsigned long fr=0; fr<foundList.size();++fr) {
-                    int nFound = foundList.at(fr);
-                    if ((nFound>0) && (fr!=r)) {
-                        for (int fIdx = 0; fIdx < nFound; ++fIdx) {
+                    unsigned nFound = foundList.at(fr);
+                    if ((nFound>0) && (fr!=unsigned(r))) {
+                        for (unsigned fIdx = 0; fIdx < nFound; ++fIdx) {
                             auto sampledElem = receiveObject(comm(),fr);
                             sampledDataList.push_back(sampledElem);
                         }

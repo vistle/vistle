@@ -1551,6 +1551,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 port.second.objects() = m_cache.getObjects(port.first);
                 auto srcPort = *port.second.connections().begin();
                 for (const auto &o: port.second.objects()) {
+                    (void)o;
                     objectAdded(srcPort->getModuleID(), srcPort->getName(), &port.second);
                 }
                 ++numConnected;

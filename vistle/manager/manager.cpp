@@ -161,12 +161,12 @@ bool VistleManager::run(int argc, char* argv[]) {
 #ifdef HAVE_X11_ICE
                 IceSetIOErrorHandler(&iceIOErrorHandler);
 #endif
-                auto app = new QApplication(argc, argv);
+                (void)new QApplication(argc, argv);
             }
             xcb_disconnect(xconn);
         }
 #else
-        auto app = new QApplication(argc, argv);
+        (void)new QApplication(argc, argv);
 #endif
         if (qApp) {
             qApp->setAttribute(Qt::AA_MacDontSwapCtrlAndMeta);
