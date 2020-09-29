@@ -986,7 +986,19 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
             sendMessage(modFrom, connect);
         if (isLocal(modTo))
             sendMessage(modTo, connect);
-    } else {
+         if (m_stateTracker.getModuleState(modFrom) & StateObserver::Busy)
+         {
+            message::Execute exec{message::Execute::What::Prepare};
+            exec.setDestId(modTo);
+            sendMessage(modTo, exec);
+            auto mod = runningMap.find(modTo);
+            if (mod != runningMap.end())
+            {
+               mod->second.prepared = true;
+               mod->second.reduced = false;
+            }
+         }
+        } else {
         sendHub(connect);
     }
 #if 0
@@ -1041,8 +1053,22 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
         int modFrom = disconnect.getModuleA();
         int modTo = disconnect.getModuleB();
         if (isLocal(modFrom))
+        {
             sendMessage(modFrom, disconnect);
-        if (isLocal(modTo))
+            if (m_stateTracker.getModuleState(modFrom) & StateObserver::Busy)
+            {
+               message::Execute exec{message::Execute::What::Reduce};
+               exec.setDestId(modTo);
+               sendMessage(modTo, exec);
+               auto mod = runningMap.find(modTo);
+               if (mod != runningMap.end())
+               {
+                  mod->second.prepared = false;
+                  mod->second.reduced = true;
+               }
+            }
+         } 
+         if (isLocal(modTo))
             sendMessage(modTo, disconnect);
    } else if (isLocal(disconnect.senderId())) {
        sendHub(disconnect);
