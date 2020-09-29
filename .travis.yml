@@ -75,6 +75,7 @@ addons:
     homebrew:
         #update: true # necessary for 'brew bundle' with xcode10.3 and older
         packages:
+            - ccache
             - cmake
             - ninja
             - libomp
