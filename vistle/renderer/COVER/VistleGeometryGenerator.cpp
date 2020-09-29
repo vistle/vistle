@@ -456,7 +456,7 @@ osg::Vec3Array *computeNormals(typename Geometry::const_ptr geometry, bool index
     if (numCorners > 0) {
         normals->resize(indexGeom ? numCoords : numCorners);
         for (Index prim=0; prim<numPrim; ++prim) {
-            const Index begin = geo.getPrimitiveBegin(prim);
+            const Index begin = geo.getPrimitiveBegin(prim), end = geo.getPrimitiveBegin(prim+1);
             Index v0 = cl[begin+0], v1 = cl[begin+1], v2 = cl[begin+2];
             osg::Vec3 u(x[v0], y[v0], z[v0]);
             osg::Vec3 v(x[v1], y[v1], z[v1]);
