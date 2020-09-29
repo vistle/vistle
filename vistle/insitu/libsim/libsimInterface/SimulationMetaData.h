@@ -9,11 +9,10 @@
 
 // C-callable implementation of front end functions
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-V_LIBSIMXPORT int simv2_SimulationMetaData_alloc(visit_handle*);
+V_LIBSIMXPORT int simv2_SimulationMetaData_alloc(visit_handle *);
 V_LIBSIMXPORT int simv2_SimulationMetaData_free(visit_handle);
 
 V_LIBSIMXPORT int simv2_SimulationMetaData_setMode(visit_handle h, int mode);
@@ -35,8 +34,7 @@ V_LIBSIMXPORT int simv2_SimulationMetaData_addMessage(visit_handle h, visit_hand
 V_LIBSIMXPORT int simv2_SimulationMetaData_check(visit_handle h);
 
 // Callable from within the runtime and SimV2
-V_LIBSIMXPORT int simv2_SimulationMetaData_getData(visit_handle, 
-                  int &mode, int &cycle, double &time);
+V_LIBSIMXPORT int simv2_SimulationMetaData_getData(visit_handle, int &mode, int &cycle, double &time);
 V_LIBSIMXPORT int simv2_SimulationMetaData_getNumMeshes(visit_handle h, int &n);
 V_LIBSIMXPORT int simv2_SimulationMetaData_getMesh(visit_handle h, int i, visit_handle &obj);
 V_LIBSIMXPORT int simv2_SimulationMetaData_getNumVariables(visit_handle h, int &n);

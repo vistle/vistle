@@ -9,22 +9,20 @@
 #include "DomainBoundaries.h"
 #include <cstring>
 
-#define CALLING_UNKNOWN            -1
-#define CALLING_RECT_FUNCTIONS      0
-#define CALLING_AMR_FUNCTIONS       1
-#define CALLING_NEIGHBOR_FUNCTIONS  2
+#define CALLING_UNKNOWN -1
+#define CALLING_RECT_FUNCTIONS 0
+#define CALLING_AMR_FUNCTIONS 1
+#define CALLING_NEIGHBOR_FUNCTIONS 2
 
-struct VisIt_DomainBoundaries : public VisIt_ObjectBase
-{
+struct VisIt_DomainBoundaries: public VisIt_ObjectBase {
     VisIt_DomainBoundaries();
     virtual ~VisIt_DomainBoundaries();
 
     avtStructuredDomainBoundaries *boundaries;
-    int                            callingMode;
+    int callingMode;
 };
 
-VisIt_DomainBoundaries::VisIt_DomainBoundaries() : 
-    VisIt_ObjectBase(VISIT_DOMAIN_BOUNDARIES)
+VisIt_DomainBoundaries::VisIt_DomainBoundaries(): VisIt_ObjectBase(VISIT_DOMAIN_BOUNDARIES)
 {
     boundaries = NULL;
     callingMode = CALLING_UNKNOWN;
@@ -32,24 +30,19 @@ VisIt_DomainBoundaries::VisIt_DomainBoundaries() :
 
 VisIt_DomainBoundaries::~VisIt_DomainBoundaries()
 {
-    if(boundaries != NULL)
+    if (boundaries != NULL)
         delete boundaries;
 }
 
-static VisIt_DomainBoundaries *
-GetObject(visit_handle h)
+static VisIt_DomainBoundaries *GetObject(visit_handle h)
 {
     VisIt_DomainBoundaries *obj = (VisIt_DomainBoundaries *)VisItGetPointer(h);
-    if(obj != NULL)
-    {
-        if(obj->objectType() != VISIT_DOMAIN_BOUNDARIES)
-        {
+    if (obj != NULL) {
+        if (obj->objectType() != VISIT_DOMAIN_BOUNDARIES) {
             VisItError("The provided handle does not point to a DomainBoundaries object.");
             obj = NULL;
         }
-    }
-    else
-    {
+    } else {
         VisItError("An invalid handle was provided.");
     }
 
@@ -59,20 +52,17 @@ GetObject(visit_handle h)
 /*******************************************************************************
  * Public functions, available to C 
  ******************************************************************************/
-int
-simv2_DomainBoundaries_alloc(visit_handle *h)
+int simv2_DomainBoundaries_alloc(visit_handle *h)
 {
     *h = VisItStorePointer(new VisIt_DomainBoundaries);
     return (*h != VISIT_INVALID_HANDLE) ? VISIT_OKAY : VISIT_ERROR;
 }
 
-int
-simv2_DomainBoundaries_free(visit_handle h)
+int simv2_DomainBoundaries_free(visit_handle h)
 {
     VisIt_DomainBoundaries *obj = GetObject(h);
     int retval = VISIT_ERROR;
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         delete obj;
         VisItFreePointer(h);
         retval = VISIT_OKAY;
@@ -80,33 +70,27 @@ simv2_DomainBoundaries_free(visit_handle h)
     return retval;
 }
 
-int
-simv2_DomainBoundaries_set_type(visit_handle h, int type)
+int simv2_DomainBoundaries_set_type(visit_handle h, int type)
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL)
-    {
-        if(obj->boundaries != NULL)
+    if (obj != NULL) {
+        if (obj->boundaries != NULL)
             delete obj->boundaries;
-        if(type == 0)
-        {
+        if (type == 0) {
             obj->boundaries = new avtRectilinearDomainBoundaries(true);
-        }
-        else
+        } else
             obj->boundaries = new avtCurvilinearDomainBoundaries(true);
         retval = VISIT_OKAY;
     }
     return retval;
 }
 
-int
-simv2_DomainBoundaries_set_numDomains(visit_handle h, int numDomains)
+int simv2_DomainBoundaries_set_numDomains(visit_handle h, int numDomains)
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
+    if (obj != NULL && obj->boundaries != NULL) {
         obj->boundaries->SetNumDomains(numDomains);
         retval = VISIT_OKAY;
     }
@@ -116,7 +100,7 @@ simv2_DomainBoundaries_set_numDomains(visit_handle h, int numDomains)
 // ****************************************************************************
 // Method: simv2_DomainBoundaries_set_rectIndices
 //
-// Purpose: 
+// Purpose:
 //   Set rectilinear domain indices so we know where the domain exists in
 //   the entire dataset.
 //
@@ -126,9 +110,9 @@ simv2_DomainBoundaries_set_numDomains(visit_handle h, int numDomains)
 //   level : the level in which the patch exists.
 //   extents : The global zone indices for the domain e.g. 0, 10, 0, 10, 0, 10
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   2010
@@ -141,24 +125,18 @@ simv2_DomainBoundaries_set_numDomains(visit_handle h, int numDomains)
 // ****************************************************************************
 
 
-int
-simv2_DomainBoundaries_set_amrIndices(visit_handle h, int patch, int level, const int extents[6])
+int simv2_DomainBoundaries_set_amrIndices(visit_handle h, int patch, int level, const int extents[6])
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
-        if(obj->callingMode == CALLING_UNKNOWN ||
-           obj->callingMode == CALLING_AMR_FUNCTIONS)
-        {
+    if (obj != NULL && obj->boundaries != NULL) {
+        if (obj->callingMode == CALLING_UNKNOWN || obj->callingMode == CALLING_AMR_FUNCTIONS) {
             int e[6];
             memcpy(e, extents, 6 * sizeof(int));
             obj->boundaries->SetIndicesForAMRPatch(patch, level, e);
             obj->callingMode = CALLING_AMR_FUNCTIONS;
             retval = VISIT_OKAY;
-        }
-        else
-        {
+        } else {
             VisItError("DomainBoundaries_set_amrIndices cannot be called on the "
                        "DomainBoundaries object once DomainBoundaries_set_rectIndices "
                        "or functions to manually add neighbors have been called.");
@@ -170,7 +148,7 @@ simv2_DomainBoundaries_set_amrIndices(visit_handle h, int patch, int level, cons
 // ****************************************************************************
 // Method: simv2_DomainBoundaries_set_rectIndices
 //
-// Purpose: 
+// Purpose:
 //   Set rectilinear domain indices so we know where the domain exists in
 //   the entire dataset.
 //
@@ -179,9 +157,9 @@ simv2_DomainBoundaries_set_amrIndices(visit_handle h, int patch, int level, cons
 //   dom : The domain for which we're setting extents.
 //   extents : The global zone indices for the domain e.g. 0, 10, 0, 10, 0, 10
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   2010
@@ -193,24 +171,18 @@ simv2_DomainBoundaries_set_amrIndices(visit_handle h, int patch, int level, cons
 //
 // ****************************************************************************
 
-int
-simv2_DomainBoundaries_set_rectIndices(visit_handle h, int dom, const int extents[6])
+int simv2_DomainBoundaries_set_rectIndices(visit_handle h, int dom, const int extents[6])
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
-        if(obj->callingMode == CALLING_UNKNOWN ||
-           obj->callingMode == CALLING_RECT_FUNCTIONS)
-        {
+    if (obj != NULL && obj->boundaries != NULL) {
+        if (obj->callingMode == CALLING_UNKNOWN || obj->callingMode == CALLING_RECT_FUNCTIONS) {
             int e[6];
             memcpy(e, extents, 6 * sizeof(int));
             obj->boundaries->SetIndicesForRectGrid(dom, e);
             obj->callingMode = CALLING_RECT_FUNCTIONS;
             retval = VISIT_OKAY;
-        }
-        else
-        {
+        } else {
             VisItError("DomainBoundaries_set_rectIndices cannot be called on the "
                        "DomainBoundaries object once DomainBoundaries_set_amrIndices "
                        "or functions to manually add neighbors have been called.");
@@ -222,7 +194,7 @@ simv2_DomainBoundaries_set_rectIndices(visit_handle h, int dom, const int extent
 // ****************************************************************************
 // Method: simv2_DomainBoundaries_set_extents
 //
-// Purpose: 
+// Purpose:
 //   Set domain extents.
 //
 // Arguments:
@@ -230,9 +202,9 @@ simv2_DomainBoundaries_set_rectIndices(visit_handle h, int dom, const int extent
 //   dom : The domain for which we're setting extents.
 //   extents : The global zone indices for the domain e.g. 0, 10, 0, 10, 0, 10
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   2012
@@ -241,24 +213,18 @@ simv2_DomainBoundaries_set_rectIndices(visit_handle h, int dom, const int extent
 //
 // ****************************************************************************
 
-int
-simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extents[6])
+int simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extents[6])
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
-        if(obj->callingMode == CALLING_UNKNOWN ||
-           obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS)
-        {
+    if (obj != NULL && obj->boundaries != NULL) {
+        if (obj->callingMode == CALLING_UNKNOWN || obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS) {
             int e[6];
             memcpy(e, extents, 6 * sizeof(int));
             obj->callingMode = CALLING_NEIGHBOR_FUNCTIONS;
             obj->boundaries->SetExtents(dom, e);
             retval = VISIT_OKAY;
-        }
-        else
-        {
+        } else {
             VisItError("DomainBoundaries_set_extents cannot be called on the "
                        "DomainBoundaries object once DomainBoundaries_set_amrIndices "
                        "or DomainBoundaries_set_rectIndices functions have been called.");
@@ -270,7 +236,7 @@ simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extents[6]
 // ****************************************************************************
 // Method: simv2_DomainBoundaries_add_neighbor
 //
-// Purpose: 
+// Purpose:
 //   Set domain extents.
 //
 // Arguments:
@@ -281,9 +247,9 @@ simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extents[6]
 //   orientation : The three orientation values
 //   extents     : The extents of the matching boundary in the current domain
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   2012
@@ -292,30 +258,24 @@ simv2_DomainBoundaries_set_extents(visit_handle h, int dom, const int extents[6]
 //
 // ****************************************************************************
 
-int
-simv2_DomainBoundaries_add_neighbor(visit_handle h, int dom, int d, int mi, 
-    const int orientation[3], const int extents[6])
+int simv2_DomainBoundaries_add_neighbor(visit_handle h, int dom, int d, int mi, const int orientation[3],
+                                        const int extents[6])
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
-        if(obj->callingMode == CALLING_UNKNOWN ||
-           obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS)
-        {
+    if (obj != NULL && obj->boundaries != NULL) {
+        if (obj->callingMode == CALLING_UNKNOWN || obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS) {
             int o[3], e[6];
             memcpy(o, orientation, sizeof(int) * 3);
             memcpy(e, extents, sizeof(int) * 6);
             obj->callingMode = CALLING_NEIGHBOR_FUNCTIONS;
-/*printf("add_neighbor: dom=%d, d=%d, mi=%d, orientation={%d,%d,%d}, extents={%d,%d,%d,%d,%d,%d}\n",
+            /*printf("add_neighbor: dom=%d, d=%d, mi=%d, orientation={%d,%d,%d}, extents={%d,%d,%d,%d,%d,%d}\n",
        dom, d, mi, orientation[0],orientation[1],orientation[2],
        e[0], e[1], e[2], e[3], e[4], e[5]);
 */
             obj->boundaries->AddNeighbor(dom, d, mi, o, e);
             retval = VISIT_OKAY;
-        }
-        else
-        {
+        } else {
             VisItError("DomainBoundaries_add_neighbor cannot be called on the "
                        "DomainBoundaries object once DomainBoundaries_set_amrIndices "
                        "or DomainBoundaries_set_rectIndices functions have been called.");
@@ -327,16 +287,16 @@ simv2_DomainBoundaries_add_neighbor(visit_handle h, int dom, int d, int mi,
 // ****************************************************************************
 // Method: simv2_DomainBoundaries_finish
 //
-// Purpose: 
+// Purpose:
 //   Set domain extents.
 //
 // Arguments:
 //   h : The handle to the domain boundaries object.
 //   dom : The domain we're finishing.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   2012
@@ -345,22 +305,16 @@ simv2_DomainBoundaries_add_neighbor(visit_handle h, int dom, int d, int mi,
 //
 // ****************************************************************************
 
-int
-simv2_DomainBoundaries_finish(visit_handle h, int dom)
+int simv2_DomainBoundaries_finish(visit_handle h, int dom)
 {
     int retval = VISIT_ERROR;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
-        if(obj->callingMode == CALLING_UNKNOWN ||
-           obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS)
-        {
+    if (obj != NULL && obj->boundaries != NULL) {
+        if (obj->callingMode == CALLING_UNKNOWN || obj->callingMode == CALLING_NEIGHBOR_FUNCTIONS) {
             obj->callingMode = CALLING_NEIGHBOR_FUNCTIONS;
             obj->boundaries->Finish(dom);
             retval = VISIT_OKAY;
-        }
-        else
-        {
+        } else {
             VisItError("DomainBoundaries_finish cannot be called on the "
                        "DomainBoundaries object once DomainBoundaries_set_amrIndices "
                        "or DomainBoundaries_set_rectIndices functions have been called.");
@@ -370,15 +324,13 @@ simv2_DomainBoundaries_finish(visit_handle h, int dom)
 }
 
 // C++ code that exists in the runtime that we can use in the SimV2 reader
-void *
-simv2_DomainBoundaries_avt(visit_handle h)
+void *simv2_DomainBoundaries_avt(visit_handle h)
 {
     void *retval = NULL;
     VisIt_DomainBoundaries *obj = GetObject(h);
-    if(obj != NULL && obj->boundaries != NULL)
-    {
+    if (obj != NULL && obj->boundaries != NULL) {
         // Only call CalculateBoundaries if we have not explicitly added neighbors.
-        if(obj->callingMode != CALLING_NEIGHBOR_FUNCTIONS)
+        if (obj->callingMode != CALLING_NEIGHBOR_FUNCTIONS)
             obj->boundaries->CalculateBoundaries();
 
         retval = (void *)obj->boundaries;

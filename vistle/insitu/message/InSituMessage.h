@@ -33,86 +33,73 @@ namespace insitu {
 namespace message {
 
 enum class InSituMessageType {
-  Invalid,
-  AddObject,
-  ConnectionClosed,
-  ExecuteCommand,
-  GoOn,
-  LibSimIntOption,
-  Ready,
-  SenseiIntOption,
-  SetCommands,
-  SetPorts, // detected ports from sim to module <--> connected ports from module
-           // to Engine
-  ShmInfo
+    Invalid,
+    AddObject,
+    ConnectionClosed,
+    ExecuteCommand,
+    GoOn,
+    LibSimIntOption,
+    Ready,
+    SenseiIntOption,
+    SetCommands,
+    SetPorts, // detected ports from sim to module <--> connected ports from module
+    // to Engine
+    ShmInfo
 #ifdef MODULE_THREAD
-  , ModuleID
+    ,
+    ModuleID
 #endif
 };
 
 class Message;
-struct V_INSITUMESSAGEEXPORT InSituMessageBase
-{
-  InSituMessageBase(InSituMessageType t)
-      : m_type(t){};
-  InSituMessageType type() const;
+struct V_INSITUMESSAGEEXPORT InSituMessageBase {
+    InSituMessageBase(InSituMessageType t): m_type(t){};
+    InSituMessageType type() const;
 
 protected:
-  InSituMessageType m_type;
+    InSituMessageType m_type;
 };
 
-template <InSituMessageType Type, typename T>
-struct InSituValueMessage : InSituMessageBase
-{
-  typedef T value_type;
-  friend class insitu::message::Message;
-  InSituValueMessage(const T &payload)
-      : InSituMessageBase(Type)
-      , value(payload)
-  {
-  }
-  static const InSituMessageType type = Type;
-  T value{};
-  ARCHIVE_ACCESS
-  template <class Archive>
-  void serialize(Archive &ar)
-  {
-    ar &value;
-  }
+template<InSituMessageType Type, typename T>
+struct InSituValueMessage: InSituMessageBase {
+    typedef T value_type;
+    friend class insitu::message::Message;
+    InSituValueMessage(const T &payload): InSituMessageBase(Type), value(payload) {}
+    static const InSituMessageType type = Type;
+    T value{};
+    ARCHIVE_ACCESS
+    template<class Archive>
+    void serialize(Archive &ar)
+    {
+        ar &value;
+    }
 
 private:
-  InSituValueMessage()
-      : InSituMessageBase(Type)
-  {
-  }
+    InSituValueMessage(): InSituMessageBase(Type) {}
 };
 
-template <InSituMessageType Type>
-struct InSituPureMessage : InSituMessageBase
-{
-  InSituPureMessage()
-      : InSituMessageBase(Type)
-  {
-  }
-  static const InSituMessageType type = Type;
-  ARCHIVE_ACCESS
-  template <class Archive>
-  void serialize(Archive &ar)
-  {
-  }
+template<InSituMessageType Type>
+struct InSituPureMessage: InSituMessageBase {
+    InSituPureMessage(): InSituMessageBase(Type) {}
+    static const InSituMessageType type = Type;
+    ARCHIVE_ACCESS
+    template<class Archive>
+    void serialize(Archive &ar)
+    {}
 };
 
 
 #define COMMA ,
 
-#define DEFINE_IN_SITU_MESSAGE_PARAM(messageType, payloadType)                                                    \
-  typedef InSituValueMessage<InSituMessageType::messageType, payloadType> messageType;
-#define DEFINE_IN_SITU_MESSAGE_NO_PARAM(messageType)                                                    \
-  typedef InSituPureMessage<InSituMessageType::messageType> messageType;
+#define DEFINE_IN_SITU_MESSAGE_PARAM(messageType, payloadType) \
+    typedef InSituValueMessage<InSituMessageType::messageType, payloadType> messageType;
+#define DEFINE_IN_SITU_MESSAGE_NO_PARAM(messageType) \
+    typedef InSituPureMessage<InSituMessageType::messageType> messageType;
 
 #define GET_MESSAGE_MACRO(_1, _2, NAME, ...) NAME
 
-#define DEFINE_IN_SITU_MESSAGE(...)GET_MESSAGE_MACRO(__VA_ARGS__, DEFINE_IN_SITU_MESSAGE_PARAM, DEFINE_IN_SITU_MESSAGE_NO_PARAM, DUMMY)(__VA_ARGS__)
+#define DEFINE_IN_SITU_MESSAGE(...) \
+    GET_MESSAGE_MACRO(__VA_ARGS__, DEFINE_IN_SITU_MESSAGE_PARAM, DEFINE_IN_SITU_MESSAGE_NO_PARAM, DUMMY)(__VA_ARGS__)
 
 
 DEFINE_IN_SITU_MESSAGE(Invalid)
@@ -130,54 +117,49 @@ DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::string)
 DEFINE_IN_SITU_MESSAGE(ModuleID, int)
 #endif
 
-struct V_INSITUMESSAGEEXPORT InSituMessage : public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU>
-{
-  InSituMessage(InSituMessageType t)
-      : m_ismType(t)
-  {
-  }
-  InSituMessageType ismType() const { return m_ismType; }
+struct V_INSITUMESSAGEEXPORT InSituMessage
+: public vistle::message::MessageBase<InSituMessage, vistle::message::INSITU> {
+    InSituMessage(InSituMessageType t): m_ismType(t) {}
+    InSituMessageType ismType() const { return m_ismType; }
 
 private:
-  InSituMessageType m_ismType;
+    InSituMessageType m_ismType;
 };
 static_assert(sizeof(InSituMessage) <= vistle::message::Message::MESSAGE_SIZE, "message too large");
 
-class V_INSITUMESSAGEEXPORT Message
-{
-
+class V_INSITUMESSAGEEXPORT Message {
 public:
-  InSituMessageType type() const;
+    InSituMessageType type() const;
 
-  template <typename SomeMessage>
-  SomeMessage &unpackOrCast() const
-  {
-    assert(SomeMessage::type == type());
-    if (!m_msg) {
-      vistle::vecistreambuf<vistle::buffer> buf(m_payload);
-      m_msg.reset(new SomeMessage{});
-      try {
-        vistle::iarchive ar(buf);
-        ar &*static_cast<SomeMessage *>(m_msg.get());
+    template<typename SomeMessage>
+    SomeMessage &unpackOrCast() const
+    {
+        assert(SomeMessage::type == type());
+        if (!m_msg) {
+            vistle::vecistreambuf<vistle::buffer> buf(m_payload);
+            m_msg.reset(new SomeMessage{});
+            try {
+                vistle::iarchive ar(buf);
+                ar &*static_cast<SomeMessage *>(m_msg.get());
 #ifdef USE_YAS
-      } catch (yas::io_exception &ex) {
-        std::cerr << "ERROR: failed to get InSituTcp::Message of type " << static_cast<int>(type())
-                  << " with payload size " << m_payload.size() << " bytes: " << ex.what() << std::endl;
+            } catch (yas::io_exception &ex) {
+                std::cerr << "ERROR: failed to get InSituTcp::Message of type " << static_cast<int>(type())
+                          << " with payload size " << m_payload.size() << " bytes: " << ex.what() << std::endl;
 #endif
-      } catch (...) {
-        throw;
-      }
+            } catch (...) {
+                throw;
+            }
+        }
+        return *static_cast<SomeMessage *>(m_msg.get());
     }
-    return *static_cast<SomeMessage *>(m_msg.get());
-  }
-  static Message errorMessage();
-  Message(InSituMessageType type, vistle::buffer &&payload);
+    static Message errorMessage();
+    Message(InSituMessageType type, vistle::buffer &&payload);
 
 private:
-  Message();
-  InSituMessageType m_type;
-  vistle::buffer m_payload;
-  mutable std::unique_ptr<InSituMessageBase> m_msg;
+    Message();
+    InSituMessageType m_type;
+    vistle::buffer m_payload;
+    mutable std::unique_ptr<InSituMessageBase> m_msg;
 };
 
 } // namespace message

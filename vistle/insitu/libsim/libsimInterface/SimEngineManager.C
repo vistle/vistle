@@ -61,10 +61,8 @@
 //
 // ****************************************************************************
 
-SimEngineManager::SimEngineManager(SimEngine *e) : ViewerEngineManagerInterface(),
-    engineKey(), engine(e)
-{
-}
+SimEngineManager::SimEngineManager(SimEngine *e): ViewerEngineManagerInterface(), engineKey(), engine(e)
+{}
 
 // ****************************************************************************
 // Method: SimEngineManager::SimEngineManager
@@ -83,8 +81,7 @@ SimEngineManager::SimEngineManager(SimEngine *e) : ViewerEngineManagerInterface(
 // ****************************************************************************
 
 SimEngineManager::~SimEngineManager()
-{
-}
+{}
 
 // ****************************************************************************
 // Method: SimEngineManager::CreateEngine
@@ -93,7 +90,7 @@ SimEngineManager::~SimEngineManager()
 //   Create an engine.
 //
 // Arguments:
-//   
+//
 //
 // Note: We're in situ so we don't need to create an engine.
 //
@@ -104,12 +101,8 @@ SimEngineManager::~SimEngineManager()
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::CreateEngine(const EngineKey &ek,
-                      const stringVector &arguments,
-                      bool  skipChooser,
-                      int   numRestarts,
-                      bool  reverseLaunch)
+bool SimEngineManager::CreateEngine(const EngineKey &ek, const stringVector &arguments, bool skipChooser,
+                                    int numRestarts, bool reverseLaunch)
 {
     // Save the engine key.
     engineKey = ek;
@@ -125,7 +118,7 @@ SimEngineManager::CreateEngine(const EngineKey &ek,
 //   Create an engine.
 //
 // Arguments:
-//   
+//
 //
 // Note: We're in situ so we don't need to create an engine.
 //
@@ -136,13 +129,8 @@ SimEngineManager::CreateEngine(const EngineKey &ek,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::CreateEngineEx(const EngineKey &ek,
-                        const stringVector &arguments,
-                        bool  skipChooser,
-                        int   numRestarts,
-                        bool  reverseLaunch,
-                        ViewerConnectionProgress *progress)
+bool SimEngineManager::CreateEngineEx(const EngineKey &ek, const stringVector &arguments, bool skipChooser,
+                                      int numRestarts, bool reverseLaunch, ViewerConnectionProgress *progress)
 {
     // Save the engine key.
     engineKey = ek;
@@ -151,32 +139,27 @@ SimEngineManager::CreateEngineEx(const EngineKey &ek,
     return true;
 }
 
-void
-SimEngineManager::CloseEngines()
+void SimEngineManager::CloseEngines()
 {
     // Does nothing
 }
 
-void
-SimEngineManager::CloseEngine(const EngineKey &/*ek*/)
+void SimEngineManager::CloseEngine(const EngineKey & /*ek*/)
 {
     // Does nothing
 }
 
-void
-SimEngineManager::InterruptEngine(const EngineKey &/*ek*/)
+void SimEngineManager::InterruptEngine(const EngineKey & /*ek*/)
 {
     // Does nothing.
 }
 
-void
-SimEngineManager::SendKeepAlives()
+void SimEngineManager::SendKeepAlives()
 {
     // Does nothing
 }
 
-bool
-SimEngineManager::EngineExists(const EngineKey &/*ek*/)
+bool SimEngineManager::EngineExists(const EngineKey & /*ek*/)
 {
     return true;
 }
@@ -187,11 +170,11 @@ SimEngineManager::EngineExists(const EngineKey &/*ek*/)
 //   Clear the cache for all networks.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:25:46 PDT 2014
@@ -200,8 +183,7 @@ SimEngineManager::EngineExists(const EngineKey &/*ek*/)
 //
 // ****************************************************************************
 
-void
-SimEngineManager::ClearCacheForAllEngines()
+void SimEngineManager::ClearCacheForAllEngines()
 {
     StackTimer t0("SimEngineManager::ClearCacheForAllEngines");
     engine->GetNetMgr()->ClearAllNetworks();
@@ -214,11 +196,11 @@ SimEngineManager::ClearCacheForAllEngines()
 //   Add the in situ engine to the engine list.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:26:08 PDT 2014
@@ -227,8 +209,7 @@ SimEngineManager::ClearCacheForAllEngines()
 //
 // ****************************************************************************
 
-void
-SimEngineManager::UpdateEngineList()
+void SimEngineManager::UpdateEngineList()
 {
     StackTimer t0("SimEngineManager::UpdateEngineList");
     EngineList newEL;
@@ -254,7 +235,7 @@ SimEngineManager::UpdateEngineList()
 //   command  : The command to execute.
 //   argument : Encoded command arguments
 //
-// Returns:    
+// Returns:
 //
 // Note:       The SimEngine does some "viewer-ey" things with the command.
 //
@@ -265,10 +246,8 @@ SimEngineManager::UpdateEngineList()
 //
 // ****************************************************************************
 
-void
-SimEngineManager::SendSimulationCommand(const EngineKey &/*ek*/,
-                                        const std::string &command,
-                                        const std::string &argument)
+void SimEngineManager::SendSimulationCommand(const EngineKey & /*ek*/, const std::string &command,
+                                             const std::string &argument)
 {
     StackTimer t0("SimEngineManager::SendSimulationCommand");
     engine->ExecuteSimulationCommand(command, argument);
@@ -279,12 +258,8 @@ SimEngineManager::SendSimulationCommand(const EngineKey &/*ek*/,
 // with libsim.
 //
 
-bool
-SimEngineManager::ConnectSim(const EngineKey &ek,
-                             const stringVector &arguments,
-                             const std::string &simHost,
-                             int simPort,
-                             const std::string &simSecurityKey)
+bool SimEngineManager::ConnectSim(const EngineKey &ek, const stringVector &arguments, const std::string &simHost,
+                                  int simPort, const std::string &simSecurityKey)
 {
     // Save the engine key.
     engineKey = ek;
@@ -292,32 +267,27 @@ SimEngineManager::ConnectSim(const EngineKey &ek,
     return true;
 }
 
-int
-SimEngineManager::GetWriteSocket(const EngineKey &/*ek*/)
+int SimEngineManager::GetWriteSocket(const EngineKey & /*ek*/)
 {
     return -1;
 }
 
-void
-SimEngineManager::ReadDataAndProcess(const EngineKey &/*ek*/)
+void SimEngineManager::ReadDataAndProcess(const EngineKey & /*ek*/)
 {
     // Does nothing.
 }
 
-avtDatabaseMetaData *
-SimEngineManager::GetSimulationMetaData(const EngineKey &/*ek*/)
+avtDatabaseMetaData *SimEngineManager::GetSimulationMetaData(const EngineKey & /*ek*/)
 {
     return NULL;
 }
 
-SILAttributes *
-SimEngineManager::GetSimulationSILAtts(const EngineKey &/*ek*/)
+SILAttributes *SimEngineManager::GetSimulationSILAtts(const EngineKey & /*ek*/)
 {
     return NULL;
 }
 
-SimulationCommand *
-SimEngineManager::GetCommandFromSimulation(const EngineKey &/*ek*/)
+SimulationCommand *SimEngineManager::GetCommandFromSimulation(const EngineKey & /*ek*/)
 {
     return NULL;
 }
@@ -329,11 +299,11 @@ SimEngineManager::GetCommandFromSimulation(const EngineKey &/*ek*/)
 //   Called when the engine needs to open a database.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -342,11 +312,8 @@ SimEngineManager::GetCommandFromSimulation(const EngineKey &/*ek*/)
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::OpenDatabase(const EngineKey &/*ek*/, 
-                               const std::string &format, 
-                               const std::string &filename,
-                               int timeState)
+bool SimEngineManager::OpenDatabase(const EngineKey & /*ek*/, const std::string &format, const std::string &filename,
+                                    int timeState)
 {
     StackTimer t0("SimEngineManager::OpenDatabase");
     return engine->OpenDatabase();
@@ -359,11 +326,11 @@ SimEngineManager::OpenDatabase(const EngineKey &/*ek*/,
 //   Called when the engine needs to define a virtual database.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -372,24 +339,20 @@ SimEngineManager::OpenDatabase(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::DefineVirtualDatabase(const EngineKey &/*ek*/,
-                                        const std::string &format,
-                                        const std::string &dbName,
-                                        const std::string &path, 
-                                        const stringVector &files,
-                                        int time)
+bool SimEngineManager::DefineVirtualDatabase(const EngineKey & /*ek*/, const std::string &format,
+                                             const std::string &dbName, const std::string &path,
+                                             const stringVector &files, int time)
 {
     StackTimer t0("SimEngineManager::DefineVirtualDatabase");
-// NOTE: This is pretty much the same as Executors.h. We could make this a proper
-//       method of NetworkManager to reduce code duplication.
+    // NOTE: This is pretty much the same as Executors.h. We could make this a proper
+    //       method of NetworkManager to reduce code duplication.
 
     engine->GetNetMgr()->GetDatabasePluginManager()->PluginAvailable(format);
 
-    avtDatabaseFactory::SetCreateMeshQualityExpressions(GetViewerState()->
-        GetGlobalAttributes()->GetCreateMeshQualityExpressions());
-    avtDatabaseFactory::SetCreateTimeDerivativeExpressions(GetViewerState()->
-        GetGlobalAttributes()->GetCreateTimeDerivativeExpressions());
+    avtDatabaseFactory::SetCreateMeshQualityExpressions(
+        GetViewerState()->GetGlobalAttributes()->GetCreateMeshQualityExpressions());
+    avtDatabaseFactory::SetCreateTimeDerivativeExpressions(
+        GetViewerState()->GetGlobalAttributes()->GetCreateTimeDerivativeExpressions());
 
     engine->GetNetMgr()->DefineDB(dbName, path, files, time, format);
     return true;
@@ -402,11 +365,11 @@ SimEngineManager::DefineVirtualDatabase(const EngineKey &/*ek*/,
 //   Called when the engine needs to read a data object to start a network.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -415,19 +378,11 @@ SimEngineManager::DefineVirtualDatabase(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ReadDataObject(const EngineKey &/*ek*/,
-    const std::string &format,
-    const std::string &filename,
-    const std::string &var, const int ts,
-    avtSILRestriction_p silr,
-    const MaterialAttributes &matopts,
-    const ExpressionList &expressions,
-    const MeshManagementAttributes &meshopts,
-    bool treatAllDbsAsTimeVarying,
-    bool ignoreExtents,
-    const std::string &selName,
-    int windowID)
+bool SimEngineManager::ReadDataObject(const EngineKey & /*ek*/, const std::string &format, const std::string &filename,
+                                      const std::string &var, const int ts, avtSILRestriction_p silr,
+                                      const MaterialAttributes &matopts, const ExpressionList &expressions,
+                                      const MeshManagementAttributes &meshopts, bool treatAllDbsAsTimeVarying,
+                                      bool ignoreExtents, const std::string &selName, int windowID)
 {
     StackTimer t0("SimEngineManager::ReadDataObject");
     engine->GetNetMgr()->GetDatabasePluginManager()->PluginAvailable(format);
@@ -436,17 +391,8 @@ SimEngineManager::ReadDataObject(const EngineKey &/*ek*/,
     *ParsingExprList::Instance()->GetList() = expressions;
 
     CompactSILRestrictionAttributes *cSilAtts = silr->MakeCompactAttributes();
-    engine->GetNetMgr()->StartNetwork(format,
-                                      filename, 
-                                      var,
-                                      ts,
-                                      *cSilAtts,
-                                      matopts,
-                                      meshopts,
-                                      treatAllDbsAsTimeVarying,
-                                      ignoreExtents,
-                                      selName,
-                                      windowID);
+    engine->GetNetMgr()->StartNetwork(format, filename, var, ts, *cSilAtts, matopts, meshopts, treatAllDbsAsTimeVarying,
+                                      ignoreExtents, selName, windowID);
 
     delete cSilAtts;
     return true;
@@ -459,11 +405,11 @@ SimEngineManager::ReadDataObject(const EngineKey &/*ek*/,
 //   Called when the engine needs to add an operator to the pipeline.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -472,10 +418,7 @@ SimEngineManager::ReadDataObject(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ApplyOperator(const EngineKey &/*ek*/,
-                                const std::string &name,
-                                const AttributeSubject *atts)
+bool SimEngineManager::ApplyOperator(const EngineKey & /*ek*/, const std::string &name, const AttributeSubject *atts)
 {
     StackTimer t0("SimEngineManager::ApplyOperator");
     engine->GetNetMgr()->AddFilter(name, atts);
@@ -489,11 +432,11 @@ SimEngineManager::ApplyOperator(const EngineKey &/*ek*/,
 //   Called when the engine needs to add a plot to terminate the pipeline.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -502,17 +445,11 @@ SimEngineManager::ApplyOperator(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::MakePlot(const EngineKey &/*ek*/,
-                           const std::string &plotName,
-                           const std::string &pluginID,
-                           const AttributeSubject *atts,
-                           const std::vector<double> &ext,
-                           int winID, int *networkId)
+bool SimEngineManager::MakePlot(const EngineKey & /*ek*/, const std::string &plotName, const std::string &pluginID,
+                                const AttributeSubject *atts, const std::vector<double> &ext, int winID, int *networkId)
 {
     StackTimer t0("SimEngineManager::MakePlot");
-    if (!engine->GetNetMgr()->GetPlotPluginManager()->PluginAvailable(pluginID))
-    {
+    if (!engine->GetNetMgr()->GetPlotPluginManager()->PluginAvailable(pluginID)) {
         engine->GetNetMgr()->CancelNetwork();
         return false;
     }
@@ -531,11 +468,11 @@ SimEngineManager::MakePlot(const EngineKey &/*ek*/,
 //   Called when the engine needs to set the plot attributes.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -544,15 +481,12 @@ SimEngineManager::MakePlot(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::UpdatePlotAttributes(const EngineKey &/*ek*/,
-                                       const std::string &pluginID,
-                                       int id, const AttributeSubject *atts)
+bool SimEngineManager::UpdatePlotAttributes(const EngineKey & /*ek*/, const std::string &pluginID, int id,
+                                            const AttributeSubject *atts)
 {
     StackTimer t0("SimEngineManager::UpdatePlotAttributes");
     // Prepare
-    if (!engine->GetNetMgr()->GetPlotPluginManager()->PluginAvailable(pluginID))
-    {
+    if (!engine->GetNetMgr()->GetPlotPluginManager()->PluginAvailable(pluginID)) {
         return false;
     }
 
@@ -569,11 +503,11 @@ SimEngineManager::UpdatePlotAttributes(const EngineKey &/*ek*/,
 //   Called when the engine needs to activate a particular network.
 //
 // Arguments:
-//   
+//
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:08:18 PDT 2014
@@ -582,8 +516,7 @@ SimEngineManager::UpdatePlotAttributes(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::UseNetwork(const EngineKey &/*ek*/, int networkId)
+bool SimEngineManager::UseNetwork(const EngineKey & /*ek*/, int networkId)
 {
     StackTimer t0("SimEngineManager::UseNetwork");
     engine->GetNetMgr()->UseNetwork(networkId);
@@ -592,7 +525,7 @@ SimEngineManager::UseNetwork(const EngineKey &/*ek*/, int networkId)
 
 
 // For now, we force the consolidated data from rank 0 to be sent to all ranks.
-// This is bad but works for now. Maybe we can get away with a dummy dataset 
+// This is bad but works for now. Maybe we can get away with a dummy dataset
 // instead down the road.
 #define TEMPORARILY_FORCE_SAME_DATA_IN_VIEWER
 
@@ -607,9 +540,9 @@ SimEngineManager::UseNetwork(const EngineKey &/*ek*/, int networkId)
 //   cbdata : The callback data (in this case, a buffer to store the contents
 //            of the data object string before it goes out of scope).
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 21:44:01 PDT 2014
@@ -618,8 +551,7 @@ SimEngineManager::UseNetwork(const EngineKey &/*ek*/, int networkId)
 //
 // ****************************************************************************
 
-void
-SimEngineManager::WriteCallback(avtDataObjectString &do_str, void *cbdata)
+void SimEngineManager::WriteCallback(avtDataObjectString &do_str, void *cbdata)
 {
     StackTimer t0("SimEngineManager::WriteCallback");
     DOString *d = (DOString *)cbdata;
@@ -639,7 +571,7 @@ SimEngineManager::WriteCallback(avtDataObjectString &do_str, void *cbdata)
 //   rdr : The data object reader.
 //   dos : The data object string buffer.
 //
-// Returns:    
+// Returns:
 //
 // Note:       We're temporarily broadcasting data object results from rank 0
 //             to other ranks so they are happy. We can probably figure a way
@@ -652,14 +584,12 @@ SimEngineManager::WriteCallback(avtDataObjectString &do_str, void *cbdata)
 //
 // ****************************************************************************
 
-void
-SimEngineManager::ReadDataObjectString(avtDataObjectReader_p rdr, 
-    SimEngineManager::DOString &dos)
+void SimEngineManager::ReadDataObjectString(avtDataObjectReader_p rdr, SimEngineManager::DOString &dos)
 {
     StackTimer t0("SimEngineManager::ReadDataObjectString");
 #if defined(PARALLEL) && defined(TEMPORARILY_FORCE_SAME_DATA_IN_VIEWER)
     BroadcastInt(dos.size);
-    if(!PAR_UIProcess())
+    if (!PAR_UIProcess())
         dos.buffer = new char[dos.size];
     MPI_Bcast(dos.buffer, dos.size, MPI_CHAR, 0, VISIT_MPI_COMM);
 #endif
@@ -696,10 +626,8 @@ SimEngineManager::ReadDataObjectString(avtDataObjectReader_p rdr,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::Execute(const EngineKey &/*ek*/, avtDataObjectReader_p &rdr,
-                          bool replyWithNullData,
-                          void (*waitCB)(void*), void *waitCBData)
+bool SimEngineManager::Execute(const EngineKey & /*ek*/, avtDataObjectReader_p &rdr, bool replyWithNullData,
+                               void (*waitCB)(void *), void *waitCBData)
 {
     bool success = false;
     StackTimer t0("SimEngineManager::Execute");
@@ -721,69 +649,58 @@ SimEngineManager::Execute(const EngineKey &/*ek*/, avtDataObjectReader_p &rdr,
             {
                 writer = engine->GetNetMgr()->GetOutput(replyWithNullData, false,
                                                         &cellCountMultiplier);
-            }
-            CATCH(AbortException)
-            {
-                // make a dummy dataobject writer for the call to WriteData
-                abortDob.SetWriterShouldMergeParallelStreams();
-                writer = abortDob.InstantiateWriter();
-            }
-            ENDTRY
-        });
-
-        TimedCodeBlock("Writing data",
-        {
-            // set params influencing scalable rendering 
-            int scalableThreshold = engine->GetNetMgr()->GetScalableThreshold(winId);
-            int currentTotalGlobalCellCount = engine->GetNetMgr()->GetTotalGlobalCellCounts(winId);
-            int currentNetworkGlobalCellCount = 0;
-            bool scalableThresholdExceeded = false;
-            bool useCompression = engine->GetNetMgr()->GetShouldUseCompression(winId);
-
-            // Gather the data for the viewer and call the write callback.
-            rdr = new avtDataObjectReader;
-            std::string errorMessage;
-            TRY
-            {
-                DOString dos;
-                success = engine->GatherData(writer,
-                                         useCompression,
-                                         replyWithNullData,
-                                         scalableThreshold, 
-                                         currentTotalGlobalCellCount, cellCountMultiplier,
-                                         NULL, NULL,
-                                         WriteCallback, (void*)&dos,
-                                         errorMessage,
-                                         &scalableThresholdExceeded,
-                                         &currentNetworkGlobalCellCount);
-
-                // Read the data object string that we harvested in WriteCallback.
-                if(success)
-                    ReadDataObjectString(rdr, dos);
-            }
-            CATCH(VisItException)
-            {
-                RETHROW;
-            }
-            ENDTRY
-
-            // re-set the network if we exceeded the scalable threshold
-            if (scalableThresholdExceeded && !replyWithNullData)
-                engine->GetNetMgr()->UseNetwork(netId);
-
-            // only update cell count if we're not here asking for null data
-            if (!replyWithNullData)
-                engine->GetNetMgr()->SetGlobalCellCount(netId, currentNetworkGlobalCellCount);
-
-        });
     }
-    CATCH(ImproperUseException)
+    CATCH(AbortException)
     {
-        engine->SetNoFatalExceptions(false);
+        // make a dummy dataobject writer for the call to WriteData
+        abortDob.SetWriterShouldMergeParallelStreams();
+        writer = abortDob.InstantiateWriter();
     }
     ENDTRY
+});
 
-    return success;
+TimedCodeBlock("Writing data", {
+    // set params influencing scalable rendering
+    int scalableThreshold = engine->GetNetMgr()->GetScalableThreshold(winId);
+    int currentTotalGlobalCellCount = engine->GetNetMgr()->GetTotalGlobalCellCounts(winId);
+    int currentNetworkGlobalCellCount = 0;
+    bool scalableThresholdExceeded = false;
+    bool useCompression = engine->GetNetMgr()->GetShouldUseCompression(winId);
+
+    // Gather the data for the viewer and call the write callback.
+    rdr = new avtDataObjectReader;
+    std::string errorMessage;
+    TRY
+    {
+        DOString dos;
+        success =
+            engine->GatherData(writer, useCompression, replyWithNullData, scalableThreshold,
+                               currentTotalGlobalCellCount, cellCountMultiplier, NULL, NULL, WriteCallback,
+                               (void *)&dos, errorMessage, &scalableThresholdExceeded, &currentNetworkGlobalCellCount);
+
+        // Read the data object string that we harvested in WriteCallback.
+        if (success)
+            ReadDataObjectString(rdr, dos);
+    }
+    CATCH(VisItException) { RETHROW; }
+    ENDTRY
+
+    // re-set the network if we exceeded the scalable threshold
+    if (scalableThresholdExceeded && !replyWithNullData)
+        engine->GetNetMgr()->UseNetwork(netId);
+
+    // only update cell count if we're not here asking for null data
+    if (!replyWithNullData)
+        engine->GetNetMgr()->SetGlobalCellCount(netId, currentNetworkGlobalCellCount);
+});
+}
+CATCH(ImproperUseException)
+{
+    engine->SetNoFatalExceptions(false);
+}
+ENDTRY
+
+return success;
 }
 
 // ****************************************************************************
@@ -794,9 +711,9 @@ SimEngineManager::Execute(const EngineKey &/*ek*/, avtDataObjectReader_p &rdr,
 //   in a data object reader.
 //
 // Arguments:
-//   
 //
-// Returns:    
+//
+// Returns:
 //
 // Note:       The write/read using the data object reader is unnecessary in
 //             the long run if we can streamline the Viewer/Engine interface
@@ -814,12 +731,9 @@ SimEngineManager::Execute(const EngineKey &/*ek*/, avtDataObjectReader_p &rdr,
 //
 // ****************************************************************************
 
-int 
-SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
-                         avtImageType imgT, bool sendZBuffer,
-                         const intVector &networkIds, 
-                         int annotMode, int windowID, bool leftEye,
-                         void (*waitCB)(void *), void *waitCBData)
+int SimEngineManager::Render(const EngineKey & /*ek*/, avtImage_p &img, avtImageType imgT, bool sendZBuffer,
+                             const intVector &networkIds, int annotMode, int windowID, bool leftEye,
+                             void (*waitCB)(void *), void *waitCBData)
 {
     StackTimer t0("SimEngineManager::Render");
     int retval = 0; // no image
@@ -827,31 +741,27 @@ SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
     // Do the render
     int outImgWidth = 0, outImgHeight = 0;
     bool checkThreshold = true;
-    avtDataObject_p image = engine->GetNetMgr()->Render(imgT, sendZBuffer,
-        networkIds, checkThreshold, annotMode, windowID, leftEye,
-        outImgWidth, outImgHeight);
+    avtDataObject_p image = engine->GetNetMgr()->Render(imgT, sendZBuffer, networkIds, checkThreshold, annotMode,
+                                                        windowID, leftEye, outImgWidth, outImgHeight);
 
 #if 1
     // We're doing in situ. Let's always return an image. If we don't have one,
     // make one. We know how big it would be. We do this because the status
     // broadcast may be affecting scalability.
 
-    if(*image == NULL)
-    {
+    if (*image == NULL) {
         debug5 << "Making blank image " << outImgWidth << "x" << outImgHeight << endl;
         // Make an image. This is just to make the viewer pieces
         // happy so we can make basically a blank image.
-        int npix = outImgWidth*outImgHeight;
+        int npix = outImgWidth * outImgHeight;
         vtkImageData *rgb = avtImageRepresentation::NewImage(outImgWidth, outImgHeight);
         float *z = new float[npix];
-        memset(rgb->GetScalarPointer(0,0,0), 0, sizeof(unsigned char) * npix * 3);
+        memset(rgb->GetScalarPointer(0, 0, 0), 0, sizeof(unsigned char) * npix * 3);
         memset(z, 0, sizeof(float) * npix);
         img = new avtImage(NULL);
         img->SetImage(avtImageRepresentation(rgb, z, true));
         rgb->Delete();
-    }
-    else
-    {
+    } else {
         CopyTo(img, image);
     }
 
@@ -859,9 +769,8 @@ SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
 #else
     // Non-0 ranks will have an empty image. Share some information about
     // the image on rank 0 so we can do the right thing on other ranks.
-    int data[3] = {0,0,0};
-    if(*image != NULL)
-    {
+    int data[3] = {0, 0, 0};
+    if (*image != NULL) {
         data[0] = 2;
         // We get to directly pass back the rendered image to the
         // calling viewer infrastructure.
@@ -872,19 +781,17 @@ SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
     // Send the rank 0 results to all.
     BroadcastIntArray(data, 3);
 
-    if(data[0] == 0)
+    if (data[0] == 0)
         retval = 0; // fail.
-    else
-    {
-        if(PAR_Rank() > 0)
-        {
+    else {
+        if (PAR_Rank() > 0) {
             debug5 << "Making blank image " << data[1] << "x" << data[2] << endl;
             // Make an image. This is just to make the viewer pieces
             // happy so we can make basically a blank image.
-            int npix = data[1]*data[2];
-            vtkImageData *rgb = avtImageRepresentation::NewImage(data[1],data[2]);
+            int npix = data[1] * data[2];
+            vtkImageData *rgb = avtImageRepresentation::NewImage(data[1], data[2]);
             float *z = new float[npix];
-            memset(rgb->GetScalarPointer(0,0,0), 0, sizeof(unsigned char) * npix * 3);
+            memset(rgb->GetScalarPointer(0, 0, 0), 0, sizeof(unsigned char) * npix * 3);
             memset(z, 0, sizeof(float) * npix);
             img = new avtImage(NULL);
             img->SetImage(avtImageRepresentation(rgb, z, true));
@@ -906,11 +813,11 @@ SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
 //   Called when we want to perform a pick.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 15 17:40:56 PDT 2014
@@ -919,9 +826,8 @@ SimEngineManager::Render(const EngineKey &/*ek*/, avtImage_p &img,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::Pick(const EngineKey &/*ek*/, const int networkId, int windowId,
-                       const PickAttributes *atts, PickAttributes &retAtts)
+bool SimEngineManager::Pick(const EngineKey & /*ek*/, const int networkId, int windowId, const PickAttributes *atts,
+                            PickAttributes &retAtts)
 {
     StackTimer t0("SimEngineManager::Pick");
     retAtts = *atts;
@@ -940,11 +846,11 @@ SimEngineManager::Pick(const EngineKey &/*ek*/, const int networkId, int windowI
 //   Called when we want to perform a pick.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 15 17:40:56 PDT 2014
@@ -953,9 +859,7 @@ SimEngineManager::Pick(const EngineKey &/*ek*/, const int networkId, int windowI
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::StartPick(const EngineKey &/*ek*/, const bool forZones,
-                            const bool flag, const int nid)
+bool SimEngineManager::StartPick(const EngineKey & /*ek*/, const bool forZones, const bool flag, const int nid)
 {
     StackTimer t0("SimEngineManager::StartPick");
     if (flag)
@@ -972,11 +876,11 @@ SimEngineManager::StartPick(const EngineKey &/*ek*/, const bool forZones,
 //   Called when we want to perform a query.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 15 17:40:56 PDT 2014
@@ -985,8 +889,7 @@ SimEngineManager::StartPick(const EngineKey &/*ek*/, const bool forZones,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::StartQuery(const EngineKey &/*ek*/, const bool flag, const int nid)
+bool SimEngineManager::StartQuery(const EngineKey & /*ek*/, const bool flag, const int nid)
 {
     StackTimer t0("SimEngineManager::StartQuery");
     if (flag)
@@ -1003,11 +906,11 @@ SimEngineManager::StartQuery(const EngineKey &/*ek*/, const bool flag, const int
 //   Called when we want to set the engine's window properties.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 15 17:40:56 PDT 2014
@@ -1016,29 +919,14 @@ SimEngineManager::StartQuery(const EngineKey &/*ek*/, const bool flag, const int
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::SetWinAnnotAtts(const EngineKey &/*ek*/,
-                                 const WindowAttributes *wa,
-                                 const AnnotationAttributes *aa,
-                                 const AnnotationObjectList *ao,
-                                 const std::string extStr,
-                                 const VisualCueList *visCues,
-                                 const int *frameAndState,
-                                 const double *viewExtents,
-                                 const std::string ctName,
-                                 const int windowID)
+bool SimEngineManager::SetWinAnnotAtts(const EngineKey & /*ek*/, const WindowAttributes *wa,
+                                       const AnnotationAttributes *aa, const AnnotationObjectList *ao,
+                                       const std::string extStr, const VisualCueList *visCues, const int *frameAndState,
+                                       const double *viewExtents, const std::string ctName, const int windowID)
 {
     StackTimer t0("SimEngineManager::SetWinAnnotAtts");
-    engine->GetNetMgr()->SetWindowAttributes(*wa,
-                                extStr,
-                                viewExtents,
-                                ctName,
-                                windowID);
-    engine->GetNetMgr()->SetAnnotationAttributes(*aa,
-                                    *ao,
-                                    *visCues,
-                                    frameAndState,
-                                    windowID);
+    engine->GetNetMgr()->SetWindowAttributes(*wa, extStr, viewExtents, ctName, windowID);
+    engine->GetNetMgr()->SetAnnotationAttributes(*aa, *ao, *visCues, frameAndState, windowID);
 
     return true;
 }
@@ -1050,11 +938,11 @@ SimEngineManager::SetWinAnnotAtts(const EngineKey &/*ek*/,
 //   Perform a query.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1063,11 +951,8 @@ SimEngineManager::SetWinAnnotAtts(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::Query(const EngineKey &/*ek*/,
-                        const intVector &networkIds, 
-                        const QueryAttributes *atts,
-                        QueryAttributes &retAtts)
+bool SimEngineManager::Query(const EngineKey & /*ek*/, const intVector &networkIds, const QueryAttributes *atts,
+                             QueryAttributes &retAtts)
 {
     StackTimer t0("SimEngineManager::Query");
     retAtts = *atts;
@@ -1082,11 +967,11 @@ SimEngineManager::Query(const EngineKey &/*ek*/,
 //   Get query parameters for the specified query.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1095,10 +980,7 @@ SimEngineManager::Query(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::GetQueryParameters(const EngineKey &/*ek*/,
-                                     const std::string &qname,
-                                     std::string *params)
+bool SimEngineManager::GetQueryParameters(const EngineKey & /*ek*/, const std::string &qname, std::string *params)
 {
     StackTimer t0("SimEngineManager::GetQueryParameters");
     *params = engine->GetNetMgr()->GetQueryParameters(qname);
@@ -1112,11 +994,11 @@ SimEngineManager::GetQueryParameters(const EngineKey &/*ek*/,
 //   Clear the engine cache.
 //
 // Arguments:
-//   
 //
-// Returns:    
 //
-// Note:       
+// Returns:
+//
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1125,8 +1007,7 @@ SimEngineManager::GetQueryParameters(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ClearCache(const EngineKey &/*ek*/, const std::string &dbName)
+bool SimEngineManager::ClearCache(const EngineKey & /*ek*/, const std::string &dbName)
 {
     StackTimer t0("SimEngineManager::ClearCache");
     if (dbName.empty())
@@ -1148,7 +1029,7 @@ SimEngineManager::ClearCache(const EngineKey &/*ek*/, const std::string &dbName)
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1157,8 +1038,7 @@ SimEngineManager::ClearCache(const EngineKey &/*ek*/, const std::string &dbName)
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::GetProcInfo(const EngineKey &/*ek*/, ProcessAttributes &retAtts)
+bool SimEngineManager::GetProcInfo(const EngineKey & /*ek*/, ProcessAttributes &retAtts)
 {
     StackTimer t0("SimEngineManager::GetProcInfo");
     retAtts = *engine->GetProcessAttributes();
@@ -1177,7 +1057,7 @@ SimEngineManager::GetProcInfo(const EngineKey &/*ek*/, ProcessAttributes &retAtt
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1186,8 +1066,7 @@ SimEngineManager::GetProcInfo(const EngineKey &/*ek*/, ProcessAttributes &retAtt
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ReleaseData(const EngineKey &/*ek*/, int networkId)
+bool SimEngineManager::ReleaseData(const EngineKey & /*ek*/, int networkId)
 {
     StackTimer t0("SimEngineManager::ReleaseData");
     engine->GetNetMgr()->DoneWithNetwork(networkId);
@@ -1206,7 +1085,7 @@ SimEngineManager::ReleaseData(const EngineKey &/*ek*/, int networkId)
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1215,9 +1094,7 @@ SimEngineManager::ReleaseData(const EngineKey &/*ek*/, int networkId)
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::CloneNetwork(const EngineKey &/*ek*/, int networkId, 
-                               const QueryOverTimeAttributes *qatts)
+bool SimEngineManager::CloneNetwork(const EngineKey & /*ek*/, int networkId, const QueryOverTimeAttributes *qatts)
 {
     StackTimer t0("SimEngineManager::CloneNetwork");
     engine->GetNetMgr()->CloneNetwork(networkId);
@@ -1246,7 +1123,7 @@ SimEngineManager::CloneNetwork(const EngineKey &/*ek*/, int networkId,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1255,11 +1132,8 @@ SimEngineManager::CloneNetwork(const EngineKey &/*ek*/, int networkId,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::CreateNamedSelection(const EngineKey &/*ek*/, 
-                                       int networkId,
-                                       const SelectionProperties &props,
-                                       SelectionSummary &summary)
+bool SimEngineManager::CreateNamedSelection(const EngineKey & /*ek*/, int networkId, const SelectionProperties &props,
+                                            SelectionSummary &summary)
 {
     StackTimer t0("SimEngineManager::CreateNamedSelection");
     summary.SetName(props.GetName());
@@ -1283,7 +1157,7 @@ SimEngineManager::CreateNamedSelection(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1292,18 +1166,14 @@ SimEngineManager::CreateNamedSelection(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::UpdateNamedSelection(const EngineKey &/*ek*/, 
-                                       int networkId,
-                                       const SelectionProperties &props, 
-                                       bool allowCache,
-                                       SelectionSummary &summary)
+bool SimEngineManager::UpdateNamedSelection(const EngineKey & /*ek*/, int networkId, const SelectionProperties &props,
+                                            bool allowCache, SelectionSummary &summary)
 {
-    if(!allowCache)
+    if (!allowCache)
         avtNamedSelectionManager::GetInstance()->ClearCache(props.GetName());
-     engine->GetNetMgr()->DeleteNamedSelection(props.GetName());
-     summary = engine->GetNetMgr()->CreateNamedSelection(networkId, props);
-     return true;
+    engine->GetNetMgr()->DeleteNamedSelection(props.GetName());
+    summary = engine->GetNetMgr()->CreateNamedSelection(networkId, props);
+    return true;
 }
 
 // ****************************************************************************
@@ -1318,7 +1188,7 @@ SimEngineManager::UpdateNamedSelection(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1327,9 +1197,7 @@ SimEngineManager::UpdateNamedSelection(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::DeleteNamedSelection(const EngineKey &/*ek*/,
-                                       const std::string &selName)
+bool SimEngineManager::DeleteNamedSelection(const EngineKey & /*ek*/, const std::string &selName)
 {
     avtNamedSelectionManager::GetInstance()->ClearCache(selName);
     engine->GetNetMgr()->DeleteNamedSelection(selName);
@@ -1348,7 +1216,7 @@ SimEngineManager::DeleteNamedSelection(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1357,9 +1225,7 @@ SimEngineManager::DeleteNamedSelection(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::LoadNamedSelection(const EngineKey &/*ek*/,
-                                     const std::string &selName)
+bool SimEngineManager::LoadNamedSelection(const EngineKey & /*ek*/, const std::string &selName)
 {
     engine->GetNetMgr()->LoadNamedSelection(selName);
     return true;
@@ -1377,7 +1243,7 @@ SimEngineManager::LoadNamedSelection(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1386,9 +1252,7 @@ SimEngineManager::LoadNamedSelection(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::SaveNamedSelection(const EngineKey &/*ek*/,
-                                     const std::string &selName)
+bool SimEngineManager::SaveNamedSelection(const EngineKey & /*ek*/, const std::string &selName)
 {
     engine->GetNetMgr()->SaveNamedSelection(selName);
     return true;
@@ -1408,7 +1272,7 @@ SimEngineManager::SaveNamedSelection(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1417,11 +1281,8 @@ SimEngineManager::SaveNamedSelection(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ExportDatabases(const EngineKey &/*ek*/,
-                                  const intVector &ids,
-                                  const ExportDBAttributes &expAtts, 
-                                  const std::string &timeSuffix)
+bool SimEngineManager::ExportDatabases(const EngineKey & /*ek*/, const intVector &ids,
+                                       const ExportDBAttributes &expAtts, const std::string &timeSuffix)
 {
     StackTimer t0("SimEngineManager::ExportDatabases");
     engine->GetNetMgr()->ExportDatabases(ids, expAtts, timeSuffix);
@@ -1440,7 +1301,7 @@ SimEngineManager::ExportDatabases(const EngineKey &/*ek*/,
 //
 // Returns:    True on success; False on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1449,8 +1310,7 @@ SimEngineManager::ExportDatabases(const EngineKey &/*ek*/,
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::ConstructDataBinning(const EngineKey &/*ek*/, int id)
+bool SimEngineManager::ConstructDataBinning(const EngineKey & /*ek*/, int id)
 {
     engine->GetNetMgr()->ConstructDataBinning(id, GetViewerState()->GetConstructDataBinningAttributes());
     return true;
@@ -1477,8 +1337,7 @@ SimEngineManager::ConstructDataBinning(const EngineKey &/*ek*/, int id)
 //
 // ****************************************************************************
 
-bool
-SimEngineManager::UpdateExpressions(const EngineKey &/*ek*/, const ExpressionList &eL)
+bool SimEngineManager::UpdateExpressions(const EngineKey & /*ek*/, const ExpressionList &eL)
 {
     // Does nothing.
     return true;
@@ -1493,9 +1352,9 @@ SimEngineManager::UpdateExpressions(const EngineKey &/*ek*/, const ExpressionLis
 // Arguments:
 //   opts : The file open options.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Sep 22 22:12:03 PDT 2014
@@ -1504,8 +1363,7 @@ SimEngineManager::UpdateExpressions(const EngineKey &/*ek*/, const ExpressionLis
 //
 // ****************************************************************************
 
-void
-SimEngineManager::UpdateDefaultFileOpenOptions(FileOpenOptions *opts)
+void SimEngineManager::UpdateDefaultFileOpenOptions(FileOpenOptions *opts)
 {
     StackTimer t0("SimEngineManager::UpdateDefaultFileOpenOptions");
     avtDatabaseFactory::SetDefaultFileOpenOptions(*opts);
@@ -1527,8 +1385,7 @@ SimEngineManager::UpdateDefaultFileOpenOptions(FileOpenOptions *opts)
 //
 // ****************************************************************************
 
-void
-SimEngineManager::UpdatePrecisionType(const int type)
+void SimEngineManager::UpdatePrecisionType(const int type)
 {
     avtDatabaseFactory::SetPrecisionType(type);
 }
@@ -1549,8 +1406,7 @@ SimEngineManager::UpdatePrecisionType(const int type)
 //
 // ****************************************************************************
 
-void 
-SimEngineManager::UpdateBackendType(const int type)
+void SimEngineManager::UpdateBackendType(const int type)
 {
     avtDatabaseFactory::SetBackendType(type);
     avtCallback::SetBackendType((GlobalAttributes::BackendType)type);
@@ -1573,8 +1429,7 @@ SimEngineManager::UpdateBackendType(const int type)
 //
 // ****************************************************************************
 
-void 
-SimEngineManager::UpdateRemoveDuplicateNodes(const bool val)
+void SimEngineManager::UpdateRemoveDuplicateNodes(const bool val)
 {
     avtDatabaseFactory::SetRemoveDuplicateNodes(val);
 }
@@ -1600,22 +1455,19 @@ SimEngineManager::UpdateRemoveDuplicateNodes(const bool val)
 //
 // ****************************************************************************
 
-bool 
-SimEngineManager::LaunchProcess(const EngineKey &/*ek*/, const stringVector &args)
+bool SimEngineManager::LaunchProcess(const EngineKey & /*ek*/, const stringVector &args)
 {
     // Does nothing.
 
     return false;
 }
 
-void
-SimEngineManager::CreateNode(DataNode *parent, bool detailed)
+void SimEngineManager::CreateNode(DataNode *parent, bool detailed)
 {
     // Does nothing.
 }
 
-void
-SimEngineManager::SetFromNode(DataNode *parent, const std::string &configVersion)
+void SimEngineManager::SetFromNode(DataNode *parent, const std::string &configVersion)
 {
     // Does nothing.
 }

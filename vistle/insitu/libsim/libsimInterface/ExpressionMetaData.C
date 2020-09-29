@@ -11,17 +11,16 @@
 #include "ExpressionMetaData.h"
 #include <stdio.h>
 
-struct VisIt_ExpressionMetaData : public VisIt_ObjectBase
-{
+struct VisIt_ExpressionMetaData: public VisIt_ObjectBase {
     VisIt_ExpressionMetaData();
     virtual ~VisIt_ExpressionMetaData();
 
     std::string name;
     std::string definition;
-    int         type;
+    int type;
 };
 
-VisIt_ExpressionMetaData::VisIt_ExpressionMetaData() : VisIt_ObjectBase(VISIT_EXPRESSIONMETADATA)
+VisIt_ExpressionMetaData::VisIt_ExpressionMetaData(): VisIt_ObjectBase(VISIT_EXPRESSIONMETADATA)
 {
     name = "";
     definition = "";
@@ -29,26 +28,22 @@ VisIt_ExpressionMetaData::VisIt_ExpressionMetaData() : VisIt_ObjectBase(VISIT_EX
 }
 
 VisIt_ExpressionMetaData::~VisIt_ExpressionMetaData()
-{
-}
+{}
 
-static VisIt_ExpressionMetaData *
-GetObject(visit_handle h, const char *fname)
+static VisIt_ExpressionMetaData *GetObject(visit_handle h, const char *fname)
 {
     char tmp[100];
     VisIt_ExpressionMetaData *obj = (VisIt_ExpressionMetaData *)VisItGetPointer(h);
-    if(obj != NULL)
-    {
-        if(obj->objectType() != VISIT_EXPRESSIONMETADATA)
-        {
-            snprintf(tmp, 100, "%s: The provided handle does not point to "
-                "a ExpressionMetaData object.", fname);
+    if (obj != NULL) {
+        if (obj->objectType() != VISIT_EXPRESSIONMETADATA) {
+            snprintf(tmp, 100,
+                     "%s: The provided handle does not point to "
+                     "a ExpressionMetaData object.",
+                     fname);
             VisItError(tmp);
             obj = NULL;
         }
-    }
-    else
-    {
+    } else {
         snprintf(tmp, 100, "%s: An invalid handle was provided.", fname);
         VisItError(tmp);
     }
@@ -60,20 +55,17 @@ GetObject(visit_handle h, const char *fname)
  * Public functions, available to C 
  ******************************************************************************/
 
-int
-simv2_ExpressionMetaData_alloc(visit_handle *h)
+int simv2_ExpressionMetaData_alloc(visit_handle *h)
 {
     *h = VisItStorePointer(new VisIt_ExpressionMetaData);
     return (*h != VISIT_INVALID_HANDLE) ? VISIT_OKAY : VISIT_ERROR;
 }
 
-int
-simv2_ExpressionMetaData_free(visit_handle h)
+int simv2_ExpressionMetaData_free(visit_handle h)
 {
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_free");
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         delete obj;
         VisItFreePointer(h);
         retval = VISIT_OKAY;
@@ -81,145 +73,117 @@ simv2_ExpressionMetaData_free(visit_handle h)
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_setName(visit_handle h, const char *val)
+int simv2_ExpressionMetaData_setName(visit_handle h, const char *val)
 {
-    if(val == NULL)
-    {
+    if (val == NULL) {
         VisItError("An invalid string was provided for name");
         return VISIT_ERROR;
     }
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_setName");
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         obj->name = val;
         retval = VISIT_OKAY;
     }
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_getName(visit_handle h, char **val)
+int simv2_ExpressionMetaData_getName(visit_handle h, char **val)
 {
-    if(val == NULL)
-    {
+    if (val == NULL) {
         VisItError("simv2_ExpressionMetaData_getName: Invalid address.");
         return VISIT_ERROR;
     }
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_getName");
-    if(obj != NULL)
-    {
-        *val = (char*)malloc(obj->name.size() + 1);
+    if (obj != NULL) {
+        *val = (char *)malloc(obj->name.size() + 1);
         strcpy(*val, obj->name.c_str());
         retval = VISIT_OKAY;
-    }
-    else
+    } else
         *val = NULL;
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_setDefinition(visit_handle h, const char *val)
+int simv2_ExpressionMetaData_setDefinition(visit_handle h, const char *val)
 {
-    if(val == NULL)
-    {
+    if (val == NULL) {
         VisItError("An invalid string was provided for definition");
         return VISIT_ERROR;
     }
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_setDefinition");
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         obj->definition = val;
         retval = VISIT_OKAY;
     }
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_getDefinition(visit_handle h, char **val)
+int simv2_ExpressionMetaData_getDefinition(visit_handle h, char **val)
 {
-    if(val == NULL)
-    {
+    if (val == NULL) {
         VisItError("simv2_ExpressionMetaData_getDefinition: Invalid address.");
         return VISIT_ERROR;
     }
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_getDefinition");
-    if(obj != NULL)
-    {
-        *val = (char*)malloc(obj->definition.size() + 1);
+    if (obj != NULL) {
+        *val = (char *)malloc(obj->definition.size() + 1);
         strcpy(*val, obj->definition.c_str());
         retval = VISIT_OKAY;
-    }
-    else
+    } else
         *val = NULL;
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_setType(visit_handle h, int val)
+int simv2_ExpressionMetaData_setType(visit_handle h, int val)
 {
-    if(val != VISIT_VARTYPE_SCALAR &&
-       val != VISIT_VARTYPE_VECTOR &&
-       val != VISIT_VARTYPE_TENSOR &&
-       val != VISIT_VARTYPE_SYMMETRIC_TENSOR &&
-       val != VISIT_VARTYPE_MATERIAL &&
-       val != VISIT_VARTYPE_MATSPECIES &&
-       val != VISIT_VARTYPE_LABEL &&
-       val != VISIT_VARTYPE_ARRAY &&
-       val != VISIT_VARTYPE_MESH &&
-       val != VISIT_VARTYPE_CURVE)
-    {
-        VisItError("The value for type must be one of: VISIT_VARTYPE_SCALAR, VISIT_VARTYPE_VECTOR, VISIT_VARTYPE_TENSOR, VISIT_VARTYPE_SYMMETRIC_TENSOR, VISIT_VARTYPE_MATERIAL, VISIT_VARTYPE_MATSPECIES, VISIT_VARTYPE_LABEL, VISIT_VARTYPE_ARRAY, VISIT_VARTYPE_MESH, VISIT_VARTYPE_CURVE");
+    if (val != VISIT_VARTYPE_SCALAR && val != VISIT_VARTYPE_VECTOR && val != VISIT_VARTYPE_TENSOR &&
+        val != VISIT_VARTYPE_SYMMETRIC_TENSOR && val != VISIT_VARTYPE_MATERIAL && val != VISIT_VARTYPE_MATSPECIES &&
+        val != VISIT_VARTYPE_LABEL && val != VISIT_VARTYPE_ARRAY && val != VISIT_VARTYPE_MESH &&
+        val != VISIT_VARTYPE_CURVE) {
+        VisItError(
+            "The value for type must be one of: VISIT_VARTYPE_SCALAR, VISIT_VARTYPE_VECTOR, VISIT_VARTYPE_TENSOR, "
+            "VISIT_VARTYPE_SYMMETRIC_TENSOR, VISIT_VARTYPE_MATERIAL, VISIT_VARTYPE_MATSPECIES, VISIT_VARTYPE_LABEL, "
+            "VISIT_VARTYPE_ARRAY, VISIT_VARTYPE_MESH, VISIT_VARTYPE_CURVE");
         return VISIT_ERROR;
     }
     int retval = VISIT_ERROR;
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_setType");
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         obj->type = val;
         retval = VISIT_OKAY;
     }
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_getType(visit_handle h, int *val)
+int simv2_ExpressionMetaData_getType(visit_handle h, int *val)
 {
     int retval = VISIT_ERROR;
-    if(val == NULL)
-    {
+    if (val == NULL) {
         VisItError("simv2_ExpressionMetaData_getType: Invalid address.");
         return VISIT_ERROR;
     }
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_getType");
-    if(obj != NULL)
-    {
+    if (obj != NULL) {
         *val = obj->type;
         retval = VISIT_OKAY;
-    }
-    else
+    } else
         *val = 0;
     return retval;
 }
 
-int
-simv2_ExpressionMetaData_check(visit_handle h)
+int simv2_ExpressionMetaData_check(visit_handle h)
 {
     VisIt_ExpressionMetaData *obj = GetObject(h, "simv2_ExpressionMetaData_check");
     int retval = VISIT_ERROR;
-    if(obj != NULL)
-    {
-        if(obj->name == "")
-        {
+    if (obj != NULL) {
+        if (obj->name == "") {
             VisItError("ExpressionMetaData needs a name");
             return VISIT_ERROR;
         }
-        if(obj->definition == "")
-        {
+        if (obj->definition == "") {
             VisItError("ExpressionMetaData needs a definition");
             return VISIT_ERROR;
         }
@@ -227,4 +191,3 @@ simv2_ExpressionMetaData_check(visit_handle h)
     }
     return retval;
 }
-

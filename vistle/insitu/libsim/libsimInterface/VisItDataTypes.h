@@ -6,20 +6,12 @@
 class visit_handle {
 public:
     visit_handle() = default;
-    constexpr visit_handle(int val)
-        :i(val) {
-    }
+    constexpr visit_handle(int val): i(val) {}
 
-    constexpr bool operator==(const visit_handle other) const noexcept {
-        return i == other.i;
-    }
-    constexpr bool operator!=(const visit_handle other) const noexcept {
-        return i != other.i;
-    }
+    constexpr bool operator==(const visit_handle other) const noexcept { return i == other.i; }
+    constexpr bool operator!=(const visit_handle other) const noexcept { return i != other.i; }
 
-    constexpr operator int() const noexcept {
-        return i;
-    }
+    constexpr operator int() const noexcept { return i; }
 
 
 private:
@@ -44,10 +36,7 @@ typedef enum {
 } VisIt_MeshType;
 
 /* Centering */
-typedef enum {
-    VISIT_VARCENTERING_NODE = 0,
-    VISIT_VARCENTERING_ZONE
-} VisIt_VarCentering;
+typedef enum { VISIT_VARCENTERING_NODE = 0, VISIT_VARCENTERING_ZONE } VisIt_VarCentering;
 
 /* Variable Type */
 typedef enum {
@@ -76,81 +65,81 @@ typedef enum {
 } VisIt_EnumType;
 
 /* Command Argument Type */
-constexpr int VISIT_CMDARG_NONE                 = 0;
-constexpr int VISIT_CMDARG_INT                  = 1;
-constexpr int VISIT_CMDARG_FLOAT                = 2;
-constexpr int VISIT_CMDARG_STRING               = 3;
+constexpr int VISIT_CMDARG_NONE = 0;
+constexpr int VISIT_CMDARG_INT = 1;
+constexpr int VISIT_CMDARG_FLOAT = 2;
+constexpr int VISIT_CMDARG_STRING = 3;
 
 /* Simulation Mode */
-constexpr int VISIT_SIMMODE_UNKNOWN             = 0;
-constexpr int VISIT_SIMMODE_RUNNING             = 1;
-constexpr int VISIT_SIMMODE_STOPPED             = 2;
+constexpr int VISIT_SIMMODE_UNKNOWN = 0;
+constexpr int VISIT_SIMMODE_RUNNING = 1;
+constexpr int VISIT_SIMMODE_STOPPED = 2;
 
 /* Data Type */
-constexpr int VISIT_DATATYPE_CHAR               = 0  ;
-constexpr int VISIT_DATATYPE_INT                = 1  ;
-constexpr int VISIT_DATATYPE_FLOAT              = 2  ;
-constexpr int VISIT_DATATYPE_DOUBLE             = 3  ;
-constexpr int VISIT_DATATYPE_LONG               = 4  ;
-constexpr int VISIT_DATATYPE_STRING             = 10 ;
+constexpr int VISIT_DATATYPE_CHAR = 0;
+constexpr int VISIT_DATATYPE_INT = 1;
+constexpr int VISIT_DATATYPE_FLOAT = 2;
+constexpr int VISIT_DATATYPE_DOUBLE = 3;
+constexpr int VISIT_DATATYPE_LONG = 4;
+constexpr int VISIT_DATATYPE_STRING = 10;
 
 /* Array Owner */
-constexpr int VISIT_OWNER_SIM                   = 0;
-constexpr int VISIT_OWNER_VISIT                 = 1;
-constexpr int VISIT_OWNER_COPY                  = 2;
-constexpr int VISIT_OWNER_VISIT_EX              = 3;
-                                                 
+constexpr int VISIT_OWNER_SIM = 0;
+constexpr int VISIT_OWNER_VISIT = 1;
+constexpr int VISIT_OWNER_COPY = 2;
+constexpr int VISIT_OWNER_VISIT_EX = 3;
+
 /* Array memory layout */
-constexpr int VISIT_MEMORY_CONTIGUOUS           = 0;
-constexpr int VISIT_MEMORY_STRIDED              = 1;
+constexpr int VISIT_MEMORY_CONTIGUOUS = 0;
+constexpr int VISIT_MEMORY_STRIDED = 1;
 
 /* Cell Types */
-constexpr int VISIT_CELL_BEAM                   = 0;
-constexpr int VISIT_CELL_TRI                    = 1;
-constexpr int VISIT_CELL_QUAD                   = 2;
-constexpr int VISIT_CELL_TET                    = 3;
-constexpr int VISIT_CELL_PYR                    = 4;
-constexpr int VISIT_CELL_WEDGE                  = 5;
-constexpr int VISIT_CELL_HEX                    = 6;
-constexpr int VISIT_CELL_POINT                  = 7;
-constexpr int VISIT_CELL_POLYHEDRON             = 8;
+constexpr int VISIT_CELL_BEAM = 0;
+constexpr int VISIT_CELL_TRI = 1;
+constexpr int VISIT_CELL_QUAD = 2;
+constexpr int VISIT_CELL_TET = 3;
+constexpr int VISIT_CELL_PYR = 4;
+constexpr int VISIT_CELL_WEDGE = 5;
+constexpr int VISIT_CELL_HEX = 6;
+constexpr int VISIT_CELL_POINT = 7;
+constexpr int VISIT_CELL_POLYHEDRON = 8;
 
-constexpr int VISIT_CELL_QUADRATIC_EDGE         = 20;
-constexpr int VISIT_CELL_QUADRATIC_TRI          = 21;
-constexpr int VISIT_CELL_QUADRATIC_QUAD         = 22;
-constexpr int VISIT_CELL_QUADRATIC_TET          = 23;
-constexpr int VISIT_CELL_QUADRATIC_PYR          = 24;
-constexpr int VISIT_CELL_QUADRATIC_WEDGE        = 25;
-constexpr int VISIT_CELL_QUADRATIC_HEX          = 26;
+constexpr int VISIT_CELL_QUADRATIC_EDGE = 20;
+constexpr int VISIT_CELL_QUADRATIC_TRI = 21;
+constexpr int VISIT_CELL_QUADRATIC_QUAD = 22;
+constexpr int VISIT_CELL_QUADRATIC_TET = 23;
+constexpr int VISIT_CELL_QUADRATIC_PYR = 24;
+constexpr int VISIT_CELL_QUADRATIC_WEDGE = 25;
+constexpr int VISIT_CELL_QUADRATIC_HEX = 26;
 
-constexpr int VISIT_CELL_BIQUADRATIC_TRI               = 27;
-constexpr int VISIT_CELL_BIQUADRATIC_QUAD              = 28;
-constexpr int VISIT_CELL_TRIQUADRATIC_HEX              = 29;
-constexpr int VISIT_CELL_QUADRATIC_LINEAR_QUAD         = 30;
-constexpr int VISIT_CELL_QUADRATIC_LINEAR_WEDGE        = 31;
-constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_WEDGE   = 32;
-constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_HEX     = 33;
+constexpr int VISIT_CELL_BIQUADRATIC_TRI = 27;
+constexpr int VISIT_CELL_BIQUADRATIC_QUAD = 28;
+constexpr int VISIT_CELL_TRIQUADRATIC_HEX = 29;
+constexpr int VISIT_CELL_QUADRATIC_LINEAR_QUAD = 30;
+constexpr int VISIT_CELL_QUADRATIC_LINEAR_WEDGE = 31;
+constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_WEDGE = 32;
+constexpr int VISIT_CELL_BIQUADRATIC_QUADRATIC_HEX = 33;
 constexpr int VISIT_NUM_CELL_TYPES = 34;
 
 /* Coordinate modes */
-constexpr int VISIT_COORD_MODE_SEPARATE         = 0;
-constexpr int VISIT_COORD_MODE_INTERLEAVED      = 1;
+constexpr int VISIT_COORD_MODE_SEPARATE = 0;
+constexpr int VISIT_COORD_MODE_INTERLEAVED = 1;
 
 /* Ghost cell types */
-constexpr int VISIT_GHOSTCELL_REAL                  = 0 ;
-constexpr int VISIT_GHOSTCELL_INTERIOR_BOUNDARY     = 1 ;
-constexpr int VISIT_GHOSTCELL_EXTERIOR_BOUNDARY     = 2 ;
-constexpr int VISIT_GHOSTCELL_ENHANCED_CONNECTIVITY = 4 ;
-constexpr int VISIT_GHOSTCELL_REDUCED_CONNECTIVITY  = 8 ;
-constexpr int VISIT_GHOSTCELL_BLANK                 = 16;
-constexpr int VISIT_GHOSTCELL_REFINED_AMR_CELL      = 32;
+constexpr int VISIT_GHOSTCELL_REAL = 0;
+constexpr int VISIT_GHOSTCELL_INTERIOR_BOUNDARY = 1;
+constexpr int VISIT_GHOSTCELL_EXTERIOR_BOUNDARY = 2;
+constexpr int VISIT_GHOSTCELL_ENHANCED_CONNECTIVITY = 4;
+constexpr int VISIT_GHOSTCELL_REDUCED_CONNECTIVITY = 8;
+constexpr int VISIT_GHOSTCELL_BLANK = 16;
+constexpr int VISIT_GHOSTCELL_REFINED_AMR_CELL = 32;
 
 /* Ghost node types */
-constexpr int VISIT_GHOSTNODE_REAL                  = 0;
-constexpr int VISIT_GHOSTNODE_INTERIOR_BOUNDARY     = 1;
-constexpr int VISIT_GHOSTNODE_BLANK                 = 2;
-constexpr int VISIT_GHOSTNODE_COARSE_SIDE           = 3;
-constexpr int VISIT_GHOSTNODE_FINE_SIDE             = 4;
+constexpr int VISIT_GHOSTNODE_REAL = 0;
+constexpr int VISIT_GHOSTNODE_INTERIOR_BOUNDARY = 1;
+constexpr int VISIT_GHOSTNODE_BLANK = 2;
+constexpr int VISIT_GHOSTNODE_COARSE_SIDE = 3;
+constexpr int VISIT_GHOSTNODE_FINE_SIDE = 4;
 
 
 constexpr auto VISIT_DOMAINLIST = 12;

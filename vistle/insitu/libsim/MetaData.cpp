@@ -39,65 +39,48 @@ double MetaData::currentTime() const
     return m_currentTime;
 }
 
-const visit_handle& MetaData::handle() const
+const visit_handle &MetaData::handle() const
 {
     return m_handle;
 }
 
-void MetaData::fetchFromSim() {
+void MetaData::fetchFromSim()
+{
     m_handle = simv2_invoke_GetMetaData(); //somehow 0 is valid
     v2check(simv2_SimulationMetaData_getData, m_handle, m_simMode, m_currentCycle, m_currentTime);
 }
 
-size_t MetaData::getNumObjects(SimulationObjectType type) const {
-
-    std::function<int(visit_handle, int&)> getNum;
+size_t MetaData::getNumObjects(SimulationObjectType type) const
+{
+    std::function<int(visit_handle, int &)> getNum;
     switch (type) {
-    case SimulationObjectType::mesh:
-    {
+    case SimulationObjectType::mesh: {
         getNum = simv2_SimulationMetaData_getNumMeshes;
-    }
-    break;
-    case SimulationObjectType::variable:
-    {
+    } break;
+    case SimulationObjectType::variable: {
         getNum = simv2_SimulationMetaData_getNumVariables;
-    }
-    break;
-    case SimulationObjectType::material:
-    {
+    } break;
+    case SimulationObjectType::material: {
         getNum = simv2_SimulationMetaData_getNumMaterials;
-    }
-    break;
-    case SimulationObjectType::curve:
-    {
+    } break;
+    case SimulationObjectType::curve: {
         getNum = simv2_SimulationMetaData_getNumCurves;
-    }
-    break;
-    case SimulationObjectType::expression:
-    {
+    } break;
+    case SimulationObjectType::expression: {
         getNum = simv2_SimulationMetaData_getNumExpressions;
-    }
-    break;
-    case SimulationObjectType::species:
-    {
+    } break;
+    case SimulationObjectType::species: {
         getNum = simv2_SimulationMetaData_getNumSpecies;
-    }
-    break;
-    case SimulationObjectType::genericCommand:
-    {
+    } break;
+    case SimulationObjectType::genericCommand: {
         getNum = simv2_SimulationMetaData_getNumGenericCommands;
-    }
-    break;
-    case SimulationObjectType::customCommand:
-    {
+    } break;
+    case SimulationObjectType::customCommand: {
         getNum = simv2_SimulationMetaData_getNumCustomCommands;
-    }
-    break;
-    case SimulationObjectType::message:
-    {
+    } break;
+    case SimulationObjectType::message: {
         getNum = simv2_SimulationMetaData_getNumMessages;
-    }
-    break;
+    } break;
     default:
         throw EngineExeption("getDataNames called with invalid type") << (int)type;
 
@@ -110,54 +93,37 @@ size_t MetaData::getNumObjects(SimulationObjectType type) const {
     return static_cast<size_t>(num);
 }
 
-visit_handle MetaData::getNthObject(SimulationObjectType type, int n) const {
-    std::function<int(visit_handle, int, visit_handle&)> getObj;
+visit_handle MetaData::getNthObject(SimulationObjectType type, int n) const
+{
+    std::function<int(visit_handle, int, visit_handle &)> getObj;
     switch (type) {
-    case SimulationObjectType::mesh:
-    {
+    case SimulationObjectType::mesh: {
         getObj = simv2_SimulationMetaData_getMesh;
-    }
-    break;
-    case SimulationObjectType::variable:
-    {
+    } break;
+    case SimulationObjectType::variable: {
         getObj = simv2_SimulationMetaData_getVariable;
-    }
-    break;
-    case SimulationObjectType::material:
-    {
+    } break;
+    case SimulationObjectType::material: {
         getObj = simv2_SimulationMetaData_getMaterial;
-    }
-    break;
-    case SimulationObjectType::curve:
-    {
+    } break;
+    case SimulationObjectType::curve: {
         getObj = simv2_SimulationMetaData_getCurve;
-    }
-    break;
-    case SimulationObjectType::expression:
-    {
+    } break;
+    case SimulationObjectType::expression: {
         getObj = simv2_SimulationMetaData_getExpression;
-    }
-    break;
-    case SimulationObjectType::species:
-    {
+    } break;
+    case SimulationObjectType::species: {
         getObj = simv2_SimulationMetaData_getSpecies;
-    }
-    break;
-    case SimulationObjectType::genericCommand:
-    {
+    } break;
+    case SimulationObjectType::genericCommand: {
         getObj = simv2_SimulationMetaData_getGenericCommand;
-    }
-    break;
-    case SimulationObjectType::customCommand:
-    {
+    } break;
+    case SimulationObjectType::customCommand: {
         getObj = simv2_SimulationMetaData_getCustomCommand;
-    }
-    break;
-    case SimulationObjectType::message:
-    {
+    } break;
+    case SimulationObjectType::message: {
         getObj = simv2_SimulationMetaData_getMessage;
-    }
-    break;
+    } break;
     default:
         throw EngineExeption("getDataNames called with invalid type");
         break;
@@ -167,54 +133,37 @@ visit_handle MetaData::getNthObject(SimulationObjectType type, int n) const {
     return obj;
 }
 
-std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type)  const {
-    std::function<int(visit_handle, char**)> getName;
+std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type) const
+{
+    std::function<int(visit_handle, char **)> getName;
     switch (type) {
-    case SimulationObjectType::mesh:
-    {
+    case SimulationObjectType::mesh: {
         getName = simv2_MeshMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::variable:
-    {
+    } break;
+    case SimulationObjectType::variable: {
         getName = simv2_VariableMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::material:
-    {
+    } break;
+    case SimulationObjectType::material: {
         getName = simv2_MaterialMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::curve:
-    {
+    } break;
+    case SimulationObjectType::curve: {
         getName = simv2_CurveMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::expression:
-    {
+    } break;
+    case SimulationObjectType::expression: {
         getName = simv2_ExpressionMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::species:
-    {
+    } break;
+    case SimulationObjectType::species: {
         getName = simv2_SpeciesMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::genericCommand:
-    {
+    } break;
+    case SimulationObjectType::genericCommand: {
         getName = simv2_CommandMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::customCommand:
-    {
+    } break;
+    case SimulationObjectType::customCommand: {
         getName = simv2_CommandMetaData_getName;
-    }
-    break;
-    case SimulationObjectType::message:
-    {
+    } break;
+    case SimulationObjectType::message: {
         getName = simv2_MessageMetaData_getName;
-    }
-    break;
+    } break;
     default:
         throw EngineExeption("getDataNames called with invalid type");
         break;
@@ -225,25 +174,27 @@ std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type)  co
     names.reserve(n);
     for (size_t i = 0; i < n; i++) {
         visit_handle obj = getNthObject(type, i);
-        char* name;
+        char *name;
         v2check(getName, obj, &name);
         names.push_back(name);
     }
     return names;
 }
 
-std::vector<std::string> MetaData::getRegisteredGenericCommands() const {
+std::vector<std::string> MetaData::getRegisteredGenericCommands() const
+{
     std::vector<std::string> commands;
     for (size_t i = 0; i < getNumObjects(SimulationObjectType::genericCommand); i++) {
         visit_handle commandHandle = getNthObject(SimulationObjectType::genericCommand, i);
-        char* name;
+        char *name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
         commands.push_back(name);
     }
     return commands;
 }
 
-std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const {
+std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const
+{
     std::vector<std::vector<std::string>> ports;
     std::vector<std::string> meshNames = getObjectNames(SimulationObjectType::mesh);
     meshNames.push_back("mesh");
@@ -256,12 +207,11 @@ std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const {
     return ports;
 }
 
-const char* MetaData::getName(const visit_handle& handle, SimulationObjectType type) const
+const char *MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
 {
-    char* name;
+    char *name;
 
-    switch (type)
-    {
+    switch (type) {
     case SimulationObjectType::mesh:
         v2check(simv2_MeshMetaData_getName, handle, &name);
         break;

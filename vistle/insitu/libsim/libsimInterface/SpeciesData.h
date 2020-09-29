@@ -25,11 +25,8 @@ V_LIBSIMXPORT int simv2_SpeciesData_setMixedSpecies(visit_handle h, visit_handle
 #endif
 
 // Callable from within the runtime and SimV2
-V_LIBSIMXPORT int simv2_SpeciesData_getData(visit_handle h, 
-                  std::vector<visit_handle> &speciesNames,
-                  visit_handle &species,
-                  visit_handle &speciesMF,
-                  visit_handle &mixedSpecies);
+V_LIBSIMXPORT int simv2_SpeciesData_getData(visit_handle h, std::vector<visit_handle> &speciesNames,
+                                            visit_handle &species, visit_handle &speciesMF, visit_handle &mixedSpecies);
 
 int simv2_SpeciesData_check(visit_handle h);
 

@@ -19,7 +19,7 @@ V_LIBSIMXPORT int simv2_ExpressionMetaData_getName(visit_handle h, char **);
 V_LIBSIMXPORT int simv2_ExpressionMetaData_setDefinition(visit_handle h, const char *);
 V_LIBSIMXPORT int simv2_ExpressionMetaData_getDefinition(visit_handle h, char **);
 V_LIBSIMXPORT int simv2_ExpressionMetaData_setType(visit_handle h, int);
-V_LIBSIMXPORT int simv2_ExpressionMetaData_getType(visit_handle h, int*);
+V_LIBSIMXPORT int simv2_ExpressionMetaData_getType(visit_handle h, int *);
 
 #ifdef __cplusplus
 }

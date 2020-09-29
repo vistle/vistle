@@ -27,13 +27,12 @@ class ViewerWrappedEnginePlotPluginInfo;
 //
 // ****************************************************************************
 
-class SimPlotPluginManager : public PlotPluginManager
-{
+class SimPlotPluginManager: public PlotPluginManager {
 public:
     SimPlotPluginManager();
     virtual ~SimPlotPluginManager();
 
-    virtual ViewerPlotPluginInfo   *GetViewerPluginInfo(const std::string&);
+    virtual ViewerPlotPluginInfo *GetViewerPluginInfo(const std::string &);
 
 private:
     std::map<std::string, ViewerWrappedEnginePlotPluginInfo *> wrapped;

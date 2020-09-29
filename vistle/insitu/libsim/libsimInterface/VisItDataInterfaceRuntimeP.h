@@ -13,20 +13,20 @@
    runtime.
  */
 
-class VisIt_ObjectBase
-{
+class VisIt_ObjectBase {
 public:
     VisIt_ObjectBase(int t);
-    virtual ~VisIt_ObjectBase(); 
+    virtual ~VisIt_ObjectBase();
 
     int objectType() const;
+
 private:
     int object_type;
 };
 
 VisIt_ObjectBase *VisItGetPointer(visit_handle h);
-void              VisItFreePointer(visit_handle h);
-visit_handle      VisItStorePointer(VisIt_ObjectBase *ptr);
+void VisItFreePointer(visit_handle h);
+visit_handle VisItStorePointer(VisIt_ObjectBase *ptr);
 
 void VisItError(const char *msg);
 

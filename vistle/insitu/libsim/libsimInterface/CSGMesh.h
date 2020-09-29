@@ -9,23 +9,22 @@
 
 // C-callable implementation of front end functions
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-V_LIBSIMXPORT int simv2_CSGMesh_alloc(visit_handle*);
+V_LIBSIMXPORT int simv2_CSGMesh_alloc(visit_handle *);
 V_LIBSIMXPORT int simv2_CSGMesh_free(visit_handle);
 
-V_LIBSIMXPORT int simv2_CSGMesh_setRegions(visit_handle h, visit_handle typeflags,
-                                       visit_handle left, visit_handle right);
+V_LIBSIMXPORT int simv2_CSGMesh_setRegions(visit_handle h, visit_handle typeflags, visit_handle left,
+                                           visit_handle right);
 
 V_LIBSIMXPORT int simv2_CSGMesh_setZonelist(visit_handle h, visit_handle zl);
 V_LIBSIMXPORT int simv2_CSGMesh_setBoundaryTypes(visit_handle h, visit_handle cshtypes);
 V_LIBSIMXPORT int simv2_CSGMesh_setBoundaryCoeffs(visit_handle h, visit_handle coeffs);
 V_LIBSIMXPORT int simv2_CSGMesh_setExtents(visit_handle h, double min[3], double max[3]);
 
-V_LIBSIMXPORT int simv2_CSGMesh_getRegions(visit_handle h, visit_handle *typeflags,
-                                       visit_handle *left, visit_handle *right);
+V_LIBSIMXPORT int simv2_CSGMesh_getRegions(visit_handle h, visit_handle *typeflags, visit_handle *left,
+                                           visit_handle *right);
 V_LIBSIMXPORT int simv2_CSGMesh_getZonelist(visit_handle h, visit_handle *zl);
 V_LIBSIMXPORT int simv2_CSGMesh_getBoundaryTypes(visit_handle h, visit_handle *cshtypes);
 V_LIBSIMXPORT int simv2_CSGMesh_getBoundaryCoeffs(visit_handle h, visit_handle *coeffs);

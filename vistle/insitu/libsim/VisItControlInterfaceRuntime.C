@@ -21,12 +21,12 @@ using vistle::insitu::libsim::Engine;
 // Method: simv2_get_engine
 //
 // Purpose:
-//   SimV2 runtime function to get the engine pointer, creating the object if 
+//   SimV2 runtime function to get the engine pointer, creating the object if
 //   necessary.
 //
 // Returns:    A pointer to the engine.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:38:01 PDT 2014
@@ -50,7 +50,7 @@ void *simv2_get_engine()
     //EngineBase::SetEngineCreationCallback(simv2_create_engine, NULL);
 
     //Engine::createEngine()->EnableSimulationPlugins();
-    return (void*)Engine::EngineInstance();
+    return (void *)Engine::EngineInstance();
 }
 
 // ****************************************************************************
@@ -67,7 +67,7 @@ void *simv2_get_engine()
 //
 // Returns:    1 on success, 0 on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:39:01 PDT 2014
@@ -85,9 +85,8 @@ void *simv2_get_engine()
 
 static int simv2_initialize_helper(void *e, int argc, char *argv[], bool batch)
 {
-    Engine* engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     return engine->initialize(argc, argv);
-    
 }
 
 int simv2_initialize(void *e, int argc, char *argv[])
@@ -112,7 +111,7 @@ int simv2_initialize_batch(void *e, int argc, char *argv[])
 //   argv : The command line args.
 //
 // Returns:    1 on success,
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:40:01 PDT 2014
@@ -121,7 +120,7 @@ int simv2_initialize_batch(void *e, int argc, char *argv[])
 //
 // ****************************************************************************
 
-int simv2_connect_viewer(void *e, int argc, char *argv[]) 
+int simv2_connect_viewer(void *e, int argc, char *argv[])
 {
     return true;
 }
@@ -137,7 +136,7 @@ int simv2_connect_viewer(void *e, int argc, char *argv[])
 //
 // Returns:    The engine's input socket.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   way back
@@ -148,7 +147,7 @@ int simv2_connect_viewer(void *e, int argc, char *argv[])
 
 int simv2_get_descriptor(void *e)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     return engine->GetInputSocket();
     return -1;
 }
@@ -165,7 +164,7 @@ int simv2_get_descriptor(void *e)
 //
 // Returns:    1 on success, 0 on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   way back
@@ -176,11 +175,9 @@ int simv2_get_descriptor(void *e)
 
 int simv2_process_input(void *e)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
 
     return engine->fetchNewModuleState();
-
-
 }
 
 // ****************************************************************************
@@ -192,9 +189,9 @@ int simv2_process_input(void *e)
 // Arguments:
 //   e : The engine pointer.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   way back
@@ -205,7 +202,7 @@ int simv2_process_input(void *e)
 
 void simv2_time_step_changed(void *e)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     engine->SimulationTimeStepChanged();
 }
 
@@ -219,9 +216,9 @@ void simv2_time_step_changed(void *e)
 //   e : The engine pointer.
 //   command : A command string.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   way back
@@ -233,7 +230,7 @@ void simv2_time_step_changed(void *e)
 void simv2_execute_command(void *e, const char *command)
 {
     if (command != NULL) {
-        Engine* engine = (Engine*)(e);
+        Engine *engine = (Engine *)(e);
         engine->SimulationInitiateCommand(command);
     }
 }
@@ -268,7 +265,7 @@ void simv2_disconnect()
 // Arguments:
 //   spic : The new callback function.
 //
-// Returns:    
+// Returns:
 //
 // Note:       The slave process callback helps broadcast commands from the
 //             viewer to other ranks.
@@ -280,7 +277,7 @@ void simv2_disconnect()
 //
 // ****************************************************************************
 
-void simv2_set_slave_process_callback(void(*spic)())
+void simv2_set_slave_process_callback(void (*spic)())
 {
     Engine::EngineInstance()->setSlaveComandCallback(spic);
 }
@@ -297,9 +294,9 @@ void simv2_set_slave_process_callback(void(*spic)())
 //   sc : The command callback
 //   scdata : The command callback data.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   way back
@@ -308,10 +305,9 @@ void simv2_set_slave_process_callback(void(*spic)())
 //
 // ****************************************************************************
 
-void simv2_set_command_callback(void *e,void(*sc)(const char*,const char*,void*),
-    void *scdata)
+void simv2_set_command_callback(void *e, void (*sc)(const char *, const char *, void *), void *scdata)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     engine->SetSimulationCommandCallback(sc, scdata);
 }
 
@@ -325,9 +321,9 @@ void simv2_set_command_callback(void *e,void(*sc)(const char*,const char*,void*)
 //   level : The debug level.
 //   msg   : The message to write.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:54:26 PDT 2014
@@ -336,8 +332,7 @@ void simv2_set_command_callback(void *e,void(*sc)(const char*,const char*,void*)
 //
 // ****************************************************************************
 
-void
-simv2_debug_logs(int level, const char *msg)
+void simv2_debug_logs(int level, const char *msg)
 {
     std::cerr << msg << std::endl;
 }
@@ -353,7 +348,7 @@ simv2_debug_logs(int level, const char *msg)
 //
 // Returns:    VISIT_OKAY, VISIT_ERROR
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:55:08 PDT 2014
@@ -362,8 +357,7 @@ simv2_debug_logs(int level, const char *msg)
 //
 // ****************************************************************************
 
-int
-simv2_set_mpicomm(void *comm)
+int simv2_set_mpicomm(void *comm)
 {
     return Engine::EngineInstance()->setMpiComm(comm);
 }
@@ -380,7 +374,7 @@ simv2_set_mpicomm(void *comm)
 //
 // Returns:    VISIT_OKAY, VISIT_ERROR
 //
-// Note:       
+// Note:
 //
 // Programmer: William T. Jones
 // Creation:   Wed Sep 4 10:27:03 PDT 2013
@@ -389,13 +383,12 @@ simv2_set_mpicomm(void *comm)
 //
 // ****************************************************************************
 
-int
-simv2_set_mpicomm_f(int *comm)
+int simv2_set_mpicomm_f(int *comm)
 {
 #ifdef PARALLEL
-    MPI_Fint *commF = (MPI_Fint*)comm;
+    MPI_Fint *commF = (MPI_Fint *)comm;
     static MPI_Comm commC = MPI_Comm_f2c(*commF);
-    return PAR_SetComm((void*)&commC) ? VISIT_OKAY : VISIT_ERROR;
+    return PAR_SetComm((void *)&commC) ? VISIT_OKAY : VISIT_ERROR;
 #else
     return VISIT_ERROR;
 #endif
@@ -420,7 +413,7 @@ simv2_set_mpicomm_f(int *comm)
 //
 // Returns:    VISIT_OKAY or VISIT_ERROR.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:52:03 PDT 2014
@@ -429,8 +422,7 @@ simv2_set_mpicomm_f(int *comm)
 //
 // ****************************************************************************
 
-int
-simv2_save_window(void *e, const char *filename, int w, int h, int format)
+int simv2_save_window(void *e, const char *filename, int w, int h, int format)
 {
     return false;
 }
@@ -448,7 +440,7 @@ simv2_save_window(void *e, const char *filename, int w, int h, int format)
 //
 // Returns:    VISIT_OKAY or VISIT_ERROR.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:52:03 PDT 2014
@@ -457,8 +449,7 @@ simv2_save_window(void *e, const char *filename, int w, int h, int format)
 //
 // ****************************************************************************
 
-int
-simv2_add_plot(void *e, const char *plotType, const char *var)
+int simv2_add_plot(void *e, const char *plotType, const char *var)
 {
     return false;
 }
@@ -476,7 +467,7 @@ simv2_add_plot(void *e, const char *plotType, const char *var)
 //
 // Returns:    VISIT_OKAY or VISIT_ERROR.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 18:52:03 PDT 2014
@@ -485,8 +476,7 @@ simv2_add_plot(void *e, const char *plotType, const char *var)
 //
 // ****************************************************************************
 
-int
-simv2_add_operator(void *e, const char *operatorType, int applyToAll)
+int simv2_add_operator(void *e, const char *operatorType, int applyToAll)
 {
     return false;
 }
@@ -500,9 +490,9 @@ simv2_add_operator(void *e, const char *operatorType, int applyToAll)
 // Arguments:
 //   e : The engine pointer.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Sep 18 18:03:28 PDT 2014
@@ -511,10 +501,9 @@ simv2_add_operator(void *e, const char *operatorType, int applyToAll)
 //
 // ****************************************************************************
 
-int
-simv2_draw_plots(void *e)
+int simv2_draw_plots(void *e)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     return engine->sendData();
 }
 
@@ -527,9 +516,9 @@ simv2_draw_plots(void *e)
 // Arguments:
 //   e : The engine pointer.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Sep 18 18:03:28 PDT 2014
@@ -538,10 +527,9 @@ simv2_draw_plots(void *e)
 //
 // ****************************************************************************
 
-int
-simv2_delete_active_plots(void *e)
+int simv2_delete_active_plots(void *e)
 {
-    Engine *engine = (Engine*)(e);
+    Engine *engine = (Engine *)(e);
     engine->DeleteData();
     return true;
 }
@@ -559,7 +547,7 @@ simv2_delete_active_plots(void *e)
 //
 // Returns:    OKAY on success, FALSE on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Feb  2 13:57:29 PST 2015
@@ -568,8 +556,7 @@ simv2_delete_active_plots(void *e)
 //
 // ****************************************************************************
 
-int
-simv2_set_active_plots(void *e, const int *ids, int nids)
+int simv2_set_active_plots(void *e, const int *ids, int nids)
 {
     return false;
 }
@@ -587,7 +574,7 @@ simv2_set_active_plots(void *e, const int *ids, int nids)
 //
 // Returns:    OKAY on success, FALSE on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Feb  2 13:57:29 PST 2015
@@ -596,8 +583,7 @@ simv2_set_active_plots(void *e, const int *ids, int nids)
 //
 // ****************************************************************************
 
-int
-simv2_change_plot_var(void *e, const char *var, int all)
+int simv2_change_plot_var(void *e, const char *var, int all)
 {
     return false;
 }
@@ -617,7 +603,7 @@ simv2_change_plot_var(void *e, const char *var, int all)
 //
 // Returns:    OKAY on success, FALSE on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Feb  2 14:07:11 PST 2015
@@ -626,9 +612,7 @@ simv2_change_plot_var(void *e, const char *var, int all)
 //
 // ****************************************************************************
 
-int
-simv2_set_plot_options(void *e, const char *fieldName, 
-    int fieldType, void *fieldVal, int fieldLen)
+int simv2_set_plot_options(void *e, const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
 {
     return false;
 }
@@ -648,7 +632,7 @@ simv2_set_plot_options(void *e, const char *fieldName,
 //
 // Returns:    OKAY on success, FALSE on failure.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Mon Feb  2 14:07:11 PST 2015
@@ -657,9 +641,7 @@ simv2_set_plot_options(void *e, const char *fieldName,
 //
 // ****************************************************************************
 
-int
-simv2_set_operator_options(void *e, 
-    const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
+int simv2_set_operator_options(void *e, const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
 {
     return false;
 }
@@ -676,7 +658,7 @@ simv2_set_operator_options(void *e,
 //   format   : The export format.
 //   names    : The list of variables to export.
 //   options  : The optional options to use when exporting.
-//   
+//
 // Returns:    VISIT_OKAY on success; VISIT_ERROR on failure.
 //
 // Note:       EXPERIMENTAL
@@ -688,17 +670,14 @@ simv2_set_operator_options(void *e,
 //
 // ****************************************************************************
 
-int
-simv2_exportdatabase_with_options(void *e, const char *filename, const char *format, 
-    visit_handle names, visit_handle options)
+int simv2_exportdatabase_with_options(void *e, const char *filename, const char *format, visit_handle names,
+                                      visit_handle options)
 {
     return false;
 }
 
 // Left in for compatibility
-int
-simv2_exportdatabase(void *e, const char *filename, const char *format, 
-    visit_handle names, visit_handle options)
+int simv2_exportdatabase(void *e, const char *filename, const char *format, visit_handle names, visit_handle options)
 {
     return simv2_exportdatabase_with_options(e, filename, format, names, VISIT_INVALID_HANDLE);
 }
@@ -713,7 +692,7 @@ simv2_exportdatabase(void *e, const char *filename, const char *format,
 //   e : The engine pointer.
 //   filename : The session filename.
 //
-// Returns:    
+// Returns:
 //
 // Note:       EXPERIMENTAL
 //
@@ -724,8 +703,7 @@ simv2_exportdatabase(void *e, const char *filename, const char *format,
 //
 // ****************************************************************************
 
-int
-simv2_restoresession(void *e, const char *filename)
+int simv2_restoresession(void *e, const char *filename)
 {
     return false;
 }
@@ -740,9 +718,9 @@ simv2_restoresession(void *e, const char *filename)
 //   e : The engine pointer.
 //   v : A handle to a VisIt_View2D object.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun  1 17:22:28 PDT 2017
@@ -751,14 +729,12 @@ simv2_restoresession(void *e, const char *filename)
 //
 // ****************************************************************************
 
-int
-simv2_set_view2D(void *e, visit_handle v)
+int simv2_set_view2D(void *e, visit_handle v)
 {
     return false;
 }
 
-int
-simv2_get_view2D(void *e, visit_handle v)
+int simv2_get_view2D(void *e, visit_handle v)
 {
     return false;
 }
@@ -773,9 +749,9 @@ simv2_get_view2D(void *e, visit_handle v)
 //   e : The engine pointer.
 //   v : A handle to a VisIt_View3D object.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Thu Jun  1 17:22:28 PDT 2017
@@ -784,14 +760,12 @@ simv2_get_view2D(void *e, visit_handle v)
 //
 // ****************************************************************************
 
-int
-simv2_set_view3D(void *e, visit_handle v)
+int simv2_set_view3D(void *e, visit_handle v)
 {
     return false;
 }
 
-int
-simv2_get_view3D(void *e, visit_handle v)
+int simv2_get_view3D(void *e, visit_handle v)
 {
     return false;
 }

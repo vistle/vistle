@@ -26,14 +26,12 @@
 //
 // ****************************************************************************
 
-class simV2_DeleteEventObserver : public vtkCommand
-{
+class simV2_DeleteEventObserver: public vtkCommand {
 public:
-    static simV2_DeleteEventObserver *New()
-        { return new simV2_DeleteEventObserver; }
+    static simV2_DeleteEventObserver *New() { return new simV2_DeleteEventObserver; }
 
     // Install the observer on the DeleteEvent.
-    void Observe(vtkDataArray *object, void(*callback)(void*), void*callbackData)
+    void Observe(vtkDataArray *object, void (*callback)(void *), void *callbackData)
     {
         this->Id = object->AddObserver(vtkCommand::DeleteEvent, this);
         this->Callback = callback;
@@ -49,16 +47,16 @@ public:
     }
 
 protected:
-  simV2_DeleteEventObserver() : Id(0), Callback(NULL), CallbackData(NULL) {}
-  virtual ~simV2_DeleteEventObserver() {}
+    simV2_DeleteEventObserver(): Id(0), Callback(NULL), CallbackData(NULL) {}
+    virtual ~simV2_DeleteEventObserver() {}
 
-  unsigned long Id;
-  void(* Callback)(void*);
-  void *CallbackData;
+    unsigned long Id;
+    void (*Callback)(void *);
+    void *CallbackData;
 
 private:
-  void operator=(const simV2_DeleteEventObserver &); // not implemented
-  simV2_DeleteEventObserver(const simV2_DeleteEventObserver &); // not implemented
+    void operator=(const simV2_DeleteEventObserver &); // not implemented
+    simV2_DeleteEventObserver(const simV2_DeleteEventObserver &); // not implemented
 };
 
 #endif

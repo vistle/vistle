@@ -14,20 +14,20 @@ extern "C" {
 
 V_LIBSIMXPORT int simv2_View2D_alloc(visit_handle *obj);
 V_LIBSIMXPORT int simv2_View2D_free(visit_handle obj);
-V_LIBSIMXPORT int simv2_View2D_setWindowCoords(visit_handle h, double [4]);
-V_LIBSIMXPORT int simv2_View2D_getWindowCoords(visit_handle h, double [4]);
-V_LIBSIMXPORT int simv2_View2D_setViewportCoords(visit_handle h, double [4]);
-V_LIBSIMXPORT int simv2_View2D_getViewportCoords(visit_handle h, double [4]);
+V_LIBSIMXPORT int simv2_View2D_setWindowCoords(visit_handle h, double[4]);
+V_LIBSIMXPORT int simv2_View2D_getWindowCoords(visit_handle h, double[4]);
+V_LIBSIMXPORT int simv2_View2D_setViewportCoords(visit_handle h, double[4]);
+V_LIBSIMXPORT int simv2_View2D_getViewportCoords(visit_handle h, double[4]);
 V_LIBSIMXPORT int simv2_View2D_setFullFrameActivationMode(visit_handle h, int);
 V_LIBSIMXPORT int simv2_View2D_getFullFrameActivationMode(visit_handle h, int);
 V_LIBSIMXPORT int simv2_View2D_setFullFrameAutoThreshold(visit_handle h, double);
-V_LIBSIMXPORT int simv2_View2D_getFullFrameAutoThreshold(visit_handle h, double*);
+V_LIBSIMXPORT int simv2_View2D_getFullFrameAutoThreshold(visit_handle h, double *);
 V_LIBSIMXPORT int simv2_View2D_setXScale(visit_handle h, int);
-V_LIBSIMXPORT int simv2_View2D_getXScale(visit_handle h, int*);
+V_LIBSIMXPORT int simv2_View2D_getXScale(visit_handle h, int *);
 V_LIBSIMXPORT int simv2_View2D_setYScale(visit_handle h, int);
-V_LIBSIMXPORT int simv2_View2D_getYScale(visit_handle h, int*);
+V_LIBSIMXPORT int simv2_View2D_getYScale(visit_handle h, int *);
 V_LIBSIMXPORT int simv2_View2D_setWindowValid(visit_handle h, int);
-V_LIBSIMXPORT int simv2_View2D_getWindowValid(visit_handle h, int*);
+V_LIBSIMXPORT int simv2_View2D_getWindowValid(visit_handle h, int *);
 
 V_LIBSIMXPORT int simv2_View2D_copy(visit_handle dest, visit_handle src);
 

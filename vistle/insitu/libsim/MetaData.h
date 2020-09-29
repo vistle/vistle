@@ -9,26 +9,25 @@ namespace insitu {
 namespace libsim {
 
 enum class SimulationObjectType {
-    mesh
-    , variable
-    , material
-    , curve
-    , expression
-    , species
-    , genericCommand
-    , customCommand
-    , message
+    mesh,
+    variable,
+    material,
+    curve,
+    expression,
+    species,
+    genericCommand,
+    customCommand,
+    message
 
 };
 
 class MetaData {
 public:
-
     bool timestepChanged() const;
     int simMode() const;
     size_t currentCycle() const;
     double currentTime() const;
-    const visit_handle& handle() const;
+    const visit_handle &handle() const;
 
     //functions to retrieve meta data from sim
 
@@ -38,17 +37,17 @@ public:
     std::vector<std::string> getObjectNames(SimulationObjectType type) const;
     std::vector<std::string> getRegisteredGenericCommands() const;
     std::vector<std::vector<std::string>> getMeshAndFieldNames() const;
-    const char* getName(const visit_handle& handle, SimulationObjectType type) const;
+    const char *getName(const visit_handle &handle, SimulationObjectType type) const;
 
 private:
     bool m_timestepChanged = false;
-    int  m_simMode = VISIT_SIMMODE_UNKNOWN;
+    int m_simMode = VISIT_SIMMODE_UNKNOWN;
     int m_currentCycle = 0;
     double m_currentTime = 0;
     visit_handle m_handle = VISIT_INVALID_HANDLE;
 };
-}
-}
-}
+} // namespace libsim
+} // namespace insitu
+} // namespace vistle
 
 #endif // !SIMULATION_META_DATA_H

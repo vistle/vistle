@@ -27,13 +27,12 @@ class ViewerWrappedEngineOperatorPluginInfo;
 //
 // ****************************************************************************
 
-class SimOperatorPluginManager : public OperatorPluginManager
-{
+class SimOperatorPluginManager: public OperatorPluginManager {
 public:
     SimOperatorPluginManager();
     virtual ~SimOperatorPluginManager();
 
-    virtual ViewerOperatorPluginInfo   *GetViewerPluginInfo(const std::string&);
+    virtual ViewerOperatorPluginInfo *GetViewerPluginInfo(const std::string &);
 
 private:
     std::map<std::string, ViewerWrappedEngineOperatorPluginInfo *> wrapped;

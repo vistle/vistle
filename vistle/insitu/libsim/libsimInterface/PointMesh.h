@@ -9,20 +9,18 @@
 
 // C-callable implementation of front end functions
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-V_LIBSIMXPORT int simv2_PointMesh_alloc(visit_handle*);
+V_LIBSIMXPORT int simv2_PointMesh_alloc(visit_handle *);
 V_LIBSIMXPORT int simv2_PointMesh_free(visit_handle);
 
 V_LIBSIMXPORT int simv2_PointMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
 V_LIBSIMXPORT int simv2_PointMesh_setCoordsXYZ(visit_handle obj, visit_handle x, visit_handle y, visit_handle z);
 V_LIBSIMXPORT int simv2_PointMesh_setCoords(visit_handle obj, visit_handle xyz);
 
-V_LIBSIMXPORT int simv2_PointMesh_getCoords(visit_handle h,
-    int *ndims, int *coordMode,
-    visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *coords);
+V_LIBSIMXPORT int simv2_PointMesh_getCoords(visit_handle h, int *ndims, int *coordMode, visit_handle *x,
+                                            visit_handle *y, visit_handle *z, visit_handle *coords);
 
 #ifdef __cplusplus
 }

@@ -12,7 +12,7 @@
 // Purpose:
 //   Lets an EngineOperatorPluginInfo pretend to be a ViewerOperatorPluginInfo.
 //
-// Notes:    
+// Notes:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 16:16:11 PDT 2014
@@ -21,142 +21,76 @@
 //
 // ****************************************************************************
 
-class ViewerWrappedEngineOperatorPluginInfo : public ViewerOperatorPluginInfo
-{
+class ViewerWrappedEngineOperatorPluginInfo: public ViewerOperatorPluginInfo {
 public:
-    ViewerWrappedEngineOperatorPluginInfo(EngineOperatorPluginInfo *e) : eInfo(e)
-    {
-    }
+    ViewerWrappedEngineOperatorPluginInfo(EngineOperatorPluginInfo *e): eInfo(e) {}
 
-    virtual ~ViewerWrappedEngineOperatorPluginInfo()
-    {
-    }
+    virtual ~ViewerWrappedEngineOperatorPluginInfo() {}
 
     // GeneralOperatorPluginInfo methods
-    virtual const char *GetName() const
-    {
-        return eInfo->GetName();
-    }
+    virtual const char *GetName() const { return eInfo->GetName(); }
 
-    virtual const char *GetVersion() const
-    {
-        return eInfo->GetVersion();
-    }
+    virtual const char *GetVersion() const { return eInfo->GetVersion(); }
 
-    virtual const char *GetID() const
-    {
-        return eInfo->GetID();
-    }
+    virtual const char *GetID() const { return eInfo->GetID(); }
 
-    virtual bool  EnabledByDefault() const
-    {
-        return eInfo->EnabledByDefault();
-    }
+    virtual bool EnabledByDefault() const { return eInfo->EnabledByDefault(); }
 
-    virtual const char *GetCategoryName() const
-    {
-        return eInfo->GetCategoryName();
-    }
+    virtual const char *GetCategoryName() const { return eInfo->GetCategoryName(); }
 
     // CommonOperatorPluginInfo methods
-    virtual AttributeSubject *AllocAttributes()
-    {
-        return eInfo->AllocAttributes();
-    }
+    virtual AttributeSubject *AllocAttributes() { return eInfo->AllocAttributes(); }
 
-    virtual void CopyAttributes(AttributeSubject *to,
-                                AttributeSubject *from)
-    {
-        eInfo->CopyAttributes(to, from);
-    }
+    virtual void CopyAttributes(AttributeSubject *to, AttributeSubject *from) { eInfo->CopyAttributes(to, from); }
 
     virtual ExpressionList *GetCreatedExpressions(const avtDatabaseMetaData *md)
     {
         return eInfo->GetCreatedExpressions(md);
     }
 
-    virtual bool GetUserSelectable() const
-    {
-        return eInfo->GetUserSelectable();
-    }
+    virtual bool GetUserSelectable() const { return eInfo->GetUserSelectable(); }
 
-    virtual int GetVariableTypes() const
-    {
-        return eInfo->GetVariableTypes();
-    }
+    virtual int GetVariableTypes() const { return eInfo->GetVariableTypes(); }
 
-    virtual int GetVariableMask() const
-    {
-        return eInfo->GetVariableMask();
-    }
+    virtual int GetVariableMask() const { return eInfo->GetVariableMask(); }
 
     // ViewerEngineOperatorPluginInfo methods.
-    virtual AttributeSubject *GetClientAtts()
-    {
-        return eInfo->GetClientAtts();
-    }
+    virtual AttributeSubject *GetClientAtts() { return eInfo->GetClientAtts(); }
 
-    virtual AttributeSubject *GetDefaultAtts()
-    {
-        return eInfo->GetDefaultAtts();
-    }
+    virtual AttributeSubject *GetDefaultAtts() { return eInfo->GetDefaultAtts(); }
 
-    virtual void SetClientAtts(AttributeSubject *atts)
-    {
-        eInfo->SetClientAtts(atts);
-    }
+    virtual void SetClientAtts(AttributeSubject *atts) { eInfo->SetClientAtts(atts); }
 
-    virtual void GetClientAtts(AttributeSubject *atts)
-    {
-        eInfo->GetClientAtts(atts);
-    }
+    virtual void GetClientAtts(AttributeSubject *atts) { eInfo->GetClientAtts(atts); }
 
-    virtual void GetClientAtts(AttributeSubject *atts,
-                               const bool activeOperator,
-                               const bool applyToAll)
+    virtual void GetClientAtts(AttributeSubject *atts, const bool activeOperator, const bool applyToAll)
     {
         eInfo->GetClientAtts(atts, activeOperator, applyToAll);
     }
 
 
-    virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const avtPlotMetaData &plot,
-                                        const bool fromDefault)
+    virtual void InitializeOperatorAtts(AttributeSubject *atts, const avtPlotMetaData &plot, const bool fromDefault)
     {
         eInfo->InitializeOperatorAtts(atts, plot, fromDefault);
     }
 
-    virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const avtPlotMetaData &plot)
+    virtual void UpdateOperatorAtts(AttributeSubject *atts, const avtPlotMetaData &plot)
     {
         eInfo->UpdateOperatorAtts(atts, plot);
     }
 
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const avtPlotMetaData &plot)
+    virtual std::string GetOperatorVarDescription(AttributeSubject *atts, const avtPlotMetaData &plot)
     {
         return eInfo->GetOperatorVarDescription(atts, plot);
     }
 
-    virtual const char *GetMenuName() const
-    {
-        return eInfo->GetMenuName();
-    }
+    virtual const char *GetMenuName() const { return eInfo->GetMenuName(); }
 
-    virtual bool Removeable() const
-    {
-        return eInfo->Removeable();
-    }
+    virtual bool Removeable() const { return eInfo->Removeable(); }
 
-    virtual bool Moveable() const
-    {
-        return eInfo->Moveable();
-    }
+    virtual bool Moveable() const { return eInfo->Moveable(); }
 
-    virtual bool AllowsSubsequentOperators() const
-    {
-        return eInfo->AllowsSubsequentOperators();
-    }
+    virtual bool AllowsSubsequentOperators() const { return eInfo->AllowsSubsequentOperators(); }
 
     // We don't need to override ViewerOperatorPluginInfo default methods
 private:
@@ -172,9 +106,9 @@ private:
 // Arguments:
 //   mgr : The engine plugin manager.
 //
-// Returns:    
+// Returns:
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 16:32:07 PDT 2014
@@ -183,9 +117,8 @@ private:
 //
 // ****************************************************************************
 
-SimOperatorPluginManager::SimOperatorPluginManager() : OperatorPluginManager(), wrapped()
-{
-}
+SimOperatorPluginManager::SimOperatorPluginManager(): OperatorPluginManager(), wrapped()
+{}
 
 // ****************************************************************************
 // Method: SimOperatorPluginManager::~SimOperatorPluginManager
@@ -203,7 +136,7 @@ SimOperatorPluginManager::SimOperatorPluginManager() : OperatorPluginManager(), 
 SimOperatorPluginManager::~SimOperatorPluginManager()
 {
     std::map<std::string, ViewerWrappedEngineOperatorPluginInfo *>::iterator it;
-    for(it = wrapped.begin(); it != wrapped.end(); ++it)
+    for (it = wrapped.begin(); it != wrapped.end(); ++it)
         delete it->second;
 }
 
@@ -211,7 +144,7 @@ SimOperatorPluginManager::~SimOperatorPluginManager()
 // Method: SimOperatorPluginManager::GetViewerPluginInfo
 //
 // Purpose:
-//   Retrieves a viewer plugin info object (internally using the engine plugin 
+//   Retrieves a viewer plugin info object (internally using the engine plugin
 //   manager and engine plugins).
 //
 // Arguments:
@@ -219,7 +152,7 @@ SimOperatorPluginManager::~SimOperatorPluginManager()
 //
 // Returns:    A viewer plugin implemented by an engine plugin.
 //
-// Note:       
+// Note:
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Sep 17 16:33:01 PDT 2014
@@ -228,13 +161,11 @@ SimOperatorPluginManager::~SimOperatorPluginManager()
 //
 // ****************************************************************************
 
-ViewerOperatorPluginInfo *
-SimOperatorPluginManager::GetViewerPluginInfo(const std::string &id)
+ViewerOperatorPluginInfo *SimOperatorPluginManager::GetViewerPluginInfo(const std::string &id)
 {
     std::map<std::string, ViewerWrappedEngineOperatorPluginInfo *>::iterator it;
     it = wrapped.find(id);
-    if(it == wrapped.end())
-    {
+    if (it == wrapped.end()) {
         // Get the engine plugin from the other plot manager.
         EngineOperatorPluginInfo *eInfo = GetEnginePluginInfo(id);
 
@@ -243,5 +174,5 @@ SimOperatorPluginManager::GetViewerPluginInfo(const std::string &id)
         it = wrapped.find(id);
     }
 
-    return it->second;   
+    return it->second;
 }

@@ -9,11 +9,10 @@
 
 // C-callable implementation of front end functions
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-V_LIBSIMXPORT int simv2_RectilinearMesh_alloc(visit_handle*);
+V_LIBSIMXPORT int simv2_RectilinearMesh_alloc(visit_handle *);
 V_LIBSIMXPORT int simv2_RectilinearMesh_free(visit_handle);
 
 V_LIBSIMXPORT int simv2_RectilinearMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y);
@@ -23,8 +22,8 @@ V_LIBSIMXPORT int simv2_RectilinearMesh_setBaseIndex(visit_handle obj, int base_
 V_LIBSIMXPORT int simv2_RectilinearMesh_setGhostCells(visit_handle h, visit_handle gz);
 V_LIBSIMXPORT int simv2_RectilinearMesh_setGhostNodes(visit_handle h, visit_handle gn);
 
-V_LIBSIMXPORT int simv2_RectilinearMesh_getCoords(visit_handle h, int *ndims, 
-                  visit_handle *x, visit_handle *y, visit_handle *z);
+V_LIBSIMXPORT int simv2_RectilinearMesh_getCoords(visit_handle h, int *ndims, visit_handle *x, visit_handle *y,
+                                                  visit_handle *z);
 V_LIBSIMXPORT int simv2_RectilinearMesh_getRealIndices(visit_handle h, int min[3], int max[3]);
 V_LIBSIMXPORT int simv2_RectilinearMesh_getBaseIndex(visit_handle h, int base_index[3]);
 V_LIBSIMXPORT int simv2_RectilinearMesh_getGhostCells(visit_handle h, visit_handle *gz);

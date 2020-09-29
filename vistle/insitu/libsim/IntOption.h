@@ -5,24 +5,17 @@
 
 #include <vistle/core/scalar.h>
 
-namespace vistle{
-namespace insitu{
-namespace libsim{
-    enum class IntOptions
-    {
-        CombineGrids
-        , ConstGrids
-        , KeepTimesteps
-        , NthTimestep
-        , VtkFormat
-    };
+namespace vistle {
+namespace insitu {
+namespace libsim {
+enum class IntOptions { CombineGrids, ConstGrids, KeepTimesteps, NthTimestep, VtkFormat };
 
-    typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
+typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
+} // namespace libsim
+namespace message {
+DEFINE_IN_SITU_MESSAGE(LibSimIntOption, libsim::IntOption)
 }
-namespace message{
-    DEFINE_IN_SITU_MESSAGE(LibSimIntOption, libsim::IntOption)
-}
-}
-}
+} // namespace insitu
+} // namespace vistle
 
 #endif
