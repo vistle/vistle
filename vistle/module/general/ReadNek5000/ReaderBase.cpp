@@ -31,7 +31,7 @@ bool ReaderBase::init()
     if (!parseMetaDataFile() || !ParseNekFileHeader() || !ParseGridMap()) {
         return false;
     }
-    if(numBlocksToRead < 1 || numBlocksToRead > totalNumBlocks)
+    if(numBlocksToRead < 1 || numBlocksToRead > unsigned(totalNumBlocks))
         numBlocksToRead = totalNumBlocks;
     UpdateCyclesAndTimes(0);
     //create basic structures to later create connectivity lists
@@ -536,6 +536,10 @@ bool ReaderBase::ParseNekFileHeader() {
 
         ParseFieldTags(f);
 
+    }
+    if (totalNumBlocks < 0) {
+        sendError("negative total block count");
+        totalNumBlocks = 0;
     }
     dim = blockDimensions[2] == 1 ? 2 : 3;
     numCorners = dim == 2 ? 4 : 8;

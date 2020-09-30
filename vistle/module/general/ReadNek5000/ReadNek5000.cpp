@@ -269,6 +269,7 @@ ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
    p_only_geometry = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
    p_useMap = addIntParameter("useMap", "use .map file to partition mesh", false, Parameter::Boolean);
    p_numGhostLayers = addIntParameter("numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
+   setParameterMinimum(p_numGhostLayers, Integer{ 0 });
    p_numBlocks = addIntParameter("number of blocks", "number of blocks, <= 0 to read all", 0);
    p_numPartitions = addIntParameter("numerOfPartitions", "number of partitions, 0 = one partition for each rank", 0);
    setParameterMinimum(p_numPartitions, Integer{ 0 });

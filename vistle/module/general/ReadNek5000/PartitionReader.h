@@ -30,7 +30,7 @@ public:
     size_t getNumGhostHexes() const;
 
 //setter
-    bool setPartition(int partition, int numGhostLayers, bool useMap = true); //also starts mapping the block ids
+    bool setPartition(int partition, unsigned numGhostLayers, bool useMap = true); //also starts mapping the block ids
 private:
 
     //variables
@@ -82,7 +82,7 @@ private:
 
     bool CheckOpenFile(std::unique_ptr<OpenFile>& file, int timestep, int fileID);
     //adds numGhostLayers of block layers atound this partition and adds them to myBlocksToRead. 
-    void addGhostBlocks(std::vector<int> &blocksNotToRead, int numGhostLayers);
+    void addGhostBlocks(std::vector<int> &blocksNotToRead, unsigned numGhostLayers);
     //construct the connectivity list out of the .map file(if available).
     //Reads the mesh during construction to check for "mistakes" (e.g. logical connected blocks) in the .map file
     bool makeConnectivityList();

@@ -37,7 +37,7 @@ protected:
     std::string fileTemplate; //template for datafiles
 
     int numPartitions = 0;
-    int numBlocksToRead = 0; //blocks to read given by user input
+    unsigned numBlocksToRead = 0; //blocks to read given by user input
     int firstTimestep = 1;
     int numTimesteps = 1;
     unsigned blockDimensions[3] = { 1,1,1 };

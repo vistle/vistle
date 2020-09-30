@@ -41,7 +41,7 @@ bool PartitionReader::fillVelocity(int timestep, vistle::Scalar *x, vistle::Scal
             if (!ReadVelocity(timestep, myBlocksToRead[b], velocity[0].data(), velocity[1].data(), velocity[2].data())) {
                 return false;
             }
-            for (size_t i = 0; i < numCon; ++i) {
+            for (int i = 0; i < numCon; ++i) {
 
                 x[connectivityList[i + b * numCon]] = velocity[0][connectivityList[i]];
                 y[connectivityList[i + b * numCon]] = velocity[1][connectivityList[i]];
@@ -56,12 +56,12 @@ bool PartitionReader::fillVelocity(int timestep, vistle::Scalar *x, vistle::Scal
 bool PartitionReader::fillScalarData(std::string varName, int timestep, vistle::Scalar *data)
 {
     int numCon = numCorners * hexesPerBlock;
-    for (int b = 0; b < myBlocksToRead.size(); b++) {
+    for (size_t b = 0; b < myBlocksToRead.size(); b++) {
         vector<float> scalar(blockSize);
         if (!ReadVar(varName, timestep, myBlocksToRead[b], scalar.data())) {
             return false;
         }
-        for (size_t i = 0; i < numCon; i++) {
+        for (int i = 0; i < numCon; i++) {
 
             data[connectivityList[i + b * numCon]] = scalar[connectivityList[i]];
         }
@@ -72,7 +72,7 @@ bool PartitionReader::fillScalarData(std::string varName, int timestep, vistle::
 bool PartitionReader::fillBlockNumbers(vistle::Index* data) {
     int numConn = numCorners * hexesPerBlock;
     for (size_t i = 0; i < myBlocksToRead.size(); i++) {
-        for (size_t j = 0; j < numConn; j++) {
+        for (int j = 0; j < numConn; j++) {
             data[connectivityList[i * numConn + j]] = myBlocksToRead[i];
         }
     }
@@ -110,14 +110,14 @@ size_t PartitionReader::getNumGhostHexes() const {
 
 
 //setter
-bool PartitionReader::setPartition(int partition, int numGhostLayers, bool useMap)
+bool PartitionReader::setPartition(int partition, unsigned numGhostLayers, bool useMap)
 {
     if(partition > numPartitions)
         return false;
     myPartition = partition;
     
     int max = mapFileHeader[3];
-    if (numBlocksToRead != totalNumBlocks) {
+    if (numBlocksToRead != unsigned(totalNumBlocks)) {
 
         max = max_element(mapFileData.begin(), mapFileData.end(),
             [](const array<int, 9> & a, const array<int, 9> & b) {return a[0] < b[0]; }) - mapFileData.begin();
@@ -130,7 +130,7 @@ bool PartitionReader::setPartition(int partition, int numGhostLayers, bool useMa
 
 
     vector<int> blocksNotToRead;
-    for (size_t i = 0; i < numBlocksToRead; i++) { 
+    for (unsigned i = 0; i < numBlocksToRead; i++) {
         if (mapFileData[i][0] >= lower && mapFileData[i][0] < upper) {
             myBlocksToRead.push_back(i);
         }
@@ -191,21 +191,21 @@ bool PartitionReader::ReadMesh(int timestep, int block, float *x, float *y, floa
             size_t res = fread(tmppts, sizeof(double), blockSize * dim, curOpenMeshFile->file()); (void)res;
             if (bSwapEndian)
                 ByteSwapArray(tmppts, blockSize * dim);
-            for (int i = 0; i < blockSize; i++) {
+            for (unsigned i = 0; i < blockSize; i++) {
                 x[i] = static_cast<int>(tmppts[i]);
             }
-            for (int i = 0; i < blockSize; i++) {
+            for (unsigned i = 0; i < blockSize; i++) {
                 y[i] = static_cast<int>(tmppts[i + blockSize]);
             }
             if (dim == 3) {
-                for (int i = 0; i < blockSize; i++) {
+                for (unsigned i = 0; i < blockSize; i++) {
                     z[i] = static_cast<int>(tmppts[i + 2 * blockSize]);
                 }
             }
             delete[] tmppts;
         }
     } else {
-        for (int ii = 0; ii < blockSize; ii++) {
+        for (unsigned ii = 0; ii < blockSize; ii++) {
             fseek(curOpenMeshFile->file(), (long)curOpenMeshFile->iAsciiFileStart +
                 (long)block * curOpenMeshFile->iAsciiFileLineLen * blockSize +
                 (long)ii * curOpenMeshFile->iAsciiFileLineLen, SEEK_SET);
@@ -272,7 +272,7 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
             if (bSwapEndian)
                 ByteSwapArray(tmppts, blockSize * dim);
 
-            for (int ii = 0; ii < blockSize; ii++) {
+            for (unsigned ii = 0; ii < blockSize; ii++) {
                 x[ii] = (double)tmppts[ii];
                 y[ii] = (double)tmppts[ii + blockSize];
                 if (dim == 3) {
@@ -284,7 +284,7 @@ bool PartitionReader::ReadVelocity(int timestep, int block, float* x, float* y, 
             delete[] tmppts;
         }
     } else {
-        for (int ii = 0; ii < blockSize; ii++) {
+        for (unsigned ii = 0; ii < blockSize; ii++) {
             fseek(curOpenVarFile->file(), (long)curOpenVarFile->iAsciiFileStart +
                 (long)block * curOpenVarFile->iAsciiFileLineLen * blockSize +
                 (long)ii * curOpenVarFile->iAsciiFileLineLen +
@@ -344,14 +344,14 @@ bool PartitionReader::ReadVar(const string &varname, int timestep, int block, fl
             if (bSwapEndian)
                 ByteSwapArray(tmp, blockSize);
 
-            for (int ii = 0; ii < blockSize; ii++)
+            for (unsigned ii = 0; ii < blockSize; ii++)
                 data[ii] = (float)tmp[ii];
 
             delete[] tmp;
         }
     } else {
         float* var_tmp = data;
-        for (int ii = 0; ii < blockSize; ii++) {
+        for (unsigned ii = 0; ii < blockSize; ii++) {
             fseek(curOpenVarFile->file(), (long)curOpenVarFile->iAsciiFileStart +
                 (long)block * curOpenVarFile->iAsciiFileLineLen * blockSize +
                 (long)ii * curOpenVarFile->iAsciiFileLineLen +
@@ -544,7 +544,7 @@ bool PartitionReader::CheckOpenFile(std::unique_ptr<OpenFile>& file, int timeste
     return true;
 }
 
-void PartitionReader::addGhostBlocks(std::vector<int>& blocksNotToRead, int numGhostLayers) {
+void PartitionReader::addGhostBlocks(std::vector<int>& blocksNotToRead, unsigned numGhostLayers) {
     if (myBlocksToRead.size() == numBlocksToRead) {
         return;
     }
@@ -621,8 +621,8 @@ bool PartitionReader::makeConnectivityList() {
         }
         //add the new connectivityList entries to my grid
         int numCon = numCorners * hexesPerBlock;
-        for (size_t i = 0; i < numCon; i++) {
-            for (size_t j = 0; j < 3; j++) {
+        for (int i = 0; i < numCon; i++) {
+            for (int j = 0; j < 3; j++) {
                 myGrid[j][connectivityList[i + currBlock * numCon]] = grid[j][connectivityList[i]];
             }
         }
@@ -749,7 +749,6 @@ std::map<int, int> PartitionReader::findAlreadyWrittenPoints(const size_t& currB
                 globalPlane[i] = corners[plane[i]];
                 localPlane[i] = plane[i];
             }
-            auto unsortedPlane = globalPlane;
             sort(globalPlane.begin(), globalPlane.end());
             auto it = writtenPlanes.find(globalPlane);
             if (it != writtenPlanes.end()) {
@@ -793,7 +792,7 @@ vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners, 
         int ci1 = cornerIndexToBlockIndex(corners[0]);
         int ci2 = cornerIndexToBlockIndex(corners[1]);
         int step = (ci2 - ci1) / myDim;
-        for (size_t i = ci1; i <= ci2; i+= step) {
+        for (int i = ci1; i <= ci2; i+= step) {
             indices.push_back(i);
         }
 
@@ -807,7 +806,7 @@ vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners, 
                 indices.push_back(i);
             }
             if (invertAxis[0]) {
-                for (int i = 0; i < blockDimensions[1]; i++) {
+                for (unsigned i = 0; i < blockDimensions[1]; i++) {
                     vector<int> inv;
                     inv.reserve(blockDimensions[0]);
                     for (int j = blockDimensions[0] - 1; j >= 0; --j) {
@@ -829,14 +828,14 @@ vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners, 
         }
         else if (corners[3] - corners[0] == 5) { //xz plane
             int start = cornerIndexToBlockIndex(corners[0]);
-            for (int i = 0; i < blockDimensions[2]; i++) {
-                for (int j = 0; j < blockDimensions[1]; j++) {
+            for (unsigned i = 0; i < blockDimensions[2]; i++) {
+                for (unsigned j = 0; j < blockDimensions[1]; j++) {
                     indices.push_back(start + j);
                 }
                 start += blockDimensions[0] * blockDimensions[1];
             }
             if (invertAxis[0]) {
-                for (int i = 0; i < blockDimensions[2]; i++) {
+                for (unsigned i = 0; i < blockDimensions[2]; i++) {
                     vector<int> inv;
                     inv.reserve(blockDimensions[0]);
                     for (int j = blockDimensions[0] - 1; j >= 0; --j) {
@@ -861,7 +860,7 @@ vector<int> PartitionReader::getIndicesBetweenCorners(std::vector<int> corners, 
                 indices.push_back(i);
             }
             if (invertAxis[1]) {
-                for (int i = 0; i < blockDimensions[2]; i++) {
+                for (unsigned i = 0; i < blockDimensions[2]; i++) {
                     vector<int> inv;
                     inv.reserve(blockDimensions[1]);
                     for (int j = blockDimensions[1] - 1; j >= 0; j--) {
@@ -916,6 +915,10 @@ int PartitionReader::cornerIndexToBlockIndex(int cornerIndex)     {
     default:
         break;
     }
+
+    assert(cornerIndex >= 1 && cornerIndex <= 8);
+
+    return getLocalBlockIndex(0, 0, 0);
 }
 
 void PartitionReader::fillConnectivityList(const map<int, int>& localToGloabl, int startIndexInMesh) {
@@ -945,7 +948,7 @@ void PartitionReader::fillConnectivityList(const map<int, int>& localToGloabl, i
 
 void PartitionReader::addNewCorners(map<int, int> &allCorners, int localBlock)     {
     auto corners = mapFileData[myBlocksToRead[localBlock]];
-    for (size_t i = 1; i <= numCorners; i++) {
+    for (int i = 1; i <= numCorners; i++) {
         allCorners[corners[i]] = connectivityList[blockIndexToConnectivityIndex.find(cornerIndexToBlockIndex(i))->second[0] + localBlock * numCorners * hexesPerBlock];
     }
 }
