@@ -14,10 +14,22 @@ If Vistle is build as multi-process shared memory programm:
 	
 If Vistle is build as single-process programm:
 
+	set environmentvariables:
+		VISTLE_ROOT=path/to/vistle/build-dir (in the sim shell)
+		Vistle_KEY=1234 (same number in the hub and sim shell)
+	start sim
 	start Vistle with the command-line-argument --libsim {path/to/.sim2/file} 
 	Vistle starts in the simulation's process and connects to the hub
-	start the LibSim module to viwe and control the simulation
+	start the LibSim module to view and control the simulation
 	
-EstablishLibSimConnection
---------------------------
-A small library that manages the first connection to a LibSim instrumented simulation that initiates the linking to the libsimV2runntime library
+connectLibsim
+-------------
+A small library that manages the first connection to a LibSim instrumented simulation that initiates the linking of the sim to the libsimV2runntime library.
+
+engineInterface
+---------------
+In single process mode this provides an interface for the LibSimController module to get access to the simulation's controll socket.  
+
+libsimInterface
+---------------
+Contains the libsim files that represent the runtime interface to the libsim static library
