@@ -24,7 +24,7 @@
 
 #ifdef MODULE_THREAD
 #include "engineInterface/EngineInterface.cpp"
-#include <vistle/control/hub.h>
+#include <vistle/manager/manager.h>
 #endif // MODULE_THREAD
 
 #ifdef LIBSIM_DEBUG
@@ -65,6 +65,11 @@ void Engine::DisconnectSimulation()
 
 bool Engine::initialize(int argC, char **argV)
 {
+    if (m_initialized) {
+        CERR << "initialize called, but engine is already initialized" << endl;
+        return false;
+    }
+
     CERR << "__________Engine args__________" << endl;
     for (int i = 0; i < argC; i++) {
         CERR << argV[i] << endl;
@@ -77,9 +82,8 @@ bool Engine::initialize(int argC, char **argV)
         collectModuleInfo(argV);
         return initializeVistleEnv();
     }
-
-#endif
     return true;
+#endif
 }
 
 bool Engine::isInitialized() const noexcept
@@ -249,23 +253,7 @@ int Engine::GetInputSocket()
 //...................................................................................................
 //----------------private----------------------------------------------------------------------------
 Engine::Engine()
-#ifdef MODULE_THREAD
-#if BOOST_VERSION >= 106600
-: m_workGuard(asio::make_work_guard(m_ioService))
-#else
-: m_workGuard(new asio::io_service::work(m_ioService))
-#endif
-, m_ioThread([this]() {
-    m_ioService.run();
-    DEBUG_CERR << "io thread terminated" << endl;
-})
 {
-    m_acceptorv4.reset(new acceptor(m_ioService));
-    m_acceptorv6.reset(new acceptor(m_ioService));
-#else
-{
-#endif
-
     m_intOptions.insert(IntOption{IntOptions::CombineGrids, false});
     m_intOptions.insert(IntOption{IntOptions::ConstGrids, false});
     m_intOptions.insert(IntOption{IntOptions::KeepTimesteps, 1});
@@ -280,34 +268,100 @@ Engine::Engine()
 
 Engine::~Engine()
 {
+    m_messageHandler.send(ConnectionClosed{true});
 #ifndef MODULE_THREAD
     if (vistle::Shm::isAttached()) {
         vistle::Shm::the().detach();
     }
+#else
+    m_managerThread.join();
 #endif
     Engine::instance = nullptr;
 }
 
-
 #ifdef MODULE_THREAD
 bool Engine::startVistle(int argC, char **argV)
 {
-    if (m_rank == 0) {
-        ConnectMySelf();
+    if ((m_rank == 0 && ConnectMySelf()) || m_rank > 0) {
+        m_messageHandler.initialize(
+            m_socket,
+            boost::mpi::communicator(
+                comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
+            // this point. Since most simulations never
+            // change comm, this is a easy cheat impl
+        if (launchManager(argC, argV)) {
+            m_initialized = true;
+        }
     }
-    m_messageHandler.initialize(
-        m_socket, boost::mpi::communicator(
-                      comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
-        // this point. Since most simulations never
-        // change comm, this is a easy cheat impl
-    // start manager on cluster
+    return m_initialized;
+}
+
+bool Engine::ConnectMySelf()
+{
+    initializeAsync();
+    unsigned short port = m_port;
+
+    boost::system::error_code ec;
+
+    while (!vistle::start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
+        if (ec == boost::system::errc::address_in_use) {
+            ++port;
+        } else if (ec) {
+            CERR << "failed to listen on port " << port << ": " << ec.message() << endl;
+            return false;
+        }
+    }
+    m_port = port;
+    startAccept(m_acceptorv4);
+    startAccept(m_acceptorv6);
+    connectToModule("localhost", m_port);
+    return true;
+}
+
+void Engine::initializeAsync()
+{
+    m_workGuard = std::make_unique<WorkGuard>(m_ioService.get_executor());
+    m_ioThread = std::make_unique<std::thread>([this]() {
+        m_ioService.run();
+        DEBUG_CERR << "io thread terminated" << endl;
+    });
+
+    m_acceptorv4.reset(new acceptor(m_ioService));
+    m_acceptorv6.reset(new acceptor(m_ioService));
+}
+
+bool Engine::startAccept(std::unique_ptr<acceptor> &a)
+{
+    if (!a->is_open())
+        return false;
+
+    std::shared_ptr<socket> sock(new socket(m_ioService));
+    boost::system::error_code ec;
+    a->async_accept(*sock, [this, &a, sock](boost::system::error_code ec) {
+        if (ec) {
+            if (m_waitingForAccept) {
+                EngineInterface::setControllSocket(nullptr);
+                CERR << "failed connection attempt" << endl;
+            }
+            return;
+        }
+        CERR << "server connected with engine, acceptor " << (a == m_acceptorv4 ? "v4" : "v6") << endl;
+        EngineInterface::setControllSocket(sock);
+        m_waitingForAccept = false;
+        a == m_acceptorv4 ? m_acceptorv6->close() : m_acceptorv4->close();
+    });
+    return true;
+}
+
+bool Engine::launchManager(int argC, char **argV)
+{
     const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
     if (!VISTLE_ROOT) {
         CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
         return false;
     }
 
-    m_managerThread = std::thread([argC, argV, VISTLE_ROOT]() {
+    m_managerThread = std::thread([this, argC, argV, VISTLE_ROOT]() {
         string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         vector<char *> args;
@@ -318,52 +372,8 @@ bool Engine::startVistle(int argC, char **argV)
         vistle::VistleManager manager;
         manager.run(args.size(), args.data());
     });
-    m_initialized = true;
-}
-
-void Engine::ConnectMySelf()
-{
-    unsigned short port = m_port;
-
-    boost::system::error_code ec;
-
-    while (!vistle::start_listen(port, *m_acceptorv4, *m_acceptorv6, ec)) {
-        if (ec == boost::system::errc::address_in_use) {
-            ++port;
-        } else if (ec) {
-            CERR << "failed to listen on port " << port << ": " << ec.message() << endl;
-            return;
-        }
-    }
-    m_port = port;
-    startAccept(m_acceptorv4);
-    startAccept(m_acceptorv6);
-    connectToModule("localhost", m_port);
-}
-
-bool Engine::startAccept(std::shared_ptr<acceptor> a)
-{
-    if (!a->is_open())
-        return false;
-
-    std::shared_ptr<socket> sock(new socket(m_ioService));
-    boost::system::error_code ec;
-    a->async_accept(*sock, [this, a, sock](boost::system::error_code ec) {
-        if (ec) {
-            if (m_waitingForAccept) {
-                EngineInterface::setControllSocket(nullptr);
-                CERR << "failed connection attempt" << endl;
-            }
-            return;
-        }
-        CERR << "server connected with engine" << (a == m_acceptorv4 ? "v4" : "v6") << endl;
-        EngineInterface::setControllSocket(sock);
-        m_waitingForAccept = false;
-        a == m_acceptorv4 ? m_acceptorv6->close() : m_acceptorv4->close();
-    });
     return true;
 }
-
 #endif
 
 bool Engine::checkInitArgs(int argC, char **argV)
@@ -475,7 +485,6 @@ void Engine::sendObjectsToModule()
         CERR << "transferObjectsToVistle failed: " << ex.what() << endl;
     }
 }
-
 
 void Engine::resetDataTransmitter()
 {

@@ -23,10 +23,6 @@
 #include <thread>
 #include <vector>
 
-#ifdef MODULE_THREAD
-#include <vistle/manager/manager.h>
-#endif // MODULE_THREAD
-
 namespace vistle {
 namespace message {
 class MessageQueue;
@@ -57,8 +53,8 @@ public:
     // called from simulation when a timestep changed
     void SimulationTimeStepChanged();
     // called by the static LibSim library for syncing. So far only handles "INTERNALSYNC" commands.
-    // When this function gets called, the simulationCommandCallback has been replaced with and internal callback for the
-    // duration of the call.
+    // When this function gets called, the simulationCommandCallback has been replaced with and internal callback for
+    // the duration of the call.
     void SimulationInitiateCommand(const std::string &command);
     // not sure what to do here.
     void DeleteData();
@@ -108,12 +104,13 @@ private:
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
 #if BOOST_VERSION >= 106600
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+    typedef boost::asio::executor_work_guard<boost::asio::io_context::executor_type> WorkGuard;
 #else
-    std::shared_ptr<boost::asio::io_service::work> m_workGuard;
+    typedef boost::asio::io_service::work WorkGuard;
 #endif
-    std::thread m_ioThread; // thread for io_service
-    std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+    std::unique_ptr<WorkGuard> m_workGuard;
+    std::unique_ptr<std::thread> m_ioThread; // thread for io_service
+    std::unique_ptr<acceptor> m_acceptorv4, m_acceptorv6;
     std::mutex m_asioMutex;
     std::atomic<bool> m_waitingForAccept{true}; // condition
 #endif
@@ -121,8 +118,10 @@ private:
     ~Engine();
 #ifdef MODULE_THREAD
     bool startVistle(int argC, char **argV);
-    void ConnectMySelf();
-    bool startAccept(std::shared_ptr<acceptor> a);
+    bool ConnectMySelf();
+    void initializeAsync();
+    bool startAccept(std::unique_ptr<acceptor> &a);
+    bool launchManager(int argC, char **argV);
 #endif // MODULE_THREAD
 
     bool checkInitArgs(int argC, char **argV);

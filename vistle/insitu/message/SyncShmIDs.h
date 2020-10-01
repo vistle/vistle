@@ -58,17 +58,16 @@ private:
 
         boost::interprocess::mapped_region m_region;
     };
-    ShmSegment m_segment;
 #else
-    class Data { // wrapper if we dont need shm
+    class ShmSegment { // wrapper if we dont need shm
     public:
         ShmData *data() { return &m_data; }
 
     private:
         ShmData m_data;
     };
-    Data m_segment;
 #endif
+    ShmSegment m_segment;
     int m_rank = -1;
     int m_moduleID = -1;
 

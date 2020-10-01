@@ -30,7 +30,7 @@ private:
 
 class V_SENSEIEXPORT
     MetaData { // This contains the names of all meshes and their linked data fields and must be provided before the connection to
-        // Vistle
+    // Vistle
 public:
     typedef std::set<MetaMesh>::const_iterator Iter;
 
