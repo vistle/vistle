@@ -41,7 +41,6 @@ class V_INSITUMODULEEXPORT InSituReader : public vistle::Module
     const vistle::message::Execute *m_exec = nullptr;
     std::unique_ptr<vistle::message::MessageQueue>
         m_receiveFromSimMessageQueue; // receives vistle messages that will be passed through to manager
-    std::string m_receiveFromSimMessageQueueName = "recvFromSimMsq";
     size_t m_instanceNum = 0;
     static size_t m_numInstances;
 
