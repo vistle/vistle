@@ -28,7 +28,7 @@ osx_image:
 jobs:
     exclude:
         - os: osx
-          env: BUILD_TYPE="Release" MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=OFF
+          env: BUILD_TYPE="Release" MULTI_PROCESS=OFF LARGE_INDICES=ON DOUBLE_PRECISION=ON
 
 addons:
     apt:
