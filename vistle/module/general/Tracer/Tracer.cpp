@@ -1,4 +1,4 @@
-﻿#include "Tracer.h"
+#include "Tracer.h"
 #include "BlockData.h"
 #include "Particle.h"
 #include <sstream>
@@ -401,7 +401,7 @@ bool Tracer::reduce(int timestep) {
        }
        //setIntParameter("no_startp", numpoints);
        if (rank() == 0 && numpoints != n0*n1 && !m_numStartpointsPrinted) {
-           sendInfo("actually using %lu*%lu=%lu start points", (unsigned long)n0, (unsigned long)n1, (unsigned long)n0*n1);
+           sendInfo("actually using %lu*%lu=%lu start points", (unsigned long)n0, (unsigned long)n1, (unsigned long)(n0*n1));
            m_numStartpointsPrinted = true;
        }
        numpoints = n0*n1;
