@@ -246,7 +246,9 @@ bool SenseiModule::handleMessage(Message& msg) {
         {
             CERR << " tcp connection closed...disconnecting." << endl;
         }
-#ifndef MODULE_THREAD
+#ifdef MODULE_THREAD
+        sendMessage(vistle::message::Quit());
+#else
         disconnectSim();
 #endif
     }
