@@ -63,6 +63,16 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
 #endif
 }
 
+SenseiAdapter::~SenseiAdapter()
+{
+    delete m_internals;
+    m_internals->messageHandler.send(message::ConnectionClosed{true});
+#ifdef MODULE_THREAD
+    CERR << "Quit requested, waiting for vistle manager to finish" << endl;
+    m_managerThread.join();
+#endif
+}
+
 bool SenseiAdapter::Execute(size_t timestep)
 {
     if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
@@ -77,20 +87,19 @@ bool SenseiAdapter::Execute(size_t timestep)
 #ifdef MODULE_THREAD
 bool SenseiAdapter::startVistle(const MPI_Comm &comm)
 {
-    const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
-    if (!VISTLE_ROOT) {
-        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
-        return false;
-    }
-
-    m_managerThread = std::thread([this, VISTLE_ROOT]() {
+    m_managerThread = std::thread([this]() {
+        const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+        if (!VISTLE_ROOT) {
+            CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
+            return false;
+        }
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
-        char *arg = new char(cmd.size());
-        std::copy(cmd.begin(), cmd.end(), arg);
+        std::vector<char *> args;
+        args.push_back(const_cast<char *>(cmd.c_str()));
         vistle::VistleManager manager;
-        manager.run(1, &arg);
-        delete[] arg;
+        manager.run(1, args.data());
+        return true;
     });
     return true;
 }
@@ -284,8 +293,10 @@ bool SenseiAdapter::checkMpiSize() const
 
 bool SenseiAdapter::initializeVistleEnv()
 {
-    vistle::registerTypes();
     try {
+#ifndef MODULE_THREAD
+        vistle::registerTypes();
+#endif
         initializeMessageQueues();
     } catch (const vistle::exception &ex) {
         CERR << ex.what() << endl;
