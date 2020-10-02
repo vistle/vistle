@@ -36,8 +36,7 @@ struct Internals
 
     insitu::message::SyncShmIDs shmIDs;
     message::InSituShmMessage messageHandler;
-    std::set<IntOption> intOptions;       // options that can be set in the module
-
+    std::set<IntOption> intOptions; // options that can be set in the module
 };
 } // namespace detail
 } // namespace sensei
@@ -46,8 +45,8 @@ struct Internals
 
 SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs)
     : m_callbacks(cbs)
-    , m_metaData(std::move(meta)) 
-    , m_internals(new detail::Internals{}){
+    , m_metaData(std::move(meta))
+    , m_internals(new detail::Internals{}) {
     MPI_Comm_rank(Comm, &m_rank);
     MPI_Comm_size(Comm, &m_mpiSize);
     m_commands["run/paused"] = !paused; // if true run else wait
@@ -66,6 +65,15 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
 #endif
 }
 
+SenseiAdapter::~SenseiAdapter() {
+    delete m_internals;
+    m_internals->messageHandler.send(message::ConnectionClosed{true});
+#ifdef MODULE_THREAD
+    CERR << "Quit requested, waiting for vistle manager to finish" << endl;
+    m_managerThread.join();
+#endif
+}
+
 bool SenseiAdapter::Execute(size_t timestep) {
     if (stillConnected() && !quitRequested() && WaitedForModuleCommands()) {
         if (m_internals->moduleInfo.isReady() && haveToProcessTimestep(timestep)) {
@@ -78,20 +86,19 @@ bool SenseiAdapter::Execute(size_t timestep) {
 
 #ifdef MODULE_THREAD
 bool SenseiAdapter::startVistle(const MPI_Comm &comm) {
-    const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
-    if (!VISTLE_ROOT) {
-        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
-        return false;
-    }
-
-    m_managerThread = std::thread([this, VISTLE_ROOT]() {
+    m_managerThread = std::thread([this]() {
+        const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+        if (!VISTLE_ROOT) {
+            CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
+            return false;
+        }
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
-        char *arg = new char(cmd.size());
-        std::copy(cmd.begin(), cmd.end(), arg);
+        std::vector<char *> args;
+        args.push_back(const_cast<char *>(cmd.c_str()));
         vistle::VistleManager manager;
-        manager.run(1, &arg);
-        delete[] arg;
+        manager.run(1, args.data());
+        return true;
     });
     return true;
 }
@@ -171,12 +178,14 @@ void SenseiAdapter::calculateUsedData() {
 }
 
 bool SenseiAdapter::objectRequested(const std::string &name, const std::string &meshName) {
-    return m_internals->moduleInfo.isPortConnected(name) || m_internals->moduleInfo.isPortConnected(portName(meshName, name));
+    return m_internals->moduleInfo.isPortConnected(name) ||
+           m_internals->moduleInfo.isPortConnected(portName(meshName, name));
 }
 
 void SenseiAdapter::dumpConnectionFile(MPI_Comm Comm) {
     std::vector<std::string> names;
-    boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler.name(), names, 0);
+    boost::mpi::gather(boost::mpi::communicator(comm, boost::mpi::comm_attach), m_internals->messageHandler.name(),
+                       names, 0);
     if (m_rank == 0) {
         std::ofstream outfile("sensei.vistle");
         for (int i = 0; i < m_mpiSize; i++) {
@@ -267,16 +276,18 @@ bool SenseiAdapter::checkHostName() const {
 
 bool SenseiAdapter::checkMpiSize() const {
     if (static_cast<size_t>(m_mpiSize) != m_internals->moduleInfo.mpiSize()) {
-        CERR << "Vistle's mpi = " << m_internals->moduleInfo.mpiSize() << " and this mpi size = " << m_mpiSize << " do not match"
-             << endl;
+        CERR << "Vistle's mpi = " << m_internals->moduleInfo.mpiSize() << " and this mpi size = " << m_mpiSize
+             << " do not match" << endl;
         return false;
     }
     return true;
 }
 
 bool SenseiAdapter::initializeVistleEnv() {
-    vistle::registerTypes();
     try {
+#ifndef MODULE_THREAD
+        vistle::registerTypes();
+#endif
         initializeMessageQueues();
     } catch (const vistle::exception &ex) {
         CERR << ex.what() << endl;
@@ -284,18 +295,21 @@ bool SenseiAdapter::initializeVistleEnv() {
     }
 
     m_connected = true;
-    CERR << "connection to module " << m_internals->moduleInfo.name() << m_internals->moduleInfo.id() << " established!" << endl;
+    CERR << "connection to module " << m_internals->moduleInfo.name() << m_internals->moduleInfo.id() << " established!"
+         << endl;
     return true;
 }
 
 void SenseiAdapter::initializeMessageQueues() throw() {
     auto shmName = cutRankSuffix(m_internals->moduleInfo.shmName());
-    CERR << "attaching to shm: name = " << shmName << " id = " << m_internals->moduleInfo.id() << " rank = " << m_rank << endl;
+    CERR << "attaching to shm: name = " << shmName << " id = " << m_internals->moduleInfo.id() << " rank = " << m_rank
+         << endl;
     vistle::Shm::attach(shmName, m_internals->moduleInfo.id(), m_rank);
 
     m_internals->sendMessageQueue.reset(new AddObjectMsq(m_internals->moduleInfo, m_rank));
 
-    m_internals->shmIDs.initialize(m_internals->moduleInfo.id(), m_rank, m_internals->moduleInfo.uniqueSuffix(), SyncShmIDs::Mode::Attach);
+    m_internals->shmIDs.initialize(m_internals->moduleInfo.id(), m_rank, m_internals->moduleInfo.uniqueSuffix(),
+                                   SyncShmIDs::Mode::Attach);
 }
 
 std::string SenseiAdapter::portName(const std::string &meshName, const std::string &varName) {

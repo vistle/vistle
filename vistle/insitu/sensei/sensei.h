@@ -30,7 +30,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
     void operator=(SenseiAdapter &other) = delete;
     SenseiAdapter(SenseiAdapter &&other) = delete;
     SenseiAdapter(SenseiAdapter &other) = delete;
-    ~SenseiAdapter() = default;
+    ~SenseiAdapter();
 
     template <typename T, typename... Args>
     typename T::ptr createVistleObject(Args &&... args) {
