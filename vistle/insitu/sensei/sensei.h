@@ -2,92 +2,91 @@
 #define VISTLE_SENSEI_H
 
 #include "export.h"
-#include "intOption.h"
 #include "metaData.h"
 #include "objectRetriever.h"
 
-#include <vistle/insitu/message/ShmMessage.h>
-#include <vistle/insitu/message/SyncShmIDs.h>
-#include <vistle/insitu/message/addObjectMsq.h>
-
 #include <mpi.h>
+#include <thread>
 
 namespace vistle {
-namespace message {
-class MessageQueue;
-} // namespace message
 
 namespace insitu {
+namespace message {
+class Message;
+} // namespace message
 namespace sensei {
-
+namespace detail {
+class Internals;
+}
 class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 
 {
-public:
-  SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs);
-  bool Execute(size_t timestep);
-  bool Finalize();
+  public:
+    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs);
+    bool Execute(size_t timestep);
+    bool Finalize();
 
-  void operator=(SenseiAdapter &&other) = delete;
-  void operator=(SenseiAdapter &other) = delete;
-  SenseiAdapter(SenseiAdapter &&other) = delete;
-  SenseiAdapter(SenseiAdapter &other) = delete;
-  ~SenseiAdapter() = default;
+    void operator=(SenseiAdapter &&other) = delete;
+    void operator=(SenseiAdapter &other) = delete;
+    SenseiAdapter(SenseiAdapter &&other) = delete;
+    SenseiAdapter(SenseiAdapter &other) = delete;
+    ~SenseiAdapter() = default;
 
-  template <typename T, typename... Args>
-  typename T::ptr createVistleObject(Args &&... args)
-  {
-    if (m_moduleInfo.isReady()) {
-      return m_shmIDs.createVistleObject<T>(std::forward<Args>(args)...);
-    } else {
-      return nullptr;
+    template <typename T, typename... Args>
+    typename T::ptr createVistleObject(Args &&... args) {
+        if (isMOduleReady()) {
+            auto obj = typename T::ptr(new T(args...));
+            updateShmIDs();
+            return obj;
+        } else {
+            return nullptr;
+        }
     }
-  }
 
-private:
-  ObjectRetriever m_callbacks;
-  MetaData m_metaData;
-  MetaData m_usedData;
-  message::ModuleInfo m_moduleInfo;
-  bool m_connected = false; // If we are connected to the module
-  size_t m_processedTimesteps = 0;
-  std::unique_ptr<vistle::insitu::message::AddObjectMsq>
-      m_sendMessageQueue; // Queue to send addObject messages to module
-  // mpi info
-  int m_rank = -1, m_mpiSize = 0;
-  MPI_Comm comm = MPI_COMM_WORLD;
+  private:
+    ObjectRetriever m_callbacks;
+    MetaData m_metaData;
+    MetaData m_usedData;
+    detail::Internals *m_internals = nullptr;
 
-  insitu::message::SyncShmIDs m_shmIDs;
+    bool m_connected = false; // If we are connected to the module
+    size_t m_processedTimesteps = 0;
+    // mpi info
+    int m_rank = -1, m_mpiSize = 0;
+    MPI_Comm comm = MPI_COMM_WORLD;
 
-  message::InSituShmMessage m_messageHandler;
-  bool m_ready = false;                   // true if the module is connected and executing
-  std::map<std::string, bool> m_commands; // commands and their current state
-  std::set<IntOption> m_intOptions;       // options that can be set in the module
+    bool m_ready = false;                   // true if the module is connected and executing
+    std::map<std::string, bool> m_commands; // commands and their current state
+#ifdef MODULE_THREAD
+    std::thread m_managerThread;
+    bool startVistle(const MPI_Comm &comm);
+#endif
+    bool stillConnected();
+    bool quitRequested();
+    bool WaitedForModuleCommands();
+    bool haveToProcessTimestep(size_t timestep);
 
-  bool stillConnected();
-  bool quitRequested();
-  bool WaitedForModuleCommands();
-  bool haveToProcessTimestep(size_t timestep);
+    void processData();
 
-  void processData();
+    void calculateUsedData();
+    bool objectRequested(const std::string &name, const std::string &meshName = "");
 
-  void calculateUsedData();
-  bool objectRequested(const std::string &name, const std::string &meshName = "");
+    void dumpConnectionFile(MPI_Comm Comm); // create a file in which the sensei
+                                            // module can find the connection info
+    bool recvAndHandeMessage(bool blocking = false);
+    bool initModule(const vistle::insitu::message::Message &msg);
+    bool checkHostName() const;
+    bool checkMpiSize() const;
 
-  void dumpConnectionFile(MPI_Comm Comm); // create a file in which the sensei
-                                          // module can find the connection info
-  bool recvAndHandeMessage(bool blocking = false);
-  bool initModule(const vistle::insitu::message::Message &msg);
-  bool checkHostName() const;
-  bool checkMpiSize() const;
+    bool initializeVistleEnv();
+    void initializeMessageQueues() throw();
+    std::string portName(const std::string &meshName, const std::string &varName);
 
-  bool initializeVistleEnv();
-  void initializeMessageQueues() throw();
-  std::string portName(const std::string &meshName, const std::string &varName);
-
-  void addCommands();
-  void addPorts();
-  void addObject(const std::string &port, vistle::Object::const_ptr obj);
+    void addCommands();
+    void addPorts();
+    void addObject(const std::string &port, vistle::Object::const_ptr obj);
+    bool isMOduleReady();
+    void updateShmIDs();
 };
 } // namespace sensei
 } // namespace insitu
