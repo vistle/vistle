@@ -1063,6 +1063,19 @@ struct on_disk<unsigned long>
     typedef FoamIndex type;
 };
 
+// int64_t on macOS is a long long
+template<>
+struct on_disk<long long>
+{
+    typedef FoamIndex type;
+};
+
+template<>
+struct on_disk<unsigned long long>
+{
+    typedef FoamIndex type;
+};
+
 }
 
 // requires 
