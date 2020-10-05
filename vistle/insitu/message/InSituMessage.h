@@ -88,22 +88,15 @@ struct InSituPureMessage: InSituMessageBase {
     {}
 };
 
-
 #define COMMA ,
 
-#define DEFINE_IN_SITU_MESSAGE_PARAM(messageType, payloadType) \
+#define DEFINE_IN_SITU_MESSAGE(messageType, payloadType) \
     typedef InSituValueMessage<InSituMessageType::messageType, payloadType> messageType;
 #define DEFINE_IN_SITU_MESSAGE_NO_PARAM(messageType) \
     typedef InSituPureMessage<InSituMessageType::messageType> messageType;
 
-#define GET_MESSAGE_MACRO(_1, _2, NAME, ...) NAME
-
-#define DEFINE_IN_SITU_MESSAGE(...) \
-    GET_MESSAGE_MACRO(__VA_ARGS__, DEFINE_IN_SITU_MESSAGE_PARAM, DEFINE_IN_SITU_MESSAGE_NO_PARAM, DUMMY)(__VA_ARGS__)
-
-
-DEFINE_IN_SITU_MESSAGE(Invalid)
-DEFINE_IN_SITU_MESSAGE(GoOn)
+DEFINE_IN_SITU_MESSAGE_NO_PARAM(Invalid)
+DEFINE_IN_SITU_MESSAGE_NO_PARAM(GoOn)
 
 DEFINE_IN_SITU_MESSAGE(ConnectionClosed, bool) // true -> disconnected on purpose
 DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
