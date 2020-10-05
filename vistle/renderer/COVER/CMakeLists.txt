@@ -28,7 +28,7 @@ target_include_directories(vistle_cover
 )
 target_link_libraries(vistle_cover 
     PRIVATE ${EXTRA_LIBS} 
-    PRIVATE vistle_renderer 
+    PUBLIC vistle_renderer 
     PRIVATE vistle_util
     PRIVATE ${CMAKE_DL_LIBS} 
     PRIVATE VistlePluginUtil 
@@ -52,15 +52,7 @@ target_include_directories(COVER
         PRIVATE ../../cover
         PRIVATE ..
 )
-target_link_libraries(COVER 
-    ${EXTRA_LIBS} 
-    vistle_util 
-    ${CMAKE_DL_LIBS} 
-    vistle_cover
-    ${COVER_LIBRARY}
-    ${COVER_PLUGINUTIL_LIBRARY}
-    ${OPENSCENEGRAPH_LIBRARIES}
-)
+target_link_libraries(COVER vistle_cover)
 
 if(NOT VISTLE_MULTI_PROCESS)
 if(APPLE)
