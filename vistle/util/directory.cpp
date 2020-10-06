@@ -144,18 +144,14 @@ std::string bin(const std::string &prefix) {
 std::string module(const std::string &prefix) {
 
 #ifdef MODULE_THREAD
-    if (build_type.empty()) {
-        return prefix + "/lib/module";
-    }
-
-    return prefix + "/" + build_type + "/lib/module";
+    std::string moduleDir = "/lib/module";
 #else
-	if (build_type.empty()) {
-		return prefix + "/libexec/module";
-	}
-
-	return prefix + "/" + build_type + "/libexec/module";
+    std::string moduleDir = "/libexec/module";
 #endif
+    if (build_type.empty()) {
+        return prefix + moduleDir;
+    }
+    return prefix + moduleDir + "/" + build_type;
 }
 
 std::string share(const std::string &prefix) {
