@@ -308,7 +308,14 @@ bool Engine::ConnectMySelf() {
 }
 
 void Engine::initializeAsync() {
+
+
+#if BOOST_VERSION >= 106600
     m_workGuard = std::make_unique<WorkGuard>(m_ioService.get_executor());
+#else
+    m_workGuard = std::unique_ptr<WorkGuard>(new boost::asio::io_service::work(m_ioService));
+#endif
+
     m_ioThread = std::make_unique<std::thread>([this]() {
         m_ioService.run();
         DEBUG_CERR << "io thread terminated" << endl;
