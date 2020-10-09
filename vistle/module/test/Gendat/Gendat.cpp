@@ -102,6 +102,9 @@ Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
    m_animData = addIntParameter("anim_data", "data animation", Constant, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_animData, AnimDataMode);
 
+   m_delay = addFloatParameter("delay", "wait after creating an object (s)", 0.);
+   setParameterRange(m_delay, 0., 3.);
+
    observeParameter(m_blocks[0]);
    observeParameter(m_blocks[1]);
    observeParameter(m_blocks[2]);
@@ -544,5 +547,10 @@ void Gendat::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::I
     if (vector) {
         vector->addAttribute("_species", "vector");
         token.addObject("data_out1", vector);
+    }
+
+    auto delay = m_delay->getValue();
+    if (delay > 0.) {
+        usleep(int32_t(delay*1e6));
     }
 }

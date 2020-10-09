@@ -28,6 +28,7 @@ class Gendat: public vistle::Reader {
    vistle::IntParameter *m_steps;
    vistle::IntParameter *m_animData;
    vistle::IntParameter *m_elementData = nullptr;
+   vistle::FloatParameter *m_delay = nullptr;
 };
 
 #endif
