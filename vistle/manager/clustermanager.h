@@ -143,7 +143,6 @@ class ClusterManager: public ParameterManager
 #endif
       std::shared_ptr<message::MessageQueue> sendQueue, recvQueue;
       int ranksStarted, ranksFinished;
-      bool reducing;
       bool prepared, reduced;
       int busyCount;
       struct MessageWithPayload {
@@ -158,7 +157,7 @@ class ClusterManager: public ParameterManager
       std::deque<MessageWithPayload> delayedMessages;
       std::vector<int> objectCount; // no. of available object tuples on each rank
 
-      Module(): ranksStarted(0), ranksFinished(0), reducing(false),
+      Module(): ranksStarted(0), ranksFinished(0),
          prepared(false), reduced(true),
          busyCount(0), blocked(false)
          {}
