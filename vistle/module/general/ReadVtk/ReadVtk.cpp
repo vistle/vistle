@@ -25,6 +25,7 @@
 #include <vtkXMLGenericDataObjectReader.h>
 #include <vtkXMLMultiBlockDataReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
+#include <vtkVersion.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
 #endif
