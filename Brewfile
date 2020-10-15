@@ -5,6 +5,7 @@ tap 'hlrs-vis/tap'
 
 brew 'cmake'
 
+brew 'botan'
 brew 'coreutils'
 brew 'libomp'
 brew 'boost'
