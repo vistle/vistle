@@ -122,6 +122,9 @@ bool SenseiAdapter::quitRequested()
 {
     if (m_commands["exit"]) {
         m_internals->messageHandler.send(ConnectionClosed{true});
+#ifdef MODULE_THREAD
+        m_managerThread.join();
+#endif
         return true;
     }
     return false;
