@@ -32,21 +32,15 @@ public:
         vistle::oarchive ar(buf);
         ar &msg;
         vistle::buffer vec = buf.get_vector();
-        std::vector<ShmMsg> msgs;
-        int i = 0;
-        auto start = vec.begin();
-        auto end = vec.begin();
-        while (end != vec.end()) {
-            msgs.emplace_back(ShmMsg{static_cast<int>(msg.type), vec.size()});
-            auto &mm = msgs[msgs.size() - 1];
-            start += i;
-            if (i += ShmMessageMaxSize < vec.size()) {
-                end += ShmMessageMaxSize;
-            } else {
-                end = vec.end();
-            }
-            std::copy(start, end, mm.buf.begin());
+        auto begin = vec.begin();
+        size_t numMessages = std::ceil(static_cast<float>(vec.size()) / ShmMessageMaxSize);
+        size_t lastMessageSize = vec.size() % ShmMessageMaxSize;
+        std::vector<ShmMsg> msgs{numMessages, ShmMsg{static_cast<int>(msg.type), vec.size()}};
+        for (size_t i = 0; i < numMessages - 1; i++) {
+            std::copy(begin, begin + ShmMessageMaxSize, msgs[i].buf.begin());
+            begin += ShmMessageMaxSize;
         }
+        std::copy(begin, begin + lastMessageSize, msgs[numMessages - 1].buf.begin());
 
         try {
             for (auto msg: msgs) {
