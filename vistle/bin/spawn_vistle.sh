@@ -165,7 +165,7 @@ if [ "$OPENMPI" = "1" ]; then
 
    ENVS=""
    for v in $envvars; do
-       ENVS="$ENVS -x $v"
+       eval test -z \${${v}+x} || ENVS="$ENVS -x $v"
    done
    if [ -z "$MPIHOSTFILE" ]; then
        if [ -z "$MPIHOSTS" ]; then
