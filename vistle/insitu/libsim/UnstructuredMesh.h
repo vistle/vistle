@@ -51,7 +51,7 @@ struct ConnectivityListPattern {
                                                             const vistle::Index[3]),
                             std::array<int, 3> loopOrder);
     vistle::Index (*vertexIndex)(vistle::Index, vistle::Index, vistle::Index, const vistle::Index[3]) = nullptr;
-    std::array<int, 3> order = {0, 1, 2}; //Vistle's loop order is x, y, z
+    std::array<int, 3> order = {{0, 1, 2}}; //Vistle's loop order is x, y, z
 };
 struct VtkConListPattern: ConnectivityListPattern {
     VtkConListPattern();
