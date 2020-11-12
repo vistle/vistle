@@ -103,6 +103,9 @@ bool VectorField::compute() {
             p0 = p-v;
             p1 = p;
             break;
+         default:
+            assert(!"invalid AttachmentPoint");
+            return false;
       }
 
       lx[2*i] = p0[0];
