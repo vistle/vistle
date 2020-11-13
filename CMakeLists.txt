@@ -408,7 +408,11 @@ macro(vistle_add_library targetname)
     set_target_properties(${targetname} PROPERTIES FOLDER "Libraries")
 	string(FIND ${targetname} "vistle_" vistle_prefix)
 	if(NOT ${vistle_prefix} EQUAL 0)
-		message(WARNING " missing prefix for " ${targetname} " vistle libraries must be prefixed with vistle_")
+        if (NOT "${targetname}" STREQUAL "VistlePluginUtil"
+                AND NOT "${targetname}" STREQUAL "simV2runtime_par"
+                AND NOT "${targetname}" STREQUAL "simV2runtime_ser")
+            message(WARNING " missing prefix for " ${targetname}": vistle libraries must be prefixed with vistle_")
+        endif()
 	elseif() #change the vistle_libname to vistle::libname in exported target
 		string(REPLACE "vistle_" "" target_suffix ${targetname})
 		set_target_properties(${targetname} PROPERTIES 
