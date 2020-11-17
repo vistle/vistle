@@ -74,7 +74,7 @@ struct OsgViewData {
    osg::ref_ptr<osg::Camera> camera;
    osg::ref_ptr<osg::Camera::DrawCallback> readOperation;
    std::vector<GLuint> pboDepth, pboColor;
-   std::vector<GLchar*> mapColor;
+   std::vector<unsigned char*> mapColor;
    std::vector<GLfloat*> mapDepth;
 
    OpenThreads::Mutex mutex;

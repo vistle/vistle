@@ -1,5 +1,3 @@
-#include <IceT.h>
-
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_ray.h>
 #include <embree3/rtcore_geometry.h>
@@ -107,8 +105,8 @@ class DisCOVERay: public vistle::Renderer {
 
    int m_timestep;
 
-   int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
-   void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const IceTInt *viewport,
+   int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
+   void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const int *viewport,
                    int width, int height, unsigned char *rgba, float *depth);
 };
 
@@ -442,39 +440,28 @@ bool DisCOVERay::render() {
              CERR << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
 #endif
        }
-       IceTDouble proj[16], mv[16];
-       m_renderManager.getModelViewMat(i, mv);
-       m_renderManager.getProjMat(i, proj);
-       IceTFloat bg[4] = { 0., 0., 0., 0. };
+       auto mv = m_renderManager.getModelViewMat(i);
+       auto proj = m_renderManager.getProjMat(i);
 
-       vistle::Matrix4 MV, P;
-       for (int i=0; i<4; ++i) {
-           for (int j=0; j<4; ++j) {
-               MV(i,j) = mv[j*4+i];
-               P(i,j) = proj[j*4+i];
-           }
-       }
-
-       IceTInt viewport[4] = {0, 0, vd.width, vd.height};
+       int viewport[4] = {0, 0, vd.width, vd.height};
        unsigned char *rgba = m_renderManager.rgba(i);
        float *depth = m_renderManager.depth(i);
-       renderRect(P, MV, viewport, vd.width, vd.height, rgba, depth);
-       IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
+       renderRect(proj, mv, viewport, vd.width, vd.height, rgba, depth);
 
-       m_renderManager.finishCurrentView(img, m_timestep, false);
+       m_renderManager.compositeCurrentView(rgba, depth, viewport, m_timestep, false);
     }
     m_currentView = -1;
 
     return true;
 }
 
-void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const IceTInt *viewport,
+void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const int *viewport,
                            int width, int height, unsigned char *rgba, float *depth) {
 
    //StopWatch timer("DisCOVERay::render()");
 
 #if 0
-   CERR << "IceT draw CB: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
+   CERR << "renderRect: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
              << ", img: " << width << "x" << height
              << std::endl;
 #endif

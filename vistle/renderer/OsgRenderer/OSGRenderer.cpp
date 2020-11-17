@@ -1,8 +1,5 @@
 #include <GL/glew.h>
 
-#include <IceT.h>
-#include <IceTMPI.h>
-
 #include <vector>
 #include <boost/lexical_cast.hpp>
 
@@ -122,7 +119,7 @@ public:
           for (size_t i=0; i<ovd.pboColor.size(); ++i) {
              glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboColor[i]);
              glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*4, nullptr, createflags);
-             ovd.mapColor[i] = static_cast<GLchar *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*4, mapflags));
+             ovd.mapColor[i] = static_cast<unsigned char *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*4, mapflags));
           }
        }
 
@@ -428,15 +425,8 @@ bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
 
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(*viewer.icetMutex);
     viewer.m_renderManager.setCurrentView(viewIdx);
-    //renderMgr.updateRect(viewIdx, const IceTInt *viewport, const IceTImage image);
-    const osg::Vec4 clear = camera->getClearColor();
-    IceTFloat bg[4] = { clear[0], clear[1], clear[2], clear[3] };
-    IceTDouble proj[16], view[16];
-    IceTInt viewport[4] = {0, 0, width, height};
-    viewer.m_renderManager.getModelViewMat(viewIdx, view);
-    viewer.m_renderManager.getProjMat(viewIdx, proj);
-    IceTImage image = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, view, bg);
-    viewer.m_renderManager.finishCurrentView(image, timestep, false);
+    int viewport[4] = {0, 0, width, height};
+    viewer.m_renderManager.compositeCurrentView(mapColor[pbo], mapDepth[pbo], viewport, timestep, false);
 
     return true;
 }

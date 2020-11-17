@@ -11,8 +11,6 @@ namespace vistle {
 class RenderObject;
 class Renderer;
 
-void V_RENDEREREXPORT toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat);
-
 class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -33,11 +31,12 @@ public:
    int timestep() const;
    size_t numViews() const;
    void setCurrentView(size_t i);
+   void compositeCurrentView(const unsigned char *rgba, const float *depth, const int viewport[4], int timestep, bool lastView);
    void finishCurrentView(const IceTImage &img, int timestep);
    void finishCurrentView(const IceTImage &img, int timestep, bool lastView);
    bool finishFrame(int timestep);
-   void getModelViewMat(size_t viewIdx, IceTDouble *mat) const;
-   void getProjMat(size_t viewIdx, IceTDouble *mat) const;
+   vistle::Matrix4 getModelViewMat(size_t viewIdx) const;
+   vistle::Matrix4 getProjMat(size_t viewIdx) const;
    const PerViewState &viewData(size_t viewIdx) const;
    unsigned char *rgba(size_t viewIdx);
    float *depth(size_t viewIdx);

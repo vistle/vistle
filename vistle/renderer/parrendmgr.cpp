@@ -23,10 +23,14 @@ inline void serialize(Archive &ar, vistle::Renderer::Variant &t, const unsigned 
 
 namespace vistle {
 
+namespace {
+
 void toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat) {
    for (int i=0; i<16; ++i) {
       imat[i] = vmat.data()[i];
    }
+}
+
 }
 
 ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback)
@@ -456,6 +460,24 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
          localBoundMin[2], localBoundMax[2]);
 }
 
+void ParallelRemoteRenderManager::compositeCurrentView(const unsigned char *rgba, const float *depth, const int vp[4], int timestep, bool lastView) {
+   const auto &i = m_currentView;
+
+   auto P = getProjMat(i);
+   IceTDouble proj[16];
+   toIcet(proj, P);
+   auto MV = getModelViewMat(i);
+   IceTDouble mv[16];
+   toIcet(mv, MV);
+
+   IceTInt viewport[4] = { vp[0], vp[1], vp[2], vp[3] };
+   IceTFloat bg[4] = { 0., 0., 0., 0. };
+
+   IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
+
+   finishCurrentView(img, timestep, lastView);
+}
+
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep) {
 
    const bool lastView = size_t(m_currentView)==m_viewData.size()-1;
@@ -543,15 +565,15 @@ bool ParallelRemoteRenderManager::finishFrame(int timestep) {
    return true;
 }
 
-void ParallelRemoteRenderManager::getModelViewMat(size_t viewIdx, IceTDouble *mat) const {
+vistle::Matrix4 ParallelRemoteRenderManager::getModelViewMat(size_t viewIdx) const {
    const PerViewState &vd = m_viewData[viewIdx];
    Matrix4 mv = vd.view * vd.model;
-   toIcet(mat, mv);
+   return mv;
 }
 
-void ParallelRemoteRenderManager::getProjMat(size_t viewIdx, IceTDouble *mat) const {
+vistle::Matrix4 ParallelRemoteRenderManager::getProjMat(size_t viewIdx) const {
    const PerViewState &vd = m_viewData[viewIdx];
-   toIcet(mat, vd.proj);
+   return vd.proj;
 }
 
 const ParallelRemoteRenderManager::PerViewState &ParallelRemoteRenderManager::viewData(size_t viewIdx) const {
