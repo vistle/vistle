@@ -779,7 +779,10 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir) {
 #if 0
     std::string abslib = bindir + "/../../lib/" + libcover;
 #else
-    std::string coviselibdir = env["COVISEDIR"] + "/" + env["ARCHSUFFIX"] + "/lib/";
+    std::string coviselibdir = env["COVISEDIR"];
+    if (env["ARCHSUFFIX"] != "spack" && env["ARCHSUFFIX"] != "spackopt")
+        coviselibdir +=  "/" + env["ARCHSUFFIX"];
+    coviselibdir += "/lib/";
     //std::string abslib = coviselibdir + libcover;
 #endif
 
