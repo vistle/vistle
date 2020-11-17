@@ -2,12 +2,6 @@ if (CRAY)
    return()
 endif()
 
-set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
-if (APPLE)
-   set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
-endif()
-set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
-
 vistle_find_package(Qt5Core)
 # don't bother to continue if not even QtCore was found
 if (NOT Qt5Core_FOUND)
@@ -16,9 +10,6 @@ if (NOT Qt5Core_FOUND)
 endif()
 vistle_find_package(Qt5Widgets)
 vistle_find_package(Qt5Gui)
-
-set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
-
 
 add_subdirectory(propertybrowser)
 add_subdirectory(remotefilebrowser)
