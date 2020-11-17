@@ -1,5 +1,4 @@
 #include <IceT.h>
-#include <IceTMPI.h>
 
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_ray.h>
@@ -29,8 +28,6 @@
 //#include <future>
 #endif
 
-//#define ICET_CALLBACK
-
 #define CERR std::cerr << "DisCOVERay: "
 
 namespace mpi = boost::mpi;
@@ -40,10 +37,6 @@ using namespace vistle;
 const float Epsilon = 1e-9f;
 
 class DisCOVERay: public vistle::Renderer {
-
-#ifdef ICET_CALLBACK
-   static DisCOVERay *s_instance;
-#endif
 
  public:
    static void rtcErrorCallback(void *userPtr, RTCError code, const char *desc) {
@@ -70,12 +63,6 @@ class DisCOVERay: public vistle::Renderer {
    DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm);
    ~DisCOVERay() override;
    void prepareQuit() override;
-
-#ifdef ICET_CALLBACK
-   static DisCOVERay &the() {
-      return *s_instance;
-   }
-#endif
 
    bool render() override;
 
@@ -121,25 +108,14 @@ class DisCOVERay: public vistle::Renderer {
    int m_timestep;
 
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
-#ifdef ICET_CALLBACK
-   static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
-#endif
    void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const IceTInt *viewport,
                    int width, int height, unsigned char *rgba, float *depth);
 };
 
-#ifdef ICET_CALLBACK
-DisCOVERay *DisCOVERay::s_instance = nullptr;
-#endif
-
 
 DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm)
 : Renderer("CPU ray casting renderer", name, moduleId, comm)
-#ifdef ICET_CALLBACK
-, m_renderManager(this, DisCOVERay::drawCallback)
-#else
 , m_renderManager(this, nullptr)
-#endif
 , m_tilesize(64)
 , m_doShade(true)
 , m_uvVis(false)
@@ -149,11 +125,6 @@ DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator 
 #if 0
     CERR << get_process_handle() << std::endl;
     sleep(10);
-#endif
-
-#ifdef ICET_CALLBACK
-   assert(s_instance == nullptr);
-   s_instance = this;
 #endif
 
    /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
@@ -185,11 +156,6 @@ DisCOVERay::~DisCOVERay() {
 
    rtcReleaseScene(m_scene);
    rtcReleaseDevice (m_device);
-
-#ifdef ICET_CALLBACK
-   assert(s_instance == this);
-   s_instance = nullptr;
-#endif
 }
 
 void DisCOVERay::prepareQuit() {
@@ -481,9 +447,6 @@ bool DisCOVERay::render() {
        m_renderManager.getProjMat(i, proj);
        IceTFloat bg[4] = { 0., 0., 0., 0. };
 
-#ifdef ICET_CALLBACK
-       IceTImage img = icetDrawFrame(proj, mv, bg);
-#else
        vistle::Matrix4 MV, P;
        for (int i=0; i<4; ++i) {
            for (int j=0; j<4; ++j) {
@@ -497,7 +460,6 @@ bool DisCOVERay::render() {
        float *depth = m_renderManager.depth(i);
        renderRect(P, MV, viewport, vd.width, vd.height, rgba, depth);
        IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
-#endif
 
        m_renderManager.finishCurrentView(img, m_timestep, false);
     }
@@ -604,10 +566,6 @@ void DisCOVERay::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV,
    for (auto &task: tiles) {
       task.get();
    }
-#endif
-
-#ifdef ICET_CALLBACK
-   m_renderManager.updateRect(m_currentView, viewport);
 #endif
 
    int err = rtcGetDeviceError (m_device);
@@ -717,25 +675,5 @@ std::shared_ptr<RenderObject> DisCOVERay::addObject(int sender, const std::strin
 
    return ro;
 }
-
-#ifdef ICET_CALLBACK
-void  DisCOVERay::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
-
-    vistle::Matrix4 MV, P;
-    for (int i=0; i<4; ++i) {
-        for (int j=0; j<4; ++j) {
-            MV(i,j) = mv[j*4+i];
-            P(i,j) = proj[j*4+i];
-        }
-    }
-
-    unsigned char *rgba = icetImageGetColorub(image);
-    float *depth = icetImageGetDepthf(image);
-    int width = icetImageGetWidth(image);
-    int height = icetImageGetHeight(image);
-
-    DisCOVERay::the().renderRect(P, MV, viewport, width, height, rgba, depth);
-}
-#endif
 
 MODULE_MAIN(DisCOVERay)
