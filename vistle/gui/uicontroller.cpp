@@ -18,6 +18,7 @@
 #include <QGuiApplication>
 #include <QStatusBar>
 #include <QMenuBar>
+#include <QUrl>
 
 #include "ui_about.h"
 
@@ -46,11 +47,13 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       ++argv;
    }
 
-   if (argc > 1) {
-      host = argv[1];
-   }
    if (argc > 2) {
+      host = argv[1];
       port = atoi(argv[2]);
+   } else if (argc > 1) {
+      auto url = QUrl::fromUserInput(QString::fromLocal8Bit(argv[1]));
+      host = url.host().toStdString();
+      port = url.port(port);
    }
 
    m_mainWindow = new MainWindow();
