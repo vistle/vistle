@@ -32,30 +32,40 @@ bool rgb_txt_init_from_file() {
 
     rgb_initialized = true;
 
-    std::string filename;
-    if (const char *cd = getenv("COVISEDIR")) {
-        filename = cd;
-    } else {
-        filename = "/usr/share/X11";
-    }
-    filename += "/share/covise/rgb.txt";
+    for (std::string prefix: {
+         "",
+         "/usr", "/usr/local", "/usr/X11R6",
+         "/opt/X11", "/opt/homebrew" }) {
 
-    if (FILE *fp = fopen(filename.c_str(), "r")) {
-
-        char line[500];
-        while (fgets(line, sizeof(line), fp)) {
-            if (line[0] == '!')
+        std::string filename;
+        if (prefix.empty()) {
+            if (const char *cd = getenv("COVISEDIR")) {
+                filename = cd;
+                filename += "/share/covise/rgb.txt";
+            } else {
                 continue;
-            int r=255, g=255, b=255;
-            char name[150];
-            sscanf(line, "%d%d%d %100[a-zA-z0-9 ]", &r, &g, &b, name);
-            std::string colorname = rgb_normalize_name(name);
-            rgb_name[colorname] = Vector4(r/255.f, g/255.f, b/255.f, 1.f);
-            //std::cerr << "color " << colorname << " -> " << rgb_name[colorname] << std::endl;
+            }
+        } else {
+            filename = prefix + "/share/X11/rgb.txt";
         }
-        fclose(fp);
-    }
 
+        if (FILE *fp = fopen(filename.c_str(), "r")) {
+
+            char line[500];
+            while (fgets(line, sizeof(line), fp)) {
+                if (line[0] == '!')
+                    continue;
+                int r=255, g=255, b=255;
+                char name[150];
+                sscanf(line, "%d%d%d %100[a-zA-z0-9 ]", &r, &g, &b, name);
+                std::string colorname = rgb_normalize_name(name);
+                rgb_name[colorname] = Vector4(r/255.f, g/255.f, b/255.f, 1.f);
+                //std::cerr << "color " << colorname << " -> " << rgb_name[colorname] << std::endl;
+            }
+            fclose(fp);
+            break;
+        }
+    }
     rgb_name["white"] = Vector4(150/255.f, 150/255.f, 150/255.f, 1.f);
 
     return rgb_name.size() > 1;
