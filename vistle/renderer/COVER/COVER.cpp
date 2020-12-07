@@ -667,6 +667,20 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir) {
         envvars.push_back("DYLD_LIBRARY_PATH");
         envvars.push_back("DYLD_FRAMEWORK_PATH");
         envvars.push_back("LANG");
+        envvars.push_back("LC_CTYPE");
+        envvars.push_back("LC_NUMERIC");
+        envvars.push_back("LC_TIME");
+        envvars.push_back("LC_COLLATE");
+        envvars.push_back("LC_MONETARY");
+        envvars.push_back("LC_MESSAGES");
+        envvars.push_back("LC_PAPER");
+        envvars.push_back("LC_NAME");
+        envvars.push_back("LC_ADDRESS");
+        envvars.push_back("LC_TELEPHONE");
+        envvars.push_back("LC_MEASUREMENT");
+        envvars.push_back("LC_IDENTIFICATION");
+        envvars.push_back("LC_ALL");
+
         // covise config
         envvars.push_back("COCONFIG");
         envvars.push_back("COCONFIG_LOCAL");
@@ -688,6 +702,9 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir) {
         envvars.push_back("OSG_NOTIFY_LEVEL");
         envvars.push_back("OSG_LIBRARY_PATH");
         envvars.push_back("OSG_LD_LIBRARY_PATH");
+        // Qt
+        envvars.push_back("QT_AUTO_SCREEN_SCALE_FACTOR");
+        envvars.push_back("QT_SCREEN_SCALE_FACTORS");
         for (auto v: envvars) {
 
             const char *val = getenv(v.c_str());
