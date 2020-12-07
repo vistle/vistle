@@ -70,9 +70,9 @@ std::string Shm::instanceName(const std::string &host, unsigned short port) {
    return str.str();
 }
 
-Shm::Shm(const std::string &name, const int m, const int r, size_t size, bool create)
+Shm::Shm(const std::string &instanceName, const int m, const int r, size_t size, bool create)
    : m_allocator(nullptr)
-   , m_name(name)
+   , m_name(instanceName)
    , m_remove(create)
    , m_id(m)
    , m_rank(r)
@@ -87,7 +87,7 @@ Shm::Shm(const std::string &name, const int m, const int r, size_t size, bool cr
 
 #ifdef SHMDEBUG
       if (create) {
-          std::cerr << "SHMDEBUG: won't remove shm " << m_name << std::endl;
+          std::cerr << "SHMDEBUG: won't remove shm " << name() << std::endl;
           m_remove = false;
       }
 #endif
@@ -99,12 +99,12 @@ Shm::Shm(const std::string &name, const int m, const int r, size_t size, bool cr
       m_objectDictionaryMutex = new std::recursive_mutex;
 #else
 #ifdef WIN32
-	  m_shm = new managed_windows_shared_memory(open_or_create, m_name.c_str(), size);
+      m_shm = new managed_windows_shared_memory(open_or_create, name().c_str(), size);
 #else
       if (create) {
-         m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
+         m_shm = new managed_shared_memory(open_or_create, name().c_str(), size);
       } else {
-         m_shm = new managed_shared_memory(open_only, m_name.c_str());
+         m_shm = new managed_shared_memory(open_only, name().c_str());
       }
 #endif
 
@@ -328,8 +328,6 @@ bool Shm::remove(const std::string &name, const int id, const int rank) {
 
 Shm & Shm::create(const std::string &name, const int id, const int rank) {
 
-   std::string n = shmSegName(name, rank);
-
    if (!s_singleton) {
       {
          // store name of shared memory segment for possible clean up
@@ -342,7 +340,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
 
       do {
          try {
-            s_singleton = new Shm(n, id, rank, memsize, true);
+            s_singleton = new Shm(name, id, rank, memsize, true);
          } catch (boost::interprocess::interprocess_exception & /*ex*/) {
             memsize /= 2;
          }
@@ -363,14 +361,12 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
 
 Shm & Shm::attach(const std::string &name, const int id, const int rank) {
 
-   std::string n = shmSegName(name, rank);
-
    if (!s_singleton) {
       size_t memsize = memorySize<sizeof(void *)>();
 
       do {
          try {
-            s_singleton = new Shm(n, id, rank, memsize, false);
+            s_singleton = new Shm(name, id, rank, memsize, false);
          } catch (boost::interprocess::interprocess_exception &) {
             memsize /= 2;
          }
