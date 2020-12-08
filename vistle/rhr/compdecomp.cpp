@@ -244,21 +244,21 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
             zfp_stream_rewind(zfp);
             zfp_field *field = zfp_field_2d(depth, type, w, h);
             if (!zfp_read_header(zfp, field, ZFP_HEADER_FULL)) {
-                CERR << "DecodeTask: reading zfp compression parameters failed" << std::endl;
+                CERR << "docompressTile: reading zfp compression parameters failed" << std::endl;
                 good = false;
             }
             if (field->type != type) {
-                CERR << "DecodeTask: zfp type not float" << std::endl;
+                CERR << "docompressTile: zfp type not float" << std::endl;
                 good = false;
             }
             if (int(field->nx) != w || int(field->ny) != h) {
-                CERR << "DecodeTask: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << w << "x" << h << std::endl;
+                CERR << "docompressTile: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << w << "x" << h << std::endl;
                 good = false;
             }
             zfp_field_set_pointer(field, depth+(y*stride+x));
             zfp_field_set_stride_2d(field, 1, stride);
             if (!zfp_decompress(zfp, field)) {
-                CERR << "DecodeTask: zfp decompression failed" << std::endl;
+                CERR << "docompressTile: zfp decompression failed" << std::endl;
                 good = false;
             }
             zfp_stream_close(zfp);
@@ -311,12 +311,12 @@ bool decompressTile(char *dest, const buffer &input, CompressionParameters param
             std::unique_lock<std::mutex> locker(tjMutex);
             tjDecompContexts.push_back(tjd);
             if (ret == -1) {
-                CERR << "DecodeTask: JPEG error: " << tjGetErrorStr() << std::endl;
+                CERR << "docompressTile: JPEG error: " << tjGetErrorStr() << std::endl;
                 return false;
             }
             return true;
 #else
-            CERR << "DecodeTask: no JPEG support" << std::endl;
+            CERR << "docompressTile: no JPEG support" << std::endl;
             return false;
 #endif
         }
