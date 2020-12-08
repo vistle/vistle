@@ -1,6 +1,6 @@
 vistle_find_package(LZ4)
 vistle_find_package(SNAPPY)
-vistle_find_package(Zstd)
+vistle_find_package(ZSTD)
 
 
 
