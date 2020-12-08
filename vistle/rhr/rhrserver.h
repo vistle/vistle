@@ -17,20 +17,23 @@
 
 #include <boost/asio.hpp>
 
-#include <vistle/rhr/rfbext.h>
-
 #include <vistle/core/vector.h>
+#include <vistle/core/message.h>
+#include <vistle/core/messagesender.h>
 #include <vistle/renderer/renderobject.h>
 
 #include <tbb/concurrent_queue.h>
 
 #include "export.h"
 #include "compdecomp.h"
+#include "rfbext.h"
 
 namespace vistle {
 
 namespace asio = boost::asio;
 using message::RemoteRenderMessage;
+class MessageSender;
+class Module;
 
 //! Implement remote hybrid rendering server
 class V_RHREXPORT RhrServer
@@ -40,19 +43,20 @@ public:
    typedef asio::ip::tcp::acceptor acceptor;
    typedef asio::ip::address address;
 
-   RhrServer();
+   explicit RhrServer(vistle::Module *module);
    ~RhrServer();
 
    int numClients() const;
 
    bool isConnecting() const;
+   bool isConnected() const;
 
    unsigned short port() const;
 
    unsigned short destinationPort() const;
    const std::string &destinationHost() const;
 
-   asio::io_service &ioService();
+   void setClientModuleId(int roduleId);
 
    int width(size_t viewNum) const;
    int height(size_t viewNum) const;
@@ -70,7 +74,7 @@ public:
 
    struct ViewParameters;
    ViewParameters getViewParameters(int viewNum) const;
-   void invalidate(int viewNum, int x, int y, int w, int h, ViewParameters param, bool lastView);
+   void invalidate(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
    void updateModificationCount();
 
    void setColorCodec(CompressionParameters::ColorCodec value);
@@ -89,6 +93,9 @@ public:
    typedef std::map<std::string, bool> VariantVisibilityMap;
    const VariantVisibilityMap &getVariants() const;
 
+   bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload);
+   bool handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vistle::message::RemoteRenderMessage &rr);
+
    bool handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat);
    bool handleLights(std::shared_ptr<socket> sock, const lightsMsg &light);
    bool handleBounds(std::shared_ptr<socket> sock, const boundsMsg &bound);
@@ -103,10 +110,10 @@ public:
    void setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius);
 
    struct Screen {
-      vistle::Vector3 pos;
       vistle::Scalar hsize;
-      vistle::Vector3 hpr;
+       vistle::Vector3 pos;
       vistle::Scalar vsize;
+       vistle::Vector3 hpr;
    };
 
    struct Light {
@@ -174,8 +181,8 @@ public:
    size_t lightsUpdateCount;
 
    struct ImageParameters {
-       int timestep = -1;
        double timestepRequestTime = -1.; // time for last animationMsg, for latency measurement
+       int timestep = -1;
        DepthCompressionParameters depthParam;
 #if 0
        bool depthFloat; //!< whether depth should be retrieved as floating point
@@ -214,20 +221,20 @@ public:
        vistle::Matrix4 proj;
        vistle::Matrix4 view;
        vistle::Matrix4 model;
+       double matrixTime;
+       int width, height;
        uint32_t frameNumber;
        uint32_t requestNumber;
        int32_t timestep = -1;
-       double matrixTime;
-       int width, height;
        uint8_t eye = 0;
 
        ViewParameters()
-       : frameNumber(0)
-       , requestNumber(0)
-       , timestep(-1)
-       , matrixTime(0.)
+       : matrixTime(0.)
        , width(1)
        , height(1)
+       , frameNumber(0)
+       , requestNumber(0)
+       , timestep(-1)
        {
            head = vistle::Matrix4::Identity();
            proj = vistle::Matrix4::Identity();
@@ -266,13 +273,15 @@ public:
    void updateVariants(const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility> > &added, const std::vector<std::string> &removed);
 
 private:
+   vistle::Module *m_module;
    asio::io_service m_io;
    asio::ip::tcp::acceptor m_acceptorv4, m_acceptorv6;
-   bool m_listen;
+   bool m_listen = false;
    std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;
-   unsigned short m_port;
-   unsigned short m_destPort;
+   unsigned short m_port = 0;
+   unsigned short m_destPort = 0;
    std::string m_destHost;
+   int m_clientModuleId = 0;
 
    bool startAccept(asio::ip::tcp::acceptor &a);
    void handleAccept(asio::ip::tcp::acceptor &a, std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
@@ -283,9 +292,8 @@ private:
 
    std::vector<ViewData, Eigen::aligned_allocator<ViewData>> m_viewData;
 
-   int m_delay; //!< artificial delay (us)
    ImageParameters m_imageParam; //!< parameters for color/depth codec
-   bool m_resizeBlocked, m_resizeDeferred;
+   bool m_resizeBlocked;
 
    vistle::Vector3 m_boundCenter;
    vistle::Scalar m_boundRadius;
@@ -299,13 +307,13 @@ private:
 
    struct EncodeResult {
 
-       EncodeResult(tileMsg *msg=nullptr)
+       explicit EncodeResult(tileMsg *msg=nullptr)
            : message(msg)
            {}
 
+       buffer payload;
        tileMsg *message = nullptr;
        RemoteRenderMessage *rhrMessage = nullptr;
-       buffer payload;
    };
 
    friend struct EncodeTask;
@@ -319,7 +327,7 @@ private:
    VariantVisibilityMap m_clientVariants;
    InitialVariantVisibilityMap m_localVariants;
 
-   bool send(const message::Message &msg, const buffer *payload=nullptr);
+   bool send(message::Buffer msg, const buffer *payload=nullptr);
    bool send(const RemoteRenderMessage &msg, const buffer *payload=nullptr);
    void resetClient();
    int m_framecount = 0;

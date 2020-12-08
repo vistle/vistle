@@ -215,9 +215,13 @@ bool Renderer::dispatch(bool block, bool *messageReceived) {
          if (needsSync(message))
             needSync = 1;
       }
-      int anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
+      int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
       if (m_maySleep)
-          vistle::adaptive_wait(haveMessage || anySync, this);
+          vistle::adaptive_wait(anyMessage, this);
+      int anySync = 0;
+      if (anyMessage) {
+          anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
+      }
 
       do {
          if (haveMessage) {

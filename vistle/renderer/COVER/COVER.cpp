@@ -8,6 +8,8 @@
 #include <cover/coVRFileManager.h>
 #include <PluginUtil/StaticSequence.h>
 #include <mpiwrapper/mpicover.h>
+#include <PluginUtil/StaticSequence.h>
+#include <PluginUtil/PluginMessageTypes.h>
 
 // vistle
 #include <vistle/core/messages.h>
@@ -21,6 +23,7 @@
 
 #include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 #include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
+#include <vistle/cover/VistlePluginUtil/VistleMessage.h>
 #include "VistleGeometryGenerator.h"
 
 #include "COVER.h"
@@ -893,6 +896,20 @@ void COVER::eventLoop() {
     char *argv[] = {strdup("COVER"), nullptr};
     runMain(argc, argv);
 #endif
+}
+
+bool COVER::handleMessage(const message::Message *message, const MessagePayload &payload) {
+    switch (message->type()) {
+    case vistle::message::REMOTERENDERING: {
+        VistleMessage wrap(*message, payload);
+        coVRPluginList::instance()->message(0, opencover::PluginMessageTypes::VistleMessageIn, sizeof(wrap), &wrap);
+        return true;
+    }
+    default:
+        break;
+    }
+
+    return Renderer::handleMessage(message, payload);
 }
 
 PluginRenderObject::~PluginRenderObject() = default;

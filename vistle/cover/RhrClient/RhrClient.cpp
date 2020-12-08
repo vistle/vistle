@@ -24,7 +24,10 @@
 #include <cover/ui/Menu.h>
 #include <cover/ui/SelectionList.h>
 #include <cover/ui/Slider.h>
+#include <cover/ui/Label.h>
+#include <cover/ui/Group.h>
 #include <cover/VRViewer.h>
+#include <cover/coVRPluginList.h>
 
 #include <OpenVRUI/osg/mathUtils.h>
 
@@ -37,13 +40,13 @@
 #include <limits>
 #include <memory>
 
-#include <vistle/core/tcpmessage.h>
 #include <vistle/rhr/rfbext.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/hostname.h>
 
 #include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
 #include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
+#include <vistle/cover/VistlePluginUtil/VistleMessage.h>
 
 
 #include "RemoteConnection.h"
@@ -428,8 +431,6 @@ bool RhrClient::init()
    m_lastStat = cover->currentTime();
    m_localFrames = 0;
 
-   m_matrixNum = 0;
-
    m_channelBase = 0;
 
    auto &conf = *coVRConfig::instance();
@@ -627,6 +628,8 @@ bool RhrClient::init()
            r.second->setMaxTilesPerFrame(m_maxTilesPerFrame);
    });
 
+   m_remoteGroup = new ui::Group(m_menu, "Remotes");
+
    return true;
 }
 
@@ -650,25 +653,38 @@ void RhrClient::addObject(const opencover::RenderObject *baseObj, osg::Group *pa
     } else {
         std::stringstream(portString) >> port;
     }
-    CERR << "connection config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
 
-    if (method == "connect") {
+    int senderId = vistle::message::Id::Invalid;
+    std::string senderOutput;
+    std::string serverKey;
+    if (const auto *attr = baseObj->getAttribute("_sender")) {
+        std::stringstream sender(attr);
+        sender >> senderId;
+        sender.ignore(256, ':');
+        sender >> senderOutput;
+        serverKey = std::to_string(senderId) + ":" + senderOutput;
+    }
+    std::string connectionName = baseObj->getName();
+    CERR << "connection " << connectionName << " from " << senderId << ":" << senderOutput << ", config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
+
+    std::shared_ptr<RemoteConnection> remote;
+    if (method == "vistle") {
+        remote = startClient(serverKey, connectionName, moduleId);
+    } else if (method == "connect") {
         if (address.empty()) {
-            cover->notify(Notify::Error) << "RhrClient: no connection attempt: invalid dest address: " << address << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName << ": invalid dest address: " << address << std::endl;
         } else if (port == 0) {
-            cover->notify(Notify::Error) << "RhrClient: no connection attempt: invalid dest port: " << port << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no connection attempt for " << connectionName << ": invalid dest port: " << port << std::endl;
         } else {
-            connectClient(baseObj->getName(), address, port);
+            remote = connectClient(serverKey, connectionName, address, port);
         }
     } else if (method == "listen") {
         if (moduleId > 0) {
-            if (auto remote = startListen(baseObj->getName(), PortRange[0], PortRange[1])) {
-                remote->m_moduleId = moduleId;
-            }
+            remote = startListen(serverKey, connectionName, moduleId, PortRange[0], PortRange[1]);
         } else if (port > 0) {
-            startListen(baseObj->getName(), port);
+            remote = startListen(serverKey, connectionName, moduleId, port);
         } else {
-            cover->notify(Notify::Error) << "RhrClient: no attempt to start server: invalid port: " << port << std::endl;
+            cover->notify(Notify::Error) << "RhrClient: no attempt to start server for " << connectionName << ": invalid port: " << port << std::endl;
         }
     }
 }
@@ -677,15 +693,27 @@ void RhrClient::removeObject(const char *objName, bool replaceFlag) {
     if (!objName)
         return;
     const std::string name(objName);
-    auto it = m_remotes.find(name);
-    if (it == m_remotes.end())
+
+    auto namesIt = m_remoteNames.find(name);
+    if (namesIt == m_remoteNames.end()) {
         return;
-    removeRemoteConnection(it);
+    }
+
+    for (auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
+        if (it->second->name() == name) {
+            CERR << "removeObject: removed client " << name << std::endl;
+            m_remoteNames.erase(namesIt);
+            removeRemoteConnection(it);
+            return;
+        }
+    }
+
+    CERR << "removeObject: did not find client " << name << std::endl;
 }
 
 void RhrClient::newInteractor(const opencover::RenderObject *container, coInteractor *it) {
 
-    auto vit = dynamic_cast<VistleInteractor *>(it);
+    auto *vit = dynamic_cast<VistleInteractor *>(it);
     if (!vit)
         return;
 
@@ -717,21 +745,24 @@ RhrClient::~RhrClient()
 }
 
 void RhrClient::setServerParameters(int module, const std::string &host, unsigned short port) const {
-    for (auto &r: m_remotes) {
-        auto it = m_interactors.find(r.second->m_moduleId);
-        if (it == m_interactors.end())
-            continue;
-
-        auto inter = it->second;
-        inter->setScalarParam("_rhr_auto_remote_port", int(port));
-        inter->setStringParam("_rhr_auto_remote_host", host.c_str());
+    auto it = m_interactors.find(module);
+    if (it == m_interactors.end()) {
+        CERR << "error setting server parameters, did not find interactor for module " << module << std::endl;
+        return;
     }
+
+    auto *inter = it->second;
+    inter->setScalarParam("_rhr_auto_remote_port", int(port));
+    inter->setStringParam("_rhr_auto_remote_host", host.c_str());
+
+    CERR << "setting parameters, server should connect to " << host << ":" << port << std::endl;
 }
 
 bool RhrClient::updateRemotes() {
 
    bool needUpdate = false;
-   for (auto r: m_remotes) {
+   for (auto &r: m_remotes) {
+
        if (r.second->update())
            needUpdate = true;
    }
@@ -761,6 +792,7 @@ bool RhrClient::update()
    //CERR << "drawer: #views=" << m_drawer->numViews() << std::endl;
 
    int numConnected = 0;
+   //CERR << "have " << m_remotes.size() << " remotes" << std::endl;
    for (auto it = m_remotes.begin(); it != m_remotes.end(); ) {
        bool running = coVRMSController::instance()->syncBool(it->second->isRunning());
        //CERR << "check " << it->first << ", running=" << running << std::endl;
@@ -777,7 +809,7 @@ bool RhrClient::update()
    //CERR << "RhrClient: #connected=" << numConnected << std::endl;
    coVRMSController::instance()->syncData(&numConnected, sizeof(numConnected));
 
-   if (auto sd = VRViewer::instance()->statsDisplay)
+   if (auto *sd = VRViewer::instance()->statsDisplay)
    {
        sd->enableRhrStats(numConnected > 0);
    }
@@ -823,6 +855,15 @@ bool RhrClient::update()
        render = true;
    }
 
+   {
+       std::lock_guard<std::mutex> locker(m_sendMutex);
+       while (!m_sendQueue.empty()) {
+           coVRPluginList::instance()->message(0, PluginMessageTypes::VistleMessageOut,
+                                               sizeof(m_sendQueue.emplace_front()), &m_sendQueue.front());
+           m_sendQueue.pop_front();
+       }
+   }
+
    if (swapFrames())
        render = true;
    if (checkAdvanceFrame()) {
@@ -837,10 +878,11 @@ bool RhrClient::update()
 void RhrClient::preFrame() {
    ++m_localFrames;
    double diff = cover->frameTime() - m_lastStat;
-   if (m_benchmark && diff > 3.) {
+   if (diff > 3.) {
        m_lastStat = cover->frameTime();
        for (auto &r: m_remotes)
-           r.second->printStats();
+           r.second->updateStats(m_benchmark, m_localFrames);
+       m_localFrames = 0;
    }
 
    if (cover->isHighQuality()) {
@@ -853,8 +895,19 @@ void RhrClient::preFrame() {
        setReprojectionMode(m_configuredMode);
    }
 
-   for (auto r: m_remotes) {
-       r.second->preFrame();
+   for (auto it = m_remoteStatus.begin(), next = it; it != m_remoteStatus.end(); it = next) {
+      auto it2 = m_remotes.find(it->first);
+      if (it2 == m_remotes.end()) {
+          next = m_remoteStatus.erase(it);
+      } else {
+          next = it;
+          ++next;
+      }
+   }
+
+    for (const auto& r: m_remotes) {
+        updateStatus(r.first);
+        r.second->preFrame();
    }
 }
 
@@ -965,6 +1018,26 @@ void RhrClient::requestTimestep(int t) {
 void RhrClient::message(int toWhom, int type, int len, const void *msg) {
 
     switch (type) {
+    case PluginMessageTypes::VistleMessageIn: {
+        const auto *wrap = static_cast<const VistleMessage *>(msg);
+        auto payload = wrap->payload;
+        auto vm = wrap->buf;
+        if (vm.type() == vistle::message::REMOTERENDERING) {
+            for (auto &r: m_remotes) {
+                if (r.second->moduleId() == vm.senderId()) {
+                    if (payload) {
+                        auto pl = std::make_shared<vistle::buffer>(payload->begin(), payload->end());
+                        r.second->handleRemoteRenderMessage(vm.as<RemoteRenderMessage>(), pl);
+                    } else {
+                        r.second->handleRemoteRenderMessage(vm.as<RemoteRenderMessage>());
+                    }
+                    break;
+                }
+            }
+        }
+        break;
+    }
+
     case PluginMessageTypes::VariantHide:
     case PluginMessageTypes::VariantShow: {
         covise::TokenBuffer tb((char *)msg, len);
@@ -977,7 +1050,7 @@ void RhrClient::message(int toWhom, int type, int len, const void *msg) {
             msg.visible = visible;
             strncpy(msg.name, variantName.c_str(), sizeof(msg.name)-1);
             msg.name[sizeof(msg.name)-1] = '\0';
-            for (auto r: m_remotes) {
+            for (auto &r: m_remotes) {
                 if (r.second->isConnected())
                     r.second->send(msg);
             }
@@ -995,7 +1068,7 @@ bool RhrClient::updateViewer() {
     CERR << "updating viewer matrix" << std::endl;
     auto it = m_remotes.begin();
     if (it != m_remotes.end()) {
-        auto &m = it->second->getHeadMat();
+        const auto &m = it->second->getHeadMat();
         if (VRViewer::instance()->getViewerMat() != m) {
             VRViewer::instance()->updateViewerMat(m);
             return true;
@@ -1004,40 +1077,47 @@ bool RhrClient::updateViewer() {
     return false;
 }
 
-std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &connectionName, const std::string &address, unsigned short port) {
+std::shared_ptr<RemoteConnection> RhrClient::startClient(const std::string &serverKey, const string &connectionName, int moduleId) {
 
-   m_remotes.erase(connectionName);
+    removeRemoteConnection(serverKey);
 
-   cover->notify(Notify::Info) << "starting new RemoteConnection to " << address << ":" << port << std::endl;
+    cover->notify(Notify::Info) << "starting new RemoteConnection to module " << moduleId << std::endl;
+    std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, moduleId, coVRMSController::instance()->isMaster()));
+
+    addRemoteConnection(serverKey, connectionName, r);
+    return r;
+}
+
+std::shared_ptr<RemoteConnection> RhrClient::connectClient(const std::string &serverKey, const std::string &connectionName, const std::string &address, unsigned short port) {
+
+   removeRemoteConnection(serverKey);
+
+   cover->notify(Notify::Info) << "initiating new RemoteConnection to " << address << ":" << port << std::endl;
    std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
 
-   addRemoteConnection(connectionName, r);
+   addRemoteConnection(serverKey, connectionName, r);
 
    return r;
 }
 
-std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &connectionName, unsigned short port, unsigned short portLast) {
+std::shared_ptr<RemoteConnection> RhrClient::startListen(const std::string &serverKey, const std::string &connectionName, int moduleId,  unsigned short port, unsigned short portLast) {
 
-   m_remotes.erase(connectionName);
+   removeRemoteConnection(serverKey);
 
-   std::shared_ptr<RemoteConnection> r;
-   if (portLast > 0) {
-       cover->notify(Notify::Info) << "new RemoteConnection " << connectionName << " in port range: " << port << "-" << portLast << std::endl;
-       r.reset(new RemoteConnection(this, port, portLast, coVRMSController::instance()->isMaster()));
-   } else {
-       cover->notify(Notify::Info) << "listening for new RemoteConnection " << connectionName << " on port: " << port << std::endl;
-       r.reset(new RemoteConnection(this, port, coVRMSController::instance()->isMaster()));
-   }
+   cover->notify(Notify::Info) << "accepting RemoteConnection " << connectionName << " in port range: " << port << "-" << portLast << std::endl;
+   std::shared_ptr<RemoteConnection> r(new RemoteConnection(this, port, portLast, coVRMSController::instance()->isMaster()));
 
-   addRemoteConnection(connectionName, r);
+   addRemoteConnection(serverKey, connectionName, r, moduleId);
 
    return r;
 }
 
-void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<RemoteConnection> remote) {
+void RhrClient::addRemoteConnection(const std::string &serverKey, const std::string &name, std::shared_ptr<RemoteConnection> remote, int moduleId) {
    CERR << "addRemoteConnection: have " << m_remotes.size() << " connections, adding client " << name << std::endl;
 
-   m_remotes[name] = remote;
+   m_remoteNames.insert(name);
+
+   m_remotes[serverKey] = remote;
    remote->setName(name);
    m_clientsChanged = true;
 
@@ -1067,29 +1147,54 @@ void RhrClient::addRemoteConnection(const std::string &name, std::shared_ptr<Rem
 
    bool running = coVRMSController::instance()->syncBool(remote->isRunning());
    if (!running) {
-       if (remote->m_moduleId) {
-           setServerParameters(remote->m_moduleId, "", 0);
+       if (vistle::message::Id::isModule(moduleId)) {
+           setServerParameters(moduleId, "", 0);
        }
        //removeRemoteConnection(remote);
        //remote.reset();
    }
 
-   if (remote->isListening()) {
-       if (remote->m_setServerParameters) {
-           remote->m_setServerParameters = false;
-           setServerParameters(remote->m_moduleId, vistle::hostname(), remote->m_port);
+   remote->startThread();
+
+   unsigned short port = 0;
+   if (remote->isListener() && remote->m_setServerParameters && moduleId != vistle::message::Id::Invalid) {
+       while (!remote->isListening() && !remote->isConnected()) {
+           usleep(1000);
        }
+
+       port = remote->m_port;
    }
 
-   remote->start();
+   coVRMSController::instance()->syncData(&port, sizeof(port));
+   if (port > 0) {
+       auto hostname = coVRMSController::instance()->syncString(vistle::hostname());
+       setServerParameters(moduleId, hostname, port);
+       remote->m_setServerParameters = false;
+   }
+
+    m_remoteStatus[serverKey] = new ui::Label(m_remoteGroup, name);
+    updateStatus(serverKey);
+}
+
+RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(const std::string &name) {
+
+    return removeRemoteConnection(m_remotes.find(name));
 }
 
 //! clean up when connection to server is lost
 RhrClient::RemotesMap::iterator RhrClient::removeRemoteConnection(RhrClient::RemotesMap::iterator it) {
 
+   if (it == m_remotes.end())
+       return it;
+
    CERR << "removeRemoteConnection: have " << m_remotes.size() << " connections, removing client " << it->first << std::endl;
 
-   auto remote = it->second;
+   const auto &name = it->first;
+   auto &remote = it->second;
+
+   delete m_remoteStatus[name];
+   m_remoteStatus.erase(name);
+
    cover->getObjectsRoot()->removeChild(remote->scene());
    m_clientsChanged = true;
 
@@ -1129,6 +1234,30 @@ void RhrClient::setReprojectionMode(MultiChannelDrawer::Mode reproject) {
     for (auto &r: m_remotes) {
         r.second->setReprojectionMode(m_mode);
     }
+}
+
+bool RhrClient::sendMessage(const vistle::message::Buffer &msg, const vistle::buffer *payload) {
+
+    if (payload) {
+        MessagePayload shm(*payload);
+        std::lock_guard<std::mutex> locker(m_sendMutex);
+        m_sendQueue.emplace_back(msg, shm);
+    } else {
+        std::lock_guard<std::mutex> locker(m_sendMutex);
+        m_sendQueue.emplace_back(msg);
+    }
+
+    return true;
+}
+
+void RhrClient::updateStatus(const string &serverKey) {
+
+    auto it = m_remotes.find(serverKey);
+    auto name = it->second->name();
+    auto text = it->second->status();
+    auto stat = name + ": " + text;
+    stat = coVRMSController::instance()->syncString(stat);
+    m_remoteStatus[serverKey]->setText(stat);
 }
 
 COVERPLUGIN(RhrClient)

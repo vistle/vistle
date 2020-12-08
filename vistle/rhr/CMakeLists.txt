@@ -44,21 +44,21 @@ endif()
 vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
 vistle_install_headers(rhr ${RHR_HEADERS})
 
+target_link_libraries(vistle_rhr
+       PUBLIC vistle_util
+       PUBLIC vistle_core
+       PRIVATE vistle_module
+       PRIVATE Boost::boost
+       PRIVATE Boost::serialization
+       PRIVATE ${JPEG_LIBRARIES}
+)
+
 if(USE_CUDA)
     target_link_libraries(vistle_rhr 
         PRIVATE ${CUDA_LIBRARIES}
         PRIVATE ${GLEW_LIBRARIES}
         PRIVATE ${OPENGL_LIBRARIES})
 endif()
-
-target_link_libraries(vistle_rhr
-       PUBLIC vistle_util
-       PUBLIC vistle_core
-       PRIVATE Boost::boost
-       PRIVATE Boost::serialization
-       PRIVATE ${JPEG_LIBRARIES}
-)
-
 
 if(JPEGTURBO_FOUND)
    if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)

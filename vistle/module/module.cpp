@@ -1175,7 +1175,6 @@ bool Module::sendMessage(const message::Message &message, const buffer *payload)
            pl.ref();
            buf.setPayloadName(pl.name());
            buf.setPayloadSize(payload->size());
-           buf.setPayloadRawSize(pl->size());
        }
 #ifdef MODULE_THREAD
        buf.setSenderId(id());
@@ -1543,6 +1542,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
       case message::UPDATESTATUS:
       case message::IDLE:
       case message::BUSY:
+      case message::REMOTERENDERING:
          break;
 
       default:

@@ -60,7 +60,6 @@ class RemoteConnection {
     osg::ref_ptr<osg::Node> m_boundsNode;
     const osg::BoundingSphere &getBounds() const;
 
-    bool m_listen;
     std::string m_host;
     unsigned short m_port = 0;
     unsigned short m_portFirst = 0, m_portLast = 0;
@@ -69,6 +68,7 @@ class RemoteConnection {
     std::unique_ptr<std::recursive_mutex> m_mutex, m_sendMutex;
     std::unique_ptr<std::mutex> m_taskMutex;
     std::unique_ptr<std::thread> m_thread;
+    bool m_listen = false;
     bool m_running = false;
     bool m_listening = false;
     bool m_connected = false;
@@ -76,7 +76,7 @@ class RemoteConnection {
     bool m_interrupt = false;
     bool m_isMaster = false;
     bool m_setServerParameters = false;
-    int m_moduleId = 0;
+    bool m_initialized = false;
     std::deque<TileMessage> m_receivedTiles;
     std::deque<size_t> m_lastTileAt;
     std::map<std::string, vistle::RenderObject::InitialVariantVisibility> m_variantsToAdd;
@@ -97,16 +97,18 @@ class RemoteConnection {
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
     RemoteConnection &operator=(RemoteConnection &other) = delete;
+    //! connect via Vistle message to module with moduleId
+    RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster);
+    //! connect via TCP to host:port
     RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster);
-    RemoteConnection(RhrClient *plugin, unsigned short port, bool isMaster);
+    //! choose a port between portFirst and portLast to listen on
     RemoteConnection(RhrClient *plugin, unsigned short portFirst, unsigned short portLast, bool isMaster);
     ~RemoteConnection();
-    void init();
-    void start();
 
     void setName(const std::string &name);
     const std::string &name() const;
 
+    void startThread();
     void stopThread();
     void operator()();
     void connectionEstablished();
@@ -117,6 +119,7 @@ class RemoteConnection {
     bool setMatrices(const std::vector<vistle::matricesMsg> &msgs, bool force=false);
     std::vector<vistle::matricesMsg> m_matrices, m_savedMatrices;
     int m_numMatrixRequests = 0;
+    bool handleRemoteRenderMessage(vistle::message::RemoteRenderMessage &msg, const std::shared_ptr<vistle::buffer> &payload = std::shared_ptr<vistle::buffer>());
     bool handleAnimation(const vistle::message::RemoteRenderMessage &msg, const vistle::animationMsg &anim);
     bool handleVariant(const vistle::message::RemoteRenderMessage &msg, const vistle::variantMsg &variant);
     bool update();
@@ -128,7 +131,9 @@ class RemoteConnection {
     //! handle RFB bounds message
     bool handleBounds(const vistle::message::RemoteRenderMessage &msg, const vistle::boundsMsg &bound);
     bool handleTile(const vistle::message::RemoteRenderMessage &msg, const vistle::tileMsg &tile, std::shared_ptr<vistle::buffer> payload);
+    int moduleId() const;
     bool isRunning() const;
+    bool isListener() const;
     bool isListening() const;
     bool isConnecting() const;
     bool isConnected() const;
@@ -165,11 +170,12 @@ class RemoteConnection {
    double m_lastMatricesTime = -1.;
    double m_minDelay = 0., m_maxDelay = 0., m_accumDelay = 0., m_avgDelay = 0.;
    double m_lastStat = -1.;
-   size_t m_remoteFrames=0, m_localFrames=0;
+   size_t m_remoteFrames=0;
    size_t m_depthBytes=0, m_rgbBytes=0, m_depthBpp=0, m_numPixels=0;
    size_t m_depthBytesS=0, m_rgbBytesS=0, m_depthBppS=0, m_numPixelsS=0;
    int m_remoteSkipped = 0, m_remoteSkippedPerFrame = 0;
    std::string m_name;
+   std::string m_status; // user-readable status of this connection
 
    bool canEnqueue() const;
    void enqueueTask(std::shared_ptr<DecodeTask> task);
@@ -192,14 +198,13 @@ class RemoteConnection {
 
    int numTimesteps() const;
    int currentTimestep() const;
-   int timestepToCommit() const;
 
    osg::Group *scene();
    osg::ref_ptr<osg::Group> m_scene;
-   void printStats();
+   void updateStats(bool print, int localFrames);
 
    unsigned m_maxTilesPerFrame = 100;
-   bool m_handleTilesAsync = false;
+   bool m_handleTilesAsync = true;
 
    std::unique_ptr<boost::mpi::communicator> m_comm;
    std::unique_ptr<boost::mpi::communicator> m_commAny, m_commMiddle, m_commLeft, m_commRight;
@@ -210,6 +215,12 @@ class RemoteConnection {
    void setMaxTilesPerFrame(unsigned ntiles);
    bool canHandleTile(std::shared_ptr<const vistle::message::RemoteRenderMessage> msg) const;
    void skipFrames();
+
+   std::string status() const;
+
+   private:
+   int m_moduleId = vistle::message::Id::Invalid;
+   void init();
 };
 
 #endif

@@ -16,6 +16,8 @@
 #include <cover/coVRPlugin.h>
 #include <cover/ui/Owner.h>
 
+#include <VistlePluginUtil/VistleMessage.h>
+
 #include <vistle/rhr/rfbext.h>
 
 #include <boost/asio.hpp>
@@ -29,7 +31,9 @@ namespace ui {
 class Action;
 class Button;
 class Menu;
+class Group;
 class SelectionList;
+class Label;
 }
 }
 
@@ -44,7 +48,7 @@ class RhrClient: public opencover::coVRPlugin, public opencover::ui::Owner
 
 public:
    RhrClient();
-   ~RhrClient();
+   ~RhrClient() override;
 
    bool init() override;
    void addObject(const opencover::RenderObject *container, osg::Group *parent,
@@ -62,21 +66,22 @@ public:
    void message(int toWhom, int type, int len, const void *msg) override;
 
    bool updateViewer() override;
+   bool sendMessage(const vistle::message::Buffer &msg, const vistle::buffer *payload);
 
 private:
    //! do timings
    bool m_benchmark = false;
    double m_lastStat = -1.;
    size_t m_localFrames = 0;
-   int m_remoteSkipped = 0;
 
 
-   std::shared_ptr<RemoteConnection> connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
-   std::shared_ptr<RemoteConnection> startListen(const std::string &connectionName, unsigned short port, unsigned short portLast=0);
-   void addRemoteConnection(const std::string &name, std::shared_ptr<RemoteConnection> remote);
+   std::shared_ptr<RemoteConnection> connectClient(const std::string &serverKey, const std::string &connectionName, const std::string &address, unsigned short port);
+   std::shared_ptr<RemoteConnection> startListen(const std::string &serverKey, const std::string &connectionName, int moduleId, unsigned short port, unsigned short portLast=0);
+   std::shared_ptr<RemoteConnection> startClient(const std::string &serverKey, const std::string &connectionName, int moduleId);
+   void addRemoteConnection(const std::string &serverKey, const std::string &name, std::shared_ptr<RemoteConnection> remote, int moduleId = vistle::message::Id::Invalid);
    typedef std::map<std::string, std::shared_ptr<RemoteConnection>> RemotesMap;
+   RemotesMap::iterator removeRemoteConnection(const std::string &name);
    RemotesMap::iterator removeRemoteConnection(RemotesMap::iterator it);
-   bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<vistle::matricesMsg> &messages, uint32_t requestNum);
    vistle::lightsMsg buildLightsMessage();
    void fillMatricesMessage(vistle::matricesMsg &msg, int channel, int view, bool second=false);
    std::vector<vistle::matricesMsg> gatherAllMatrices();
@@ -88,13 +93,10 @@ private:
    int m_requestedTimestep, m_visibleTimestep, m_numRemoteTimesteps;
 
    // work queue management for decoding tiles
-   bool finishFrames();
    bool swapFrames();
    bool checkAdvanceFrame();
    bool updateRemotes();
    bool syncRemotesAnim();
-
-   uint32_t m_matrixNum = 0;
 
    int m_channelBase = 0;
    int m_numLocalViews = 0, m_numClusterViews = 0;
@@ -109,11 +111,16 @@ private:
    ViewSelection m_visibleViews = opencover::MultiChannelDrawer::All;
 
    opencover::ui::Menu *m_menu = nullptr;
+   opencover::ui::Group *m_remoteGroup = nullptr;
 
    bool m_noModelUpdate = false;
    osg::Matrix m_oldModelMatrix;
 
    RemotesMap m_remotes;
+   std::map<std::string, opencover::ui::Label *> m_remoteStatus;
+   std::set<std::string> m_remoteNames;
+   void updateStatus(const std::string &serverKey);
+
    std::map<std::string, bool> m_coverVariants; //< whether a Variant is visible
    std::map<int, VistleInteractor *> m_interactors;
    void setServerParameters(int module, const std::string &host, unsigned short port) const;
@@ -124,5 +131,8 @@ private:
    double m_imageQuality = 1.0;
    int m_maxTilesPerFrame = 100;
    bool m_printViewSizes = true;
+
+   std::mutex m_sendMutex;
+   std::deque<VistleMessage> m_sendQueue;
 };
 #endif

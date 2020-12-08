@@ -439,6 +439,11 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
                 forward = true;
                 break;
             }
+            case REMOTERENDERING: {
+                forward = true;
+                needPayload = true;
+                break;
+            }
             default: {
                 CERR << "have unexpected message " << *msg << std::endl;
                 forward = true;
@@ -514,6 +519,10 @@ void DataProxy::msgForward(std::shared_ptr<tcp_socket> sock, EndPointType type) 
                 break;
             }
             case ADDOBJECTCOMPLETED: {
+                forward = true;
+                break;
+            }
+            case REMOTERENDERING: {
                 forward = true;
                 break;
             }

@@ -91,9 +91,11 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
  public:
    OSGRenderer(const std::string &name, int moduleID, mpi::communicator comm);
-   ~OSGRenderer();
+   ~OSGRenderer() override;
 
  private:
+   bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
+
    std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,

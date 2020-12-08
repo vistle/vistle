@@ -24,7 +24,8 @@ public:
    Port *outputPort() const;
    void connectionAdded(const Port *to);
    void connectionRemoved(const Port *to);
-   Object::ptr getConfigObject();
+
+   bool handleMessage(const message::Message *message, const MessagePayload &payload);
 
    bool handleParam(const Parameter *p);
    bool prepareFrame(size_t numTimesteps);

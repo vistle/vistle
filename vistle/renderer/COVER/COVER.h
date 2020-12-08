@@ -67,6 +67,7 @@ class V_COVEREXPORT COVER: public vistle::Renderer {
 
    osg::ref_ptr<osg::Group> vistleRoot;
 
+   bool handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) override;
    bool parameterAdded(const int senderId, const std::string &name, const vistle::message::AddParameter &msg, const std::string &moduleName) override;
    bool parameterChanged(const int senderId, const std::string &name, const vistle::message::SetParameter &msg) override;
    bool parameterRemoved(const int senderId, const std::string &name, const vistle::message::RemoveParameter &msg) override;

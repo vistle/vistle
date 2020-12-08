@@ -10,7 +10,6 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-#include <boost/lexical_cast.hpp>
 
 #include "rfbext.h"
 #include "depthquant.h"
@@ -19,7 +18,6 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
-#include <tbb/enumerable_thread_specific.h>
 
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/netpbmimage.h>
@@ -27,9 +25,8 @@
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messages.h>
 #include <vistle/util/listenv4v6.h>
+#include <vistle/module/module.h>
 
-//#define QUANT_ERROR
-//#define TIMING
 
 #define CERR std::cerr << "RHR: "
 
@@ -42,15 +39,21 @@ bool RhrServer::send(const RemoteRenderMessage &msg, const buffer *payload) {
     return send(buf, payload);
 }
 
-bool RhrServer::send(const message::Message &msg, const buffer *payload) {
+bool RhrServer::send(message::Buffer msg, const buffer *payload) {
+
+    if (m_clientModuleId != message::Id::Invalid) {
+        msg.setDestId(m_clientModuleId);
+        return m_module->sendMessage(msg, payload);
+    }
 
     if (m_clientSocket && !m_clientSocket->is_open()) {
         resetClient();
         CERR << "client disconnected" << std::endl;
     }
 
-    if (!m_clientSocket)
+    if (!m_clientSocket) {
         return false;
+    }
 
     message::error_code ec;
     if (!message::send(*m_clientSocket, msg, ec, payload)) {
@@ -66,8 +69,9 @@ bool RhrServer::send(const message::Message &msg, const buffer *payload) {
 }
 
 //! called when plugin is loaded
-RhrServer::RhrServer()
-: m_acceptorv4(m_io)
+RhrServer::RhrServer(vistle::Module *module)
+: m_module(module)
+, m_acceptorv4(m_io)
 , m_acceptorv6(m_io)
 , m_listen(true)
 , m_port(0)
@@ -108,6 +112,13 @@ bool RhrServer::isConnecting() const {
     return !m_listen;
 }
 
+bool RhrServer::isConnected() const {
+    if (m_clientModuleId != message::Id::Invalid)
+        return true;
+
+    return m_clientSocket.get();
+}
+
 void RhrServer::setColorCodec(CompressionParameters::ColorCodec value) {
 
     m_imageParam.rgbaParam.rgbaCodec = value;
@@ -141,6 +152,11 @@ void RhrServer::setZfpMode(CompressionParameters::ZfpMode mode) {
 void RhrServer::setDumpImages(bool enable) {
 
     m_dumpImages = enable;
+}
+
+void RhrServer::setClientModuleId(int moduleId) {
+
+    m_clientModuleId = moduleId;
 }
 
 unsigned short RhrServer::port() const {
@@ -235,7 +251,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
         auto it = m_localVariants.find(var);
         if (it != m_localVariants.end())
             m_localVariants.erase(it);
-        if (m_clientSocket) {
+        if (isConnected()) {
             variantMsg msg;
             strncpy(msg.name, var.c_str(), sizeof(msg.name));
             msg.remove = 1;
@@ -248,7 +264,7 @@ void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::
         if (it == m_localVariants.end()) {
             m_localVariants.emplace(var.first, var.second);
         }
-        if (m_clientSocket) {
+        if (isConnected()) {
             variantMsg msg;
             strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
             if (var.second != vistle::RenderObject::DontChange) {
@@ -279,8 +295,6 @@ void RhrServer::init() {
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
 
-   m_delay = 0;
-
 #if 0
    m_benchmark = false;
    m_errormetric = false;
@@ -295,7 +309,6 @@ void RhrServer::init() {
    m_imageParam.depthParam.depthZfpMode = CompressionParameters::ZfpFixedRate;
 
    m_resizeBlocked = false;
-   m_resizeDeferred = false;
    m_queuedTiles = 0;
    m_firstTile = false;
 
@@ -314,6 +327,7 @@ void RhrServer::resetClient() {
     lightsUpdateCount = 0;
     m_clientVariants.clear();
     m_viewData.clear();
+    m_clientModuleId = message::Id::Invalid;
 }
 
 bool RhrServer::startServer(unsigned short port) {
@@ -382,7 +396,7 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
     CERR << "connecting to " << host << ":" << port << "..." << std::endl;
 
     asio::ip::tcp::resolver resolver(m_io);
-    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+    asio::ip::tcp::resolver::query query(host, std::to_string(port));
     boost::system::error_code ec;
     asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
     if (ec) {
@@ -418,6 +432,8 @@ bool RhrServer::makeConnection(const std::string &host, unsigned short port, int
 
     CERR << "connected to " << host << ":" << port << std::endl;
 
+    send(message::Identify());
+
     return true;
 }
 
@@ -437,7 +453,6 @@ void RhrServer::resize(size_t viewNum, int w, int h) {
    if (m_resizeBlocked) {
 
        if (w != -1 && h != -1) {
-           m_resizeDeferred = true;
            vd.newWidth = w;
            vd.newHeight = h;
        }
@@ -475,7 +490,6 @@ void RhrServer::deferredResize() {
     for (size_t i=0; i<numViews(); ++i) {
         resize(i, -1, -1);
     }
-    m_resizeDeferred = false;
 }
 
 //! handle matrix update message
@@ -565,7 +579,7 @@ void RhrServer::setNumTimesteps(unsigned num) {
    if (num != m_numTimesteps) {
       m_numTimesteps = num;
 
-      if (m_clientSocket) {
+      if (isConnected()) {
           animationMsg anim;
           anim.current = m_imageParam.timestep;
           anim.total = num;
@@ -605,7 +619,7 @@ void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
 
 
 //! handle request for a bounding sphere update
-bool RhrServer::handleBounds(std::shared_ptr<socket> sock,const boundsMsg &bound) {
+bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const boundsMsg &bound) {
 
    if (bound.sendreply) {
       //std::cout << "SENDING BOUNDS" << std::endl;
@@ -637,115 +651,94 @@ bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const var
 void
 RhrServer::preFrame() {
 
-   if (m_delay) {
-      usleep(m_delay);
-   }
+    if (m_clientModuleId != vistle::message::Id::Invalid)
+        return;
 
-   m_io.poll();
-   if (m_clientSocket) {
-      bool received = false;
-      do {
-          received = false;
-          size_t avail = 0;
-          asio::socket_base::bytes_readable command(true);
-          m_clientSocket->io_control(command);
-          if (!m_clientSocket->is_open()) {
-              resetClient();
-              break;
-          }
-          if (command.get() > 0) {
-              avail = command.get();
-          }
-          if (avail >= sizeof(message::RemoteRenderMessage)) {
-              message::Buffer msg;
-              buffer payload;
-              message::error_code ec;
-              received = message::recv(*m_clientSocket, msg, ec, false, &payload);
-              if (received) {
-                  switch(msg.type()) {
-                  case message::IDENTIFY: {
-                      auto &m = msg.as<message::Identify>();
-                      using message::Identify;
-                      switch (m.identity()) {
-                      case Identify::REQUEST: {
-                          Identify id(m, Identify::RENDERSERVER);
-                          send(id);
-                          break;
-                      }
-                      case Identify::RENDERCLIENT: {
-                          if (!m.verifyMac()) {
-                              CERR << "MAC verification failed" << std::endl;
-                              resetClient();
-                              break;
-                          }
-                          for (auto &var: m_localVariants) {
-                              variantMsg msg;
-                              strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
-                              msg.visible = var.second;
-                              send(msg);
-                          }
-                          break;
-                      }
-                      default: {
-                          CERR << "unexpected client identiy: " << m << std::endl;
-                          resetClient();
-                          break;
-                      }
-                      }
-                      break;
-                  }
-                  case message::REMOTERENDERING: {
-                      auto &m = msg.as<message::RemoteRenderMessage>();
-                      auto &rhr = m.rhr();
-                      switch (rhr.type) {
-                      case rfbMatrices: {
-                          auto &mat = static_cast<const matricesMsg &>(rhr);
-                          handleMatrices(m_clientSocket, mat);
-                          break;
-                      }
-                      case rfbLights: {
-                          auto &light = static_cast<const lightsMsg &>(rhr);
-                          handleLights(m_clientSocket, light);
-                          break;
-                      }
-                      case rfbAnimation: {
-                          auto &anim = static_cast<const animationMsg &>(rhr);
-                          handleAnimation(m_clientSocket, anim);
-                          break;
-                      }
-                      case rfbBounds: {
-                          auto &bound = static_cast<const boundsMsg &>(rhr);
-                          handleBounds(m_clientSocket, bound);
-                          break;
-                      }
-                      case rfbVariant: {
-                          auto &var = static_cast<const variantMsg &>(rhr);
-                          handleVariant(m_clientSocket, var);
-                          break;
-                      }
-                      case rfbTile:
-                      default:
-                          CERR << "invalid RHR message subtype received" << std::endl;
-                          break;
-                      }
-                      break;
-                  }
-                  default: {
-                      CERR << "invalid message type received" << std::endl;
-                      break;
-                  }
-                  }
-              } else if (ec) {
-                  CERR << "error during message receive: " << ec.message() << std::endl;
-              }
-          }
-      } while (received);
-   }
+    m_io.poll();
+    if (!isConnected())
+        return;
+
+    bool received = false;
+    do {
+        received = false;
+        message::Buffer msg;
+        buffer payload;
+        MessagePayload payloadShm;
+        message::error_code ec;
+        if (m_clientSocket) {
+            size_t avail = 0;
+            asio::socket_base::bytes_readable command(true);
+            m_clientSocket->io_control(command);
+            if (!m_clientSocket->is_open()) {
+                resetClient();
+                break;
+            }
+            if (command.get() > 0) {
+                avail = command.get();
+            }
+            if (avail < sizeof(message::RemoteRenderMessage))
+                continue;
+
+            received = message::recv(*m_clientSocket, msg, ec, false, &payload);
+            if (!received) {
+                if (ec) {
+                    CERR << "error during message receive: " << ec.message() << std::endl;
+                }
+                continue;
+            }
+        } else {
+            CERR << "no possibility for input" << std::endl;
+            break;
+        }
+
+        switch(msg.type()) {
+        case message::IDENTIFY: {
+            auto &m = msg.as<message::Identify>();
+            using message::Identify;
+            switch (m.identity()) {
+            case Identify::REQUEST: {
+                Identify id(m, Identify::RENDERSERVER);
+                send(id);
+                break;
+            }
+            case Identify::RENDERCLIENT: {
+                if (!m.verifyMac()) {
+                    CERR << "MAC verification failed" << std::endl;
+                    resetClient();
+                    break;
+                }
+                for (auto &var: m_localVariants) {
+                    variantMsg msg;
+                    strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+                    msg.visible = var.second;
+                    send(msg);
+                }
+                break;
+            }
+            default: {
+                CERR << "unexpected client identiy: " << m << std::endl;
+                resetClient();
+                break;
+            }
+            }
+            break;
+        }
+        case message::REMOTERENDERING: {
+            auto &m = msg.as<message::RemoteRenderMessage>();
+            handleRemoteRenderMessage(m_clientSocket, m);
+            break;
+        }
+        default: {
+            CERR << "invalid message type " << toString(msg.type()) << " received" << std::endl;
+            break;
+        }
+        }
+    } while (received);
 }
 
-void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, RhrServer::ViewParameters param, bool lastView) {
+void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, const RhrServer::ViewParameters &param, bool lastView) {
 
-   if (m_clientSocket)
+   if (isConnected())
        encodeAndSend(viewNum, x, y, w, h, param, lastView);
 }
 
@@ -795,18 +788,22 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
 struct EncodeTask: public tbb::task {
 
     tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue;
-    int viewNum;
-    int x, y, w, h, stride;
-    int bpp;
-    bool subsamp;
     float *depth;
     unsigned char *rgba;
     tileMsg *message;
     const RhrServer::ImageParameters &param;
+    int viewNum;
+    int x, y, w, h, stride;
+    int bpp;
+    bool subsamp;
 
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
           float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
     : resultQueue(resultQueue)
+    , depth(depth)
+    , rgba(nullptr)
+    , message(nullptr)
+    , param(param)
     , viewNum(viewNum)
     , x(x)
     , y(y)
@@ -815,10 +812,6 @@ struct EncodeTask: public tbb::task {
     , stride(vp.width)
     , bpp(4)
     , subsamp(false)
-    , depth(depth)
-    , rgba(nullptr)
-    , message(nullptr)
-    , param(param)
     {
         assert(depth);
         message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -872,6 +865,10 @@ struct EncodeTask: public tbb::task {
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
           unsigned char *rgba, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
     : resultQueue(resultQueue)
+    , depth(nullptr)
+    , rgba(rgba)
+    , message(nullptr)
+    , param(param)
     , viewNum(viewNum)
     , x(x)
     , y(y)
@@ -880,10 +877,6 @@ struct EncodeTask: public tbb::task {
     , stride(vp.width)
     , bpp(4)
     , subsamp(param.rgbaParam.rgbaCodec == vistle::CompressionParameters::Jpeg_YUV411)
-    , depth(nullptr)
-    , rgba(rgba)
-    , message(nullptr)
-    , param(param)
     {
        assert(rgba);
        message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -899,7 +892,7 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    tbb::task* execute() {
+    tbb::task* execute() override {
 
         auto &msg = *message;
         RhrServer::EncodeResult result(message);
@@ -944,14 +937,14 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         dn << "depth_frame" << m_framecount << "_view" << viewNum << ".pgm";
         dnfull << "depth_frame" << m_framecount << "_view" << viewNum << "_full.pgm";
         auto &vp = m_viewData[viewNum].param;
-        NetpbmImage dfull(dnfull.str(), vp.width, vp.height, NetpbmImage::PGM, (1<<24)-1);
+        NetpbmImage dfull(dnfull.str(), vp.width, vp.height, NetpbmImage::PGM, (1U<<24)-1);
         NetpbmImage d(dn.str(), vp.width, vp.height, NetpbmImage::PGM);
         NetpbmImage c(cn.str(), vp.width, vp.height, NetpbmImage::PPM);
 
         float dmin = std::numeric_limits<float>::max(), dmax= std::numeric_limits<float>::lowest();
         size_t numpix = vp.width * vp.height;
         for (size_t i=0; i<numpix; ++i) {
-            auto col = &rgba(viewNum)[i*4];
+            auto *col = &rgba(viewNum)[i*4];
             c.append(col[0]/255.f, col[1]/255.f, col[2]/255.f);
 
             auto dval = depth(viewNum)[i];
@@ -973,7 +966,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
           for (int x=x0; x<x0+w; x+=tileWidth) {
 
              // depth
-             auto dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+             auto *dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
                    viewNum,
                    x, y,
                    std::min(tileWidth, x0+w-x),
@@ -983,7 +976,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
              ++m_queuedTiles;
 
              // color
-             auto ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+             auto *ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
                    viewNum,
                    x, y,
                    std::min(tileWidth, x0+w-x),
@@ -1008,7 +1001,7 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
         tileReady = false;
         RemoteRenderMessage *msg = nullptr;
         if (m_queuedTiles == 0 && finish) {
-           auto tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
+           auto *tm = newTileMsg(m_imageParam, param, -1, 0, 0, 0, 0);
            msg = new RemoteRenderMessage(*tm);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
@@ -1031,8 +1024,8 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
            if (sendTiles)
                send(*msg, &result.payload);
         }
-        result.payload.clear();
         delete msg;
+        result.payload.clear();
     } while (m_queuedTiles > 0 && (tileReady || finish));
 
     if (finish) {
@@ -1047,6 +1040,53 @@ bool RhrServer::finishTiles(const RhrServer::ViewParameters &param, bool finish,
 RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const {
 
     return m_viewData[viewNum].param;
+}
+
+bool RhrServer::handleMessage(const message::Message *message, const MessagePayload &payload) {
+
+    if (message->type() != message::REMOTERENDERING)
+        return false;
+
+    auto rr = message->as<message::RemoteRenderMessage>();
+
+    return handleRemoteRenderMessage(nullptr, rr);
+}
+
+bool RhrServer::handleRemoteRenderMessage(std::shared_ptr<socket> sock, const vistle::message::RemoteRenderMessage &rr) {
+
+    const auto &rhr = rr.rhr();
+    switch (rhr.type) {
+    case rfbMatrices: {
+        const auto &mat = static_cast<const matricesMsg &>(rhr);
+        handleMatrices(sock, mat);
+        break;
+    }
+    case rfbLights: {
+        const auto &light = static_cast<const lightsMsg &>(rhr);
+        handleLights(sock, light);
+        break;
+    }
+    case rfbAnimation: {
+        const auto &anim = static_cast<const animationMsg &>(rhr);
+        handleAnimation(sock, anim);
+        break;
+    }
+    case rfbBounds: {
+        const auto &bound = static_cast<const boundsMsg &>(rhr);
+        handleBounds(sock, bound);
+        break;
+    }
+    case rfbVariant: {
+        const auto &var = static_cast<const variantMsg &>(rhr);
+        handleVariant(sock, var);
+        break;
+    }
+    case rfbTile:
+    default:
+        CERR << "invalid RHR message subtype received" << std::endl;
+        break;
+    }
+    return false;
 }
 
 } // namespace vistle

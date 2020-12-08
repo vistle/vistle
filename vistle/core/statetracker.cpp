@@ -573,6 +573,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
       case FILEQUERY:
       case FILEQUERYRESULT:
       case DATATRANSFERSTATE:
+      case REMOTERENDERING:
          break;
 
       default:

@@ -20,6 +20,8 @@
 #include <osg/TextureRectangle>
 #include <osg/FrameBufferObject>
 #include <vistle/util/enum.h>
+#include <vistle/rhr/rfbext.h>
+
 
 #ifdef USE_X11
 #include <X11/Xlib.h>
@@ -859,6 +861,15 @@ void OSGRenderer::connectionRemoved(const vistle::Port *from, const vistle::Port
         m_renderManager.connectionRemoved(to);
     }
     Renderer::connectionRemoved(from, to);
+}
+
+bool OSGRenderer::handleMessage(const vistle::message::Message *message, const vistle::MessagePayload &payload) {
+
+    if (m_renderManager.handleMessage(message, payload)) {
+        return true;
+    }
+
+    return Renderer::handleMessage(message, payload);
 }
 
 

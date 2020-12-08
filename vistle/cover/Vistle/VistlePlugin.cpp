@@ -5,6 +5,9 @@
 #include <cover/coVRPluginSupport.h>
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
+#include <PluginUtil/PluginMessageTypes.h>
+
+#include <VistlePluginUtil/VistleMessage.h>
 
 #include <vistle/renderer/COVER/COVER.h>
 
@@ -25,13 +28,14 @@ class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
 
  public:
    VistlePlugin();
-   ~VistlePlugin();
+   ~VistlePlugin() override;
    bool init() override;
    bool destroy() override;
    void notify(NotificationLevel level, const char *text) override;
    bool update() override;
    void requestQuit(bool killSession) override;
    bool executeAll() override;
+   void message(int toWhom, int type, int length, const void *data) override;
 
  private:
    COVER *m_module = nullptr;
@@ -195,6 +199,16 @@ bool VistlePlugin::executeAll() {
         return m_module->executeAll();
     }
     return false;
+}
+
+void VistlePlugin::message(int toWhom, int type, int length, const void *data) {
+
+    if (type == opencover::PluginMessageTypes::VistleMessageOut) {
+        const auto *wrap = static_cast<const VistleMessage *>(data);
+        if (m_module) {
+            m_module->sendMessage(wrap->buf, wrap->payload);
+        }
+    }
 }
 
 COVERPLUGIN(VistlePlugin)

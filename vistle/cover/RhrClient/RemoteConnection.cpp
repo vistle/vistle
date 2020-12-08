@@ -1,6 +1,9 @@
 #include "RemoteConnection.h"
 #include "RhrClient.h"
 
+#include <sstream>
+#include <iomanip>
+
 #include <boost/lexical_cast.hpp>
 
 #include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
@@ -88,20 +91,20 @@ const osg::BoundingSphere &RemoteConnection::getBounds() const {
     return m_boundsNode->getBound();
 }
 
-RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
+RemoteConnection::RemoteConnection(RhrClient *plugin, int moduleId, bool isMaster)
     : plugin(plugin)
     , m_listen(false)
-    , m_host(host)
-    , m_port(port)
     , m_sock(plugin->m_io)
     , m_isMaster(isMaster)
+    , m_moduleId(moduleId)
 {
     init();
 }
 
-RemoteConnection::RemoteConnection(RhrClient *plugin, unsigned short port, bool isMaster)
+RemoteConnection::RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
     : plugin(plugin)
-    , m_listen(true)
+    , m_listen(false)
+    , m_host(host)
     , m_port(port)
     , m_sock(plugin->m_io)
     , m_isMaster(isMaster)
@@ -119,6 +122,13 @@ RemoteConnection::RemoteConnection(RhrClient *plugin, unsigned short portFirst, 
     , m_isMaster(isMaster)
     , m_setServerParameters(true)
 {
+    if (m_portFirst >= m_portLast) {
+        m_port = m_portFirst;
+        m_portFirst = m_portLast = 0;
+
+        m_setServerParameters = false;
+    }
+
     init();
 }
 
@@ -132,6 +142,9 @@ RemoteConnection::~RemoteConnection() {
         m_thread.reset();
         NOTIFY_INFO << "disconnected from server" << std::endl;
     }
+
+    while (!m_runningTasks.empty())
+        usleep(1000);
 }
 
 void RemoteConnection::init() {
@@ -162,13 +175,20 @@ void RemoteConnection::init() {
     m_scene->setName("RemoteConnection");
 
     m_head = m_newHead = m_receivingHead = cover->getViewerMat();
+
+    m_status = "initialized";
+
+    m_initialized = true;
 }
 
-void RemoteConnection::start()
+void RemoteConnection::startThread()
 {
+    assert(m_initialized);
+
     if (m_handleTilesAsync || m_isMaster) {
         m_running = true;
         m_thread.reset(new std::thread(std::ref(*this)));
+        m_status = "running";
     }
 }
 
@@ -205,15 +225,18 @@ void RemoteConnection::stopThread() {
 
     lock_guard locker(*m_mutex);
     assert(!m_running);
+
+    m_status = "stopped";
 }
 
 void RemoteConnection::operator()() {
 #ifdef __linux
-    pthread_setname_np(pthread_self(), "RHR:RemoteConnection");
+    pthread_setname_np(pthread_self(), "RHR:RemoteConn");
 #endif
 #ifdef __APPLE__
     pthread_setname_np("RHR:RemoteConnection");
 #endif
+    CERR << "starting thread on rank " << m_comm->rank() << std::endl;
     {
         lock_guard locker(*m_mutex);
         assert(m_running);
@@ -233,18 +256,22 @@ void RemoteConnection::operator()() {
             }
         }
 
+        CERR << "stopping thread on rank " << m_comm->rank() << std::endl;
         lock_guard locker(*m_mutex);
         m_running = false;
         return;
     }
 
-#define END \
+#define END(s) \
     if (m_comm) for (int i=1; i<m_comm->size(); ++i) { m_comm->send(i, TagQuit); } \
     lock_guard locker(*m_mutex); \
     m_running = false; \
+    m_status = s; \
     return;
 
-    if (m_listen) {
+    if (m_moduleId != message::Id::Invalid) {
+        connectionEstablished();
+    } else if (m_listen) {
         boost::system::error_code ec;
         asio::ip::tcp::acceptor acceptorv4(plugin->m_io), acceptorv6(plugin->m_io);
         int first = m_port, last = m_port;
@@ -263,7 +290,7 @@ void RemoteConnection::operator()() {
         }
         if (ec) {
             NOTIFY_ERROR << "could not open port " << m_port << " for listening: " << ec.message() << std::endl;
-            END;
+            END("port error");
         }
         ec.clear();
         if (acceptorv4.is_open())
@@ -276,11 +303,14 @@ void RemoteConnection::operator()() {
             NOTIFY_ERROR << "could not make acceptor non-blocking: " << ec.message() << std::endl;
             acceptorv4.close();
             acceptorv6.close();
-            END;
+            END("acceptor error");
         }
+        assert(acceptorv4.is_open() || acceptorv6.is_open());
+        CERR << "listening on port " << m_port << std::endl;
         {
             lock_guard locker(*m_mutex);
             m_listening = true;
+            m_status = "listening";
         }
 
         do {
@@ -308,7 +338,7 @@ void RemoteConnection::operator()() {
         acceptorv6.close();
         if (ec) {
             NOTIFY_ERROR << "failure to accept client on port " << m_port << ": " << ec.message() << std::endl;
-            END;
+            END("accept error");
         } else {
             sendMessage(message::Identify());
         }
@@ -319,25 +349,28 @@ void RemoteConnection::operator()() {
         asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query, ec);
         if (ec) {
             NOTIFY_ERROR << "could not resolve " << m_host << ": " << ec.message() << std::endl;
-            END;
+            END("resolve error");
         }
         asio::connect(m_sock, endpoint_iterator, ec);
         if (ec) {
             NOTIFY_ERROR << "could not establish connection to " << m_host << ":" << m_port << ": " << ec.message() << std::endl;
-            END;
+            END("connection error");
         }
     }
 
     {
         lock_guard locker(*m_mutex);
+        m_listening = false;
         m_connected = true;
+        m_status = "connected";
     }
 
     for (;;) {
-        if (!m_sock.is_open())
-        {
+        if (m_moduleId != message::Id::Invalid) {
+        } else if (!m_sock.is_open()) {
             lock_guard locker(*m_mutex);
             m_connected = false;
+            m_status = "disconnected";
             connectionClosed();
             break;
         }
@@ -345,10 +378,17 @@ void RemoteConnection::operator()() {
         message::Buffer buf;
         auto payload = std::make_shared<buffer>();
         message::error_code ec;
-        bool received = message::recv(m_sock, buf, ec, false, payload.get());
-        if (ec) {
-            NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
-            break;
+        bool received = false;
+        if (m_moduleId != message::Id::Invalid) {
+
+        } else {
+            received = message::recv(m_sock, buf, ec, false, payload.get());
+            if (ec) {
+                NOTIFY_ERROR << "message receive: " << ec.message() << std::endl;
+                lock_guard locker(*m_mutex);
+                m_status = "receive error";
+                break;
+            }
         }
         {
             lock_guard locker(*m_mutex);
@@ -367,22 +407,27 @@ void RemoteConnection::operator()() {
             switch (msg.identity()) {
             case Identify::REQUEST: {
                 message::Identify id(msg, message::Identify::RENDERCLIENT);
+                lock_guard locker(*m_mutex);
                 sendMessage(id);
                 connectionEstablished();
+                m_status = "connected";
                 break;
             }
             case Identify::RENDERSERVER: {
                 if (!msg.verifyMac()) {
                     lock_guard locker(*m_mutex);
+                    m_status = "MAC error";
                     m_interrupt = true;
                     break;
                 }
+                lock_guard locker(*m_mutex);
                 connectionEstablished();
                 break;
             }
             default: {
                 CERR << "invalid identity: " << msg << std::endl;
                 lock_guard locker(*m_mutex);
+                m_status = "remote error";
                 m_interrupt = true;
                 break;
             }
@@ -392,33 +437,12 @@ void RemoteConnection::operator()() {
         } else if (buf.type() != message::REMOTERENDERING) {
             CERR << "invalid message type=" << buf.type() << " received" << std::endl;
             lock_guard locker(*m_mutex);
+            m_status = "protocol error";
             m_interrupt = true;
             break;
         } else {
             auto &msg = buf.as<RemoteRenderMessage>();
-            auto &rhr = msg.rhr();
-            m_modificationCount = rhr.modificationCount;
-            switch (rhr.type) {
-            case rfbTile: {
-                handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
-                break;
-            }
-            case rfbBounds: {
-                lock_guard locker(*m_mutex);
-                handleBounds(msg, static_cast<const boundsMsg &>(rhr));
-                break;
-            }
-            case rfbAnimation: {
-                lock_guard locker(*m_mutex);
-                handleAnimation(msg, static_cast<const animationMsg &>(rhr));
-                break;
-            }
-            case rfbVariant: {
-                lock_guard locker(*m_mutex);
-                handleVariant(msg, static_cast<const variantMsg &>(rhr));
-                break;
-            }
-            }
+            handleRemoteRenderMessage(msg, payload);
         }
 
         lock_guard locker(*m_mutex);
@@ -431,8 +455,36 @@ void RemoteConnection::operator()() {
         for (int i=1; i<m_comm->size(); ++i)
             m_comm->send(i, TagQuit);
     }
+    CERR << "terminating rank 0 with status " << m_status << std::endl;
     lock_guard locker(*m_mutex);
     m_running = false;
+}
+
+bool RemoteConnection::handleRemoteRenderMessage(message::RemoteRenderMessage &msg, const std::shared_ptr<buffer> &payload) {
+
+    assert(m_initialized);
+
+    auto &rhr = msg.rhr();
+    m_modificationCount = rhr.modificationCount;
+    switch (rhr.type) {
+    case rfbTile: {
+        return handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
+    }
+    case rfbBounds: {
+        lock_guard locker(*m_mutex);
+        return handleBounds(msg, static_cast<const boundsMsg &>(rhr));
+    }
+    case rfbAnimation: {
+        lock_guard locker(*m_mutex);
+        return handleAnimation(msg, static_cast<const animationMsg &>(rhr));
+    }
+    case rfbVariant: {
+        lock_guard locker(*m_mutex);
+        return handleVariant(msg, static_cast<const variantMsg &>(rhr));
+    }
+    }
+
+    return false;
 }
 
 void RemoteConnection::connectionEstablished() {
@@ -575,8 +627,9 @@ void RemoteConnection::preFrame() {
         lock_guard locker(*m_mutex);
         coVRMSController::instance()->syncData(&m_addDrawer, sizeof(m_addDrawer));
         addDrawer = m_addDrawer;
-        m_addDrawer = false;
         connected = m_connected;
+        if (m_connected)
+            m_addDrawer = false;
     }
 
     if (addDrawer) {
@@ -687,6 +740,7 @@ bool RemoteConnection::handleTile(const RemoteRenderMessage &msg, const tileMsg 
         return true;
     }
 
+    assert(payload);
     assert(payload->size() == msg.payloadSize());
     auto m = std::make_shared<RemoteRenderMessage>(msg);
     if (m_handleTilesAsync) {
@@ -802,9 +856,18 @@ bool RemoteConnection::isRunning() const {
     return m_running;
 }
 
+bool RemoteConnection::isListener() const {
+    lock_guard locker(*m_mutex);
+    return m_listen;
+}
+
 bool RemoteConnection::isListening() const {
     lock_guard locker(*m_mutex);
-    return m_running && m_listening;
+    if (m_isMaster) {
+        return m_running && m_listening;
+    } else {
+        return m_listen;
+    }
 }
 
 bool RemoteConnection::isConnecting() const {
@@ -814,6 +877,9 @@ bool RemoteConnection::isConnecting() const {
 
 bool RemoteConnection::isConnected() const {
     lock_guard locker(*m_mutex);
+    if (m_moduleId != message::Id::Invalid) {
+        return true;
+    }
     return m_running && m_connected && m_sock.is_open();
 }
 
@@ -829,6 +895,13 @@ bool RemoteConnection::sendMessage(const message::Message &msg, const buffer *pa
     lock_guard locker(*m_sendMutex);
     if (!isConnected())
         return false;
+
+    if (m_moduleId != message::Id::Invalid) {
+        message::Buffer buf(msg);
+        buf.setDestId(m_moduleId);
+        return plugin->sendMessage(buf, payload);
+    }
+
     if (!message::send(m_sock, msg, payload)) {
         if (m_sock.is_open()) {
             boost::system::error_code ec;
@@ -1107,6 +1180,8 @@ bool RemoteConnection::updateTileQueue() {
        bool ok = dt->result.get();
        if (!ok) {
            CERR << "error during DecodeTask" << std::endl;
+           lock_guard locker(*m_mutex);
+           m_status = "decode error";
        }
 
        auto msg = dt->msg;
@@ -1468,6 +1543,11 @@ void RemoteConnection::skipFrames() {
     }
 }
 
+std::string RemoteConnection::status() const {
+    lock_guard locker(*m_mutex);
+    return m_status;
+}
+
 void RemoteConnection::setVisibleTimestep(int t) {
     lock_guard locker(*m_mutex);
     m_visibleTimestep = t;
@@ -1489,10 +1569,10 @@ osg::Group *RemoteConnection::scene() {
     return m_scene.get();
 }
 
-void RemoteConnection::printStats() {
+void RemoteConnection::updateStats(bool print, int localFrames) {
 
     double diff = cover->frameTime() - m_lastStat;
-    bool print = coVRMSController::instance()->isMaster();
+    print = print && coVRMSController::instance()->isMaster();
 
     double depthRate = (double)m_depthBytesS/((m_remoteFrames)*m_depthBppS*m_numPixelsS);
     double rgbRate = (double)m_rgbBytesS/((m_remoteFrames)*3*m_numPixelsS);
@@ -1503,12 +1583,12 @@ void RemoteConnection::printStats() {
                 (long)m_depthBppS, (long)m_depthBytesS, (long)m_rgbBytesS);
         if (m_remoteFrames + m_remoteSkipped > 0) {
             fprintf(stderr, "RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
-                    m_localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff,
+                    localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff,
                     m_remoteSkipped,
                     m_minDelay, m_maxDelay, m_accumDelay/m_remoteFrames);
         } else {
             fprintf(stderr, "RHR: FPS: local %f, remote %f\n",
-                    m_localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff);
+                    localFrames/diff, (m_remoteFrames+m_remoteSkipped)/diff);
         }
         fprintf(stderr, "    pixels: %ld, bandwidth: %.2f MB/s",
                 (long)m_numPixelsS, bandwidthMB);
@@ -1518,15 +1598,22 @@ void RemoteConnection::printStats() {
         fprintf(stderr, "\n");
     }
 
+    std::stringstream str;
+    str << std::fixed << std::setprecision(1)
+        << "F/s: " << (m_remoteFrames+m_remoteSkipped)/diff;
+    auto status = str.str();
+
     m_remoteSkipped = 0;
     m_lastStat = cover->frameTime();
     m_minDelay = DBL_MAX;
     m_maxDelay = 0.;
     m_accumDelay = 0.;
-    m_localFrames = 0;
     m_remoteFrames = 0;
     m_depthBytesS = 0;
     m_rgbBytesS = 0;
+
+    lock_guard locker(*m_mutex);
+    m_status = status;
 }
 
 const osg::Matrix &RemoteConnection::getHeadMat() const {
@@ -1641,4 +1728,9 @@ bool RemoteConnection::distributeAndHandleTileMpi(std::shared_ptr<RemoteRenderMe
 
 void RemoteConnection::setMaxTilesPerFrame(unsigned ntiles) {
     m_maxTilesPerFrame = ntiles;
+}
+
+int RemoteConnection::moduleId() const {
+
+    return m_moduleId;
 }

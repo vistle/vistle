@@ -23,9 +23,8 @@ class V_RENDEREREXPORT RhrController {
    void addClient(const Port *client);
    void removeClient(const Port *client);
 
-   std::string configString() const;
-
    enum ConnectionDirection {
+       None, // no dedicated connection necessary
        Connect, // client connects to server
        Listen, // server connects to client
    };
@@ -42,15 +41,16 @@ class V_RENDEREREXPORT RhrController {
 
  private:
    bool initializeServer();
-   std::string getConfigString() const;
    Object::ptr getConfigObject() const;
-   void sendConfigObject() const;
+   bool sendConfigObject() const;
 
    vistle::Module *m_module;
    Port *m_imageOutPort;
    int m_displayRank;
 
    Port::ConstPortSet m_clients;
+   const Port *m_currentClient = nullptr;
+   int m_clientModuleId = 0;
 
    IntParameter *m_rhrConnectionMethod;
    StringParameter *m_rhrLocalEndpoint;

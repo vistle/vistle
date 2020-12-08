@@ -632,4 +632,13 @@ void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro)
        rhr->updateModificationCount();
 }
 
+bool ParallelRemoteRenderManager::handleMessage(const message::Message *message, const MessagePayload &payload) {
+
+    auto rhr = m_rhrControl.server();
+    if (rhr)
+        return rhr->handleMessage(message, payload);
+
+    return false;
+}
+
 }
