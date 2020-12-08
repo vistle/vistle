@@ -23,7 +23,7 @@
 	branch = stable
 [submodule "3rdparty/eigen3"]
 	path = 3rdparty/eigen3
-	url = git://github.com/eigenteam/eigen-git-mirror.git
+	url = https://gitlab.com/libeigen/eigen.git
 [submodule "3rdparty/yas"]
 	path = 3rdparty/yas
 	url = git://github.com/niXman/yas.git
