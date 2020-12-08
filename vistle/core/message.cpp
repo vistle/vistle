@@ -28,6 +28,32 @@
 namespace vistle {
 namespace message {
 
+codec_error::codec_error(const std::string &what)
+: vistle::exception(what)
+{
+    std::string codecs;
+#ifdef HAVE_SNAPPY
+    codecs += " ";
+    codecs += "Snappy";
+#endif
+#ifdef HAVE_ZSTD
+    codecs += " ";
+    codecs += "Zstd";
+#endif
+#ifdef HAVE_LZ4
+    codecs += " ";
+    codecs += "LZ4";
+#endif
+
+    m_info += "\n";
+    if (codecs.empty()) {
+        m_info += "No compression codec support";
+    } else {
+        m_info += "Supported codecs:";
+        m_info += codecs;
+    }
+}
+
 DefaultSender DefaultSender::s_instance;
 
 DefaultSender::DefaultSender()
@@ -336,7 +362,7 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
 #ifdef HAVE_SNAPPY
         snappy::RawUncompress(compressed, size, decompressed.data());
 #else
-        throw vistle::exception("cannot decompress Snappy");
+        throw codec_error("cannot decompress Snappy");
 #endif
         break;
     }
@@ -352,11 +378,11 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
                 err = e;
             }
             std::cerr << "Zstd decompression ERROR: " << err << std::endl;
-            throw vistle::exception("Zstd decompression failed: "+err);
+            throw codec_error("Zstd decompression failed: "+err);
         }
         //assert(n == msg.payloadRawSize());
 #else
-        throw vistle::exception("cannot decompress Zstd");
+        throw codec_error("cannot decompress Zstd");
 #endif
         break;
     }
@@ -367,11 +393,11 @@ buffer decompressPayload(CompressionMode mode, size_t size, size_t rawsize, cons
             std::cerr << "LZ4 decompression WARNING: decompressed size " << n << " does not match raw size " << rawsize << std::endl;
         }
         if (n < 0) {
-            throw vistle::exception("LZ4 decompression failed");
+            throw codec_error("LZ4 decompression failed");
         }
         //assert(n == msg.payloadRawSize());
 #else
-        throw vistle::exception("cannot decompress LZ4");
+        throw codec_error("cannot decompress LZ4");
 #endif
         break;
     }

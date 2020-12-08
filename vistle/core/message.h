@@ -7,6 +7,7 @@
 #include <vistle/util/enum.h>
 #include <vistle/util/directory.h> // ModuleNameLength
 #include <vistle/util/buffer.h>
+#include <vistle/util/exception.h>
 #include "uuid.h"
 #include "export.h"
 #include "shmname.h"
@@ -316,6 +317,11 @@ V_COREEXPORT buffer decompressPayload(vistle::message::CompressionMode mode, siz
 V_COREEXPORT buffer decompressPayload(const Message &msg, buffer &compressed);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
+
+class V_COREEXPORT codec_error: public vistle::exception {
+public:
+    codec_error(const std::string &what = "unsupported codec");
+};
 
 } // namespace message
 } // namespace vistle

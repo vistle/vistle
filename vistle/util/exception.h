@@ -20,9 +20,11 @@ class V_UTILEXPORT exception: public std::exception {
    virtual const char* info() const throw();
    virtual const char* where() const throw();
 
+   protected:
+   std::string m_info;
+
    private:
    std::string m_what;
-   std::string m_info;
    std::string m_where;
 };
 
