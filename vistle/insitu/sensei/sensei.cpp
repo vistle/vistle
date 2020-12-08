@@ -2,7 +2,6 @@
 #include "exeption.h"
 #include "intOption.h"
 
-#include <vistle/insitu/core/prepareShmName.h>
 #include <vistle/insitu/message/ShmMessage.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/addObjectMsq.h>
@@ -311,7 +310,7 @@ bool SenseiAdapter::initializeVistleEnv()
 
 void SenseiAdapter::initializeMessageQueues() throw()
 {
-    auto shmName = cutRankSuffix(m_internals->moduleInfo.shmName());
+    auto shmName = m_internals->moduleInfo.shmName();
     CERR << "attaching to shm: name = " << shmName << " id = " << m_internals->moduleInfo.id() << " rank = " << m_rank
          << endl;
     vistle::Shm::attach(shmName, m_internals->moduleInfo.id(), m_rank);

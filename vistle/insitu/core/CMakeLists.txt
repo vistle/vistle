@@ -1,13 +1,11 @@
 set(SOURCES
   exeption.cpp
-  prepareShmName.cpp
   )
 set(HEADER
   callFunctionWithVoidToTypeCast.h
   dataType.h
   exeption.h
   export.h
-  prepareShmName.h
   transformArray.h
   )
 vistle_add_library(vistle_insitu_core ${SOURCES} ${HEADER})

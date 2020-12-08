@@ -4,7 +4,6 @@
 #include "VertexTypesToVistle.h"
 #include "VisitDataTypesToVistle.h"
 
-#include <vistle/insitu/core/prepareShmName.h>
 #include <vistle/insitu/libsim/libsimInterface/SimulationMetaData.h>
 #include <vistle/module/module.h>
 
@@ -418,7 +417,6 @@ bool Engine::initializeVistleEnv()
     vistle::registerTypes();
     try {
         auto shmName = m_moduleInfo.shmName();
-        shmName = cutRankSuffix(shmName);
         CERR << "attaching to shm: name = " << shmName << " id = " << m_moduleInfo.id() << " rank = " << m_rank << endl;
         vistle::Shm::attach(shmName, m_moduleInfo.id(), m_rank);
         if (m_rank == 0) {
