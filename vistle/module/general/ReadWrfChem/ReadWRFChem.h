@@ -20,6 +20,8 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/reader.h>
 
+/* #include <netcdfcpp.h> */
+
 #ifdef OLD_NETCDFCXX
 #include <netcdfcpp>
 #else
