@@ -174,13 +174,14 @@ bool ReadWRFChem::examine(const vistle::Parameter *param)
     if (!param || param == m_filedir || param == m_varDim) {
         if (!inspectDir())
             return false;
+
         sendInfo("File %s is used as base", fileList.front().c_str());
 
         if (ncFirstFile) {
             delete ncFirstFile;
             ncFirstFile = nullptr;
         }
-        std::string sDir = /* m_filedir->getValue() + "/" + */ fileList.front();
+        std::string sDir = fileList.front();
 
         //New NcFile with ReadOnly
         ncFirstFile = new NcFile(sDir.c_str(), NcFile::read);

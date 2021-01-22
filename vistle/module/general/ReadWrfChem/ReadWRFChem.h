@@ -1,4 +1,3 @@
-
 #ifndef _READWRFCHEM_H
 #define _READWRFCHEM_H
 /**************************************************************************\
@@ -56,12 +55,16 @@ private:
     bool inspectDir();
     bool addDataToPort(Reader::Token &token, NcFile *ncDataFile, int vi,  Object::ptr outGrid, Block *b, int block, int t) const;
     Object::ptr generateGrid(Block *b) const;
+    Block computeBlock(int part, int nBlocks, long blockBegin, long cellsPerBlock, long numCellTot) const;
 
     std::map<int, Object::ptr> outObject;
 
     std::vector<std::string> fileList;
+    std::vector<vistle::Float> dataOut;
+    std::vector<std::string> varDimList = {"2D","3D","other"};
+
     int numFiles = 0;
-    Block computeBlock(int part, int nBlocks, long blockBegin, long cellsPerBlock, long numCellTot) const;
+    int numBlocks = 1;
 
     Port *m_gridOut = nullptr;
     Port *m_dataOut[NUMPARAMS];
@@ -75,15 +78,9 @@ private:
     StringParameter *m_PH;
     StringParameter *m_gridZ;
 
-    std::vector<std::string> varDimList = {"2D","3D","other"};
-
-    IntParameter /**m_numPartitions, */*m_numPartitionsLat, *m_numPartitionsVer;
+    IntParameter *m_numPartitions, *m_numPartitionsLat, *m_numPartitionsVer;
 
     NcFile *ncFirstFile;
-
-    std::vector<vistle::Float> dataOut;
-
-    int numBlocks = 1;
 };
 
 #endif
