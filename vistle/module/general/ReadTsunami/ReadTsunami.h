@@ -1,3 +1,19 @@
+
+/**************************************************************************\
+ **                                                                        **
+ **                                                                        **
+ ** Description: Read module for WRFChem data         	                   **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ ** Author:    Marko Djuric                                                **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ ** Date:  25.01.2021                                                      **
+\**************************************************************************/
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
@@ -24,15 +40,9 @@ class ReadTsunami: public vistle::Reader {
 public:
     //default constructor
     ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm);
-
+    
     //destructor
     virtual ~ReadTsunami() override;
-
-    //change of parameters (callback)
-    virtual void param(const char *paramName, bool inMapLoading);
-
-    //compute callback
-    virtual int compute(const char *);
 
 private:
     //Vistle functions
