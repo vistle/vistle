@@ -1,8 +1,7 @@
-
 /**************************************************************************\
  **                                                                        **
  **                                                                        **
- ** Description: Read module for WRFChem data         	                   **
+ ** Description: Read module for Tsunami data         	                   **
  **                                                                        **
  **                                                                        **
  **                                                                        **
@@ -17,11 +16,7 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
-#include <boost/mpi/communicator.hpp>
 #include <vistle/module/reader.h>
-#include <vistle/core/parameter.h>
-#include <vistle/core/port.h>
-#include <vistle/core/structuredgrid.h>
 
 #ifdef OLD_NETCDFCXX
 #include <netcdfcpp>
@@ -29,45 +24,47 @@
 #include <ncFile.h>
 #include <ncVar.h>
 #include <ncDim.h>
+
 using namespace netCDF;
 #endif
 
 #define NUMPARAMS 6
 
-using namespace vistle;
-
 class ReadTsunami: public vistle::Reader {
 public:
     //default constructor
     ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm);
-    
-    //destructor
     virtual ~ReadTsunami() override;
 
 private:
     //Vistle functions
-    bool prepareRead() override;
+    /* bool prepareRead() override; */
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
 
     //Own functions
     bool openNcFile();
+    void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
+               vistle::Index time) const;
 
     //Parameter
-    StringParameter *m_filedir;
-    StringParameter *m_grid_choice_x, *m_grid_choice_y, *m_grid_choice_z;
-    StringParameter *m_variables[NUMPARAMS];
-    FloatParameter *m_verticalScale;
-    IntParameter *m_step;
+    vistle::StringParameter *m_filedir;
+    /* vistle::StringParameter *m_grid_choice_x, *m_grid_choice_y, *m_grid_choice_z; */
+    vistle::StringParameter *m_variables[NUMPARAMS];
+    vistle::FloatParameter *m_verticalScale;
+    vistle::IntParameter *m_step;
+    vistle::IntParameter *m_blocks[3];
+    vistle::IntParameter *m_ghostLayerWidth;
+    vistle::IntParameter *m_size[3];
 
     //Ports
-    Port *m_grid_out = nullptr;
-    Port *m_dataOut[NUMPARAMS];
-    Port *m_surface_out;
-    Port *m_seaSurface_out;
-    Port *m_maxHeight;
-    Port *m_waterSurface_out;
+    vistle::Port *m_grid_out = nullptr;
+    vistle::Port *m_dataOut[NUMPARAMS];
+    vistle::Port *m_surface_out;
+    vistle::Port *m_seaSurface_out;
+    vistle::Port *m_waterSurface_out;
+    vistle::Port *m_maxHeight;
 
     //netCDF file to be read
     NcFile *ncDataFile;
