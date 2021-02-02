@@ -16,7 +16,6 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
-#include <cstddef>
 #include <vistle/module/reader.h>
 
 #ifdef OLD_NETCDFCXX
@@ -29,6 +28,9 @@
 using namespace netCDF;
 #endif
 
+//std
+#include <cstddef>
+
 #define NUMPARAMS 6
 
 class ReadTsunami: public vistle::Reader {
@@ -39,7 +41,7 @@ public:
 
 private:
     //Vistle functions
-    /* bool prepareRead() override; */
+    bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
     bool finishRead() override;
