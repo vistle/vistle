@@ -16,6 +16,7 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include <cstddef>
 #include <vistle/module/reader.h>
 
 #ifdef OLD_NETCDFCXX
@@ -45,6 +46,16 @@ private:
 
     //Own functions
     bool openNcFile();
+    vistle::Polygons::ptr generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
+                                          const std::vector<size_t> &dimension, const std::vector<float *> &coords);
+    /* void fillCoords2DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY, */
+    /*                         const std::vector<float *> &coords); */
+    void fillCoords2DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
+                            const std::vector<float *> &coords);
+    void fillCoords3DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY, const size_t &dimZ,
+                            const std::vector<float *> &coords);
+    void fillConnectList2DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY);
+    void fillPolyList4Corner(vistle::Polygons::ptr poly, const size_t &numElem);
     void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
                vistle::Index time) const;
 
@@ -69,5 +80,15 @@ private:
     //netCDF file to be read
     NcFile *ncDataFile;
 };
+
+inline float zCalcSeaSurface(float *zValues, size_t x_it, size_t y_it, size_t gridLon)
+{
+    return -zValues[x_it * gridLon + y_it];
+}
+
+inline float zCalcOutSurface(float *zValues, size_t x_it, size_t y_it, float zScale, int time, int it)
+{
+    return zValues[time * x_it * y_it + it];
+}
 
 #endif

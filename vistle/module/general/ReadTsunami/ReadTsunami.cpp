@@ -15,12 +15,13 @@
 \**************************************************************************/
 
 //vistle
+#include "vistle/core/database.h"
+#include "vistle/core/index.h"
 #include "vistle/core/object.h"
 #include "vistle/core/parameter.h"
 #include "vistle/core/polygons.h"
 #include "vistle/core/scalar.h"
 #include "vistle/core/vector.h"
-/* #include "vistle/module/general/DomainSurface/DomainSurface.h" */
 #include "vistle/module/module.h"
 #include "vistle/module/reader.h"
 
@@ -30,6 +31,7 @@
 //std
 #include <cstddef>
 #include <string>
+#include <vector>
 
 MODULE_MAIN(ReadTsunami)
 
@@ -49,7 +51,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // visualise variables
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter", 1.0);
     m_step = addIntParameter("StepWidth", "Timestep step width", 1);
-    setParameterRange(m_step, Integer(0), Integer(999999));
+    /* setParameterRange(m_step, Integer(0), Integer(999999)); */
 
     // define ports
 
@@ -58,14 +60,6 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     m_seaSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
     m_waterSurface_out = createOutputPort("waterSurfaceOut", "2D water surface (Polygons)");
     m_maxHeight = createOutputPort("maxHeight", "Max water height (Float)");
-
-    /* m_size[0] = addIntParameter("size_x", "number of cells per block in x-direction", 10); */
-    /* m_size[1] = addIntParameter("size_y", "number of cells per block in y-direction", 10); */
-    /* m_size[2] = addIntParameter("size_z", "number of cells per block in z-direction", 10); */
-
-    /* m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3); */
-    /* m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3); */
-    /* m_blocks[2] = addIntParameter("blocks_z", "number of blocks in z-direction", 3); */
 
     /* m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0); */
 
@@ -76,7 +70,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     /* observeParameter(m_blocks[2]); */
     observeParameter(m_step);
 
-    setParallelizationMode(ParallelizeBlocks);
+    /* setParallelizationMode(ParallelizeBlocks); */
+    setParallelizationMode(Serial);
 }
 
 ReadTsunami::~ReadTsunami()
@@ -114,450 +109,241 @@ bool ReadTsunami::openNcFile()
 
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
-    if (openNcFile()) {
-        /* size_t nblocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
-        /* setPartitions(nblocks); */
-        setTimesteps(m_step->getValue());
+    /* size_t nblocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
+    /* setPartitions(nblocks); */
+    /* setTimesteps(m_step->getValue()); */
+    if (openNcFile())
         return true;
-        /* return nblocks > 0; */
-    }
     return false;
+    /* return nblocks > 0; */
+}
+
+void ReadTsunami::fillCoords2DimPoly(Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
+                                     const std::vector<float *> &coords)
+{
+    int n = 0;
+    auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
+    for (size_t i = 0; i < dimX; i++)
+        for (size_t j = 0; j < dimY; j++, n++) {
+            sx_coord[n] = coords.at(0)[i];
+            sy_coord[n] = coords.at(1)[j];
+            sz_coord[n] = 0;
+        }
+}
+
+void ReadTsunami::fillCoords3DimPoly(Polygons::ptr poly, const size_t &dimX, const size_t &dimY, const size_t &dimZ,
+                                     const std::vector<float *> &coords)
+{
+    int n = 0;
+    auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
+    for (size_t i = 0; i < dimX; i++)
+        for (size_t j = 0; j < dimY; j++)
+            for (size_t k = 0; k < dimZ; k++, n++) {
+                sx_coord[n] = coords.at(0)[i];
+                sy_coord[n] = coords.at(1)[j];
+                sz_coord[n] = coords.at(2)[k];
+            }
+}
+
+void ReadTsunami::fillConnectList2DimPoly(Polygons::ptr poly, const size_t &dimX, const size_t &dimY)
+{
+    int n = 0;
+    auto surfaceConnectivityList = poly->cl().data();
+    for (size_t j = 1; j < dimX; j++)
+        for (size_t k = 1; k < dimY; k++) {
+            surfaceConnectivityList[n++] = (j - 1) * dimY + (k - 1);
+            surfaceConnectivityList[n++] = j * dimY + (k - 1);
+            surfaceConnectivityList[n++] = j * dimY + k;
+            surfaceConnectivityList[n++] = (j - 1) * dimY + k;
+        }
+}
+
+void ReadTsunami::fillPolyList4Corner(Polygons::ptr poly, const size_t &numPoly)
+{
+    auto polyList = poly->el().data();
+    for (size_t p = 0; p < numPoly; p++)
+        polyList[p] = p * 4;
+}
+
+/**
+ * Generate surface from polygons.
+ *
+ * @numElem Number of polygons that will be used to great the surface.
+ * @numCorner Number of all corners.
+ * @numVertices Number of all different corners.
+ * @dimension dimension in x,y,z.
+ * @coords coordinates for polygons.
+ * @return vistle::Polygons::ptr
+ */
+Polygons::ptr ReadTsunami::generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
+                                           const std::vector<size_t> &dimension, const std::vector<float *> &coords)
+{
+    Polygons::ptr surface(new Polygons(numElem, numCorner, numVertices));
+
+    size_t surfaceDimX = dimension.at(0);
+    size_t surfaceDimY = dimension.at(1);
+    size_t surfaceDimZ = dimension.at(2);
+
+    if (surfaceDimZ == 0) {
+        // fill coords 2D
+        fillCoords2DimPoly(surface, surfaceDimX, surfaceDimY, coords);
+    } else {
+        // fill coords 3D
+        fillCoords3DimPoly(surface, surfaceDimX, surfaceDimY, surfaceDimZ, coords);
+    }
+
+    // fill vertices
+    fillConnectList2DimPoly(surface, surfaceDimX, surfaceDimY);
+
+    // fill the polygon list
+    fillPolyList4Corner(surface, numElem);
+
+    return surface;
 }
 
 void ReadTsunami::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block,
                         vistle::Index time) const
 {
-    // get variable name from choice parameters
-    /* NcVar var; */
+    /* // read variables from NetCDF-File */
+    /* NcVar latvar = ncDataFile->getVar("lat"); */
+    /* NcVar lonvar = ncDataFile->getVar("lon"); */
+    /* NcVar grid_latvar = ncDataFile->getVar("grid_lat"); */
+    /* NcVar grid_lonvar = ncDataFile->getVar("grid_lon"); */
+    /* NcVar bathymetryvar = ncDataFile->getVar("bathymetry"); */
+    /* NcVar max_height = ncDataFile->getVar("max_height"); */
+    /* NcVar eta = ncDataFile->getVar("eta"); */
 
-    // read variables from NetCDF-File
-    NcVar latvar{ncDataFile->getVar("lat")};
-    NcVar lonvar{ncDataFile->getVar("lon")};
-    NcVar grid_latvar{ncDataFile->getVar("grid_lat")};
-    NcVar grid_lonvar{ncDataFile->getVar("grid_lon")};
-    NcVar bathymetryvar{ncDataFile->getVar("bathymetry")};
-    NcVar max_height{ncDataFile->getVar("max_height")};
-    NcVar eta{ncDataFile->getVar("eta")};
+    /* // dimension from lat and lon variables */
+    /* size_t surfaceDimX{latvar.getDim(0).getSize()}; */
+    /* size_t surfaceDimY{lonvar.getDim(0).getSize()}; */
+    /* size_t surfaceDimZ{0}; */
+    /* std::vector dimSurface{surfaceDimX, surfaceDimY, surfaceDimZ}; */
 
-    // dimension from lat and lon variables
-    auto surfaceDimX{latvar.getDim(0).getSize()};
-    auto surfaceDimY{lonvar.getDim(0).getSize()};
+    /* // num of polygons */
+    /* size_t surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1); */
 
-    // num of polygons needed?
-    int surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
+    /* // pointer for lat values and coords */
+    /* float *latVals = new float[surfaceDimX]; */
+    /* float *lonVals = new float[surfaceDimY]; */
+    /* std::vector coords{latVals, lonVals}; */
 
-    // pointer for lat values and coords
-    float *latVals = new float[surfaceDimX];
-    float *lonVals = new float[surfaceDimY];
+    /* // read in lat var ncdata into float-pointer */
+    /* latvar.getVar(latVals); */
+    /* lonvar.getVar(lonVals); */
 
-    // read in lat var ncdata into float-pointer
-    latvar.getVar(latVals);
-    lonvar.getVar(lonVals);
+    /* // Now for the 2D variables, we create a surface */
+    /* Polygons::ptr surfacePolygons = */
+    /*     generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords); */
 
-    /* Object::ptr surfaceOut; */
-    /* Object::ptr warterSurfaceOut; */
+    /* // Delete buffers from grid replication */
+    /* delete[] latVals; */
+    /* delete[] lonVals; */
 
-    // Now for the 2D variables, we create a surface
-    /* Coords::ptr geoSurface; */
-    Polygons::ptr surfacePolygons(new Polygons(surfaceNumPoly, surfaceDimX * surfaceDimY, surfaceNumPoly * 4));
+    /* // get dim from grid_lon & grid_lat */
+    /* size_t gridLatDimX = grid_latvar.getDim(0).getSize(); */
+    /* size_t gridLonDimY = grid_lonvar.getDim(0).getSize(); */
+    /* latVals = new float[gridLatDimX]; */
+    /* lonVals = new float[gridLonDimY]; */
 
-    /* geoSurface = surfacePolygons; */
+    /* // depth */
+    /* float *depthVals = new float[gridLatDimX * gridLonDimY]; */
 
-    // fill coords
-    int n{0};
-    auto sx_coord = surfacePolygons->x().data(), sy_coord = surfacePolygons->y().data(),
-         sz_coord = surfacePolygons->z().data();
-    for (size_t i = 0; i < surfaceDimX; i++)
-        for (size_t j = 0; j < surfaceDimY; j++) {
-            sx_coord[n] = latVals[i];
-            sy_coord[n] = lonVals[j];
-            sz_coord[n] = 0;
-        }
+    /* // set where to stream to data (float pointer) */
+    /* grid_latvar.getVar(latVals); */
+    /* grid_lonvar.getVar(lonVals); */
+    /* bathymetryvar.getVar(depthVals); */
 
-    // fill vertices
-    n = 0;
-    auto surfaceConnectivityList = surfacePolygons->cl().data();
-    for (size_t j = 1; j < surfaceDimX; j++)
-        for (size_t k = 1; k < surfaceDimY; k++) {
-            surfaceConnectivityList[n++] = (j - 1) * surfaceDimY + (k - 1);
-            surfaceConnectivityList[n++] = j * surfaceDimY + (k - 1);
-            surfaceConnectivityList[n++] = j * surfaceDimY + k;
-            surfaceConnectivityList[n++] = (j - 1) * surfaceDimY + k;
-        }
+    /* // Now for the 2D variables, we create a surface */
+    /* size_t numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1); */
+    /* Polygons::ptr polygonSeaSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
 
-    // Fill the polygon list
-    auto surfacePolygonList = surfacePolygons->el().data();
-    for (auto p = 0; p < surfaceNumPoly; p++)
-        surfacePolygonList[p] = p * 4;
+    /* // Fill the _coord arrays (memcpy faster?) */
+    /* int n{0}; */
+    /* auto x_coord = polygonSeaSurface->x().data(), y_coord = polygonSeaSurface->y().data(), */
+    /*      z_coord = polygonSeaSurface->z().data(); */
+    /* for (size_t j = 0; j < gridLatDimX; j++) */
+    /*     for (size_t k = 0; k < gridLonDimY; k++, n++) { */
+    /*         x_coord[n] = latVals[j]; */
+    /*         y_coord[n] = lonVals[k]; */
+    /*         z_coord[n] = zCalcSeaSurface(depthVals, j, k, gridLonDimY); */
+    /*     } */
 
-    // Delete buffers from grid replication
-    delete[] latVals;
-    delete[] lonVals;
+    /* // Fill the connectivitylist list = numPolygons * 4 */
+    /* fillConnectList2DimPoly(polygonSeaSurface, gridLatDimX, gridLonDimY); */
 
-    // get dim from grid_lon & grid_lat
-    int gridLatDimX = grid_latvar.getDim(0).getSize();
-    int gridLonDimY = grid_lonvar.getDim(0).getSize();
-    latVals = new float[gridLatDimX];
-    lonVals = new float[gridLonDimY];
+    /* // Fill the polygon list */
+    /* fillPolyList4Corner(polygonSeaSurface, numPolygons); */
 
-    // depth
-    float *depthVals = new float[gridLatDimX * gridLonDimY];
+    /* // Delete buffers from grid replication */
+    /* delete[] latVals; */
+    /* delete[] lonVals; */
+    /* delete[] depthVals; */
 
-    // set where to stream to data (float pointer)
-    grid_latvar.getVar(latVals);
-    grid_lonvar.getVar(lonVals);
-    bathymetryvar.getVar(depthVals);
+    /* /1* // float for read in max_height *1/ */
+    /* /1* Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount())); *1/ */
+    /* /1* vistle::Scalar *maxH{scalarMaxHeight->x().data()}; *1/ */
+    /* /1* max_height.getVar(maxH); *1/ */
 
-    // Now for the 2D variables, we create a surface
-    int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1);
-    Polygons::ptr polygonsSeaSurface(new Polygons(numPolygons, gridLatDimX * gridLonDimY, numPolygons * 4));
+    /* // read in time */
+    /* /1* float *floatData = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()]; *1/ */
 
-    // Fill the _coord arrays (memcpy faster?)
-    n = 0;
-    auto x_coord = polygonsSeaSurface->x().data(), y_coord = polygonsSeaSurface->y().data(),
-         z_coord = polygonsSeaSurface->z().data();
-    for (int j = 0; j < gridLatDimX; j++)
-        for (int k = 0; k < gridLonDimY; k++, n++) {
-            x_coord[n] = latVals[j];
-            y_coord[n] = lonVals[k];
-            z_coord[n] = -depthVals[j * gridLonDimY + k];
-        }
+    /* /1* int numTimesteps = eta.getDim(0).getSize(); *1/ */
+    /* /1* eta.getVar(floatData); *1/ */
 
-    // Fill the vertex list
-    n = 0;
-    auto seasurfaceConnectivityList = polygonsSeaSurface->cl().data();
-    for (int j = 1; j < gridLatDimX; j++)
-        for (int k = 1; k < gridLonDimY; k++) {
-            seasurfaceConnectivityList[n++] = (j - 1) * gridLonDimY + (k - 1);
-            seasurfaceConnectivityList[n++] = j * gridLonDimY + (k - 1);
-            seasurfaceConnectivityList[n++] = j * gridLonDimY + k;
-            seasurfaceConnectivityList[n++] = (j - 1) * gridLonDimY + k;
-        }
+    /* // create Object::ptr pointer for each timestep */
+    /* /1* std::string baseName = m_waterSurface_out->getName(); *1/ */
+    /* /1* sendInfo("numTimesteps %d!", numTimesteps); *1/ */
+    /* /1* int i = 0; *1/ */
 
-    // Fill the polygon list
-    auto seaSurfacePolygonList = polygonsSeaSurface->el().data();
-    for (int p = 0; p < numPolygons; p++)
-        seaSurfacePolygonList[p] = p * 4;
+    /* // get vertical Scale */
+    /* /1* float zScale = m_verticalScale->getValue(); *1/ */
 
-    // Delete buffers from grid replication
-    delete[] latVals;
-    delete[] lonVals;
-    delete[] depthVals;
+    /* /1* // create watersurface with polygons for each timestep *1/ */
+    /* /1* for (int t = 0; t < numTimesteps; t += m_step->getValue()) { *1/ */
 
-    // float for read in max_height
-    Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount()));
-    vistle::Scalar *maxH{scalarMaxHeight->x().data()};
-    max_height.getVar(maxH);
+    /* /1*     // Now for the 2D variables, we create a surface *1/ */
+    /* /1*     int snumPolygons = (surfaceDimX - 1) * (surfaceDimY - 1); *1/ */
 
-    // read in time
-    float *floatData = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
-    int numTimesteps = eta.getDim(0).getSize();
-    eta.getVar(floatData);
+    /* /1*     Polygons::ptr outSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); *1/ */
 
-    // create Object::ptr pointer for each timestep
-    std::string baseName = m_waterSurface_out->getName();
-    sendInfo("numTimesteps %d!", numTimesteps);
-    int i = 0;
+    /* /1*     auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data(); *1/ */
+    /* /1*     for (auto n = 0; n < surfaceDimX * surfaceDimY; n++) { *1/ */
+    /* /1*         x_coord[n] = sx_coord[n]; *1/ */
+    /* /1*         y_coord[n] = sy_coord[n]; *1/ */
+    /* /1*         z_coord[n] = floatData[t * surfaceDimX * surfaceDimY + n] * zScale; *1/ */
+    /* /1*     } *1/ */
 
-    // get vertical Scale
-    float zScale = m_verticalScale->getValue();
+    /* /1*     auto vl = outSurface->cl().data(); *1/ */
+    /* /1*     for (int j = 0; j < snumPolygons * 4; j++) *1/ */
+    /* /1*         vl[j] = surfaceConnectivityList[j]; *1/ */
 
-    // create watersurface with polygons for each timestep
-    for (int t = 0; t < numTimesteps; t += m_step->getValue()) {
-        // Now for the 2D variables, we create a surface
-        int snumPolygons = (surfaceDimX - 1) * (surfaceDimY - 1);
+    /* /1*     auto pl = outSurface->el().data(); *1/ */
+    /* /1*     for (int p = 0; p < snumPolygons; p++) *1/ */
+    /* /1*         pl[p] = surfacePolygonList[p]; *1/ */
 
-        Polygons::ptr outSurface(new Polygons(numPolygons, gridLatDimX * gridLonDimY, numPolygons * 4));
+    /* /1*     token.addObject(m_surface_out, outSurface); *1/ */
+    /* /1*     i++; *1/ */
+    /* /1* } *1/ */
 
-        auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data();
-        for (auto n = 0; n < surfaceDimX * surfaceDimY; n++) {
-            x_coord[n] = sx_coord[n];
-            y_coord[n] = sy_coord[n];
-            z_coord[n] = floatData[t * surfaceDimX * surfaceDimY + n] * zScale;
-        }
+    /* /1* surfacePolygons->updateInternals(); *1/ */
+    /* /1* surfacePolygons->setBlock(block); *1/ */
+    /* /1* if (time >= 0) *1/ */
+    /*     /1* surfacePolygons->setTimestep(time); *1/ */
 
-        auto vl = outSurface->cl().data();
-        for (int j = 0; j < snumPolygons * 4; j++)
-            vl[j] = surfaceConnectivityList[j];
+    /* /1* Vec<Scalar>::ptr dataOutput; *1/ */
+    /* /1* dataOutput->setGrid(surfacePolygons); *1/ */
+    /* /1* dataOutput->setMapping(DataBase::Vertex); *1/ */
+    /* /1* dataOutput->addAttribute("_species", ) *1/ */
+    /* /1* token.addObject(m_surface_out, dataOutput); *1/ */
+    /* token.addObject(m_surface_out, surfacePolygons); */
 
-        auto pl = outSurface->el().data();
-        for (int p = 0; p < snumPolygons; p++)
-            pl[p] = surfacePolygonList[p];
-
-        token.addObject(m_surface_out, outSurface);
-        i++;
-    }
-
-    /* token.addObject(m_surface_out, objs); */
-    polygonsSeaSurface->updateInternals();
-    token.addObject(m_seaSurface_out->getName(), polygonsSeaSurface);
-    /* token.addObject(m_maxHeight, scalarMaxHeight); */
-
-    delete floatData;
-    delete maxH;
+    /* token.addObject(m_seaSurface_out, polygonSeaSurface); */
+    /* delete floatData; */
+    /* delete maxH; */
 }
 
-bool ReadTsunami::read(Token &token, int timestep, int blockNum)
+bool ReadTsunami::read(Token &token, int timestep, int block)
 {
-    constexpr bool m_test{true};
-    // get variable name from choice parameters
-    /* NcVar var; */
-
-    // read variables from NetCDF-File
-    NcVar latvar{ncDataFile->getVar("lat")};
-    NcVar lonvar{ncDataFile->getVar("lon")};
-    NcVar grid_latvar{ncDataFile->getVar("grid_lat")};
-    NcVar grid_lonvar{ncDataFile->getVar("grid_lon")};
-    NcVar bathymetryvar{ncDataFile->getVar("bathymetry")};
-    NcVar max_height{ncDataFile->getVar("max_height")};
-    NcVar eta{ncDataFile->getVar("eta")};
-
-    // dimension from lat and lon variables
-    auto surfaceDimX{latvar.getDim(0).getSize()};
-    auto surfaceDimY{lonvar.getDim(0).getSize()};
-
-    // num of polygons needed?
-    int surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
-
-    // pointer for lat values and coords
-    float *latVals = new float[surfaceDimX];
-    float *lonVals = new float[surfaceDimY];
-
-    // read in lat var ncdata into float-pointer
-    latvar.getVar(latVals);
-    lonvar.getVar(lonVals);
-
-    /* Object::ptr surfaceOut; */
-    /* Object::ptr warterSurfaceOut; */
-
-    // Now for the 2D variables, we create a surface
-    /* Coords::ptr geoSurface; */
-    Polygons::ptr surfacePolygons(new Polygons(surfaceNumPoly, surfaceDimX * surfaceDimY, surfaceNumPoly * 4));
-
-    /* geoSurface = surfacePolygons; */
-
-    // fill coords
-    int n{0};
-    auto sx_coord = surfacePolygons->x().data(), sy_coord = surfacePolygons->y().data(),
-         sz_coord = surfacePolygons->z().data();
-    for (size_t i = 0; i < surfaceDimX; i++)
-        for (size_t j = 0; j < surfaceDimY; j++, n++) {
-            sx_coord[n] = latVals[i];
-            sy_coord[n] = lonVals[j];
-            sz_coord[n] = 0;
-        }
-
-    if constexpr (m_test) {
-        sendInfo("fill coords for surfacePolygons");
-        std::string x = std::to_string(*sx_coord);
-        std::string y = std::to_string(*sy_coord);
-        std::string z = std::to_string(*sz_coord);
-        sendInfo("sx_coord: " + x);
-        sendInfo("sy_coord: " + y);
-        sendInfo("sz_coord: " + z);
-    }
-
-    // fill vertices
-    n = 0;
-    /* auto surfaceConnectivityList = surfacePolygons->cl().data(); */
-
-    if constexpr (m_test) {
-        std::string dimX = std::to_string(surfaceDimX);
-        sendInfo("surfaceDimX: " + dimX);
-        std::string dimY = std::to_string(surfaceDimY);
-        sendInfo("surfaceDimY: " + dimY);
-    }
-
-    if constexpr (m_test) {
-        std::string numPoly = std::to_string(surfaceNumPoly);
-        sendInfo("surfaceNumPoly: " + numPoly);
-        sendInfo(std::to_string(surfacePolygons->getSize()));
-    }
-
-    n = 0;
-    //FIX ME: not accessable
-    for (size_t j = 1; j < surfaceDimX; j++)
-        for (size_t k = 1; k < surfaceDimY; k++) {
-            /* surfaceConnectivityList[n++] = (j - 1) * surfaceDimY + (k - 1); */
-            surfacePolygons->cl()[n++] = (j - 1) * surfaceDimY + (k - 1);
-
-            if constexpr (m_test)
-                if (n < 100) {
-                    sendInfo("(j - 1) * surfaceDimY + (k - 1): " + std::to_string((j - 1) * surfaceDimY + (k - 1)));
-                    /* sendInfo("surfaceConnectivityList [" + std::to_string(n) + */
-                    /*          "]: " + std::to_string(surfaceConnectivityList[n])); */
-                    sendInfo("surfaceConnectivityList [" + std::to_string(n) +
-                             "]: " + std::to_string(surfacePolygons->cl()[n]));
-                }
-
-            /* surfaceConnectivityList[n++] = j * surfaceDimY + (k - 1); */
-            surfacePolygons->cl()[n++] = j * surfaceDimY + (k - 1);
-
-            if constexpr (m_test)
-                if (n < 100) {
-                    sendInfo("j*surfaceDimY + (k-1): " + std::to_string(j * surfaceDimY + (k - 1)));
-                    /* sendInfo("surfaceConnectivityList [" + std::to_string(n) + */
-                    /*          "]: " + std::to_string(surfaceConnectivityList[n])); */
-                    sendInfo("surfaceConnectivityList [" + std::to_string(n) +
-                             "]: " + std::to_string(surfacePolygons->cl()[n]));
-                }
-
-            /* surfaceConnectivityList[n++] = j * surfaceDimY + k; */
-            surfacePolygons->cl()[n++] = j * surfaceDimY + k;
-
-            if constexpr (m_test)
-                if (n < 100) {
-                    sendInfo("j * surfaceDimY + k: " + std::to_string(j * surfaceDimY + k));
-                    /* sendInfo("surfaceConnectivityList [" + std::to_string(n) + */
-                    /*          "]: " + std::to_string(surfaceConnectivityList[n])); */
-                    sendInfo("surfaceConnectivityList [" + std::to_string(n) +
-                             "]: " + std::to_string(surfacePolygons->cl()[n]));
-                }
-
-            /* surfaceConnectivityList[n++] = (j - 1) * surfaceDimY + k; */
-            surfacePolygons->cl()[n++] = (j - 1) * surfaceDimY + k;
-
-            if constexpr (m_test)
-                if (n < 100) {
-                    sendInfo("(j - 1) * surfaceDimY + k: " + std::to_string((j - 1) * surfaceDimY + k));
-                    /* sendInfo("surfaceConnectivityList [" + std::to_string(n) + */
-                    /*          "]: " + std::to_string(surfaceConnectivityList[n])); */
-                    sendInfo("surfaceConnectivityList [" + std::to_string(n) +
-                             "]: " + std::to_string(surfacePolygons->cl()[n]));
-                }
-        }
-
-    /* if constexpr (m_test) { */
-    /*     sendInfo("fill vertices for surfacePolygons"); */
-    /*     for (int i = 0; i <= n; i++) { */
-    /*         std::string vert_str = std::to_string(surfaceConnectivityList[i]); */
-    /*         sendInfo("vertices surfaceConnectivityList: " + vert_str); */
-    /*     } */
-    /* } */
-
-    // Fill the polygon list
-    auto surfacePolygonList = surfacePolygons->el().data();
-
-    for (auto p = 0; p < surfaceNumPoly; p++)
-        surfacePolygonList[p] = p * 4;
-
-    if constexpr (m_test) {
-        std::string surfaceNumPoly_str = std::to_string(surfaceNumPoly);
-        sendInfo("surfaceNumPoly: " + surfaceNumPoly);
-        sendInfo("fill polygon for surfacePolygons");
-        for (int i = 0; i <= n; i++) {
-            std::string poly_str = std::to_string(surfacePolygonList[i]);
-            sendInfo("vertices surfaceConnectivityList: " + poly_str);
-        }
-    }
-
-    // Delete buffers from grid replication
-    delete[] latVals;
-    delete[] lonVals;
-
-    // get dim from grid_lon & grid_lat
-    int gridLatDimX = grid_latvar.getDim(0).getSize();
-    int gridLonDimY = grid_lonvar.getDim(0).getSize();
-    latVals = new float[gridLatDimX];
-    lonVals = new float[gridLonDimY];
-
-    // depth
-    float *depthVals = new float[gridLatDimX * gridLonDimY];
-
-    // set where to stream to data (float pointer)
-    grid_latvar.getVar(latVals);
-    grid_lonvar.getVar(lonVals);
-    bathymetryvar.getVar(depthVals);
-
-    // Now for the 2D variables, we create a surface
-    int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1);
-    Polygons::ptr polygonsSeaSurface(new Polygons(numPolygons, gridLatDimX * gridLonDimY, numPolygons * 4));
-
-    // Fill the _coord arrays (memcpy faster?)
-    n = 0;
-    auto x_coord = polygonsSeaSurface->x().data(), y_coord = polygonsSeaSurface->y().data(),
-         z_coord = polygonsSeaSurface->z().data();
-    for (int j = 0; j < gridLatDimX; j++)
-        for (int k = 0; k < gridLonDimY; k++, n++) {
-            x_coord[n] = latVals[j];
-            y_coord[n] = lonVals[k];
-            z_coord[n] = -depthVals[j * gridLonDimY + k];
-        }
-
-    // Fill the vertex list
-    n = 0;
-    auto seasurfaceConnectivityList = polygonsSeaSurface->cl().data();
-    for (int j = 1; j < gridLatDimX; j++)
-        for (int k = 1; k < gridLonDimY; k++) {
-            seasurfaceConnectivityList[n++] = (j - 1) * gridLonDimY + (k - 1);
-            seasurfaceConnectivityList[n++] = j * gridLonDimY + (k - 1);
-            seasurfaceConnectivityList[n++] = j * gridLonDimY + k;
-            seasurfaceConnectivityList[n++] = (j - 1) * gridLonDimY + k;
-        }
-
-    // Fill the polygon list
-    auto seaSurfacePolygonList = polygonsSeaSurface->el().data();
-    for (int p = 0; p < numPolygons; p++)
-        seaSurfacePolygonList[p] = p * 4;
-
-    // Delete buffers from grid replication
-    delete[] latVals;
-    delete[] lonVals;
-    delete[] depthVals;
-
-    // float for read in max_height
-    Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount()));
-    vistle::Scalar *maxH{scalarMaxHeight->x().data()};
-    max_height.getVar(maxH);
-
-    // read in time
-    float *floatData = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
-
-    int numTimesteps = eta.getDim(0).getSize();
-    eta.getVar(floatData);
-
-    // create Object::ptr pointer for each timestep
-    std::string baseName = m_waterSurface_out->getName();
-    sendInfo("numTimesteps %d!", numTimesteps);
-    int i = 0;
-
-    // get vertical Scale
-    float zScale = m_verticalScale->getValue();
-
-    // create watersurface with polygons for each timestep
-    for (int t = 0; t < numTimesteps; t += m_step->getValue()) {
-        // Now for the 2D variables, we create a surface
-        int snumPolygons = (surfaceDimX - 1) * (surfaceDimY - 1);
-
-        Polygons::ptr outSurface(new Polygons(numPolygons, gridLatDimX * gridLonDimY, numPolygons * 4));
-
-        auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data();
-        for (auto n = 0; n < surfaceDimX * surfaceDimY; n++) {
-            x_coord[n] = sx_coord[n];
-            y_coord[n] = sy_coord[n];
-            z_coord[n] = floatData[t * surfaceDimX * surfaceDimY + n] * zScale;
-        }
-
-        auto vl = outSurface->cl().data();
-        for (int j = 0; j < snumPolygons * 4; j++)
-            /* vl[j] = surfaceConnectivityList[j]; */
-            vl[j] = surfacePolygons->cl()[j];
-
-        auto pl = outSurface->el().data();
-        for (int p = 0; p < snumPolygons; p++)
-            pl[p] = surfacePolygonList[p];
-
-        token.addObject(m_surface_out, outSurface);
-        i++;
-    }
-
-    /* token.addObject(m_surface_out, objs); */
-    token.addObject(m_seaSurface_out, polygonsSeaSurface);
-    /* token.addObject(m_maxHeight, scalarMaxHeight); */
-
-    delete floatData;
-    delete maxH;
-    return true;
     /* Index steps = m_step->getValue(); */
     /* if (steps > 0 && timestep < 0) { */
     /*     // don't generate constant data when animation has been requested */
@@ -577,8 +363,146 @@ bool ReadTsunami::read(Token &token, int timestep, int blockNum)
     /* Index bz = b; */
 
     /* block(token, bx, by, bz, blockNum, timestep); */
+    // read variables from NetCDF-File
+    NcVar latvar = ncDataFile->getVar("lat");
+    NcVar lonvar = ncDataFile->getVar("lon");
+    NcVar grid_latvar = ncDataFile->getVar("grid_lat");
+    NcVar grid_lonvar = ncDataFile->getVar("grid_lon");
+    NcVar bathymetryvar = ncDataFile->getVar("bathymetry");
+    NcVar max_height = ncDataFile->getVar("max_height");
+    NcVar eta = ncDataFile->getVar("eta");
 
-    /* return true; */
+    // dimension from lat and lon variables
+    size_t surfaceDimX{latvar.getDim(0).getSize()};
+    size_t surfaceDimY{lonvar.getDim(0).getSize()};
+    size_t surfaceDimZ{0};
+    std::vector dimSurface{surfaceDimX, surfaceDimY, surfaceDimZ};
+
+    // num of polygons
+    size_t surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
+
+    // pointer for lat values and coords
+    float *latVals = new float[surfaceDimX];
+    float *lonVals = new float[surfaceDimY];
+    std::vector coords{latVals, lonVals};
+
+    // read in lat var ncdata into float-pointer
+    latvar.getVar(latVals);
+    lonvar.getVar(lonVals);
+
+    // Now for the 2D variables, we create a surface
+    Polygons::ptr surfacePolygons =
+        generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
+
+    // Delete buffers from grid replication
+    delete[] latVals;
+    delete[] lonVals;
+
+    /* // get dim from grid_lon & grid_lat */
+    /* size_t gridLatDimX = grid_latvar.getDim(0).getSize(); */
+    /* size_t gridLonDimY = grid_lonvar.getDim(0).getSize(); */
+    /* latVals = new float[gridLatDimX]; */
+    /* lonVals = new float[gridLonDimY]; */
+
+    /* // depth */
+    /* float *depthVals = new float[gridLatDimX * gridLonDimY]; */
+
+    /* // set where to stream to data (float pointer) */
+    /* grid_latvar.getVar(latVals); */
+    /* grid_lonvar.getVar(lonVals); */
+    /* bathymetryvar.getVar(depthVals); */
+
+    /* // Now for the 2D variables, we create a surface */
+    /* int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1); */
+    /* Polygons::ptr polygonSeaSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
+
+    /* // Fill the _coord arrays (memcpy faster?) */
+    /* int n{0}; */
+    /* auto x_coord = polygonSeaSurface->x().data(), y_coord = polygonSeaSurface->y().data(), */
+    /*      z_coord = polygonSeaSurface->z().data(); */
+    /* for (size_t j = 0; j < gridLatDimX; j++) */
+    /*     for (size_t k = 0; k < gridLonDimY; k++, n++) { */
+    /*         x_coord[n] = latVals[j]; */
+    /*         y_coord[n] = lonVals[k]; */
+    /*         z_coord[n] = zCalcSeaSurface(depthVals, j, k, gridLonDimY); */
+    /*     } */
+
+    /* // Fill the connectivitylist list = numPolygons * 4 */
+    /* fillConnectList2DimPoly(polygonSeaSurface, gridLatDimX, gridLonDimY); */
+
+    /* // Fill the polygon list */
+    /* fillPolyList4Corner(polygonSeaSurface, numPolygons); */
+
+    /* // Delete buffers from grid replication */
+    /* delete[] latVals; */
+    /* delete[] lonVals; */
+    /* delete[] depthVals; */
+
+    /* // float for read in max_height */
+    /* Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount())); */
+    /* vistle::Scalar *maxH{scalarMaxHeight->x().data()}; */
+    /* max_height.getVar(maxH); */
+
+    // read in time
+    /* float *floatData = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()]; */
+
+    /* int numTimesteps = eta.getDim(0).getSize(); */
+    /* eta.getVar(floatData); */
+
+    // create Object::ptr pointer for each timestep
+    /* std::string baseName = m_waterSurface_out->getName(); */
+    /* sendInfo("numTimesteps %d!", numTimesteps); */
+    /* int i = 0; */
+
+    // get vertical Scale
+    /* float zScale = m_verticalScale->getValue(); */
+
+    /* // create watersurface with polygons for each timestep */
+    /* for (int t = 0; t < numTimesteps; t += m_step->getValue()) { */
+
+    /*     // Now for the 2D variables, we create a surface */
+    /*     int snumPolygons = (surfaceDimX - 1) * (surfaceDimY - 1); */
+
+    /*     Polygons::ptr outSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
+
+    /*     auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data(); */
+    /*     for (auto n = 0; n < surfaceDimX * surfaceDimY; n++) { */
+    /*         x_coord[n] = sx_coord[n]; */
+    /*         y_coord[n] = sy_coord[n]; */
+    /*         z_coord[n] = floatData[t * surfaceDimX * surfaceDimY + n] * zScale; */
+    /*     } */
+
+    /*     auto vl = outSurface->cl().data(); */
+    /*     for (int j = 0; j < snumPolygons * 4; j++) */
+    /*         vl[j] = surfaceConnectivityList[j]; */
+
+    /*     auto pl = outSurface->el().data(); */
+    /*     for (int p = 0; p < snumPolygons; p++) */
+    /*         pl[p] = surfacePolygonList[p]; */
+
+    /*     token.addObject(m_surface_out, outSurface); */
+    /*     i++; */
+    /* } */
+
+    /* surfacePolygons->updateInternals(); */
+    /* surfacePolygons->setBlock(block); */
+    /* if (time >= 0) */
+    /* surfacePolygons->setTimestep(time); */
+
+    /* Vec<Scalar>::ptr dataOutput; */
+    /* dataOutput->setGrid(surfacePolygons); */
+    /* dataOutput->setMapping(DataBase::Vertex); */
+    /* dataOutput->addAttribute("_species", ) */
+    /* token.addObject(m_surface_out, dataOutput); */
+    token.addObject(m_surface_out, surfacePolygons);
+
+
+    /* token.addObject(m_surface_out, surfacePolygons); */
+    /* token.addObject(m_seaSurface_out, polygonSeaSurface); */
+    /* delete floatData; */
+    /* delete maxH; */
+
+    return true;
 }
 
 bool ReadTsunami::finishRead()
