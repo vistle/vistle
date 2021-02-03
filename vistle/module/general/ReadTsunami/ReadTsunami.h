@@ -17,6 +17,7 @@
 #define _READTSUNAMI_H
 
 #include <vistle/module/reader.h>
+#include <vistle/core/polygons.h>
 
 #ifdef OLD_NETCDFCXX
 #include <netcdfcpp>
@@ -25,7 +26,7 @@
 #include <ncVar.h>
 #include <ncDim.h>
 
-using namespace netCDF;
+/* using namespace netCDF; */
 #endif
 
 //std
@@ -80,7 +81,7 @@ private:
     vistle::Port *m_maxHeight;
 
     //netCDF file to be read
-    NcFile *ncDataFile;
+    netCDF::NcFile *ncDataFile;
 };
 
 inline float zCalcSeaSurface(float *zValues, size_t x_it, size_t y_it, size_t gridLon)
@@ -90,7 +91,7 @@ inline float zCalcSeaSurface(float *zValues, size_t x_it, size_t y_it, size_t gr
 
 inline float zCalcOutSurface(float *zValues, size_t x_it, size_t y_it, float zScale, int time, int it)
 {
-    return zValues[time * x_it * y_it + it];
+    return zValues[time * x_it * y_it + it] * zScale;
 }
 
 #endif
