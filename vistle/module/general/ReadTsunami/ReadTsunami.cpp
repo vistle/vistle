@@ -170,7 +170,7 @@ void ReadTsunami::fillConnectList2DimPoly(Polygons::ptr poly, const size_t &dimX
 void ReadTsunami::fillPolyList4Corner(Polygons::ptr poly, const size_t &numPoly)
 {
     auto polyList = poly->el().data();
-    for (size_t p = 0; p < numPoly; p++)
+    for (size_t p = 0; p <= numPoly; p++)
         polyList[p] = p * 4;
 }
 
@@ -404,49 +404,49 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     Polygons::ptr surfacePolygons =
         generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
 
-    /* // Delete buffers from grid replication */
-    /* delete[] latVals; */
-    /* delete[] lonVals; */
+    // Delete buffers from grid replication
+    delete[] latVals;
+    delete[] lonVals;
 
-    /* // get dim from grid_lon & grid_lat */
-    /* size_t gridLatDimX = grid_latvar.getDim(0).getSize(); */
-    /* size_t gridLonDimY = grid_lonvar.getDim(0).getSize(); */
-    /* latVals = new float[gridLatDimX]; */
-    /* lonVals = new float[gridLonDimY]; */
+    // get dim from grid_lon & grid_lat
+    size_t gridLatDimX = grid_latvar.getDim(0).getSize();
+    size_t gridLonDimY = grid_lonvar.getDim(0).getSize();
+    latVals = new float[gridLatDimX];
+    lonVals = new float[gridLonDimY];
 
-    /* // depth */
-    /* float *depthVals = new float[gridLatDimX * gridLonDimY]; */
+    // depth
+    float *depthVals = new float[gridLatDimX * gridLonDimY];
 
-    /* // set where to stream to data (float pointer) */
-    /* grid_latvar.getVar(latVals); */
-    /* grid_lonvar.getVar(lonVals); */
-    /* bathymetryvar.getVar(depthVals); */
+    // set where to stream to data (float pointer)
+    grid_latvar.getVar(latVals);
+    grid_lonvar.getVar(lonVals);
+    bathymetryvar.getVar(depthVals);
 
-    /* // Now for the 2D variables, we create a surface */
-    /* int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1); */
-    /* Polygons::ptr polygonSeaSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
+    // Now for the 2D variables, we create a surface
+    int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1);
+    Polygons::ptr polygonSeaSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY));
 
-    /* // Fill the _coord arrays (memcpy faster?) */
-    /* int n{0}; */
-    /* auto x_coord = polygonSeaSurface->x().data(), y_coord = polygonSeaSurface->y().data(), */
-    /*      z_coord = polygonSeaSurface->z().data(); */
-    /* for (size_t j = 0; j < gridLatDimX; j++) */
-    /*     for (size_t k = 0; k < gridLonDimY; k++, n++) { */
-    /*         x_coord[n] = latVals[j]; */
-    /*         y_coord[n] = lonVals[k]; */
-    /*         z_coord[n] = zCalcSeaSurface(depthVals, j, k, gridLonDimY); */
-    /*     } */
+    // Fill the _coord arrays (memcpy faster?)
+    int n{0};
+    auto x_coord = polygonSeaSurface->x().data(), y_coord = polygonSeaSurface->y().data(),
+         z_coord = polygonSeaSurface->z().data();
+    for (size_t j = 0; j < gridLatDimX; j++)
+        for (size_t k = 0; k < gridLonDimY; k++, n++) {
+            x_coord[n] = latVals[j];
+            y_coord[n] = lonVals[k];
+            z_coord[n] = zCalcSeaSurface(depthVals, j, k, gridLonDimY);
+        }
 
-    /* // Fill the connectivitylist list = numPolygons * 4 */
-    /* fillConnectList2DimPoly(polygonSeaSurface, gridLatDimX, gridLonDimY); */
+    // Fill the connectivitylist list = numPolygons * 4
+    fillConnectList2DimPoly(polygonSeaSurface, gridLatDimX, gridLonDimY);
 
-    /* // Fill the polygon list */
-    /* fillPolyList4Corner(polygonSeaSurface, numPolygons); */
+    // Fill the polygon list
+    fillPolyList4Corner(polygonSeaSurface, numPolygons);
 
-    /* // Delete buffers from grid replication */
-    /* delete[] latVals; */
-    /* delete[] lonVals; */
-    /* delete[] depthVals; */
+    // Delete buffers from grid replication
+    delete[] latVals;
+    delete[] lonVals;
+    delete[] depthVals;
 
     // float for read in max_height
     /* Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount())); */
@@ -530,10 +530,7 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         surfacePolygons->setBlock(block);
         surfacePolygons->setTimestep(-1);
         token.addObject(m_surface_out, surfacePolygons);
-        /* Object::ptr test = surfacePolygons; */
-        /* test->updateInternals(); */
-        /* test->setBlock(block); */
-        /* token.addObject(m_surface_out, test); */
+        token.addObject(m_seaSurface_out, polygonSeaSurface);
     }
     /* token.addObject(m_surface_out, surfacePolygons); */
     /* token.addObject(m_seaSurface_out, polygonSeaSurface); */
