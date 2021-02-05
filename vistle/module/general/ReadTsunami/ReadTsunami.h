@@ -26,7 +26,6 @@
 #include <ncVar.h>
 #include <ncDim.h>
 
-/* using namespace netCDF; */
 #endif
 
 //std
@@ -49,34 +48,34 @@ private:
     bool finishRead() override;
 
     //Own functions
+    void initTupList();
     bool openNcFile();
     bool initNcData();
     bool checkValidNcVar();
     vistle::Polygons::ptr generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
                                           const std::vector<size_t> &dimension, const std::vector<float *> &coords);
 
-    void initTupList();
     void fillCoords2DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
                             const std::vector<float *> &coords);
     void fillCoords3DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY, const size_t &dimZ,
                             const std::vector<float *> &coords);
     void fillConnectList2DimPoly(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY);
-    void fillPolyList4Corner(vistle::Polygons::ptr poly, const size_t &numElem);
+    void fillPolyList(vistle::Polygons::ptr poly, const size_t &numElem, const size_t &numCorner);
     void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
                vistle::Index time) const;
 
     //Parameter
     vistle::StringParameter *m_filedir;
-    vistle::StringParameter *m_variables[NUMPARAMS];
+    /* vistle::StringParameter *m_variables[NUMPARAMS]; */
     vistle::FloatParameter *m_verticalScale;
     vistle::IntParameter *m_step;
-    vistle::IntParameter *m_blocks[3];
+    /* vistle::IntParameter *m_blocks[3]; */
     vistle::IntParameter *m_ghostLayerWidth;
-    vistle::IntParameter *m_size[3];
+    /* vistle::IntParameter *m_size[3]; */
 
     //Ports
-    vistle::Port *m_grid_out = nullptr;
-    vistle::Port *m_dataOut[NUMPARAMS];
+    /* vistle::Port *m_grid_out = nullptr; */
+    /* vistle::Port *m_dataOut[NUMPARAMS]; */
     vistle::Port *m_surface_out;
     vistle::Port *m_seaSurface_out;
     vistle::Port *m_waterSurface_out;
@@ -107,7 +106,7 @@ inline float zCalcGround(float *zValues, size_t x_it, size_t y_it, size_t gridLo
     return -zValues[x_it * gridLon + y_it];
 }
 
-inline float zCalcSea(float *zValues, size_t x_it, size_t y_it, float zScale, int time, int it)
+inline float zCalcSeaHeight(float *zValues, size_t x_it, size_t y_it, float zScale, int time, int it)
 {
     return zValues[time * x_it * y_it + it] * zScale;
 }
