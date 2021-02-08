@@ -1,7 +1,7 @@
 /**************************************************************************\
  **                                                                        **
  **                                                                        **
- ** Description: Read module for Tsunami data         	                   **
+ ** Description: Read module for ChEESE tsunami nc-files         	       **
  **                                                                        **
  **                                                                        **
  **                                                                        **
@@ -63,6 +63,7 @@ private:
     void fillPolyList(vistle::Polygons::ptr poly, const size_t &numElem, const size_t &numCorner);
     void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
                vistle::Index time) const;
+    void initHelperVariables();
 
     //Parameter
     vistle::StringParameter *m_filedir;
@@ -76,9 +77,9 @@ private:
     //Ports
     /* vistle::Port *m_grid_out = nullptr; */
     /* vistle::Port *m_dataOut[NUMPARAMS]; */
-    vistle::Port *m_surface_out;
     vistle::Port *m_seaSurface_out;
-    vistle::Port *m_waterSurface_out;
+    vistle::Port *m_groundSurface_out;
+    /* vistle::Port *m_waterSurface_out; */
     vistle::Port *m_maxHeight;
 
     //Polygons
@@ -97,6 +98,11 @@ private:
     netCDF::NcVar max_height;
     netCDF::NcVar eta;
 
+    //helper pointers and variables
+    float* scalarMaxHeight;
+    float* etaPtr;
+    float zScale;
+
     //netCDF paramlist
     std::vector<netCDF::NcVar *> t_NcVar;
 };
@@ -106,9 +112,9 @@ inline float zCalcGround(float *zValues, size_t x_it, size_t y_it, size_t gridLo
     return -zValues[x_it * gridLon + y_it];
 }
 
-inline float zCalcSeaHeight(float *zValues, size_t x_it, size_t y_it, float zScale, int time, int it)
+inline float zCalcSeaHeight(float *zValues, size_t nx, size_t ny, float zScale, int time, int n)
 {
-    return zValues[time * x_it * y_it + it] * zScale;
+    return zValues[time * nx * ny + n] * zScale;
 }
 
 #endif

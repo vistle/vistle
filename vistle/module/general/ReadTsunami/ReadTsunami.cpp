@@ -54,9 +54,9 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // define ports
 
     // 2D Surface
-    m_surface_out = createOutputPort("surfaceOut", "2D Grid output (Polygons)");
-    m_seaSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
-    m_waterSurface_out = createOutputPort("waterSurfaceOut", "2D water surface (Polygons)");
+    m_seaSurface_out = createOutputPort("surfaceOut", "2D Grid output (Polygons)");
+    m_groundSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
+    /* m_waterSurface_out = createOutputPort("waterSurfaceOut", "2D water surface (Polygons)"); */
     m_maxHeight = createOutputPort("maxHeight", "Max water height (Float)");
 
     m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
@@ -70,7 +70,10 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 }
 
 ReadTsunami::~ReadTsunami()
-{}
+{
+    delete[] etaPtr;
+    delete[] scalarMaxHeight;
+}
 
 /**
  * Open Nc File and set pointer ncDataFile.
@@ -103,7 +106,7 @@ bool ReadTsunami::openNcFile()
 }
 
 /**
-  * Initialize vector with NcVar pointers. (needed for checkValidNcVar)
+  * Initialize vector t_NcVar with NcVar pointers. (needed for checkValidNcVar)
   */
 void ReadTsunami::initTupList()
 {
@@ -124,16 +127,14 @@ void ReadTsunami::initTupList()
   */
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
-    /* size_t nblocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
-    /* setPartitions(nblocks); */
-    /* setTimesteps(m_step->getValue()); */
     if (!param || param == m_filedir) {
         if (!initNcData())
             return false;
         sendInfo("Examine!");
+        initHelperVariables();
     }
 
-    setTimesteps(10);
+    setTimesteps(eta.getDim(0).getSize());
     setPartitions(1);
     return true;
 }
@@ -205,8 +206,8 @@ void ReadTsunami::fillConnectList2DimPoly(Polygons::ptr poly, const size_t &dimX
 }
 
 /**
-  * Set which vertices represent a polygon. 
-  * 
+  * Set which vertices represent a polygon.
+  *
   * @poly: Pointer on Polygon.
   * @numPoly: number of polygons.
   * @numCorner: number of corners.
@@ -254,10 +255,18 @@ Polygons::ptr ReadTsunami::generateSurface(const size_t &numElem, const size_t &
     return surface;
 }
 
+/**
+  * Computing per block. //TODO: implement later
+  */
 void ReadTsunami::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block,
                         vistle::Index time) const
 {}
 
+/**
+  * Check if NcVars in t_NcVar are not null.
+  *
+  * @return: true if one of the variables are null.
+  */
 bool ReadTsunami::checkValidNcVar()
 {
     for (NcVar *var: t_NcVar) {
@@ -291,9 +300,26 @@ bool ReadTsunami::initNcData()
     return false;
 }
 
+void ReadTsunami::initHelperVariables()
+{
+    // read max_height
+    scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()];
+    max_height.getVar(scalarMaxHeight);
+
+    // read in eta
+    etaPtr = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
+    eta.getVar(etaPtr);
+
+    // get vertical Scale
+    zScale = m_verticalScale->getValue();
+}
+
 /**
   * Called for each timestep or block based on parallelizationMode.
   *
+  * @token Ref to internal vistle token.
+  * @timestep current timestep.
+  * @block parallelization block.
   * @return true if all data is set and valid.
   */
 bool ReadTsunami::read(Token &token, int timestep, int block)
@@ -394,53 +420,53 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 
         //****************** Set polygons to ports ******************//
         sea->updateInternals();
-        sea->setBlock(block);
+        /* sea->setBlock(block); */
         sea->setTimestep(-1);
         sea->addAttribute("_species", "sea surface");
-        token.addObject(m_surface_out, sea);
+        token.addObject(m_seaSurface_out, sea);
 
         ground->updateInternals();
         ground->addAttribute("_species", "ground surface");
-        token.addObject(m_seaSurface_out, ground);
+        token.addObject(m_groundSurface_out, ground);
 
     } else {
         //****************** modify sea surface based on eta and height ******************//
-        // float for read in max_height
-        Vec<Scalar>::ptr scalarMaxHeight(new Vec<Scalar>(max_height.getDimCount()));
-        vistle::Scalar *maxH{scalarMaxHeight->x().data()};
-        max_height.getVar(maxH);
+        // read in max_height
+        /* Vec<Scalar>::ptr scalarMaxHeight( */
+        /*     new Vec<Scalar>(max_height.getDim(0).getSize() * max_height.getDim(1).getSize())); */
+        /* float* scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()]; */
+        /* max_height.getVar(scalarMaxHeight); */
 
         // read in eta
-        float *floatData = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
-        eta.getVar(floatData);
+        /* float *etaPtr = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()]; */
+        /* Vec<Scalar>::ptr scalarETA( */
+        /*     new Vec<Scalar>(eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize())); */
+        /* auto etaPtr = scalarETA->x().data(); */
+        /* eta.getVar(etaPtr); */
 
         // get vertical Scale
-        float zScale = m_verticalScale->getValue();
-        // create watersurface with polygons for each timestep
-        /* int snumPolygons = (surfaceDimX - 1) * (surfaceDimY - 1); */
+        /* float zScale = m_verticalScale->getValue(); */
 
+        // create watersurface with polygons for each timestep
         /* Polygons::ptr outSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
+        Polygons::ptr outSurface = sea->clone();
 
         /* auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data(); */
-        /* memcpy(x_coord, sea->x().data(), surfaceDimX); */
-        /* memcpy(y_coord, sea->y().data(), surfaceDimY); */
-        auto z_coord = sea->x().data();
+        auto z_coord = outSurface->z().data();
 
         for (size_t n = 0; n < surfaceDimX * surfaceDimY; n++) {
-            z_coord[n] = zCalcSeaHeight(floatData, surfaceDimX, surfaceDimY, zScale, timestep, n);
+            z_coord[n] = zCalcSeaHeight(etaPtr, surfaceDimX, surfaceDimY, zScale, timestep, n);
         }
 
-        /* auto vl = outSurface->cl().data(); */
-        /* memcpy(vl, sea->cl().data(), sea->getNumVertices()); */
+        sendInfo(std::to_string(z_coord[surfaceDimX*surfaceDimY - 1]));
 
-        /* auto pl = outSurface->el().data(); */
-        /* memcpy(pl, sea->el().data(), sea->getNumElements()); */
-
-        /* token.addObject(m_surface_out, outSurface); */
-        delete[] maxH;
-        delete[] floatData;
+        outSurface->updateInternals();
+        outSurface->setTimestep(timestep);
+        /* outSurface->setBlock(block); */
+        outSurface->addAttribute("_species", "sea surface timestep: " + std::to_string(timestep));
+        token.applyMeta(outSurface);
+        token.addObject(m_seaSurface_out, outSurface);
     }
-
     return true;
 }
 
@@ -451,9 +477,5 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
   */
 bool ReadTsunami::finishRead()
 {
-    /* if (ncDataFile) { */
-    /*     delete ncDataFile; */
-    /*     ncDataFile = nullptr; */
-    /* } */
     return true;
 }
