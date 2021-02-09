@@ -20,7 +20,11 @@
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/reader.h>
 
-#include <netcdfcpp.h>
+#include <netcdf>
+#include <ncFile.h>
+#include <ncVar.h>
+#include <ncDim.h>
+using namespace netCDF;
 
 #define NUMPARAMS 6
 

@@ -21,7 +21,7 @@
 #include <vistle/core/uniformgrid.h>
 
 #include <boost/filesystem.hpp>
-#include <netcdfcpp.h>
+#include <netcdf>
 
 using namespace vistle;
 namespace bf = boost::filesystem;
@@ -205,14 +205,13 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
            ncFirstFile = nullptr;
        }
        std::string sDir =/* m_filedir->getValue() + "/" + */fileList.front();
-       ncFirstFile = new NcFile(sDir.c_str(), NcFile::ReadOnly, NULL, 0, NcFile::Offset64Bits);
+       try {
+            ncFirstFile = new NcFile(sDir.c_str(), NcFile::read);
 
-       if (ncFirstFile->is_valid()) {
 
             std::vector<std::string> AxisChoices;
             std::vector<std::string> Axis2dChoices;
 
-            NcVar *var;
             AxisChoices.clear();
             Axis2dChoices.clear();
 
@@ -222,19 +221,21 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
             }*/
             int num3dVars = 0;
             int num2dVars = 0;
-            int nVar = ncFirstFile->num_vars();
+            int nVar = ncFirstFile->getVarCount();
 
             char *newEntry = new char[50];
             bool is_fav = false;
             std::vector<std::string> favVars = {"co","no2","PM10","o3","U","V","W"};
 
-            for (int i = 0; i < nVar; ++i) {
-                var = ncFirstFile->get_var(i);
-                strcpy(newEntry, var->name());
+            
+            std::multimap<std::string, NcVar> allVars = ncFirstFile->getVars();
+            for (const auto& var : allVars)
+            {
+                std::string newEntry= var.second.getName();
 
-                if (var->num_dims() > 3) {
+                if (var.second.getDimCount() > 3) {
                     for (std::string fav : favVars) {
-                        if (strcmp(var->name(), fav.c_str()) == 0) {
+                        if (newEntry == fav) {
                             AxisChoices.insert(AxisChoices.begin(), newEntry);
                             is_fav = true;
                             break;
@@ -244,9 +245,9 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
                         AxisChoices.push_back(newEntry);
                     num3dVars++;
                     is_fav = false;
-                }else if (var->num_dims() > 2) {
+                }else if (var.second.getDimCount() > 2) {
                     for (std::string fav : favVars) {
-                        if (strcmp(newEntry, fav.c_str()) == 0) {
+                        if (newEntry== fav) {
                             Axis2dChoices.insert(Axis2dChoices.begin(), newEntry);
                             break;
                         }
@@ -257,16 +258,15 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
                     is_fav = false;
                 }
             }
-            delete [] newEntry;
 
             AxisChoices.insert(AxisChoices.begin(),"NONE");
             Axis2dChoices.insert(Axis2dChoices.begin(),"NONE");
 
-            if (strcmp(m_varDim->getValue().c_str(),varDimList[1].c_str())==0) {//3D
+            if (m_varDim->getValue() == varDimList[1]) {//3D
                 sendInfo("Variable dimension: 3D");
                 for (int i = 0; i < NUMPARAMS; i++)
                     setParameterChoices(m_variables[i], AxisChoices);
-            }else if (strcmp(m_varDim->getValue().c_str(),varDimList[0].c_str())==0) { //2D
+            }else if (m_varDim->getValue() == varDimList[0]) { //2D
                 sendInfo("Variable dimension: 2D");
                 for (int i = 0; i < NUMPARAMS; i++)
                     setParameterChoices(m_variables[i], Axis2dChoices);
@@ -282,7 +282,9 @@ bool ReadWRFChem::examine(const vistle::Parameter *param) {
 
             setTimesteps(numFiles);
 
-        } else {
+        } 
+        catch(...)
+        {
             sendError( "Could not open NC file" );
             return false;
         }
@@ -356,35 +358,38 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
        // float * hgt = new float[bSizeY*bSizeZ];
         float * lat = new float[bSizeY*bSizeZ];
         float * lon = new float[bSizeY*bSizeZ];
-        NcVar *varLat = ncFirstFile->get_var(m_gridLat->getValue().c_str());
-        NcVar *varLon = ncFirstFile->get_var(m_gridLon->getValue().c_str());
+        NcVar varLat = ncFirstFile->getVar(m_gridLat->getValue());
+        NcVar varLon = ncFirstFile->getVar(m_gridLon->getValue());
+        std::vector<NcDim> dims;
+        std::vector<NcDim> dimsPH;
+        std::vector<NcDim> dimsPHB;
       //  NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
         //extract (2D) lat, lon, hgt
        // varHGT->set_cur(0,b[1].begin,b[2].begin);
        // varHGT->get(hgt, 1,bSizeY, bSizeZ);
-        varLat->set_cur(0,b[1].begin,b[2].begin);
-        varLat->get(lat, 1,bSizeY, bSizeZ);
-        varLon->set_cur(0,b[1].begin,b[2].begin);
-        varLon->get(lon, 1,bSizeY, bSizeZ);
+        std::vector<size_t> start{0,size_t(b[1].begin),size_t(b[2].begin)};
+        std::vector<size_t> size{ 1,size_t(bSizeY)    ,size_t(bSizeZ)};
+        varLat.getVar(start,size,lat);
+        varLon.getVar(start,size,lon);
 
         if (!emptyValue(m_gridZ)) {
             float * z = new float[(bSizeX+1)*bSizeY*bSizeZ];
-            NcVar *varZ = ncFirstFile->get_var(m_gridZ->getValue().c_str());
-            int numDimElem = 4;
-            long *curs = varZ->edges();
-            long *numElem = varZ->edges();
+            NcVar varZ = ncFirstFile->getVar(m_gridZ->getValue());
+            int numDimElem = varZ.getDimCount();
+            dims = varZ.getDims();
 
-            curs[numDimElem-3] = b[0].begin;
+            std::vector<size_t> start{0,size_t(b[0].begin),size_t(b[1].begin),size_t(b[2].begin)};
+            std::vector<size_t> size{ 1,size_t(bSizeX)    ,size_t(bSizeY)    ,size_t(bSizeZ)};
+            /*curs[numDimElem-3] = b[0].begin;
             curs[numDimElem-2] = b[1].begin;
             curs[numDimElem-1] = b[2].begin;
             curs[0] = 0;
 
             numElem[numDimElem-3] = bSizeX+1;
             numElem[numDimElem-2] = bSizeY;
-            numElem[numDimElem-1] = bSizeZ;
+            numElem[numDimElem-1] = bSizeZ;*/
 
-            varZ->set_cur(curs);
-            varZ->get(z, numElem);
+            varZ.getVar(start,size,z);
 
             int n = 0;
             int idx1 = 0;
@@ -403,28 +408,19 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         } else if (!emptyValue(m_PH) &&!emptyValue(m_PHB)) {
             float * ph = new float[(bSizeX+1)*bSizeY*bSizeZ];
             float * phb = new float[(bSizeX+1)*bSizeY*bSizeZ];
-            NcVar *varPH = ncFirstFile->get_var(m_PH->getValue().c_str());
-            NcVar *varPHB = ncFirstFile->get_var(m_PHB->getValue().c_str());
+            NcVar varPH = ncFirstFile->getVar(m_PH->getValue());
+            NcVar varPHB = ncFirstFile->getVar(m_PHB->getValue());
 
             //extract (3D) geopotential for z-coord calculation
-            int numDimElem = 4;
-            long *curs = varPH->edges();
-            long *numElem = varPH->edges();
+            dimsPH = varPH.getDims();
+            dimsPHB = varPHB.getDims();
 
-            curs[numDimElem-3] = b[0].begin;
-            curs[numDimElem-2] = b[1].begin;
-            curs[numDimElem-1] = b[2].begin;
-            curs[0] = 0;
+            std::vector<size_t> start{0,size_t(b[0].begin),size_t(b[1].begin),size_t(b[2].begin)};
+            std::vector<size_t> size{ 1,size_t(bSizeX)    ,size_t(bSizeY)    ,size_t(bSizeZ)};
+            int numDimElem = varPH.getDimCount();
 
-            numElem[numDimElem-3] = bSizeX+1;
-            numElem[numDimElem-2] = bSizeY;
-            numElem[numDimElem-1] = bSizeZ;
-            numElem[0] = 1;
-
-            varPH->set_cur(curs);
-            varPH->get(ph, numElem);
-            varPHB->set_cur(curs);
-            varPHB->get(phb, numElem);
+            varPH.getVar(start,size,ph);
+            varPHB.getVar(start,size,phb);
 
             //geopotential height is defined on stagged grid -> one additional layer
             //thus it is evaluated (vertically) inbetween vertices to match lat/lon grid
@@ -463,11 +459,14 @@ Object::ptr ReadWRFChem::generateGrid(Block *b) const {
         auto ptrOnYcoords = strGrid->y().data();
         auto ptrOnZcoords = strGrid->z().data();
 
-        NcVar *varHGT = ncFirstFile->get_var(m_trueHGT->getValue().c_str());
+        NcVar varHGT = ncFirstFile->getVar(m_trueHGT->getValue());
         float * hgt = new float[bSizeY*bSizeZ];
 
-        varHGT->set_cur(0,b[1].begin,b[2].begin);
-        varHGT->get(hgt, 1,bSizeY, bSizeZ);
+        std::vector<NcDim> dims;
+        dims = varHGT.getDims();
+        std::vector<size_t> start{0,size_t(b[1].begin),size_t(b[2].begin)};
+        std::vector<size_t> size{ 1,size_t(bSizeY)    ,size_t(bSizeZ)};
+        varHGT.getVar(start,size,hgt);
 
         int n = 0;
         for (int i = 0; i < bSizeX; i++) {
@@ -513,32 +512,24 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
 
     if (!(StructuredGrid::as(outGrid) || UniformGrid::as(outGrid)))
         return true;
-    NcVar *varData = ncDataFile->get_var(m_variables[vi]->getValue().c_str());
-    std::string unit = varData->get_att("units")->values()->as_string(0);
-    int numDimElem = varData->num_dims();
-    long *curs = varData->edges();
+    NcVar varData = ncDataFile->getVar(m_variables[vi]->getValue());
+    std::string unit;
+    varData.getAtt("units").getValues(unit);
+    int numDimElem = varData.getDimCount();
     int bSizeX = b[0].end - b[0].begin, bSizeY = b[1].end - b[1].begin, bSizeZ = b[2].end - b[2].begin;
 
-    curs[numDimElem-3] = b[0].begin;
-    curs[numDimElem-2] = b[1].begin;
-    curs[numDimElem-1] = b[2].begin;
-    curs[0] = 0;
+    std::vector<size_t> start{0,size_t(b[0].begin),size_t(b[1].begin),size_t(b[2].begin)};
+    std::vector<size_t> size{ 1,size_t(bSizeX)    ,size_t(bSizeY)    ,size_t(bSizeZ)};
+    //int numDimElem = varPH.getDimCount();
 
-    long *numElem = varData->edges();
-    numElem[numDimElem-3] = bSizeX;
-    numElem[numDimElem-2] = bSizeY;
-    numElem[numDimElem-1] = bSizeZ;
-    numElem[0] = 1;
 
     Vec<Scalar>::ptr obj(new Vec<Scalar>(bSizeX*bSizeY*bSizeZ));
     vistle::Scalar *ptrOnScalarData = obj->x().data();
 
     if ((vi==NUMPARAMS-1) && (numDimElem >3)) { //W has one level to many: -> read and crop
-         numElem[numDimElem-3] = bSizeX+1;
+         size[1] = bSizeX+1;
          float * longdata = new float[(bSizeX+1)*bSizeY*bSizeZ];
-
-         varData->set_cur(curs);
-         varData->get(longdata, numElem);
+         varData.getVar(start,size,longdata);
          int n = 0;
          int idx1 = 0;
          for (int i = 1; i < bSizeX+1; i++) {
@@ -551,8 +542,7 @@ bool ReadWRFChem::addDataToPort(Token &token, NcFile *ncDataFile, int vi, Object
          }
         delete [] longdata;
     }else {
-        varData->set_cur(curs);
-        varData->get(ptrOnScalarData, numElem);
+         varData.getVar(start,size,ptrOnScalarData);
     }
     obj->setGrid(outGrid);
     setMeta(obj, block, numBlocks, t);
@@ -574,21 +564,20 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
     }
     numBlocks = numBlocksLat*numBlocksLat*numBlocksVer;
 
-    if (ncFirstFile->is_valid()) {
 
-            NcVar *var;
-            long *edges;
+            NcVar var;
             int numdims = 0;
+            std::vector<NcDim> dims;
 
             //TODO: number of dimensions can be set by any variable, when check in prepareRead is used to ensure matching dimensions of all variables
             for (int vi = 0; vi < NUMPARAMS; vi++) {
                std::string name = "";
                name = m_variables[vi]->getValue();
                if ((name != "") && (name != "NONE")) {
-                    var = ncFirstFile->get_var(name.c_str());
-                    if (var->num_dims() > numdims) {
-                        numdims = var->num_dims();
-                        edges = var->edges();
+                    var = ncFirstFile->getVar(name);
+                    if (var.getDimCount() > numdims) {
+                        numdims = var.getDimCount();
+                        dims = var.getDims();
                     }
                 }
             }
@@ -598,7 +587,7 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
                 return false;
             }
 
-            int nx = edges[numdims - 3] /*Bottom_Top*/, ny = edges[numdims - 2] /*South_North*/, nz = edges[numdims - 1]/*East_West*/;//, nTime = edges[0] /*TIME*/ ;
+            int nx = dims[numdims - 3].getSize() /*Bottom_Top*/, ny = dims[numdims - 2].getSize() /*South_North*/, nz = dims[numdims - 1].getSize()/*East_West*/;//, nTime = edges[0] /*TIME*/ ;
             long blockSizeVer = (nx)/numBlocksVer, blockSizeLat = (ny)/numBlocksLat;
             if (numdims <= 3) {
                 nx = 1;
@@ -627,26 +616,26 @@ bool ReadWRFChem::read(Token &token, int timestep, int block) {
             }else {
                 // ******** DATA *************
                 std::string sDir = /*m_filedir->getValue() + "/" + */ fileList.at(timestep);
-                NcFile *ncDataFile = new NcFile(sDir.c_str(), NcFile::ReadOnly, NULL, 0, NcFile::Offset64Bits);
-
-                if (! ncDataFile->is_valid()) {
+                
+                try {
+                    NcFile *ncDataFile = new NcFile(sDir.c_str(), NcFile::read);
+                    for (int vi = 0; vi < NUMPARAMS; ++vi)
+		    {
+                        if (emptyValue(m_variables[vi])) {
+                            continue;
+                        }
+                        addDataToPort(token, ncDataFile, vi, outObject[block], b,  block, timestep);
+                    }
+                delete ncDataFile;
+                }
+                catch(...)
+                {
                     sendError("Could not open data file at time %i", timestep);
                     return false;
                 }
 
-                for (int vi = 0; vi < NUMPARAMS; ++vi) {
-                    if (emptyValue(m_variables[vi])) {
-                        continue;
-                    }
-                    addDataToPort(token, ncDataFile, vi, outObject[block], b,  block, timestep);
-                }
-                delete ncDataFile;
-                ncDataFile = nullptr;
             }
             return true;
-        }
-    return false;
-
 }
 
 bool ReadWRFChem::finishRead() {
