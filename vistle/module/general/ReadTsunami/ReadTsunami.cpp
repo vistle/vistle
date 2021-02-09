@@ -471,13 +471,3 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     }
     return true;
 }
-
-/**
-  * Called after the read function.
-  *
-  * @return true
-  */
-/* bool ReadTsunami::finishRead() */
-/* { */
-/*     return true; */
-/* } */

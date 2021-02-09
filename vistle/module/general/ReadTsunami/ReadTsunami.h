@@ -44,10 +44,8 @@ public:
 
 private:
     //Vistle functions
-    /* bool prepareRead() override; */
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
-    /* bool finishRead() override; */
 
     //Own functions
     void initTupList();
