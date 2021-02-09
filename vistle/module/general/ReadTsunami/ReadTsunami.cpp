@@ -28,6 +28,9 @@
 
 //std
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <memory>
 #include <string>
 
 using namespace vistle;
@@ -37,42 +40,48 @@ MODULE_MAIN(ReadTsunami)
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm)
+, p_ncDataFile(nullptr)
+, p_scalarMaxHeight(nullptr)
+, p_eta(nullptr)
 {
-    ncDataFile = nullptr;
-
     // define parameters
 
     // file-browser
-    m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/Tsunami/pelicula_eta.nc",
+    p_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/Tsunami/pelicula_eta.nc",
                                    Parameter::Filename);
 
     // visualise variables
-    m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter", 1.0);
-    m_step = addIntParameter("StepWidth", "Timestep step width", 1);
-    /* setParameterRange(m_step, Integer(0), Integer(999999)); */
+    p_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter", 1.0);
+    p_step = addIntParameter("StepWidth", "Timestep step width", 1);
 
     // define ports
 
     // 2D Surface
-    m_seaSurface_out = createOutputPort("surfaceOut", "2D Grid output (Polygons)");
-    m_groundSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
+    p_seaSurface_out = createOutputPort("surfaceOut", "2D Grid output (Polygons)");
+    p_groundSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
     /* m_waterSurface_out = createOutputPort("waterSurfaceOut", "2D water surface (Polygons)"); */
-    m_maxHeight = createOutputPort("maxHeight", "Max water height (Float)");
+    p_maxHeight = createOutputPort("maxHeight", "Max water height (Float)");
 
-    m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
+    p_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
 
     //observer parameters
-    observeParameter(m_filedir);
+    observeParameter(p_filedir);
 
     /* setParallelizationMode(ParallelizeBlocks); */
-    vistle::Reader::setParallelizationMode(Serial);
+    setParallelizationMode(Serial);
+    /* setAllowTimestepDistribution(true); */
     initTupList();
 }
 
 ReadTsunami::~ReadTsunami()
 {
-    delete[] etaPtr;
-    delete[] scalarMaxHeight;
+    delete p_ncDataFile;
+    delete p_eta;
+    delete p_scalarMaxHeight;
+
+    p_ncDataFile = nullptr;
+    p_eta = nullptr;
+    p_scalarMaxHeight = nullptr;
 }
 
 /**
@@ -82,21 +91,21 @@ ReadTsunami::~ReadTsunami()
  */
 bool ReadTsunami::openNcFile()
 {
-    std::string sFileName = m_filedir->getValue();
+    std::string sFileName = p_filedir->getValue();
 
     if (sFileName.empty()) {
         sendInfo("NetCDF filename is empty!");
         return false;
     } else {
         try {
-            ncDataFile = new NcFile(sFileName.c_str(), NcFile::read);
+            p_ncDataFile = new NcFile(sFileName.c_str(), NcFile::read);
             sendInfo("Reading File: " + sFileName);
         } catch (...) {
             sendInfo("Couldn't open NetCDF file!");
             return false;
         }
 
-        if (ncDataFile->getVarCount() == 0) {
+        if (p_ncDataFile->getVarCount() == 0) {
             sendInfo("empty NetCDF file!");
             return false;
         } else {
@@ -110,13 +119,13 @@ bool ReadTsunami::openNcFile()
   */
 void ReadTsunami::initTupList()
 {
-    t_NcVar.push_back(&latvar);
-    t_NcVar.push_back(&lonvar);
-    t_NcVar.push_back(&grid_latvar);
-    t_NcVar.push_back(&grid_lonvar);
-    t_NcVar.push_back(&bathymetryvar);
-    t_NcVar.push_back(&max_height);
-    t_NcVar.push_back(&eta);
+    vec_NcVar.push_back(&latvar);
+    vec_NcVar.push_back(&lonvar);
+    vec_NcVar.push_back(&grid_latvar);
+    vec_NcVar.push_back(&grid_lonvar);
+    vec_NcVar.push_back(&bathymetryvar);
+    vec_NcVar.push_back(&max_height);
+    vec_NcVar.push_back(&eta);
 }
 
 /**
@@ -127,10 +136,9 @@ void ReadTsunami::initTupList()
   */
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
-    if (!param || param == m_filedir) {
+    if (!param || param == p_filedir) {
         if (!initNcData())
             return false;
-        sendInfo("Examine!");
         initHelperVariables();
     }
 
@@ -269,7 +277,7 @@ void ReadTsunami::block(Reader::Token &token, Index bx, Index by, Index bz, vist
   */
 bool ReadTsunami::checkValidNcVar()
 {
-    for (NcVar *var: t_NcVar) {
+    for (NcVar *var: vec_NcVar) {
         if (var->isNull()) {
             sendInfo("Invalid parameters! Look into method initNcData.");
             return false;
@@ -287,31 +295,45 @@ bool ReadTsunami::initNcData()
 {
     if (openNcFile()) {
         // read variables from NetCDF-File
-        latvar = ncDataFile->getVar("lat");
-        lonvar = ncDataFile->getVar("lon");
-        grid_latvar = ncDataFile->getVar("grid_lat");
-        grid_lonvar = ncDataFile->getVar("grid_lon");
-        bathymetryvar = ncDataFile->getVar("bathymetry");
-        max_height = ncDataFile->getVar("max_height");
-        eta = ncDataFile->getVar("eta");
+        latvar = p_ncDataFile->getVar("lat");
+        lonvar = p_ncDataFile->getVar("lon");
+        grid_latvar = p_ncDataFile->getVar("grid_lat");
+        grid_lonvar = p_ncDataFile->getVar("grid_lon");
+        bathymetryvar = p_ncDataFile->getVar("bathymetry");
+        max_height = p_ncDataFile->getVar("max_height");
+        eta = p_ncDataFile->getVar("eta");
 
         return checkValidNcVar();
     }
     return false;
 }
 
+/**
+  * Initialize some helper variables and pointers.
+  * NcVars needs to be initialized before.
+  */
 void ReadTsunami::initHelperVariables()
 {
     // read max_height
-    scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()];
-    max_height.getVar(scalarMaxHeight);
+    p_scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()];
+    max_height.getVar(p_scalarMaxHeight);
 
     // read in eta
-    etaPtr = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
-    eta.getVar(etaPtr);
+    p_eta = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
+    eta.getVar(p_eta);
 
     // get vertical Scale
-    zScale = m_verticalScale->getValue();
+    zScale = p_verticalScale->getValue();
+
+    // dimension from lat and lon variables
+    surfaceDimX = latvar.getDim(0).getSize();
+    surfaceDimY = lonvar.getDim(0).getSize();
+    surfaceDimZ = 0;
+
+    // get dim from grid_lon & grid_lat
+    gridLatDimX = grid_latvar.getDim(0).getSize();
+    gridLonDimY = grid_lonvar.getDim(0).getSize();
+    numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1);
 }
 
 /**
@@ -343,18 +365,9 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     /* Index bz = b; */
 
     /* block(token, bx, by, bz, blockNum, timestep); */
+    std::string timestep_repr = std::to_string(timestep);
 
-    sendInfo("timestep: " + std::to_string(timestep));
-
-    // dimension from lat and lon variables
-    size_t surfaceDimX{latvar.getDim(0).getSize()};
-    size_t surfaceDimY{lonvar.getDim(0).getSize()};
-    size_t surfaceDimZ{0};
-
-    // get dim from grid_lon & grid_lat
-    size_t gridLatDimX = grid_latvar.getDim(0).getSize();
-    size_t gridLonDimY = grid_lonvar.getDim(0).getSize();
-    int numPolygons = (gridLatDimX - 1) * (gridLonDimY - 1);
+    sendInfo("reading timestep: " + timestep_repr);
 
     if (timestep == -1) {
         //create surfaces ground and sea
@@ -376,7 +389,7 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         lonvar.getVar(lonVals);
 
         // Now for the 2D variables, we create a surface
-        sea = generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
+        ptr_sea = generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
 
         // Delete buffers from grid replication
         delete[] latVals;
@@ -395,7 +408,7 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         bathymetryvar.getVar(depthVals);
 
         Polygons::ptr grnd(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY));
-        ground = grnd;
+        ptr_ground = grnd;
 
         // Fill the _coord arrays (memcpy faster?)
         int n{0};
@@ -419,53 +432,42 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         delete[] depthVals;
 
         //****************** Set polygons to ports ******************//
-        sea->updateInternals();
+        ptr_sea->updateInternals();
         /* sea->setBlock(block); */
-        sea->setTimestep(-1);
-        sea->addAttribute("_species", "sea surface");
-        token.addObject(m_seaSurface_out, sea);
+        ptr_sea->setTimestep(-1);
+        ptr_sea->addAttribute("_species", "sea surface");
+        token.addObject(p_seaSurface_out, ptr_sea);
 
-        ground->updateInternals();
-        ground->addAttribute("_species", "ground surface");
-        token.addObject(m_groundSurface_out, ground);
+        ptr_ground->updateInternals();
+        ptr_ground->addAttribute("_species", "ground surface");
+        token.addObject(p_groundSurface_out, ptr_ground);
 
     } else {
         //****************** modify sea surface based on eta and height ******************//
-        // read in max_height
-        /* Vec<Scalar>::ptr scalarMaxHeight( */
-        /*     new Vec<Scalar>(max_height.getDim(0).getSize() * max_height.getDim(1).getSize())); */
-        /* float* scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()]; */
-        /* max_height.getVar(scalarMaxHeight); */
-
-        // read in eta
-        /* float *etaPtr = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()]; */
-        /* Vec<Scalar>::ptr scalarETA( */
-        /*     new Vec<Scalar>(eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize())); */
-        /* auto etaPtr = scalarETA->x().data(); */
-        /* eta.getVar(etaPtr); */
-
-        // get vertical Scale
-        /* float zScale = m_verticalScale->getValue(); */
+        //TODO: parallelization with blocks
 
         // create watersurface with polygons for each timestep
-        /* Polygons::ptr outSurface(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY)); */
-        Polygons::ptr outSurface = sea->clone();
+        Polygons::ptr outSurface = ptr_sea->clone();
 
-        /* auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data(); */
-        auto z_coord = outSurface->z().data();
+        outSurface->resetArrays();
+        outSurface->setSize(ptr_sea->getSize());
+
+        auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data();
+
+        // TODO: repoint to sea => dont copy
+        std::copy(ptr_sea->x().begin(), ptr_sea->x().end(), x_coord);
+        std::copy(ptr_sea->y().begin(), ptr_sea->y().end(), y_coord);
 
         for (size_t n = 0; n < surfaceDimX * surfaceDimY; n++) {
-            z_coord[n] = zCalcSeaHeight(etaPtr, surfaceDimX, surfaceDimY, zScale, timestep, n);
+            z_coord[n] = zCalcSeaHeight(p_eta, surfaceDimX, surfaceDimY, zScale, timestep, n);
         }
-
-        sendInfo(std::to_string(z_coord[surfaceDimX*surfaceDimY - 1]));
 
         outSurface->updateInternals();
         outSurface->setTimestep(timestep);
         /* outSurface->setBlock(block); */
-        outSurface->addAttribute("_species", "sea surface timestep: " + std::to_string(timestep));
+        outSurface->addAttribute("_species", "sea surface timestep: " + timestep_repr);
         token.applyMeta(outSurface);
-        token.addObject(m_seaSurface_out, outSurface);
+        token.addObject(p_seaSurface_out, outSurface);
     }
     return true;
 }
@@ -475,7 +477,7 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
   *
   * @return true
   */
-bool ReadTsunami::finishRead()
-{
-    return true;
-}
+/* bool ReadTsunami::finishRead() */
+/* { */
+/*     return true; */
+/* } */

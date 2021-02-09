@@ -16,6 +16,8 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include "vistle/core/parameter.h"
+#include <memory>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
@@ -45,7 +47,7 @@ private:
     /* bool prepareRead() override; */
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
-    bool finishRead() override;
+    /* bool finishRead() override; */
 
     //Own functions
     void initTupList();
@@ -66,28 +68,24 @@ private:
     void initHelperVariables();
 
     //Parameter
-    vistle::StringParameter *m_filedir;
-    /* vistle::StringParameter *m_variables[NUMPARAMS]; */
-    vistle::FloatParameter *m_verticalScale;
-    vistle::IntParameter *m_step;
+    vistle::StringParameter *p_filedir = nullptr;
+    vistle::FloatParameter *p_verticalScale = nullptr;
+    vistle::IntParameter *p_step = nullptr;
     /* vistle::IntParameter *m_blocks[3]; */
-    vistle::IntParameter *m_ghostLayerWidth;
+    vistle::IntParameter *p_ghostLayerWidth = nullptr;
     /* vistle::IntParameter *m_size[3]; */
 
     //Ports
-    /* vistle::Port *m_grid_out = nullptr; */
-    /* vistle::Port *m_dataOut[NUMPARAMS]; */
-    vistle::Port *m_seaSurface_out;
-    vistle::Port *m_groundSurface_out;
-    /* vistle::Port *m_waterSurface_out; */
-    vistle::Port *m_maxHeight;
+    vistle::Port *p_seaSurface_out = nullptr;
+    vistle::Port *p_groundSurface_out = nullptr;
+    vistle::Port *p_maxHeight = nullptr;
 
     //Polygons
-    vistle::Polygons::ptr sea;
-    vistle::Polygons::ptr ground;
+    vistle::Polygons::ptr ptr_sea;
+    vistle::Polygons::ptr ptr_ground;
 
     //netCDF file to be read
-    netCDF::NcFile *ncDataFile;
+    netCDF::NcFile *p_ncDataFile;
 
     //netCDF data objects
     netCDF::NcVar latvar;
@@ -99,12 +97,18 @@ private:
     netCDF::NcVar eta;
 
     //helper pointers and variables
-    float* scalarMaxHeight;
-    float* etaPtr;
+    float *p_scalarMaxHeight;
+    float *p_eta;
     float zScale;
+    size_t surfaceDimX;
+    size_t surfaceDimY;
+    size_t surfaceDimZ;
+    size_t gridLatDimX;
+    size_t gridLonDimY;
+    size_t numPolygons;
 
     //netCDF paramlist
-    std::vector<netCDF::NcVar *> t_NcVar;
+    std::vector<netCDF::NcVar *> vec_NcVar;
 };
 
 inline float zCalcGround(float *zValues, size_t x_it, size_t y_it, size_t gridLon)
