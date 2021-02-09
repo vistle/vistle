@@ -40,9 +40,6 @@ MODULE_MAIN(ReadTsunami)
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm)
-, p_ncDataFile(nullptr)
-, p_scalarMaxHeight(nullptr)
-, p_eta(nullptr)
 {
     // define parameters
 
@@ -52,14 +49,12 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 
     // visualise variables
     p_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter", 1.0);
-    p_step = addIntParameter("StepWidth", "Timestep step width", 1);
 
     // define ports
 
     // 2D Surface
     p_seaSurface_out = createOutputPort("surfaceOut", "2D Grid output (Polygons)");
     p_groundSurface_out = createOutputPort("seaSurfaceOut", "2D See floor (Polygons)");
-    /* m_waterSurface_out = createOutputPort("waterSurfaceOut", "2D water surface (Polygons)"); */
     p_maxHeight = createOutputPort("maxHeight", "Max water height (Float)");
 
     p_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
@@ -74,15 +69,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 }
 
 ReadTsunami::~ReadTsunami()
-{
-    delete p_ncDataFile;
-    delete p_eta;
-    delete p_scalarMaxHeight;
-
-    p_ncDataFile = nullptr;
-    p_eta = nullptr;
-    p_scalarMaxHeight = nullptr;
-}
+{}
 
 /**
  * Open Nc File and set pointer ncDataFile.
@@ -98,7 +85,7 @@ bool ReadTsunami::openNcFile()
         return false;
     } else {
         try {
-            p_ncDataFile = new NcFile(sFileName.c_str(), NcFile::read);
+            p_ncDataFile = std::unique_ptr<NcFile>(new NcFile(sFileName.c_str(), NcFile::read));
             sendInfo("Reading File: " + sFileName);
         } catch (...) {
             sendInfo("Couldn't open NetCDF file!");
@@ -119,6 +106,13 @@ bool ReadTsunami::openNcFile()
   */
 void ReadTsunami::initTupList()
 {
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(latvar)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(lonvar)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(grid_latvar)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(grid_lonvar)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(bathymetryvar)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(max_height)); */
+    /* vec_NcVar.push_back(std::make_unique<NcVar>(eta)); */
     vec_NcVar.push_back(&latvar);
     vec_NcVar.push_back(&lonvar);
     vec_NcVar.push_back(&grid_latvar);
@@ -277,8 +271,8 @@ void ReadTsunami::block(Reader::Token &token, Index bx, Index by, Index bz, vist
   */
 bool ReadTsunami::checkValidNcVar()
 {
-    for (NcVar *var: vec_NcVar) {
-        if (var->isNull()) {
+    for (const auto &ptr_NcVar: vec_NcVar) {
+        if (ptr_NcVar->isNull()) {
             sendInfo("Invalid parameters! Look into method initNcData.");
             return false;
         }
@@ -315,12 +309,12 @@ bool ReadTsunami::initNcData()
 void ReadTsunami::initHelperVariables()
 {
     // read max_height
-    p_scalarMaxHeight = new float[max_height.getDim(0).getSize() * max_height.getDim(1).getSize()];
-    max_height.getVar(p_scalarMaxHeight);
+    vec_maxH.resize(max_height.getDim(0).getSize() * max_height.getDim(1).getSize());
+    max_height.getVar(vec_maxH.data());
 
     // read in eta
-    p_eta = new float[eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize()];
-    eta.getVar(p_eta);
+    vec_eta.resize(eta.getDim(0).getSize() * eta.getDim(1).getSize() * eta.getDim(2).getSize());
+    eta.getVar(vec_eta.data());
 
     // get vertical Scale
     zScale = p_verticalScale->getValue();
@@ -380,32 +374,28 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         size_t surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
 
         // pointer for lat values and coords
-        float *latVals = new float[surfaceDimX];
-        float *lonVals = new float[surfaceDimY];
-        std::vector coords{latVals, lonVals};
+        std::unique_ptr<float[]> ptr_lat(new float[surfaceDimX]);
+        std::unique_ptr<float[]> ptr_lon(new float[surfaceDimY]);
+        std::vector coords{ptr_lat.get(), ptr_lon.get()};
 
         // read in lat var ncdata into float-pointer
-        latvar.getVar(latVals);
-        lonvar.getVar(lonVals);
+        latvar.getVar(ptr_lat.get());
+        lonvar.getVar(ptr_lon.get());
 
         // Now for the 2D variables, we create a surface
         ptr_sea = generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
 
-        // Delete buffers from grid replication
-        delete[] latVals;
-        delete[] lonVals;
-
         //****************** Create Ground surface ******************//
-        latVals = new float[gridLatDimX];
-        lonVals = new float[gridLonDimY];
+        ptr_lat = std::unique_ptr<float[]>(new float[surfaceDimX]);
+        ptr_lon = std::unique_ptr<float[]>(new float[surfaceDimY]);
 
         // depth
-        float *depthVals = new float[gridLatDimX * gridLonDimY];
+        std::unique_ptr<float[]> ptr_depth(new float[gridLatDimX * gridLonDimY]);
 
         // set where to stream to data (float pointer)
-        grid_latvar.getVar(latVals);
-        grid_lonvar.getVar(lonVals);
-        bathymetryvar.getVar(depthVals);
+        grid_latvar.getVar(ptr_lat.get());
+        grid_lonvar.getVar(ptr_lon.get());
+        bathymetryvar.getVar(ptr_depth.get());
 
         Polygons::ptr grnd(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY));
         ptr_ground = grnd;
@@ -415,9 +405,9 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         auto x_coord = grnd->x().data(), y_coord = grnd->y().data(), z_coord = grnd->z().data();
         for (size_t j = 0; j < gridLatDimX; j++)
             for (size_t k = 0; k < gridLonDimY; k++, n++) {
-                x_coord[n] = latVals[j];
-                y_coord[n] = lonVals[k];
-                z_coord[n] = zCalcGround(depthVals, j, k, gridLonDimY);
+                x_coord[n] = ptr_lat.get()[j];
+                y_coord[n] = ptr_lon.get()[k];
+                z_coord[n] = zCalcGround(ptr_depth.get(), j, k, gridLonDimY);
             }
 
         // Fill the connectivitylist list = numPolygons * 4
@@ -425,11 +415,6 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 
         // Fill the polygon list
         fillPolyList(grnd, numPolygons, 4);
-
-        // Delete buffers from grid replication
-        delete[] latVals;
-        delete[] lonVals;
-        delete[] depthVals;
 
         //****************** Set polygons to ports ******************//
         ptr_sea->updateInternals();
@@ -447,27 +432,28 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         //TODO: parallelization with blocks
 
         // create watersurface with polygons for each timestep
-        Polygons::ptr outSurface = ptr_sea->clone();
+        Polygons::ptr ptr_timestepPoly = ptr_sea->clone();
 
-        outSurface->resetArrays();
-        outSurface->setSize(ptr_sea->getSize());
+        ptr_timestepPoly->resetArrays();
 
-        auto x_coord = outSurface->x().data(), y_coord = outSurface->y().data(), z_coord = outSurface->z().data();
+        // reuse data from sea polygon surface
+        ptr_timestepPoly->d()->x[0] = ptr_sea->d()->x[0];
+        ptr_timestepPoly->d()->x[1] = ptr_sea->d()->x[1];
+        ptr_timestepPoly->d()->x[2].construct(ptr_timestepPoly->getSize());
 
-        // TODO: repoint to sea => dont copy
-        std::copy(ptr_sea->x().begin(), ptr_sea->x().end(), x_coord);
-        std::copy(ptr_sea->y().begin(), ptr_sea->y().end(), y_coord);
+        std::vector<float> source(surfaceDimX * surfaceDimY);
 
-        for (size_t n = 0; n < surfaceDimX * surfaceDimY; n++) {
-            z_coord[n] = zCalcSeaHeight(p_eta, surfaceDimX, surfaceDimY, zScale, timestep, n);
-        }
+        for (size_t n = 0; n < surfaceDimX * surfaceDimY; n++)
+            source[n] = zCalcSeaHeight(vec_eta.data(), surfaceDimX, surfaceDimY, zScale, timestep, n);
 
-        outSurface->updateInternals();
-        outSurface->setTimestep(timestep);
+        std::copy(source.begin(), source.end(), ptr_timestepPoly->z().begin());
+
+        ptr_timestepPoly->updateInternals();
+        ptr_timestepPoly->setTimestep(timestep);
         /* outSurface->setBlock(block); */
-        outSurface->addAttribute("_species", "sea surface timestep: " + timestep_repr);
-        token.applyMeta(outSurface);
-        token.addObject(p_seaSurface_out, outSurface);
+        ptr_timestepPoly->addAttribute("_species", "sea surface timestep: " + timestep_repr);
+        token.applyMeta(ptr_timestepPoly);
+        token.addObject(p_seaSurface_out, ptr_timestepPoly);
     }
     return true;
 }

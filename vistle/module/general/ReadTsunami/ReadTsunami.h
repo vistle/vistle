@@ -17,6 +17,7 @@
 #define _READTSUNAMI_H
 
 #include "vistle/core/parameter.h"
+#include <array>
 #include <memory>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
@@ -68,7 +69,6 @@ private:
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    vistle::IntParameter *p_step = nullptr;
     /* vistle::IntParameter *m_blocks[3]; */
     vistle::IntParameter *p_ghostLayerWidth = nullptr;
     /* vistle::IntParameter *m_size[3]; */
@@ -83,7 +83,7 @@ private:
     vistle::Polygons::ptr ptr_ground;
 
     //netCDF file to be read
-    netCDF::NcFile *p_ncDataFile;
+    std::unique_ptr<netCDF::NcFile> p_ncDataFile;
 
     //netCDF data objects
     netCDF::NcVar latvar;
@@ -95,8 +95,8 @@ private:
     netCDF::NcVar eta;
 
     //helper pointers and variables
-    float *p_scalarMaxHeight;
-    float *p_eta;
+    std::vector<float> vec_maxH;
+    std::vector<float> vec_eta;
     float zScale;
     size_t surfaceDimX;
     size_t surfaceDimY;
