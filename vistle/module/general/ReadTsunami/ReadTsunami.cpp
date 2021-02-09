@@ -374,28 +374,28 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         size_t surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
 
         // pointer for lat values and coords
-        std::unique_ptr<float[]> ptr_lat(new float[surfaceDimX]);
-        std::unique_ptr<float[]> ptr_lon(new float[surfaceDimY]);
-        std::vector coords{ptr_lat.get(), ptr_lon.get()};
+        std::vector<float> vec_lat(surfaceDimX);
+        std::vector<float> vec_lon(surfaceDimY);
+        std::vector coords{vec_lat.data(), vec_lon.data()};
 
         // read in lat var ncdata into float-pointer
-        latvar.getVar(ptr_lat.get());
-        lonvar.getVar(ptr_lon.get());
+        latvar.getVar(vec_lat.data());
+        lonvar.getVar(vec_lon.data());
 
         // Now for the 2D variables, we create a surface
         ptr_sea = generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, dimSurface, coords);
 
         //****************** Create Ground surface ******************//
-        ptr_lat = std::unique_ptr<float[]>(new float[surfaceDimX]);
-        ptr_lon = std::unique_ptr<float[]>(new float[surfaceDimY]);
+        vec_lat.resize(surfaceDimX);
+        vec_lon.resize(surfaceDimY);
 
         // depth
-        std::unique_ptr<float[]> ptr_depth(new float[gridLatDimX * gridLonDimY]);
+        std::vector<float> vec_depth(surfaceDimX * surfaceDimY);
 
         // set where to stream to data (float pointer)
-        grid_latvar.getVar(ptr_lat.get());
-        grid_lonvar.getVar(ptr_lon.get());
-        bathymetryvar.getVar(ptr_depth.get());
+        grid_latvar.getVar(vec_lat.data());
+        grid_lonvar.getVar(vec_lon.data());
+        bathymetryvar.getVar(vec_depth.data());
 
         Polygons::ptr grnd(new Polygons(numPolygons, numPolygons * 4, gridLatDimX * gridLonDimY));
         ptr_ground = grnd;
@@ -405,9 +405,9 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
         auto x_coord = grnd->x().data(), y_coord = grnd->y().data(), z_coord = grnd->z().data();
         for (size_t j = 0; j < gridLatDimX; j++)
             for (size_t k = 0; k < gridLonDimY; k++, n++) {
-                x_coord[n] = ptr_lat.get()[j];
-                y_coord[n] = ptr_lon.get()[k];
-                z_coord[n] = zCalcGround(ptr_depth.get(), j, k, gridLonDimY);
+                x_coord[n] = vec_lat[j];
+                y_coord[n] = vec_lon[k];
+                z_coord[n] = zCalcGround(vec_depth.data(), j, k, gridLonDimY);
             }
 
         // Fill the connectivitylist list = numPolygons * 4
