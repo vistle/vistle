@@ -1,19 +1,27 @@
 
 FIND_PATH(NETCDF_INCLUDE_DIR netcdf.h)
-FIND_PATH(NETCDF_C++_INCLUDE_DIR netcdfcpp.h)
+FIND_PATH(NETCDF_C++_INCLUDE_DIR netcdfcpp.h netcdf
+   PATHS
+   $ENV{EXTERNLIBS}/netcdf/include
+) 
 
 FIND_LIBRARY(NETCDF_LIBRARY NAMES netcdf) 
 FIND_LIBRARY(NETCDF_LIBRARY_DEBUG NAMES netcdfd) 
-FIND_LIBRARY(NETCDF_C++_LIBRARY NAMES netcdf_c++) 
-FIND_LIBRARY(NETCDF_C++_LIBRARY_DEBUG NAMES netcdf_c++d) 
+FIND_LIBRARY(NETCDF_C++_LIBRARY NAMES netcdf_c++ netcdf-cxx4
+   PATHS
+   $ENV{EXTERNLIBS}/netcdf
+) 
+
+FIND_LIBRARY(NETCDF_C++_LIBRARY_DEBUG NAMES netcdf_c++d netcdf-cxx4) 
 
 
 IF(MSVC)
   # VisualStudio needs a debug version
   FIND_LIBRARY(NETCDF_C++_LIBRARY_DEBUG NAMES ${NETCDF_C++_DBG_NAMES}
     PATHS
-    $ENV{NETCDF_HOME}/lib
-    $ENV{EXTERNLIBS}/NETCDF/lib
+    $ENV{NETCDF_HOME}
+    $ENV{EXTERNLIBS}/NETCDF
+    $ENV{EXTERNLIBS}/netcdf
     ~/Library/Frameworks
     /Library/Frameworks
     /usr/local
@@ -27,8 +35,9 @@ IF(MSVC)
   )
   FIND_LIBRARY(NETCDF_LIBRARY_DEBUG NAMES ${NETCDF_DBG_NAMES}
     PATHS
-    $ENV{NETCDF_HOME}/lib
-    $ENV{EXTERNLIBS}/NETCDF/lib
+    $ENV{NETCDF_HOME}
+    $ENV{EXTERNLIBS}/NETCDF
+    $ENV{EXTERNLIBS}/netcdf
     ~/Library/Frameworks
     /Library/Frameworks
     /usr/local
