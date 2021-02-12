@@ -16,6 +16,7 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
+#include "vistle/core/index.h"
 #include "vistle/core/parameter.h"
 #include <string>
 #include <vistle/module/reader.h>
@@ -50,20 +51,24 @@ private:
     bool checkValidNcVar();
     vistle::Polygons::ptr generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
                                           const std::vector<float *> &coords);
+
+    //void functions
     void initHelperVariables();
     void fillCoordsPoly2Dim(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
-                            const std::vector<float *> &coords);
+                            const std::vector<float *> &coords, const int &blockNum);
     void fillConnectListPoly2Dim(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY);
     void fillPolyList(vistle::Polygons::ptr poly, const size_t &numCorner);
-    void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
-               vistle::Index time) const;
+
+    void computeBlock(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
+                      vistle::Index time) const;
+    void computeBlock(Token &token, vistle::Index b, vistle::Index time);
 
     //without block
     void computeInitialPolygon(Token &token);
     void computeTimestepPolygon(Token &token, const int &timestep);
 
-    void computeInitialPolygon(Token &token, const int &blockNum);
-    void computeTimestepPolygon(Token &token, const int &timestep, const int &blockNum);
+    void computeInitialPolygon(Token &token, const vistle::Index &blockNum);
+    void computeTimestepPolygon(Token &token, const vistle::Index &timestep, const vistle::Index &blockNum);
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;

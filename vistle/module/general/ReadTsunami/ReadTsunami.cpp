@@ -136,12 +136,12 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     }
 
     /* size_t nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
-    size_t nBlocks = 4;
+    /* size_t nBlocks = 4; */
     /* setTimesteps(eta.getDim(0).getSize()); */
-    /* setPartitions(1); */
-    setPartitions(nBlocks);
-    /* return true; */
-    return nBlocks > 0;
+    setPartitions(1);
+    /* setPartitions(nBlocks); */
+    return true;
+    /* return nBlocks > 0; */
 }
 
 /**
@@ -153,20 +153,32 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
   * @coords: Vector which contains coordinates.
   */
 void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
-                                     const std::vector<float *> &coords)
+                                     const std::vector<float *> &coords, const int &blockNum)
 {
     //TODO: maybe define template or use algo for dump filling.
     int n = 0;
     auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
-    /* for (size_t i = 0; i < dimX; i++) */
-    /*     for (size_t j = 0; j < dimY; j++, n++) { */
-    /*         sx_coord[n] = coords.at(0)[i]; */
-    /*         sy_coord[n] = coords.at(1)[j]; */
-    /*         sz_coord[n] = 0; */
-    /*     } */
+    for (size_t i = 0; i < dimX; i++)
+        for (size_t j = 0; j < dimY; j++, n++) {
+            sx_coord[n] = coords.at(0)[i];
+            sy_coord[n] = coords.at(1)[j];
+            sz_coord[n] = 0;
+        }
 
     /**
       Some general thoughts for parallelization with 4 blocks. 2 in X , 2 in Y.
+
+
+    DIM Y _ _ _ _ _ _  DIM X * DIM Y
+         |_|_|_|_|_|_|  
+         |_|_|_|_|_|_|
+      ^  |_|_|_|_|_|_|
+      |  |_|_|_|_|_|_|
+         |_|_|_|_|_|_|
+         |_|_|_|_|_|_|
+         |_|_|_|_|_|_|
+      1  |_|_|_|_|_|_| DIM X * DIM Y - DIM Y
+
 
       block 0 => n=[0, dimY/2], [dimY,3*dimY/2], [2*dimY, 5*dimY/2], [3*dimY, 7dimY/2] ... [dimX * dimY/2 - dimY, dimX*dimY/2 - dimY/2];
         x_coord = [0, dimX/2],
@@ -180,13 +192,48 @@ void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const size_t &dimX, con
       block 3 => n=[dimX*dimY/2 +dimY/2, dimX*dimY/2 + dimY)] ... [dimX*dimY -dimY/2, dimX*dimY]
         x_coord = [dimX/2, dimX],
         y_coord = [dimY/2, dimY],
-      */
-    for (size_t i = 0; i < dimX; i++)
-        for (size_t j = 0; j < dimY; j++, n++) {
-            sx_coord[n] = coords.at(0)[i];
-            sy_coord[n] = coords.at(1)[j];
-            sz_coord[n] = 0;
-        }
+
+------------------------------------------------------------------------------------------------------------------------------------------
+
+Conclusion startpoint: n gerade
+
+Startvalues:
+            n0 = 0;
+            n1 = dimY/blockY
+            n2 = 2*dimY/blockY
+            ...
+____________________________________
+
+            Bsp. 3 X 3 Y
+
+    DIM Y _ _ _ _ _ _  DIM X * DIM Y
+         |_|_|_|_|_|_|
+      -> |_|_|_|_|_|_|
+         |_|_|_|_|_|_|
+      -> |_|_|_|_|_|_|
+         |_|_|_|_|_|_|
+      1  |_|_|_|_|_|_| DIM X * DIM Y - DIM Y
+             ^   ^
+             |   |
+
+             static_var = 0
+             n0 = 0;                                     (blockNum % blockY) * dimY / blockY 🗹
+             n1 = dimY/3; (block Y = 3) => dimY/blockY = (blockNum % blockY) * dimY / blockY 🗹
+             n2 = 2*dimY/3; => blockNum*dimY/blockY =    (blockNum % blockY) * dimY / blockY 🗹
+____________________________________
+
+             static_var = 1
+             n3 = dimX*dimY/3; (block X = 3) => (blockNum % blockX == 0 ? ++static_var : static_var): static_var*dimX*dimY/blockX + (blockNum % blockY) * dimY / blockY 🗹
+             n4 = dimX*dimY/3 + dimY/3;                            (blockNum % blockY) * dimY / blockY 🗹
+             n5 = dimX*dimY/3 + 2dimY/3; => dimX*dimY/blockX +     (blockNum % blockY) * dimY / blockY 🗹
+___________________________________
+
+             static_var = 2
+             n6 = 2 * dimX*dimY/3;                                         (blockNum % blockY) * dimY / blockY 🗹
+             n7 = 2 * dimX*dimY/3 + dimY/3;                                (blockNum % blockY) * dimY / blockY 🗹
+             n8 = 2 * dimX*dimY/3 + 2dimY/3; => static_var*dimX*dimY/blockX + (blockNum % blockY) * dimY / blockY 🗹
+____________________________________
+*/
 }
 
 /**
@@ -238,10 +285,11 @@ Polygons::ptr ReadTsunami::generateSurface(const size_t &numElem, const size_t &
                                            const std::vector<float *> &coords)
 {
     //TODO: make function more useable in general => at the moment only 2 dim based on same data like ChEESE-tsunami.
+    int blockNum{0};
     Polygons::ptr surface(new Polygons(numElem, numCorner, numVertices));
 
     // fill coords 2D
-    fillCoordsPoly2Dim(surface, surfaceDimX, surfaceDimY, coords);
+    fillCoordsPoly2Dim(surface, surfaceDimX, surfaceDimY, coords, blockNum);
 
     // fill vertices
     fillConnectListPoly2Dim(surface, surfaceDimX, surfaceDimY);
@@ -394,54 +442,69 @@ void ReadTsunami::computeInitialPolygon(Token &token)
   *
   * @token Ref to internal vistle token.
   */
-void ReadTsunami::computeInitialPolygon(Token &token, const int &blockNum)
+void ReadTsunami::computeInitialPolygon(Token &token, const Index &blockNum)
 {
     //create surfaces ground and sea
 
     //****************** Create Sea surface ******************//
+    auto blockX{m_blocks[0]->getValue()};
+    auto blockY{m_blocks[1]->getValue()};
+    /* auto blockZ{m_blocks[2]->getValue()}; */
 
-    // num of polygons
-    size_t surfaceNumPoly = (surfaceDimX - 1) * (surfaceDimY - 1);
+    //TODO: DEFINE RIGHT VALUES FOR THESES VARIABLES BASED ON BLOCK
+    std::vector<size_t> startLat{0}, startLon{0}, startBathy{0};
+    std::vector<size_t> countLat{surfaceDimX / blockX}, countLon{surfaceDimY / blockY}, countBathy{0};
+    std::vector<ptrdiff_t> strideLat{0}, strideLon{0}, strideBathy{0};
+
+    // num of polygons for sea & grnd
+    size_t sea_numPoly = (surfaceDimX - 1) * (surfaceDimY - 1) / (blockX * blockY);
+    size_t grnd_numPoly = gridPolygons / (blockX * blockY);
+
+    // vertices sea & grnd
+    size_t sea_vertices = surfaceDimX * surfaceDimY / (blockX * blockY);
+    size_t grnd_vertices = gridPolygons / (blockX * blockY);
 
     // pointer for lat values and coords
-    std::vector<float> vec_lat(surfaceDimX);
-    std::vector<float> vec_lon(surfaceDimY);
-    std::vector coords{vec_lat.data(), vec_lon.data()};
+    std::vector<float> vecLat(surfaceDimX / blockX);
+    std::vector<float> vecLon(surfaceDimY / blockY);
+    std::vector coords{vecLat.data(), vecLon.data()};
 
     // read in lat var ncdata into float-pointer
-    latvar.getVar(vec_lat.data());
-    lonvar.getVar(vec_lon.data());
+    latvar.getVar(startLat, countLat, strideLat, vecLat.data());
+    lonvar.getVar(startLon, countLon, strideLon, vecLon.data());
 
     // create a surface for sea
-    ptr_sea = generateSurface(surfaceNumPoly, surfaceNumPoly * 4, surfaceDimX * surfaceDimY, coords);
+    ptr_sea = generateSurface(sea_numPoly, sea_numPoly * 4, sea_vertices, coords);
 
     //****************** Create Ground surface ******************//
-    vec_lat.resize(surfaceDimX);
-    vec_lon.resize(surfaceDimY);
+    vecLat.resize(surfaceDimX/blockX);
+    vecLon.resize(surfaceDimY/blockY);
 
     // depth
-    std::vector<float> vec_depth(surfaceDimX * surfaceDimY);
+    std::vector<float> vecDepth(sea_numPoly);
 
     // set where to stream data to (float pointer)
-    grid_latvar.getVar(vec_lat.data());
-    grid_lonvar.getVar(vec_lon.data());
-    bathymetryvar.getVar(vec_depth.data());
+    grid_latvar.getVar(startLat, countLat, strideLat, vecLat.data());
+    grid_lonvar.getVar(startLon, countLon, strideLon, vecLon.data());
+    bathymetryvar.getVar(startBathy, countBathy, strideBathy, vecDepth.data());
 
-    Polygons::ptr grnd(new Polygons(gridPolygons, gridPolygons * 4, gridLatDimX * gridLonDimY));
+    Polygons::ptr grnd(new Polygons(grnd_numPoly, grnd_numPoly * 4, grnd_vertices));
     ptr_ground = grnd;
+
+//_____________________________________________________________________________________//
 
     // Fill the coord arrays
     int n{0};
     auto x_coord = grnd->x().data(), y_coord = grnd->y().data(), z_coord = grnd->z().data();
     for (size_t j = 0; j < gridLatDimX; j++)
         for (size_t k = 0; k < gridLonDimY; k++, n++) {
-            x_coord[n] = vec_lat[j];
-            y_coord[n] = vec_lon[k];
+            x_coord[n] = vecLat[j];
+            y_coord[n] = vecLon[k];
 
             //design data is equal to 2 dim array printed to vector
-            //ptr_begin = row * number of columns => begin of 2 dim array (e.g. float[][ptr*])
-            //element_inside_second_arr = ptr_begin + number of searching element in arr
-            z_coord[n] = -vec_depth[j * gridLonDimY + k];
+            //ptr_begin_arr2 = row * number of columns => begin of 2 dim array (e.g. float[][ptr*])
+            //element_inside_second_arr = ptr_begin_arr2 + number of searching element in arr2
+            z_coord[n] = -vecDepth[j * gridLonDimY + k];
         }
 
     // Fill the connectivitylist list = numPolygons * 4
@@ -503,7 +566,7 @@ void ReadTsunami::computeTimestepPolygon(Token &token, const int &timestep)
   * @token Ref to internal vistle token.
   * @timestep current timestep.
   */
-void ReadTsunami::computeTimestepPolygon(Token &token, const int &timestep, const int &blockNum)
+void ReadTsunami::computeTimestepPolygon(Token &token, const Index &timestep, const Index &blockNum)
 {
     //****************** modify sea surface based on eta and height ******************//
     //TODO: parallelization with blocks
@@ -554,23 +617,37 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     /* Index by = b % blocks[1]; */
     /* b /= blocks[1]; */
     /* Index bz = b; */
-    /* block(token, bx, by, bz, block, timestep); */
+    /* computeBlock(token, bx, by, bz, block, timestep); */
 
     sendInfo("reading timestep: " + std::to_string(timestep));
-
-    if (timestep == -1) {
-        computeInitialPolygon(token, block);
-    } else {
-        computeTimestepPolygon(token, timestep, block);
-    }
+    computeBlock(token, block, timestep);
     return true;
+
+    /* sendInfo("reading timestep: " + std::to_string(timestep)); */
+
+    /* if (timestep == -1) { */
+    /*     computeInitialPolygon(token); */
+    /* } else { */
+    /*     computeTimestepPolygon(token, timestep); */
+    /* } */
+    /* return true; */
 }
 
 /**
   * Computing per block. //TODO: implement later
   */
-void ReadTsunami::block(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block,
-                        vistle::Index time) const
+void ReadTsunami::computeBlock(Reader::Token &token, Index bx, Index by, Index bz, vistle::Index block,
+                               vistle::Index time) const
+{}
+
+/**
+  * Computing per block. //TODO: implement later
+  */
+void ReadTsunami::computeBlock(Reader::Token &token, vistle::Index block, vistle::Index time)
 {
-    /* computeTimestepPolygon(token, time); */
+    if (time == -1) {
+        computeInitialPolygon(token, block);
+    } else {
+        computeTimestepPolygon(token, time, block);
+    }
 }
