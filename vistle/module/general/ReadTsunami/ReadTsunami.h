@@ -36,7 +36,7 @@ class ReadTsunami: public vistle::Reader {
 public:
     //default constructor
     ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm);
-    virtual ~ReadTsunami() override;
+    /* virtual ~ReadTsunami() override; */
 
 private:
     //Vistle functions
@@ -57,13 +57,18 @@ private:
     void fillPolyList(vistle::Polygons::ptr poly, const size_t &numCorner);
     void block(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
                vistle::Index time) const;
+
+    //without block
     void computeInitialPolygon(Token &token);
     void computeTimestepPolygon(Token &token, const int &timestep);
+
+    void computeInitialPolygon(Token &token, const int &blockNum);
+    void computeTimestepPolygon(Token &token, const int &timestep, const int &blockNum);
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    /* vistle::IntParameter *m_blocks[3]; */
+    vistle::IntParameter *m_blocks[3];
     vistle::IntParameter *p_ghostLayerWidth = nullptr;
 
     //Ports
@@ -76,7 +81,7 @@ private:
     vistle::Polygons::ptr ptr_ground;
 
     //netCDF file to be read
-    std::unique_ptr<netCDF::NcFile> p_ncDataFile;
+    netCDF::NcFile m_ncDataFile;
 
     //netCDF data objects
     netCDF::NcVar latvar;
