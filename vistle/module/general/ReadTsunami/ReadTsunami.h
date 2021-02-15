@@ -50,30 +50,23 @@ private:
     bool initNcData();
     bool checkValidNcVar();
     vistle::Polygons::ptr generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
-                                          const std::vector<float *> &coords);
+                                          const size_t &dimX, const size_t &dimY, const std::vector<float *> &coords);
 
     //void functions
     void initHelperVariables();
     void fillCoordsPoly2Dim(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
-                            const std::vector<float *> &coords, const int &blockNum);
+                            const std::vector<float *> &coords);
     void fillConnectListPoly2Dim(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY);
     void fillPolyList(vistle::Polygons::ptr poly, const size_t &numCorner);
 
-    void computeBlock(Token &token, vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b,
-                      vistle::Index time) const;
     void computeBlock(Token &token, vistle::Index b, vistle::Index time);
-
-    //without block
-    void computeInitialPolygon(Token &token);
-    void computeTimestepPolygon(Token &token, const int &timestep);
-
     void computeInitialPolygon(Token &token, const vistle::Index &blockNum);
     void computeTimestepPolygon(Token &token, const vistle::Index &timestep, const vistle::Index &blockNum);
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    vistle::IntParameter *m_blocks[3];
+    vistle::IntParameter *m_blocks[2];
     vistle::IntParameter *p_ghostLayerWidth = nullptr;
 
     //Ports
@@ -99,11 +92,11 @@ private:
 
     //helper variables
     float zScale;
-    size_t surfaceDimX;
-    size_t surfaceDimY;
+    size_t dimLat;
+    size_t dimLon;
     size_t surfaceDimZ;
-    size_t gridLatDimX;
-    size_t gridLonDimY;
+    size_t gridDimLat;
+    size_t gridDimLon;
     size_t gridPolygons;
     std::vector<float> vec_maxH;
     std::vector<float> vec_eta;
