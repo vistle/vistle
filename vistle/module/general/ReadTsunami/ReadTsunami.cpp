@@ -62,6 +62,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // block size
     m_blocks[0] = addIntParameter("blocks_lat", "number of blocks in lat-direction", 2);
     m_blocks[1] = addIntParameter("blocks_lon", "number of blocks in lon-direction", 2);
+    setParameterRange(m_blocks[0], Integer(1), Integer(999999));
+    setParameterRange(m_blocks[1], Integer(1), Integer(999999));
 
     // observer these parameters
     observeParameter(p_filedir);
@@ -130,11 +132,11 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
             return false;
         initHelperVariables();
         /* setTimesteps(eta.getDim(0).getSize()); */
-        /* setTimesteps(-1); */
+        setTimesteps(-1);
     }
 
     size_t nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
-    setTimesteps(-1);
+    /* setTimesteps(-1); */
     setPartitions(nBlocks);
     return nBlocks > 0;
 }
@@ -303,123 +305,113 @@ void ReadTsunami::computeInitialPolygon(Token &token, const Index &blockNum)
 
     auto numLatBlocks = m_blocks[0]->getValue();
     auto numLonBlocks = m_blocks[1]->getValue();
-    auto ghost = p_ghostLayerWidth->getValue();
+    size_t ghost = p_ghostLayerWidth->getValue();
 
+    // TODO: template this for structured types
     Index b = blockNum;
     Index blockLat{b % blocks[0]};
     b /= blocks[0];
     Index blockLon{b};
 
-    //****************** Create Sea surface ******************//
-    size_t startLat = blockLat * dimLat / numLatBlocks;
-    size_t startLon = blockLon * dimLon / numLonBlocks;
-    size_t countLat = dimLat / numLatBlocks;
-    size_t countLon = dimLon / numLonBlocks;
+    // count and start vals for lat and lon for sea polygon
+    size_t cntLatSea = dimLat / numLatBlocks;
+    size_t cntLonSea = dimLon / numLonBlocks;
+    size_t strtLatSea = blockLat * cntLatSea;
+    size_t strtLonSea = blockLon * cntLonSea;
+
+    // count and start vals for lat and lon for grnd polygon
+    size_t cntLatGrnd = gridDimLat / numLatBlocks;
+    size_t cntLonGrnd = gridDimLon / numLonBlocks;
+    size_t strtLatGrnd = blockLat * cntLatGrnd;
+    size_t strtLonGrnd = blockLon * cntLonGrnd;
 
     // add Ghostcells
-    if (startLat == 0) {
-        countLat += ghost;
-    } else if (startLat + countLat == dimLat) {
-        startLat -= ghost;
-        countLat += ghost;
-    } else {
-        countLat += 2*ghost;
-        startLat -= ghost;
-    }
+    if (numLatBlocks == 1 || numLonBlocks == 1)
+        ghost = 0;
 
-    if (startLon == 0) {
-        countLon += ghost;
-    } else if (startLon + countLon == dimLon) {
-        startLon -= ghost;
-        countLon += ghost;
-    } else {
-        countLon += 2*ghost;
-        startLon -= ghost;
-    }
-
-    sendInfo("blockNum: " + std::to_string(blockNum) + " blockLat: " + std::to_string(blockLat) +
-             " blockLon: " + std::to_string(blockLon) + " startLat: " + std::to_string(startLat) +
-             " startLon: " + std::to_string(startLon) + " countLat: " + std::to_string(countLat) +
-             " countLon: " + std::to_string(countLon));
-
-    std::vector<size_t> vecStartLat{startLat}, vecStartLon{startLon};
-    std::vector<size_t> vecCountLat{countLat}, vecCountLon{countLon};
+    addGhostStructured_tmpl(strtLatSea, cntLatSea, dimLat, ghost);
+    addGhostStructured_tmpl(strtLonSea, cntLonSea, dimLon, ghost);
+    addGhostStructured_tmpl(strtLatGrnd, cntLatGrnd, gridDimLat, ghost);
+    addGhostStructured_tmpl(strtLonGrnd, cntLonGrnd, gridDimLon, ghost);
 
     // num of polygons for sea & grnd
-    /* size_t sea_numPoly = (dimLat - 1) * (dimLon - 1) / (numLatBlocks * numLonBlocks); */
-    size_t sea_numPoly = (countLat - 1) * (countLon - 1);
-    /* size_t grnd_numPoly = gridPolygons / (blockX * blockY); */
+    size_t numPolySea = (cntLatSea - 1) * (cntLonSea - 1);
+    size_t numPolyGrnd = (cntLatGrnd - 1) * (cntLonGrnd - 1);
 
     // vertices sea & grnd
-    /* size_t sea_vertices = dimLat * dimLon / (numLatBlocks * numLonBlocks); */
-    size_t sea_vertices = countLat * countLon;
-    /* size_t grnd_vertices = gridLatDimX * gridLonDimY / (blockX * blockY); */
+    size_t vertSea = cntLatSea * cntLonSea;
+    size_t vertGrnd = cntLatGrnd * cntLonGrnd;
+
+    //************* create sea *************//
 
     // pointer for lat values and coords
-    std::vector<float> vecLat(countLat);
-    std::vector<float> vecLon(countLon);
+    std::vector<float> vecLat(cntLatSea);
+    std::vector<float> vecLon(cntLonSea);
+
+    // start vector lat and lon
+    std::vector<size_t> vecStrtLat{strtLatSea}, vecStrtLon{strtLonSea};
+
+    // count vector for lat and lon
+    std::vector<size_t> vecCntLat{cntLatSea}, vecCntLon{cntLonSea};
     std::vector coords{vecLat.data(), vecLon.data()};
 
     // read in lat var ncdata into float-pointer
-    latvar.getVar(vecStartLat, vecCountLat, vecLat.data());
-    lonvar.getVar(vecStartLon, vecCountLon, vecLon.data());
+    latvar.getVar(vecStrtLat, vecCntLat, vecLat.data());
+    lonvar.getVar(vecStrtLon, vecCntLon, vecLon.data());
 
     // create a surface for sea
-    /* ptr_sea = generateSurface(sea_numPoly, sea_numPoly * 4, sea_vertices, dimLat / numLatBlocks, */
-    /*                           dimLon / numLonBlocks, coords); */
-    Polygons::ptr ptr_s = generateSurface(sea_numPoly, sea_numPoly * 4, sea_vertices, countLat, countLon, coords);
+    //TODO: add to a global map
+    Polygons::ptr ptr_s = generateSurface(numPolySea, numPolySea * 4, vertSea, cntLatSea, cntLonSea, coords);
 
-    //****************** Create Ground surface ******************//
-    /* vecLat.resize(gridLatDimX / blockX); */
-    /* vecLon.resize(gridLonDimY / blockY); */
+    //************* create grnd *************//
+    /* std::vector<float> vecLatGrid(cntLatGrnd), vecLonGrid(cntLonGrnd); */
 
     /* // depth */
-    /* std::vector<float> vecDepth(grnd_numPoly / (blockX * blockY)); */
-    /* std::vector<size_t> startBathy{blockNum * grnd_numPoly / (blockX * blockY)}; */
-    /* std::vector<size_t> countBathy{grnd_numPoly / (blockX * blockY)}; */
+    /* std::vector<float> vecDepth(vertGrnd); */
+    /* std::vector<size_t> vecStrtDepth{strtLatGrnd, strtLonGrnd}; */
+    /* std::vector<size_t> vecCntDepth{cntLatGrnd, cntLonGrnd}; */
 
-    /* // set where to stream data to (float pointer) */
-    /* grid_latvar.getVar(startLat, countLat, vecLat.data()); */
-    /* grid_lonvar.getVar(startLon, countLon, vecLon.data()); */
-    /* bathymetryvar.getVar(startBathy, countBathy, vecDepth.data()); */
+    /* std::vector<size_t> vecStrtLatGrid{strtLatGrnd}, vecStrtLonGrid{strtLonGrnd}; */
+    /* std::vector<size_t> vecCntLatGrid{cntLatGrnd}, vecCntLonGrid{cntLonGrnd}; */
 
-    /* Polygons::ptr grnd(new Polygons(grnd_numPoly, grnd_numPoly * 4, grnd_vertices)); */
-    /* ptr_ground = grnd; */
+    // set where to stream data to (float pointer)
+    /* grid_latvar.getVar(vecStrtLatGrid, vecCntLatGrid, vecLatGrid.data()); */
+    /* grid_lonvar.getVar(vecStrtLonGrid, vecCntLonGrid, vecLonGrid.data()); */
+    /* bathymetryvar.getVar(vecStrtDepth, vecCntDepth, vecDepth.data()); */
 
-    /* //_____________________________________________________________________________________// */
+    /* Polygons::ptr ptr_grnd(new Polygons(numPolyGrnd, numPolyGrnd * 4, vertGrnd)); */
 
-    /* // Fill the coord arrays */
+    // Fill the coord arrays
     /* int n{0}; */
-    /* auto x_coord = grnd->x().data(), y_coord = grnd->y().data(), z_coord = grnd->z().data(); */
-    /* for (size_t j = 0; j < gridLatDimX / blockX; j++) */
-    /*     for (size_t k = 0; k < gridLonDimY / blockY; k++, n++) { */
-    /*         x_coord[n] = vecLat[j]; */
-    /*         y_coord[n] = vecLon[k]; */
+    /* auto x_coord = ptr_grnd->x().data(), y_coord = ptr_grnd->y().data(), z_coord = ptr_grnd->z().data(); */
+    /* for (size_t j = 0; j < cntLatGrnd; j++) */
+    /*     for (size_t k = 0; k < cntLonGrnd; k++, n++) { */
+    /*         x_coord[n] = vecLatGrid[j]; */
+    /*         y_coord[n] = vecLonGrid[k]; */
 
     /*         //design data is equal to 2 dim array printed to vector */
     /*         //ptr_begin_arr2 = row * number of columns => begin of 2 dim array (e.g. float[][ptr*]) */
     /*         //element_inside_second_arr = ptr_begin_arr2 + number of searching element in arr2 */
-    /*         z_coord[n] = -vecDepth[j * gridLonDimY + k]; */
+    /*         z_coord[n] = -vecDepth[j * cntLonGrnd + k]; */
+    /*         /1* z_coord[n] = -vecDepth[n]; *1/ */
     /*     } */
 
-    /* // Fill the connectivitylist list = numPolygons * 4 */
-    /* fillConnectListPoly2Dim(grnd, gridLatDimX / blockX, gridLonDimY / blockY); */
+/*     // Fill the connectivitylist list */
+/*     fillConnectListPoly2Dim(ptr_grnd, cntLatGrnd, cntLonGrnd); */
 
-    /* // Fill the polygon list */
-    /* fillPolyList(grnd, 4); */
+/*     // Fill the polygon list */
+/*     fillPolyList(ptr_grnd, 4); */
 
     //****************** Set polygons to ports ******************//
-    /* ptr_sea->setBlock(blockNum); */
-    /* ptr_sea->updateInternals(); */
-    /* ptr_sea->setTimestep(-1); */
     ptr_s->setBlock(blockNum);
-    ptr_s->updateInternals();
     ptr_s->setTimestep(-1);
+    ptr_s->updateInternals();
     token.addObject(p_seaSurface_out, ptr_s);
 
-    /* ptr_ground->updateInternals(); */
-    /* ptr_ground->setBlock(blockNum); */
-    /* token.addObject(p_groundSurface_out, ptr_ground); */
+    /* ptr_grnd->setBlock(blockNum); */
+    /* ptr_grnd->setTimestep(-1); */
+    /* ptr_grnd->updateInternals(); */
+    /* token.addObject(p_groundSurface_out, ptr_grnd); */
 }
 
 /**

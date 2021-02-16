@@ -19,6 +19,7 @@
 #include "vistle/core/index.h"
 #include "vistle/core/parameter.h"
 #include <string>
+#include <vector>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
@@ -37,7 +38,21 @@ class ReadTsunami: public vistle::Reader {
 public:
     //default constructor
     ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm);
-    /* virtual ~ReadTsunami() override; */
+
+    //templates
+    template<typename T>
+    void addGhostStructured_tmpl(T &start, T &count, const T &dimData, const T &numGhost)
+    {
+        if (start == 0)
+            count += numGhost;
+        else if (start + count == dimData) {
+            start -= numGhost;
+            count += numGhost;
+        } else {
+            start -= numGhost;
+            count += 2 * numGhost;
+        }
+    }
 
 private:
     //Vistle functions
@@ -45,7 +60,6 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    void initNcVarVec();
     bool openNcFile();
     bool initNcData();
     bool checkValidNcVar();
@@ -53,6 +67,7 @@ private:
                                           const size_t &dimX, const size_t &dimY, const std::vector<float *> &coords);
 
     //void functions
+    void initNcVarVec();
     void initHelperVariables();
     void fillCoordsPoly2Dim(vistle::Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
                             const std::vector<float *> &coords);
@@ -90,6 +105,9 @@ private:
     netCDF::NcVar max_height;
     netCDF::NcVar eta;
 
+    //netCDF paramlist
+    std::vector<netCDF::NcVar *> vec_NcVar;
+
     //helper variables
     float zScale;
     size_t dimLat;
@@ -100,8 +118,5 @@ private:
     size_t gridPolygons;
     std::vector<float> vec_maxH;
     std::vector<float> vec_eta;
-
-    //netCDF paramlist
-    std::vector<netCDF::NcVar *> vec_NcVar;
 };
 #endif
