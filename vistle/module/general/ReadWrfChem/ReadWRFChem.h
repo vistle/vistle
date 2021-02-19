@@ -17,15 +17,18 @@
  ** Date:  31.07.2019                                                      **
 \**************************************************************************/
 
+#include <cstddef>
 #include <vistle/core/structuredgrid.h>
 #include <vistle/module/reader.h>
 
-#include <netcdf>
+#ifdef OLD_NETCDFCXX
+#include <netcdfcpp>
+#else
 #include <ncFile.h>
 #include <ncVar.h>
 #include <ncDim.h>
 using namespace netCDF;
-
+#endif
 #define NUMPARAMS 6
 
 using namespace vistle;
@@ -46,7 +49,7 @@ private:
 
     struct Block {
         int part=0;
-        int begin=0, end=0;
+        size_t begin=0, end=0;
         int ghost[2]={0,0};
     };
 
@@ -74,7 +77,7 @@ private:
 
     std::vector<std::string> varDimList = {"2D","3D","other"};
 
-    IntParameter *m_numPartitions, *m_numPartitionsLat, *m_numPartitionsVer;
+    IntParameter /**m_numPartitions, */*m_numPartitionsLat, *m_numPartitionsVer;
 
     NcFile *ncFirstFile;
 
