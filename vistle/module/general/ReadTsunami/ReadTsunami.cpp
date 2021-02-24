@@ -57,7 +57,6 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // define ports
     p_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Polygons)");
     p_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Polygons)");
-    /* p_maxHeight = createOutputPort("maxHeight", "Max water height (Float)"); */
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -151,8 +150,8 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
             printMPIStats();
     }
 
-    size_t nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
-    /* setTimesteps(-1); */
+    int nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
+    setTimesteps(-1);
     setPartitions(nBlocks);
     return nBlocks > 0;
 }
@@ -165,14 +164,15 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
   * @dimY: Dimension of coordinates in y.
   * @coords: Vector which contains coordinates.
   */
-void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const size_t &dimX, const size_t &dimY,
-                                     const std::vector<float *> &coords, const zCalcFunc &zCalc)
+template<class T, class U>
+void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
+                                     const zCalcFunc &zCalc)
 {
     //TODO: maybe define template or use algo for dump filling.
     int n = 0;
     auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
-    for (size_t i = 0; i < dimX; i++)
-        for (size_t j = 0; j < dimY; j++, n++) {
+    for (size_t i = 0; i < dim.dimLat; i++)
+        for (size_t j = 0; j < dim.dimLon; j++, n++) {
             sx_coord[n] = coords.at(0)[i];
             sy_coord[n] = coords.at(1)[j];
             sz_coord[n] = zCalc(i, j);
@@ -186,17 +186,18 @@ void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const size_t &dimX, con
   * @dimX: Dimension of vertice list in x direction.
   * @dimY: Dimension of vertice list in y direction.
   */
-void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const size_t &dimX, const size_t &dimY)
+template<class T>
+void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
 {
     //TODO: maybe define template or use algo for dump filling of arrays.
     int n = 0;
     auto verticeConnectivityList = poly->cl().data();
-    for (size_t j = 1; j < dimX; j++)
-        for (size_t k = 1; k < dimY; k++) {
-            verticeConnectivityList[n++] = (j - 1) * dimY + (k - 1);
-            verticeConnectivityList[n++] = j * dimY + (k - 1);
-            verticeConnectivityList[n++] = j * dimY + k;
-            verticeConnectivityList[n++] = (j - 1) * dimY + k;
+    for (size_t j = 1; j < dim.dimLat; j++)
+        for (size_t k = 1; k < dim.dimLon; k++) {
+            verticeConnectivityList[n++] = (j - 1) * dim.dimLon + (k - 1);
+            verticeConnectivityList[n++] = j * dim.dimLon + (k - 1);
+            verticeConnectivityList[n++] = j * dim.dimLon + k;
+            verticeConnectivityList[n++] = (j - 1) * dim.dimLon + k;
         }
 }
 
@@ -207,7 +208,8 @@ void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const size_t &dimX
   * @numPoly: number of polygons.
   * @numCorner: number of corners.
   */
-void ReadTsunami::fillPolyList(Polygons::ptr poly, const size_t &numCorner)
+template<class T>
+void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
 {
     std::generate(poly->el().begin(), poly->el().end(), [n = 0, &numCorner]() mutable { return n++ * numCorner; });
 }
@@ -221,17 +223,17 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const size_t &numCorner)
  * @coords coordinates for polygons.
  * @return vistle::Polygons::ptr
  */
-Polygons::ptr ReadTsunami::generateSurface(const size_t &numElem, const size_t &numCorner, const size_t &numVertices,
-                                           const size_t &dimX, const size_t &dimY, const std::vector<float *> &coords,
-                                           const zCalcFunc &zCalc)
+template<class U, class T, class V>
+Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const Dim<T> &dim,
+                                           const std::vector<V> &coords, const zCalcFunc &zCalc)
 {
-    Polygons::ptr surface(new Polygons(numElem, numCorner, numVertices));
+    Polygons::ptr surface(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
 
     // fill coords 2D
-    fillCoordsPoly2Dim(surface, dimX, dimY, coords, zCalc);
+    fillCoordsPoly2Dim(surface, dim, coords, zCalc);
 
     // fill vertices
-    fillConnectListPoly2Dim(surface, dimX, dimY);
+    fillConnectListPoly2Dim(surface, dim);
 
     // fill the polygon list
     fillPolyList(surface, 4);
@@ -297,154 +299,7 @@ void ReadTsunami::initHelperVariables()
 }
 
 /**
-  * Generates the inital polygon surfaces for sea and ground and adds them to scene.
-  *
-  * @token Ref to internal vistle token.
-  */
-bool ReadTsunami::computeInitialPolygon(Token &token, const Index &blockNum)
-{
-    if (!initNcData())
-        return false;
-
-    initHelperVariables();
-
-    std::array<Index, 2> blocks;
-    for (int i = 0; i < 2; i++)
-        blocks[i] = m_blocks[i]->getValue();
-
-    auto numLatBlocks = m_blocks[0]->getValue();
-    auto numLonBlocks = m_blocks[1]->getValue();
-    size_t ghost = p_ghostLayerWidth->getValue();
-
-    std::vector<Index> dist(2);
-    auto blockLat = *blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), dist.begin(), blockNum);
-    auto blockLon = dist[1];
-
-    // count and start vals for lat and lon for sea polygon
-    size_t cntLatSea = dimLat / numLatBlocks;
-    size_t cntLonSea = dimLon / numLonBlocks;
-    size_t strtLatSea = blockLat * cntLatSea;
-    size_t strtLonSea = blockLon * cntLonSea;
-
-    // count and start vals for lat and lon for grnd polygon
-    size_t cntLatGrnd = gridDimLat / numLatBlocks;
-    size_t cntLonGrnd = gridDimLon / numLonBlocks;
-    size_t strtLatGrnd = blockLat * cntLatGrnd;
-    size_t strtLonGrnd = blockLon * cntLonGrnd;
-
-    // add Ghostcells
-    if (numLatBlocks == 1 || numLonBlocks == 1)
-        ghost = 0;
-
-    addGhostStructured_tmpl(strtLatSea, cntLatSea, dimLat, ghost);
-    addGhostStructured_tmpl(strtLonSea, cntLonSea, dimLon, ghost);
-    addGhostStructured_tmpl(strtLatGrnd, cntLatGrnd, gridDimLat, ghost);
-    addGhostStructured_tmpl(strtLonGrnd, cntLonGrnd, gridDimLon, ghost);
-
-    // num of polygons for sea & grnd
-    size_t numPolySea = (cntLatSea - 1) * (cntLonSea - 1);
-    size_t numPolyGrnd = (cntLatGrnd - 1) * (cntLonGrnd - 1);
-
-    // vertices sea & grnd
-    size_t vertSea = cntLatSea * cntLonSea;
-    size_t vertGrnd = cntLatGrnd * cntLonGrnd;
-
-    //************* create sea *************//
-    // pointer for lat values and coords
-    std::vector<float> vecLat(cntLatSea);
-    std::vector<float> vecLon(cntLonSea);
-
-    // start vector lat and lon
-    std::vector<size_t> vecStrtLat{strtLatSea}, vecStrtLon{strtLonSea};
-
-    // count vector for lat and lon
-    std::vector<size_t> vecCntLat{cntLatSea}, vecCntLon{cntLonSea};
-    std::vector coords{vecLat.data(), vecLon.data()};
-
-    // read in lat var ncdata into float-pointer
-    latvar.getVar(vecStrtLat, vecCntLat, vecLat.data());
-    lonvar.getVar(vecStrtLon, vecCntLon, vecLon.data());
-
-    // create a surface for sea
-    ptr_sea = generateSurface(numPolySea, numPolySea * 4, vertSea, cntLatSea, cntLonSea, coords);
-
-    //************* create grnd *************//
-    std::vector<float> vecLatGrid(cntLatGrnd), vecLonGrid(cntLonGrnd);
-
-    // depth
-    std::vector<float> vecDepth(vertGrnd);
-    std::vector<size_t> vecStrtDepth{strtLatGrnd, strtLonGrnd};
-    std::vector<size_t> vecCntDepth{cntLatGrnd, cntLonGrnd};
-
-    std::vector<size_t> vecStrtLatGrid{strtLatGrnd}, vecStrtLonGrid{strtLonGrnd};
-    std::vector<size_t> vecCntLatGrid{cntLatGrnd}, vecCntLonGrid{cntLonGrnd};
-
-    // set where to stream data to (float pointer)
-    grid_latvar.getVar(vecStrtLatGrid, vecCntLatGrid, vecLatGrid.data());
-    grid_lonvar.getVar(vecStrtLonGrid, vecCntLonGrid, vecLonGrid.data());
-    bathymetryvar.getVar(vecStrtDepth, vecCntDepth, vecDepth.data());
-
-    coords[0] = vecLatGrid.data();
-    coords[1] = vecLonGrid.data();
-
-    Polygons::ptr ptr_grnd =
-        generateSurface(numPolyGrnd, numPolyGrnd * 4, vertGrnd, cntLatGrnd, cntLonGrnd, coords,
-                        [&vecDepth, &cntLonGrnd](size_t j, size_t k) { return -vecDepth[j * cntLonGrnd + k]; });
-
-    ptr_grnd->setBlock(blockNum);
-    ptr_grnd->setTimestep(-1);
-    ptr_grnd->updateInternals();
-    token.addObject(p_groundSurface_out, ptr_grnd);
-
-    //************* read in eta for other timesteps > eta = dim3 *************//
-    std::vector<size_t> strtEta{0, strtLatSea, strtLonSea};
-    std::vector<size_t> cntEta{eta.getDim(0).getSize(), cntLatSea, cntLonSea};
-
-    vec_eta.resize(eta.getDim(0).getSize() * cntLatSea * cntLonSea);
-    eta.getVar(strtEta, cntEta, vec_eta.data());
-
-    m_ncDataFile.close();
-    return true;
-}
-
-/**
-  * Generates polygon for corresponding timestep and adds Object to scene.
-  *
-  * @token Ref to internal vistle token.
-  * @timestep current timestep.
-  */
-bool ReadTsunami::computeTimestepPolygon(Token &token, const Index &timestep, const Index &blockNum)
-{
-    //****************** modify sea surface based on eta and height ******************//
-    //TODO: parallelization with blocks
-
-    // create watersurface with polygons for each timestep
-    Polygons::ptr ptr_timestepPoly = ptr_sea->clone();
-
-    ptr_timestepPoly->resetArrays();
-
-    // reuse data from sea polygon surface and calculate z new
-    ptr_timestepPoly->d()->x[0] = ptr_sea->d()->x[0];
-    ptr_timestepPoly->d()->x[1] = ptr_sea->d()->x[1];
-    ptr_timestepPoly->d()->x[2].construct(ptr_timestepPoly->getSize());
-
-    std::vector<float> source(dimLat * dimLon);
-
-    for (size_t n = 0; n < dimLat * dimLon; n++)
-        source[n] = vec_eta[timestep * dimLat * dimLon + n] * zScale;
-
-    // copy only z
-    std::copy(source.begin(), source.end(), ptr_timestepPoly->z().begin());
-
-    ptr_timestepPoly->updateInternals();
-    ptr_timestepPoly->setTimestep(timestep);
-    ptr_timestepPoly->setBlock(blockNum);
-    token.applyMeta(ptr_timestepPoly);
-    token.addObject(p_seaSurface_out, ptr_timestepPoly);
-}
-
-/**
-  * Called for each timestep or block based on parallelizationMode.
+  * Called for each timestep with number of blocks (MPISIZE).
   *
   * @token Ref to internal vistle token.
   * @timestep current timestep.
@@ -467,10 +322,149 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
   * @timestep current timestep.
   * @return true if all data is set and valid.
   */
-bool ReadTsunami::computeBlock(Reader::Token &token, vistle::Index block, vistle::Index timestep)
+template<class T, class U>
+bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U &timestep)
 {
     if (timestep == -1)
-        return computeInitialPolygon(token, block);
+        return computeInitialPolygon(token, blockNum);
     else
-        return computeTimestepPolygon(token, timestep, block);
+        return computeTimestepPolygon(token, timestep, blockNum);
+}
+
+/**
+  * Generates the inital polygon surfaces for sea and ground and adds them to scene.
+  *
+  * @token Ref to internal vistle token.
+  */
+template<class T>
+bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
+{
+    if (!initNcData())
+        return false;
+
+    initHelperVariables();
+
+    std::array<Index, 2> blocks;
+    for (int i = 0; i < 2; i++)
+        blocks[i] = m_blocks[i]->getValue();
+
+    auto numLatBlocks = m_blocks[0]->getValue();
+    auto numLonBlocks = m_blocks[1]->getValue();
+    size_t ghost = p_ghostLayerWidth->getValue();
+
+    std::vector<Index> dist(2);
+    auto blockLat = *blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), dist.begin(), blockNum);
+    auto blockLon = dist[1];
+
+    // count and start vals for lat and lon for sea polygon
+    countLatSea = dimLat / numLatBlocks;
+    countLonSea = dimLon / numLonBlocks;
+    size_t startLatSea = blockLat * countLatSea;
+    size_t startLonSea = blockLon * countLonSea;
+
+    // count and start vals for lat and lon for grnd polygon
+    size_t countLatGrnd = gridDimLat / numLatBlocks;
+    size_t countLonGrnd = gridDimLon / numLonBlocks;
+    size_t startLatGrnd = blockLat * countLatGrnd;
+    size_t startLonGrnd = blockLon * countLonGrnd;
+
+    // add Ghostcells
+    if (numLatBlocks == 1 || numLonBlocks == 1)
+        ghost = 0;
+
+    addGhostStructured_tmpl(startLatSea, countLatSea, dimLat, ghost);
+    addGhostStructured_tmpl(startLonSea, countLonSea, dimLon, ghost);
+    addGhostStructured_tmpl(startLatGrnd, countLatGrnd, gridDimLat, ghost);
+    addGhostStructured_tmpl(startLonGrnd, countLonGrnd, gridDimLon, ghost);
+
+    // num of polygons for sea & grnd
+    size_t numPolySea = (countLatSea - 1) * (countLonSea - 1);
+    size_t numPolyGrnd = (countLatGrnd - 1) * (countLonGrnd - 1);
+
+    // vertices sea & grnd
+    size_t vertSea = countLatSea * countLonSea;
+    size_t vertGrnd = countLatGrnd * countLonGrnd;
+
+    //************* create sea *************//
+    // pointers for read in values from ncdata
+    std::vector<float> vecLat(countLatSea), vecLon(countLonSea), vecLatGrid(countLatGrnd), vecLonGrid(countLonGrnd),
+        vecDepth(vertGrnd);
+    vecEta.resize(eta.getDim(0).getSize() * countLatSea * countLonSea);
+
+    // start vector lat and lon
+    std::vector<size_t> vecStartLat{startLatSea}, vecStartLon{startLonSea}, vecStartDepth{startLatGrnd, startLonGrnd},
+        vecStartLatGrid{startLatGrnd}, vecStartLonGrid{startLonGrnd}, vecStartEta{0, startLatSea, startLonSea};
+
+    // count vector for lat and lon
+    std::vector<size_t> vecCountLat{countLatSea}, vecCountLon{countLonSea}, vecCountLatGrid{countLatGrnd},
+        vecCountLonGrid{countLonGrnd}, vecCountDepth{countLatGrnd, countLonGrnd},
+        vecCountEta{eta.getDim(0).getSize(), countLatSea, countLonSea};
+
+    std::vector coords{vecLat.data(), vecLon.data()};
+
+    // read in lat var ncdata into float-pointer
+    latvar.getVar(vecStartLat, vecCountLat, vecLat.data());
+    lonvar.getVar(vecStartLon, vecCountLon, vecLon.data());
+    grid_latvar.getVar(vecStartLatGrid, vecCountLatGrid, vecLatGrid.data());
+    grid_lonvar.getVar(vecStartLonGrid, vecCountLonGrid, vecLonGrid.data());
+    bathymetryvar.getVar(vecStartDepth, vecCountDepth, vecDepth.data());
+    eta.getVar(vecStartEta, vecCountEta, vecEta.data());
+
+    // create a surface for sea
+    ptr_sea = generateSurface(PolygonData(numPolySea, numPolySea * 4, vertSea), Dim(countLatSea, countLonSea), coords);
+
+    //************* create grnd *************//
+    coords[0] = vecLatGrid.data();
+    coords[1] = vecLonGrid.data();
+
+    Polygons::ptr ptr_grnd =
+        generateSurface(PolygonData(numPolyGrnd, numPolyGrnd * 4, vertGrnd), Dim(countLatGrnd, countLonGrnd), coords,
+                        [&vecDepth, &countLonGrnd](size_t j, size_t k) { return -vecDepth[j * countLonGrnd + k]; });
+
+    ptr_grnd->setBlock(blockNum);
+    ptr_grnd->setTimestep(-1);
+    ptr_grnd->updateInternals();
+    token.addObject(p_groundSurface_out, ptr_grnd);
+
+    m_ncDataFile.close();
+    return true;
+}
+
+/**
+  * Generates polygon for corresponding timestep and adds Object to scene.
+  *
+  * @token Ref to internal vistle token.
+  * @timestep current timestep.
+  */
+template<class T, class U>
+bool ReadTsunami::computeTimestepPolygon(Token &token, const T &timestep, const U &blockNum)
+{
+    //****************** modify sea surface based on eta and height ******************//
+    //TODO: parallelization with blocks
+
+    // create watersurface with polygons for each timestep
+    Polygons::ptr ptr_timestepPoly = ptr_sea->clone();
+
+    ptr_timestepPoly->resetArrays();
+
+    // reuse data from sea polygon surface and calculate z new
+    ptr_timestepPoly->d()->x[0] = ptr_sea->d()->x[0];
+    ptr_timestepPoly->d()->x[1] = ptr_sea->d()->x[1];
+    ptr_timestepPoly->d()->x[2].construct(ptr_timestepPoly->getSize());
+
+    std::vector<float> source(countLatSea * countLonSea);
+
+    for (size_t n = 0; n < countLatSea * countLonSea; n++)
+        source[n] = vecEta[timestep * countLatSea * countLonSea + n] * zScale;
+
+    // copy only z
+    std::copy(source.begin(), source.end(), ptr_timestepPoly->z().begin());
+
+    ptr_timestepPoly->updateInternals();
+    ptr_timestepPoly->setTimestep(timestep);
+    ptr_timestepPoly->setBlock(blockNum);
+    token.applyMeta(ptr_timestepPoly);
+    token.addObject(p_seaSurface_out, ptr_timestepPoly);
+
+    return true;
 }
