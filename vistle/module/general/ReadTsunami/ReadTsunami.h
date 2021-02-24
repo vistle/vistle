@@ -18,21 +18,12 @@
 
 #include "vistle/core/index.h"
 #include "vistle/core/parameter.h"
-#include <string>
-#include <vector>
+#include <array>
+#include <cstddef>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
-#ifdef OLD_NETCDFCXX
-#include <netcdfcpp>
-#else
-#include <ncFile.h>
-#include <ncVar.h>
-#include <ncDim.h>
-
-#endif
-
-/* #define NUMPARAMS 6 */
+#include <netcdf>
 
 namespace {
 
@@ -53,6 +44,15 @@ struct PolygonData {
     PolygonData(UNumType elem, UNumType corn, UNumType vert): numElements(elem), numCorners(corn), numVertices(vert) {}
 };
 
+template<class UNumType = size_t>
+struct NcVarParams {
+    UNumType start;
+    UNumType count;
+    UNumType stride;
+    NcVarParams(UNumType start = 0, UNumType count = 0, UNumType stride = 0): start(start), count(count), stride(stride)
+    {}
+};
+
 } // namespace
 
 class ReadTsunami: public vistle::Reader {
@@ -67,7 +67,7 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    bool openNcFile();
+    bool openNcFile(netCDF::NcFile &file);
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
@@ -83,6 +83,10 @@ private:
 
     template<class T, class U>
     bool computeTimestepPolygon(Token &token, const T &blockNum, const U &timestep);
+
+    template<class T, class PartionMultiplicator>
+    NcVarParams<T> generateNcVarParams(const T &dim, const T &ghost, const T &numDimBlocks,
+                                       const PartionMultiplicator &partition);
 
     //void functions
     template<class T, class V>
@@ -112,14 +116,11 @@ private:
     vistle::Polygons::ptr ptr_sea;
     vistle::Polygons::ptr ptr_ground;
 
-    //netCDF file to be read
-    netCDF::NcFile m_ncDataFile;
-
     //helper variables
     float zScale;
-    size_t countLatSea;
-    size_t gridPolygons;
-    size_t countLonSea;
+    size_t verticesSea;
+    /* size_t nTimesteps; */
+    size_t actualLastTimestep;
     std::vector<float> vecEta;
 };
 #endif

@@ -57,7 +57,7 @@ void addGhostStructured_tmpl(InputIt &start, InputIt &end, const NumericType &di
   * @last: End pointer of block container.
   * @d_first: Begin pointer of container that results will be written to.
   * @blockNum: Current blocknumber.
-  * @return: Vector<T> with block values specified for each direction and current blocknumber.
+  * @return: Begin iterator of container which contains block values specified for each direction and current blocknumber.
   */
 template<class InputBlockIt, class OutputBlockIt, class NumericType>
 OutputBlockIt blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
