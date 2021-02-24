@@ -70,7 +70,6 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_blocks[1]);
 
     setParallelizationMode(ParallelizeBlocks);
-    initNcVarVec();
 }
 
 ReadTsunami::~ReadTsunami()
@@ -105,20 +104,6 @@ bool ReadTsunami::openNcFile()
             return true;
         }
     }
-}
-
-/**
-  * Initialize vector t_NcVar with NcVar pointers. (needed for checkValidNcVar)
-  */
-void ReadTsunami::initNcVarVec()
-{
-    vec_NcVar.push_back(&latvar);
-    vec_NcVar.push_back(&lonvar);
-    vec_NcVar.push_back(&grid_latvar);
-    vec_NcVar.push_back(&grid_lonvar);
-    vec_NcVar.push_back(&bathymetryvar);
-    vec_NcVar.push_back(&max_height);
-    vec_NcVar.push_back(&eta);
 }
 
 /**
@@ -168,7 +153,6 @@ template<class T, class U>
 void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
                                      const zCalcFunc &zCalc)
 {
-    //TODO: maybe define template or use algo for dump filling.
     int n = 0;
     auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
     for (size_t i = 0; i < dim.dimLat; i++)
@@ -189,7 +173,6 @@ void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, cons
 template<class T>
 void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
 {
-    //TODO: maybe define template or use algo for dump filling of arrays.
     int n = 0;
     auto verticeConnectivityList = poly->cl().data();
     for (size_t j = 1; j < dim.dimLat; j++)
@@ -242,63 +225,6 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
 }
 
 /**
-  * Check if NcVars in t_NcVar are not null.
-  *
-  * @return: false if one of the variables are null.
-  */
-bool ReadTsunami::checkValidNcVar()
-{
-    return std::all_of(vec_NcVar.cbegin(), vec_NcVar.cend(), [](NcVar *var) { return !var->isNull(); });
-}
-
-/**
-  * Init NcVar data.
-  *
-  * @return true if parameters are valid and could be initialized.
-  */
-bool ReadTsunami::initNcData()
-{
-    if (openNcFile()) {
-        // read variables from NetCDF-File
-        latvar = m_ncDataFile.getVar("lat");
-        lonvar = m_ncDataFile.getVar("lon");
-        grid_latvar = m_ncDataFile.getVar("grid_lat");
-        grid_lonvar = m_ncDataFile.getVar("grid_lon");
-        bathymetryvar = m_ncDataFile.getVar("bathymetry");
-        max_height = m_ncDataFile.getVar("max_height");
-        eta = m_ncDataFile.getVar("eta");
-
-        return checkValidNcVar();
-    }
-    return false;
-}
-
-/**
-  * Initialize some helper variables and pointers.
-  * NcVars needs to be initialized before.
-  */
-void ReadTsunami::initHelperVariables()
-{
-    if (!checkValidNcVar()) {
-        sendInfo("Helper variables cannot be initialized.");
-        return;
-    }
-
-    // get vertical Scale
-    zScale = p_verticalScale->getValue();
-
-    // dimension from lat and lon variables
-    dimLat = latvar.getDim(0).getSize();
-    dimLon = lonvar.getDim(0).getSize();
-    surfaceDimZ = 0;
-
-    // get dim from grid_lon & grid_lat
-    gridDimLat = grid_latvar.getDim(0).getSize();
-    gridDimLon = grid_lonvar.getDim(0).getSize();
-    gridPolygons = (gridDimLat - 1) * (gridDimLon - 1);
-}
-
-/**
   * Called for each timestep with number of blocks (MPISIZE).
   *
   * @token Ref to internal vistle token.
@@ -339,10 +265,27 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 template<class T>
 bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
 {
-    if (!initNcData())
+    if (!openNcFile())
         return false;
 
-    initHelperVariables();
+    NcVar latvar = m_ncDataFile.getVar("lat");
+    NcVar lonvar = m_ncDataFile.getVar("lon");
+    NcVar grid_lat = m_ncDataFile.getVar("grid_lat");
+    NcVar grid_lon = m_ncDataFile.getVar("grid_lon");
+    NcVar bathymetryvar = m_ncDataFile.getVar("bathymetry");
+    NcVar max_height = m_ncDataFile.getVar("max_height");
+    NcVar eta = m_ncDataFile.getVar("eta");
+    
+    // get vertical Scale
+    zScale = p_verticalScale->getValue();
+
+    // dimension from lat and lon variables
+    size_t dimLat = latvar.getDim(0).getSize();
+    size_t dimLon = lonvar.getDim(0).getSize();
+
+    // get dim from grid_lon & grid_lat
+    size_t gridDimLat = grid_lat.getDim(0).getSize();
+    size_t gridDimLon = grid_lon.getDim(0).getSize();
 
     std::array<Index, 2> blocks;
     for (int i = 0; i < 2; i++)
@@ -385,32 +328,33 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     size_t vertSea = countLatSea * countLonSea;
     size_t vertGrnd = countLatGrnd * countLonGrnd;
 
-    //************* create sea *************//
     // pointers for read in values from ncdata
     std::vector<float> vecLat(countLatSea), vecLon(countLonSea), vecLatGrid(countLatGrnd), vecLonGrid(countLonGrnd),
         vecDepth(vertGrnd);
+
+    // need Eta-data for timestep poly => member var of reader
     vecEta.resize(eta.getDim(0).getSize() * countLatSea * countLonSea);
 
-    // start vector lat and lon
+    // start vectors
     std::vector<size_t> vecStartLat{startLatSea}, vecStartLon{startLonSea}, vecStartDepth{startLatGrnd, startLonGrnd},
         vecStartLatGrid{startLatGrnd}, vecStartLonGrid{startLonGrnd}, vecStartEta{0, startLatSea, startLonSea};
 
-    // count vector for lat and lon
+    // count vectors 
     std::vector<size_t> vecCountLat{countLatSea}, vecCountLon{countLonSea}, vecCountLatGrid{countLatGrnd},
         vecCountLonGrid{countLonGrnd}, vecCountDepth{countLatGrnd, countLonGrnd},
         vecCountEta{eta.getDim(0).getSize(), countLatSea, countLonSea};
 
     std::vector coords{vecLat.data(), vecLon.data()};
 
-    // read in lat var ncdata into float-pointer
+    // read in ncdata into float-pointer
     latvar.getVar(vecStartLat, vecCountLat, vecLat.data());
     lonvar.getVar(vecStartLon, vecCountLon, vecLon.data());
-    grid_latvar.getVar(vecStartLatGrid, vecCountLatGrid, vecLatGrid.data());
-    grid_lonvar.getVar(vecStartLonGrid, vecCountLonGrid, vecLonGrid.data());
+    grid_lat.getVar(vecStartLatGrid, vecCountLatGrid, vecLatGrid.data());
+    grid_lon.getVar(vecStartLonGrid, vecCountLonGrid, vecLonGrid.data());
     bathymetryvar.getVar(vecStartDepth, vecCountDepth, vecDepth.data());
     eta.getVar(vecStartEta, vecCountEta, vecEta.data());
 
-    // create a surface for sea
+    //************* create sea *************//
     ptr_sea = generateSurface(PolygonData(numPolySea, numPolySea * 4, vertSea), Dim(countLatSea, countLonSea), coords);
 
     //************* create grnd *************//
@@ -421,6 +365,7 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
         generateSurface(PolygonData(numPolyGrnd, numPolyGrnd * 4, vertGrnd), Dim(countLatGrnd, countLonGrnd), coords,
                         [&vecDepth, &countLonGrnd](size_t j, size_t k) { return -vecDepth[j * countLonGrnd + k]; });
 
+    // add data to port
     ptr_grnd->setBlock(blockNum);
     ptr_grnd->setTimestep(-1);
     ptr_grnd->updateInternals();

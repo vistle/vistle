@@ -68,8 +68,6 @@ private:
 
     //Own functions
     bool openNcFile();
-    bool initNcData();
-    bool checkValidNcVar();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
@@ -99,20 +97,16 @@ private:
 
     void printMPIStats();
     void printThreadStats();
-    void initNcVarVec();
-    void initHelperVariables();
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    /* vistle::IntParameter *m_blocks[2]; */
     vistle::IntParameter *p_ghostLayerWidth = nullptr;
     std::array<vistle::IntParameter *, 2> m_blocks;
 
     //Ports
     vistle::Port *p_seaSurface_out = nullptr;
     vistle::Port *p_groundSurface_out = nullptr;
-    /* vistle::Port *p_maxHeight = nullptr; */
 
     //Polygons
     vistle::Polygons::ptr ptr_sea;
@@ -121,29 +115,11 @@ private:
     //netCDF file to be read
     netCDF::NcFile m_ncDataFile;
 
-    //netCDF data objects
-    netCDF::NcVar latvar;
-    netCDF::NcVar lonvar;
-    netCDF::NcVar grid_latvar;
-    netCDF::NcVar grid_lonvar;
-    netCDF::NcVar bathymetryvar;
-    netCDF::NcVar max_height;
-    netCDF::NcVar eta;
-
-    //netCDF paramlist
-    std::vector<netCDF::NcVar *> vec_NcVar;
-
     //helper variables
     float zScale;
-    size_t dimLat;
-    size_t dimLon;
-    size_t surfaceDimZ;
-    size_t gridDimLat;
-    size_t gridDimLon;
     size_t countLatSea;
     size_t gridPolygons;
     size_t countLonSea;
-    std::vector<float> vec_maxH;
     std::vector<float> vecEta;
 };
 #endif
