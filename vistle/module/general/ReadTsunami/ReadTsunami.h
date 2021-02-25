@@ -25,6 +25,8 @@
 
 #include <netcdf>
 
+#include <vector>
+
 namespace {
 
 template<class UNumType>

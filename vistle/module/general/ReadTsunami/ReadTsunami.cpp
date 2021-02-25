@@ -138,7 +138,12 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     int nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     setTimesteps(-1);
     setPartitions(nBlocks);
-    return nBlocks > 0;
+    if (nBlocks == size())
+        return true;
+    else {
+        sendInfo("Number of blocks should equal MPISIZE.");
+        return false;
+    }
 }
 
 /**
