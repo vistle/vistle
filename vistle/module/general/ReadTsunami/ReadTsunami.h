@@ -18,14 +18,12 @@
 
 #include "vistle/core/index.h"
 #include "vistle/core/parameter.h"
-#include <array>
-#include <cstddef>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
 #include <netcdf>
-
 #include <vector>
+#include <array>
 
 namespace {
 
@@ -34,7 +32,7 @@ struct Dim {
     UNumType dimLat;
     UNumType dimLon;
 
-    Dim(UNumType lat, UNumType lon): dimLat(lat), dimLon(lon) {}
+    Dim(const UNumType &lat, const UNumType &lon): dimLat(lat), dimLon(lon) {}
 };
 
 template<class UNumType>
@@ -43,15 +41,18 @@ struct PolygonData {
     UNumType numCorners;
     UNumType numVertices;
 
-    PolygonData(UNumType elem, UNumType corn, UNumType vert): numElements(elem), numCorners(corn), numVertices(vert) {}
+    PolygonData(const UNumType &elem, const UNumType &corn, const UNumType &vert)
+    : numElements(elem), numCorners(corn), numVertices(vert)
+    {}
 };
 
-template<class UNumType = size_t>
+template<class UNumType = size_t, class UNumTypeStride = std::ptrdiff_t>
 struct NcVarParams {
     UNumType start;
     UNumType count;
-    UNumType stride;
-    NcVarParams(UNumType start = 0, UNumType count = 0, UNumType stride = 0): start(start), count(count), stride(stride)
+    UNumTypeStride stride;
+    NcVarParams(const UNumType &start = 0, const UNumType &count = 0, const UNumTypeStride &stride = 1)
+    : start(start), count(count), stride(stride)
     {}
 };
 
@@ -108,7 +109,7 @@ private:
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
     vistle::IntParameter *p_ghostLayerWidth = nullptr;
-    std::array<vistle::IntParameter *, 2> m_blocks;
+    std::array<vistle::IntParameter *, 2> m_blocks{nullptr, nullptr};
 
     //Ports
     vistle::Port *p_seaSurface_out = nullptr;
@@ -121,7 +122,7 @@ private:
     //helper variables
     float zScale;
     size_t verticesSea;
-    /* size_t nTimesteps; */
+    size_t nTimesteps;
     size_t actualLastTimestep;
     std::vector<float> vecEta;
 };

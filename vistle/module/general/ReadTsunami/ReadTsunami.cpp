@@ -135,7 +135,8 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
             printMPIStats();
     }
 
-    int nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
+    const int nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
+    zScale = p_verticalScale->getValue();
     setTimesteps(-1);
     setPartitions(nBlocks);
     if (nBlocks == size())
@@ -294,56 +295,52 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
         return false;
 
     // get nc var objects
-    NcVar latvar = ncFile.getVar("lat");
-    NcVar lonvar = ncFile.getVar("lon");
-    NcVar grid_lat = ncFile.getVar("grid_lat");
-    NcVar grid_lon = ncFile.getVar("grid_lon");
-    NcVar bathymetryvar = ncFile.getVar("bathymetry");
-    NcVar max_height = ncFile.getVar("max_height");
-    NcVar eta = ncFile.getVar("eta");
-
-    // get vertical Scale
-    zScale = p_verticalScale->getValue();
+    const NcVar &latvar = ncFile.getVar("lat");
+    const NcVar &lonvar = ncFile.getVar("lon");
+    const NcVar &grid_lat = ncFile.getVar("grid_lat");
+    const NcVar &grid_lon = ncFile.getVar("grid_lon");
+    const NcVar &bathymetryvar = ncFile.getVar("bathymetry");
+    const NcVar &eta = ncFile.getVar("eta");
 
     // dimension from lat and lon variables
-    Dim dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
+    const Dim dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
 
     // get dim from grid_lon & grid_lat
-    Dim dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+    const Dim dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
     std::array<Index, 2> blocks;
     for (int i = 0; i < 2; i++)
         blocks[i] = m_blocks[i]->getValue();
 
-    auto numLatBlocks = m_blocks[0]->getValue();
-    auto numLonBlocks = m_blocks[1]->getValue();
+    const auto &numLatBlocks = m_blocks[0]->getValue();
+    const auto &numLonBlocks = m_blocks[1]->getValue();
     size_t ghost = p_ghostLayerWidth->getValue();
 
-    std::vector<Index> dist(2);
-    auto blockPartion = blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), dist.begin(), blockNum);
+    std::array<Index, 2> blockPartitionScalar;
+    blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionScalar.begin(), blockNum);
 
-    if (numLatBlocks == 1 || numLonBlocks == 1)
+    if (numLatBlocks == 1 && numLonBlocks == 1)
         ghost = 0;
 
     // count and start vals for lat and lon for sea polygon
-    auto latSea = generateNcVarParams<decltype(ghost), decltype(blockPartion[0])>(dimSea.dimLat, ghost, numLatBlocks,
-                                                                                  blockPartion[0]);
-    auto lonSea = generateNcVarParams<decltype(ghost), decltype(blockPartion[1])>(dimSea.dimLon, ghost, numLonBlocks,
-                                                                                  blockPartion[1]);
+    const auto latSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
+        dimSea.dimLat, ghost, numLatBlocks, blockPartitionScalar[0]);
+    const auto lonSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
+        dimSea.dimLon, ghost, numLonBlocks, blockPartitionScalar[1]);
 
     // count and start vals for lat and lon for ground polygon
-    auto latGround = generateNcVarParams<decltype(ghost), decltype(blockPartion[0])>(dimGround.dimLat, ghost,
-                                                                                     numLatBlocks, blockPartion[0]);
-    auto lonGround = generateNcVarParams<decltype(ghost), decltype(blockPartion[1])>(dimGround.dimLon, ghost,
-                                                                                     numLonBlocks, blockPartion[1]);
+    const auto latGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
+        dimGround.dimLat, ghost, numLatBlocks, blockPartitionScalar[0]);
+    const auto lonGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
+        dimGround.dimLon, ghost, numLonBlocks, blockPartitionScalar[1]);
 
     // num of polygons for sea & grnd
-    size_t numPolySea = (latSea.count - 1) * (lonSea.count - 1);
-    size_t numPolyGround = (latGround.count - 1) * (lonGround.count - 1);
+    const size_t numPolySea = (latSea.count - 1) * (lonSea.count - 1);
+    const size_t numPolyGround = (latGround.count - 1) * (lonGround.count - 1);
 
     // vertices sea & grnd
     verticesSea = latSea.count * lonSea.count;
-    size_t verticesGround = latGround.count * lonGround.count;
+    const size_t verticesGround = latGround.count * lonGround.count;
 
     // pointers for read in values from ncdata
     std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
@@ -351,19 +348,27 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
 
     // need Eta-data for timestep poly => member var of reader
     auto nTimesteps = eta.getDim(0).getSize();
-    actualLastTimestep = m_last->getValue() - (m_last->getValue() % m_increment->getValue());
-    /* nTimesteps = m_last->getValue() - m_first->getValue(); */
+    const ptrdiff_t &increment = m_increment->getValue();
+    /* const size_t &firstTimestep = m_first->getValue(); */
+    const size_t &lastTimestep = m_last->getValue();
+
+    actualLastTimestep = lastTimestep - (lastTimestep % increment);
+    /* nTimesteps = (lastTimestep - firstTimestep) / increment; */
     vecEta.resize(nTimesteps * verticesSea);
-    std::vector<size_t> vecStartLat{latSea.start}, vecStartLon{lonSea.start},
+
+    // start vectors
+    const std::vector<size_t> vecStartLat{latSea.start}, vecStartLon{lonSea.start},
         vecStartDepth{latGround.start, lonGround.start}, vecStartLatGrid{latGround.start},
         vecStartLonGrid{lonGround.start}, vecStartEta{0, latSea.start, lonSea.start};
-        /* vecStartLonGrid{lonGround.start}, */
-        /* vecStartEta{m_first->getValue() * verticesSea, latSea.start, lonSea.start}; */
+    /* vecStartLonGrid{lonGround.start}, vecStartEta{firstTimestep, latSea.start, lonSea.start}; */
 
     // count vectors
-    std::vector<size_t> vecCountLat{latSea.count}, vecCountLon{lonSea.count}, vecCountLatGrid{latGround.count},
+    const std::vector<size_t> vecCountLat{latSea.count}, vecCountLon{lonSea.count}, vecCountLatGrid{latGround.count},
         vecCountLonGrid{lonGround.count}, vecCountDepth{latGround.count, lonGround.count},
         vecCountEta{nTimesteps, latSea.count, lonSea.count};
+
+    // stride vector
+    /* const std::vector<ptrdiff_t> vecStrideEta{increment, latSea.stride, lonSea.stride}; */
 
     std::vector coords{vecLat.data(), vecLon.data()};
 
@@ -373,6 +378,7 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     grid_lat.getVar(vecStartLatGrid, vecCountLatGrid, vecLatGrid.data());
     grid_lon.getVar(vecStartLonGrid, vecCountLonGrid, vecLonGrid.data());
     bathymetryvar.getVar(vecStartDepth, vecCountDepth, vecDepth.data());
+    /* eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data()); */
     eta.getVar(vecStartEta, vecCountEta, vecEta.data());
 
     //************* create sea *************//
@@ -416,8 +422,11 @@ bool ReadTsunami::computeTimestepPolygon(Token &token, const T &timestep, const 
     ptr_timestepPoly->d()->x[1] = ptr_sea->d()->x[1];
     ptr_timestepPoly->d()->x[2].construct(ptr_timestepPoly->getSize());
 
+    /* const auto curTime = timestep / m_increment->getValue(); */
+
     // copy only z for current timestep
     // verticesSea * timesteps = total count vecEta
+    sendInfo("timestepPoly compute: " + std::to_string(timestep / m_increment->getValue()));
     std::copy_n(vecEta.begin() + timestep * verticesSea, verticesSea, ptr_timestepPoly->z().begin());
 
     ptr_timestepPoly->updateInternals();
@@ -429,7 +438,6 @@ bool ReadTsunami::computeTimestepPolygon(Token &token, const T &timestep, const 
     if (timestep == actualLastTimestep) {
         vecEta.clear();
         vecEta.shrink_to_fit();
-        /* ptr_sea.reset(); */
     }
     return true;
 }

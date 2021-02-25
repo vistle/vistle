@@ -63,10 +63,8 @@ template<class InputBlockIt, class OutputBlockIt, class NumericType>
 OutputBlockIt blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
                                             const NumericType &blockNum)
 {
-    NumericType b{blockNum};
     const auto numBlocks{std::distance(first, last)};
-    auto it{0};
-    std::transform(first, last, d_first, [&it, &numBlocks, &b](const NumericType &bS) {
+    std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable {
         if (it++ == numBlocks - 1)
             return b;
         else {
@@ -86,7 +84,7 @@ OutputBlockIt blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt las
   * @return: Vector<T> with block values specified for each direction and current blocknumber.
   */
 template<typename NumericType>
-std::vector<NumericType> blockPartitionStructured_tmpl(const std::vector<NumericType> &blockSize,
+const std::vector<NumericType> blockPartitionStructured_tmpl(const std::vector<NumericType> &blockSize,
                                                              const NumericType &blockNum)
 {
     std::vector<NumericType> distBlocks(blockSize.size());
@@ -104,7 +102,7 @@ std::vector<NumericType> blockPartitionStructured_tmpl(const std::vector<Numeric
   * @return: Vector<T> with block values specified for each direction and current blocknumber.
   */
 template<class InputBlockIt, class NumericType>
-std::vector<NumericType> blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last,
+const std::vector<NumericType> blockPartitionStructured_tmpl(InputBlockIt first, InputBlockIt last,
                                                              const NumericType &blockNum)
 {
     std::vector<NumericType> distBlocks(std::distance(first, last));
