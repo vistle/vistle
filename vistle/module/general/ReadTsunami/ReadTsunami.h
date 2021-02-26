@@ -46,13 +46,15 @@ struct PolygonData {
     {}
 };
 
-template<class UNumType = size_t, class UNumTypeStride = std::ptrdiff_t>
+template<class UNumType = size_t, class UNumTypeStep = std::ptrdiff_t>
 struct NcVarParams {
     UNumType start;
     UNumType count;
-    UNumTypeStride stride;
-    NcVarParams(const UNumType &start = 0, const UNumType &count = 0, const UNumTypeStride &stride = 1)
-    : start(start), count(count), stride(stride)
+    UNumTypeStep stride;
+    UNumTypeStep imap;
+    NcVarParams(const UNumType &start = 0, const UNumType &count = 0, const UNumTypeStep &stride = 1,
+                const UNumTypeStep &imap = 1)
+    : start(start), count(count), stride(stride), imap(imap)
     {}
 };
 
@@ -70,7 +72,7 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
-    bool openNcFile(netCDF::NcFile &file);
+    bool openNcFile(netCDF::NcFile &file) const;
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
@@ -89,7 +91,7 @@ private:
 
     template<class T, class PartionMultiplicator>
     NcVarParams<T> generateNcVarParams(const T &dim, const T &ghost, const T &numDimBlocks,
-                                       const PartionMultiplicator &partition);
+                                       const PartionMultiplicator &partition) const;
 
     //void functions
     template<class T, class V>
@@ -102,8 +104,8 @@ private:
     template<class T>
     void fillPolyList(vistle::Polygons::ptr poly, const T &numCorner);
 
-    void printMPIStats();
-    void printThreadStats();
+    void printMPIStats() const;
+    void printThreadStats() const;
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
@@ -117,12 +119,11 @@ private:
 
     //Polygons
     vistle::Polygons::ptr ptr_sea;
-    vistle::Polygons::ptr ptr_ground;
 
     //helper variables
     float zScale;
     size_t verticesSea;
-    size_t nTimesteps;
+    /* size_t nTimesteps; */
     size_t actualLastTimestep;
     std::vector<float> vecEta;
 };
