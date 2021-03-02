@@ -27,7 +27,6 @@
 #include "vistle/core/parameter.h"
 #include "vistle/core/polygons.h"
 #include "vistle/core/scalar.h"
-#include "vistle/core/vertexownerlist.h"
 #include "vistle/module/module.h"
 
 //openmpi
@@ -67,6 +66,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     setParameterRange(m_blocks[0], Integer(1), Integer(999999));
     setParameterRange(m_blocks[1], Integer(1), Integer(999999));
 
+    // timestep built-in params
     setParameterRange(m_first, Integer(0), Integer(9999999));
     setParameterRange(m_last, Integer(-1), Integer(9999999));
     setParameterRange(m_increment, Integer(1), Integer(9999999));
@@ -75,6 +75,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(p_filedir);
     observeParameter(m_blocks[0]);
     observeParameter(m_blocks[1]);
+    observeParameter(p_verticalScale);
 
     setParallelizationMode(ParallelizeBlocks);
 }
@@ -130,8 +131,8 @@ inline void ReadTsunami::printThreadStats() const
 /**
   * Called when any of the reader parameter changing.
   *
-  * @param Parameter that got changed.
-  * @return true if all essential parameters could be initialized.
+  * @param: Parameter that got changed.
+  * @return: true if all essential parameters could be initialized.
   */
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
@@ -156,9 +157,9 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
   * Set 2D coordinates for given polygon.
   *
   * @poly: Pointer on Polygon.
-  * @dimX: Dimension of coordinates in x.
-  * @dimY: Dimension of coordinates in y.
+  * @dim: Dimension of coordinates.
   * @coords: Vector which contains coordinates.
+  * @zCalc: Function for computing z-coordinate.
   */
 template<class T, class U>
 void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
@@ -178,8 +179,7 @@ void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, cons
   * Set the connectivitylist for given polygon for 2 dimensions and 4 Corners.
   *
   * @poly: Pointer on Polygon.
-  * @dimX: Dimension of vertice list in x direction.
-  * @dimY: Dimension of vertice list in y direction.
+  * @dim: Dimension of vertice list.
   */
 template<class T>
 void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
@@ -199,7 +199,6 @@ void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
   * Set which vertices represent a polygon.
   *
   * @poly: Pointer on Polygon.
-  * @numPoly: number of polygons.
   * @numCorner: number of corners.
   */
 template<class T>
@@ -211,10 +210,10 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
 /**
  * Generate surface from polygons.
  *
- * @numElem Number of polygons that will be used to great the surface.
- * @numCorner Number of all corners.
- * @numVertices Number of all different corners.
- * @coords coordinates for polygons.
+ * @polyData: Data for creating polygon-surface (number elements, number corners, number vertices).
+ * @dim: Dimension in lat and lon.
+ * @coords: coordinates for polygons.
+ * @zCalc: Function for computing z-coordinate.
  * @return vistle::Polygons::ptr
  */
 template<class U, class T, class V>
@@ -255,12 +254,12 @@ NcVarParams<T> ReadTsunami::generateNcVarParams(const T &dim, const T &ghost, co
 }
 
 /**
-  * Called for each timestep with number of blocks (MPISIZE).
+  * Called for each timestep and for each block (MPISIZE).
   *
-  * @token Ref to internal vistle token.
-  * @timestep current timestep.
-  * @block current block number of parallelization.
-  * @return true if all data is set and valid.
+  * @token: Ref to internal vistle token.
+  * @timestep: current timestep.
+  * @block: current block number of parallelization.
+  * @return: true if all data is set and valid.
   */
 bool ReadTsunami::read(Token &token, int timestep, int block)
 {
@@ -273,10 +272,10 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 /**
   * Computing per block.
   *
-  * @token Ref to internal vistle token.
-  * @block current block number of parallelization.
-  * @timestep current timestep.
-  * @return true if all data is set and valid.
+  * @token: Ref to internal vistle token.
+  * @blockNum: current block number of parallelization.
+  * @timestep: current timestep.
+  * @return: true if all data is set and valid.
   */
 template<class T, class U>
 bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U &timestep)
@@ -284,13 +283,15 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
     if (timestep == -1)
         return computeInitialPolygon(token, blockNum);
     else
-        return computeTimestepPolygon(token, blockNum, timestep);
+        return computeTimestepPolygon<int, size_t>(token, blockNum, timestep);
 }
 
 /**
   * Generates the inital polygon surfaces for sea and ground and adds them to scene.
   *
-  * @token Ref to internal vistle token.
+  * @token: Ref to internal vistle token.
+  * @blockNum: current block number of parallel process.
+  * @return: true if all date could be initialized.
   */
 template<class T>
 bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
@@ -316,22 +317,30 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
     const size_t &firstTimestep = m_first->getValue();
-    const size_t &lastTimestep = m_last->getValue();
-    actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
-    const size_t &nTimesteps = (actualLastTimestep - firstTimestep) / incrementTimestep;
+    size_t lastTimestep = m_last->getValue();
 
-    sendInfo("inc: " + std::to_string(incrementTimestep));
-    sendInfo("first: " + std::to_string(firstTimestep));
-    sendInfo("last: " + std::to_string(lastTimestep));
-    sendInfo("aLast: " + std::to_string(actualLastTimestep));
-    sendInfo("nTimesteps: " + std::to_string(nTimesteps));
+    if (lastTimestep < 0)
+        lastTimestep--;
+
+    actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
+    size_t nTimesteps{0};
+    if (incrementTimestep > 0)
+        if (actualLastTimestep >= firstTimestep)
+            nTimesteps = (actualLastTimestep - firstTimestep) / incrementTimestep + 1;
+
+    // good for debugging
+    /* sendInfo("inc: " + std::to_string(incrementTimestep)); */
+    /* sendInfo("first: " + std::to_string(firstTimestep)); */
+    /* sendInfo("last: " + std::to_string(lastTimestep)); */
+    /* sendInfo("aLast: " + std::to_string(actualLastTimestep)); */
+    /* sendInfo("nTimesteps: " + std::to_string(nTimesteps)); */
 
     std::array<Index, 2> blocks;
     for (int i = 0; i < 2; i++)
         blocks[i] = m_blocks[i]->getValue();
 
-    auto numLatBlocks = m_blocks[0]->getValue();
-    auto numLonBlocks = m_blocks[1]->getValue();
+    const auto &numLatBlocks = blocks[0];
+    const auto &numLonBlocks = blocks[1];
 
     size_t ghost = p_ghostLayerWidth->getValue();
 
@@ -342,15 +351,15 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
         ghost = 0;
 
     // count and start vals for lat and lon for sea polygon
-    const NcVarParams latSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
+    const auto latSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
         dimSea.dimLat, ghost, numLatBlocks, blockPartitionScalar[0]);
-    decltype(latSea) lonSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
+    const auto lonSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
         dimSea.dimLon, ghost, numLonBlocks, blockPartitionScalar[1]);
 
     // count and start vals for lat and lon for ground polygon
-    decltype(latSea) latGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
+    const auto latGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(
         dimGround.dimLat, ghost, numLatBlocks, blockPartitionScalar[0]);
-    decltype(latSea) lonGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
+    const auto lonGround = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[1])>(
         dimGround.dimLon, ghost, numLonBlocks, blockPartitionScalar[1]);
 
     // num of polygons for sea & grnd
@@ -416,19 +425,15 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
 /**
   * Generates polygon for corresponding timestep and adds Object to scene.
   *
-  * @token Ref to internal vistle token.
-  * @timestep current timestep.
+  * @token: Ref to internal vistle token.
+  * @blockNum: current block number of parallel process. 
+  * @timestep: current timestep.
+  * @return: true. TODO: add proper error-handling here.
   */
 template<class T, class U>
 bool ReadTsunami::computeTimestepPolygon(Token &token, const T &blockNum, const U &timestep)
 {
     Polygons::ptr ptr_timestepPoly = ptr_sea->clone();
-
-    // read timestep as it is => e.g. first = 10; increment = 5;
-    // => second_here = 15
-    // => second_COVER = 2
-    // => corresponding index_vecEta = 2
-    // => static variable which will be incremented by one is faster than computing currentTimestep based on timestep
     static int indexEta{0};
 
     ptr_timestepPoly->resetArrays();
@@ -440,8 +445,10 @@ bool ReadTsunami::computeTimestepPolygon(Token &token, const T &blockNum, const 
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    sendInfo("timestep COVER: " + std::to_string(indexEta));
-    std::copy_n(vecEta.begin() + indexEta * verticesSea, verticesSea, ptr_timestepPoly->z().begin());
+
+    // debugging
+    /* sendInfo("timestep COVER: " + std::to_string(indexEta)); */
+    std::copy_n(vecEta.begin() + indexEta++ * verticesSea, verticesSea, ptr_timestepPoly->z().begin());
 
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
@@ -449,12 +456,10 @@ bool ReadTsunami::computeTimestepPolygon(Token &token, const T &blockNum, const 
     token.applyMeta(ptr_timestepPoly);
     token.addObject(p_seaSurface_out, ptr_timestepPoly);
 
-    indexEta++;
-
     if (timestep == actualLastTimestep) {
-        sendInfo("Clear Cache.");
-        /* vecEta.clear(); */
-        /* vecEta.shrink_to_fit(); */
+        sendInfo("Clear Cache for rank: " + std::to_string(rank()));
+        vecEta.clear();
+        vecEta.shrink_to_fit();
         indexEta = 0;
     }
     return true;

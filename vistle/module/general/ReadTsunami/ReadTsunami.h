@@ -123,7 +123,6 @@ private:
     //helper variables
     float zScale;
     size_t verticesSea;
-    /* size_t nTimesteps; */
     size_t actualLastTimestep;
     std::vector<float> vecEta;
 };
