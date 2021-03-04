@@ -3,13 +3,17 @@ FIND_PATH(NETCDF_INCLUDE_DIR netcdf.h)
 FIND_PATH(NETCDF_C++_INCLUDE_DIR netcdfcpp.h netcdf
    PATHS
    $ENV{EXTERNLIBS}/netcdf/include
+   /usr/include
 ) 
 
 FIND_LIBRARY(NETCDF_LIBRARY NAMES netcdf) 
 FIND_LIBRARY(NETCDF_LIBRARY_DEBUG NAMES netcdfd) 
-FIND_LIBRARY(NETCDF_C++_LIBRARY NAMES netcdf_c++ netcdf-cxx4
+FIND_LIBRARY(NETCDF_C++_LIBRARY NAMES netcdf_c++ netcdf-cxx4 netcdf_c++4
    PATHS
    $ENV{EXTERNLIBS}/netcdf
+   /usr
+   /usr/lib
+   /usr/lib64
 ) 
 
 FIND_LIBRARY(NETCDF_C++_LIBRARY_DEBUG NAMES netcdf_c++d netcdf-cxx4) 
