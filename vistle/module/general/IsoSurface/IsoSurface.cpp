@@ -1,4 +1,4 @@
-﻿//
+//
 //This code is used for both IsoCut and IsoSurface!
 //
 
@@ -16,16 +16,28 @@
 
 #ifdef CUTTINGSURFACE
 #define IsoSurface CuttingSurface
+#else
+#ifdef ISOHEIGHTSURFACE
+#define IsoSurface IsoHeightSurface
+#endif
 #endif
 
 
 #include "IsoSurface.h"
 #include "Leveller.h"
 
+#ifdef ISOHEIGHTSURFACE
+#include "../IsoHeightSurface/MapHeight.h"
+#endif
+
 #ifdef CUTTINGSURFACE
 MODULE_MAIN(CuttingSurface)
 #else
+#ifdef ISOHEIGHTSURFACE
+MODULE_MAIN(IsoHeightSurface)
+#else
 MODULE_MAIN(IsoSurface)
+#endif
 #endif
 
 using namespace vistle;
@@ -40,6 +52,8 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
    : Module(
 #ifdef CUTTINGSURFACE
 "cut through grids"
+#elif defined(ISOHEIGHTSURFACE)
+"extract surface at constant height"
 #else
 "extract isosurfaces"
 #endif
@@ -52,22 +66,27 @@ IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator 
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
 #else
+#ifdef ISOHEIGHTSURFACE
+   m_isovalue = addFloatParameter("iso height", "height above ground", 0.0);
+#else
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
    m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
-   setReducePolicy(message::ReducePolicy::Locally);
    m_pointOrValue = addIntParameter("point_or_value", "point or value interaction", Value, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_pointOrValue, PointOrValue);
-
+#endif
+   setReducePolicy(message::ReducePolicy::Locally);
    createInputPort("data_in");
    m_mapDataIn = createInputPort("mapdata_in");
-#endif    
+#endif
    m_dataOut = createOutputPort("data_out");
 
    m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);
 
    m_computeNormals = addIntParameter("compute_normals", "compute normals (structured grids only)", 1, Parameter::Boolean);
-
+#ifdef ISOHEIGHTSURFACE
+   m_heightmap = addStringParameter("heightmap", "height map as geotif","",Parameter::ExistingFilename);
+#endif
    m_paraMin = m_paraMax = 0.f;
 }
 
@@ -77,7 +96,7 @@ bool IsoSurface::changeParameter(const Parameter* param) {
 
     bool ok = isocontrol.changeParameter(param);
 
-#ifndef CUTTINGSURFACE
+#if !defined(CUTTINGSURFACE) && !defined(ISOHEIGHTSURFACE)
     if (param == m_pointOrValue) {
         if (m_pointOrValue->getValue() == PointInFirstStep)
             setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
@@ -106,7 +125,7 @@ bool IsoSurface::prepare() {
 
 bool IsoSurface::reduce(int timestep) {
 
-#ifndef CUTTINGSURFACE
+#if !defined(CUTTINGSURFACE) && !defined(ISOHEIGHTSURFACE)
     if (rank() == 0)
         std::cerr << "IsoSurface::reduce(" << timestep << ")" << std::endl;
     Scalar value = m_isovalue->getValue();
@@ -180,6 +199,35 @@ bool IsoSurface::reduce(int timestep) {
 
     return Module::reduce(timestep);
 }
+
+#ifdef ISOHEIGHTSURFACE
+Object::ptr IsoSurface::createHeightCut(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr dataS,
+                                        vistle::DataBase::const_ptr mapdata) const{
+   Object::ptr returnObj;
+   
+   if ( auto coordsIn = Coords::as(grid) ) {
+      MapHeight heightField;
+      std::string mapFile = m_heightmap->getValue();
+      heightField.openImage(mapFile);
+      
+      const Scalar *x = &coordsIn->x()[0], *y = &coordsIn->y()[0], *z = &coordsIn->z()[0];
+      Vec<Scalar>::ptr newData(new Vec<Scalar>(coordsIn->getNumVertices()));
+      auto heightMappedData = newData->x().data();
+      
+      for (int i = 0; i < coordsIn->getNumVertices(); ++i) {
+         heightMappedData[i] = z[i] -  heightField.getAlt(x[i],y[i]);
+      }
+      heightField.closeImage();
+
+      float val =  m_isovalue->getValue();
+      returnObj = work(grid, newData, mapdata, val);
+   }else {
+      sendInfo("No Coords object was found");
+      returnObj = work(grid, dataS, mapdata, m_isovalue->getValue());
+   }
+   return returnObj;
+}
+#endif
 
 Object::ptr IsoSurface::work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr dataS,
@@ -290,6 +338,17 @@ bool IsoSurface::compute(std::shared_ptr<PortTask> task) const {
     auto obj = work(grid, nullptr, mapdata);
     task->addObject(m_dataOut, obj);
     return true;
+#elif defined(ISOHEIGHTSURFACE)
+   std::string imageName = "";
+   imageName = m_heightmap->getValue();
+   if (strcmp(imageName.c_str(),"") != 0) {
+      auto obj = createHeightCut(grid, dataS, mapdata);
+      task->addObject(m_dataOut, obj);
+      return true;
+   }else {
+      sendInfo("No geotiff was found fo height mapping");
+      return true;
+   }
 #else
     if (m_pointOrValue->getValue() == Value) {
         auto obj = work(grid, dataS, mapdata, m_isovalue->getValue());

@@ -44,6 +44,8 @@ class IsoSurface: public vistle::Module {
    mutable std::mutex m_mutex;
    mutable std::map<int, std::vector<BlockData>> m_blocksForTime;
 
+   vistle::Object::ptr createHeightCut(vistle::Object::const_ptr grid, vistle::Vec<vistle::Scalar>::const_ptr data, vistle::DataBase::const_ptr mapdata) const;
+    
    vistle::Object::ptr work(vistle::Object::const_ptr grid,
              vistle::Vec<vistle::Scalar>::const_ptr data,
              vistle::DataBase::const_ptr mapdata,
@@ -59,6 +61,8 @@ class IsoSurface: public vistle::Module {
    vistle::IntParameter *m_pointOrValue;
    vistle::IntParameter *m_processortype;
    vistle::IntParameter *m_computeNormals;
+    
+   vistle::StringParameter *m_heightmap;
    vistle::Port *m_mapDataIn, *m_dataOut;
 
    mutable vistle::Scalar m_min, m_max;
