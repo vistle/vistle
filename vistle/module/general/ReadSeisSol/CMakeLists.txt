@@ -9,10 +9,12 @@ endif()
 
 set(HEADERS
     ReadSeisSol.h
+    surfacetools.h
 )
 
 set(SOURCES
     ReadSeisSol.cpp
+    surfacetools.cpp
 )
 
 add_module(ReadSeisSol ${SOURCES} ${HEADERS})
