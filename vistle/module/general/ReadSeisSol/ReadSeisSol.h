@@ -13,13 +13,14 @@
  **                                                                        **
  ** Date:  04.03.2021                                                      **
 \**************************************************************************/
+
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
 #include <vistle/module/reader.h>
 #include <vistle/core/parameter.h>
 
-#include <hdf5.h>
+#include <H5Cpp.h>
 
 class ReadSeisSol: public vistle::Reader {
 public:
