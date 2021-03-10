@@ -50,11 +50,12 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // file-browser
     p_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
                                    Parameter::Filename);
+    
+    //ghost
+    addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
 
     // visualise variables
     p_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
-    p_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 1);
-    setParameterRange(p_ghostLayerWidth, Integer(0), Integer(999999));
 
     // define ports
     p_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Polygons)");
@@ -342,13 +343,13 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     const auto &numLatBlocks = blocks[0];
     const auto &numLonBlocks = blocks[1];
 
-    size_t ghost = p_ghostLayerWidth->getValue();
+    size_t ghost{0};
+
+    if (getIntParameter("ghost") && !(numLatBlocks == 1 && numLonBlocks == 1))
+        ghost++;
 
     std::array<Index, 2> blockPartitionScalar;
     blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionScalar.begin(), blockNum);
-
-    if (numLatBlocks == 1 && numLonBlocks == 1)
-        ghost = 0;
 
     // count and start vals for lat and lon for sea polygon
     const auto latSea = generateNcVarParams<decltype(ghost), decltype(blockPartitionScalar[0])>(

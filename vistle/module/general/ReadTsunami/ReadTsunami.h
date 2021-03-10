@@ -110,7 +110,6 @@ private:
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    vistle::IntParameter *p_ghostLayerWidth = nullptr;
     std::array<vistle::IntParameter *, 2> m_blocks{nullptr, nullptr};
 
     //Ports
