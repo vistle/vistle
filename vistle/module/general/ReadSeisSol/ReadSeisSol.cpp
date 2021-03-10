@@ -15,9 +15,12 @@
 \**************************************************************************/
 
 #include "ReadSeisSol.h"
+#include <H5Exception.h>
+#include <H5File.h>
 #include <boost/mpi/communicator.hpp>
 
 using namespace vistle;
+using namespace H5;
 
 MODULE_MAIN(ReadSeisSol)
 

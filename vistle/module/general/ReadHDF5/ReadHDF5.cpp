@@ -53,7 +53,7 @@ ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm
    : Module("read Vistle data stored in HDF5 format", name, moduleID, comm) {
 
    // add module parameters
-   m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingPathname);
+   m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingFilename);
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
@@ -652,7 +652,6 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
             *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
         }
 
-        
     } else if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ShmVector) {
         ShmVectorReader reader(
                     linkIterData->archive,
