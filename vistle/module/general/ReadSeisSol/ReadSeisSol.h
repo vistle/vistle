@@ -17,18 +17,14 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
+#include "vistle/core/port.h"
 #include <vistle/module/reader.h>
 #include <vistle/core/parameter.h>
 
-#include <vtk/vtkXdmf3Reader.h>
-#include <vtk/vtkSmartPointer.h>
-#include <Xdmf.hpp>
-/* #include <XdmfHDF5Controller.hpp> */
 #include <XdmfArrayType.hpp>
-#include <XdmfArray.hpp>
 
-#include <memory>
-#include <vector>
+//forwarding cpp
+class XdmfArray;
 
 namespace {
 struct HDF5ControllerParameter {
@@ -57,6 +53,7 @@ struct HDF5ControllerParameter {
 };
 } // namespace
 
+
 class ReadSeisSol: public vistle::Reader {
 public:
     //default constructor
@@ -68,17 +65,22 @@ private:
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
 
-    /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
-    /* bool openHDF5(); */
+    bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param);
+
+    //hdf5
+    bool readHDF5();
+    bool openHDF5();
 
     //vtk
-    bool openXDMF(vtkSmartPointer<vtkXdmf3Reader> &xreader);
-    bool readXDMF(const vtkSmartPointer<vtkXdmf3Reader> &xreader);
+    /* vtkDataSet* openXdmfVTK2(); */
+    /* bool openXdmfVTK(vtkSmartPointer<vtkXdmf3Reader> &xreader); */
+    /* bool readXdmfVTK(const vtkSmartPointer<vtkXdmf3Reader> &xreader); */
 
     //parameter
     vistle::StringParameter *p_h5Dir = nullptr;
     vistle::StringParameter *p_xdmfDir = nullptr;
-    vistle::IntParameter *p_dsm = nullptr;
-    vistle::IntParameter *p_cores = nullptr;
+    vistle::IntParameter *p_ghost = nullptr;
+
+    vistle::Port *p_ugrid = nullptr;
 };
 #endif
