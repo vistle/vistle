@@ -17,10 +17,7 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
-#include "vistle/core/port.h"
 #include <vistle/module/reader.h>
-#include <vistle/core/parameter.h>
-
 #include <XdmfArrayType.hpp>
 
 //forwarding cpp
@@ -71,16 +68,12 @@ private:
     bool readHDF5();
     bool openHDF5();
 
-    //vtk
-    /* vtkDataSet* openXdmfVTK2(); */
-    /* bool openXdmfVTK(vtkSmartPointer<vtkXdmf3Reader> &xreader); */
-    /* bool readXdmfVTK(const vtkSmartPointer<vtkXdmf3Reader> &xreader); */
-
     //parameter
     vistle::StringParameter *p_h5Dir = nullptr;
     vistle::StringParameter *p_xdmfDir = nullptr;
     vistle::IntParameter *p_ghost = nullptr;
 
+    //port
     vistle::Port *p_ugrid = nullptr;
 };
 #endif
