@@ -1,5 +1,4 @@
 # vistle_find_package(HDF5)
-# # vistle_find_package(XDMF)
 # if (NOT HDF5_FOUND)
 #     message("Skipping ReadSeisSol because of missing HDF5")
 #     return()
@@ -14,15 +13,10 @@ if (NOT Xdmf_FOUND)
     return()
 endif()
 
-# vistle_find_package(VTK COMPONENTS vtkCommonCore vtkIOXdmf3 vtkIOXdmf2)
-# vistle_find_package(VTK COMPONENTS vtkIOXdmf3 vtkCommonCore vtkFiltersCore vtkFiltersGeneral)
+# vistle_find_package(VTK COMPONENTS vtkCommonCore)
 # if (NOT VTK_FOUND)
 #     message("Skipping ReadSeisSol because of missing VTK")
 #     return()
-# else()
-#     # set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
-#     include_directories(SYSTEM ${VTK_INCLUDE_DIRS})
-#     set(EXTRA_LIBS ${EXTRA_LIBS} ${VTK_LIBRARIES} vistle_vtk)
 # endif()
 
 set(HEADERS
@@ -40,5 +34,8 @@ add_module(ReadSeisSol ${SOURCES} ${HEADERS})
 use_openmp()
 
 # target_link_libraries(ReadSeisSol ${} ${EXTRA_LIBS})
-target_link_libraries(ReadSeisSol XdmfCore Xdmf)
+target_link_libraries(ReadSeisSol 
+    XdmfCore 
+    Xdmf 
+)
 target_include_directories(ReadSeisSol PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS})

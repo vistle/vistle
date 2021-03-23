@@ -62,18 +62,11 @@ private:
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
 
+    //own
     bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param);
 
     //hdf5
     bool readHDF5();
     bool openHDF5();
-
-    //parameter
-    vistle::StringParameter *p_h5Dir = nullptr;
-    vistle::StringParameter *p_xdmfDir = nullptr;
-    vistle::IntParameter *p_ghost = nullptr;
-
-    //port
-    vistle::Port *p_ugrid = nullptr;
 };
 #endif
