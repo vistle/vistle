@@ -20,15 +20,18 @@
 #include "ReadSeisSol.h"
 
 //vistle
-#include "XdmfSharedPtr.hpp"
+#include "vistle/core/database.h"
 #include "vistle/core/parameter.h"
+#include "vistle/core/scalar.h"
 #include "vistle/core/unstr.h"
+#include "vistle/core/vec.h"
 #include "vistle/module/module.h"
 
 //boost
 #include <boost/mpi/communicator.hpp>
 
 //xdmf3
+#include <XdmfAttribute.hpp>
 #include <XdmfGeometry.hpp>
 #include <XdmfInformation.hpp>
 #include <XdmfGraph.hpp>
@@ -42,6 +45,7 @@
 #include <XdmfHDF5Controller.hpp>
 
 //std
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <iterator>
 #include <memory>
 #include <mpi.h>
@@ -54,7 +58,7 @@ using namespace vistle;
 MODULE_MAIN(ReadSeisSol)
 
 namespace {
-UnstructuredGrid::Type XdmfToVistle(const shared_ptr<XdmfUnstructuredGrid> &ugrid)
+UnstructuredGrid::Type XdmfUgridToVistleUgrid(const shared_ptr<XdmfUnstructuredGrid> &ugrid)
 {
     const auto &ugridType = ugrid->getTopology()->getType();
     const std::string &topologyType = ugridType->getName();
@@ -63,7 +67,7 @@ UnstructuredGrid::Type XdmfToVistle(const shared_ptr<XdmfUnstructuredGrid> &ugri
     else if (topologyType == "Triangle")
         return UnstructuredGrid::TRIANGLE;
     else if (topologyType == "Polygon")
-        return UnstructuredGrid::VPOLYHEDRON;
+        return UnstructuredGrid::POLYGON;
     else if (topologyType == "Pyramid")
         return UnstructuredGrid::PYRAMID;
     else if (topologyType == "Hexahedron")
@@ -88,6 +92,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
                        Parameter::Filename);
     addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
     createOutputPort("ugrid", "UnstructuredGrid");
+    createOutputPort("att", "Scalar");
 
     setParallelizationMode(Serial);
 }
@@ -98,6 +103,27 @@ ReadSeisSol::~ReadSeisSol()
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     setTimesteps(-1);
+    examineXdmf();
+    return true;
+}
+
+bool ReadSeisSol::examineXdmf()
+{
+    //TODO: initialize geometry and topology and create a map for parameter choice which user want to visualize
+
+    /* const std::string &xfile = getStringParameter("xfile"); */
+
+    /* //read xdmf */
+    /* const auto xreader = XdmfReader::New(); */
+    /* const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)); */
+    /* const auto &xgridCollect = xdomain->getGridCollection(0); */
+
+    /* //geometry and topology is the same for all grid */
+    /* const auto &xugrid = xgridCollect->getUnstructuredGrid(0); */
+
+    /* const auto &xtopology = xugrid->getTopology(); */
+    /* const auto &xgeometry = xugrid->getGeometry(); */
+    /* const auto &time = xugrid->getTime(); */
     return true;
 }
 
@@ -106,7 +132,6 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     /** TODO:
       * - Timesteps
       * - Distribute across MPI processes
-      * - Fix DomainSurface for vtkTetrahedron Order
       */
 
     const std::string xfile = getStringParameter("xfile");
@@ -115,9 +140,13 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     const auto xreader = XdmfReader::New();
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
     const auto &xgridCollect = xdomain->getGridCollection(0);
+
+    //geometry and topology is the same for all grid
     const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
+
     const auto &xtopology = xugrid->getTopology();
     const auto &xgeometry = xugrid->getGeometry();
+    const auto &time = xugrid->getTime();
 
     //read connectionlist
     const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
@@ -139,6 +168,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     auto cl = ugrid_ptr->cl().data();
     xArrConn->getValues(0, cl, xArrConn->getSize());
 
+    //DEBUG
     //invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order
     /* for (unsigned i = 0; i < xArrConn->getSize(); i++) { */
     /*     auto tmp = i; */
@@ -148,10 +178,6 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     /*     cl[i] = xArrConn->getValue<int>(tmp); */
     /* } */
 
-    for (int i = 0; i < 10; i++) {
-        sendInfo("cl %d: %d", i, cl[i]);
-    }
-
     //coords
     auto x = ugrid_ptr->x().data(), y = ugrid_ptr->y().data(), z = ugrid_ptr->z().data();
 
@@ -160,18 +186,12 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     xArrGeo->getValues(1, y, xArrGeo->getSize() / 3, 3, 1);
     xArrGeo->getValues(2, z, xArrGeo->getSize() / 3, 3, 1);
 
-    for (int i = 0; i < 10; i++) {
-        sendInfo("x %d: %f", i, x[i]);
-        sendInfo("y %d: %f", i, y[i]);
-        sendInfo("z %d: %f", i, z[i]);
-    }
-
     //4 corner = tetrahedron
     std::generate(ugrid_ptr->el().begin(), ugrid_ptr->el().end(),
                   [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
 
     //typelist
-    std::fill(ugrid_ptr->tl().begin(), ugrid_ptr->tl().end(), XdmfToVistle(xugrid));
+    std::fill(ugrid_ptr->tl().begin(), ugrid_ptr->tl().end(), XdmfUgridToVistleUgrid(xugrid));
 
     if (!ugrid_ptr->check()) {
         sendInfo("Something went wrong while creation of ugrid! Possible errors:\n"
@@ -182,11 +202,38 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         return false;
     }
 
+    const auto &xattribute = xugrid->getAttribute(0);
+    const shared_ptr<XdmfArray> xArrU(XdmfArray::New());
+    sendInfo("%s", xattribute->getName().c_str());
+    xArrU->insert(xattribute->getHeavyDataController());
+    xArrU->read();
+
+    Vec<Scalar>::ptr att(new Vec<Scalar>(xArrU->getSize()));
+    const auto arrUSize = xArrU->getSize();
+
+    for (int i = arrUSize; i < arrUSize + 10; i++)
+        sendInfo("%d", xArrU->getValue<int>(i));
+
+    auto ux = att->x().data();
+    xArrU->getValues(0, ux, arrUSize);
+    /* xArrU->getValues(arrUSize, u->y().data(), arrUSize); */
+    /* xArrU->getValues(arrUSize * 2, u->z().data(), arrUSize); */
+    /* xArrU->getValues(arrUSize * 3, u->w().data(), arrUSize); */
+
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);
     ugrid_ptr->updateInternals();
-    token.addObject("ugrid", ugrid_ptr);
 
+    att->setGrid(ugrid_ptr);
+    att->setBlock(block);
+    att->setMapping(DataBase::Element);
+    att->addAttribute("_species", "partition");
+    att->setTimestep(-1);
+    att->updateInternals();
+
+    token.addObject("ugrid", ugrid_ptr);
+    sendInfo("Teschd");
+    token.addObject("att", att);
     return true;
 }
 
