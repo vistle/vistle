@@ -17,7 +17,6 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
-/* #include <XdmfDomain.hpp> */
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <vistle/module/reader.h>
 #include <vector>
