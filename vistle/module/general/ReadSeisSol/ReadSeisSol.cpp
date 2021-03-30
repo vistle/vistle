@@ -20,6 +20,7 @@
 #include "ReadSeisSol.h"
 
 //vistle
+#include "XdmfSharedPtr.hpp"
 #include "vistle/core/database.h"
 #include "vistle/core/parameter.h"
 #include "vistle/core/scalar.h"
@@ -28,6 +29,7 @@
 #include "vistle/module/module.h"
 
 //boost
+#include <XdmfAttributeCenter.hpp>
 #include <boost/mpi/communicator.hpp>
 
 //xdmf3
@@ -42,6 +44,7 @@
 #include <XdmfReader.hpp>
 #include <XdmfArray.hpp>
 #include <XdmfArrayType.hpp>
+#include <XdmfArrayReference.hpp>
 #include <XdmfHDF5WriterDSM.hpp>
 #include <XdmfHDF5ControllerDSM.hpp>
 #include <XdmfHDF5Controller.hpp>
@@ -100,9 +103,6 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     setParallelizationMode(Serial);
 }
 
-ReadSeisSol::~ReadSeisSol()
-{}
-
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     setTimesteps(-1);
@@ -114,10 +114,10 @@ bool ReadSeisSol::examineXdmf()
 {
     //TODO: initialize geometry and topology and create a map for parameter choice which user want to visualize
 
-    /* const std::string &xfile = getStringParameter("xfile"); */
+    const std::string &xfile = getStringParameter("xfile");
 
-    /* //read xdmf */
-    /* const auto xreader = XdmfReader::New(); */
+    //read xdmf
+    const auto xreader = XdmfReader::New();
     /* const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)); */
     /* const auto &xgridCollect = xdomain->getGridCollection(0); */
 
@@ -142,14 +142,31 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     //read xdmf
     const auto xreader = XdmfReader::New();
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
-    XdmfDomain xdomainDebug = *xdomain;
+
+    sendInfo("Domain:");
+    for (auto [name, val]: xdomain->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
+
+    sendInfo("GridCollect");
     const auto &xgridCollect = xdomain->getGridCollection(0);
+    for (auto [name, val]: xgridCollect->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
 
     //geometry and topology is the same for all grid
+    sendInfo("UGrid:");
     const auto &xugrid = xgridCollect->getUnstructuredGrid(2);
+    for (auto [name, val]: xugrid->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
 
+    sendInfo("Topology:");
     const auto &xtopology = xugrid->getTopology();
+    for (auto [name, val]: xugrid->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
+
+    sendInfo("Geometry:");
     const auto &xgeometry = xugrid->getGeometry();
+    for (auto [name, val]: xugrid->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
     /* const auto &time = xugrid->getTime(); */
 
     //read connectionlist
@@ -206,135 +223,91 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         return false;
     }
 
+    sendInfo("number grids:");
+    sendInfo("number reg grids: %d", xgridCollect->getNumberRegularGrids());
+    sendInfo("number rect grids: %d", xgridCollect->getNumberRectilinearGrids());
+    sendInfo("number uns grids: %d", xgridCollect->getNumberUnstructuredGrids());
+    sendInfo("number cuv grids: %d", xgridCollect->getNumberCurvilinearGrids());
+    sendInfo("xugrid number sets: %d", xugrid->getNumberSets());
+    sendInfo("xugrid number attribes: %d", xugrid->getNumberAttributes());
+
+
     // Attribute visualize with hyperslap
     const auto &xattribute = xugrid->getAttribute(1);
-    sendInfo("num sets: %d", xugrid->getNumberSets());
-    XdmfArray *xArrU = xattribute.get();
-    sendInfo("init ArrU: %d", xArrU->isInitialized());
+    auto type = xattribute->getArrayType();
+    sendInfo("arrayType: %s", type->getName().c_str());
+    if (type == XdmfArrayType::Int8()) {
+        sendInfo("int8");
+    } else if (type == XdmfArrayType::Int16()) {
+        sendInfo("int16");
+    } else if (type == XdmfArrayType::Int32()) {
+        sendInfo("int32");
+    } else if (type == XdmfArrayType::Int64()) {
+        sendInfo("int64");
+    } else if (type == XdmfArrayType::Float32()) {
+        sendInfo("float32");
+    } else if (type == XdmfArrayType::Float64()) {
+        sendInfo("float64");
+    } else if (type == XdmfArrayType::UInt8()) {
+        sendInfo("UInt8");
+    } else if (type == XdmfArrayType::UInt16()) {
+        sendInfo("UInt16");
+    } else if (type == XdmfArrayType::UInt32()) {
+        sendInfo("UInt32");
+    } else if (type == XdmfArrayType::String()) {
+        sendInfo("String");
+    }
 
+    for (auto [name, val]: xattribute->getItemProperties())
+        sendInfo("%s:%s", name.c_str(), val.c_str());
 
-    /* unsigned int numCells =->GetNumberOfCells(); */
+    auto readmode = xattribute->getReadMode();
+    if (readmode == XdmfArray::Controller)
+        sendInfo("controller");
+    else if (readmode == XdmfArray::Reference)
+        sendInfo("Reference");
 
-    /* std::vector<unsigned int> dims = xattribute->getDimensions(); */
-    /* unsigned int ndims = static_cast<unsigned int>(dims.size()); */
-    /* unsigned int nvals = 1; */
-    /* for (unsigned int i = 0; i < dims.size(); i++) { */
-    /*     nvals = nvals * dims[i]; */
-    /* } */
+    auto attCenter = xattribute->getCenter();
+    if (attCenter == XdmfAttributeCenter::Grid())
+        sendInfo("grid");
+    else if (attCenter == XdmfAttributeCenter::Cell())
+        sendInfo("cell");
+    else if (attCenter == XdmfAttributeCenter::Node())
+        sendInfo("node");
+    else if (attCenter == XdmfAttributeCenter::Other())
+        sendInfo("other");
 
-    /* unsigned int ncomp = 1; */
+    const auto xArrAtt = shared_dynamic_cast<XdmfArray>(xattribute);
+    /* const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New()); */
 
-    /* shared_ptr<const XdmfAttributeCenter> attrCenter = xattribute->getCenter(); */
-    /* if (attrCenter == XdmfAttributeCenter::Grid()) { */
-    /*     ncomp = dims[ndims - 1]; */
-    /* } else if (attrCenter == XdmfAttributeCenter::Cell()) { */
-    /*     ncomp = nvals / numCells; */
-    /* } else if (attrCenter == XdmfAttributeCenter::Node()) { */
-    /*     fieldData = dataSet->GetPointData(); */
-    /*     ncomp = nvals / numPoints; */
-    /* } else { */
-    /*     cerr << "skipping " << attrName << " unrecognized association" << endl; */
-    /*     continue; // unhandled. */
-    /* } */
-    /* vtkDataSetAttributes *fdAsDSA = vtkDataSetAttributes::SafeDownCast(fieldData); */
+    xArrAtt->read();
+    sendInfo("xArrAtt->name: %s", xArrAtt->getName().c_str());
+    sendInfo("xArrAtt->dimensionStr: %s", xArrAtt->getDimensionsString().c_str());
+    sendInfo("xArrAtt->dimension: %d", xArrAtt->getDimensions().at(0));
+    sendInfo("xArrAtt->valueStr: %s", xArrAtt->getValuesString().c_str());
+    sendInfo("XArrAtt->itemtype: %s", xArrAtt->getItemTag().c_str());
+    auto mapAtt = xArrAtt->getItemProperties();
+    for (auto [name, val]: mapAtt)
+        sendInfo("xArrAtt name %s: val %s", name.c_str(), val.c_str());
 
-    /* shared_ptr<const XdmfAttributeType> attrType = xmfAttribute->getType(); */
-    /* enum vAttType { NONE, SCALAR, VECTOR, TENSOR, MATRIX, TENSOR6, GLOBALID }; */
-    /* int atype = NONE; */
-    /* if (attrType == XdmfAttributeType::Scalar() && ncomp == 1) { */
-    /*     atype = SCALAR; */
-    /* } else if (attrType == XdmfAttributeType::Vector() && ncomp == 3) { */
-    /*     atype = VECTOR; */
-    /* } else if (attrType == XdmfAttributeType::Tensor() && ncomp == 9) { */
-    /*     atype = TENSOR; */
-    /* } else if (attrType == XdmfAttributeType::Matrix()) { */
-    /*     atype = MATRIX; */
-    /* } else if (attrType == XdmfAttributeType::Tensor6()) // && ncomp == 6) */
-    /* { */
-    /*     atype = TENSOR6; */
-    /* } else if (attrType == XdmfAttributeType::GlobalId() && ncomp == 1) { */
-    /*     atype = GLOBALID; */
-    /* } */
+    auto internal = static_cast<float *>(xArrAtt->getValuesInternal());
+    for (int i = 140000; i < 10; i++)
+        sendInfo("internal %d: %f", i, internal[i]);
 
+    xattribute->read();
+    sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(0));
 
-    // std::vector<unsigned int> dims = xArrU->getDimensions();
-    // unsigned int ndims = static_cast<unsigned int>(dims.size());
-    // unsigned int ncomp = 1;
-    // if (ndims > 1)
-    //     ncomp = dims[ndims - 1];
-
-    // unsigned int ntuples = xArrU->getSize() / ncomp;
-    // sendInfo("size: %d", xArrU->getSize());
-    // sendInfo("ndims: %d", ndims);
-    // sendInfo("ncomp: %d", ncomp);
-    // sendInfo("tuples: %d", ntuples);
-
-    // sendInfo("ugrids: %d", xdomain->getNumberUnstructuredGrids());
-    // sendInfo("ugrid atts: %d", xugrid->getNumberAttributes());
-    // sendInfo("ugrid maps: %d", xugrid->getNumberMaps());
-    // sendInfo("ugrid set: %d", xugrid->getNumberSets());
-    // sendInfo("ugridCollect set: %d", xgridCollect->getNumberSets());
-
-    /* auto internal = xArrU->getValuesInternal(); */
-    xArrU->read();
-
-    /* std::vector<unsigned> start{1, 0}; */
-    /* std::vector<unsigned> stride{1, 1}; */
-    /* std::vector<unsigned> count{1, xattribute->getSize()}; */
-    /* std::vector<unsigned> dataSize{1, xattribute->getSize()}; */
-    /* const auto controller = XdmfHDF5Controller::New( */
-    /*     "/data/ChEESE/SeisSol/LMU_Sulawesi_example/Sulawesi-surface_cell.h5", "Sulawesi-surface_cell.h5:/mesh0/u", */
-    /*     XdmfArrayType::Float64(), start, stride, count, dataSize); */
-    /* xattribute->insert(controller); */
-    /* xattribute->read(); */
-    /* sendInfo("ItemType: %s", xattribute->getItemType().c_str()); */
-    /* sendInfo("ItemTag: %s", xattribute->getItemTag().c_str()); */
-    /* std::map<std::string, std::string> attTypeProp; */
-    /* xattribute->getType()->getProperties(attTypeProp); */
-    /* sendInfo("AttTypeProp:"); */
-    /* for (auto [name, val]: attTypeProp) */
-    /*     sendInfo("%s:%s", name.c_str(), val.c_str()); */
-
-    /* sendInfo("Info:"); */
-    /* for (int i = 0; i < xattribute->getNumberInformations(); i++) */
-    /*     for (auto [name, val]: xattribute->getInformation(i)->getItemProperties()) */
-    /*         sendInfo("%s:%s", name.c_str(), val.c_str()); */
-
-    /* sendInfo("att prop:"); */
-    /* for (auto [name, val]: xattribute->getItemProperties()) */
-    /*     sendInfo("%s:%s", name.c_str(), val.c_str()); */
-
-    /* sendInfo("size att: %d", xattribute->getSize()); */
     Vec<Scalar>::ptr att(new Vec<Scalar>(xattribute->getSize()));
     const auto arrSize = xattribute->getSize();
-    for (int i = 0; i < 10; i++)
-        /* sendInfo("%d: %f", i, xattribute->getValue<float>(i)); */
-        sendInfo("%d: %f", i, xArrU->getValue<float>(i));
 
     auto ux = att->x().data();
-    xattribute->getValues(0, ux, arrSize);
+    float *internl = (float *)xattribute->getValuesInternal();
+    std::copy_n(internl, xattribute->getDimensions().at(0), ux);
+    /* xattribute->getValues(0, ux, arrSize); */
+    /* xattribute->getValues(0, ux, xattribute->getDimensions().at(0)); */
 
     for (int i = 0; i < 10; i++)
         sendInfo("%d: %f", i, ux[i]);
-
-    /* xattribute->getValues(1, att->y().data(), arrSize, 4, 1); */
-    /* xattribute->getValues(2, att->z().data(), arrSize, 4, 1); */
-    /* xattribute->getValues(3, att->w().data(), arrSize, 4, 1); */
-
-    //visualize att without hyperslap
-    /* const shared_ptr<XdmfArray> xArrU(XdmfArray::New()); */
-
-    /* xArrU->insert(xattribute->getHeavyDataController()); */
-    /* xArrU->read(); */
-
-    /* Vec<Scalar>::ptr att(new Vec<Scalar>(xArrU->getSize())); */
-    /* const auto arrUSize = xArrU->getSize(); */
-
-    /* for (int i = arrUSize; i < arrUSize + 10; i++) */
-    /*     sendInfo("%d", xArrU->getValue<int>(i)); */
-
-    /* auto ux = att->x().data(); */
-    /* xArrU->getValues(0, ux, arrUSize); */
 
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);

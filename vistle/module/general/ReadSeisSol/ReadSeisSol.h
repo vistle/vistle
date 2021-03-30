@@ -54,11 +54,13 @@ class XdmfUnstructuredGrid;
 /* } // namespace */
 
 
-class ReadSeisSol: public vistle::Reader {
+class ReadSeisSol final : public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
-    ~ReadSeisSol() override;
+    /* ~ReadSeisSol() override; */
+    /* ReadSeisSol(const ReadSeisSol&) = delete; //rule of three */
+    /* ReadSeisSol& operator=(const ReadSeisSol&) = delete; //rule of three */
 
 private:
     //Vistle functions
@@ -70,9 +72,8 @@ private:
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
     //hdf5
-    bool readHDF5();
-    bool openHDF5();
-
-    /* boost::shared_ptr<XdmfUnstructuredGrid> xugrid; */
+    //implement later maybe
+    /* bool readHDF5(); */
+    /* bool openHDF5(); */
 };
 #endif
