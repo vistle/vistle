@@ -20,7 +20,6 @@
 #include "ReadSeisSol.h"
 
 //vistle
-#include "XdmfSharedPtr.hpp"
 #include "vistle/core/database.h"
 #include "vistle/core/parameter.h"
 #include "vistle/core/scalar.h"
@@ -29,11 +28,12 @@
 #include "vistle/module/module.h"
 
 //boost
-#include <XdmfAttributeCenter.hpp>
 #include <boost/mpi/communicator.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 //xdmf3
 #include <XdmfAttribute.hpp>
+#include <XdmfAttributeCenter.hpp>
 #include <XdmfAttributeType.hpp>
 #include <XdmfGeometry.hpp>
 #include <XdmfInformation.hpp>
@@ -50,7 +50,8 @@
 #include <XdmfHDF5Controller.hpp>
 
 //std
-#include <boost/smart_ptr/shared_ptr.hpp>
+#include <iomanip>
+#include <iostream>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -133,41 +134,31 @@ bool ReadSeisSol::examineXdmf()
 bool ReadSeisSol::read(Token &token, int timestep, int block)
 {
     /** TODO:
+      * - Polish
       * - Timesteps
       * - Distribute across MPI processes
       */
+
+    constexpr unsigned gridColNum{0};
+    constexpr unsigned gridNum{3};
+    constexpr unsigned gridAtt{1};
 
     const std::string xfile = getStringParameter("xfile");
 
     //read xdmf
     const auto xreader = XdmfReader::New();
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
-
-    sendInfo("Domain:");
-    for (auto [name, val]: xdomain->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
-
-    sendInfo("GridCollect");
-    const auto &xgridCollect = xdomain->getGridCollection(0);
-    for (auto [name, val]: xgridCollect->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
+    const auto &xgridCollect = xdomain->getGridCollection(gridColNum);
 
     //geometry and topology is the same for all grid
-    sendInfo("UGrid:");
-    const auto &xugrid = xgridCollect->getUnstructuredGrid(2);
-    for (auto [name, val]: xugrid->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
-
-    sendInfo("Topology:");
+    const auto &xugrid = xgridCollect->getUnstructuredGrid(gridNum);
     const auto &xtopology = xugrid->getTopology();
-    for (auto [name, val]: xugrid->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
-
-    sendInfo("Geometry:");
     const auto &xgeometry = xugrid->getGeometry();
-    for (auto [name, val]: xugrid->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
-    /* const auto &time = xugrid->getTime(); */
+    const auto &xtime = xugrid->getTime();
+    for (auto [name, val]: xtime->getItemProperties())
+        sendInfo("%s: %s", name.c_str(), val.c_str());
+    sendInfo("itemtag: %s", xtime->getItemTag().c_str());
+
 
     //read connectionlist
     const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
@@ -223,19 +214,10 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         return false;
     }
 
-    sendInfo("number grids:");
-    sendInfo("number reg grids: %d", xgridCollect->getNumberRegularGrids());
-    sendInfo("number rect grids: %d", xgridCollect->getNumberRectilinearGrids());
-    sendInfo("number uns grids: %d", xgridCollect->getNumberUnstructuredGrids());
-    sendInfo("number cuv grids: %d", xgridCollect->getNumberCurvilinearGrids());
-    sendInfo("xugrid number sets: %d", xugrid->getNumberSets());
-    sendInfo("xugrid number attribes: %d", xugrid->getNumberAttributes());
-
-
     // Attribute visualize with hyperslap
-    const auto &xattribute = xugrid->getAttribute(1);
+    const auto &xattribute = xugrid->getAttribute(gridAtt);
+
     auto type = xattribute->getArrayType();
-    sendInfo("arrayType: %s", type->getName().c_str());
     if (type == XdmfArrayType::Int8()) {
         sendInfo("int8");
     } else if (type == XdmfArrayType::Int16()) {
@@ -258,9 +240,6 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         sendInfo("String");
     }
 
-    for (auto [name, val]: xattribute->getItemProperties())
-        sendInfo("%s:%s", name.c_str(), val.c_str());
-
     auto readmode = xattribute->getReadMode();
     if (readmode == XdmfArray::Controller)
         sendInfo("controller");
@@ -277,37 +256,31 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     else if (attCenter == XdmfAttributeCenter::Other())
         sendInfo("other");
 
-    const auto xArrAtt = shared_dynamic_cast<XdmfArray>(xattribute);
-    /* const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New()); */
-
-    xArrAtt->read();
-    sendInfo("xArrAtt->name: %s", xArrAtt->getName().c_str());
-    sendInfo("xArrAtt->dimensionStr: %s", xArrAtt->getDimensionsString().c_str());
-    sendInfo("xArrAtt->dimension: %d", xArrAtt->getDimensions().at(0));
-    sendInfo("xArrAtt->valueStr: %s", xArrAtt->getValuesString().c_str());
-    sendInfo("XArrAtt->itemtype: %s", xArrAtt->getItemTag().c_str());
-    auto mapAtt = xArrAtt->getItemProperties();
-    for (auto [name, val]: mapAtt)
-        sendInfo("xArrAtt name %s: val %s", name.c_str(), val.c_str());
-
-    auto internal = static_cast<float *>(xArrAtt->getValuesInternal());
-    for (int i = 140000; i < 10; i++)
-        sendInfo("internal %d: %f", i, internal[i]);
-
-    xattribute->read();
-    sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(0));
-
+    sendInfo("att name: %s", xattribute->getName().c_str());
+    sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(1));
     Vec<Scalar>::ptr att(new Vec<Scalar>(xattribute->getSize()));
-    const auto arrSize = xattribute->getSize();
+    const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
+    xArrAtt->insert(xattribute->getHeavyDataController());
+    xArrAtt->read();
 
     auto ux = att->x().data();
-    float *internl = (float *)xattribute->getValuesInternal();
-    std::copy_n(internl, xattribute->getDimensions().at(0), ux);
-    /* xattribute->getValues(0, ux, arrSize); */
-    /* xattribute->getValues(0, ux, xattribute->getDimensions().at(0)); */
+    /* double *internalAtt_ptr = static_cast<double *>(xArrAtt->getValuesInternal()); */
 
-    for (int i = 0; i < 10; i++)
-        sendInfo("%d: %f", i, ux[i]);
+    /* std::cout << std::setprecision(8); */
+    /* std::cout << "xArrAtt:" << '\n'; */
+    /* std::cout << '\n'; */
+    /* for (int i = xattribute->getDimensions().at(0); i < xattribute->getDimensions().at(1) - 1; i++) */
+    /*     std::cout << i << ":" << xArrAtt->getValue<float>(i) << '\n'; */
+
+    /* std::copy_n(internalAtt_ptr + xattribute->getDimensions().at(1) * gridNum, xattribute->getDimensions().at(0) - 1, */
+    /*             ux); */
+    xArrAtt->getValues(xattribute->getDimensions().at(1), ux, xattribute->getDimensions().at(1), 1, 1);
+    /* xattribute->getValues(xattribute->getDimensions().at(1), ux, xattribute->getDimensions().at(1), 1, 1); */
+
+    /* std::cout << "ux:" << '\n'; */
+    /* std::cout << '\n'; */
+    /* for (int i = 0; i < xattribute->getDimensions().at(1); i++) */
+    /*     std::cout << i << ":" << ux[i] << '\n'; */
 
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);
