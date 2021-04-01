@@ -50,6 +50,7 @@
 #include <XdmfHDF5Controller.hpp>
 
 //std
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
@@ -97,6 +98,9 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 {
     addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/Sulawesi-surface.xdmf",
                        Parameter::Filename);
+
+    /* addIntParameter("memcpy", "Reader uses std::memcpy for copying data", 1, Parameter::Boolean); */
+
     addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
     createOutputPort("ugrid", "UnstructuredGrid");
     createOutputPort("att", "Scalar");
@@ -159,7 +163,6 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         sendInfo("%s: %s", name.c_str(), val.c_str());
     sendInfo("itemtag: %s", xtime->getItemTag().c_str());
 
-
     //read connectionlist
     const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
     xArrConn->insert(xtopology->getHeavyDataController());
@@ -214,8 +217,9 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         return false;
     }
 
-    // Attribute visualize with hyperslap
+    // Attribute visualize without hyperslap
     const auto &xattribute = xugrid->getAttribute(gridAtt);
+    const auto attDim = xattribute->getDimensions().at(1);
 
     auto type = xattribute->getArrayType();
     if (type == XdmfArrayType::Int8()) {
@@ -258,14 +262,13 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
 
     sendInfo("att name: %s", xattribute->getName().c_str());
     sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(1));
-    Vec<Scalar>::ptr att(new Vec<Scalar>(xattribute->getSize()));
+
+    Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     xArrAtt->insert(xattribute->getHeavyDataController());
     xArrAtt->read();
 
     auto ux = att->x().data();
-    /* double *internalAtt_ptr = static_cast<double *>(xArrAtt->getValuesInternal()); */
-
     /* std::cout << std::setprecision(8); */
     /* std::cout << "xArrAtt:" << '\n'; */
     /* std::cout << '\n'; */
@@ -274,13 +277,20 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
 
     /* std::copy_n(internalAtt_ptr + xattribute->getDimensions().at(1) * gridNum, xattribute->getDimensions().at(0) - 1, */
     /*             ux); */
-    xArrAtt->getValues(xattribute->getDimensions().at(1), ux, xattribute->getDimensions().at(1), 1, 1);
-    /* xattribute->getValues(xattribute->getDimensions().at(1), ux, xattribute->getDimensions().at(1), 1, 1); */
+
+    //memcopy
+    /* if (getIntParameter("memcpy")) { */
+    /*     Scalar *internalAtt_ptr = static_cast<Scalar *>(xArrAtt->getValuesInternal()); */
+    /*     std::memcpy(ux, internalAtt_ptr + attDim * gridNum, attDim); */
+    /* } */
+    /* else */
+    //without memcpy
+    xArrAtt->getValues<float>(attDim * gridNum, ux, attDim, 1, 1);
 
     /* std::cout << "ux:" << '\n'; */
     /* std::cout << '\n'; */
-    /* for (int i = 0; i < xattribute->getDimensions().at(1); i++) */
-    /*     std::cout << i << ":" << ux[i] << '\n'; */
+    /* auto minMax = att->getMinMax(); */
+    /* std::cout << minMax.first << " " << minMax.second << '\n'; */
 
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);
@@ -294,8 +304,8 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     att->updateInternals();
 
     token.addObject("ugrid", ugrid_ptr);
-    sendInfo("Teschd");
     token.addObject("att", att);
+
     return true;
 }
 
