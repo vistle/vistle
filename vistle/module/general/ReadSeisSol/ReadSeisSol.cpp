@@ -57,6 +57,7 @@
 #include <map>
 #include <memory>
 #include <mpi.h>
+#include <numeric>
 #include <string>
 #include <algorithm>
 #include <vector>
@@ -66,7 +67,7 @@ using namespace vistle;
 MODULE_MAIN(ReadSeisSol)
 
 namespace {
-UnstructuredGrid::Type XdmfUgridToVistleUgridType(const shared_ptr<XdmfUnstructuredGrid> &ugrid)
+const UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ugrid)
 {
     const auto &ugridType = ugrid->getTopology()->getType();
     const std::string &topologyType = ugridType->getName();
@@ -118,12 +119,15 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
 bool ReadSeisSol::examineXdmf()
 {
     //TODO: initialize geometry and topology and create a map for parameter choice which user want to visualize
-
     const std::string &xfile = getStringParameter("xfile");
 
     //read xdmf
     const auto xreader = XdmfReader::New();
-    /* const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)); */
+    const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
+    if (!xdomain)
+        return false;
+
+
     /* const auto &xgridCollect = xdomain->getGridCollection(0); */
 
     /* //geometry and topology is the same for all grid */
@@ -133,6 +137,109 @@ bool ReadSeisSol::examineXdmf()
     /* const auto &xgeometry = xugrid->getGeometry(); */
     /* const auto &time = xugrid->getTime(); */
     return true;
+}
+
+void ReadSeisSol::fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type)
+{
+    std::fill(unstr->tl().begin(), unstr->tl().end(), type);
+}
+
+template<class T>
+void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem)
+{
+    //4 corner = tetrahedron
+    std::generate(unstr->el().begin(), unstr->el().end(),
+                  [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
+}
+
+void ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo)
+{
+    auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
+
+    //arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
+    xArrGeo->getValues(0, x, xArrGeo->getSize() / 3, 3, 1);
+    xArrGeo->getValues(1, y, xArrGeo->getSize() / 3, 3, 1);
+    xArrGeo->getValues(2, z, xArrGeo->getSize() / 3, 3, 1);
+}
+
+void ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
+{
+    auto cl = unstr->cl().data();
+    xArrConn->getValues(
+        0, cl,
+        xArrConn
+            ->getSize()); //DEBUG invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order for (unsigned i = 0; i < xArrConn->getSize(); i++) { */
+}
+
+
+void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
+{
+    xArr->insert(controller);
+    xArr->read();
+}
+
+vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGrid(XdmfUnstructuredGrid *unstr)
+{
+    const auto &xtopology = unstr->getTopology();
+    const auto &xgeometry = unstr->getGeometry();
+    const int &numCornerPerElem = xtopology->getDimensions().at(1);
+
+    //read connectionlist
+    const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
+    readXdmfHeavyController(xArrConn.get(), xtopology->getHeavyDataController());
+
+    //read geometry
+    const shared_ptr<XdmfArray> xArrGeo(XdmfArray::New());
+    readXdmfHeavyController(xArrGeo.get(), xgeometry->getHeavyDataController());
+
+    UnstructuredGrid::ptr unstr_ptr(
+        new UnstructuredGrid(xtopology->getNumberElements(), xArrConn->getSize(), xArrGeo->getSize() / 3));
+
+    fillUnstrGridConnectList(unstr_ptr, xArrConn.get());
+    fillUnstrGridCoords(unstr_ptr, xArrGeo.get());
+    fillUnstrGridElemList(unstr_ptr, numCornerPerElem);
+    fillUnstrGridTypeList(unstr_ptr, XdmfUgridToVistleUgridType(unstr));
+
+    return unstr_ptr;
+}
+
+void ReadSeisSol::setArrayType(boost::shared_ptr<const XdmfArrayType> type)
+{
+    //switch
+    if (type == XdmfArrayType::Int8()) {
+        sendInfo("int8");
+    } else if (type == XdmfArrayType::Int16()) {
+        sendInfo("int16");
+    } else if (type == XdmfArrayType::Int32()) {
+        sendInfo("int32");
+    } else if (type == XdmfArrayType::Int64()) {
+        sendInfo("int64");
+    } else if (type == XdmfArrayType::Float32()) {
+        sendInfo("float32");
+    } else if (type == XdmfArrayType::Float64()) {
+        sendInfo("float64");
+    } else if (type == XdmfArrayType::UInt8()) {
+        sendInfo("UInt8");
+    } else if (type == XdmfArrayType::UInt16()) {
+        sendInfo("UInt16");
+    } else if (type == XdmfArrayType::UInt32()) {
+        sendInfo("UInt32");
+    } else if (type == XdmfArrayType::String()) {
+        sendInfo("String");
+    }
+}
+
+
+void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> attCenter)
+{
+    if (attCenter == XdmfAttributeCenter::Grid())
+        sendInfo("grid");
+    else if (attCenter == XdmfAttributeCenter::Cell())
+        sendInfo("cell");
+    else if (attCenter == XdmfAttributeCenter::Node())
+        sendInfo("node");
+    else if (attCenter == XdmfAttributeCenter::Other())
+        sendInfo("other");
 }
 
 bool ReadSeisSol::read(Token &token, int timestep, int block)
@@ -156,57 +263,9 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
 
     //geometry and topology is the same for all grid
     const auto &xugrid = xgridCollect->getUnstructuredGrid(gridNum);
-    const auto &xtopology = xugrid->getTopology();
-    const auto &xgeometry = xugrid->getGeometry();
-    const auto &xtime = xugrid->getTime();
-    for (auto [name, val]: xtime->getItemProperties())
-        sendInfo("%s: %s", name.c_str(), val.c_str());
-    sendInfo("itemtag: %s", xtime->getItemTag().c_str());
-
-    //read connectionlist
-    const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
-    xArrConn->insert(xtopology->getHeavyDataController());
-    xArrConn->read();
-
-    //read geometry
-    const shared_ptr<XdmfArray> xArrGeo(XdmfArray::New());
-    xArrGeo->insert(xgeometry->getHeavyDataController());
-    xArrGeo->read();
 
     //create unstructured grid
-    UnstructuredGrid::ptr ugrid_ptr(
-        new UnstructuredGrid(xtopology->getNumberElements(), xArrConn->getSize(), xArrGeo->getSize() / 3));
-
-    const int &numCornerPerElem = xtopology->getDimensions().at(1);
-
-    //connectionlist
-    auto cl = ugrid_ptr->cl().data();
-    xArrConn->getValues(0, cl, xArrConn->getSize());
-
-    //DEBUG
-    //invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order
-    /* for (unsigned i = 0; i < xArrConn->getSize(); i++) { */
-    /*     auto tmp = i; */
-    /*     cl[i++] = xArrConn->getValue<int>(tmp+3); */
-    /*     cl[i++] = xArrConn->getValue<int>(tmp+2); */
-    /*     cl[i++] = xArrConn->getValue<int>(tmp+1); */
-    /*     cl[i] = xArrConn->getValue<int>(tmp); */
-    /* } */
-
-    //coords
-    auto x = ugrid_ptr->x().data(), y = ugrid_ptr->y().data(), z = ugrid_ptr->z().data();
-
-    //arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
-    xArrGeo->getValues(0, x, xArrGeo->getSize() / 3, 3, 1);
-    xArrGeo->getValues(1, y, xArrGeo->getSize() / 3, 3, 1);
-    xArrGeo->getValues(2, z, xArrGeo->getSize() / 3, 3, 1);
-
-    //4 corner = tetrahedron
-    std::generate(ugrid_ptr->el().begin(), ugrid_ptr->el().end(),
-                  [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
-
-    //typelist
-    std::fill(ugrid_ptr->tl().begin(), ugrid_ptr->tl().end(), XdmfUgridToVistleUgridType(xugrid));
+    auto ugrid_ptr = generateUnstrGrid(xugrid.get());
 
     if (!ugrid_ptr->check()) {
         sendInfo("Something went wrong while creation of ugrid! Possible errors:\n"
@@ -222,27 +281,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     const auto attDim = xattribute->getDimensions().at(1);
 
     auto type = xattribute->getArrayType();
-    if (type == XdmfArrayType::Int8()) {
-        sendInfo("int8");
-    } else if (type == XdmfArrayType::Int16()) {
-        sendInfo("int16");
-    } else if (type == XdmfArrayType::Int32()) {
-        sendInfo("int32");
-    } else if (type == XdmfArrayType::Int64()) {
-        sendInfo("int64");
-    } else if (type == XdmfArrayType::Float32()) {
-        sendInfo("float32");
-    } else if (type == XdmfArrayType::Float64()) {
-        sendInfo("float64");
-    } else if (type == XdmfArrayType::UInt8()) {
-        sendInfo("UInt8");
-    } else if (type == XdmfArrayType::UInt16()) {
-        sendInfo("UInt16");
-    } else if (type == XdmfArrayType::UInt32()) {
-        sendInfo("UInt32");
-    } else if (type == XdmfArrayType::String()) {
-        sendInfo("String");
-    }
+    setArrayType(type);
 
     auto readmode = xattribute->getReadMode();
     if (readmode == XdmfArray::Controller)
@@ -251,14 +290,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         sendInfo("Reference");
 
     auto attCenter = xattribute->getCenter();
-    if (attCenter == XdmfAttributeCenter::Grid())
-        sendInfo("grid");
-    else if (attCenter == XdmfAttributeCenter::Cell())
-        sendInfo("cell");
-    else if (attCenter == XdmfAttributeCenter::Node())
-        sendInfo("node");
-    else if (attCenter == XdmfAttributeCenter::Other())
-        sendInfo("other");
+    setGridCenter(attCenter);
 
     sendInfo("att name: %s", xattribute->getName().c_str());
     sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(1));

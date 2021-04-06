@@ -17,13 +17,17 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <vistle/module/reader.h>
+/* #include <boost/smart_ptr/shared_ptr.hpp> */
+#include <memory>
 #include <vector>
-/* #include <XdmfArrayType.hpp> */
+#include <vistle/module/reader.h>
+#include <vistle/core/unstr.h>
 
 //forwarding cpp
+class XdmfAttributeCenter;
+class XdmfHeavyDataController;
 class XdmfArray;
+class XdmfArrayType;
 class XdmfUnstructuredGrid;
 
 /* namespace { */
@@ -54,7 +58,7 @@ class XdmfUnstructuredGrid;
 /* } // namespace */
 
 
-class ReadSeisSol final : public vistle::Reader {
+class ReadSeisSol final: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
@@ -69,6 +73,15 @@ private:
 
     //xdmf
     bool examineXdmf(); //for parameter choice
+    void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
+    void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
+    void fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
+    void fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
+    template<class T>
+    void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
+    void fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type);
+    void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
+    vistle::UnstructuredGrid::ptr generateUnstrGrid(XdmfUnstructuredGrid *xunstr);
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
     //hdf5
