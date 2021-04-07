@@ -24,6 +24,10 @@
 #include <vistle/core/unstr.h>
 
 //forwarding cpp
+class XdmfItem;
+class XdmfDomain;
+class XdmfGridCollection;
+class XdmfAttribute;
 class XdmfAttributeCenter;
 class XdmfHeavyDataController;
 class XdmfArray;
@@ -58,7 +62,7 @@ class XdmfUnstructuredGrid;
 /* } // namespace */
 
 
-class ReadSeisSol final: public vistle::Reader {
+class ReadSeisSol: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
@@ -72,21 +76,33 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //xdmf
-    bool examineXdmf(); //for parameter choice
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
-    void fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
-    void fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
+
+    void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
+    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
+    bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
     void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
     void fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type);
-    void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
-    vistle::UnstructuredGrid::ptr generateUnstrGrid(XdmfUnstructuredGrid *xunstr);
+    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
+
+    bool examineXdmf(); //for parameter choice
+    bool XAttributeInSet(const std::string &name);
+    void clearChoice();
+    void iterateXdmfDomain(const boost::shared_ptr<XdmfDomain> &item);
+    void iterateXdmfGridCollection(const boost::shared_ptr<XdmfGridCollection> &xgridCol);
+    void iterateXdmfUnstrGrid(const boost::shared_ptr<XdmfUnstructuredGrid> &xugrid);
+    void iterateXdmfAttribute(const boost::shared_ptr<XdmfAttribute> &xatt);
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
     //hdf5
     //implement later maybe
     /* bool readHDF5(); */
     /* bool openHDF5(); */
+    std::unordered_set<vistle::IntParameter *> m_attChoice;
+
+    //vistle param
+    vistle::StringParameter *m_xfile = nullptr;
 };
 #endif
