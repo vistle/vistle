@@ -18,6 +18,8 @@
 #define _READSEISSOL_H
 
 /* #include <boost/smart_ptr/shared_ptr.hpp> */
+#include "vistle/core/parameter.h"
+#include "vistle/core/port.h"
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -66,9 +68,6 @@ class ReadSeisSol: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
-    /* ~ReadSeisSol() override; */
-    /* ReadSeisSol(const ReadSeisSol&) = delete; //rule of three */
-    /* ReadSeisSol& operator=(const ReadSeisSol&) = delete; //rule of three */
 
 private:
     //Vistle functions
@@ -88,21 +87,22 @@ private:
     vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
 
     bool examineXdmf(); //for parameter choice
-    bool XAttributeInSet(const std::string &name);
+    bool xAttributeInSet(const std::string &name);
     void clearChoice();
-    void iterateXdmfDomain(const boost::shared_ptr<XdmfDomain> &item);
-    void iterateXdmfGridCollection(const boost::shared_ptr<XdmfGridCollection> &xgridCol);
-    void iterateXdmfUnstrGrid(const boost::shared_ptr<XdmfUnstructuredGrid> &xugrid);
-    void iterateXdmfAttribute(const boost::shared_ptr<XdmfAttribute> &xatt);
+    void iterateXdmfDomain(const XdmfDomain *item);
+    void iterateXdmfGridCollection(const XdmfGridCollection *xgridCol);
+    void iterateXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid);
+    void iterateXdmfAttribute(const XdmfAttribute *xatt);
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
-    //hdf5
-    //implement later maybe
-    /* bool readHDF5(); */
-    /* bool openHDF5(); */
-    std::unordered_set<vistle::IntParameter *> m_attChoice;
+    std::vector<std::string> m_attChoice;
 
     //vistle param
+    vistle::IntParameter *m_ghost = nullptr;
+    vistle::IntParameter *m_readmode = nullptr;
     vistle::StringParameter *m_xfile = nullptr;
+    vistle::StringParameter *m_xattributes = nullptr;
+
+    vistle::Port *m_gridOut = nullptr;
 };
 #endif
