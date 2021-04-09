@@ -34,6 +34,7 @@
 
 //xdmf3
 #include <XdmfAttribute.hpp>
+#include <XdmfTopology.hpp>
 #include <XdmfAttributeCenter.hpp>
 #include <XdmfAttributeType.hpp>
 #include <XdmfSharedPtr.hpp>
@@ -73,6 +74,7 @@ MODULE_MAIN(ReadSeisSol)
 
 namespace {
 
+//ReadMode
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ReadMode, (XDMF)(HDF5))
 
 const UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ugrid)
@@ -112,12 +114,12 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
                                  Parameter::Filename);
 
     m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
-    m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
     m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
     m_readmode = addIntParameter("ReadMode", "Select readmode between HDF5 or Xdmf", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_readmode, ReadMode);
 
-    createOutputPort("att", "Scalar");
+    m_scalarOut = createOutputPort("att", "Scalar");
+    m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
 
     observeParameter(m_xfile);
 
@@ -125,31 +127,29 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 }
 
 /**
-  *
+  * Clears attributes choice.
   */
 void ReadSeisSol::clearChoice()
 {
-    /* for (auto param: m_attChoice) { */
-    /*     removeParameter(param); */
-    /* } */
-    /* setParameterChoices(m_xattributes, std::vector<std::string>()); */
     m_xattributes->setChoices(std::vector<std::string>());
     m_attChoice.clear();
 }
 
 /**
+  * Iterate through properties of a xdmfgridcollection.
   *
+  * @xgridCol: Constant grid collection pointer.
   */
-void ReadSeisSol::iterateXdmfGridCollection(const XdmfGridCollection *xgridCol)
+void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
 {
     if (xgridCol != nullptr) {
         const auto &gridColType = xgridCol->getType();
         if (gridColType == XdmfGridCollectionType::Temporal()) {
             //at the moment attribute number and type are the same for all ugrids.
-            iterateXdmfUnstrGrid(xgridCol->getUnstructuredGrid(0).get());
-            /* for (unsigned i = 0; i < xgridCol->getNumberUnstructuredGrids(); i++) */
-            /*     iterateXdmfUnstrGrid(xgridCol->getUnstructuredGrid(i)); */
-            sendInfo("Other gridtypes than unstructured have not been implemented yet!");
+            if (xgridCol->getNumberUnstructuredGrids())
+                inspectXdmfUnstrGrid(xgridCol->getUnstructuredGrid(0).get());
+            if (xgridCol->getNumberCurvilinearGrids() | xgridCol->getNumberRectilinearGrids() | xgridCol->getNumberRegularGrids())
+                sendInfo("Other gridtypes than unstructured have not been implemented yet!");
         } else if (gridColType == XdmfGridCollectionType::Spatial())
             sendInfo("Spatial collectiontype not implemented yet!");
         else
@@ -160,61 +160,55 @@ void ReadSeisSol::iterateXdmfGridCollection(const XdmfGridCollection *xgridCol)
 /**
   * Iterate through unstructured grid attributes stored in an xdmf.
   *
-  * @xugrid: Boost-Pointer of unstructured grid-object.
+  * @xugrid: const unstructured grid pointer.
   */
-void ReadSeisSol::iterateXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
+void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
 {
     if (xugrid != nullptr) {
         //TODO: NOT IMPLEMENTED YET
-        /* iterateXdmfTopology(xugrid->getTopology()); */
-        /* iterateXdmfGeometry(xugrid->getGeometry()); */
-        /* iterateXdmfTime(xugrid->getTime()); */
+        inspectXdmfTopology(xugrid->getTopology().get());
+        inspectXdmfGeometry(xugrid->getGeometry().get());
+        inspectXdmfTime(xugrid->getTime().get());
 
         clearChoice();
         for (unsigned i = 0; i < xugrid->getNumberAttributes(); i++)
-            iterateXdmfAttribute(xugrid->getAttribute(i).get());
+            inspectXdmfAttribute(xugrid->getAttribute(i).get());
     }
 }
 
-/**
-  * Checks by name if attribute has been added to parameters of reader.
-  *
-  * @attName: name of attribute to check.
-  */
-/* bool ReadSeisSol::xAttributeInSet(const std::string &attName) */
-/* { */
-/* return std::any_of(m_attChoice.begin(), m_attChoice.end(), */
-/* [&attName](auto param) { return param->getName() == attName; }); */
-/* return std::any_of(m_attChoice.begin(), m_attChoice.end(), */
-/*                    [&attName](auto param) { return param == attName; }); */
-/* } */
+void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xgeo)
+{}
+
+void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
+{
+    if (xtime != nullptr) {
+    }
+}
+
+void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
+{}
 
 /**
-  * Extract XdmfAttribute and generate a parameter in reader.
+  * Inspect XdmfAttribute and generate a parameter in reader.
   *
-  * @xatt: Boost-Pointer of attribute-object.
+  * @xatt: Const attribute pointer.
   */
-void ReadSeisSol::iterateXdmfAttribute(const XdmfAttribute *xatt)
+void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
 {
-    if (xatt != nullptr) {
-        /* if (xAttributeInSet(xatt->getName())) */
-        /*     return; */
-        /* auto param = addIntParameter(xatt->getName(), "Grid parameter", 1, Parameter::Boolean); */
-        /* m_attChoice.insert(param); */
+    if (xatt != nullptr)
         m_attChoice.push_back(xatt->getName());
-    }
 }
 
 /**
   * Inspect XdmfDomain.
   *
-  * @xdomain: Boost-Pointer of domain-object.
+  * @xdomain: Const pointer of domain-object.
   */
-void ReadSeisSol::iterateXdmfDomain(const XdmfDomain *xdomain)
+void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
 {
     if (xdomain != nullptr)
         for (unsigned i = 0; i < xdomain->getNumberGridCollections(); i++)
-            iterateXdmfGridCollection(xdomain->getGridCollection(i).get());
+            inspectXdmfGridCollection(xdomain->getGridCollection(i).get());
 }
 
 /**
@@ -227,8 +221,7 @@ bool ReadSeisSol::examineXdmf()
     //read xdmf
     const auto xreader = XdmfReader::New();
 
-    iterateXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
-    sendInfo("%d", (int)m_attChoice.size());
+    inspectXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
     setParameterChoices(m_xattributes, m_attChoice);
     return true;
 }
@@ -237,14 +230,21 @@ bool ReadSeisSol::examineXdmf()
   * Called if observeParameter changes.
   *
   * @param: changed parameter.
+  *
+  * @return: True if xdmf is in correct format else false.
   */
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     setTimesteps(-1);
-    if (!param || param == m_xfile) {
-        return examineXdmf();
+    switch (m_readmode->getValue()) {
+    case XDMF:
+        if ((!param || param == m_xfile))
+            return examineXdmf();
+    case HDF5:
+        //not implemented
+    default:
+        return true;
     }
-    return false;
 }
 
 /**
@@ -314,7 +314,10 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
 }
 
 /**
+  * Helper function for reading XdmfArray with given XdmfHeavyDataController.
   *
+  * @xArr: XdmfArray for read operation.
+  * @controller: XdmfHeavyDataController that specifies how to read the XdmfArray.
   */
 void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
 {
@@ -323,7 +326,11 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 }
 
 /**
+  * Generate an unstructured grid from XdmfUnstructuredGrid.
   *
+  * @unstr: XdmfUnstructuredGrid pointer.
+  *
+  * @return: Created UnstructuredGrid pointer.
   */
 vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr)
 {
@@ -353,7 +360,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
 }
 
 /**
-  *
+  * TODO: implement format trancision between XdmfArrayType and vistle array type.
   */
 void ReadSeisSol::setArrayType(boost::shared_ptr<const XdmfArrayType> type)
 {
@@ -381,7 +388,7 @@ void ReadSeisSol::setArrayType(boost::shared_ptr<const XdmfArrayType> type)
 }
 
 /**
-  *
+  * TODO: Implement trancision between XdmfAttributeCenter and vistle cell center.
   */
 void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> attCenter)
 {
@@ -396,12 +403,17 @@ void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> att
 }
 
 /**
+  * Called every timestep and block.
   *
+  * @token: Token for adding objects to ports.
+  * @timestep: current timestep.
+  * @block: current block.
+  *
+  * @return: true if everything has been added correctly to the ports.
   */
 bool ReadSeisSol::read(Token &token, int timestep, int block)
 {
     /** TODO:
-      * - Polish
       * - Timesteps
       * - Distribute across MPI processes
       */

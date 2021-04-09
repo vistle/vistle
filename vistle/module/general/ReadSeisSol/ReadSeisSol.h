@@ -27,6 +27,9 @@
 
 //forwarding cpp
 class XdmfItem;
+class XdmfTime;
+class XdmfTopology;
+class XdmfGeometry;
 class XdmfDomain;
 class XdmfGridCollection;
 class XdmfAttribute;
@@ -77,8 +80,8 @@ private:
     //xdmf
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
-
     void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
+
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
@@ -87,12 +90,15 @@ private:
     vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
 
     bool examineXdmf(); //for parameter choice
-    bool xAttributeInSet(const std::string &name);
     void clearChoice();
-    void iterateXdmfDomain(const XdmfDomain *item);
-    void iterateXdmfGridCollection(const XdmfGridCollection *xgridCol);
-    void iterateXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid);
-    void iterateXdmfAttribute(const XdmfAttribute *xatt);
+    void inspectXdmfDomain(const XdmfDomain *item);
+    void inspectXdmfGridCollection(const XdmfGridCollection *xgridCol);
+    void inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid);
+    void inspectXdmfAttribute(const XdmfAttribute *xatt);
+    void inspectXdmfGeometry(const XdmfGeometry *xgeo);
+    void inspectXdmfTopology(const XdmfTopology *xtopo);
+    void inspectXdmfTime(const XdmfTime *xtime);
+
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
     std::vector<std::string> m_attChoice;
@@ -104,5 +110,6 @@ private:
     vistle::StringParameter *m_xattributes = nullptr;
 
     vistle::Port *m_gridOut = nullptr;
+    vistle::Port *m_scalarOut = nullptr;
 };
 #endif
