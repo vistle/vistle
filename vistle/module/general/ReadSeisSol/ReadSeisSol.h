@@ -17,9 +17,6 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
-/* #include <boost/smart_ptr/shared_ptr.hpp> */
-#include "vistle/core/parameter.h"
-#include "vistle/core/port.h"
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -66,13 +63,31 @@ class XdmfUnstructuredGrid;
 /* }; */
 /* } // namespace */
 
-
-class ReadSeisSol: public vistle::Reader {
+class ReadSeisSol final: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
+    template<class T>
+    struct PseudoEnum {
+        PseudoEnum() {}
+        PseudoEnum(const std::vector<T> &vec) { init(vec); }
+        unsigned &operator[](const T &param) { return toInt[param]; }
+        const unsigned &operator[](const T &param) const { return toInt[param]; }
+        std::map<T, unsigned> &getMap() { return toInt; }
+        const std::map<T, unsigned> &getMap() const { return toInt; }
+
+    private:
+        void init(const std::vector<T> &params)
+        {
+            std::for_each(params.begin(), params.end(), [n = 0, &toInt = toInt](auto &param) mutable {
+                toInt.insert({param, n++});
+            });
+        }
+        std::map<const T, unsigned> toInt;
+    };
+
     //Vistle functions
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
@@ -101,8 +116,6 @@ private:
 
     /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
-    std::vector<std::string> m_attChoice;
-
     //vistle param
     vistle::IntParameter *m_ghost = nullptr;
     vistle::IntParameter *m_readmode = nullptr;
@@ -111,5 +124,8 @@ private:
 
     vistle::Port *m_gridOut = nullptr;
     vistle::Port *m_scalarOut = nullptr;
+
+    std::vector<std::string> m_attChoiceStr;
+    PseudoEnum<std::string> m_xAttSelect;
 };
 #endif

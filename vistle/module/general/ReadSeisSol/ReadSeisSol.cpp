@@ -20,6 +20,7 @@
 #include "ReadSeisSol.h"
 
 //vistle
+#include "vistle/core/port.h"
 #include "vistle/core/database.h"
 #include "vistle/core/parameter.h"
 #include "vistle/core/scalar.h"
@@ -110,19 +111,24 @@ const UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ug
 ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Seismic Data files (xmdf/hdf5)", name, moduleID, comm)
 {
+    //settings
     m_xfile = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
                                  Parameter::Filename);
-
-    m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
-    m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
-    m_readmode = addIntParameter("ReadMode", "Select readmode between HDF5 or Xdmf", (Integer)XDMF, Parameter::Choice);
+    m_readmode = addIntParameter("ReadMode", "Select readmode (HDF5 or Xdmf)", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_readmode, ReadMode);
+    m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
+    m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
 
-    m_scalarOut = createOutputPort("att", "Scalar");
+    //ports
     m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
+    m_scalarOut = createOutputPort("att", "Scalar");
 
+    //observer
     observeParameter(m_xfile);
+    observeParameter(m_xattributes);
+    observeParameter(m_readmode);
 
+    //parallel mode
     setParallelizationMode(Serial);
 }
 
@@ -132,7 +138,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 void ReadSeisSol::clearChoice()
 {
     m_xattributes->setChoices(std::vector<std::string>());
-    m_attChoice.clear();
+    m_attChoiceStr.clear();
 }
 
 /**
@@ -148,7 +154,8 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
             //at the moment attribute number and type are the same for all ugrids.
             if (xgridCol->getNumberUnstructuredGrids())
                 inspectXdmfUnstrGrid(xgridCol->getUnstructuredGrid(0).get());
-            if (xgridCol->getNumberCurvilinearGrids() | xgridCol->getNumberRectilinearGrids() | xgridCol->getNumberRegularGrids())
+            if (xgridCol->getNumberCurvilinearGrids() | xgridCol->getNumberRectilinearGrids() |
+                xgridCol->getNumberRegularGrids())
                 sendInfo("Other gridtypes than unstructured have not been implemented yet!");
         } else if (gridColType == XdmfGridCollectionType::Spatial())
             sendInfo("Spatial collectiontype not implemented yet!");
@@ -196,7 +203,7 @@ void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
 void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
 {
     if (xatt != nullptr)
-        m_attChoice.push_back(xatt->getName());
+        m_attChoiceStr.push_back(xatt->getName());
 }
 
 /**
@@ -222,7 +229,9 @@ bool ReadSeisSol::examineXdmf()
     const auto xreader = XdmfReader::New();
 
     inspectXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
-    setParameterChoices(m_xattributes, m_attChoice);
+    setParameterChoices(m_xattributes, m_attChoiceStr);
+    m_xAttSelect = PseudoEnum(m_attChoiceStr);
+
     return true;
 }
 
@@ -237,14 +246,23 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     setTimesteps(-1);
     switch (m_readmode->getValue()) {
-    case XDMF:
+    case XDMF: {
         if ((!param || param == m_xfile))
             return examineXdmf();
-    case HDF5:
-        //not implemented
-    default:
-        return true;
+        else if (param == m_xattributes) {
+            auto nameAtt = m_xattributes->getValue();
+            sendInfo(nameAtt);
+            sendInfo("%d", m_xAttSelect[nameAtt]);
+        }
+        break;
     }
+    case HDF5: {
+        //not implemented
+        sendInfo("HDF5-Mode is not implemented at the moment!");
+        return false;
+    }
+    }
+    return true;
 }
 
 /**
@@ -361,6 +379,10 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
 
 /**
   * TODO: implement format trancision between XdmfArrayType and vistle array type.
+  * Int8, Int16, Int32 = Integer
+  * Float32 = float32
+  * Float64 = double/Float
+  * UInt8, UInt16, UInt32 = Unsigned
   */
 void ReadSeisSol::setArrayType(boost::shared_ptr<const XdmfArrayType> type)
 {
@@ -419,7 +441,6 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
       */
     constexpr unsigned gridColNum{0};
     constexpr unsigned gridStep{3};
-    constexpr unsigned gridAtt{1};
 
     const std::string xfile = m_xfile->getValue();
 
@@ -444,32 +465,41 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     }
 
     // Attribute visualize without hyperslap
-    const auto &xattribute = xugrid->getAttribute(gridAtt);
-    const auto attDim = xattribute->getDimensions().at(1);
+    const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
 
-    auto type = xattribute->getArrayType();
-    setArrayType(type);
+    //take last dim
+    const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
 
-    auto readmode = xattribute->getReadMode();
-    if (readmode == XdmfArray::Controller)
-        sendInfo("controller");
-    else if (readmode == XdmfArray::Reference)
-        sendInfo("Reference");
+    //Debugging
+    /* auto xattReadMode = xattribute->getReadMode(); */
+    /* if (xattReadMode == XdmfArray::Controller) */
+    /*     sendInfo("Controller"); */
+    /* else if (xattReadMode == XdmfArray::Reference) */
+    /*     sendInfo("Reference"); */
 
-    auto attCenter = xattribute->getCenter();
-    setGridCenter(attCenter);
+    /* auto type = xattribute->getArrayType(); */
+    /* setArrayType(type); */
 
-    sendInfo("att name: %s", xattribute->getName().c_str());
-    sendInfo("xattribute->dimension: %d", xattribute->getDimensions().at(1));
+    /* auto attCenter = xattribute->getCenter(); */
+    /* setGridCenter(attCenter); */
+
+    /* sendInfo("att name: %s", xattribute->getName().c_str()); */
+    /* sendInfo("xattribute->dimension: %d", attDim); */
+    //Debugging
 
     Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
+    auto vattDataX = att->x().data();
+
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
 
-    auto ux = att->x().data();
+    auto startRead{0};
 
     //without memcpy
-    xArrAtt->getValues<float>(attDim * gridStep, ux, attDim, 1, 1);
+    if (m_xattributes->getValue() != "partition")
+        startRead = attDim * gridStep;
+
+    xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, 1, 1);
 
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);
