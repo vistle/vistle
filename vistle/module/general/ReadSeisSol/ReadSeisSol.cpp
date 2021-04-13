@@ -30,6 +30,7 @@
 #include "vistle/util/enum.h"
 
 //boost
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 
@@ -57,7 +58,6 @@
 
 //std
 #include <cstring>
-#include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
@@ -67,6 +67,7 @@
 #include <numeric>
 #include <string>
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 using namespace vistle;
@@ -78,7 +79,7 @@ namespace {
 //SeisSol Mode
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
 
-const UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ugrid)
+const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGrid *ugrid)
 {
     const auto &ugridType = ugrid->getTopology()->getType();
     const std::string &topologyType = ugridType->getName();
@@ -102,6 +103,14 @@ const UnstructuredGrid::Type XdmfUgridToVistleUgridType(XdmfUnstructuredGrid *ug
         return UnstructuredGrid::PRISM;
     else
         return UnstructuredGrid::NONE;
+}
+
+bool checkEnd(const std::string &toCheck, const std::string &toMatch)
+{
+    if (toCheck.size() >= toMatch.size())
+        if (toCheck.compare(toCheck.size() - toMatch.size(), toMatch.size(), toMatch) == 0)
+            return true;
+    return false;
 }
 } // namespace
 
@@ -130,6 +139,42 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 
     //parallel mode
     setParallelizationMode(Serial);
+}
+
+/**
+  * Template for switching between XDMF and HDF5 mode. Calls given function with args according to current mode.
+  * @xdmfFunc: Function that will be called when in XDMF mode.
+  * @hdfFunc: Function that will be called when in HDF5 mode.
+  *
+  * return: True if function has been called correctly.
+  */
+template<class... Args>
+bool ReadSeisSol::switchSeisMode(std::function<bool(Args...)> xdmfFunc, std::function<bool(Args...)> hdfFunc,
+                                 Args... args)
+{
+    switch (m_seisMode->getValue()) {
+    case XDMF:
+        return xdmfFunc(args...);
+    case HDF5:
+        return hdfFunc(args...);
+    }
+    return false;
+}
+
+/**
+  * Helper function to tell user that HDF5 mode is not implemented.
+  *
+  * @return: false.
+  */
+bool ReadSeisSol::hdfModeNotImplemented()
+{
+    sendInfo("HDF5 mode is not implemented.");
+    return false;
+}
+
+bool ReadSeisSol::hdfModeNotImplementedRead(Token &, const int &, const int &)
+{
+    return hdfModeNotImplemented();
 }
 
 /**
@@ -196,7 +241,6 @@ void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
 {
     if (xtime != nullptr) {
         // set timestep defined in xdmf
-
     }
 }
 
@@ -233,12 +277,15 @@ void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
 /**
   * Inspect Xdmf.
   */
-bool ReadSeisSol::examineXdmf()
+bool ReadSeisSol::inspectXdmf()
 {
     const std::string &xfile = m_xfile->getValue();
 
     //read xdmf
     const auto xreader = XdmfReader::New();
+
+    if (xreader.get() == nullptr)
+        return false;
 
     inspectXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
     setParameterChoices(m_xattributes, m_attChoiceStr);
@@ -256,25 +303,12 @@ bool ReadSeisSol::examineXdmf()
   */
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
-    /* setTimesteps(-1); */
-    switch (m_seisMode->getValue()) {
-    case XDMF: {
-        if ((!param || param == m_xfile))
-            return examineXdmf();
-        //Debugging
-        /* else if (param == m_xattributes) { */
-        /*     auto nameAtt = m_xattributes->getValue(); */
-        /*     sendInfo(nameAtt); */
-        /*     sendInfo("%d", m_xAttSelect[nameAtt]); */
-        /* } */
-        //Debugging
-        break;
-    }
-    case HDF5: {
-        //not implemented
-        sendInfo("HDF5-Mode is not implemented at the moment!");
-        return false;
-    }
+    if (!param || param == m_xfile) {
+        if (!checkEnd(m_xfile->getValue(), ".xdmf"))
+            return false;
+        std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::inspectXdmf;
+        std::function<bool(ReadSeisSol *)> hFunc = &ReadSeisSol::hdfModeNotImplemented;
+        return switchSeisMode(xFunc, hFunc, this);
     }
     return true;
 }
@@ -371,11 +405,11 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     const auto &xgeometry = unstr->getGeometry();
     const int &numCornerPerElem = xtopology->getDimensions().at(1);
 
-    //read connectionlist
+    //read xdmf connectionlist
     const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
     readXdmfHeavyController(xArrConn.get(), xtopology->getHeavyDataController());
 
-    //read geometry
+    //read xdmf geometry
     const shared_ptr<XdmfArray> xArrGeo(XdmfArray::New());
     readXdmfHeavyController(xArrGeo.get(), xgeometry->getHeavyDataController());
 
@@ -438,7 +472,8 @@ void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> att
         sendInfo("other");
 }
 
-bool ReadSeisSol::prepareRead()
+
+bool ReadSeisSol::prepareReadXdmf()
 {
     constexpr unsigned gridColNum{0};
 
@@ -446,44 +481,29 @@ bool ReadSeisSol::prepareRead()
 
     //read xdmf
     const auto xreader = XdmfReader::New();
+    if (xreader.get() == nullptr)
+        return false;
+
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
     xgridCollect = xdomain->getGridCollection(gridColNum);
-
     return true;
 }
 
-/**
-  * Called every timestep and block.
-  *
-  * @token: Token for adding objects to ports.
-  * @timestep: current timestep.
-  * @block: current block.
-  *
-  * @return: true if everything has been added correctly to the ports.
-  */
-bool ReadSeisSol::read(Token &token, int timestep, int block)
+bool ReadSeisSol::prepareRead()
 {
-    if (timestep == -1)
-        return true;
+    std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::prepareReadXdmf;
+    std::function<bool(ReadSeisSol *)> hFunc = &ReadSeisSol::hdfModeNotImplemented;
+    return switchSeisMode(xFunc, hFunc, this);
+}
 
+bool ReadSeisSol::readXdmf(Token &token, const int &timestep, const int &block)
+{
     /** TODO:
       * - Distribute across MPI processes
       */
-    /* constexpr unsigned gridColNum{0}; */
-
-    //num timestep = num grids
-    /* const auto &gridStep{3}; */
-    const auto &gridStep{timestep};
-
-    /*     const std::string xfile = m_xfile->getValue(); */
-
-    /*     //read xdmf */
-    /*     const auto xreader = XdmfReader::New(); */
-    /*     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)); */
-    /*     const auto &xgridCollect = xdomain->getGridCollection(gridColNum); */
 
     //geometry and topology is the same for all grid
-    const auto &xugrid = xgridCollect->getUnstructuredGrid(gridStep);
+    const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
 
     //create unstructured grid
     auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get());
@@ -531,7 +551,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     const unsigned valStride{1};
 
     if (m_xattributes->getValue() != "partition")
-        startRead = attDim * gridStep;
+        startRead = attDim * timestep;
 
     xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, arrStride, valStride);
 
@@ -552,16 +572,39 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     return true;
 }
 
-bool ReadSeisSol::finishRead()
+/**
+  * Called every timestep and block.
+  *
+  * @token: Token for adding objects to ports.
+  * @timestep: current timestep.
+  * @block: current block.
+  *
+  * @return: true if everything has been added correctly to the ports.
+  */
+bool ReadSeisSol::read(Token &token, int timestep, int block)
+{
+    if (timestep == -1)
+        return true;
+
+    std::function<bool(ReadSeisSol *, Token &, const int &, const int &)> xFunc = &ReadSeisSol::readXdmf;
+    std::function<bool(ReadSeisSol *, Token &, const int &, const int &)> hFunc =
+        &ReadSeisSol::hdfModeNotImplementedRead;
+    return switchSeisMode<ReadSeisSol *, Token &, const int &, const int &>(xFunc, hFunc, this, token, timestep, block);
+}
+
+bool ReadSeisSol::finishReadXdmf()
 {
     if (xgridCollect != nullptr) {
-        sendInfo("released + size: %d", (int)sizeof(xgridCollect));
         xgridCollect.reset();
-        if (xgridCollect == nullptr) {
-            sendInfo("is now null + size: %d", (int)sizeof(xgridCollect));
-        }
     }
     return true;
+}
+
+bool ReadSeisSol::finishRead()
+{
+    std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::finishReadXdmf;
+    std::function<bool(ReadSeisSol *)> hFunc = &ReadSeisSol::hdfModeNotImplemented;
+    return switchSeisMode(xFunc, hFunc, this);
 }
 
 /* bool ReadSeisSol::readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param) */

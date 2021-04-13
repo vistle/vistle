@@ -96,20 +96,32 @@ private:
     bool prepareRead() override;
     bool finishRead() override;
 
+    //general
+    template<class... Args>
+    bool switchSeisMode(std::function<bool(Args...)> xdmfFunc, std::function<bool(Args...)> hdfFunc, Args... args);
+
+    //hdf5
+    bool hdfModeNotImplemented();
+    bool hdfModeNotImplementedRead(Token &, const int&, const int&);
+
     //xdmf
+    bool prepareReadXdmf();
+    void clearChoice();
+    bool finishReadXdmf();
+    bool readXdmf(Token &token, const int &timestep, const int &block);
+
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
     void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
 
+    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
     void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
     void fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type);
-    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
 
-    bool examineXdmf(); //for parameter choice
-    void clearChoice();
+    bool inspectXdmf(); //for parameter choice
     void inspectXdmfDomain(const XdmfDomain *item);
     void inspectXdmfGridCollection(const XdmfGridCollection *xgridCol);
     void inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid);
@@ -126,6 +138,7 @@ private:
     vistle::StringParameter *m_xfile = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
 
+    //ports
     vistle::Port *m_gridOut = nullptr;
     vistle::Port *m_scalarOut = nullptr;
 
