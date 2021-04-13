@@ -73,24 +73,28 @@ private:
     struct PseudoEnum {
         PseudoEnum() {}
         PseudoEnum(const std::vector<T> &vec) { init(vec); }
-        unsigned &operator[](const T &param) { return toInt[param]; }
-        const unsigned &operator[](const T &param) const { return toInt[param]; }
-        std::map<T, unsigned> &getMap() { return toInt; }
-        const std::map<T, unsigned> &getMap() const { return toInt; }
+        unsigned &operator[](const T &param) { return indices_map[param]; }
+        const unsigned &operator[](const T &param) const { return indices_map[param]; }
+        std::map<T, unsigned> &getIndexMap() { return indices_map; }
+        const std::map<T, unsigned> &getIndexMap() const { return indices_map; }
 
     private:
-        void init(const std::vector<T> &params)
-        {
-            std::for_each(params.begin(), params.end(), [n = 0, &toInt = toInt](auto &param) mutable {
-                toInt.insert({param, n++});
-            });
-        }
-        std::map<const T, unsigned> toInt;
+        void init(const std::vector<T> &params);
+        std::map<const T, unsigned> indices_map;
     };
+
+    // Overengineered?
+    /* template<class T, class O> */
+    /* struct LinkedFunctionPtr { */
+    /*     std::function<T(const O &)> func; */
+    /*     LinkedFunctionPtr *nextFunc = nullptr; */
+    /* }; */
 
     //Vistle functions
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
+    bool prepareRead() override;
+    bool finishRead() override;
 
     //xdmf
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
@@ -118,7 +122,7 @@ private:
 
     //vistle param
     vistle::IntParameter *m_ghost = nullptr;
-    vistle::IntParameter *m_readmode = nullptr;
+    vistle::IntParameter *m_seisMode = nullptr;
     vistle::StringParameter *m_xfile = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
 
@@ -127,5 +131,8 @@ private:
 
     std::vector<std::string> m_attChoiceStr;
     PseudoEnum<std::string> m_xAttSelect;
+
+    //xdmf param
+    boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
 };
 #endif
