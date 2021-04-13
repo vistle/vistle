@@ -102,7 +102,7 @@ private:
 
     //hdf5
     bool hdfModeNotImplemented();
-    bool hdfModeNotImplementedRead(Token &, const int&, const int&);
+    bool hdfModeNotImplementedRead(Token &, const int &, const int &);
 
     //xdmf
     bool prepareReadXdmf();
@@ -135,7 +135,7 @@ private:
     //vistle param
     vistle::IntParameter *m_ghost = nullptr;
     vistle::IntParameter *m_seisMode = nullptr;
-    vistle::StringParameter *m_xfile = nullptr;
+    vistle::StringParameter *m_file = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
 
     //ports

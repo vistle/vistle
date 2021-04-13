@@ -121,7 +121,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 : vistle::Reader("Read ChEESE Seismic Data files (xmdf/hdf5)", name, moduleID, comm)
 {
     //settings
-    m_xfile = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
+    m_file = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
                                  Parameter::Filename);
     m_seisMode = addIntParameter("SeisSolMode", "Select read format (HDF5 or Xdmf)", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
@@ -133,7 +133,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     m_scalarOut = createOutputPort("att", "Scalar");
 
     //observer
-    observeParameter(m_xfile);
+    observeParameter(m_file);
     observeParameter(m_xattributes);
     observeParameter(m_seisMode);
 
@@ -279,7 +279,7 @@ void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
   */
 bool ReadSeisSol::inspectXdmf()
 {
-    const std::string &xfile = m_xfile->getValue();
+    const std::string &xfile = m_file->getValue();
 
     //read xdmf
     const auto xreader = XdmfReader::New();
@@ -303,8 +303,8 @@ bool ReadSeisSol::inspectXdmf()
   */
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
-    if (!param || param == m_xfile) {
-        if (!checkEnd(m_xfile->getValue(), ".xdmf"))
+    if (!param || param == m_file) {
+        if (!checkEnd(m_file->getValue(), ".xdmf"))
             return false;
         std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::inspectXdmf;
         std::function<bool(ReadSeisSol *)> hFunc = &ReadSeisSol::hdfModeNotImplemented;
@@ -350,7 +350,6 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 {
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
-    //maybe depending on dim
     constexpr auto numCoords{3};
     constexpr auto strideVistleArr{1};
 
@@ -477,7 +476,7 @@ bool ReadSeisSol::prepareReadXdmf()
 {
     constexpr unsigned gridColNum{0};
 
-    const std::string xfile = m_xfile->getValue();
+    const std::string xfile = m_file->getValue();
 
     //read xdmf
     const auto xreader = XdmfReader::New();
@@ -520,16 +519,16 @@ bool ReadSeisSol::readXdmf(Token &token, const int &timestep, const int &block)
     // Attribute visualize without hyperslap
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
 
+    //TODO: Not right place here. => extract to inspect methods.
+    if (xattribute->getReadMode() == XdmfArray::Reference) {
+        sendInfo("Hyperslab is buggy in current Xdmf3 version. Chosen Param: %s", m_xattributes->getValue().c_str());
+        return false;
+    }
+
     //take last dim
     const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
 
     //Debugging
-    /* auto xattReadMode = xattribute->getReadMode(); */
-    /* if (xattReadMode == XdmfArray::Controller) */
-    /*     sendInfo("Controller"); */
-    /* else if (xattReadMode == XdmfArray::Reference) */
-    /*     sendInfo("Reference"); */
-
     /* auto type = xattribute->getArrayType(); */
     /* setArrayType(type); */
 
