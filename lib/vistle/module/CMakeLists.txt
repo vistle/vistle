@@ -40,3 +40,9 @@ vistle_target_link_libraries(
     MPI::MPI_C)
 
 add_subdirectory(utils)
+
+if (IS_DIRECTORY "${PROJECT_SOURCE_DIR}/vistle/module/univiz" AND EXISTS ${PROJECT_SOURCE_DIR}/vistle/module/univiz/CMakeLists.txt)
+    include_directories(${PROJECT_SOURCE_DIR}/vistle)
+    set(UNIVIZ_VISTLE TRUE)
+    add_subdirectory(univiz)
+endif()
