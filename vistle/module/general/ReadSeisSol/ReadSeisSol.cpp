@@ -30,7 +30,6 @@
 #include "vistle/util/enum.h"
 
 //boost
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/smart_ptr/shared_ptr.hpp>
 
@@ -79,6 +78,13 @@ namespace {
 //SeisSol Mode
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
 
+/**
+  * Extracts XdmfArrayType from ugrid and returns corresponding vistle UnstructuredGrid::Type.
+  *
+  * @ugrid: Pointer to XdmfUnstructuredGrid.
+  *
+  * @return: Corresponding vistle type.
+  */
 const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGrid *ugrid)
 {
     const auto &ugridType = ugrid->getTopology()->getType();
@@ -105,10 +111,18 @@ const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGr
         return UnstructuredGrid::NONE;
 }
 
-bool checkEnd(const std::string &toCheck, const std::string &toMatch)
+/**
+  * Checks if suffix string is the end of main.
+  *
+  * @main: main string.
+  * @suffix: suffix string.
+  *
+  * @return: True if given suffix is end of main.
+  */
+bool checkEnd(const std::string &main, const std::string &suffix)
 {
-    if (toCheck.size() >= toMatch.size())
-        if (toCheck.compare(toCheck.size() - toMatch.size(), toMatch.size(), toMatch) == 0)
+    if (main.size() >= suffix.size())
+        if (main.compare(main.size() - suffix.size(), suffix.size(), suffix) == 0)
             return true;
     return false;
 }
@@ -122,7 +136,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 {
     //settings
     m_file = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
-                                 Parameter::Filename);
+                                Parameter::Filename);
     m_seisMode = addIntParameter("SeisSolMode", "Select read format (HDF5 or Xdmf)", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
     m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
@@ -171,7 +185,6 @@ bool ReadSeisSol::hdfModeNotImplemented()
     sendInfo("HDF5 mode is not implemented.");
     return false;
 }
-
 bool ReadSeisSol::hdfModeNotImplementedRead(Token &, const int &, const int &)
 {
     return hdfModeNotImplemented();
@@ -276,6 +289,8 @@ void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
 
 /**
   * Inspect Xdmf.
+  *
+  * return: False if something went wrong while inspection else true.
   */
 bool ReadSeisSol::inspectXdmf()
 {
@@ -344,12 +359,16 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
   * @unstr: UnstructuredGrid::ptr with coordinates to fill.
   * @xArrGeo: XdmfArray which contains coordinates in an one dimensional array.
   *
-  * @return: TODO: add proper error-handling.
+  * @return: .
   */
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo)
 {
+    if(xArrGeo == nullptr)
+        return false;
+
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
+    //only 3D
     constexpr auto numCoords{3};
     constexpr auto strideVistleArr{1};
 
@@ -372,6 +391,9 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   */
 bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
 {
+    if (xArrConn == nullptr)
+        return false;
+
     //TODO: DEBUG invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order for (unsigned i = 0; i < xArrConn->getSize(); i++) { */
     auto cl = unstr->cl().data();
     xArrConn->getValues(0, cl, xArrConn->getSize());
@@ -471,23 +493,33 @@ void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> att
         sendInfo("other");
 }
 
-
+/**
+  * Initialize xdmf varibales before read will be called.
+  *
+  * return: true if every xdmf variable could be initialized.
+  */
 bool ReadSeisSol::prepareReadXdmf()
 {
-    constexpr unsigned gridColNum{0};
-
     const std::string xfile = m_file->getValue();
-
-    //read xdmf
     const auto xreader = XdmfReader::New();
     if (xreader.get() == nullptr)
         return false;
-
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
-    xgridCollect = xdomain->getGridCollection(gridColNum);
+    xgridCollect = xdomain->getGridCollection(0);
+    const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
+    const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
+    if (xattribute->getReadMode() == XdmfArray::Reference) {
+        sendInfo("Hyperslab is buggy in current Xdmf3 version. Chosen Param: %s", m_xattributes->getValue().c_str());
+        return false;
+    }
     return true;
 }
 
+/**
+  * Call prepare function to chosen seismode.
+  *
+  * @ return: true if everything went well in called prepare function.
+  */
 bool ReadSeisSol::prepareRead()
 {
     std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::prepareReadXdmf;
@@ -495,18 +527,25 @@ bool ReadSeisSol::prepareRead()
     return switchSeisMode(xFunc, hFunc, this);
 }
 
+/**
+  * Called by read(). Reads internal data links to hdf5 files stored in xdmf.
+  * 
+  * @token: Token for adding objects to ports.
+  * @timestep: current timestep.
+  * @block: current block.
+  *
+  * @return: true if everything has been added correctly to the ports.
+  */
 bool ReadSeisSol::readXdmf(Token &token, const int &timestep, const int &block)
 {
     /** TODO:
       * - Distribute across MPI processes
       */
 
-    //geometry and topology is the same for all grid
+    /*************** Create Unstructured Grid **************/
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-
     //create unstructured grid
     auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get());
-
     if (!ugrid_ptr->check()) {
         sendInfo("Something went wrong while creation of ugrid! Possible errors:\n"
                  "-invalid connectivity list \n"
@@ -516,44 +555,32 @@ bool ReadSeisSol::readXdmf(Token &token, const int &timestep, const int &block)
         return false;
     }
 
-    // Attribute visualize without hyperslap
+    /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
-
-    //TODO: Not right place here. => extract to inspect methods.
-    if (xattribute->getReadMode() == XdmfArray::Reference) {
-        sendInfo("Hyperslab is buggy in current Xdmf3 version. Chosen Param: %s", m_xattributes->getValue().c_str());
-        return false;
-    }
-
-    //take last dim
     const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
 
     //Debugging
     /* auto type = xattribute->getArrayType(); */
     /* setArrayType(type); */
-
     /* auto attCenter = xattribute->getCenter(); */
     /* setGridCenter(attCenter); */
-
     /* sendInfo("att name: %s", xattribute->getName().c_str()); */
     /* sendInfo("xattribute->dimension: %d", attDim); */
     //Debugging
 
     Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
     auto vattDataX = att->x().data();
-
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
-
     unsigned startRead{0};
     const unsigned arrStride{1};
     const unsigned valStride{1};
-
     if (m_xattributes->getValue() != "partition")
         startRead = attDim * timestep;
 
     xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, arrStride, valStride);
 
+    /*************** Add data to ports & set meta data **************/
     ugrid_ptr->setBlock(block);
     ugrid_ptr->setTimestep(-1);
     ugrid_ptr->updateInternals();
@@ -591,6 +618,11 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     return switchSeisMode<ReadSeisSol *, Token &, const int &, const int &>(xFunc, hFunc, this, token, timestep, block);
 }
 
+/**
+  * Delete xdmf element variables cached.
+  *
+  * @return: no proper error handling at the moment.
+  */
 bool ReadSeisSol::finishReadXdmf()
 {
     if (xgridCollect != nullptr) {
@@ -599,6 +631,11 @@ bool ReadSeisSol::finishReadXdmf()
     return true;
 }
 
+/**
+  * Called after final read call. Calls function according chosen seismode.
+  *
+  * @return: Return value from called function.
+  */
 bool ReadSeisSol::finishRead()
 {
     std::function<bool(ReadSeisSol *)> xFunc = &ReadSeisSol::finishReadXdmf;
@@ -659,6 +696,11 @@ bool ReadSeisSol::finishRead()
 /* return true; */
 /* } */
 
+/**
+  * Template for PseudoEnum which initializes map with an index like enum.
+  *
+  * @params: vector with values to store.
+  */
 template<class T>
 void ReadSeisSol::PseudoEnum<T>::init(const std::vector<T> &params)
 {
