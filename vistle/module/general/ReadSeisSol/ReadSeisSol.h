@@ -70,9 +70,9 @@ public:
 
 private:
     template<class T>
-    struct PseudoEnum {
-        PseudoEnum() {}
-        PseudoEnum(const std::vector<T> &vec) { init(vec); }
+    struct DynamicEnum {
+        DynamicEnum() {}
+        DynamicEnum(const std::vector<T> &vec) { init(vec); }
         unsigned &operator[](const T &param) { return indices_map[param]; }
         const unsigned &operator[](const T &param) const { return indices_map[param]; }
         std::map<T, unsigned> &getIndexMap() { return indices_map; }
@@ -83,7 +83,7 @@ private:
         std::map<const T, unsigned> indices_map;
     };
 
-    // Overengineered?
+    // Overengineered for this case => maybe for XdmfReader usefull
     /* template<class T, class O> */
     /* struct LinkedFunctionPtr { */
     /*     std::function<T(const O &)> func; */
@@ -97,8 +97,10 @@ private:
     bool finishRead() override;
 
     //general
-    template<class... Args>
-    bool switchSeisMode(std::function<bool(Args...)> xdmfFunc, std::function<bool(Args...)> hdfFunc, Args... args);
+    template<class Ret, class... Args>
+    auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
+    /* template<class Ret, class... Args> */
+    /* auto callCorrespondingSeisModeFunc(Ret (*xdmfFunc)(Args...), Ret (*hdfFunc)(Args...), Args... args); */
 
     //hdf5
     bool hdfModeNotImplemented();
@@ -130,7 +132,7 @@ private:
     void inspectXdmfTopology(const XdmfTopology *xtopo);
     void inspectXdmfTime(const XdmfTime *xtime);
 
-    /* bool readXDMF(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
+    /* bool readXdmfParallel(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
 
     //vistle param
     vistle::IntParameter *m_ghost = nullptr;
@@ -143,7 +145,7 @@ private:
     vistle::Port *m_scalarOut = nullptr;
 
     std::vector<std::string> m_attChoiceStr;
-    PseudoEnum<std::string> m_xAttSelect;
+    DynamicEnum<std::string> m_xAttSelect;
 
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
