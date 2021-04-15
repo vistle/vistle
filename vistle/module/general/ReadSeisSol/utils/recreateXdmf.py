@@ -65,15 +65,14 @@ def recreateXdmf(prefix, prefix_new, nvertex, ncells, nmem, dt, indices, lsData,
     for i, ii in enumerate(indices):
         score = (
             score
-            + """
-    <Grid Name="step_%012d" GridType="Uniform">
-        <Topology TopologyType="%s" NumberOfElements="%d">
-            <DataItem NumberType="Int" Precision="8" Format="%s" Dimensions="%d %d">%s_cell%s/mesh0/connect%s</DataItem>
-        </Topology>
-        <Geometry name="geo" GeometryType="XYZ" NumberOfElements="%d">
-            <DataItem NumberType="Float" Precision="8" Format="%s" Dimensions="%d 3">%s_vertex%s/mesh0/geometry%s</DataItem>
-        </Geometry>
-        <Time Value="%f"/>"""
+            + """   <Grid Name="step_%012d" GridType="Uniform">
+       <Topology TopologyType="%s" NumberOfElements="%d">
+           <DataItem NumberType="Int" Precision="8" Format="%s" Dimensions="%d %d">%s_cell%s/mesh0/connect%s</DataItem>
+       </Topology>
+       <Geometry name="geo" GeometryType="XYZ" NumberOfElements="%d">
+           <DataItem NumberType="Float" Precision="8" Format="%s" Dimensions="%d 3">%s_vertex%s/mesh0/geometry%s</DataItem>
+       </Geometry>
+       <Time Value="%f"/>\n"""
             % (
                 ii,
                 scell,
@@ -98,8 +97,7 @@ def recreateXdmf(prefix, prefix_new, nvertex, ncells, nmem, dt, indices, lsData,
             if sdata == "partition":
                 score = (
                     score
-                    + """
-        <Attribute Name="partition" Center="Cell">
+                    + """      <Attribute Name="partition" Center="Cell">
             <DataItem  NumberType="Int" Precision="4" Format="%s" Dimensions="%d">%s_cell%s/mesh0/partition%s</DataItem>
         </Attribute>\n"""
                     % (DataFormat, ncells, prefix_new, colonOrNothing, DataExtension)
@@ -108,8 +106,7 @@ def recreateXdmf(prefix, prefix_new, nvertex, ncells, nmem, dt, indices, lsData,
                 if (version == 2):
                     score = (
                         score
-                        + """
-        <Attribute Name="%s" Center="Cell">
+                        + """       <Attribute Name="%s" Center="Cell">
             <DataItem ItemType="HyperSlab" Dimensions="%d">
                 <DataItem NumberType="UInt" Precision="4" Format="XML" Dimensions="3 2">%d 0 1 1 1 %d</DataItem>
                 <DataItem NumberType="Float" Precision="%d" Format="%s" Dimensions="%d %d">%s_cell%s/mesh0/%s%s</DataItem>
@@ -119,8 +116,7 @@ def recreateXdmf(prefix, prefix_new, nvertex, ncells, nmem, dt, indices, lsData,
                 else: #version 3 has a hyperslab bug => without it
                     score = (
                         score
-                        + """
-        <Attribute Name="%s" Center="Cell">
+                        + """       <Attribute Name="%s" Center="Cell">
             <DataItem NumberType="Float" Precision="%d" Format="%s" Dimensions="%d %d">%s_cell%s/mesh0/%s%s</DataItem>
         </Attribute>\n""" % (sdata, prec, DataFormat, ndt, nmem, prefix_new, colonOrNothing, sdata, DataExtension)
                     )
