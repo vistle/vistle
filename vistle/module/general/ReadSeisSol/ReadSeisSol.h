@@ -21,6 +21,7 @@
 #include <vector>
 #include <vistle/module/reader.h>
 #include <vistle/core/unstr.h>
+#include <vistle/core/scalar.h>
 
 //forwarding cpp
 class XdmfTime;
@@ -100,7 +101,7 @@ private:
     auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
     template<class Ret, class... Args>
     auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
-                                           Args... args);
+                              Args... args);
 
     //hdf5
     bool hdfModeNotImplemented();
@@ -116,7 +117,8 @@ private:
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
     void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
 
-    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr);
+    vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep, const int &block);
+    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int &timestep, const int &block);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>

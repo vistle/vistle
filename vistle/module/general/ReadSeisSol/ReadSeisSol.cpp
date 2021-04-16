@@ -23,6 +23,7 @@
 #include <mpi.h>
 
 //vistle
+#include "vistle/core/object.h"
 #include "vistle/core/port.h"
 #include "vistle/core/database.h"
 #include "vistle/core/parameter.h"
@@ -123,6 +124,24 @@ bool checkEnd(const std::string &main, const std::string &suffix)
             return true;
     return false;
 }
+
+/**
+ * @brief: Call check function. Sends the msgFailure string if check() returns false.
+ *
+ * @param obj: ReadSeisSol object pointer.
+ * @param vObj_ptr: Object to check.
+ * @param msgFailure: Error message.
+ *
+ * @return: obj->check() result.
+ */
+bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::string &msgFailure)
+{
+    if (!vObj_ptr->check()) {
+        obj->sendInfo("%s", msgFailure.c_str());
+        return false;
+    }
+    return true;
+}
 } // namespace
 
 /**
@@ -137,7 +156,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     m_seisMode = addIntParameter("SeisSolMode", "Select read format (HDF5 or Xdmf)", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
 
-    m_xattributes = addStringParameter("Parameter", "test", "None", Parameter::Choice);
+    m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
     m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
 
     //ports
@@ -431,15 +450,64 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
     xArr->read();
 }
 
+
+/**
+ * @brief: Generate a scalar pointer with values from XdmfAttribute.
+ *
+ * @param xattribute: XdmfAttribute pointer.
+ * @param timestep: Current timestep.
+ * @param block: Current block number.
+ *
+ * @return: generated vistle scalar pointer.
+ */
+vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
+                                                                      const int &block)
+{
+    if (xattribute == nullptr)
+        return nullptr;
+
+    //last dim relevant
+    const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
+
+    //Debugging
+    /* auto type = xattribute->getArrayType(); */
+    /* setArrayType(type); */
+    /* auto attCenter = xattribute->getCenter(); */
+    /* setGridCenter(attCenter); */
+    /* sendInfo("att name: %s", xattribute->getName().c_str()); */
+    /* sendInfo("xattribute->dimension: %d", attDim); */
+    //Debugging
+
+    Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
+    auto vattDataX = att->x().data();
+    const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
+    readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
+
+    unsigned startRead{0};
+    const unsigned arrStride{1};
+    const unsigned valStride{1};
+    if (m_xattributes->getValue() != "partition")
+        startRead = attDim * timestep;
+
+    xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, arrStride, valStride);
+    return att;
+}
+
 /**
   * @brief: Generate an unstructured grid from XdmfUnstructuredGrid.
   *
-  * @unstr: XdmfUnstructuredGrid pointer.
+  * @param unstr: XdmfUnstructuredGrid pointer.
+  * @param timestep: Current timestep.
+  * @param block: Current block number.
   *
   * @return: Created UnstructuredGrid pointer.
   */
-vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr)
+vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr,
+                                                                         const int &timestep, const int &block)
 {
+    if (unstr == nullptr)
+        return nullptr;
+
     //TODO: geometry always the same for each ugrid
     const auto &xtopology = unstr->getTopology();
     const auto &xgeometry = unstr->getGeometry();
@@ -564,58 +632,37 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 
     /*************** Create Unstructured Grid **************/
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-
-    //create unstructured grid
-    auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get());
-    if (!ugrid_ptr->check()) {
-        sendInfo("Something went wrong while creation of ugrid! Possible errors:\n"
-                 "-invalid connectivity list \n"
-                 "-invalid coordinates\n"
-                 "-invalid typelist\n"
-                 "-invalid geo type");
-        return false;
-    }
+    auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), timestep, block);
+    checkObjectPtr(this, ugrid_ptr,
+                   "Something went wrong while creation of ugrid! Possible errors:\n"
+                   "-invalid connectivity list \n"
+                   "-invalid coordinates\n"
+                   "-invalid typelist\n"
+                   "-invalid geo type");
 
     /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
-    const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
-
-    //Debugging
-    /* auto type = xattribute->getArrayType(); */
-    /* setArrayType(type); */
-    /* auto attCenter = xattribute->getCenter(); */
-    /* setGridCenter(attCenter); */
-    /* sendInfo("att name: %s", xattribute->getName().c_str()); */
-    /* sendInfo("xattribute->dimension: %d", attDim); */
-    //Debugging
-
-    Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
-    auto vattDataX = att->x().data();
-    const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
-    readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
-
-    unsigned startRead{0};
-    const unsigned arrStride{1};
-    const unsigned valStride{1};
-    if (m_xattributes->getValue() != "partition")
-        startRead = attDim * timestep;
-
-    xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, arrStride, valStride);
+    auto att_ptr = generateScalarFromXdmfAttribute(xattribute.get(), timestep, block);
+    checkObjectPtr(this, att_ptr,
+                   "Something went wrong while creation of attribute pointer! Possible errors:\n"
+                   "-wrong format (hyperslap not supported at the moment) \n"
+                   "-empty attribute\n"
+                   "-wrong dimensions defined");
 
     /*************** Add data to ports & set meta data **************/
     ugrid_ptr->setBlock(block);
-    ugrid_ptr->setTimestep(-1);
+    ugrid_ptr->setTimestep(timestep);
     ugrid_ptr->updateInternals();
 
-    att->setGrid(ugrid_ptr);
-    att->setBlock(block);
-    att->setMapping(DataBase::Element);
-    att->addAttribute("_species", "partition");
-    att->setTimestep(-1);
-    att->updateInternals();
+    att_ptr->setGrid(ugrid_ptr);
+    att_ptr->setBlock(block);
+    att_ptr->setMapping(DataBase::Element);
+    att_ptr->addAttribute("_species", xattribute->getName());
+    att_ptr->setTimestep(timestep);
+    att_ptr->updateInternals();
 
     token.addObject(m_gridOut, ugrid_ptr);
-    token.addObject("att", att);
+    token.addObject(m_scalarOut, att_ptr);
 
     return true;
 }
