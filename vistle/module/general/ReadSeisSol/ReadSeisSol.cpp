@@ -127,43 +127,7 @@ bool checkEnd(const std::string &main, const std::string &suffix)
             return true;
     return false;
 }
-
-/**
-  * Wrapper function for easier call of seismode function.
-  *
-  * @xdmfFunc: Function pointer to XdfmFunction.
-  * @hdfFunct: Function pointer to hdfFunction.
-  * @args: Arguments to pass.
-  *
-  * @return: Return val of called function.
-  */
-template<class Ret, class... Args>
-auto callCorrespondingSeisModeFunc(Ret (*xdmfFunc)(Args...), Ret (*hdfFunc)(Args...), Args... args)
-{
-    using funcType = Ret(Args...);
-    std::function<funcType> xFunc = xdmfFunc;
-    std::function<funcType> hFunc = hdfFunc;
-    return switchSeisMode(xFunc, hFunc, args...);
-}
 } // namespace
-
-/**
-  * Wrapper function for easier call of seismode function.
-  *
-  * @xdmfFunc: Function pointer to XdfmFunction.
-  * @hdfFunct: Function pointer to hdfFunction.
-  * @args: Arguments to pass.
-  *
-  * @return: Return val of called function.
-  */
-/* template<class Ret, class... Args> */
-/* auto ReadSeisSol::callCorrespondingSeisModeFunc(Ret (*xdmfFunc)(Args...), Ret (*hdfFunc)(Args...), Args... args) */
-/* { */
-/*     using funcType = Ret(Args...); */
-/*     std::function<funcType> xFunc = xdmfFunc; */
-/*     std::function<funcType> hFunc = hdfFunc; */
-/*     return switchSeisMode(xFunc, hFunc, args...); */
-/* } */
 
 /**
   * Constructor.
@@ -191,6 +155,25 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 
     //parallel mode
     setParallelizationMode(Serial);
+}
+
+/**
+  * Wrapper function for easier call of seismode function.
+  *
+  * @xdmfFunc: Function pointer to XdfmFunction.
+  * @hdfFunc: Function pointer to hdfFunction.
+  * @args: Arguments to pass.
+  *
+  * @return: Return val of called function.
+  */
+template<class Ret, class... Args>
+auto ReadSeisSol::callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
+                                       Args... args)
+{
+    using funcType = Ret(ReadSeisSol *, Args...);
+    std::function<funcType> xFunc{xdmfFunc};
+    std::function<funcType> hFunc{hdfFunc};
+    return switchSeisMode<Ret, ReadSeisSol *, Args...>(xFunc, hFunc, this, args...);
 }
 
 /**
@@ -224,7 +207,7 @@ bool ReadSeisSol::hdfModeNotImplemented()
     sendInfo("HDF5 mode is not implemented.");
     return false;
 }
-bool ReadSeisSol::hdfModeNotImplementedRead(Token &, const int &, const int &)
+bool ReadSeisSol::hdfModeNotImplementedRead(Token &, int, int)
 {
     return hdfModeNotImplemented();
 }
@@ -344,7 +327,7 @@ bool ReadSeisSol::inspectXdmf()
 
     inspectXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
     setParameterChoices(m_xattributes, m_attChoiceStr);
-    m_xAttSelect = DynamicEnum(m_attChoiceStr);
+    m_xAttSelect = DynamicPseudoEnum(m_attChoiceStr);
 
     return true;
 }
@@ -361,11 +344,8 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
     if (!param || param == m_file) {
         if (!checkEnd(m_file->getValue(), ".xdmf"))
             return false;
-        using funcInspect = bool(ReadSeisSol *);
-        std::function<funcInspect> xFunc{&ReadSeisSol::inspectXdmf};
-        std::function<funcInspect> hFunc{&ReadSeisSol::hdfModeNotImplemented};
-        return switchSeisMode(xFunc, hFunc, this);
-        /* return callCorrespondingSeisModeFunc(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented, this); */
+
+        return callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
     }
     return true;
 }
@@ -566,10 +546,7 @@ bool ReadSeisSol::prepareReadXdmf()
   */
 bool ReadSeisSol::prepareRead()
 {
-    using funcPrepare = bool(ReadSeisSol *);
-    std::function<funcPrepare> xFunc{&ReadSeisSol::prepareReadXdmf};
-    std::function<funcPrepare> hFunc{&ReadSeisSol::hdfModeNotImplemented};
-    return switchSeisMode(xFunc, hFunc, this);
+    return callSeisModeFunction(&ReadSeisSol::prepareReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
 /**
@@ -581,7 +558,7 @@ bool ReadSeisSol::prepareRead()
   *
   * @return: true if everything has been added correctly to the ports.
   */
-bool ReadSeisSol::readXdmf(Token &token, const int &timestep, const int &block)
+bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
     /** TODO:
       * - Distribute across MPI processes
@@ -659,11 +636,8 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     if (timestep == -1)
         return true;
 
-    using funcRead = bool(ReadSeisSol *, Token &, const int &, const int &);
-    std::function<funcRead> xFunc{ &ReadSeisSol::readXdmf};
-    std::function<funcRead> hFunc{ &ReadSeisSol::hdfModeNotImplementedRead};
-    return switchSeisMode<bool, ReadSeisSol *, Token &, const int &, const int &>(xFunc, hFunc, this, token, timestep,
-                                                                                  block);
+    return callSeisModeFunction<bool, Token &, int, int>(
+        &ReadSeisSol::readXdmf, &ReadSeisSol::hdfModeNotImplementedRead, token, timestep, block);
 }
 
 /**
@@ -686,10 +660,7 @@ bool ReadSeisSol::finishReadXdmf()
   */
 bool ReadSeisSol::finishRead()
 {
-    using funcFinish = bool(ReadSeisSol*);
-    std::function<funcFinish> xFunc = &ReadSeisSol::finishReadXdmf;
-    std::function<funcFinish> hFunc = &ReadSeisSol::hdfModeNotImplemented;
-    return switchSeisMode(xFunc, hFunc, this);
+    return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
 /* bool ReadSeisSol::readXdmfParallel(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param) */
@@ -751,7 +722,7 @@ bool ReadSeisSol::finishRead()
   * @params: vector with values to store.
   */
 template<class T>
-void ReadSeisSol::DynamicEnum<T>::init(const std::vector<T> &params)
+void ReadSeisSol::DynamicPseudoEnum<T>::init(const std::vector<T> &params)
 {
     std::for_each(params.begin(), params.end(), [n = 0, &indices = indices_map](auto &param) mutable {
         indices.insert({param, n++});

@@ -70,9 +70,9 @@ public:
 
 private:
     template<class T>
-    struct DynamicEnum {
-        DynamicEnum() {}
-        DynamicEnum(const std::vector<T> &vec) { init(vec); }
+    struct DynamicPseudoEnum {
+        DynamicPseudoEnum() {}
+        DynamicPseudoEnum(const std::vector<T> &vec) { init(vec); }
         unsigned &operator[](const T &param) { return indices_map[param]; }
         const unsigned &operator[](const T &param) const { return indices_map[param]; }
         std::map<T, unsigned> &getIndexMap() { return indices_map; }
@@ -99,18 +99,19 @@ private:
     //general
     template<class Ret, class... Args>
     auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
-    /* template<class Ret, class... Args> */
-    /* auto callCorrespondingSeisModeFunc(Ret (*xdmfFunc)(Args...), Ret (*hdfFunc)(Args...), Args... args); */
+    template<class Ret, class... Args>
+    auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
+                                           Args... args);
 
     //hdf5
     bool hdfModeNotImplemented();
-    bool hdfModeNotImplementedRead(Token &, const int &, const int &);
+    bool hdfModeNotImplementedRead(Token &, int, int);
 
     //xdmf
     bool prepareReadXdmf();
     void clearChoice();
     bool finishReadXdmf();
-    bool readXdmf(Token &token, const int &timestep, const int &block);
+    bool readXdmf(Token &token, int timestep, int block);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
@@ -145,7 +146,7 @@ private:
     vistle::Port *m_scalarOut = nullptr;
 
     std::vector<std::string> m_attChoiceStr;
-    DynamicEnum<std::string> m_xAttSelect;
+    DynamicPseudoEnum<std::string> m_xAttSelect;
 
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
