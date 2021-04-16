@@ -23,7 +23,6 @@
 #include <vistle/core/unstr.h>
 
 //forwarding cpp
-class XdmfItem;
 class XdmfTime;
 class XdmfTopology;
 class XdmfGeometry;

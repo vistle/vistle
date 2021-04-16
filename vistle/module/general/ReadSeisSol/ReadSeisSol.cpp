@@ -19,6 +19,9 @@
 //header
 #include "ReadSeisSol.h"
 
+//mpi
+#include <mpi.h>
+
 //vistle
 #include "vistle/core/port.h"
 #include "vistle/core/database.h"
@@ -39,31 +42,23 @@
 #include <XdmfTopology.hpp>
 #include <XdmfAttributeCenter.hpp>
 #include <XdmfAttributeType.hpp>
-#include <XdmfSharedPtr.hpp>
 #include <XdmfTime.hpp>
-#include <XdmfItem.hpp>
 #include <XdmfGeometry.hpp>
-#include <XdmfInformation.hpp>
-#include <XdmfGraph.hpp>
 #include <XdmfGridCollection.hpp>
 #include <XdmfUnstructuredGrid.hpp>
 #include <XdmfDomain.hpp>
 #include <XdmfReader.hpp>
 #include <XdmfArray.hpp>
 #include <XdmfArrayType.hpp>
-#include <XdmfArrayReference.hpp>
 #include <XdmfHDF5WriterDSM.hpp>
 #include <XdmfHDF5ControllerDSM.hpp>
 #include <XdmfHDF5Controller.hpp>
 
 //std
 #include <cstring>
-#include <iomanip>
 #include <iostream>
-#include <iterator>
 #include <map>
 #include <memory>
-#include <mpi.h>
 #include <numeric>
 #include <string>
 #include <algorithm>
@@ -77,10 +72,11 @@ MODULE_MAIN(ReadSeisSol)
 namespace {
 
 //SeisSol Mode
+
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
 
 /**
-  * Extracts XdmfArrayType from ugrid and returns corresponding vistle UnstructuredGrid::Type.
+  * @brief: Extracts XdmfArrayType from ugrid and returns corresponding vistle UnstructuredGrid::Type.
   *
   * @ugrid: Pointer to XdmfUnstructuredGrid.
   *
@@ -113,13 +109,13 @@ const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGr
 }
 
 /**
-  * Checks if suffix string is the end of main.
-  *
-  * @main: main string.
-  * @suffix: suffix string.
-  *
-  * @return: True if given suffix is end of main.
-  */
+ * @brief: Checks if suffix string is the end of main.
+ *
+ * @param main: main string.
+ * @param suffix: suffix string
+ *
+ * @return: True if given suffix is end of main.
+ */
 bool checkEnd(const std::string &main, const std::string &suffix)
 {
     if (main.size() >= suffix.size())
@@ -130,7 +126,7 @@ bool checkEnd(const std::string &main, const std::string &suffix)
 } // namespace
 
 /**
-  * Constructor.
+  * @brief: Constructor.
   */
 ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Seismic Data files (xmdf/hdf5)", name, moduleID, comm)
@@ -157,27 +153,9 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     setParallelizationMode(Serial);
 }
 
-/**
-  * Wrapper function for easier call of seismode function.
-  *
-  * @xdmfFunc: Function pointer to XdfmFunction.
-  * @hdfFunc: Function pointer to hdfFunction.
-  * @args: Arguments to pass.
-  *
-  * @return: Return val of called function.
-  */
-template<class Ret, class... Args>
-auto ReadSeisSol::callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
-                                       Args... args)
-{
-    using funcType = Ret(ReadSeisSol *, Args...);
-    std::function<funcType> xFunc{xdmfFunc};
-    std::function<funcType> hFunc{hdfFunc};
-    return switchSeisMode<Ret, ReadSeisSol *, Args...>(xFunc, hFunc, this, args...);
-}
 
 /**
-  * Template for switching between XDMF and HDF5 mode. Calls given function with args according to current mode.
+  * @brief: Template for switching between XDMF and HDF5 mode. Calls given function with args according to current mode.
   *
   * @xdmfFunc: Function that will be called when in XDMF mode.
   * @hdfFunc: Function that will be called when in HDF5 mode.
@@ -198,7 +176,26 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
 }
 
 /**
-  * Helper function to tell user that HDF5 mode is not implemented.
+  * @brief: Wrapper function for easier call of seismode-function for selected seismode.
+  *
+  * @xdmfFunc: Function pointer to XdfmFunction.
+  * @hdfFunc: Function pointer to hdfFunction.
+  * @args: Arguments to pass.
+  *
+  * @return: Return val of called function.
+  */
+template<class Ret, class... Args>
+auto ReadSeisSol::callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
+                                       Args... args)
+{
+    using funcType = Ret(ReadSeisSol *, Args...);
+    std::function<funcType> xFunc{xdmfFunc};
+    std::function<funcType> hFunc{hdfFunc};
+    return switchSeisMode<Ret, ReadSeisSol *, Args...>(xFunc, hFunc, this, args...);
+}
+
+/**
+  * @brief: Helper function to tell user that HDF5 mode is not implemented.
   *
   * @return: false.
   */
@@ -213,7 +210,7 @@ bool ReadSeisSol::hdfModeNotImplementedRead(Token &, int, int)
 }
 
 /**
-  * Clears attributes choice.
+  * @brief: Clears attributes choice.
   */
 void ReadSeisSol::clearChoice()
 {
@@ -222,7 +219,7 @@ void ReadSeisSol::clearChoice()
 }
 
 /**
-  * Iterate through properties of a xdmfgridcollection.
+  * @brief: Iterate through properties of a xdmfgridcollection.
   *
   * @xgridCol: Constant grid collection pointer.
   */
@@ -248,7 +245,7 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
 }
 
 /**
-  * Iterate through unstructured grid attributes stored in an xdmf.
+  * @brief: Iterate through unstructured grid attributes stored in an xdmf.
   *
   * @xugrid: const unstructured grid pointer.
   */
@@ -288,7 +285,7 @@ void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
 }
 
 /**
-  * Inspect XdmfAttribute and generate a parameter in reader.
+  * @brief: Inspect XdmfAttribute and generate a parameter in reader.
   *
   * @xatt: Const attribute pointer.
   */
@@ -299,7 +296,7 @@ void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
 }
 
 /**
-  * Inspect XdmfDomain.
+  * @brief: Inspect XdmfDomain.
   *
   * @xdomain: Const pointer of domain-object.
   */
@@ -311,7 +308,7 @@ void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
 }
 
 /**
-  * Inspect Xdmf.
+  * @brief: Inspect Xdmf.
   *
   * return: False if something went wrong while inspection else true.
   */
@@ -333,7 +330,7 @@ bool ReadSeisSol::inspectXdmf()
 }
 
 /**
-  * Called if observeParameter changes.
+  * @brief: Called if observeParameter changes.
   *
   * @param: changed parameter.
   *
@@ -351,7 +348,7 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
 }
 
 /**
-  * Fill typelist of unstructured grid vistle pointer with equal type.
+  * @brief: Fill typelist of unstructured grid vistle pointer with equal type.
   *
   * @unstr: UnstructuredGrid::ptr that contains type list.
   * @type: UnstructuredGrid::Type.
@@ -362,7 +359,7 @@ void ReadSeisSol::fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, con
 }
 
 /**
-  * Fill elementlist of unstructured grid vistle pointer.
+  * @brief: Fill elementlist of unstructured grid vistle pointer.
   *
   * @unstr: UnstructuredGrid::ptr with elementlist to fill.
   * @numCornerPerElem: Number of Corners.
@@ -376,12 +373,12 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
 }
 
 /**
-  * Fill coordinates stored in a XdmfArray into unstructured grid vistle pointer.
+  * @brief: Fill coordinates stored in a XdmfArray into unstructured grid vistle pointer.
   *
   * @unstr: UnstructuredGrid::ptr with coordinates to fill.
   * @xArrGeo: XdmfArray which contains coordinates in an one dimensional array.
   *
-  * @return: .
+  * @return: true if values stored in XdmfArray could be stored in coords array of given unstructured grid.
   */
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo)
 {
@@ -404,7 +401,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 }
 
 /**
-  * Fill connectionlist stored in a XdmfArray into unstructured grid vistle pointer.
+  * @brief: Fill connectionlist stored in a XdmfArray into unstructured grid vistle pointer.
   *
   * @unstr: UnstructuredGrid::ptr with connectionlist to fill.
   * @xArrConn: XdmfArray which contains connectionlist in an one dimensional array.
@@ -423,7 +420,7 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
 }
 
 /**
-  * Helper function for reading XdmfArray with given XdmfHeavyDataController.
+  * @brief: Helper function for reading XdmfArray with given XdmfHeavyDataController.
   *
   * @xArr: XdmfArray for read operation.
   * @controller: XdmfHeavyDataController that specifies how to read the XdmfArray.
@@ -435,7 +432,7 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 }
 
 /**
-  * Generate an unstructured grid from XdmfUnstructuredGrid.
+  * @brief: Generate an unstructured grid from XdmfUnstructuredGrid.
   *
   * @unstr: XdmfUnstructuredGrid pointer.
   *
@@ -469,7 +466,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
 }
 
 /**
-  * TODO: implement format trancision between XdmfArrayType and vistle array type.
+  * @brief: TODO: implement format trancision between XdmfArrayType and vistle array type.
   * Int8, Int16, Int32 = Integer
   * Float32 = float32
   * Float64 = double/Float
@@ -517,7 +514,7 @@ void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> att
 }
 
 /**
-  * Initialize xdmf varibales before read will be called.
+  * @brief: Initialize xdmf varibales before read will be called.
   *
   * return: true if every xdmf variable could be initialized.
   */
@@ -540,9 +537,9 @@ bool ReadSeisSol::prepareReadXdmf()
 }
 
 /**
-  * Call prepare function to chosen seismode.
+  * @brief: Call prepare function to chosen seismode.
   *
-  * @ return: true if everything went well in called prepare function.
+  * @return: true if everything went well in called prepare function.
   */
 bool ReadSeisSol::prepareRead()
 {
@@ -550,14 +547,15 @@ bool ReadSeisSol::prepareRead()
 }
 
 /**
-  * Called by read(). Reads internal data links to hdf5 files stored in xdmf.
-  * 
+  * @brief: Called by read(). Reads internal data links to hdf5 files stored in xdmf.
+  *
   * @token: Token for adding objects to ports.
   * @timestep: current timestep.
   * @block: current block.
   *
   * @return: true if everything has been added correctly to the ports.
   */
+
 bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
     /** TODO:
@@ -623,7 +621,7 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 }
 
 /**
-  * Called every timestep and block.
+  * @brief: Called every timestep and block.
   *
   * @token: Token for adding objects to ports.
   * @timestep: current timestep.
@@ -641,7 +639,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
 }
 
 /**
-  * Delete xdmf element variables cached.
+  * @brief: Delete xdmf element variables cached.
   *
   * @return: no proper error handling at the moment.
   */
@@ -654,7 +652,7 @@ bool ReadSeisSol::finishReadXdmf()
 }
 
 /**
-  * Called after final read call. Calls function according chosen seismode.
+  * @brief: Called after final read call. Calls function according chosen seismode.
   *
   * @return: Return value from called function.
   */
@@ -717,7 +715,7 @@ bool ReadSeisSol::finishRead()
 /* } */
 
 /**
-  * Template for PseudoEnum which initializes map with an index like enum.
+  * @brief: Template for PseudoEnum which initializes map with an index like enum.
   *
   * @params: vector with values to store.
   */
