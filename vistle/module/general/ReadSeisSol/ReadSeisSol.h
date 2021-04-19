@@ -17,6 +17,8 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
+#include <XdmfArrayType.hpp>
+#include <array>
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -36,39 +38,14 @@ class XdmfArray;
 class XdmfArrayType;
 class XdmfUnstructuredGrid;
 
-/* namespace { */
-/* struct HDF5ControllerParameter { */
-/*     std::string path; */
-/*     std::string setPath; */
-/*     std::vector<unsigned> start{0, 0, 0}; */
-/*     std::vector<unsigned> stride{1, 1, 1}; */
-/*     std::vector<unsigned> count{0, 0, 0}; */
-/*     std::vector<unsigned> dataSize{0, 0, 0}; */
-
-/*     typedef decltype(XdmfArrayType::Float32()) ArrayTypePtr; */
-/*     ArrayTypePtr readType; */
-
-/*     HDF5ControllerParameter(const std::string &path, const std::string &setPath, */
-/*                             const std::vector<unsigned> &readStarts, const std::vector<unsigned> &readStrides, */
-/*                             const std::vector<unsigned> &readCounts, const std::vector<unsigned> &readDataSize, */
-/*                             const ArrayTypePtr &readType = XdmfArrayType::Float32()) */
-/*     : path(path) */
-/*     , setPath(setPath) */
-/*     , start(readStarts) */
-/*     , stride(readStrides) */
-/*     , count(readCounts) */
-/*     , dataSize(readDataSize) */
-/*     , readType(readType) */
-/*     {} */
-/* }; */
-/* } // namespace */
-
 class ReadSeisSol final: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
 
 private:
+    //templates
+    //struct
     template<class T>
     struct DynamicPseudoEnum {
         DynamicPseudoEnum() {}
@@ -83,6 +60,42 @@ private:
         std::map<const T, unsigned> indices_map;
     };
 
+    struct HDF5ControllerParameter {
+        std::string path;
+        std::string setPath;
+        std::vector<unsigned> start{0, 0, 0};
+        std::vector<unsigned> stride{1, 1, 1};
+        std::vector<unsigned> count{0, 0, 0};
+        std::vector<unsigned> dataSize{0, 0, 0};
+
+        typedef decltype(XdmfArrayType::Float32()) ArrayTypePtr;
+        ArrayTypePtr readType;
+
+        HDF5ControllerParameter(const std::string &path, const std::string &setPath,
+                                const std::vector<unsigned> &readStarts, const std::vector<unsigned> &readStrides,
+                                const std::vector<unsigned> &readCounts, const std::vector<unsigned> &readDataSize,
+                                const ArrayTypePtr &readType = XdmfArrayType::Float32())
+        : path(path)
+        , setPath(setPath)
+        , start(readStarts)
+        , stride(readStrides)
+        , count(readCounts)
+        , dataSize(readDataSize)
+        , readType(readType)
+        {}
+    };
+
+    //general
+    template<class Ret, class... Args>
+    auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
+    template<class Ret, class... Args>
+    auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
+                              Args... args);
+
+    template<class InputBlockIt, class OutputBlockIt, class NumericType>
+    OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
+                                 const NumericType &blockNum);
+
     // Overengineered for this case => maybe for XdmfReader usefull
     /* template<class T, class O> */
     /* struct LinkedFunctionPtr { */
@@ -95,13 +108,6 @@ private:
     bool examine(const vistle::Parameter *param) override;
     bool prepareRead() override;
     bool finishRead() override;
-
-    //general
-    template<class Ret, class... Args>
-    auto switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::function<Ret(Args...)> hdfFunc, Args... args);
-    template<class Ret, class... Args>
-    auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
-                              Args... args);
 
     //hdf5
     bool hdfModeNotImplemented();
@@ -117,8 +123,9 @@ private:
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
     void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
 
-    vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep, const int &block);
-    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int &timestep, const int &block);
+    vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
+                                                                     const int &block);
+    vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int block);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
@@ -134,11 +141,12 @@ private:
     void inspectXdmfTopology(const XdmfTopology *xtopo);
     void inspectXdmfTime(const XdmfTime *xtime);
 
-    /* bool readXdmfParallel(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param); */
+    bool readXdmfParallel(XdmfArray *array, const HDF5ControllerParameter &param);
 
     //vistle param
-    vistle::IntParameter *m_ghost = nullptr;
+    /* vistle::IntParameter *m_ghost = nullptr; */
     vistle::IntParameter *m_seisMode = nullptr;
+    std::array<vistle::IntParameter *, 3> m_blocks{nullptr, nullptr};
     vistle::StringParameter *m_file = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
 

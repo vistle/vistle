@@ -20,6 +20,7 @@
 #include "ReadSeisSol.h"
 
 //mpi
+#include <functional>
 #include <mpi.h>
 
 //vistle
@@ -157,7 +158,15 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
 
     m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
-    m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean);
+    m_blocks[0] = addIntParameter("x", "Number of blocks in x direction", 1);
+    m_blocks[1] = addIntParameter("y", "Number of blocks in y direction", 1);
+    m_blocks[2] = addIntParameter("z", "Number of blocks in z direction", 1);
+
+    setParameterRange(m_blocks[0], Integer(1), Integer(999999));
+    setParameterRange(m_blocks[1], Integer(1), Integer(999999));
+    setParameterRange(m_blocks[2], Integer(1), Integer(999999));
+    //TODO: Implement GhostCellGenerator
+    /* m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean); */
 
     //ports
     m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
@@ -192,6 +201,36 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
         return hdfFunc(args...);
     }
     return false;
+}
+
+
+/**
+ * @brief Template for block partition.
+ *
+ * @tparam InputBlockIt Iteratortype begin of container which holds values for partition.
+ * @tparam OutputBlockIt Iteratortype end of container which hodls values for partition.
+ * @tparam NumericType Block num type.
+ * @param first begin of container which holds values for partition.
+ * @param last end of container which hodls values for partition.
+ * @param d_first container to fill.
+ * @param blockNum current blockNum.
+ *
+ * @return iterator to restult container.
+ */
+template<class InputBlockIt, class OutputBlockIt, class NumericType>
+OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, const NumericType &blockNum)
+{
+    const auto numBlocks{std::distance(first, last)};
+    std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable {
+        if (it++ == numBlocks - 1)
+            return b;
+        else {
+            NumericType bDist = b % bS;
+            b /= bS;
+            return bDist;
+        };
+    });
+    return d_first;
 }
 
 /**
@@ -357,13 +396,21 @@ bool ReadSeisSol::inspectXdmf()
   */
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
+    static bool check = false;
     if (!param || param == m_file) {
         if (!checkEnd(m_file->getValue(), ".xdmf"))
             return false;
 
-        return callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
+        check = callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
     }
-    return true;
+    const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();
+    setPartitions(nBlocks);
+    if (nBlocks == size())
+        return true;
+    else {
+        sendInfo("Number of blocks should equal MPISIZE.");
+        return false;
+    }
 }
 
 /**
@@ -407,7 +454,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
     //TODO: not the same for all xdmf => hyperslap not working => maybe using XML parser and reading hyperslap to concretize read.
-    //only 3D at the momend
+    // -> only 3D at the moment
     constexpr auto numCoords{3};
     constexpr auto strideVistleArr{1};
 
@@ -466,8 +513,10 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
     if (xattribute == nullptr)
         return nullptr;
 
+    const auto &numDims = xattribute->getDimensions().size();
+
     //last dim relevant
-    const auto attDim = xattribute->getDimensions().at(xattribute->getDimensions().size() - 1);
+    const auto attDim = xattribute->getDimensions().at(numDims - 1);
 
     //Debugging
     /* auto type = xattribute->getArrayType(); */
@@ -486,7 +535,7 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
     unsigned startRead{0};
     const unsigned arrStride{1};
     const unsigned valStride{1};
-    if (m_xattributes->getValue() != "partition")
+    if (numDims > 1)
         startRead = attDim * timestep;
 
     xArrAtt->getValues<Scalar>(startRead, vattDataX, attDim, arrStride, valStride);
@@ -502,24 +551,29 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
   *
   * @return: Created UnstructuredGrid pointer.
   */
-vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr,
-                                                                         const int &timestep, const int &block)
+vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr, const int block)
 {
     if (unstr == nullptr)
         return nullptr;
 
-    //TODO: geometry always the same for each ugrid
+    //TODO: geometry always the same for each ugrid for seissol
     const auto &xtopology = unstr->getTopology();
     const auto &xgeometry = unstr->getGeometry();
     const int &numCornerPerElem = xtopology->getDimensions().at(xtopology->getDimensions().size() - 1);
 
-    //read xdmf connectionlist
     const shared_ptr<XdmfArray> xArrConn(XdmfArray::New());
-    readXdmfHeavyController(xArrConn.get(), xtopology->getHeavyDataController());
-
-    //read xdmf geometry
     const shared_ptr<XdmfArray> xArrGeo(XdmfArray::New());
-    readXdmfHeavyController(xArrGeo.get(), xgeometry->getHeavyDataController());
+    const auto &geoContr = xgeometry->getHeavyDataController();
+    const auto &topoContr = xtopology->getHeavyDataController();
+    if (numPartitions() == 1) {
+        //read xdmf connectionlist
+        readXdmfHeavyController(xArrConn.get(), topoContr);
+
+        //read xdmf geometry
+        readXdmfHeavyController(xArrGeo.get(), geoContr);
+    } else {
+        /* HDF5ControllerParameter geoContrNew{geoContr->getName(), geoContr->getFilePath(), }; */
+    }
 
     UnstructuredGrid::ptr unstr_ptr(
         new UnstructuredGrid(xtopology->getNumberElements(), xArrConn->getSize(), xArrGeo->getSize() / 3));
@@ -632,7 +686,7 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 
     /*************** Create Unstructured Grid **************/
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-    auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), timestep, block);
+    auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
     checkObjectPtr(this, ugrid_ptr,
                    "Something went wrong while creation of ugrid! Possible errors:\n"
                    "-invalid connectivity list \n"
@@ -708,58 +762,58 @@ bool ReadSeisSol::finishRead()
     return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
-/* bool ReadSeisSol::readXdmfParallel(shared_ptr<XdmfArray> &array, const HDF5ControllerParameter &param) */
-/* { */
-/*     const auto &comm = Module::comm(); */
-/*     const auto &processes = size(); */
-/*     constexpr int cores{4}; */
-/*     constexpr int dsmSize{64}; */
-/*     const auto &mpiID = id(); */
+bool ReadSeisSol::readXdmfParallel(XdmfArray *array, const HDF5ControllerParameter &param)
+{
+    /* const auto &comm = Module::comm(); */
+    /* const auto &processes = size(); */
+    /* constexpr int cores{4}; */
+    /* constexpr int dsmSize{64}; */
+    /* const auto &mpiID = id(); */
 
-//own mpi
-/* array = XdmfArray::New(); */
-/* array->initialize(0); */
-/* MPI_Comm workerComm; */
-/* MPI_Group workers, dsmGroup; */
+    /* //own mpi */
+    /* /1* array = XdmfArray::New(); *1/ */
+    /* /1* array->initialize(0); *1/ */
+    /* /1* MPI_Comm workerComm; *1/ */
+    /* /1* MPI_Group workers, dsmGroup; *1/ */
 
-/* MPI_Comm_group(MPI_COMM_WORLD, &dsmGroup); */
-/* int *ServerIds = (int *)calloc(cores, sizeof(int)); */
-/* unsigned index{0}; */
-/* std::fill_n(ServerIds + processes - cores, ServerIds + processes - 1, [&index]() mutable { return index++; }); */
-/* MPI_Group_excl(dsmGroup, index, ServerIds, &workers); */
-/* int val = MPI_Comm_create(curRank, workers, &workerComm); */
-/* free(ServerIds); */
+    /* /1* MPI_Comm_group(MPI_COMM_WORLD, &dsmGroup); *1/ */
+    /* /1* int *ServerIds = (int *)calloc(cores, sizeof(int)); *1/ */
+    /* /1* unsigned index{0}; *1/ */
+    /* /1* std::fill_n(ServerIds + processes - cores, ServerIds + processes - 1, [&index]() mutable { return index++; }); *1/ */
+    /* /1* MPI_Group_excl(dsmGroup, index, ServerIds, &workers); *1/ */
+    /* /1* int val = MPI_Comm_create(curRank, workers, &workerComm); *1/ */
+    /* /1* free(ServerIds); *1/ */
 
-/* shared_ptr<XdmfHDF5WriterDSM> heavyDSMWriter = */
-/*     XdmfHDF5WriterDSM::New("", comm, dsmSize / cores, processes - cores, processes - 1); */
+    /* shared_ptr<XdmfHDF5WriterDSM> heavyDSMWriter = */
+    /*     XdmfHDF5WriterDSM::New("", comm, dsmSize / cores, processes - cores, processes - 1); */
 
-/* if (!heavyDSMWriter) { */
-/*     sendInfo("No valid MPI-Parameters."); */
-/*     return false; */
-/* } */
+    /* if (!heavyDSMWriter) { */
+    /*     sendInfo("No valid MPI-Parameters."); */
+    /*     return false; */
+    /* } */
 
-/* heavyDSMWriter->setMode(XdmfHeavyDataWriter::Hyperslab); */
+    /* heavyDSMWriter->setMode(XdmfHeavyDataWriter::Hyperslab); */
 
-/* shared_ptr<XdmfHDF5ControllerDSM> controller = */
-/*     XdmfHDF5ControllerDSM::New(param.path, param.setPath, param.readType, param.start, param.stride, param.count, */
-/*                                param.dataSize, heavyDSMWriter->getServerBuffer()); */
+    /* shared_ptr<XdmfHDF5ControllerDSM> controller = */
+    /*     XdmfHDF5ControllerDSM::New(param.path, param.setPath, param.readType, param.start, param.stride, param.count, */
+    /*                                param.dataSize, heavyDSMWriter->getServerBuffer()); */
 
-/* sendInfo(controller->getDataSetPath()); */
-/* sendInfo(controller->getName()); */
-/* sendInfo(std::to_string(controller->getSize())); */
-/* array->insert(controller); */
-/* array->read(); */
+    /* sendInfo(controller->getDataSetPath()); */
+    /* sendInfo(controller->getName()); */
+    /* sendInfo(std::to_string(controller->getSize())); */
+    /* array->insert(controller); */
+    /* array->read(); */
 
-/* MPI_Barrier(comm); */
+    /* MPI_Barrier(comm); */
 
-/* for (unsigned i = 0; i < array->getSize(); i++) */
-/*     sendInfo(std::to_string(array->getValue<float>(i))); */
+    /* for (unsigned i = 0; i < array->getSize(); i++) */
+    /*     sendInfo(std::to_string(array->getValue<float>(i))); */
 
-/* if (mpiID == 0) */
-/*     heavyDSMWriter->stopDSM(); */
+    /* if (mpiID == 0) */
+    /*     heavyDSMWriter->stopDSM(); */
 
-/* return true; */
-/* } */
+    /* return true; */
+}
 
 /**
   * @brief: Template for PseudoEnum which initializes map with an index like enum.
