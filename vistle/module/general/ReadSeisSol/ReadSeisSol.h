@@ -43,6 +43,7 @@ class ReadSeisSol final: public vistle::Reader {
 public:
     //default constructor
     ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm);
+    ~ReadSeisSol() override;
 
 private:
     //templates
@@ -97,6 +98,9 @@ private:
     OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
                                  const NumericType &blockNum);
 
+    void releaseXdmfObjects();
+    bool checkBlocks();
+
     // Overengineered for this case => maybe for XdmfReader usefull
     /* template<class T, class O> */
     /* struct LinkedFunctionPtr { */
@@ -119,7 +123,7 @@ private:
     void clearChoice();
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
-    bool readXdmfArrayParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
+    bool readXdmfParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
                                const int block);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);

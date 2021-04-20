@@ -20,8 +20,6 @@
 #include "ReadSeisSol.h"
 
 //mpi
-#include <array>
-#include <functional>
 #include <mpi.h>
 
 //vistle
@@ -58,6 +56,8 @@
 #include <XdmfHDF5Controller.hpp>
 
 //std
+#include <array>
+#include <functional>
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -182,6 +182,24 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     setParallelizationMode(Serial);
 }
 
+/**
+ * @brief Destructor.
+ */
+ReadSeisSol::~ReadSeisSol()
+{
+    releaseXdmfObjects();
+}
+
+/**
+ * @brief Clear up allocated xdmf objects by reader.
+ */
+void ReadSeisSol::releaseXdmfObjects()
+{
+    if (xgridCollect != nullptr) {
+        xgridCollect->release();
+        xgridCollect.reset();
+    }
+}
 
 /**
   * @brief: Template for switching between XDMF and HDF5 mode. Calls given function with args according to current mode.
@@ -204,7 +222,7 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
     return false;
 }
 
-
+//TODO: Template export to core?
 /**
  * @brief Template for block partition.
  *
@@ -219,7 +237,8 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
  * @return iterator to restult container.
  */
 template<class InputBlockIt, class OutputBlockIt, class NumericType>
-OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, const NumericType &blockNum)
+OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
+                                          const NumericType &blockNum)
 {
     const auto numBlocks{std::distance(first, last)};
     std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable {
@@ -311,7 +330,7 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
 void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
 {
     if (xugrid != nullptr) {
-        //TODO: NOT IMPLEMENTED YET
+        //TODO: NOT IMPLEMENTED YET => DO NOTHING AT THE MOMENT.
         inspectXdmfTopology(xugrid->getTopology().get());
         inspectXdmfGeometry(xugrid->getGeometry().get());
         inspectXdmfTime(xugrid->getTime().get());
@@ -388,6 +407,24 @@ bool ReadSeisSol::inspectXdmf()
     return true;
 }
 
+
+/**
+ * @brief Checks that total product of blocks are equal mpi size.
+ *
+ * @return result of "product blocks == mpisize".
+ */
+bool ReadSeisSol::checkBlocks()
+{
+    const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();
+    setPartitions(nBlocks);
+    if (nBlocks == size())
+        return true;
+    else {
+        sendInfo("Number of blocks should equal MPISIZE.");
+        return false;
+    }
+}
+
 /**
   * @brief: Called if observeParameter changes.
   *
@@ -404,14 +441,7 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
 
         check = callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
     }
-    const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();
-    setPartitions(nBlocks);
-    if (nBlocks == size())
-        return true;
-    else {
-        sendInfo("Number of blocks should equal MPISIZE.");
-        return false;
-    }
+    return checkBlocks();
 }
 
 /**
@@ -573,7 +603,6 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
         //read xdmf geometry
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     } else {
-        /* HDF5ControllerParameter geoContrNew{geoContr->getName(), geoContr->getFilePath(), }; */
     }
 
     UnstructuredGrid::ptr unstr_ptr(
@@ -695,7 +724,6 @@ bool ReadSeisSol::prepareRead()
   *
   * @return: true if everything has been added correctly to the ports.
   */
-
 bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
     /** TODO:
@@ -764,9 +792,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
   */
 bool ReadSeisSol::finishReadXdmf()
 {
-    if (xgridCollect != nullptr) {
-        xgridCollect.reset();
-    }
+    releaseXdmfObjects();
     return true;
 }
 
@@ -780,8 +806,8 @@ bool ReadSeisSol::finishRead()
     return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
-bool ReadSeisSol::readXdmfArrayParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
-                                        const int block)
+bool ReadSeisSol::readXdmfParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
+                                   const int block)
 {
     constexpr auto numBlocks = 3;
     const auto &dimVec = defaultController->getDimensions();
@@ -792,22 +818,23 @@ bool ReadSeisSol::readXdmfArrayParallel(XdmfArray *array, const shared_ptr<XdmfH
     std::array<unsigned, numBlocks> partition;
     blockPartition(blocks.begin(), blocks.end(), partition.begin(), block);
 
-    std::function<unsigned(int)> lambda_partition = [&partition, &dimVec](int i) {
+    std::vector<unsigned> readStart(numBlocks);
+    std::generate(readStart.begin(), readStart.end(), [n = 0, &partition, &dimVec]() mutable {
+        auto i = n++;
         return partition[i] * dimVec[i] / numBlocks;
-    };
-    std::vector<unsigned> readStart;
-    for (int i = 0; i < numBlocks; i++)
-        readStart[i] = lambda_partition(i);
+    });
+
+    sendInfo("%s", defaultController->getDescriptor().c_str());
+
+    return false;
 
     auto hdfController = XdmfHDF5Controller::New(
-            defaultController->getFilePath(),
-            defaultController->getName(),
-            defaultController->getType(),
-            readStart,
-            defaultController->getStride(),
-            dimVec,
-            defaultController->getDataspaceDimensions()
-    );
+        defaultController->getFilePath(), defaultController->getName(), defaultController->getType(), readStart,
+        defaultController->getStride(), dimVec, defaultController->getDataspaceDimensions());
+
+    array->insert(hdfController);
+    array->read();
+
     return true;
 }
 
