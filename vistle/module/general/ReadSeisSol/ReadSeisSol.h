@@ -19,6 +19,7 @@
 
 #include <XdmfArrayType.hpp>
 #include <array>
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -60,30 +61,30 @@ private:
         std::map<const T, unsigned> indices_map;
     };
 
-    struct HDF5ControllerParameter {
-        std::string path;
-        std::string setPath;
-        std::vector<unsigned> start{0, 0, 0};
-        std::vector<unsigned> stride{1, 1, 1};
-        std::vector<unsigned> count{0, 0, 0};
-        std::vector<unsigned> dataSize{0, 0, 0};
+    /* struct HDF5ControllerParameter { */
+    /*     std::string path; */
+    /*     std::string setPath; */
+    /*     std::vector<unsigned> start{0, 0, 0}; */
+    /*     std::vector<unsigned> stride{1, 1, 1}; */
+    /*     std::vector<unsigned> count{0, 0, 0}; */
+    /*     std::vector<unsigned> dataSize{0, 0, 0}; */
 
-        typedef decltype(XdmfArrayType::Float32()) ArrayTypePtr;
-        ArrayTypePtr readType;
+    /*     typedef decltype(XdmfArrayType::Float32()) ArrayTypePtr; */
+    /*     ArrayTypePtr readType; */
 
-        HDF5ControllerParameter(const std::string &path, const std::string &setPath,
-                                const std::vector<unsigned> &readStarts, const std::vector<unsigned> &readStrides,
-                                const std::vector<unsigned> &readCounts, const std::vector<unsigned> &readDataSize,
-                                const ArrayTypePtr &readType = XdmfArrayType::Float32())
-        : path(path)
-        , setPath(setPath)
-        , start(readStarts)
-        , stride(readStrides)
-        , count(readCounts)
-        , dataSize(readDataSize)
-        , readType(readType)
-        {}
-    };
+    /*     HDF5ControllerParameter(const std::string &path, const std::string &setPath, */
+    /*                             const std::vector<unsigned> &readStarts, const std::vector<unsigned> &readStrides, */
+    /*                             const std::vector<unsigned> &readCounts, const std::vector<unsigned> &readDataSize, */
+    /*                             const ArrayTypePtr &readType = XdmfArrayType::Float32()) */
+    /*     : path(path) */
+    /*     , setPath(setPath) */
+    /*     , start(readStarts) */
+    /*     , stride(readStrides) */
+    /*     , count(readCounts) */
+    /*     , dataSize(readDataSize) */
+    /*     , readType(readType) */
+    /*     {} */
+    /* }; */
 
     //general
     template<class Ret, class... Args>
@@ -118,6 +119,8 @@ private:
     void clearChoice();
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
+    bool readXdmfArrayParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
+                               const int block);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
@@ -140,8 +143,6 @@ private:
     void inspectXdmfGeometry(const XdmfGeometry *xgeo);
     void inspectXdmfTopology(const XdmfTopology *xtopo);
     void inspectXdmfTime(const XdmfTime *xtime);
-
-    bool readXdmfParallel(XdmfArray *array, const HDF5ControllerParameter &param);
 
     //vistle param
     /* vistle::IntParameter *m_ghost = nullptr; */

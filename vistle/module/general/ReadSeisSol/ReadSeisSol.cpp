@@ -20,6 +20,7 @@
 #include "ReadSeisSol.h"
 
 //mpi
+#include <array>
 #include <functional>
 #include <mpi.h>
 
@@ -218,7 +219,7 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
  * @return iterator to restult container.
  */
 template<class InputBlockIt, class OutputBlockIt, class NumericType>
-OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, const NumericType &blockNum)
+OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, const NumericType &blockNum)
 {
     const auto numBlocks{std::distance(first, last)};
     std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable {
@@ -648,9 +649,26 @@ bool ReadSeisSol::prepareReadXdmf()
         return false;
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
     xgridCollect = xdomain->getGridCollection(0);
-    const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
+    const auto &xugrid = xgridCollect->getUnstructuredGrid(1);
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
     if (xattribute->getReadMode() == XdmfArray::Reference) {
+        /* auto arrayTest = XdmfArray::New(); */
+        /* arrayTest->setReference(xattribute->getReference()); */
+        /* xattribute->setReadMode(XdmfArray::Reference); */
+        /* arrayTest->insert(xattribute->getHeavyDataController()); */
+        /* arrayTest->read(); */
+
+        /* arrayTest->setReference(xattribute->getReference()); */
+        /* arrayTest->insert(xattribute->getHeavyDataController()); */
+        /* arrayTest->read(); */
+        /* xattribute->readReference(); */
+        /* xattribute->read(); */
+        /* sendInfo("reference read"); */
+        /* std::vector<float> test(xattribute->getSize()); */
+        /* arrayTest->getValues(0, test.data()); */
+        /* for (auto i : test) */
+        /*     std::cout << i << '\n'; */
+
         sendInfo("Hyperslab is buggy in current Xdmf3 version or you aren't using HDF5 files. Chosen Param: %s",
                  m_xattributes->getValue().c_str());
         return false;
@@ -762,57 +780,35 @@ bool ReadSeisSol::finishRead()
     return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
-bool ReadSeisSol::readXdmfParallel(XdmfArray *array, const HDF5ControllerParameter &param)
+bool ReadSeisSol::readXdmfArrayParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
+                                        const int block)
 {
-    /* const auto &comm = Module::comm(); */
-    /* const auto &processes = size(); */
-    /* constexpr int cores{4}; */
-    /* constexpr int dsmSize{64}; */
-    /* const auto &mpiID = id(); */
+    constexpr auto numBlocks = 3;
+    const auto &dimVec = defaultController->getDimensions();
+    std::array<unsigned, numBlocks> blocks;
+    std::for_each(m_blocks.begin(), m_blocks.end(),
+                  [n = 0, &blocks](IntParameter *vistleInt) mutable { blocks[n++] = vistleInt->getValue(); });
 
-    /* //own mpi */
-    /* /1* array = XdmfArray::New(); *1/ */
-    /* /1* array->initialize(0); *1/ */
-    /* /1* MPI_Comm workerComm; *1/ */
-    /* /1* MPI_Group workers, dsmGroup; *1/ */
+    std::array<unsigned, numBlocks> partition;
+    blockPartition(blocks.begin(), blocks.end(), partition.begin(), block);
 
-    /* /1* MPI_Comm_group(MPI_COMM_WORLD, &dsmGroup); *1/ */
-    /* /1* int *ServerIds = (int *)calloc(cores, sizeof(int)); *1/ */
-    /* /1* unsigned index{0}; *1/ */
-    /* /1* std::fill_n(ServerIds + processes - cores, ServerIds + processes - 1, [&index]() mutable { return index++; }); *1/ */
-    /* /1* MPI_Group_excl(dsmGroup, index, ServerIds, &workers); *1/ */
-    /* /1* int val = MPI_Comm_create(curRank, workers, &workerComm); *1/ */
-    /* /1* free(ServerIds); *1/ */
+    std::function<unsigned(int)> lambda_partition = [&partition, &dimVec](int i) {
+        return partition[i] * dimVec[i] / numBlocks;
+    };
+    std::vector<unsigned> readStart;
+    for (int i = 0; i < numBlocks; i++)
+        readStart[i] = lambda_partition(i);
 
-    /* shared_ptr<XdmfHDF5WriterDSM> heavyDSMWriter = */
-    /*     XdmfHDF5WriterDSM::New("", comm, dsmSize / cores, processes - cores, processes - 1); */
-
-    /* if (!heavyDSMWriter) { */
-    /*     sendInfo("No valid MPI-Parameters."); */
-    /*     return false; */
-    /* } */
-
-    /* heavyDSMWriter->setMode(XdmfHeavyDataWriter::Hyperslab); */
-
-    /* shared_ptr<XdmfHDF5ControllerDSM> controller = */
-    /*     XdmfHDF5ControllerDSM::New(param.path, param.setPath, param.readType, param.start, param.stride, param.count, */
-    /*                                param.dataSize, heavyDSMWriter->getServerBuffer()); */
-
-    /* sendInfo(controller->getDataSetPath()); */
-    /* sendInfo(controller->getName()); */
-    /* sendInfo(std::to_string(controller->getSize())); */
-    /* array->insert(controller); */
-    /* array->read(); */
-
-    /* MPI_Barrier(comm); */
-
-    /* for (unsigned i = 0; i < array->getSize(); i++) */
-    /*     sendInfo(std::to_string(array->getValue<float>(i))); */
-
-    /* if (mpiID == 0) */
-    /*     heavyDSMWriter->stopDSM(); */
-
-    /* return true; */
+    auto hdfController = XdmfHDF5Controller::New(
+            defaultController->getFilePath(),
+            defaultController->getName(),
+            defaultController->getType(),
+            readStart,
+            defaultController->getStride(),
+            dimVec,
+            defaultController->getDataspaceDimensions()
+    );
+    return true;
 }
 
 /**
