@@ -17,9 +17,7 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
-#include <XdmfArrayType.hpp>
 #include <array>
-#include <boost/smart_ptr/shared_ptr.hpp>
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -123,8 +121,7 @@ private:
     void clearChoice();
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
-    bool readXdmfParallel(XdmfArray *array, const shared_ptr<XdmfHeavyDataController> &defaultController,
-                               const int block);
+    bool readXdmfUnstrParallel(XdmfArray *array, const XdmfHeavyDataController *defaultController, const int block);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
@@ -151,6 +148,7 @@ private:
     //vistle param
     /* vistle::IntParameter *m_ghost = nullptr; */
     vistle::IntParameter *m_seisMode = nullptr;
+    vistle::IntParameter *m_parallelMode = nullptr;
     std::array<vistle::IntParameter *, 3> m_blocks{nullptr, nullptr};
     vistle::StringParameter *m_file = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
