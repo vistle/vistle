@@ -156,7 +156,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     //settings
     m_file = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",
                                 Parameter::Filename);
-    m_seisMode = addIntParameter("SeisSolMode", "Select read format (HDF5 or Xdmf)", (Integer)XDMF, Parameter::Choice);
+    m_seisMode = addIntParameter("SeisSolMode", "Select file format", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
     m_parallelMode = addIntParameter("ParallelMode", "Select ParallelMode", (Integer)TIMESTEP, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_parallelMode, ParallelMode);
@@ -183,7 +183,8 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_parallelMode);
 
     //parallel mode
-    setParallelizationMode(ParallelizeTimesteps);
+    setParallelizationMode(Serial);
+    setAllowTimestepDistribution(true);
 }
 
 /**
@@ -444,11 +445,24 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
 
         callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
     } else if (param == m_parallelMode) {
-        if (m_parallelMode->getValue() == BLOCKS) {
+        switch (m_parallelMode->getValue()) {
+        case BLOCKS: {
             sendInfo("ParallelMode BLOCKS not implemented.");
+            /* return checkBlocks(); */
+            /* setParallelizationMode(ParallelizeBlocks); */
             return false;
         }
-        /* return checkBlocks(); */
+        case TIMESTEP: {
+            setParallelizationMode(Serial);
+            setAllowTimestepDistribution(true);
+            /* setParallelizationMode(ParallelizeTimesteps); */
+            break;
+        }
+            /* case SERIAL: { */
+            /*     setParallelizationMode(Serial); */
+            /*     break; */
+            /* } */
+        }
     }
     return true;
 }
@@ -612,7 +626,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     //read xdmf geometry
     readXdmfHeavyController(xArrGeo.get(), geoContr);
 
-    /* if (numPartitions() == 1) { */
+    /* if (m_parallelMode->getValue() == TIMESTEP) { */
     /*     //read xdmf connectionlist */
     /*     readXdmfHeavyController(xArrConn.get(), topoContr); */
 
@@ -692,6 +706,7 @@ void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> att
   */
 bool ReadSeisSol::prepareReadXdmf()
 {
+    sendInfo("PrepareBeg. (%d)", rank());
     const std::string xfile = m_file->getValue();
     const auto xreader = XdmfReader::New();
     if (xreader.get() == nullptr)
@@ -706,6 +721,7 @@ bool ReadSeisSol::prepareReadXdmf()
                  m_xattributes->getValue().c_str());
         return false;
     }
+    sendInfo("PrepareEnd. (%d)", rank());
     return true;
 }
 
@@ -732,14 +748,14 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
     /** TODO:
       * - Distribute across MPI processes
-      * => 2 approaches: 
+      * => 2 approaches:
       *     - block distribution with blocks []
       *     - timestep distribution [x]
       */
 
     /*************** Create Unstructured Grid **************/
     //timestepdistribution check => Debugging
-    /* sendInfo("rank: %d timestep: %d", rank(), timestep); */
+    sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
 
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
     auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
@@ -774,6 +790,7 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
     token.addObject(m_gridOut, ugrid_ptr);
     token.addObject(m_scalarOut, att_ptr);
 
+    sendInfo("ReadEnd. (%d)", rank());
     return true;
 }
 
@@ -802,7 +819,9 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
   */
 bool ReadSeisSol::finishReadXdmf()
 {
+    sendInfo("finishBeg. (%d)", rank());
     releaseXdmfObjects();
+    sendInfo("finishEnd. (%d)", rank());
     return true;
 }
 
@@ -816,6 +835,16 @@ bool ReadSeisSol::finishRead()
     return callSeisModeFunction(&ReadSeisSol::finishReadXdmf, &ReadSeisSol::hdfModeNotImplemented);
 }
 
+
+/**
+ * @brief TODO: implement correct
+ *
+ * @param array
+ * @param defaultController
+ * @param block
+ *
+ * @return
+ */
 bool ReadSeisSol::readXdmfUnstrParallel(XdmfArray *array, const XdmfHeavyDataController *defaultController,
                                         const int block)
 {
