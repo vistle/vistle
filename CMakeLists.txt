@@ -220,6 +220,8 @@ if(WIN32)
 endif(WIN32)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
+include(ConfigureLinker)
+
 if (NOT VISTLE_GUI_ONLY)
     find_package(OpenMP)
     
