@@ -253,6 +253,12 @@ int Reader::timeIncrement() const
     return m_increment->getValue();
 }
 
+
+/**
+ * @brief Set parallelize mode per mpi process.
+ *
+ * @param mode enum.
+ */
 void Reader::setParallelizationMode(Reader::ParallelizationMode mode) {
 
     m_parallel = mode;
@@ -267,6 +273,11 @@ void Reader::setHandlePartitions(bool enable)
     m_handlePartitions = enable;
 }
 
+/**
+ * @brief Allow timestep distribution across MPI processes.
+ *
+ * @param allow Adds a bool parameter to the reader if true and enables it when parallem mode is set to ParallelizeTimesteps.
+ */
 void Reader::setAllowTimestepDistribution(bool allow)
 {
     m_allowTimestepDistribution = allow;
