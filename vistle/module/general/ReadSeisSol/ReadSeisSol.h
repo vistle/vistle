@@ -17,7 +17,9 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
+#include "vistle/core/parameter.h"
 #include <array>
+#include <boost/smart_ptr/shared_ptr.hpp>
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
@@ -121,7 +123,10 @@ private:
     void clearChoice();
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
-    bool readXdmfUnstrParallel(XdmfArray *array, const XdmfHeavyDataController *defaultController, const int block);
+    bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
+    std::unordered_set<unsigned> readXdmfTopologyParallel(XdmfArray *xArrTopo,
+                                                          const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo,
+                                                          const int block);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
@@ -131,6 +136,8 @@ private:
                                                                      const int &block);
     vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int block);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
+    bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo,
+                             const std::unordered_set<unsigned> &verticesToRead);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
     void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
@@ -149,6 +156,7 @@ private:
     /* vistle::IntParameter *m_ghost = nullptr; */
     vistle::IntParameter *m_seisMode = nullptr;
     vistle::IntParameter *m_parallelMode = nullptr;
+    vistle::IntParameter *m_reuseGrid = nullptr;
     std::array<vistle::IntParameter *, 3> m_blocks{nullptr, nullptr};
     vistle::StringParameter *m_file = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
@@ -157,10 +165,13 @@ private:
     vistle::Port *m_gridOut = nullptr;
     vistle::Port *m_scalarOut = nullptr;
 
+    //general
     std::vector<std::string> m_attChoiceStr;
     DynamicPseudoEnum<std::string> m_xAttSelect;
 
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
+    XdmfArray *xArrGeo = nullptr;
+    XdmfArray *xArrTopo = nullptr;
 };
 #endif
