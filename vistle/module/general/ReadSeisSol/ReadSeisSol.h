@@ -99,6 +99,7 @@ private:
     /*                              const NumericType &blockNum); */
 
     void releaseXdmfObjects();
+    void releaseXdmfArr();
     bool checkBlocks();
 
     // Overengineered for this case => maybe for XdmfReader usefull
