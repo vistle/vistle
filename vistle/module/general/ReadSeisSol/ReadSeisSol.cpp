@@ -258,22 +258,22 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
  *
  * @return iterator to restult container.
  */
-template<class InputBlockIt, class OutputBlockIt, class NumericType>
-OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
-                                          const NumericType &blockNum)
-{
-    const auto numBlocks{std::distance(first, last)};
-    std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable {
-        if (it++ == numBlocks - 1)
-            return b;
-        else {
-            NumericType bDist = b % bS;
-            b /= bS;
-            return bDist;
-        };
-    });
-    return d_first;
-}
+/* template<class InputBlockIt, class OutputBlockIt, class NumericType> */
+/* OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, */
+/*                                           const NumericType &blockNum) */
+/* { */
+/*     const auto numBlocks{std::distance(first, last)}; */
+/*     std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable { */
+/*         if (it++ == numBlocks - 1) */
+/*             return b; */
+/*         else { */
+/*             NumericType bDist = b % bS; */
+/*             b /= bS; */
+/*             return bDist; */
+/*         }; */
+/*     }); */
+/*     return d_first; */
+/* } */
 
 /**
   * @brief: Wrapper function for easier call of seismode-function for selected seismode.
@@ -538,7 +538,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 }
 
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo,
-                                      const std::unordered_set<unsigned> &verticesToRead)
+                                      const std::set<unsigned> &verticesToRead)
 {
     if (xArrGeo == nullptr)
         return false;
@@ -662,7 +662,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     const shared_ptr<XdmfArray> xArrGeo(XdmfArray::New());
     const auto &geoContr = xgeometry->getHeavyDataController();
     const auto &topoContr = xtopology->getHeavyDataController();
-    std::unordered_set<unsigned> uniqueVerts;
+    std::set<unsigned> uniqueVerts;
 
     if (m_parallelMode->getValue() == SERIAL) {
         //read xdmf connectionlist
@@ -673,7 +673,9 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     } else {
         uniqueVerts = readXdmfTopologyParallel(xArrConn.get(), topoContr, block);
         sendInfo("numUniquVerts: %d", (int)uniqueVerts.size());
+        sendInfo("numArrConn: %d", (int)xArrConn->getSize());
         readXdmfHeavyController(xArrGeo.get(), geoContr);
+        sendInfo("numArrGeo: %d", (int)xArrGeo->getSize());
     }
 
     auto numVertices{xArrGeo->getSize() / 3};
@@ -702,7 +704,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
  *
  * @return Unique set of vertices.
  */
-std::unordered_set<unsigned> ReadSeisSol::readXdmfTopologyParallel(
+std::set<unsigned> ReadSeisSol::readXdmfTopologyParallel(
     XdmfArray *xArrTopo, const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo, const int block)
 {
     /*************** read topology **************/
@@ -730,7 +732,7 @@ std::unordered_set<unsigned> ReadSeisSol::readXdmfTopologyParallel(
     elem2   x12 x22 x32
     elem3   x13 x23 x33
             ...
-    elemn   x1n x2n x3n 
+    elemn   x1n x2n x3n
 
     block0 reads: x11 x21 x31 ... x1n/numPartitions x2n/numPartitions x3n/numPartitions
     ...
@@ -755,16 +757,13 @@ std::unordered_set<unsigned> ReadSeisSol::readXdmfTopologyParallel(
 
     /*************** extract unique points **************/
     //hash set
-    std::unordered_set<unsigned> verticesToRead;
+    std::set<unsigned> verticesToRead;
 
     for (unsigned i = 0; i < countTopo; i++) {
         const auto &val = xArrTopo->getValue<unsigned>(i);
-        if (verticesToRead.find(val) != verticesToRead.end()){
-            sendInfo("hallo");
+        auto inserted = verticesToRead.insert(val);
+        if (inserted.second)
             std::cout << val << '\n';
-            verticesToRead.insert(val);
-        }
-        /* std::cout << val << '\n'; */
     }
     return verticesToRead;
 }
@@ -879,12 +878,12 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
     auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
-    checkObjectPtr(this, ugrid_ptr,
-                   "Something went wrong while creation of ugrid! Possible errors:\n"
-                   "-invalid connectivity list \n"
-                   "-invalid coordinates\n"
-                   "-invalid typelist\n"
-                   "-invalid geo type");
+    /* checkObjectPtr(this, ugrid_ptr, */
+    /*                "Something went wrong while creation of ugrid! Possible errors:\n" */
+    /*                "-invalid connectivity list \n" */
+    /*                "-invalid coordinates\n" */
+    /*                "-invalid typelist\n" */
+    /*                "-invalid geo type"); */
 
     /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);

@@ -94,9 +94,9 @@ private:
     auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
                               Args... args);
 
-    template<class InputBlockIt, class OutputBlockIt, class NumericType>
-    OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first,
-                                 const NumericType &blockNum);
+    /* template<class InputBlockIt, class OutputBlockIt, class NumericType> */
+    /* OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, */
+    /*                              const NumericType &blockNum); */
 
     void releaseXdmfObjects();
     bool checkBlocks();
@@ -124,7 +124,7 @@ private:
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
-    std::unordered_set<unsigned> readXdmfTopologyParallel(XdmfArray *xArrTopo,
+    std::set<unsigned> readXdmfTopologyParallel(XdmfArray *xArrTopo,
                                                           const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo,
                                                           const int block);
 
@@ -137,7 +137,7 @@ private:
     vistle::UnstructuredGrid::ptr generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *xunstr, const int block);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo);
     bool fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unst, XdmfArray *xArrGeo,
-                             const std::unordered_set<unsigned> &verticesToRead);
+                             const std::set<unsigned> &verticesToRead);
     bool fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn);
     template<class T>
     void fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, const T &numCornerPerElem);
