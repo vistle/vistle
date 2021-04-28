@@ -125,7 +125,7 @@ private:
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
-    std::set<unsigned> readXdmfTopologyParallel(XdmfArray *xArrTopo,
+    void readXdmfTopologyParallel(XdmfArray *xArrTopo,
                                                           const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo,
                                                           const int block);
 
@@ -173,6 +173,6 @@ private:
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
     XdmfArray *xArrGeo = nullptr;
-    XdmfArray *xArrTopo = nullptr;
+    XdmfArray *xArrConn = nullptr;
 };
 #endif
