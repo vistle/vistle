@@ -99,7 +99,7 @@ private:
     /*                              const NumericType &blockNum); */
 
     void releaseXdmfObjects();
-    void releaseXdmfArr();
+    /* void releaseXdmfArr(); */
     bool checkBlocks();
 
     // Overengineered for this case => maybe for XdmfReader usefull
@@ -155,14 +155,17 @@ private:
 
     //vistle param
     /* vistle::IntParameter *m_ghost = nullptr; */
+    std::array<vistle::IntParameter *, 3> m_blocks{nullptr, nullptr};
     vistle::IntParameter *m_seisMode = nullptr;
     vistle::IntParameter *m_parallelMode = nullptr;
     vistle::IntParameter *m_reuseGrid = nullptr;
-    std::array<vistle::IntParameter *, 3> m_blocks{nullptr, nullptr};
     vistle::StringParameter *m_file = nullptr;
     vistle::StringParameter *m_xattributes = nullptr;
 
-    //ports
+    //vistle param ptr
+    vistle::UnstructuredGrid::ptr m_unstr_grid = nullptr;
+
+    //vistle ports
     vistle::Port *m_gridOut = nullptr;
     vistle::Port *m_scalarOut = nullptr;
 
@@ -172,7 +175,7 @@ private:
 
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
-    XdmfArray *xArrGeo = nullptr;
-    XdmfArray *xArrConn = nullptr;
+    /* XdmfArray *xArrGeo = nullptr; */
+    /* XdmfArray *xArrConn = nullptr; */
 };
 #endif

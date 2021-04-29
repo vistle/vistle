@@ -75,7 +75,9 @@ namespace {
 
 //SeisSol Mode
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParallelMode, (BLOCKS)(SERIAL))
+
+//Parallel Mode
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParallelMode, (BLOCKS)(SERIAL_TIMESTEP))
 
 /**
   * @brief: Extracts XdmfArrayType from ugrid and returns corresponding vistle UnstructuredGrid::Type.
@@ -146,19 +148,6 @@ bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::s
 }
 
 /**
- * @brief Release and reset XdmfArray pointer.
- *
- * @param arrPtr XdmfArray pointer.
- */
-void releaseXdmfArrPtr(XdmfArray *arrPtr)
-{
-    if (arrPtr != nullptr) {
-        arrPtr->release();
-        arrPtr = nullptr;
-    }
-}
-
-/**
  * @brief Extract unique points from xdmfarray and store them in a set.
  *
  * @tparam T Set generic parameter.
@@ -185,10 +174,12 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
                                 Parameter::Filename);
     m_seisMode = addIntParameter("SeisSolMode", "Select file format", (Integer)XDMF, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_seisMode, SeisSolMode);
-    m_parallelMode = addIntParameter("ParallelMode", "Select ParallelMode", (Integer)BLOCKS, Parameter::Choice);
+    m_parallelMode =
+        addIntParameter("ParallelMode", "Select ParallelMode (Block or Serial (with and without timestepdistribution))",
+                        (Integer)BLOCKS, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_parallelMode, ParallelMode);
 
-    m_xattributes = addStringParameter("Parameter", "test", "", Parameter::Choice);
+    m_xattributes = addStringParameter("ParameterChoice", "Select scalar for scalar port.", "", Parameter::Choice);
     m_reuseGrid =
         addIntParameter("ReuseGrid", "Reuses the grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
 
@@ -232,11 +223,11 @@ ReadSeisSol::~ReadSeisSol()
 /**
  * @brief Clear up XdmfArrays of class.
  */
-void ReadSeisSol::releaseXdmfArr()
-{
-    releaseXdmfArrPtr(xArrGeo);
-    releaseXdmfArrPtr(xArrConn);
-}
+/* void ReadSeisSol::releaseXdmfArr() */
+/* { */
+/* releaseXdmfArrPtr(xArrGeo); */
+/* releaseXdmfArrPtr(xArrConn); */
+/* } */
 
 /**
  * @brief Clear up allocated xdmf objects by reader.
@@ -247,7 +238,7 @@ void ReadSeisSol::releaseXdmfObjects()
         xgridCollect->release();
         xgridCollect.reset();
     }
-    releaseXdmfArr();
+    /* releaseXdmfArr(); */
 }
 
 /**
@@ -511,15 +502,13 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
             setParallelizationMode(ParallelizeBlocks);
             break;
         }
-        case SERIAL: {
+        case SERIAL_TIMESTEP: {
             setParallelizationMode(Serial);
             setAllowTimestepDistribution(true);
             break;
         }
         }
-    } else if (param == m_reuseGrid)
-        if (!m_reuseGrid->getValue())
-            releaseXdmfArr();
+    }
 
     return checkBlocks();
 }
@@ -614,7 +603,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   * @unstr: UnstructuredGrid::ptr with connectionlist to fill.
   * @xArrConn: XdmfArray which contains connectionlist in an one dimensional array.
   *
-  * @return: 
+  * @return:
   */
 bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
 {
@@ -710,18 +699,11 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     const auto &topoContr = xtopology->getHeavyDataController();
     std::set<unsigned> uniqueVerts;
 
-    if (m_parallelMode->getValue() == SERIAL) {
-        //read xdmf connectionlist
+    if (m_parallelMode->getValue() == SERIAL_TIMESTEP) {
         readXdmfHeavyController(xArrConn.get(), topoContr);
-        //read xdmf geometry
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     } else {
         readXdmfTopologyParallel(xArrConn.get(), topoContr, block);
-        /* extractUniquePoints(xArrConn.get(), uniqueVerts); */
-
-        /* for (const auto &val: uniqueVerts) */
-        /*     std::cout << val << '\n'; */
-
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     }
     if (xArrGeo->getSize() == 0 || xArrConn->getSize() == 0)
@@ -757,7 +739,7 @@ void ReadSeisSol::readXdmfTopologyParallel(XdmfArray *xArr,
                                            const boost::shared_ptr<XdmfHeavyDataController> defaultController,
                                            const int block)
 {
-    /*************** read topology **************/
+    /*************** read topology parallel **************/
     auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
     if (!controller)
         return;
@@ -878,24 +860,23 @@ bool ReadSeisSol::prepareRead()
   */
 bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
-    /** TODO:
-      * - Distribute across MPI processes
-      * => 2 approaches:
-      *     - block distribution with blocks [x]
-      */
-
     /*************** Create Unstructured Grid **************/
     //DEBUGGING: timestepdistribution check => good for Debugging
     sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
 
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-    auto ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
-    checkObjectPtr(this, ugrid_ptr,
-                   "Something went wrong while creation of ugrid! Possible errors:\n"
-                   "-invalid connectivity list \n"
-                   "-invalid coordinates\n"
-                   "-invalid typelist\n"
-                   "-invalid geo type");
+    vistle::UnstructuredGrid::ptr ugrid_ptr;
+    if (m_reuseGrid->getValue())
+        ugrid_ptr = m_unstr_grid->clone();
+    else {
+        ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
+        checkObjectPtr(this, ugrid_ptr,
+                       "Something went wrong while creation of ugrid! Possible errors:\n"
+                       "-invalid connectivity list \n"
+                       "-invalid coordinates\n"
+                       "-invalid typelist\n"
+                       "-invalid geo type");
+    }
 
     /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
@@ -935,8 +916,13 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
   */
 bool ReadSeisSol::read(Token &token, int timestep, int block)
 {
-    if (timestep == -1)
+    if (timestep == -1) {
+        if (m_reuseGrid->getValue()) {
+            const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
+            m_unstr_grid = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
+        }
         return true;
+    }
 
     return callSeisModeFunction<bool, Token &, int, int>(
         &ReadSeisSol::readXdmf, &ReadSeisSol::hdfModeNotImplementedRead, token, timestep, block);
@@ -951,6 +937,8 @@ bool ReadSeisSol::finishReadXdmf()
 {
     releaseXdmfObjects();
     sendInfo("Release xdmf objects rank: %d", rank());
+    if (!m_unstr_grid)
+        m_unstr_grid.reset();
     return true;
 }
 
