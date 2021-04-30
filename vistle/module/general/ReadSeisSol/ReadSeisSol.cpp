@@ -64,6 +64,7 @@
 #include <numeric>
 #include <string>
 #include <algorithm>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -72,6 +73,18 @@ using namespace vistle;
 MODULE_MAIN(ReadSeisSol)
 
 namespace {
+
+constexpr std::string_view ERROR_GRID_GENERATION = "Something went wrong while creation of ugrid! Possible errors:\n"
+                                                   "-invalid connectivity list \n"
+                                                   "-invalid coordinates\n"
+                                                   "-invalid typelist\n"
+                                                   "-invalid geo type";
+
+constexpr std::string_view ERROR_ATT_GENERATION =
+    "Something went wrong while creation of attribute pointer! Possible errors:\n"
+    "-wrong format (hyperslap not supported at the moment) \n"
+    "-empty attribute\n"
+    "-wrong dimensions defined";
 
 //SeisSol Mode
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
@@ -138,10 +151,10 @@ bool checkEnd(const std::string &main, const std::string &suffix)
  *
  * @return: False if vObj_ptr is a nullptr.
  */
-bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::string &msgFailure)
+bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::string_view &msgFailure)
 {
     if (vObj_ptr == nullptr) {
-        obj->sendInfo("%s", msgFailure.c_str());
+        obj->sendInfo("%s", msgFailure.data());
         return false;
     }
     return true;
@@ -857,12 +870,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::checkReuseGrid(XdmfUnstructuredGrid *
         ugrid_ptr = m_unstr_grid->clone();
     else {
         ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid, block);
-        checkObjectPtr(this, ugrid_ptr,
-                       "Something went wrong while creation of ugrid! Possible errors:\n"
-                       "-invalid connectivity list \n"
-                       "-invalid coordinates\n"
-                       "-invalid typelist\n"
-                       "-invalid geo type");
+        checkObjectPtr(this, ugrid_ptr, ERROR_GRID_GENERATION);
     }
     return ugrid_ptr;
 }
@@ -879,7 +887,7 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::checkReuseGrid(XdmfUnstructuredGrid *
 bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
     sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
-    
+
     /*************** Create Unstructured Grid **************/
     //DEBUGGING: timestepdistribution check => good for Debugging
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
@@ -888,11 +896,7 @@ bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
     /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
     auto att_ptr = generateScalarFromXdmfAttribute(xattribute.get(), timestep, block);
-    checkObjectPtr(this, att_ptr,
-                   "Something went wrong while creation of attribute pointer! Possible errors:\n"
-                   "-wrong format (hyperslap not supported at the moment) \n"
-                   "-empty attribute\n"
-                   "-wrong dimensions defined");
+    checkObjectPtr(this, att_ptr, ERROR_ATT_GENERATION);
 
     /*************** Add data to ports & set meta data **************/
     ugrid_ptr->setBlock(block);
@@ -927,6 +931,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
         if (m_reuseGrid->getValue()) {
             const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
             m_unstr_grid = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
+            return checkObjectPtr(this, m_unstr_grid, ERROR_GRID_GENERATION);
         }
         return true;
     }
