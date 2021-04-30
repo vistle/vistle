@@ -151,7 +151,7 @@ bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::s
  * @brief Extract unique points from xdmfarray and store them in a set.
  *
  * @tparam T Set generic parameter.
- * @param arr XdmfArray with values to check.
+ * @param arr XdmfArray with values to extract.
  * @param refSet Storage std::set.
  */
 template<class T>
@@ -181,7 +181,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 
     m_xattributes = addStringParameter("ParameterChoice", "Select scalar for scalar port.", "", Parameter::Choice);
     m_reuseGrid =
-        addIntParameter("ReuseGrid", "Reuses the grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
+        addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
 
     const std::string b{"block "};
     const std::string d{"Number of blocks in "};
@@ -221,15 +221,6 @@ ReadSeisSol::~ReadSeisSol()
 }
 
 /**
- * @brief Clear up XdmfArrays of class.
- */
-/* void ReadSeisSol::releaseXdmfArr() */
-/* { */
-/* releaseXdmfArrPtr(xArrGeo); */
-/* releaseXdmfArrPtr(xArrConn); */
-/* } */
-
-/**
  * @brief Clear up allocated xdmf objects by reader.
  */
 void ReadSeisSol::releaseXdmfObjects()
@@ -238,7 +229,6 @@ void ReadSeisSol::releaseXdmfObjects()
         xgridCollect->release();
         xgridCollect.reset();
     }
-    /* releaseXdmfArr(); */
 }
 
 /**
@@ -624,6 +614,10 @@ bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, 
   */
 void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller)
 {
+    //has to be empty otherwise potential memoryleak
+    if (xArr->isInitialized())
+        xArr->release();
+
     xArr->insert(controller);
     xArr->read();
 }
@@ -640,7 +634,6 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
                                                                       const int &block)
 {
-    //TODO: add mpi [ ]
     if (xattribute == nullptr)
         return nullptr;
 
@@ -850,6 +843,31 @@ bool ReadSeisSol::prepareRead()
 }
 
 /**
+ * @brief Reuses grid from first timestep if m_reuseGrid is enabled or create a new one for each timestep otherwise.
+ *
+ * @param xugrid XdmfUnstructuredGrid pointer.
+ * @param block current blockNum.
+ *
+ * @return Clone of m_unstr_grid if m_reuseGrid is true else the function creates a new one.
+ */
+vistle::UnstructuredGrid::ptr ReadSeisSol::checkReuseGrid(XdmfUnstructuredGrid *xugrid, int block)
+{
+    UnstructuredGrid::ptr ugrid_ptr;
+    if (m_reuseGrid->getValue())
+        ugrid_ptr = m_unstr_grid->clone();
+    else {
+        ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid, block);
+        checkObjectPtr(this, ugrid_ptr,
+                       "Something went wrong while creation of ugrid! Possible errors:\n"
+                       "-invalid connectivity list \n"
+                       "-invalid coordinates\n"
+                       "-invalid typelist\n"
+                       "-invalid geo type");
+    }
+    return ugrid_ptr;
+}
+
+/**
   * @brief: Called by read(). Reads internal data links to hdf5 files stored in xdmf.
   *
   * @token: Token for adding objects to ports.
@@ -860,23 +878,12 @@ bool ReadSeisSol::prepareRead()
   */
 bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
 {
+    sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
+    
     /*************** Create Unstructured Grid **************/
     //DEBUGGING: timestepdistribution check => good for Debugging
-    sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
-
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-    vistle::UnstructuredGrid::ptr ugrid_ptr;
-    if (m_reuseGrid->getValue())
-        ugrid_ptr = m_unstr_grid->clone();
-    else {
-        ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
-        checkObjectPtr(this, ugrid_ptr,
-                       "Something went wrong while creation of ugrid! Possible errors:\n"
-                       "-invalid connectivity list \n"
-                       "-invalid coordinates\n"
-                       "-invalid typelist\n"
-                       "-invalid geo type");
-    }
+    vistle::UnstructuredGrid::ptr ugrid_ptr = checkReuseGrid(xugrid.get(), block);
 
     /*************** Create Scalar **************/
     const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);

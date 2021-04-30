@@ -101,6 +101,8 @@ private:
     void releaseXdmfObjects();
     /* void releaseXdmfArr(); */
     bool checkBlocks();
+    void clearChoice();
+    vistle::UnstructuredGrid::ptr checkReuseGrid(XdmfUnstructuredGrid *xUgrid, int block);
 
     // Overengineered for this case => maybe for XdmfReader usefull
     /* template<class T, class O> */
@@ -121,7 +123,6 @@ private:
 
     //xdmf
     bool prepareReadXdmf();
-    void clearChoice();
     bool finishReadXdmf();
     bool readXdmf(Token &token, int timestep, int block);
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
@@ -175,7 +176,5 @@ private:
 
     //xdmf param
     boost::shared_ptr<XdmfGridCollection> xgridCollect = nullptr;
-    /* XdmfArray *xArrGeo = nullptr; */
-    /* XdmfArray *xArrConn = nullptr; */
 };
 #endif
