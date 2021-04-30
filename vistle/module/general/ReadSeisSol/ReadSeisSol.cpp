@@ -153,7 +153,7 @@ bool checkEnd(const std::string &main, const std::string &suffix)
  */
 bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::string_view &msgFailure)
 {
-    if (vObj_ptr == nullptr) {
+    if (!vObj_ptr) {
         obj->sendInfo("%s", msgFailure.data());
         return false;
     }
@@ -170,7 +170,7 @@ bool checkObjectPtr(ReadSeisSol *obj, vistle::Object::ptr vObj_ptr, const std::s
 template<class T>
 void extractUniquePoints(XdmfArray *arr, std::set<T> &refSet)
 {
-    if (arr != nullptr)
+    if (arr)
         for (unsigned i = 0; i < arr->getSize(); ++i)
             refSet.insert(arr->getValue<T>(i));
 }
@@ -192,7 +192,6 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
                         (Integer)BLOCKS, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_parallelMode, ParallelMode);
 
-    m_xattributes = addStringParameter("ParameterChoice", "Select scalar for scalar port.", "", Parameter::Choice);
     m_reuseGrid =
         addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
 
@@ -212,11 +211,19 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 
     //ports
     m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
-    m_scalarOut = createOutputPort("att", "Scalar");
+
+    for (Index i = 0; i < m_attributes.size(); i++) {
+        const std::string i_str{std::to_string(i)};
+        const std::string &attName = "Scalar " + i_str;
+        const std::string &portName = "Scalar port " + i_str;
+        const std::string &portDescr = "Scalar port for attribute " + i_str;
+        m_attributes[i] = addStringParameter(attName, "Select scalar for scalar port.", "", Parameter::Choice);
+        m_scalarsOut[i] = createOutputPort(portName, portDescr);
+        observeParameter(m_attributes[i]);
+    }
 
     //observer
     observeParameter(m_file);
-    observeParameter(m_xattributes);
     observeParameter(m_seisMode);
     observeParameter(m_parallelMode);
     observeParameter(m_reuseGrid);
@@ -238,10 +245,12 @@ ReadSeisSol::~ReadSeisSol()
  */
 void ReadSeisSol::releaseXdmfObjects()
 {
-    if (xgridCollect != nullptr) {
+    if (!xgridCollect) {
         xgridCollect->release();
         xgridCollect.reset();
     }
+    if (!m_vugrid_ptr)
+        m_vugrid_ptr.reset();
 }
 
 /**
@@ -335,7 +344,9 @@ bool ReadSeisSol::hdfModeNotImplementedRead(Token &, int, int)
   */
 void ReadSeisSol::clearChoice()
 {
-    m_xattributes->setChoices(std::vector<std::string>());
+    for (const auto &att: m_attributes)
+        att->setChoices(std::vector<std::string>());
+
     m_attChoiceStr.clear();
 }
 
@@ -346,7 +357,7 @@ void ReadSeisSol::clearChoice()
   */
 void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
 {
-    if (xgridCol != nullptr) {
+    if (xgridCol) {
         const auto &gridColType = xgridCol->getType();
         if (gridColType == XdmfGridCollectionType::Temporal()) {
             //at the moment attribute number and type are the same for all ugrids.
@@ -372,7 +383,7 @@ void ReadSeisSol::inspectXdmfGridCollection(const XdmfGridCollection *xgridCol)
   */
 void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
 {
-    if (xugrid != nullptr) {
+    if (xugrid) {
         //TODO: NOT IMPLEMENTED YET => FUNCTIONS DO NOTHING AT THE MOMENT.
         inspectXdmfTopology(xugrid->getTopology().get());
         inspectXdmfGeometry(xugrid->getGeometry().get());
@@ -391,7 +402,7 @@ void ReadSeisSol::inspectXdmfUnstrGrid(const XdmfUnstructuredGrid *xugrid)
  */
 void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xgeo)
 {
-    if (xgeo != nullptr) {
+    if (xgeo) {
         // set geo global ?
     }
 }
@@ -403,7 +414,7 @@ void ReadSeisSol::inspectXdmfGeometry(const XdmfGeometry *xgeo)
  */
 void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
 {
-    if (xtime != nullptr) {
+    if (xtime) {
         // set timestep defined in xdmf
     }
 }
@@ -415,7 +426,7 @@ void ReadSeisSol::inspectXdmfTime(const XdmfTime *xtime)
  */
 void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
 {
-    if (xtopo != nullptr) {
+    if (xtopo) {
         // set topo global ?
     }
 }
@@ -427,7 +438,7 @@ void ReadSeisSol::inspectXdmfTopology(const XdmfTopology *xtopo)
   */
 void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
 {
-    if (xatt != nullptr)
+    if (xatt)
         m_attChoiceStr.push_back(xatt->getName());
 }
 
@@ -438,7 +449,7 @@ void ReadSeisSol::inspectXdmfAttribute(const XdmfAttribute *xatt)
   */
 void ReadSeisSol::inspectXdmfDomain(const XdmfDomain *xdomain)
 {
-    if (xdomain != nullptr)
+    if (xdomain)
         for (unsigned i = 0; i < xdomain->getNumberGridCollections(); ++i)
             inspectXdmfGridCollection(xdomain->getGridCollection(i).get());
 }
@@ -455,11 +466,15 @@ bool ReadSeisSol::inspectXdmf()
     //read xdmf
     const auto xreader = XdmfReader::New();
 
-    if (xreader.get() == nullptr)
+    if (!xreader.get())
         return false;
 
-    inspectXdmfDomain(shared_dynamic_cast<XdmfDomain>(xreader->read(xfile)).get());
-    setParameterChoices(m_xattributes, m_attChoiceStr);
+    const auto &xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
+    inspectXdmfDomain(xdomain.get());
+
+    for (auto &scalar: m_attributes)
+        setParameterChoices(scalar, m_attChoiceStr);
+
     m_xAttSelect = DynamicPseudoEnum(m_attChoiceStr);
 
     return true;
@@ -551,7 +566,7 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
   */
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo)
 {
-    if (xArrGeo == nullptr)
+    if (!xArrGeo)
         return false;
 
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
@@ -581,7 +596,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrGeo,
                                       const std::set<unsigned> &verticesToRead)
 {
-    if (xArrGeo == nullptr)
+    if (!xArrGeo)
         return false;
 
     if (verticesToRead.empty())
@@ -610,7 +625,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   */
 bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
 {
-    if (xArrConn == nullptr)
+    if (!xArrConn)
         return false;
 
     //TODO: Debug invert elementvertices for tetrahedron => vtk vertice order = inverse vistle vertice order
@@ -647,22 +662,13 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
                                                                       const int &block)
 {
-    if (xattribute == nullptr)
+    if (!xattribute)
         return nullptr;
 
     const auto &numDims = xattribute->getDimensions().size();
 
     //last dim relevant
     const auto attDim = xattribute->getDimensions().at(numDims - 1);
-
-    //Debugging
-    /* auto type = xattribute->getArrayType(); */
-    /* setArrayType(type); */
-    /* auto attCenter = xattribute->getCenter(); */
-    /* setGridCenter(attCenter); */
-    /* sendInfo("att name: %s", xattribute->getName().c_str()); */
-    /* sendInfo("xattribute->dimension: %d", attDim); */
-    //Debugging
 
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
@@ -690,7 +696,7 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
   */
 vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUnstructuredGrid *unstr, const int block)
 {
-    if (unstr == nullptr)
+    if (!unstr)
         return nullptr;
 
     const auto &xtopology = unstr->getTopology();
@@ -828,17 +834,18 @@ bool ReadSeisSol::prepareReadXdmf()
 {
     const std::string xfile = m_file->getValue();
     const auto xreader = XdmfReader::New();
-    if (xreader.get() == nullptr)
+    if (!xreader.get())
         return false;
+
     const auto xdomain = shared_dynamic_cast<XdmfDomain>(xreader->read(xfile));
     xgridCollect = xdomain->getGridCollection(0);
     const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
-    const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
+    const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_attributes[0]->getValue()]);
     if (xattribute->getReadMode() == XdmfArray::Reference) {
         sendInfo("Hyperslab is not working in current version of this reader, the attributes have a "
                  "format that is not supported or "
                  "you aren't using HDF5 files. Chosen Param: %s",
-                 m_xattributes->getValue().c_str());
+                 m_attributes[0]->getValue().c_str());
         releaseXdmfObjects();
         return false;
     }
@@ -863,11 +870,11 @@ bool ReadSeisSol::prepareRead()
  *
  * @return Clone of m_unstr_grid if m_reuseGrid is true else the function creates a new one.
  */
-vistle::UnstructuredGrid::ptr ReadSeisSol::checkReuseGrid(XdmfUnstructuredGrid *xugrid, int block)
+vistle::UnstructuredGrid::ptr ReadSeisSol::reuseGrid(XdmfUnstructuredGrid *xugrid, int block)
 {
     UnstructuredGrid::ptr ugrid_ptr;
     if (m_reuseGrid->getValue())
-        ugrid_ptr = m_unstr_grid->clone();
+        ugrid_ptr = m_vugrid_ptr->clone();
     else {
         ugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid, block);
         checkObjectPtr(this, ugrid_ptr, ERROR_GRID_GENERATION);
@@ -884,35 +891,44 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::checkReuseGrid(XdmfUnstructuredGrid *
   *
   * @return: true if everything has been added correctly to the ports.
   */
-bool ReadSeisSol::readXdmf(Token &token, int timestep, int block)
+bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
 {
     sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
 
     /*************** Create Unstructured Grid **************/
     //DEBUGGING: timestepdistribution check => good for Debugging
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
-    vistle::UnstructuredGrid::ptr ugrid_ptr = checkReuseGrid(xugrid.get(), block);
+    vistle::UnstructuredGrid::ptr vugrid_ptr = reuseGrid(xugrid.get(), block);
 
-    /*************** Create Scalar **************/
-    const auto &xattribute = xugrid->getAttribute(m_xAttSelect[m_xattributes->getValue()]);
-    auto att_ptr = generateScalarFromXdmfAttribute(xattribute.get(), timestep, block);
-    checkObjectPtr(this, att_ptr, ERROR_ATT_GENERATION);
+    /*************** Add ugrid to port & set meta data **************/
+    if (m_gridOut->isConnected()) {
+        vugrid_ptr->setBlock(block);
+        vugrid_ptr->setTimestep(timestep);
+        vugrid_ptr->updateInternals();
+        token.addObject(m_gridOut, vugrid_ptr);
+    }
 
-    /*************** Add data to ports & set meta data **************/
-    ugrid_ptr->setBlock(block);
-    ugrid_ptr->setTimestep(timestep);
-    ugrid_ptr->updateInternals();
+    /*************** Create Scalars **************/
+    for (size_t i = 0; i < m_attributes.size(); ++i) {
+        const auto &att_port = m_scalarsOut[i];
+        if (!att_port->isConnected())
+            continue;
 
-    att_ptr->setGrid(ugrid_ptr);
-    att_ptr->setBlock(block);
-    att_ptr->setMapping(DataBase::Element);
-    att_ptr->addAttribute("_species", xattribute->getName());
-    att_ptr->setTimestep(timestep);
-    att_ptr->updateInternals();
+        const auto &att_idx{m_xAttSelect[m_attributes[i]->getValue()]};
+        const auto &xatt{xugrid->getAttribute(att_idx)};
+        auto vatt_ptr = generateScalarFromXdmfAttribute(xatt.get(), timestep, block);
+        checkObjectPtr(this, vatt_ptr, ERROR_ATT_GENERATION);
 
-    token.addObject(m_gridOut, ugrid_ptr);
-    token.addObject(m_scalarOut, att_ptr);
+        /*************** Add attribute to port & set meta data **************/
+        vatt_ptr->setGrid(vugrid_ptr);
+        vatt_ptr->setBlock(block);
+        vatt_ptr->setMapping(DataBase::Element);
+        vatt_ptr->addAttribute("_species", xatt->getName());
+        vatt_ptr->setTimestep(timestep);
+        vatt_ptr->updateInternals();
 
+        token.addObject(att_port, vatt_ptr);
+    }
     return true;
 }
 
@@ -930,14 +946,18 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
     if (timestep == -1) {
         if (m_reuseGrid->getValue()) {
             const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
-            m_unstr_grid = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
-            return checkObjectPtr(this, m_unstr_grid, ERROR_GRID_GENERATION);
+            m_vugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
+
+            bool cOP{checkObjectPtr(this, m_vugrid_ptr, ERROR_GRID_GENERATION)};
+            if (!cOP)
+                releaseXdmfObjects();
+            return cOP;
         }
         return true;
     }
 
     return callSeisModeFunction<bool, Token &, int, int>(
-        &ReadSeisSol::readXdmf, &ReadSeisSol::hdfModeNotImplementedRead, token, timestep, block);
+        &ReadSeisSol::readXdmfHDF5Data, &ReadSeisSol::hdfModeNotImplementedRead, token, timestep, block);
 }
 
 /**
@@ -948,9 +968,7 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
 bool ReadSeisSol::finishReadXdmf()
 {
     releaseXdmfObjects();
-    sendInfo("Release xdmf objects rank: %d", rank());
-    if (!m_unstr_grid)
-        m_unstr_grid.reset();
+    sendInfo("Released reader objects rank: %d", rank());
     return true;
 }
 
