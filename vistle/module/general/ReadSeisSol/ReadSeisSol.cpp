@@ -199,7 +199,8 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     initScalar();
 
     //partition
-    initBlocks();
+    setPartitions(size());
+    /* initBlocks(); */
 
     m_reuseGrid =
         addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
@@ -223,26 +224,33 @@ void ReadSeisSol::initObserveParameter()
     observeParameter(m_seisMode);
     observeParameter(m_parallelMode);
     observeParameter(m_reuseGrid);
+    observeParameter(m_block);
 }
 
 
 /**
  * @brief Initialize block parameter.
  */
-void ReadSeisSol::initBlocks()
-{
-    const std::string block_constStr{"block "};
-    const std::string descr_constStr{"Number of blocks in "};
+/* void ReadSeisSol::initBlocks() */
+/* { */
+/*     constexpr auto blockName_constexpr{"Blocks"}; */
+/*     constexpr auto blockDescr_constexpr{"Number of blocks for partition."}; */
 
-    char bSpecifier{'x'};
-    for (auto &block: m_blocks) {
-        const std::string &blockName = block_constStr + bSpecifier;
-        const std::string &blockDescription = descr_constStr + (bSpecifier++);
-        block = addIntParameter(blockName, blockDescription, 1);
-        setParameterRange(block, Integer(1), Integer(999999));
-        observeParameter(block);
-    }
-}
+/*     m_block = addIntParameter(blockName_constexpr, blockDescr_constexpr, 1); */
+/*     setParameterRange(m_block, Integer(1), Integer(999999)); */
+
+/* const std::string block_constStr{"Number of blocks "}; */
+/* const std::string descr_constStr{"Number of blocks in "}; */
+
+/* char bSpecifier{'x'}; */
+/* for (auto &block: m_blocks) { */
+/*     const std::string &blockName = block_constStr + bSpecifier; */
+/*     const std::string &blockDescription = descr_constStr + (bSpecifier++); */
+/*     block = addIntParameter(blockName, blockDescription, 1); */
+/*     setParameterRange(block, Integer(1), Integer(999999)); */
+/*     observeParameter(block); */
+/* } */
+/* } */
 
 /**
  * @brief Initialize Scalars.
@@ -517,20 +525,20 @@ bool ReadSeisSol::inspectXdmf()
  *
  * @return result of "product blocks == mpisize".
  */
-bool ReadSeisSol::checkBlocks()
-{
-    const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue();
+/* bool ReadSeisSol::checkBlocks() */
+/* { */
+    /* const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
 
     //parallelization over ranks
-    setPartitions(nBlocks);
-    if (nBlocks == size())
-        return true;
-    else {
-        if (rank() == 0)
-            sendInfo("Number of blocks should equal MPISIZE.");
-        return false;
-    }
-}
+    /* setPartitions(nBlocks); */
+    /* if (nBlocks == size()) */
+    /*     return true; */
+    /* else { */
+    /*     if (rank() == 0) */
+    /*         sendInfo("Number of blocks should equal MPISIZE."); */
+    /*     return false; */
+    /* } */
+/* } */
 
 /**
   * @brief: Called if observed parameter changes.
@@ -560,7 +568,8 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
         }
     }
 
-    return checkBlocks();
+    /* return checkBlocks(); */
+    return true;
 }
 
 /**
@@ -605,8 +614,8 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 
     //TODO: not the same for all xdmf => hyperslap not working => maybe using XML parser and reading hyperslap to concretize read.
     // -> only 3D at the moment
-    constexpr auto numCoords{3};
-    constexpr auto strideVistleArr{1};
+    constexpr unsigned numCoords{3};
+    constexpr unsigned strideVistleArr{1};
 
     //current order for cheeseSeisSol-files: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
     xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
@@ -694,6 +703,7 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
                                                                       const int &block)
 {
+    //TODO: needs elementlist for fetching only relevant scalar data.
     if (!xattribute)
         return nullptr;
 
@@ -748,6 +758,8 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     } else {
         readXdmfTopologyParallel(xArrConn.get(), topoContr, block);
+
+        //TODO: fetches at the moment all points => fetching only relevant points => need unique verts
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     }
     if (xArrGeo->getSize() == 0 || xArrConn->getSize() == 0)

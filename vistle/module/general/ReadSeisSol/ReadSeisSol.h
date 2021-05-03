@@ -17,13 +17,13 @@
 #ifndef _READSEISSOL_H
 #define _READSEISSOL_H
 
+#include "vistle/core/parameter.h"
 #include <array>
-#include <boost/smart_ptr/shared_ptr.hpp>
 #include <memory>
 #include <vector>
 #include <vistle/module/reader.h>
 #include <vistle/core/unstr.h>
-#include <vistle/core/scalar.h>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 //forwarding cpp
 class XdmfTime;
@@ -75,9 +75,9 @@ private:
     /*                              const NumericType &blockNum); */
 
     void releaseXdmfObjects();
-    bool checkBlocks();
+    /* bool checkBlocks(); */
     void clearChoice();
-    void initBlocks();
+    /* void initBlocks(); */
     void initScalar();
     void initObserveParameter();
 
@@ -127,8 +127,9 @@ private:
 
     //vistle param
     /* vistle::IntParameter *m_ghost = nullptr; */
-    std::array<vistle::IntParameter *, 3> m_blocks;
+    /* std::array<vistle::IntParameter *, 3> m_blocks; */
     std::array<vistle::StringParameter *, NUM_ATTRIBUTES> m_attributes;
+    vistle::IntParameter * m_block = nullptr;
     vistle::IntParameter *m_seisMode = nullptr;
     vistle::IntParameter *m_parallelMode = nullptr;
     vistle::IntParameter *m_reuseGrid = nullptr;
