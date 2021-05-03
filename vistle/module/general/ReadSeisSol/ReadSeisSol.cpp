@@ -192,44 +192,76 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
                         (Integer)BLOCKS, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_parallelMode, ParallelMode);
 
+    //standard ports
+    m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
+
+    //scalar
+    initScalar();
+
+    //partition
+    initBlocks();
+
     m_reuseGrid =
         addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
-
-    const std::string b{"block "};
-    const std::string d{"Number of blocks in "};
-    char bSpecifier{'x'};
-    for (auto &block: m_blocks) {
-        const std::string &blockName = b + bSpecifier;
-        const std::string &blockDescription = d + (bSpecifier++);
-        block = addIntParameter(blockName, blockDescription, 1);
-        setParameterRange(block, Integer(1), Integer(999999));
-        observeParameter(block);
-    }
 
     //TODO: Implement GhostCellGenerator []
     /* m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean); */
 
-    //ports
-    m_gridOut = createOutputPort("ugrid", "UnstructuredGrid");
-
-    for (Index i = 0; i < m_attributes.size(); i++) {
-        const std::string i_str{std::to_string(i)};
-        const std::string &attName = "Scalar " + i_str;
-        const std::string &portName = "Scalar port " + i_str;
-        const std::string &portDescr = "Scalar port for attribute " + i_str;
-        m_attributes[i] = addStringParameter(attName, "Select scalar for scalar port.", "", Parameter::Choice);
-        m_scalarsOut[i] = createOutputPort(portName, portDescr);
-        observeParameter(m_attributes[i]);
-    }
-
     //observer
+    initObserveParameter();
+
+    //parallel mode
+    setParallelizationMode(ParallelizeBlocks);
+}
+
+/**
+ * @brief Set parameter to observe.
+ */
+void ReadSeisSol::initObserveParameter()
+{
     observeParameter(m_file);
     observeParameter(m_seisMode);
     observeParameter(m_parallelMode);
     observeParameter(m_reuseGrid);
+}
 
-    //parallel mode
-    setParallelizationMode(ParallelizeBlocks);
+
+/**
+ * @brief Initialize block parameter.
+ */
+void ReadSeisSol::initBlocks()
+{
+    const std::string block_constStr{"block "};
+    const std::string descr_constStr{"Number of blocks in "};
+
+    char bSpecifier{'x'};
+    for (auto &block: m_blocks) {
+        const std::string &blockName = block_constStr + bSpecifier;
+        const std::string &blockDescription = descr_constStr + (bSpecifier++);
+        block = addIntParameter(blockName, blockDescription, 1);
+        setParameterRange(block, Integer(1), Integer(999999));
+        observeParameter(block);
+    }
+}
+
+/**
+ * @brief Initialize Scalars.
+ */
+void ReadSeisSol::initScalar()
+{
+    constexpr auto attName_constexpr{"Scalar "};
+    constexpr auto portName_constexpr{"Scalar port "};
+    constexpr auto portDescr_constexpr{"Scalar port for attribute "};
+
+    for (Index i = 0; i < m_attributes.size(); i++) {
+        const std::string i_str{std::to_string(i)};
+        const std::string &attName = attName_constexpr + i_str;
+        const std::string &portName = portName_constexpr + i_str;
+        const std::string &portDescr = portDescr_constexpr + i_str;
+        m_attributes[i] = addStringParameter(attName, "Select scalar for scalar port.", "", Parameter::Choice);
+        m_scalarsOut[i] = createOutputPort(portName, portDescr);
+        observeParameter(m_attributes[i]);
+    }
 }
 
 /**
@@ -896,7 +928,6 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
     sendInfo("rank: %d timestep: %d block: %d", rank(), timestep, block);
 
     /*************** Create Unstructured Grid **************/
-    //DEBUGGING: timestepdistribution check => good for Debugging
     const auto &xugrid = xgridCollect->getUnstructuredGrid(timestep);
     vistle::UnstructuredGrid::ptr vugrid_ptr = reuseGrid(xugrid.get(), block);
 

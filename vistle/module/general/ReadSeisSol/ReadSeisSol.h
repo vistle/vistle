@@ -77,6 +77,9 @@ private:
     void releaseXdmfObjects();
     bool checkBlocks();
     void clearChoice();
+    void initBlocks();
+    void initScalar();
+    void initObserveParameter();
 
     //Vistle functions
     bool read(Token &token, int timestep, int block) override;
