@@ -97,7 +97,7 @@ private:
     bool finishReadXdmf();
     bool readXdmfHDF5Data(Token &token, int timestep, int block);
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
-    void readXdmfTopologyParallel(XdmfArray *xArrTopo,
+    void readXdmfHDFTopologyParallel(XdmfArray *xArrTopo,
                                   const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo,
                                   const int block);
 

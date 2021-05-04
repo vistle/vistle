@@ -90,7 +90,7 @@ constexpr std::string_view ERROR_ATT_GENERATION =
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SeisSolMode, (XDMF)(HDF5))
 
 //Parallel Mode
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParallelMode, (BLOCKS)(SERIAL_TIMESTEP))
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ParallelMode, (BLOCKS)(SERIAL))
 
 /**
   * @brief: Extracts XdmfArrayType from ugrid and returns corresponding vistle UnstructuredGrid::Type.
@@ -133,7 +133,7 @@ const UnstructuredGrid::Type XdmfUgridToVistleUgridType(const XdmfUnstructuredGr
  *
  * @return: True if given suffix is end of main.
  */
-bool checkEnd(const std::string &main, const std::string &suffix)
+bool checkFileEnding(const std::string &main, const std::string &suffix)
 {
     if (main.size() >= suffix.size())
         if (main.compare(main.size() - suffix.size(), suffix.size(), suffix) == 0)
@@ -199,7 +199,6 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     initScalar();
 
     //partition
-    setPartitions(size());
     /* initBlocks(); */
 
     m_reuseGrid =
@@ -213,6 +212,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
 
     //parallel mode
     setParallelizationMode(ParallelizeBlocks);
+    setPartitions(size());
 }
 
 /**
@@ -520,6 +520,7 @@ bool ReadSeisSol::inspectXdmf()
     return true;
 }
 
+//TIP: maybe interesting for HDF5 implementation
 /**
  * @brief Checks that total product of blocks are equal mpi size.
  *
@@ -527,17 +528,17 @@ bool ReadSeisSol::inspectXdmf()
  */
 /* bool ReadSeisSol::checkBlocks() */
 /* { */
-    /* const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
+/* const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue() * m_blocks[2]->getValue(); */
 
-    //parallelization over ranks
-    /* setPartitions(nBlocks); */
-    /* if (nBlocks == size()) */
-    /*     return true; */
-    /* else { */
-    /*     if (rank() == 0) */
-    /*         sendInfo("Number of blocks should equal MPISIZE."); */
-    /*     return false; */
-    /* } */
+//parallelization over ranks
+/* setPartitions(nBlocks); */
+/* if (nBlocks == size()) */
+/*     return true; */
+/* else { */
+/*     if (rank() == 0) */
+/*         sendInfo("Number of blocks should equal MPISIZE."); */
+/*     return false; */
+/* } */
 /* } */
 
 /**
@@ -550,7 +551,7 @@ bool ReadSeisSol::inspectXdmf()
 bool ReadSeisSol::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_file) {
-        if (!checkEnd(m_file->getValue(), ".xdmf"))
+        if (!checkFileEnding(m_file->getValue(), ".xdmf"))
             return false;
 
         callSeisModeFunction(&ReadSeisSol::inspectXdmf, &ReadSeisSol::hdfModeNotImplemented);
@@ -558,11 +559,13 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
         switch (m_parallelMode->getValue()) {
         case BLOCKS: {
             setParallelizationMode(ParallelizeBlocks);
+            setPartitions(size());
             break;
         }
-        case SERIAL_TIMESTEP: {
+        case SERIAL: {
             setParallelizationMode(Serial);
-            setAllowTimestepDistribution(true);
+            /* setAllowTimestepDistribution(true); */
+            setPartitions(0);
             break;
         }
         }
@@ -580,6 +583,7 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
   */
 void ReadSeisSol::fillUnstrGridTypeList(vistle::UnstructuredGrid::ptr unstr, const vistle::UnstructuredGrid::Type &type)
 {
+    /* const auto &setGhostType{type | vistle::UnstructuredGrid::GHOST_BIT}; */
     std::fill(unstr->tl().begin(), unstr->tl().end(), type);
 }
 
@@ -617,7 +621,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     constexpr unsigned numCoords{3};
     constexpr unsigned strideVistleArr{1};
 
-    //current order for cheeseSeisSol-files: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
+    //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
     xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xArrGeo->getValues(1, y, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
     xArrGeo->getValues(2, z, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
@@ -646,11 +650,10 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
     //fill only with point coords from vertToRead
-    int n{0};
     for (const auto &vert: verticesToRead) {
-        x[n] = xArrGeo->getValue<unsigned>(vert);
-        y[n] = xArrGeo->getValue<unsigned>(vert + 1);
-        z[n++] = xArrGeo->getValue<unsigned>(vert + 2);
+        x[vert] = xArrGeo->getValue<unsigned>(vert);
+        y[vert] = xArrGeo->getValue<unsigned>(vert + 1);
+        z[vert] = xArrGeo->getValue<unsigned>(vert + 2);
     }
 
     return true;
@@ -703,23 +706,68 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
                                                                       const int &block)
 {
-    //TODO: needs elementlist for fetching only relevant scalar data.
     if (!xattribute)
         return nullptr;
 
-    const auto &numDims = xattribute->getDimensions().size();
-
-    //last dim relevant
-    const auto attDim = xattribute->getDimensions().at(numDims - 1);
-
-    const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
-    readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
+    const auto &xattDimVec = xattribute->getDimensions();
+    const auto &numDims = xattDimVec.size();
+    auto attDim = *std::max_element(xattDimVec.begin(), xattDimVec.end());
 
     unsigned startRead{0};
-    const unsigned arrStride{1};
-    const unsigned valStride{1};
+    constexpr unsigned arrStride{1};
+    constexpr unsigned valStride{1};
     if (numDims > 1)
         startRead = attDim * timestep;
+
+    const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
+    const auto &mode = m_parallelMode->getValue();
+
+    if (mode == SERIAL)
+        readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
+    else if (mode == BLOCKS) {
+        const auto controller = shared_dynamic_cast<XdmfHDF5Controller>(xattribute->getHeavyDataController());
+        if (!controller)
+            return nullptr;
+
+        attDim /= numPartitions();
+
+        const auto &h5Path = controller->getFilePath();
+        const auto &setPath = controller->getDataSetPath();
+        const auto &arrayType = controller->getType();
+        const auto &readStride = controller->getStride();
+
+        const auto &startVal = attDim * block;
+        std::vector<unsigned> readStart{startVal};
+        std::vector<unsigned> readCount{attDim};
+        std::vector<unsigned> readDataSpace{attDim};
+
+        if (numDims > 1) {
+            readStart.insert(readStart.begin(), timestep);
+            readCount.insert(readCount.begin(), 1);
+            readDataSpace.insert(readDataSpace.begin(), 1);
+        }
+
+        /*         if (rank() == 1) { */
+        /*             for (auto &val: controller->getStart()) */
+        /*                 sendInfo("start: %d", val); */
+        /*             for (auto &val: controller->getDimensions()) */
+        /*                 sendInfo("count: %d", val); */
+        /*             for (auto &val: controller->getDataspaceDimensions()) */
+        /*                 sendInfo("dataspace: %d", val); */
+        /*             for (auto &val: readStart) */
+        /*                 sendInfo("readStart: %d", val); */
+        /*         } */
+
+        auto hdfController =
+            XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
+
+        xArrAtt->setHeavyDataController(hdfController);
+        xArrAtt->read();
+
+        hdfController->closeFiles();
+
+        startRead = 0;
+    }
 
     Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
     auto vattDataX = att->x().data();
@@ -741,11 +789,13 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     if (!unstr)
         return nullptr;
 
+    constexpr auto numCoords{3};
+
     const auto &xtopology = unstr->getTopology();
     const auto &xgeometry = unstr->getGeometry();
     const auto &xtopologyDimVec = xtopology->getDimensions();
 
-    //get lowest val from topology dimension vector => is the corner
+    //get lowest val from topology dimension vector = corner
     const int &numCornerPerElem = *std::min_element(xtopologyDimVec.begin(), xtopologyDimVec.end());
     const auto xArrConn(XdmfArray::New());
     const auto xArrGeo(XdmfArray::New());
@@ -753,21 +803,27 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     const auto &topoContr = xtopology->getHeavyDataController();
     std::set<unsigned> uniqueVerts;
 
-    if (m_parallelMode->getValue() == SERIAL_TIMESTEP) {
+    if (m_parallelMode->getValue() != BLOCKS) {
         readXdmfHeavyController(xArrConn.get(), topoContr);
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     } else {
-        readXdmfTopologyParallel(xArrConn.get(), topoContr, block);
+        readXdmfHDFTopologyParallel(xArrConn.get(), topoContr, block);
+        /* extractUniquePoints(xArrConn.get(), uniqueVerts); */
 
-        //TODO: fetches at the moment all points => fetching only relevant points => need unique verts
+        //TODO: fetches at the moment all points => should fetch only relevant points => need unique verts
+        // -> problem:
+        //      - data fetched from topology is unordered => means: first element can contain last vertice
+        //          => vistle tries to read last vert from coords array
+        // -> solutions:
+        //      1. create an vector with the size to store all geometry data, but read only relevant parameter.
         readXdmfHeavyController(xArrGeo.get(), geoContr);
     }
     if (xArrGeo->getSize() == 0 || xArrConn->getSize() == 0)
         return nullptr;
 
-    auto numVertices{xArrGeo->getSize() / 3};
-    if (!uniqueVerts.empty())
-        numVertices = uniqueVerts.size();
+    auto numVertices{xArrGeo->getSize() / numCoords};
+    /* if (!uniqueVerts.empty()) */
+    /*     numVertices = uniqueVerts.size(); */
 
     UnstructuredGrid::ptr unstr_ptr(
         new UnstructuredGrid(xArrConn->getSize() / numCornerPerElem, xArrConn->getSize(), numVertices));
@@ -791,9 +847,9 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
  *
  * @return Unique set of vertices.
  */
-void ReadSeisSol::readXdmfTopologyParallel(XdmfArray *xArr,
-                                           const boost::shared_ptr<XdmfHeavyDataController> defaultController,
-                                           const int block)
+void ReadSeisSol::readXdmfHDFTopologyParallel(XdmfArray *xArr,
+                                              const boost::shared_ptr<XdmfHeavyDataController> defaultController,
+                                              const int block)
 {
     /*************** read topology parallel **************/
     auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
@@ -944,7 +1000,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
     vistle::UnstructuredGrid::ptr vugrid_ptr = reuseGrid(xugrid.get(), block);
 
     /*************** Add ugrid to port & set meta data **************/
-    if (m_gridOut->isConnected()) {
+    if (m_gridOut->isConnected() && vugrid_ptr.get()) {
         vugrid_ptr->setBlock(block);
         vugrid_ptr->setTimestep(timestep);
         vugrid_ptr->updateInternals();
@@ -952,7 +1008,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
     }
 
     /*************** Create Scalars **************/
-    for (size_t i = 0; i < m_attributes.size(); ++i) {
+    for (size_t i = 0; i < NUM_ATTRIBUTES; ++i) {
         const auto &att_port = m_scalarsOut[i];
         if (!att_port->isConnected())
             continue;
@@ -960,17 +1016,18 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
         const auto &att_idx{m_xAttSelect[m_attributes[i]->getValue()]};
         const auto &xatt{xugrid->getAttribute(att_idx)};
         auto vatt_ptr = generateScalarFromXdmfAttribute(xatt.get(), timestep, block);
-        checkObjectPtr(this, vatt_ptr, ERROR_ATT_GENERATION);
+        if (checkObjectPtr(this, vatt_ptr, ERROR_ATT_GENERATION)) {
+            /*************** Add attribute to port & set meta data **************/
+            vatt_ptr->setGrid(vugrid_ptr);
+            vatt_ptr->setBlock(block);
+            vatt_ptr->setMapping(DataBase::Element);
+            vatt_ptr->addAttribute("_species", xatt->getName());
+            vatt_ptr->setTimestep(timestep);
+            vatt_ptr->updateInternals();
 
-        /*************** Add attribute to port & set meta data **************/
-        vatt_ptr->setGrid(vugrid_ptr);
-        vatt_ptr->setBlock(block);
-        vatt_ptr->setMapping(DataBase::Element);
-        vatt_ptr->addAttribute("_species", xatt->getName());
-        vatt_ptr->setTimestep(timestep);
-        vatt_ptr->updateInternals();
-
-        token.addObject(att_port, vatt_ptr);
+            token.addObject(att_port, vatt_ptr);
+        } else
+            return false;
     }
     return true;
 }
@@ -982,7 +1039,7 @@ bool ReadSeisSol::readXdmfHDF5Data(Token &token, int timestep, int block)
   * @timestep: current timestep.
   * @block: current block.
   *
-  * @return: true if everything has been added correctly to the ports.
+  * @return: true if everything has been added correctly to ports.
   */
 bool ReadSeisSol::read(Token &token, int timestep, int block)
 {
