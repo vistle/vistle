@@ -95,11 +95,14 @@ private:
     vistle::UnstructuredGrid::ptr reuseGrid(XdmfUnstructuredGrid *xUgrid, int block);
     bool prepareReadXdmf();
     bool finishReadXdmf();
-    bool readXdmfHDF5Data(Token &token, int timestep, int block);
     bool readXdmfUnstrParallel(XdmfArray *arrayGeo, const XdmfHeavyDataController *defaultController, const int block);
-    void readXdmfHDFTopologyParallel(XdmfArray *xArrTopo,
-                                  const boost::shared_ptr<XdmfHeavyDataController> defaultControllerTopo,
-                                  const int block);
+    bool readXdmfHDF5Data(Token &token, int timestep, int block);
+    void readXdmfHDF5TopologyParallel(XdmfArray *xArrTopo,
+                                     const boost::shared_ptr<XdmfHeavyDataController> &defaultControllerTopo,
+                                     const int block);
+    void readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
+                                      const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                      const int block, const int timestep);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
     void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
@@ -129,7 +132,7 @@ private:
     /* vistle::IntParameter *m_ghost = nullptr; */
     /* std::array<vistle::IntParameter *, 3> m_blocks; */
     std::array<vistle::StringParameter *, NUM_ATTRIBUTES> m_attributes;
-    vistle::IntParameter * m_block = nullptr;
+    vistle::IntParameter *m_block = nullptr;
     vistle::IntParameter *m_seisMode = nullptr;
     vistle::IntParameter *m_parallelMode = nullptr;
     vistle::IntParameter *m_reuseGrid = nullptr;

@@ -198,7 +198,7 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     //scalar
     initScalar();
 
-    //partition
+    //partition (maybe relevant for HDF5)
     /* initBlocks(); */
 
     m_reuseGrid =
@@ -253,7 +253,7 @@ void ReadSeisSol::initObserveParameter()
 /* } */
 
 /**
- * @brief Initialize Scalars.
+ * @brief Initialize scalar ports and choice parameters.
  */
 void ReadSeisSol::initScalar()
 {
@@ -564,7 +564,7 @@ bool ReadSeisSol::examine(const vistle::Parameter *param)
         }
         case SERIAL: {
             setParallelizationMode(Serial);
-            /* setAllowTimestepDistribution(true); */
+            setAllowTimestepDistribution(true);
             setPartitions(0);
             break;
         }
@@ -665,7 +665,7 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
   * @unstr: UnstructuredGrid::ptr with connectionlist to fill.
   * @xArrConn: XdmfArray which contains connectionlist in an one dimensional array.
   *
-  * @return:
+  * @return: true if connectionlist has been updated correctly.
   */
 bool ReadSeisSol::fillUnstrGridConnectList(vistle::UnstructuredGrid::ptr unstr, XdmfArray *xArrConn)
 {
@@ -695,6 +695,88 @@ void ReadSeisSol::readXdmfHeavyController(XdmfArray *xArr, const boost::shared_p
 }
 
 /**
+ * @brief Read attributes stored in HDF5 file parallel with blocks into memory.
+ *
+ * @param xArrAtt XdmfArray pointer for storage.
+ * @param attDim Dimension of attribute per timestep.
+ * @param defaultController default heavy data controller.
+ * @param block current block.
+ * @param timestep current timestep.
+ */
+void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &attDim,
+                                               const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                               const int block, const int timestep)
+{
+    const auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
+    if (!controller)
+        return;
+
+    const auto &h5Path = controller->getFilePath();
+    const auto &setPath = controller->getDataSetPath();
+    const auto &arrayType = controller->getType();
+    const auto &readStride = controller->getStride();
+
+    attDim /= numPartitions();
+    const auto &startVal = attDim * block;
+    std::vector<unsigned> readStart{startVal};
+    std::vector<unsigned> readCount{attDim};
+    std::vector<unsigned> readDataSpace{attDim};
+
+    if (controller->getDimensions().size() == 2) {
+        readStart.insert(readStart.begin(), timestep);
+        readCount.insert(readCount.begin(), 1);
+        readDataSpace.insert(readDataSpace.begin(), 1);
+    }
+
+    auto hdfController =
+        XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
+
+    xArrAtt->setHeavyDataController(hdfController);
+    xArrAtt->read();
+
+    hdfController->closeFiles();
+}
+
+/**
+ * @brief Reads topology parallel and return unique vertices list.
+ *
+ * @param xArrTopo Array to store topology data.
+ * @param defaultControllerTopo default HeavyDataController for topology.
+ * @param block current block.
+ *
+ * @return Unique set of vertices.
+ */
+void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
+                                              const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
+                                              const int block)
+{
+    /*************** read topology parallel **************/
+    auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
+    if (!controller)
+        return;
+
+    const auto &h5Path = controller->getFilePath();
+    const auto &setPath = controller->getDataSetPath();
+    const auto &arrayType = controller->getType();
+    const auto &xtopo = controller->getDimensions();
+    const auto &readStride = controller->getStride();
+
+    const auto &[numCorner, numElem] = std::minmax_element(xtopo.begin(), xtopo.end());
+    const unsigned &countTopo{*numElem / numPartitions()};
+    const std::vector<unsigned> readCount{countTopo, *numCorner};
+    const std::vector<unsigned> readStart{countTopo * block, 0};
+    const std::vector<unsigned> readDataSpace{countTopo, *numCorner};
+
+    auto hdfController = XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride,
+                                                 readCount, readDataSpace);
+
+    xArr->setHeavyDataController(hdfController);
+    xArr->read();
+
+    hdfController->closeFiles();
+}
+
+/**
  * @brief: Generate a scalar pointer with values from XdmfAttribute.
  *
  * @param xattribute: XdmfAttribute pointer.
@@ -711,63 +793,28 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
 
     const auto &xattDimVec = xattribute->getDimensions();
     const auto &numDims = xattDimVec.size();
-    auto attDim = *std::max_element(xattDimVec.begin(), xattDimVec.end());
+    unsigned attDim = *std::max_element(xattDimVec.begin(), xattDimVec.end());
 
     unsigned startRead{0};
     constexpr unsigned arrStride{1};
     constexpr unsigned valStride{1};
-    if (numDims > 1)
+    if (numDims == 2)
         startRead = attDim * timestep;
 
     const shared_ptr<XdmfArray> xArrAtt(XdmfArray::New());
     const auto &mode = m_parallelMode->getValue();
+    const auto &controller = xattribute->getHeavyDataController();
 
-    if (mode == SERIAL)
-        readXdmfHeavyController(xArrAtt.get(), xattribute->getHeavyDataController());
-    else if (mode == BLOCKS) {
-        const auto controller = shared_dynamic_cast<XdmfHDF5Controller>(xattribute->getHeavyDataController());
-        if (!controller)
-            return nullptr;
-
-        attDim /= numPartitions();
-
-        const auto &h5Path = controller->getFilePath();
-        const auto &setPath = controller->getDataSetPath();
-        const auto &arrayType = controller->getType();
-        const auto &readStride = controller->getStride();
-
-        const auto &startVal = attDim * block;
-        std::vector<unsigned> readStart{startVal};
-        std::vector<unsigned> readCount{attDim};
-        std::vector<unsigned> readDataSpace{attDim};
-
-        if (numDims > 1) {
-            readStart.insert(readStart.begin(), timestep);
-            readCount.insert(readCount.begin(), 1);
-            readDataSpace.insert(readDataSpace.begin(), 1);
-        }
-
-        /*         if (rank() == 1) { */
-        /*             for (auto &val: controller->getStart()) */
-        /*                 sendInfo("start: %d", val); */
-        /*             for (auto &val: controller->getDimensions()) */
-        /*                 sendInfo("count: %d", val); */
-        /*             for (auto &val: controller->getDataspaceDimensions()) */
-        /*                 sendInfo("dataspace: %d", val); */
-        /*             for (auto &val: readStart) */
-        /*                 sendInfo("readStart: %d", val); */
-        /*         } */
-
-        auto hdfController =
-            XdmfHDF5Controller::New(h5Path, setPath, arrayType, readStart, readStride, readCount, readDataSpace);
-
-        xArrAtt->setHeavyDataController(hdfController);
-        xArrAtt->read();
-
-        hdfController->closeFiles();
-
+    if (mode == BLOCKS) {
+        readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
         startRead = 0;
-    }
+    } else if (mode == SERIAL)
+        readXdmfHeavyController(xArrAtt.get(), controller);
+    else
+        return nullptr;
+
+    if (xArrAtt->getSize() == 0)
+        return nullptr;
 
     Vec<Scalar>::ptr att(new Vec<Scalar>(attDim));
     auto vattDataX = att->x().data();
@@ -803,11 +850,11 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     const auto &topoContr = xtopology->getHeavyDataController();
     std::set<unsigned> uniqueVerts;
 
-    if (m_parallelMode->getValue() != BLOCKS) {
+    if (m_parallelMode->getValue() == SERIAL) {
         readXdmfHeavyController(xArrConn.get(), topoContr);
         readXdmfHeavyController(xArrGeo.get(), geoContr);
-    } else {
-        readXdmfHDFTopologyParallel(xArrConn.get(), topoContr, block);
+    } else if (m_parallelMode->getValue() == BLOCKS) {
+        readXdmfHDF5TopologyParallel(xArrConn.get(), topoContr, block);
         /* extractUniquePoints(xArrConn.get(), uniqueVerts); */
 
         //TODO: fetches at the moment all points => should fetch only relevant points => need unique verts
@@ -817,13 +864,13 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
         // -> solutions:
         //      1. create an vector with the size to store all geometry data, but read only relevant parameter.
         readXdmfHeavyController(xArrGeo.get(), geoContr);
-    }
+    } else
+        return nullptr;
+
     if (xArrGeo->getSize() == 0 || xArrConn->getSize() == 0)
         return nullptr;
 
     auto numVertices{xArrGeo->getSize() / numCoords};
-    /* if (!uniqueVerts.empty()) */
-    /*     numVertices = uniqueVerts.size(); */
 
     UnstructuredGrid::ptr unstr_ptr(
         new UnstructuredGrid(xArrConn->getSize() / numCornerPerElem, xArrConn->getSize(), numVertices));
@@ -835,46 +882,6 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
 
     //return copy of shared_ptr
     return unstr_ptr;
-}
-
-
-/**
- * @brief Reads topology parallel and return unique vertices list.
- *
- * @param xArrTopo Array to store topology data.
- * @param defaultControllerTopo default HeavyDataController for topology.
- * @param block current block.
- *
- * @return Unique set of vertices.
- */
-void ReadSeisSol::readXdmfHDFTopologyParallel(XdmfArray *xArr,
-                                              const boost::shared_ptr<XdmfHeavyDataController> defaultController,
-                                              const int block)
-{
-    /*************** read topology parallel **************/
-    auto controller = shared_dynamic_cast<XdmfHDF5Controller>(defaultController);
-    if (!controller)
-        return;
-
-    const auto &h5PathTopo = controller->getFilePath();
-    const auto &setPathTopo = controller->getDataSetPath();
-    const auto &arrayTypeTopo = controller->getType();
-    const auto &xtopoDims = controller->getDimensions();
-    const auto &readStrideTopo = controller->getStride();
-
-    const auto &[numCorner, numElem] = std::minmax_element(xtopoDims.begin(), xtopoDims.end());
-    const unsigned &countTopo{*numElem / numPartitions()};
-    const std::vector<unsigned> readCount{countTopo, *numCorner};
-    const std::vector<unsigned> readStart{countTopo * block, 0};
-    const std::vector<unsigned> readDataSpace{countTopo, *numCorner};
-
-    auto hdfController = XdmfHDF5Controller::New(h5PathTopo, setPathTopo, arrayTypeTopo, readStart, readStrideTopo,
-                                                 readCount, readDataSpace);
-
-    xArr->setHeavyDataController(hdfController);
-    xArr->read();
-
-    hdfController->closeFiles();
 }
 
 /**
