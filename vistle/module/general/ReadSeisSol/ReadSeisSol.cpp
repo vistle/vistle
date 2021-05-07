@@ -204,9 +204,6 @@ ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicato
     m_reuseGrid =
         addIntParameter("ReuseGrid", "Reuses grid from first XdmfGrid specified in Xdmf.", 1, Parameter::Boolean);
 
-    //TODO: Implement GhostCellGenerator []
-    /* m_ghost = addIntParameter("ghost", "Ghost layer", 1, Parameter::Boolean); */
-
     //observer
     initObserveParameter();
 
@@ -313,37 +310,6 @@ auto ReadSeisSol::switchSeisMode(std::function<Ret(Args...)> xdmfFunc, std::func
     }
     return false;
 }
-
-//TODO: Template export to core? []
-/**
- * @brief Template for block partition.
- *
- * @tparam InputBlockIt Iteratortype begin of container which holds values for partition.
- * @tparam OutputBlockIt Iteratortype end of container which hodls values for partition.
- * @tparam NumericType Block num type.
- * @param first begin of container which holds values for partition.
- * @param last end of container which hodls values for partition.
- * @param d_first container to fill.
- * @param blockNum current blockNum.
- *
- * @return iterator to restult container.
- */
-/* template<class InputBlockIt, class OutputBlockIt, class NumericType> */
-/* OutputBlockIt ReadSeisSol::blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, */
-/*                                           const NumericType &blockNum) */
-/* { */
-/*     const auto numBlocks{std::distance(first, last)}; */
-/*     std::transform(first, last, d_first, [it = 0, &numBlocks, b = blockNum](const NumericType &bS) mutable { */
-/*         if (it++ == numBlocks - 1) */
-/*             return b; */
-/*         else { */
-/*             NumericType bDist = b % bS; */
-/*             b /= bS; */
-/*             return bDist; */
-/*         }; */
-/*     }); */
-/*     return d_first; */
-/* } */
 
 /**
   * @brief: Wrapper function for easier call of seismode-function for selected seismode.
@@ -743,8 +709,6 @@ void ReadSeisSol::readXdmfHDF5AttributeParallel(XdmfArray *xArrAtt, unsigned &at
  * @param xArrTopo Array to store topology data.
  * @param defaultControllerTopo default HeavyDataController for topology.
  * @param block current block.
- *
- * @return Unique set of vertices.
  */
 void ReadSeisSol::readXdmfHDF5TopologyParallel(XdmfArray *xArr,
                                               const boost::shared_ptr<XdmfHeavyDataController> &defaultController,
@@ -806,7 +770,12 @@ vistle::Vec<Scalar>::ptr ReadSeisSol::generateScalarFromXdmfAttribute(XdmfAttrib
     const auto &controller = xattribute->getHeavyDataController();
 
     if (mode == BLOCKS) {
-        readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
+        if (XdmfAttributeCenter::Cell() == xattribute->getCenter())
+            readXdmfHDF5AttributeParallel(xArrAtt.get(), attDim, controller, block, timestep);
+        else  {
+            sendInfo("Other options than centering attributes according to cells in block mode are not implemented");
+            return nullptr;
+        }
         startRead = 0;
     } else if (mode == SERIAL)
         readXdmfHeavyController(xArrAtt.get(), controller);
@@ -920,7 +889,7 @@ void ReadSeisSol::setArrayType(boost::shared_ptr<const XdmfArrayType> type)
   * TODO: Implement trancision between XdmfAttributeCenter and vistle cell center. []
   * => relevant for color module not this reader.
   */
-void ReadSeisSol::setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> attCenter)
+void ReadSeisSol::setGridCenter(const boost::shared_ptr<const XdmfAttributeCenter> &attCenter)
 {
     if (attCenter == XdmfAttributeCenter::Grid())
         sendInfo("grid");

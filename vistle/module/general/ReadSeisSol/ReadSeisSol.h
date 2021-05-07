@@ -70,10 +70,6 @@ private:
     auto callSeisModeFunction(Ret (ReadSeisSol::*xdmfFunc)(Args...), Ret (ReadSeisSol::*hdfFunc)(Args...),
                               Args... args);
 
-    /* template<class InputBlockIt, class OutputBlockIt, class NumericType> */
-    /* OutputBlockIt blockPartition(InputBlockIt first, InputBlockIt last, OutputBlockIt d_first, */
-    /*                              const NumericType &blockNum); */
-
     void releaseXdmfObjects();
     /* bool checkBlocks(); */
     void clearChoice();
@@ -105,7 +101,7 @@ private:
                                       const int block, const int timestep);
 
     void setArrayType(boost::shared_ptr<const XdmfArrayType> type);
-    void setGridCenter(boost::shared_ptr<const XdmfAttributeCenter> type);
+    void setGridCenter(const boost::shared_ptr<const XdmfAttributeCenter> &type);
     void readXdmfHeavyController(XdmfArray *xArr, const boost::shared_ptr<XdmfHeavyDataController> &controller);
 
     vistle::Vec<vistle::Scalar>::ptr generateScalarFromXdmfAttribute(XdmfAttribute *xattribute, const int &timestep,
@@ -129,7 +125,6 @@ private:
     void inspectXdmfTime(const XdmfTime *xtime);
 
     //vistle param
-    /* vistle::IntParameter *m_ghost = nullptr; */
     /* std::array<vistle::IntParameter *, 3> m_blocks; */
     std::array<vistle::StringParameter *, NUM_ATTRIBUTES> m_attributes;
     vistle::IntParameter *m_block = nullptr;

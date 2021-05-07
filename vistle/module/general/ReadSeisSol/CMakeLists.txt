@@ -13,12 +13,6 @@ if (NOT Xdmf_FOUND)
     return()
 endif()
 
-# vistle_find_package(VTK COMPONENTS vtkCommonCore)
-# if (NOT VTK_FOUND)
-#     message("Skipping ReadSeisSol because of missing VTK")
-#     return()
-# endif()
-
 set(HEADERS
     ReadSeisSol.h
     surfacetools.h
@@ -29,13 +23,13 @@ set(SOURCES
     surfacetools.cpp
 )
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 add_module(ReadSeisSol ${SOURCES} ${HEADERS})
 
 use_openmp()
 
 # target_link_libraries(ReadSeisSol ${} ${EXTRA_LIBS})
-target_link_libraries(ReadSeisSol 
-    XdmfCore 
-    Xdmf 
-)
+target_link_libraries(ReadSeisSol XdmfCore Xdmf)
 target_include_directories(ReadSeisSol PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS})
