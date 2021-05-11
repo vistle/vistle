@@ -306,7 +306,8 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     const NcVar &lonvar = ncFile.getVar("lon");
     const NcVar &grid_lat = ncFile.getVar("grid_lat");
     const NcVar &grid_lon = ncFile.getVar("grid_lon");
-    const NcVar &bathymetryvar = ncFile.getVar("bathymetry");
+    const NcVar &bathymetryvar = ncFile.getVar("original_bathy");
+    /* const NcVar &bathymetryvar = ncFile.getVar("bathymetry"); */
     const NcVar &eta = ncFile.getVar("eta");
 
     // dimension from lat and lon variables
