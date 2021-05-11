@@ -50,7 +50,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // file-browser
     p_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
                                    Parameter::Filename);
-    
+
     //ghost
     addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
 
@@ -145,10 +145,10 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     zScale = p_verticalScale->getValue();
     setTimesteps(-1);
-    setPartitions(nBlocks);
-    if (nBlocks == size())
+    if (nBlocks == size()) {
+        setPartitions(nBlocks);
         return true;
-    else {
+    } else {
         sendInfo("Number of blocks should equal MPISIZE.");
         return false;
     }
@@ -301,12 +301,20 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     if (!openNcFile(ncFile))
         return false;
 
+    std::list<std::string> bathyStr{"original_bathy", "deformed_bathy", "bathymetry"};
+
     // get nc var objects
     const NcVar &latvar = ncFile.getVar("lat");
     const NcVar &lonvar = ncFile.getVar("lon");
     const NcVar &grid_lat = ncFile.getVar("grid_lat");
     const NcVar &grid_lon = ncFile.getVar("grid_lon");
-    const NcVar &bathymetryvar = ncFile.getVar("original_bathy");
+    NcVar bathymetryvar;
+    for (const std::string& bName: bathyStr){
+        bathymetryvar = ncFile.getVar(bName);
+        if (!bathymetryvar.isNull())
+            break;
+    }
+    /* const NcVar &bathymetryvar = ncFile.getVar("original_bathy"); */
     /* const NcVar &bathymetryvar = ncFile.getVar("bathymetry"); */
     const NcVar &eta = ncFile.getVar("eta");
 
@@ -410,9 +418,10 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
     coords[0] = vecLatGrid.data();
     coords[1] = vecLonGrid.data();
 
+    auto &scale = zScale;
     Polygons::ptr ptr_grnd = generateSurface(
         PolygonData(numPolyGround, numPolyGround * 4, verticesGround), Dim(latGround.count, lonGround.count), coords,
-        [&vecDepth, &lonGround](size_t j, size_t k) { return -vecDepth[j * lonGround.count + k]; });
+        [&vecDepth, &lonGround, &scale](size_t j, size_t k) { return -vecDepth[j * lonGround.count + k] * scale; });
 
     // add data to port
     ptr_grnd->setBlock(blockNum);
@@ -428,7 +437,7 @@ bool ReadTsunami::computeInitialPolygon(Token &token, const T &blockNum)
   * Generates polygon for corresponding timestep and adds Object to scene.
   *
   * @token: Ref to internal vistle token.
-  * @blockNum: current block number of parallel process. 
+  * @blockNum: current block number of parallel process.
   * @timestep: current timestep.
   * @return: true. TODO: add proper error-handling here.
   */
