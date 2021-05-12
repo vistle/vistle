@@ -16,14 +16,15 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
-#include "vistle/core/index.h"
 #include "vistle/core/parameter.h"
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
 #include <netcdf>
 #include <vector>
-#include <array>
+
+constexpr int NUM_BLOCKS{2};
+constexpr int NUM_SCALARS{2};
 
 namespace {
 
@@ -73,6 +74,7 @@ private:
 
     //Own functions
     bool openNcFile(netCDF::NcFile &file) const;
+    bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
@@ -109,12 +111,15 @@ private:
 
     //Parameter
     vistle::StringParameter *p_filedir = nullptr;
+    vistle::StringParameter *p_bathy = nullptr;
     vistle::FloatParameter *p_verticalScale = nullptr;
-    std::array<vistle::IntParameter *, 2> m_blocks{nullptr, nullptr};
+    std::array<vistle::IntParameter *, NUM_BLOCKS> m_blocks{nullptr, nullptr};
+    std::array<vistle::StringParameter *, NUM_SCALARS> m_scalars;
 
     //Ports
     vistle::Port *p_seaSurface_out = nullptr;
     vistle::Port *p_groundSurface_out = nullptr;
+    std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
     //Polygons
     vistle::Polygons::ptr ptr_sea;
@@ -124,5 +129,9 @@ private:
     size_t verticesSea;
     size_t actualLastTimestep;
     std::vector<float> vecEta;
+
+    //lat = 0; lon = 1
+    std::array<std::string, NUM_BLOCKS> m_latLon_Surface;
+    std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
 };
 #endif
