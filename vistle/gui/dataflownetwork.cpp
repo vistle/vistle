@@ -48,6 +48,12 @@ DataFlowNetwork::~DataFlowNetwork()
     m_moduleList.clear();
 }
 
+void DataFlowNetwork::addModule(int hub, QString modName)
+{
+    addModule(hub, modName, lastDropPos + QPointF{0, 80});
+}
+
+
 /*!
  * \brief Scene::addModule add a module to the draw area.
  * \param modName
@@ -55,6 +61,7 @@ DataFlowNetwork::~DataFlowNetwork()
  */
 void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 {
+    lastDropPos = dropPos;
     Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
     addItem(module);
