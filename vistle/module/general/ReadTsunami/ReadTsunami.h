@@ -16,12 +16,12 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
-#include "vistle/core/parameter.h"
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
 #include <netcdf>
 #include <vector>
+#include <array>
 
 constexpr int NUM_BLOCKS{2};
 constexpr int NUM_SCALARS{2};
@@ -73,8 +73,14 @@ private:
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
+    void initScalarParamReader();
     bool openNcFile(netCDF::NcFile &file) const;
     bool inspectNetCDFVars();
+
+    template<class T, class U>
+    using NcVarContainer = std::vector<NcVarParams<T, U>>;
+    template<class T, class U, class S>
+    void readNcVar(S *storage, const NcVarContainer<T, U> &ncParams, const netCDF::NcVar &nc);
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
     template<class U, class T, class V>
@@ -85,17 +91,22 @@ private:
     template<class T, class U>
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
 
+    template<class Iter>
+    void computeBlockPartion(const int blockNum, size_t &ghost, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+                             Iter blockPartitionIterFirst);
+
     template<class T>
-    bool computeInitialPolygon(Token &token, const T &blockNum);
+    bool computeInitial(Token &token, const T &blockNum);
 
     template<class T, class U>
-    bool computeTimestepPolygon(Token &token, const T &blockNum, const U &timestep);
+    bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
+    void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
+                                   size_t &lastTimestep, size_t &nTimesteps);
 
-    template<class T, class PartionMultiplicator>
+    template<class T, class PartionIdx>
     NcVarParams<T> generateNcVarParams(const T &dim, const T &ghost, const T &numDimBlocks,
-                                       const PartionMultiplicator &partition) const;
+                                       const PartionIdx &partition) const;
 
-    //void functions
     template<class T, class V>
     void fillCoordsPoly2Dim(vistle::Polygons::ptr poly, const Dim<T> &dim, const std::vector<V> &coords,
                             const zCalcFunc &zCalc);
@@ -124,10 +135,12 @@ private:
     //Polygons
     vistle::Polygons::ptr ptr_sea;
 
+    //Scalar
+    std::array<vistle::Vec<vistle::Scalar>::ptr, NUM_SCALARS> ptr_Scalar;
+
     //helper variables
-    float zScale;
     size_t verticesSea;
-    size_t actualLastTimestep;
+    size_t m_actualLastTimestep;
     std::vector<float> vecEta;
 
     //lat = 0; lon = 1
