@@ -535,24 +535,22 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count};
     std::vector<float> vecScalar(verticesGround);
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
-        sendInfo("In");
         if (!m_scalarsOut[i]->isConnected())
             continue;
-        sendInfo("out");
-
         const auto &scName = m_scalars[i]->getValue();
         const auto &val = ncFile.getVar(scName);
-        auto &ptr_scalar = ptr_Scalar[i];
-        ptr_scalar.reset();
-        ptr_scalar->setSize(verticesSea);
-        sendInfo("%d", ptr_scalar->getSize());
+        Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
+        ptr_Scalar[i] = ptr_scalar;
         auto scX = ptr_scalar->x().data();
+        
+        /* sendInfo("%d", static_cast<int>(val.getDim(0).getSize())); */
+        /* sendInfo("%d", static_cast<int>(val.getDim(1).getSize())); */
+        
         val.getVar(vecScalarStart, vecScalarCount, scX);
-        sendInfo("read");
-        ptr_scalar->setMapping(DataBase::Element);
+        /* ptr_scalar->setMapping(DataBase::Unspecified); */
         ptr_scalar->addAttribute("_species", scName);
+        ptr_scalar->setTimestep(-1);
         ptr_scalar->setBlock(blockNum);
-        sendInfo("out2");
     }
 
     // add data to port
@@ -602,6 +600,10 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     /*     else */
     /*         zPoly[i] = tmp; */
     /* } */
+    ptr_timestepPoly->updateInternals();
+    ptr_timestepPoly->setTimestep(timestep);
+    ptr_timestepPoly->setBlock(blockNum);
+
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
@@ -615,9 +617,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     }
 
     if (p_seaSurface_out->isConnected()) {
-        ptr_timestepPoly->updateInternals();
-        ptr_timestepPoly->setTimestep(timestep);
-        ptr_timestepPoly->setBlock(blockNum);
         token.applyMeta(ptr_timestepPoly);
         token.addObject(p_seaSurface_out, ptr_timestepPoly);
     }
@@ -626,6 +625,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
         vecEta.clear();
         vecEta.shrink_to_fit();
+        for (auto &val: ptr_Scalar)
+            val.reset();
         indexEta = 0;
     }
     return true;
