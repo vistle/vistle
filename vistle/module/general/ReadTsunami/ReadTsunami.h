@@ -121,15 +121,15 @@ private:
     void printThreadStats() const;
 
     //Parameter
-    vistle::StringParameter *p_filedir = nullptr;
-    vistle::StringParameter *p_bathy = nullptr;
-    vistle::FloatParameter *p_verticalScale = nullptr;
+    vistle::StringParameter *m_filedir = nullptr;
+    vistle::StringParameter *m_bathy = nullptr;
+    vistle::FloatParameter *m_verticalScale = nullptr;
     std::array<vistle::IntParameter *, NUM_BLOCKS> m_blocks{nullptr, nullptr};
     std::array<vistle::StringParameter *, NUM_SCALARS> m_scalars;
 
     //Ports
-    vistle::Port *p_seaSurface_out = nullptr;
-    vistle::Port *p_groundSurface_out = nullptr;
+    vistle::Port *m_seaSurface_out = nullptr;
+    vistle::Port *m_groundSurface_out = nullptr;
     std::array<vistle::Port *, NUM_SCALARS> m_scalarsOut;
 
     //Polygons

@@ -50,18 +50,18 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm)
 {
     // file-browser
-    p_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
+    m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
                                    Parameter::Filename);
 
     //ghost
     addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
 
     // visualise variables
-    p_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
+    m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
-    p_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Polygons)");
-    p_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Polygons)");
+    m_seaSurface_out = createOutputPort("Sea surface", "2D Grid Sea (Polygons)");
+    m_groundSurface_out = createOutputPort("Ground surface", "2D Sea floor (Polygons)");
 
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
@@ -70,7 +70,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     setParameterRange(m_blocks[1], Integer(1), Integer(999999));
 
     //bathymetryname
-    p_bathy = addStringParameter("bathymetry ", "Select bathymetry stored in netCDF", "", Parameter::Choice);
+    m_bathy = addStringParameter("bathymetry ", "Select bathymetry stored in netCDF", "", Parameter::Choice);
 
     //scalar
     initScalarParamReader();
@@ -81,10 +81,10 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     setParameterRange(m_increment, Integer(1), Integer(9999999));
 
     // observer these parameters
-    observeParameter(p_filedir);
+    observeParameter(m_filedir);
     observeParameter(m_blocks[0]);
     observeParameter(m_blocks[1]);
-    observeParameter(p_verticalScale);
+    observeParameter(m_verticalScale);
 
     setParallelizationMode(ParallelizeBlocks);
 }
@@ -122,7 +122,7 @@ void ReadTsunami::initScalarParamReader()
  */
 bool ReadTsunami::openNcFile(NcFile &file) const
 {
-    std::string sFileName = p_filedir->getValue();
+    std::string sFileName = m_filedir->getValue();
 
     if (sFileName.empty()) {
         sendInfo("NetCDF filename is empty!");
@@ -168,7 +168,7 @@ inline void ReadTsunami::printThreadStats() const
   */
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
-    if (!param || param == p_filedir) {
+    if (!param || param == m_filedir) {
         if (rank() == 0)
             printMPIStats();
 
@@ -198,33 +198,40 @@ bool ReadTsunami::inspectNetCDFVars()
 
     std::vector<std::string> scalarChoiceVec;
     std::vector<std::string> bathyChoiceVec;
+    auto strContains = [](const std::string &name, const std::string &contains) {
+        return name.find(contains) != std::string::npos;
+    };
     auto latLonContainsGrid = [=](auto &name, int i) {
-        if (name.find("grid") != std::string::npos)
+        if (strContains(name, "grid"))
             m_latLon_Ground[i] = name;
         else
             m_latLon_Surface[i] = name;
     };
 
+
     //delete previous choicelists.
-    p_bathy->setChoices(std::vector<std::string>());
+    m_bathy->setChoices(std::vector<std::string>());
     for (const auto &scalar: m_scalars)
         scalar->setChoices(std::vector<std::string>());
 
     for (auto &[name, val]: ncFile.getVars()) {
-        if (name.find("lat") != std::string::npos)
+        if (strContains(name, "lat"))
             latLonContainsGrid(name, 0);
-        else if (name.find("lon") != std::string::npos)
+        else if (strContains(name, "lon"))
             latLonContainsGrid(name, 1);
-        else if (name.find("bathy") != std::string::npos)
+        else if (strContains(name, "bathy"))
             bathyChoiceVec.push_back(name);
         else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon.
             scalarChoiceVec.push_back(name);
+
     }
 
-    setParameterChoices(p_bathy, bathyChoiceVec);
+    setParameterChoices(m_bathy, bathyChoiceVec);
 
     for (auto &scalar: m_scalars)
         setParameterChoices(scalar, scalarChoiceVec);
+
+    ncFile.close();
 
     return true;
 }
@@ -453,7 +460,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const NcVar &lonvar = ncFile.getVar(m_latLon_Surface[1]);
     const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
     const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
-    const NcVar &bathymetryvar = ncFile.getVar(p_bathy->getValue());
+    const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
     const NcVar &eta = ncFile.getVar("eta");
 
     // compute current time parameters
@@ -522,7 +529,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     coords[0] = vecLatGrid.data();
     coords[1] = vecLonGrid.data();
 
-    const auto &scale = p_verticalScale->getValue();
+    const auto &scale = m_verticalScale->getValue();
     const auto &grndDim = Dim(latGround.count, lonGround.count);
     const auto &polyDataGround = PolygonData(numPolyGround, numPolyGround * 4, verticesGround);
     auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
@@ -542,12 +549,9 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
         ptr_Scalar[i] = ptr_scalar;
         auto scX = ptr_scalar->x().data();
-        
-        /* sendInfo("%d", static_cast<int>(val.getDim(0).getSize())); */
-        /* sendInfo("%d", static_cast<int>(val.getDim(1).getSize())); */
-        
         val.getVar(vecScalarStart, vecScalarCount, scX);
-        /* ptr_scalar->setMapping(DataBase::Unspecified); */
+
+        //set some meta data
         ptr_scalar->addAttribute("_species", scName);
         ptr_scalar->setTimestep(-1);
         ptr_scalar->setBlock(blockNum);
@@ -557,7 +561,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     ptr_grnd->setBlock(blockNum);
     ptr_grnd->setTimestep(-1);
     ptr_grnd->updateInternals();
-    token.addObject(p_groundSurface_out, ptr_grnd);
+    token.addObject(m_groundSurface_out, ptr_grnd);
 
     ncFile.close();
     return true;
@@ -591,6 +595,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     /* sendInfo("timestep COVER: " + std::to_string(indexEta)); */
     auto startCopy = vecEta.begin() + indexEta++ * verticesSea;
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
+    //TODO: filter fill value
     /* auto zPoly = ptr_timestepPoly->z().data(); */
     /* auto start = indexEta++ * verticesSea; */
     /* for (size_t i = start; i < verticesSea; i++) { */
@@ -610,15 +615,17 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
         auto scalar = ptr_Scalar[i]->clone();
         scalar->setGrid(ptr_timestepPoly);
+        scalar->addAttribute("_species", scalar->getAttribute("_species"));
+        scalar->setBlock(blockNum);       
         scalar->setTimestep(timestep);
         scalar->updateInternals();
 
         token.addObject(m_scalarsOut[i], scalar);
     }
 
-    if (p_seaSurface_out->isConnected()) {
+    if (m_seaSurface_out->isConnected()) {
         token.applyMeta(ptr_timestepPoly);
-        token.addObject(p_seaSurface_out, ptr_timestepPoly);
+        token.addObject(m_seaSurface_out, ptr_timestepPoly);
     }
 
     if (timestep == m_actualLastTimestep) {
