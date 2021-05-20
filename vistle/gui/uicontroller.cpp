@@ -2,11 +2,12 @@
 #include <vistle/userinterface/pythoninterface.h>
 #include <vistle/userinterface/pythonmodule.h>
 #endif
-#include "uicontroller.h"
-#include "modifieddialog.h"
 #include "dataflownetwork.h"
 #include "dataflowview.h"
+#include "modifieddialog.h"
+#include "modulebrowser.h"
 #include "parameters.h"
+#include "uicontroller.h"
 #include "vistleconsole.h"
 #include <vistle/util/directory.h>
 
@@ -136,6 +137,9 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
            SLOT(statusUpdated(int, QString, int)));
    connect(&m_observer, SIGNAL(moduleStatus_s(int, QString, int)),
            m_scene, SLOT(moduleStatus(int, QString, int)));
+
+   QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
+           [this](int hubId, const QString &moduleName) { m_scene->addModule(hubId, moduleName); });
 
    m_mainWindow->show();
 }

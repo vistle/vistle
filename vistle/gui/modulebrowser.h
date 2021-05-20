@@ -42,18 +42,33 @@ public:
 
    ModuleBrowser(QWidget *parent=nullptr);
    ~ModuleBrowser();
-
-public slots:
+   bool eventFilter(QObject *object, QEvent *event) override;
+   void keyPressEvent(QKeyEvent *event) override;
+   public slots:
    void addModule(int hub, QString hubName, QString module, QString path);
    void setFilter(QString filter);
+signals:
+   void startModule(int hub, QString moduleName);
 
-private:
-   std::map<int, QTreeWidgetItem *> hubItems;
+   private:
 
+struct SelectedModule{
+   bool exists = false;
+   std::map<int, QTreeWidgetItem *>::iterator hostIter;
+   int moduleIndex = 0;
+} currentModule;
 
+std::map<int, QTreeWidgetItem *>
+    hubItems;
+   bool filterInFocus = false;
    QLineEdit *filterEdit() const;
+   void selectNewModule(bool up);
 
-   Ui::ModuleBrowser *ui;
+Ui::ModuleBrowser *ui;
+void selectNextModule();
+void selectPreviousModule();
+void selectFirstModule(bool first);
+void setCurrentModuleSelected(bool select);
 };
 
 } // namespace gui

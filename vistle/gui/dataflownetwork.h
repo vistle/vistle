@@ -28,6 +28,7 @@ public:
     DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent = 0);
     ~DataFlowNetwork();
 
+    void addModule(int hub, QString modName);
     void addModule(int hub, QString modName, QPointF dropPos);
 
     void addConnection(Port *portFrom, Port *portTo, bool sendToController=false);
@@ -62,7 +63,7 @@ private:
     Port *startPort;                                  //< starting port for module connection
     Module *startModule;                              //< starting module for making connection
     Module *endModule;                                //< ending module for making connection
-
+    QPointF lastDropPos;
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection;
     vistle::StateTracker &m_state;
