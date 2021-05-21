@@ -132,6 +132,7 @@ QLineEdit *ModuleBrowser::filterEdit() const
 void ModuleBrowser::setFilter(QString filter)
 {
     ui->moduleListWidget->setFilter(filter);
+    selectModule(Qt::Key_Down);
 }
 
 bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
@@ -155,10 +156,8 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
 {
     if (filterInFocus) {
         if (event->type() == QEvent::KeyPress) {
-            if (event->key() == Qt::Key_Down) {
-                selectNextModule();
-            } else if (event->key() == Qt::Key_Up) {
-                selectPreviousModule();
+            if (event->key() == Qt::Key_Down || event->key() == Qt::Key_Up) {
+                selectModule(static_cast<Qt::Key>(event->key()));
             } else if (event->key() == Qt::Key_Insert) {
                 if (currentModule.exists) {
                     emit startModule(currentModule.hostIter->first,
@@ -169,73 +168,63 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
     }
 }
 
+bool ModuleBrowser::goToNextModule()
+{
+    ++currentModule.moduleIndex;
+    if (currentModule.moduleIndex == currentModule.hostIter->second->childCount()) {
+        currentModule.moduleIndex = 0;
+        ++currentModule.hostIter;
+        if (currentModule.hostIter == hubItems.end()) {
+            currentModule.hostIter = hubItems.begin();
+        }
+    }
+    if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
+        return true;
+    }
+    return false;
+}
 
-void ModuleBrowser::selectNextModule()
+
+bool ModuleBrowser::goToPreviousModule()
+{
+    --currentModule.moduleIndex;
+    if (currentModule.moduleIndex < 0) {
+        currentModule.hostIter == hubItems.begin() ? currentModule.hostIter = --hubItems.end()
+                                                   : --currentModule.hostIter;
+        currentModule.moduleIndex = currentModule.hostIter->second->childCount() - 1;
+    }
+    if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
+        return true;
+    }
+    return false;
+}
+
+void ModuleBrowser::selectModule(Qt::Key dir)
 {
     if (!currentModule.exists) {
-        selectFirstModule(true);
+        initCurrentModule(Qt::Key_Down);
         return;
     }
     setCurrentModuleSelected(false);
     auto old = currentModule;
-    bool found = false;
     do {
-        ++currentModule.moduleIndex;
-        if (currentModule.moduleIndex == currentModule.hostIter->second->childCount()) {
-            currentModule.moduleIndex = 0;
-            ++currentModule.hostIter;
-            if (currentModule.hostIter == hubItems.end()) {
-                currentModule.hostIter = hubItems.begin();
-            }
-        }
-        if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
-            found = true;
-            break;
-        }
-
-    } while (!(currentModule.hostIter == old.hostIter && currentModule.moduleIndex == old.moduleIndex));
-    if (found) {
-        setCurrentModuleSelected(true);
-    } else {
-        selectFirstModule(true);
-    }
-}
-
-void ModuleBrowser::selectPreviousModule()
-{
-    if (!currentModule.exists) {
-        selectFirstModule(true);
-        return;
-    }
-    setCurrentModuleSelected(false);
-    auto old = currentModule;
-    bool found = false;
-    do {
-        --currentModule.moduleIndex;
-        if (currentModule.moduleIndex < 0) {
-            currentModule.hostIter == hubItems.begin() ? currentModule.hostIter = --hubItems.end()
-                                                       : --currentModule.hostIter;
-            currentModule.moduleIndex = currentModule.hostIter->second->childCount() - 1;
-        }
-        if (!currentModule.hostIter->second->child(currentModule.moduleIndex)->isHidden()) {
-            found = true;
-            break;
+        if ((dir == Qt::Key::Key_Up && goToPreviousModule()) || (dir == Qt::Key::Key_Down && goToNextModule())) {
+            setCurrentModuleSelected(true);
+            return;
         }
     } while (!(currentModule.hostIter == old.hostIter && currentModule.moduleIndex == old.moduleIndex));
-    if (found) {
-        setCurrentModuleSelected(true);
-    } else {
-        selectFirstModule(false);
-    }
+    initCurrentModule(dir);
 }
 
-void ModuleBrowser::selectFirstModule(bool first)
+void ModuleBrowser::initCurrentModule(Qt::Key dir)
 {
+    assert(dir == Qt::Key::Key_Down || dir == Qt::Key::Key_Up);
     currentModule.exists = true;
-    if (first) {
+    if (dir == Qt::Key::Key_Down) {
         currentModule.hostIter = hubItems.begin();
         currentModule.moduleIndex = 0;
     } else {
+        assert(!hubItems.empty());
         currentModule.hostIter = --hubItems.end();
         currentModule.moduleIndex = currentModule.hostIter->second->childCount() - 1;
     }

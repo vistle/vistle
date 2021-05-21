@@ -50,8 +50,7 @@ public:
 signals:
    void startModule(int hub, QString moduleName);
 
-   private:
-
+private:
 struct SelectedModule{
    bool exists = false;
    std::map<int, QTreeWidgetItem *>::iterator hostIter;
@@ -65,9 +64,10 @@ std::map<int, QTreeWidgetItem *>
    void selectNewModule(bool up);
 
 Ui::ModuleBrowser *ui;
-void selectNextModule();
-void selectPreviousModule();
-void selectFirstModule(bool first);
+bool goToNextModule();
+bool goToPreviousModule();
+void selectModule(Qt::Key dir);
+void initCurrentModule(Qt::Key dir);
 void setCurrentModuleSelected(bool select);
 };
 
