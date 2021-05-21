@@ -17,6 +17,7 @@
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
 #include <QDebug>
+#include <QtMath>
 
 namespace gui {
 
@@ -48,6 +49,11 @@ DataFlowNetwork::~DataFlowNetwork()
     m_moduleList.clear();
 }
 
+float abs(const QPointF p)
+{
+    return qSqrt(p.x() * p.x() + p.y() * p.y());
+}
+
 void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
 {
     QPointF offset;
@@ -68,8 +74,17 @@ void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
     default:
        break;
     }
+   QPointF newPos = lastDropPos + offset;
+   constexpr float threashhold = 30;
+   for (int i = 0; i < m_moduleList.size(); i++)
+   {
+       if (abs(m_moduleList[i]->pos() - newPos) < threashhold) {
+           newPos += offset;
+           i = -1;
+       }
+   }
 
-    addModule(hub, modName, lastDropPos + offset);
+   addModule(hub, modName, newPos);
 }
 
 
