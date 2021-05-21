@@ -48,7 +48,7 @@ public:
    void addModule(int hub, QString hubName, QString module, QString path);
    void setFilter(QString filter);
 signals:
-   void startModule(int hub, QString moduleName);
+   void startModule(int hub, QString moduleName, Qt::Key direction);
 
 private:
 struct SelectedModule{

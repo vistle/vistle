@@ -139,7 +139,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
            m_scene, SLOT(moduleStatus(int, QString, int)));
 
    QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
-           [this](int hubId, const QString &moduleName) { m_scene->addModule(hubId, moduleName); });
+           [this](int hubId, const QString &moduleName, Qt::Key direction) { m_scene->addModule(hubId, moduleName, direction); });
 
    m_mainWindow->show();
 }

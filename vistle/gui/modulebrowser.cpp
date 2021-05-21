@@ -156,17 +156,41 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
 {
     if (filterInFocus) {
         if (event->type() == QEvent::KeyPress) {
-            if (event->key() == Qt::Key_Down || event->key() == Qt::Key_Up) {
-                selectModule(static_cast<Qt::Key>(event->key()));
-            } else if (event->key() == Qt::Key_Insert) {
-                if (currentModule.exists) {
-                    emit startModule(currentModule.hostIter->first,
-                                     currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0));
+            if (event->modifiers() == Qt::KeyboardModifier::NoModifier) {
+                switch (event->key()) {
+                case Qt::Key_Down:
+                case Qt::Key_Up: {
+                    selectModule(static_cast<Qt::Key>(event->key()));
+                } break;
+                case Qt::Key_Insert: {
+                    if (currentModule.exists) {
+                        emit startModule(currentModule.hostIter->first,
+                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), Qt::Key_Down);
+                    }
+                }
+                default:
+                    break;
+                }
+
+            } else if (event->modifiers() == Qt::KeyboardModifier::AltModifier && currentModule.exists) {
+                switch (event->key()) {
+                case Qt::Key_Down: 
+                case Qt::Key_Up: 
+                case Qt::Key_Left: 
+                case Qt::Key_Right: {
+                        emit startModule(currentModule.hostIter->first,
+                                         currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), static_cast<Qt::Key>(event->key()));
+
+                } break;
+                default:
+                    break;
                 }
             }
         }
     }
 }
+
+
 
 bool ModuleBrowser::goToNextModule()
 {

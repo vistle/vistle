@@ -48,9 +48,28 @@ DataFlowNetwork::~DataFlowNetwork()
     m_moduleList.clear();
 }
 
-void DataFlowNetwork::addModule(int hub, QString modName)
+void DataFlowNetwork::addModule(int hub, QString modName, Qt::Key direction)
 {
-    addModule(hub, modName, lastDropPos + QPointF{0, 80});
+    QPointF offset;
+    switch (direction) {
+    case Qt::Key_Down:
+        offset = QPointF{0, 80};
+        break;
+   case Qt::Key_Up:
+        offset = QPointF{0, -80};
+        break;
+   case Qt::Key_Left:
+        offset = QPointF{-160, 0};
+        break;
+   case Qt::Key_Right:
+        offset = QPointF{160, 0};
+        break;
+
+    default:
+       break;
+    }
+
+    addModule(hub, modName, lastDropPos + offset);
 }
 
 
