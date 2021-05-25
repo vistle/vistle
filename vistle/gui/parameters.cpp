@@ -5,6 +5,7 @@
  */
 /**********************************************************************************/
 
+#include <cmath>
 #include <QTextEdit>
 #include <QDebug>
 
@@ -303,7 +304,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       m_floatManager->setDecimals(prop, NumDec);
       double range = fp->maximum()-fp->minimum();
       double step = 1.;
-      if (range > 0. && !isinf(range)) {
+      if (range > 0. && !std::isinf(range)) {
           if (range > 300.) {
               while (step * 300. < range) {
                   step *= 10.;
