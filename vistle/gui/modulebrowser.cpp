@@ -93,6 +93,7 @@ ModuleBrowser::ModuleBrowser(QWidget *parent): QWidget(parent), ui(new Ui::Modul
     filterEdit()->installEventFilter(this);
     ui->moduleListWidget->setFocusProxy(filterEdit());
     setFocusProxy(filterEdit());
+    ui->filterEdit->installEventFilter(this);
 }
 
 ModuleBrowser::~ModuleBrowser()
@@ -145,14 +146,15 @@ bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
         }
         if (event->type() == QEvent::FocusOut) {
             filterInFocus = false;
+        }        
+        if (auto keyEvent =  dynamic_cast<QKeyEvent*>(event)) {
+            return handleKeyPress(keyEvent);
         }
-        // bring up your custom edit
-        return false; // lets the event continue to the edit
     }
     return false;
 }
 
-void ModuleBrowser::keyPressEvent(QKeyEvent *event)
+bool ModuleBrowser::handleKeyPress(QKeyEvent *event)
 {
     if (filterInFocus) {
         if (event->type() == QEvent::KeyPress) {
@@ -161,11 +163,13 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
                 case Qt::Key_Down:
                 case Qt::Key_Up: {
                     selectModule(static_cast<Qt::Key>(event->key()));
+                    return true;
                 } break;
-                case Qt::Key_Insert: {
+                case Qt::Key_Enter: {
                     if (currentModule.exists) {
                         emit startModule(currentModule.hostIter->first,
                                          currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), Qt::Key_Down);
+                        return true;
                     }
                 }
                 default:
@@ -180,7 +184,7 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
                 case Qt::Key_Right: {
                         emit startModule(currentModule.hostIter->first,
                                          currentModule.hostIter->second->child(currentModule.moduleIndex)->text(0), static_cast<Qt::Key>(event->key()));
-
+                        return true;
                 } break;
                 default:
                     break;
@@ -188,8 +192,8 @@ void ModuleBrowser::keyPressEvent(QKeyEvent *event)
             }
         }
     }
+    return false;
 }
-
 
 
 bool ModuleBrowser::goToNextModule()

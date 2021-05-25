@@ -43,7 +43,7 @@ public:
    ModuleBrowser(QWidget *parent=nullptr);
    ~ModuleBrowser();
    bool eventFilter(QObject *object, QEvent *event) override;
-   void keyPressEvent(QKeyEvent *event) override;
+   bool handleKeyPress(QKeyEvent *event);
    public slots:
    void addModule(int hub, QString hubName, QString module, QString path);
    void setFilter(QString filter);
