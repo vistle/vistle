@@ -207,8 +207,10 @@ add_subdirectory(renderer)
 add_subdirectory(vtk)
 #message("Vistle modules: ${ALL_MODULES}")
 # keep after module and renderer, as ALL_MODULES will be populated within those two directories
-add_subdirectory(manager)
 
+
+vistle_find_package(COVER) # required for spinning Qt event loop in single-process config
+add_subdirectory(manager)
 add_subdirectory(cover)
 
 add_subdirectory(test)
