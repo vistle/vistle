@@ -1,7 +1,3 @@
-if (CRAY)
-   return()
-endif()
-
 vistle_find_package(Qt5Core)
 # don't bother to continue if not even QtCore was found
 if (NOT Qt5Core_FOUND)
