@@ -260,7 +260,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-   if (isSelected()) {
+   if (isSelected() && DataFlowView::the()->selectedModules().size() > 1) {
        m_deleteSelAct->setVisible(true);
        m_deleteThisAct->setVisible(false);
    } else {
