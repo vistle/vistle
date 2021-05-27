@@ -31,7 +31,6 @@
 #include "vistle/module/module.h"
 
 //openmpi
-#include <cstddef>
 #include <mpi.h>
 
 //std
@@ -39,6 +38,7 @@
 #include <array>
 #include <iterator>
 #include <string>
+#include <cstddef>
 
 using namespace vistle;
 using namespace netCDF;
@@ -214,6 +214,7 @@ bool ReadTsunami::inspectNetCDFVars()
     for (const auto &scalar: m_scalars)
         scalar->setChoices(std::vector<std::string>());
 
+    //read names of scalars
     for (auto &[name, val]: ncFile.getVars()) {
         if (strContains(name, "lat"))
             latLonContainsGrid(name, 0);
@@ -223,9 +224,9 @@ bool ReadTsunami::inspectNetCDFVars()
             bathyChoiceVec.push_back(name);
         else if (val.getDimCount() == 2) // for now: only scalars with 2 dim depend on lat lon.
             scalarChoiceVec.push_back(name);
-
     }
 
+    //init choice param with scalardata
     setParameterChoices(m_bathy, bathyChoiceVec);
 
     for (auto &scalar: m_scalars)
@@ -245,8 +246,8 @@ bool ReadTsunami::inspectNetCDFVars()
   * @zCalc: Function for computing z-coordinate.
   */
 template<class T, class U>
-void ReadTsunami::fillCoordsPoly2Dim(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
-                                     const zCalcFunc &zCalc)
+void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, const std::vector<U> &coords,
+                                        const zCalcFunc &zCalc)
 {
     int n = 0;
     auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
@@ -295,7 +296,7 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
  *
  * @polyData: Data for creating polygon-surface (number elements, number corners, number vertices).
  * @dim: Dimension in lat and lon.
- * @coords: coordinates for polygons.
+ * @coords: coordinates for polygons (lat, lon).
  * @zCalc: Function for computing z-coordinate.
  * @return vistle::Polygons::ptr
  */
@@ -306,7 +307,7 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
     Polygons::ptr surface(new Polygons(polyData.numElements, polyData.numCorners, polyData.numVertices));
 
     // fill coords 2D
-    fillCoordsPoly2Dim(surface, dim, coords, zCalc);
+    contructLatLonSurface(surface, dim, coords, zCalc);
 
     // fill vertices
     fillConnectListPoly2Dim(surface, dim);
@@ -327,13 +328,13 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
   * @return: NcVarParams object.
   */
 template<class T, class PartionIdx>
-NcVarParams<T> ReadTsunami::generateNcVarParams(const T &dim, const T &ghost, const T &numDimBlock,
-                                                const PartionIdx &partition) const
+auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, const T &ghost, const T &numDimBlock,
+                                   const PartionIdx &partition) const
 {
     T count = dim / numDimBlock;
     T start = partition * count;
     addGhostStructured_tmpl(start, count, dim, ghost);
-    return NcVarParams<T>(start, count);
+    return NcVarExtended(ncVar, start, count);
 }
 
 /**
@@ -417,31 +418,6 @@ void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle:
 }
 
 /**
- * @brief Reads given NcVar into storage container in chunks specified with ncParams.
- *
- * @tparam T Start and count type for read operation in data. (default = float)
- * @tparam U Stride type for read operation through data. (default = ptrdiff_t)
- * @tparam S Storage type.
- * @param storage Storage ptr.
- * @param ncParams Vector container which holds NcVarParams object references.
- * @param nc NcVar object to be read.
- */
-template<class T, class U, class S>
-void ReadTsunami::readNcVar(S *storage, const NcVarContainer<T, U> &ncParams, const netCDF::NcVar &nc)
-{
-    std::vector<T> start;
-    std::vector<T> count;
-    std::vector<U> stride;
-    for (auto &val: ncParams) {
-        start.push_back(val.start);
-        count.push_back(val.count);
-        stride.push_back(val.stride);
-    }
-
-    nc.getVar(start, count, storage);
-}
-
-/**
   * Generates the inital polygon surfaces for sea and ground and adds them to scene.
   *
   * @token: Ref to internal vistle token.
@@ -484,12 +460,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const Dim dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
     // count and start vals for lat and lon for sea polygon
-    const auto latSea = generateNcVarParams<size_t, Index>(dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
-    const auto lonSea = generateNcVarParams<size_t, Index>(dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+    const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+    const auto lonSea = generateNcVarExt<size_t, Index>(lonvar, dimSea.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
     // count and start vals for lat and lon for ground polygon
-    const auto latGround = generateNcVarParams<size_t, Index>(dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
-    const auto lonGround = generateNcVarParams<size_t, Index>(dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+    const auto latGround =
+        generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
+    const auto lonGround =
+        generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
 
     // num of polygons for sea & grnd
     const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
@@ -512,11 +490,12 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
 
     // read in ncdata into float-pointer
-    readNcVar(vecLat.data(), std::vector{latSea}, latvar);
-    readNcVar(vecLon.data(), std::vector{lonSea}, lonvar);
-    readNcVar(vecLatGrid.data(), std::vector{latGround}, grid_lat);
-    readNcVar(vecLonGrid.data(), std::vector{lonGround}, grid_lon);
-    readNcVar(vecDepth.data(), std::vector{latGround, lonGround}, bathymetryvar);
+    latSea.readNcVar(vecLat.data());
+    lonSea.readNcVar(vecLon.data());
+    latGround.readNcVar(vecLatGrid.data());
+    lonGround.readNcVar(vecLonGrid.data());
+    bathymetryvar.getVar(std::vector{latGround.start, lonGround.start}, std::vector{latGround.count, lonGround.count},
+                         vecDepth.data());
     eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
     //************* create sea *************//
@@ -609,6 +588,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     ptr_timestepPoly->setTimestep(timestep);
     ptr_timestepPoly->setBlock(blockNum);
 
+    //add scalar to ports
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
             continue;
@@ -616,7 +596,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         auto scalar = ptr_Scalar[i]->clone();
         scalar->setGrid(ptr_timestepPoly);
         scalar->addAttribute("_species", scalar->getAttribute("_species"));
-        scalar->setBlock(blockNum);       
+        scalar->setBlock(blockNum);
         scalar->setTimestep(timestep);
         scalar->updateInternals();
 
