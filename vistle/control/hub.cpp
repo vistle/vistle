@@ -1235,31 +1235,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   ++m_moduleCount;
                   doSpawn = true;
                }
-               std::vector<std::shared_ptr<Parameter>> params;
-               std::map<std::string, std::vector<Port>> inconns, outconns;
-               if (Id::isModule(spawn.migrateId())) {
-                   int id = spawn.migrateId();
-                   auto paramNames = m_stateTracker.getParameters(id);
-                   for (const auto &pn: paramNames) {
-                       auto p = m_stateTracker.getParameter(id, pn);
-                       params.emplace_back(p);
+               bool restart = Id::isModule(spawn.migrateId());
+               if (restart) {
+                   if (doSpawn)
+                   {
+                       cacheModuleValues(spawn.migrateId(), notify.spawnId());
                    }
-
-                   auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(id);
-                   for (const auto &in: inputs) {
-                       for (const auto &from: in->connections())
-                           inconns[in->getName()].emplace_back(*from);
-                   }
-                   auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(id);
-                   for (const auto &out: outputs) {
-                       for (const auto &to: out->connections())
-                           outconns[out->getName()].emplace_back(*to);
-                   }
-
-                   auto kill = Kill(spawn.migrateId());
-                   kill.setDestId(spawn.migrateId());
-                   handleMessage(kill);
+                   killOldModule(spawn.migrateId());
                }
+
                CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
                m_stateTracker.handle(notify, nullptr);
@@ -1270,28 +1254,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   notify.setDestId(spawn.hubId());
                   CERR << "doSpawn: sendManager: " << notify << std::endl;
                   sendManager(notify, spawn.hubId());
-                  int id = notify.spawnId();
-
-                  for (const auto &p: params) {
-                      auto pm = SetParameter(id, p->getName(), p);
-                      pm.setDestId(id);
-                      m_sendAfterSpawn[id].emplace_back(pm);
-                  }
-
-                  for (const auto &ic: inconns) {
-                      auto &in = ic.first;
-                      for (auto &from: ic.second) {
-                          auto cm = Connect(from.getModuleID(), from.getName(), notify.spawnId(), in);
-                          m_sendAfterSpawn[id].emplace_back(cm);
-                      }
-                  }
-                  for (const auto &oc: outconns) {
-                      auto &out = oc.first;
-                      for (auto &to: oc.second) {
-                          auto cm = Connect(notify.spawnId(), out, to.getModuleID(), to.getName());
-                          m_sendAfterSpawn[id].emplace_back(cm);
-                      }
-                  }
                }
             } else {
                CERR << "SLAVE: handle spawn: " << spawn << std::endl;
@@ -1585,6 +1547,46 @@ bool Hub::startCleaner() {
    m_processMap[pid] = Process::Cleaner;
    return true;
 }
+
+void Hub::cacheModuleValues(int oldModuleId, int newModuleId)
+{
+    using namespace vistle::message;
+    assert(Id::isModule(oldModuleId));
+    auto paramNames = m_stateTracker.getParameters(oldModuleId);
+    for (const auto &pn: paramNames) {
+        auto p = m_stateTracker.getParameter(oldModuleId, pn);
+        auto pm = SetParameter(newModuleId, p->getName(), p);
+        pm.setDestId(newModuleId);
+        m_sendAfterSpawn[newModuleId].emplace_back(pm);
+        
+    }
+    auto inputs = m_stateTracker.portTracker()->getConnectedInputPorts(oldModuleId);
+    for (const auto &in: inputs) {
+        for (const auto &from: in->connections())
+        {
+            auto cm = Connect(from->getModuleID(), from->getName(), newModuleId, in->getName());
+            m_sendAfterSpawn[newModuleId].emplace_back(cm);
+        }
+    }
+    auto outputs = m_stateTracker.portTracker()->getConnectedOutputPorts(oldModuleId);
+    for (const auto &out: outputs) {
+        for (const auto &to: out->connections())
+        {
+            auto cm = Connect(newModuleId, out->getName(), to->getModuleID(), to->getName());
+            m_sendAfterSpawn[newModuleId].emplace_back(cm);
+        }
+    }
+}
+
+void Hub::killOldModule(int migratedId)
+{
+    assert(Id::isModule(migratedId));
+    message::Kill kill(migratedId);
+    kill.setDestId(migratedId);
+    handleMessage(kill);
+}
+
+
 
 void Hub::sendInfo(const std::string &s) const {
     CERR << s << std::endl;

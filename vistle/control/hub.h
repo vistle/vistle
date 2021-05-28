@@ -74,52 +74,47 @@ private:
    bool startCleaner();
    bool startManager();
 
+void cacheModuleValues(int oldModuleId, int newModuleId);
+void killOldModule(int migratedId);
+void sendInfo(const std::string &s) const;
+void sendError(const std::string &s) const;
 
+bool m_inManager = false;
 
+unsigned short m_basePort = 31093;
+unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;
+std::string m_exposedHost;
+boost::asio::ip::address m_exposedHostAddr;
+std::string m_masterHost;
+boost::asio::io_service m_ioService;
+std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
+std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
+std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
 
+std::shared_ptr<DataProxy> m_dataProxy;
+TunnelManager m_tunnelManager;
+StateTracker m_stateTracker;
+UiManager m_uiManager;
 
+std::map<process_handle, int> m_processMap;
+bool m_managerConnected;
 
+std::string m_prefix;
+std::string m_scriptPath;
+bool m_executeModules = false;
+bool m_quitting;
 
-   void sendInfo(const std::string &s) const;
-   void sendError(const std::string &s) const;
+AvailableMap m_availableModules;
+std::vector<AvailableModule> m_localModules;
 
-   bool m_inManager = false;
-
-   unsigned short m_basePort = 31093;
-   unsigned short m_port=0, m_dataPort=0, m_masterPort=m_basePort;
-   std::string m_exposedHost;
-   boost::asio::ip::address m_exposedHostAddr;
-   std::string m_masterHost;
-   boost::asio::io_service m_ioService;
-   std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
-
-   std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
-   std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
-
-   std::shared_ptr<DataProxy> m_dataProxy;
-   TunnelManager m_tunnelManager;
-   StateTracker m_stateTracker;
-   UiManager m_uiManager;
-
-   std::map<process_handle, int> m_processMap;
-   bool m_managerConnected;
-
-   std::string m_prefix;
-   std::string m_scriptPath;
-   bool m_executeModules = false;
-   bool m_quitting;
-
-   AvailableMap m_availableModules;
-   std::vector<AvailableModule> m_localModules;
-
-   bool m_isMaster;
-   std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
-   struct Slave {
-      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
-      std::string name;
-      bool ready = false;
-      int id = 0;
+bool m_isMaster;
+std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+struct Slave {
+    std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+    std::string name;
+    bool ready = false;
+    int id = 0;
    };
    std::map<int, Slave> m_slaves;
    std::vector<Slave *> m_slavesToConnect;
