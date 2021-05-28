@@ -1230,7 +1230,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                notify.setSenderId(m_hubId);
                bool doSpawn = false;
                if (spawn.spawnId() == Id::Invalid) {
-                  assert(spawn.spawnId() == Id::Invalid);
                   notify.setSpawnId(Id::ModuleBase + m_moduleCount);
                   ++m_moduleCount;
                   doSpawn = true;
