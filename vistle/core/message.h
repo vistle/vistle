@@ -137,6 +137,8 @@ private:
     int m_rank = -1;
 };
 
+const int ModuleNameLength = 50;
+
 typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 32> port_name_t;
 typedef std::array<char, 32> param_name_t;

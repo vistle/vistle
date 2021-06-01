@@ -23,6 +23,7 @@
 #include <vistle/util/tools.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/crypto.h>
+#include <vistle/control/scanmodules.h>
 
 #include "communicator.h"
 #include "clustermanager.h"

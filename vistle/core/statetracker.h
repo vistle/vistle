@@ -14,6 +14,7 @@
 #include "export.h"
 #include "message.h"
 #include "messages.h"
+#include "availablemodule.h"
 
 namespace vistle {
 

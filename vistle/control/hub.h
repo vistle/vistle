@@ -9,6 +9,7 @@
 #include "uimanager.h"
 #include <vistle/net/tunnel.h>
 #include <vistle/net/dataproxy.h>
+#include <vistle/control/scanmodules.h>
 
 #include "export.h"
 

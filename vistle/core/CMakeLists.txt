@@ -6,6 +6,7 @@ vistle_find_package(ZSTD)
 
 set(core_SOURCES
    allobjects.cpp # just one file including all the others for faster compilation
+   availablemodule.cpp
    archive_loader.cpp
    archive_saver.cpp
    archives.cpp
@@ -63,6 +64,7 @@ set(core_SOURCES ${core_SOURCES}
 )
 
 set(core_HEADERS
+   availablemodule.h
    archive_loader.h
    archive_saver.h
    archives.h

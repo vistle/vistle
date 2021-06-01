@@ -3,6 +3,7 @@ set(control_SOURCES
    uimanager.cpp
    uiclient.cpp
    fileinfocrawler.cpp
+   scanmodules.cpp
 )
 
 set(control_HEADERS
@@ -11,6 +12,7 @@ set(control_HEADERS
    uimanager.h
    uiclient.h
    fileinfocrawler.h
+   scanmodules.h
 )
 
 if(PYTHONLIBS_FOUND)

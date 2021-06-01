@@ -9,7 +9,7 @@
 
 #include <vistle/core/message.h>
 #include <vistle/core/messagepayload.h>
-#include <vistle/util/directory.h>
+#include <vistle/core/availablemodule.h>
 
 namespace vistle {
 
