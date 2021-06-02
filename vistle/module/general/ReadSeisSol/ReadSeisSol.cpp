@@ -582,10 +582,12 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
 
     auto x = unstr->x().data(), y = unstr->y().data(), z = unstr->z().data();
 
-    //TODO: not the same for all xdmf => hyperslap not working => maybe using XML parser and reading hyperslap to concretize read.
+    //TODO FOR XMDF READER: not the same for all xdmf => hyperslap not working => maybe using XML parser and reading hyperslap to concretize read.
     // -> only 3D at the moment
     constexpr unsigned numCoords{3};
     constexpr unsigned strideVistleArr{1};
+
+    //TODO: check volume inverted
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
     xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
@@ -844,10 +846,10 @@ vistle::UnstructuredGrid::ptr ReadSeisSol::generateUnstrGridFromXdmfGrid(XdmfUns
     UnstructuredGrid::ptr unstr_ptr(
         new UnstructuredGrid(xArrConn->getSize() / numCornerPerElem, xArrConn->getSize(), numVertices));
 
-    fillUnstrGridConnectList(unstr_ptr, xArrConn.get());
-    fillUnstrGridCoords(unstr_ptr, xArrGeo.get(), uniqueVerts);
-    fillUnstrGridElemList(unstr_ptr, numCornerPerElem);
     fillUnstrGridTypeList(unstr_ptr, XdmfUgridToVistleUgridType(unstr));
+    fillUnstrGridConnectList(unstr_ptr, xArrConn.get());
+    fillUnstrGridElemList(unstr_ptr, numCornerPerElem);
+    fillUnstrGridCoords(unstr_ptr, xArrGeo.get(), uniqueVerts);
 
     //return copy of shared_ptr
     return unstr_ptr;
