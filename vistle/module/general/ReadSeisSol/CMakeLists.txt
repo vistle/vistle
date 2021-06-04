@@ -31,5 +31,6 @@ add_module(ReadSeisSol ${SOURCES} ${HEADERS})
 use_openmp()
 
 # target_link_libraries(ReadSeisSol ${} ${EXTRA_LIBS})
-target_link_libraries(ReadSeisSol XdmfCore Xdmf)
+#target_link_libraries(ReadSeisSol ${XDMFCORE_LIBRARY} ${XDMF_LIBNAME})
+target_link_libraries(ReadSeisSol XdmfCore ${XDMF_LIBNAME})
 target_include_directories(ReadSeisSol PRIVATE ${XDMF_XdmfCore_INCLUDE_DIRS} ${XDMF_INCLUDE_DIRS})
