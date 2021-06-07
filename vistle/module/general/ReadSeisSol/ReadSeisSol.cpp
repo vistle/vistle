@@ -567,6 +567,38 @@ void ReadSeisSol::fillUnstrGridElemList(vistle::UnstructuredGrid::ptr unstr, con
                   [n = 0, &numCornerPerElem]() mutable { return n++ * numCornerPerElem; });
 }
 
+bool checkElemVolumeInverted(vistle::UnstructuredGrid::ptr unstr, XdmfArray *geo)
+{
+    switch (unstr->tl()[0]) {
+    case UnstructuredGrid::TETRAHEDRON: {
+        std::array<float, 4> xArrTet;
+        std::array<float, 4> yArrTet;
+        std::array<float, 4> zArrTet;
+        geo->getValues(0, xArrTet.data(), 4, 3, 1);
+        geo->getValues(1, yArrTet.data(), 4, 3, 1);
+        geo->getValues(2, zArrTet.data(), 4, 3, 1);
+        /*
+           Vp = volume parallelpiped
+           Vt = volume tetrahedron
+           Vt = Vp/6
+           Vp = (x4-x1)[(y2-y1)(z3-z1)-(z2-z1)(y3-y1)]
+              + (y4-y1)[(z2-z1)(x3-x1)-(x2-x1)(z3-z1)]
+              + (z4-z1)[(x2-x1)(y3-y1)-(y2-y1)(x3-x1)]
+           */
+        auto v_p = (xArrTet[3] - xArrTet[0]) * ((yArrTet[1] - yArrTet[0]) * (zArrTet[2] - zArrTet[0]) -
+                                                (zArrTet[1] - zArrTet[0]) * (yArrTet[2] - yArrTet[0])) +
+                   (yArrTet[3] - yArrTet[0]) * ((zArrTet[1] - zArrTet[0]) * (xArrTet[2] - xArrTet[0]) -
+                                                (xArrTet[1] - xArrTet[0]) * (zArrTet[2] - zArrTet[0])) +
+                   (zArrTet[3] - zArrTet[0]) * ((xArrTet[1] - xArrTet[0]) * (yArrTet[2] - yArrTet[0]) -
+                                                (yArrTet[1] - yArrTet[0]) * (xArrTet[2] - xArrTet[0]));
+        std::cerr << "Vp: " << v_p << '\n';
+        if (v_p / 6 < 0)
+            return false;
+    }
+    }
+    return true;
+}
+
 /**
   * @brief: Fill coordinates stored in a XdmfArray into unstructured grid vistle pointer.
   *
@@ -587,7 +619,9 @@ bool ReadSeisSol::fillUnstrGridCoords(vistle::UnstructuredGrid::ptr unstr, XdmfA
     constexpr unsigned numCoords{3};
     constexpr unsigned strideVistleArr{1};
 
-    //TODO: check volume inverted
+    //TODO: check if volume inverted, because vertices can have different order => look at tetrahedron vtk and vistle
+    if (!checkElemVolumeInverted(unstr, xArrGeo))
+        sendInfo("inverted");
 
     //current order for geo-arrays is contiguous: arrGeo => x1 y1 z1 x2 y2 z2 x3 y3 z3 ... xn yn zn
     xArrGeo->getValues(0, x, xArrGeo->getSize() / numCoords, numCoords, strideVistleArr);
@@ -1026,10 +1060,10 @@ bool ReadSeisSol::read(Token &token, int timestep, int block)
             const auto &xugrid = xgridCollect->getUnstructuredGrid(0);
             m_vugrid_ptr = generateUnstrGridFromXdmfGrid(xugrid.get(), block);
 
-            bool cOP{checkObjectPtr(this, m_vugrid_ptr, ERROR_GRID_GENERATION)};
-            if (!cOP)
+            bool cOPtr{checkObjectPtr(this, m_vugrid_ptr, ERROR_GRID_GENERATION)};
+            if (!cOPtr)
                 releaseXdmfObjects();
-            return cOP;
+            return cOPtr;
         }
         return true;
     }
