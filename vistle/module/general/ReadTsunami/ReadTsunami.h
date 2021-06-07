@@ -152,7 +152,7 @@ private:
     std::vector<float> vecEta;
 
     //lat = 0; lon = 1
-    std::array<std::string, NUM_BLOCKS> m_latLon_Surface;
+    std::array<std::string, NUM_BLOCKS> m_latLon_Sea;
     std::array<std::string, NUM_BLOCKS> m_latLon_Ground;
 };
 #endif

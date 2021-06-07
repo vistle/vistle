@@ -205,7 +205,7 @@ bool ReadTsunami::inspectNetCDFVars()
         if (strContains(name, "grid"))
             m_latLon_Ground[i] = name;
         else
-            m_latLon_Surface[i] = name;
+            m_latLon_Sea[i] = name;
     };
 
 
@@ -432,8 +432,8 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         return false;
 
     // get nc var objects ref
-    const NcVar &latvar = ncFile.getVar(m_latLon_Surface[0]);
-    const NcVar &lonvar = ncFile.getVar(m_latLon_Surface[1]);
+    const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
+    const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
     const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
     const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
     const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
@@ -536,11 +536,13 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         ptr_scalar->setBlock(blockNum);
     }
 
-    // add data to port
-    ptr_grnd->setBlock(blockNum);
-    ptr_grnd->setTimestep(-1);
-    ptr_grnd->updateInternals();
-    token.addObject(m_groundSurface_out, ptr_grnd);
+    // add ground data to port
+    if (m_groundSurface_out->isConnected()) {
+        ptr_grnd->setBlock(blockNum);
+        ptr_grnd->setTimestep(-1);
+        ptr_grnd->updateInternals();
+        token.addObject(m_groundSurface_out, ptr_grnd);
+    }
 
     ncFile.close();
     return true;
