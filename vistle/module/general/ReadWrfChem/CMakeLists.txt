@@ -1,10 +1,6 @@
-vistle_find_package(NetCDF)
-if ((NOT NETCDF_FOUND))
-  message("Skipping because of missing NETCDF")
-  return()
-else()
-  include_directories(SYSTEM ${NETCDF_INCLUDES})
-  set(EXTRA_LIBS ${EXTRA_LIBS} ${NETCDF_LIBRARIES} ${NETCDF_C++_LIBRARY})
+vistle_find_package(NETCDF)
+if (NOT NETCDF_FOUND)
+    return()
 endif()
 
 set(HEADERS
@@ -17,5 +13,5 @@ set(SOURCES
 
 add_module(ReadWrfChem ${SOURCES} ${HEADERS})
 
-target_link_libraries(ReadWrfChem ${EXTRA_LIBS})
-
+target_link_libraries(ReadWrfChem ${NETCDF_LIBRARIES})
+target_include_directories(ReadWrfChem SYSTEM PRIVATE ${NETCDF_INCLUDE_DIRS})
