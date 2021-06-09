@@ -341,8 +341,10 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
       do {
          try {
             s_singleton = new Shm(name, id, rank, memsize, true);
-         } catch (boost::interprocess::interprocess_exception & /*ex*/) {
-            memsize /= 2;
+         } catch (boost::interprocess::interprocess_exception & ex) {
+             std::cerr << "failed to create shared memory segment of size " << memsize << ": "
+                       << ex.what() << " - retrying with halved size" << std::endl;
+             memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);
 
