@@ -1,20 +1,18 @@
 /*
- * Visualization Testing Laboratory for Exascale Computing (VISTLE)
+ * Vistle
+ *
+ * This once was started as Visualization Testing Laboratory for Exascale Computing (VISTLE) by Florian Niebling
  */
 #include <boost/asio.hpp>
 #include <boost/mpi.hpp>
 
 #include <mpi.h>
 
-#include <sys/types.h>
-
 #include <cstdlib>
 #include <iostream>
-#include <iomanip>
 
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
-#include <vistle/core/object.h>
 #include <vistle/core/parameter.h>
 #include <cassert>
 #include <vistle/core/shm.h>
@@ -508,7 +506,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
 
    switch(message.type()) {
       case message::SETID: {
-         auto &set = message.as<message::SetId>();
+         const auto &set = message.as<message::SetId>();
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);
@@ -519,7 +517,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
          break;
       }
       case message::IDENTIFY: {
-         auto &id = message.as<message::Identify>();
+         const auto &id = message.as<message::Identify>();
          CERR << "Identify message: " << id << std::endl;
          assert(id.identity() == message::Identify::REQUEST);
          if (getRank() == 0) {
