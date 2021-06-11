@@ -475,8 +475,8 @@ macro(vistle_add_library targetname)
     endif()
 endmacro(vistle_add_library)
 
-set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake)
-
+set(buildPackageLocation ${PROJECT_BINARY_DIR}/lib/cmake/vistle)
+set(installPackageLocation ${CMAKE_INSTALL_LIBDIR}/cmake/vistle) 
 
 option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install directory" OFF)
 option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
@@ -507,6 +507,7 @@ macro(vistle_export_library targetname)
     endif()
 	set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
 	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")") 
+    message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
 
 	configure_file(${config_in_file}
 		"${buildPackageLocation}/${targetname}Config.cmake"
@@ -523,24 +524,21 @@ macro(vistle_export_library targetname)
 		FILE 		"${buildPackageLocation}/${targetname}Targets.cmake"
 		NAMESPACE 	Vistle::
 	)
-	set(Vistle_ConfigPackageLocation 
-	    ${CMAKE_INSTALL_LIBDIR}/cmake#/${directory}
-	    #CACHE STRING "Path to " ${targetname} " cmake files"
-) 	
+
 	install(EXPORT ${targetname}Targets
 		FILE		${targetname}Targets.cmake
 		NAMESPACE	Vistle::
-		DESTINATION	${Vistle_ConfigPackageLocation}
+		DESTINATION	${installPackageLocation}
 		COMPONENT	${targetname}_Development
 	)
 #	configure_package_config_file(${config_in_file}
 #	"${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
-#	INSTALL_DESTINATION "${Vistle_ConfigPackageLocation}/${targetname}Config.cmake")  
+#	INSTALL_DESTINATION "${installPackageLocation}/${targetname}Config.cmake")  
 	install(
 		FILES 
 			"${buildPackageLocation}/${targetname}Config.cmake"
 			"${buildPackageLocation}/${targetname}ConfigVersion.cmake"
-		DESTINATION ${Vistle_ConfigPackageLocation}
+		DESTINATION ${installPackageLocation}
 		COMPONENT ${targetname}_Development
 	)
 endmacro(vistle_export_library)
@@ -623,6 +621,11 @@ vistle_install_docs(README.md)
 macro(vistle_install_headers directory)
     install(FILES ${ARGN} DESTINATION include/vistle/${directory})
 endmacro(vistle_install_headers)
+
+
+#install VistleConfig.cmake
+configure_file(${CMAKE_CURRENT_LIST_DIR}/vistle/cmake/VistleConfig.cmake ${PROJECT_BINARY_DIR}/lib/cmake/vistle/VistleConfig.cmake COPYONLY)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/vistle/cmake/VistleConfig.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/vistle)
 
 if (APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
