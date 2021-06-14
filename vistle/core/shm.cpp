@@ -345,6 +345,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
              std::cerr << "failed to create shared memory segment of size " << memsize << ": "
                        << ex.what() << " - retrying with halved size" << std::endl;
              memsize /= 2;
+             remove(name, id, rank);
          }
       } while (!s_singleton && memsize >= 4096);
 
