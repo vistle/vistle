@@ -14,7 +14,6 @@
 namespace vistle {
 
 class Parameter;
-class PythonEmbed;
 class ClusterManager;
 class DataManager;
 class Module;
