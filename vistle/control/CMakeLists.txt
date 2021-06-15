@@ -18,7 +18,6 @@ set(control_HEADERS
 if(PYTHONLIBS_FOUND)
    set(control_SOURCES ${control_SOURCES} ../userinterface/pythoninterface.cpp ../userinterface/pythonmodule.cpp pythoninterpreter.cpp)
    set(control_HEADERS ${control_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
-   set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
 vistle_add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
@@ -26,7 +25,6 @@ vistle_export_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${con
 target_link_libraries(vistle_control
     PRIVATE Boost::system
     PRIVATE Boost::program_options
-    PRIVATE ${EXTRA_LIBRARIES}
     PRIVATE vistle_util
     PRIVATE vistle_core
     PRIVATE vistle_net
@@ -42,7 +40,8 @@ if(PYTHONLIBS_FOUND)
     PRIVATE -DVISTLE_CONTROL
     PRIVATE -Dvistle_userinterface_EXPORTS
     PRIVATE -DEMBED_PYTHON)
-
+   target_link_libraries(vistle_control
+    PRIVATE ${PYTHON_LIBRARIES})
 endif()
 
 
