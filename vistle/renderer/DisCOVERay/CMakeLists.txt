@@ -4,6 +4,10 @@ find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLU
 
 vistle_find_package(ZLIB)
 
+if (NOT ISPC_EXECUTABLE)
+    find_program(ISPC_EXECUTABLE ispc DOC "Path to the ISPC executable.")
+endif()
+
 if (NOT TBB_FOUND)
    message("DisCOVERay: TBB not found")
    return()
@@ -11,6 +15,11 @@ endif()
 
 if(NOT EMBREE_FOUND)
    message("DisCOVERay: Embree not found")
+   return()
+endif()
+
+if(NOT ISPC_EXECUTABLE)
+   message("DisCOVERay: ISPC not found")
    return()
 endif()
 
