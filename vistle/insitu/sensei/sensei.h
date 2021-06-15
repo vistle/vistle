@@ -22,7 +22,7 @@ class V_SENSEIEXPORT SenseiAdapter //: public SenseiInterface
 
 {
 public:
-    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs);
+    SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &options);
     bool Execute(size_t timestep);
     bool Finalize();
 
@@ -60,7 +60,7 @@ private:
     std::map<std::string, bool> m_commands; // commands and their current state
 #ifdef MODULE_THREAD
     std::thread m_managerThread;
-    bool startVistle(const MPI_Comm &comm);
+    bool startVistle(const MPI_Comm &comm, const std::string &options);
 #endif
     bool stillConnected();
     bool quitRequested();

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/mpi/collectives.hpp>
 
 #ifdef MODULE_THREAD
@@ -41,7 +42,7 @@ struct Internals {
 } // namespace insitu
 } // namespace vistle
 
-SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs)
+SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, ObjectRetriever cbs, const std::string &options)
 : m_callbacks(cbs), m_metaData(std::move(meta)), m_internals(new detail::Internals{})
 {
     MPI_Comm_rank(Comm, &m_rank);
@@ -58,7 +59,7 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
     m_internals->intOptions.insert(IntOption{IntOptions::KeepTimesteps, true});
     m_internals->intOptions.insert(IntOption{IntOptions::NthTimestep, 1});
 #ifdef MODULE_THREAD
-    startVistle(comm);
+    startVistle(comm, options);
 #endif
 }
 
@@ -84,9 +85,9 @@ bool SenseiAdapter::Execute(size_t timestep)
 }
 
 #ifdef MODULE_THREAD
-bool SenseiAdapter::startVistle(const MPI_Comm &comm)
+bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options)
 {
-    m_managerThread = std::thread([this]() {
+    m_managerThread = std::thread([options, this]() {
         const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
         if (!VISTLE_ROOT) {
             CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
@@ -95,9 +96,18 @@ bool SenseiAdapter::startVistle(const MPI_Comm &comm)
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         std::vector<char *> args;
+        std::vector<std::string> optionsVec;
+        boost::split(optionsVec, options, boost::is_any_of(" "));
         args.push_back(const_cast<char *>(cmd.c_str()));
+        for(auto& opt : optionsVec)
+        {
+            args.push_back(const_cast<char *>(opt.c_str()));
+        }
+        std::cerr << "sensei args are:" << std::endl;
+        for(const auto c : args)
+            std::cerr << c << std::endl;
         vistle::VistleManager manager;
-        manager.run(1, args.data());
+        manager.run(static_cast<int>(args.size()), args.data());
         return true;
     });
     return true;
