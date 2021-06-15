@@ -153,7 +153,7 @@ if(Boost_FOUND)
 endif()
 
 
-# header-only python byindings
+# header-only python bindings
 include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/3rdparty/pybind11/include")
 
 # replacement for Boost.Serialization

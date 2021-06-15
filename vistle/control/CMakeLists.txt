@@ -15,7 +15,7 @@ set(control_HEADERS
    scanmodules.h
 )
 
-if(PYTHONLIBS_FOUND)
+if(Python_FOUND)
    set(control_SOURCES ${control_SOURCES} ../userinterface/pythoninterface.cpp ../userinterface/pythonmodule.cpp pythoninterpreter.cpp)
    set(control_HEADERS ${control_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
 endif()
@@ -32,16 +32,14 @@ target_link_libraries(vistle_control
     PRIVATE Threads::Threads
 )
 
-if(PYTHONLIBS_FOUND)
-   target_include_directories(vistle_control SYSTEM 
-        PRIVATE ${PYTHON_INCLUDE_DIRS})
+if(Python_FOUND)
    target_compile_definitions(vistle_control
     PRIVATE -DHAVE_PYTHON
     PRIVATE -DVISTLE_CONTROL
     PRIVATE -Dvistle_userinterface_EXPORTS
     PRIVATE -DEMBED_PYTHON)
    target_link_libraries(vistle_control
-    PRIVATE ${PYTHON_LIBRARIES})
+    PRIVATE Python::Python)
 endif()
 
 

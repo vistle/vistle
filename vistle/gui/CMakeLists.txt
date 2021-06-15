@@ -13,11 +13,8 @@ add_subdirectory(remotefilebrowser)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 
-if (PYTHONLIBS_FOUND)
+if (Python_FOUND)
     add_definitions(-DHAVE_PYTHON)
-    include_directories(SYSTEM
-        ${PYTHON_INCLUDE_PATH}
-        )
 endif()
 
 include_directories(
@@ -110,10 +107,9 @@ target_link_libraries(${gui_name}
   vistle_remotefiledialog
 )
 
-if (PYTHONLIBS_FOUND)
+if (Python_FOUND)
     target_link_libraries(${gui_name}
-        PRIVATE
-        ${PYTHON_LIBRARIES}
+        PRIVATE Python::Python
     )
 endif()
 
