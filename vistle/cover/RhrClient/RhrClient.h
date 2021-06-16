@@ -35,8 +35,6 @@ class SelectionList;
 
 class VistleInteractor;
 
-class RemoteConnection;
-
 //! implement remote hybrid rendering client based on VNC protocol
 class RhrClient: public opencover::coVRPlugin, public opencover::ui::Owner
 {
