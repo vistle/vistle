@@ -405,7 +405,7 @@ void UiController::aboutVistle()
 #endif
 
     QString text("Welcome to scientific visualization with <a href='https://vistle.io/'>Vistle</a>!");
-    text.append("<br>You can follow Vistle developement on <a href='https://github.com/vistle/vistle'>GitHub</a>.");
+    text.append("<br>You can follow Vistle development on <a href='https://github.com/vistle/vistle'>GitHub</a>.");
 
     ui->label->setText(text);
     ui->label->setTextInteractionFlags(Qt::TextBrowserInteraction | Qt::LinksAccessibleByMouse);
