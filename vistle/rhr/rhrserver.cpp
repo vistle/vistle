@@ -479,7 +479,7 @@ void RhrServer::deferredResize() {
 }
 
 //! handle matrix update message
-bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const matricesMsg &mat) {
+bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat) {
 
    size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
    if (viewNum >= m_viewData.size()) {
@@ -515,7 +515,7 @@ bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderM
 }
 
 //! handle light update message
-bool RhrServer::handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light) {
+bool RhrServer::handleLights(std::shared_ptr<socket> sock, const lightsMsg &light) {
 
 #define SET_VEC(d, dst, src) \
       do { \
@@ -605,7 +605,7 @@ void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
 
 
 //! handle request for a bounding sphere update
-bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound) {
+bool RhrServer::handleBounds(std::shared_ptr<socket> sock,const boundsMsg &bound) {
 
    if (bound.sendreply) {
       //std::cout << "SENDING BOUNDS" << std::endl;
@@ -615,7 +615,7 @@ bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMes
    return true;
 }
 
-bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const animationMsg &anim) {
+bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const animationMsg &anim) {
 
     //CERR << "app timestep: " << anim.current << std::endl;
     m_imageParam.timestep = anim.current;
@@ -624,7 +624,7 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const v
     return true;
 }
 
-bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const variantMsg &variant) {
+bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const variantMsg &variant) {
     CERR << "app variant: " << variant.name << ", visible: " << variant.visible << std::endl;
     std::string name(variant.name);
     bool visible = variant.visible;
@@ -700,27 +700,27 @@ RhrServer::preFrame() {
                       switch (rhr.type) {
                       case rfbMatrices: {
                           auto &mat = static_cast<const matricesMsg &>(rhr);
-                          handleMatrices(m_clientSocket, m, mat);
+                          handleMatrices(m_clientSocket, mat);
                           break;
                       }
                       case rfbLights: {
                           auto &light = static_cast<const lightsMsg &>(rhr);
-                          handleLights(m_clientSocket, m, light);
+                          handleLights(m_clientSocket, light);
                           break;
                       }
                       case rfbAnimation: {
                           auto &anim = static_cast<const animationMsg &>(rhr);
-                          handleAnimation(m_clientSocket, m, anim);
+                          handleAnimation(m_clientSocket, anim);
                           break;
                       }
                       case rfbBounds: {
                           auto &bound = static_cast<const boundsMsg &>(rhr);
-                          handleBounds(m_clientSocket, m, bound);
+                          handleBounds(m_clientSocket, bound);
                           break;
                       }
                       case rfbVariant: {
                           auto &var = static_cast<const variantMsg &>(rhr);
-                          handleVariant(m_clientSocket, m, var);
+                          handleVariant(m_clientSocket, var);
                           break;
                       }
                       case rfbTile:

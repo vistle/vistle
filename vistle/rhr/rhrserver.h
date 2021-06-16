@@ -89,11 +89,11 @@ public:
    typedef std::map<std::string, bool> VariantVisibilityMap;
    const VariantVisibilityMap &getVariants() const;
 
-   bool handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const matricesMsg &mat);
-   bool handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light);
-   bool handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound);
-   bool handleAnimation(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const animationMsg &anim);
-   bool handleVariant(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const variantMsg &variant);
+   bool handleMatrices(std::shared_ptr<socket> sock, const matricesMsg &mat);
+   bool handleLights(std::shared_ptr<socket> sock, const lightsMsg &light);
+   bool handleBounds(std::shared_ptr<socket> sock, const boundsMsg &bound);
+   bool handleAnimation(std::shared_ptr<socket> sock, const animationMsg &anim);
+   bool handleVariant(std::shared_ptr<socket> sock, const variantMsg &variant);
 
    size_t numViews() const;
    const vistle::Matrix4 &viewMat(size_t viewNum) const;
