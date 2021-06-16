@@ -55,6 +55,8 @@ private slots:
     void setCurrentFile(QString file);
 
 private:
+    void showConnectionInfo();
+
     vistle::VistleConnection *m_vistleConnection;
     vistle::UserInterface *m_ui;
     vistle::PythonInterface *m_python;

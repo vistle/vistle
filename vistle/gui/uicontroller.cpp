@@ -79,6 +79,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
    } else {
        m_mainWindow->enableConnectButton(false);
+       showConnectionInfo();
    }
 
    setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
@@ -290,6 +291,9 @@ void UiController::connectVistle()
 {
    if (!m_vistleConnection->ui().isConnected())
       m_vistleConnection->ui().tryConnect();
+
+   if (m_vistleConnection->ui().isConnected())
+       showConnectionInfo();
 }
 
 void UiController::moduleSelectionChanged()
@@ -415,5 +419,12 @@ void UiController::aboutQt()
     QMessageBox::aboutQt(new QDialog, "Qt");
 }
 
+void UiController::showConnectionInfo()
+{
+    auto &ui = m_vistleConnection->ui();
+    m_mainWindow->m_console->appendInfo(QString("Connected to master hub at %1:%2")
+            .arg(QString::fromStdString(ui.remoteHost())).arg(ui.remotePort()),
+            vistle::message::SendText::Info);
+}
 
 } // namespace gui

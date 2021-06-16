@@ -320,6 +320,14 @@ bool UserInterface::isInitialized() const
     return m_initialized;
 }
 
+const std::string &UserInterface::remoteHost() const {
+    return m_remoteHost;
+}
+
+unsigned short UserInterface::remotePort() const {
+    return m_remotePort;
+}
+
 FileBrowser::~FileBrowser() {
 }
 
