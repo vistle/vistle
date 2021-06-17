@@ -77,18 +77,39 @@ export MPICH_MAX_THREAD_SAFETY=multiple
 export MPICH_VERSION_DISPLAY=1
 export KMP_AFFINITY=verbose,none
 
+MPI_IMPL="mpich"
+ 
+if mpirun -version 2>&1| grep -q open-mpi\.org && echo true > /dev/null; then
+   MPI_IMPL="ompi"
+   echo "OpenMPI spawn: $@"
+   LAUNCH="--launch-agent $(which orted)"
+   export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
+   #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
+fi
+
+if mpirun -version 2>&1| grep -q MPT && echo true > /dev/null; then
+   MPI_IMPL="mpt"
+   echo "HPE MPT spawn: $@"
+   LAUNCH="--launch-agent $(which orted)"
+fi
+
 if [ -n "$PBS_ENVIRONMENT" ]; then
-    echo "PBS: mpiexec $@"
-    mpiexec -genvall hostname
-    mpiexec -genvall printenv
-    exec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-    exec mpiexec -genvall \
-        "$@"
+   if [ "$MPI_IMPL" = "mpich" ]; then
+    
+      echo "PBS: mpiexec $@"
+      mpiexec -genvall hostname
+      mpiexec -genvall printenv
+      exec mpirun -genvall ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpiexec -genvall \
+         "$@"
 
-        #-genv KMP_AFFINITY \
-        #-genv KMP_AFFINITY=verbose,none \
-        #-genv I_MPI_DEBUG=5 \
-
+         #-genv KMP_AFFINITY \
+         #-genv KMP_AFFINITY=verbose,none \
+         #-genv I_MPI_DEBUG=5 \
+   else
+      exec mpirun  ${PREPENDRANK} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+      exec mpiexec 
+   fi
 fi
 
 if [ -n "$SLURM_JOB_ID" ]; then
@@ -97,14 +118,7 @@ if [ -n "$SLURM_JOB_ID" ]; then
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
-OPENMPI=0
-if mpirun -version | grep open-mpi\.org > /dev/null; then
-   OPENMPI=1
-   echo "OpenMPI spawn: $@"
-   LAUNCH="--launch-agent $(which orted)"
-   export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
-   #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
-fi
+
 
 BIND=0
 case $(hostname) in
@@ -154,7 +168,7 @@ if [ "$MPISIZE" != "1" ]; then
    TAGOUTPUT=-tag-output
 fi
 
-if [ "$OPENMPI" = "1" ]; then
+if [ "$MPI_IMPL" = "ompi" ]; then
 
     BIND="-bind-to none"
     if [ "$BINDTO" = "socket0" ]; then 
