@@ -337,6 +337,9 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
       }
 
       size_t memsize = memorySize<sizeof(void *)>();
+      if (const char *shmsize = getenv("VISTLE_SHMSIZE")) {
+          memsize = atol(shmsize);
+      }
 
       do {
          try {
