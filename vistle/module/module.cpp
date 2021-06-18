@@ -2021,7 +2021,7 @@ void Module::sendText(int type, const std::string &msg) const {
 
    message::SendText info(static_cast<message::SendText::TextType>(type));
    message::SendText::Payload pl(msg);
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 static void sendTextVarArgs(const Module *self, message::SendText::TextType type, const char *fmt, va_list args) {
@@ -2047,7 +2047,7 @@ static void sendTextVarArgs(const Module *self, message::SendText::TextType type
    std::cout << text.data() << std::endl;
    message::SendText info(type);
    message::SendText::Payload pl(text.data());
-   self->sendMessage(info, pl);
+   self->sendMessageWithPayload(info, pl);
 }
 
 void Module::sendInfo(const char *fmt, ...) const {
@@ -2063,7 +2063,7 @@ void Module::sendInfo(const std::string &text) const {
    std::cout << "INFO: " << text << std::endl;
    message::SendText info(message::SendText::Info);
    message::SendText::Payload pl(text);
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 void Module::sendWarning(const char *fmt, ...) const {
@@ -2079,7 +2079,7 @@ void Module::sendWarning(const std::string &text) const {
    std::cout << "WARN: " << text << std::endl;
    message::SendText info(message::SendText::Warning);
    message::SendText::Payload pl(text);
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 void Module::sendError(const char *fmt, ...) const {
@@ -2095,7 +2095,7 @@ void Module::sendError(const std::string &text) const {
    std::cout << "ERR:  " << text << std::endl;
    message::SendText info(message::SendText::Error);
    message::SendText::Payload pl(text);
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
@@ -2112,7 +2112,7 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    std::cout << "ERR:  " << text.data() << std::endl;
    message::SendText info(msg);
    message::SendText::Payload pl(text.data());
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 void Module::sendError(const message::Message &msg, const std::string &text) const {
@@ -2120,7 +2120,7 @@ void Module::sendError(const message::Message &msg, const std::string &text) con
    std::cout << "ERR:  " << text << std::endl;
    message::SendText info(msg);
    message::SendText::Payload pl(text);
-   sendMessage(info, pl);
+   sendMessageWithPayload(info, pl);
 }
 
 void Module::setObjectReceivePolicy(int pol) {
@@ -2596,7 +2596,7 @@ bool PortTask::waitDependencies() {
 }
 
 template<class Payload>
-bool Module::sendMessage(message::Message &message, Payload &payload) const {
+bool Module::sendMessageWithPayload(message::Message &message, Payload &payload) const {
 
     auto pl = addPayload(message, payload);
     return this->sendMessage(message, &pl);

@@ -189,7 +189,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    void sendParameterMessage(const message::Message &message, const buffer *payload) const override;
    bool sendMessage(const message::Message &message, const buffer *payload=nullptr) const override;
    template<class Payload>
-   bool sendMessage(message::Message &message, Payload &payload) const;
+   bool sendMessageWithPayload(message::Message &message, Payload &payload) const;
 
    //! type should be a message::SendText::TextType
    void sendText(int type, const std::string &msg) const;
