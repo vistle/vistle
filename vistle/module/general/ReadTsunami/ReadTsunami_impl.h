@@ -17,12 +17,13 @@ template<typename NumericType>
 void addGhostStructured_tmpl(NumericType &start, NumericType &count, const NumericType &dimData,
                              const NumericType &numGhost)
 {
-    if (start == 0)
-        count += numGhost;
-    else if (start + count == dimData) {
+    auto partitionSize = start + count;
+    if (start == 0) {
+        if (partitionSize < dimData)
+            count += numGhost;
+    } else if (partitionSize == dimData)
         start -= numGhost;
-        count += numGhost;
-    } else {
+    else {
         start -= numGhost;
         count += 2 * numGhost;
     }
@@ -36,19 +37,19 @@ void addGhostStructured_tmpl(NumericType &start, NumericType &count, const Numer
   * @dimData: dimension of whole dataset (e.g. latitude = 773).
   * @numGhost: number of ghost cells to be added.
   */
-template<class InputIt, class NumericType>
-void addGhostStructured_tmpl(InputIt &start, InputIt &end, const NumericType &dimData, const NumericType &numGhost)
-{
-    auto size = std::distance(start, end);
-    if (size == dimData) {
-        start -= numGhost;
-        end += numGhost;
-    } else if (size > 0) {
-        start -= numGhost;
-        end += 2 * numGhost;
-    } else
-        end += numGhost;
-}
+/* template<class InputIt, class NumericType> */
+/* void addGhostStructured_tmpl(InputIt &start, InputIt &end, const NumericType &dimData, const NumericType &numGhost) */
+/* { */
+/*     auto size = std::distance(start, end); */
+/*     if (size == dimData) { */
+/*         start -= numGhost; */
+/*         end += numGhost; */
+/*     } else if (size > 0) { */
+/*         start -= numGhost; */
+/*         end += 2 * numGhost; */
+/*     } else */
+/*         end += numGhost; */
+/* } */
 
 /**
   * Generates a vector<T> for structured data which contains block values for each dim partitioned for current blocknumber.

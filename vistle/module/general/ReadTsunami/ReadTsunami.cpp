@@ -329,7 +329,6 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
     T count = dim / numDimBlock;
     T start = partition * count;
     addGhostStructured_tmpl(start, count, dim, ghost);
-    sendInfo("Crash in generate?");
     return NcVarExtended(ncVar, start, count);
 }
 
@@ -407,9 +406,6 @@ void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle:
     nLatBlocks = blocks[0];
     nLonBlocks = blocks[1];
 
-    if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
-        ghost++;
-
     blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum);
 }
 
@@ -448,17 +444,15 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     Index nLonBlocks{0};
     std::array<Index, NUM_BLOCKS> bPartitionIdx;
     computeBlockPartion(blockNum, ghost, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
-    /* for (auto x: bPartitionIdx) */
-    /*     sendInfo("Partition block %d: %d", blockNum, x); */
-
-    /* sendInfo("nLatBlocks %d", nLatBlocks); */
-    /* sendInfo("nLonBlocks %d", nLonBlocks); */
 
     // dimension from lat and lon variables
-    const Dim dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
+    const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
 
     // get dim from grid_lon & grid_lat
-    const Dim dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+    const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
+
+    if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
+        ghost++;
 
     // count and start vals for lat and lon for sea polygon
     const auto latSea = generateNcVarExt<size_t, Index>(latvar, dimSea.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
@@ -499,7 +493,6 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     bathymetryvar.getVar(std::vector{latGround.start, lonGround.start}, std::vector{latGround.count, lonGround.count},
                          vecDepth.data());
     eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
-    sendInfo("after reading Nc");
 
     //************* create sea *************//
     std::vector coords{vecLat.data(), vecLon.data()};
