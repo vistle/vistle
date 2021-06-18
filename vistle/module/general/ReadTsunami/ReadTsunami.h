@@ -87,7 +87,7 @@ private:
 
     //Own functions
     void initScalarParamReader();
-    bool openNcFile(netCDF::NcFile &file) const;
+    bool openNcFile(std::shared_ptr<netCDF::NcFile> file);
     bool inspectNetCDFVars();
 
     typedef std::function<float(size_t, size_t)> zCalcFunc;
@@ -129,6 +129,7 @@ private:
     void printThreadStats() const;
 
     //Parameter
+    vistle::IntParameter *m_ghost = nullptr;
     vistle::StringParameter *m_filedir = nullptr;
     vistle::StringParameter *m_bathy = nullptr;
     vistle::FloatParameter *m_verticalScale = nullptr;

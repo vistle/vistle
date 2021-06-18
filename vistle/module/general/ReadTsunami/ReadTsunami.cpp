@@ -30,9 +30,6 @@
 #include "vistle/core/vec.h"
 #include "vistle/module/module.h"
 
-//openmpi
-#include <mpi.h>
-
 //std
 #include <algorithm>
 #include <array>
@@ -54,7 +51,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
                                    Parameter::Filename);
 
     //ghost
-    addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
+    m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
 
     // visualise variables
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
@@ -120,7 +117,7 @@ void ReadTsunami::initScalarParamReader()
  *
  * @return true if its not empty or cannot be opened.
  */
-bool ReadTsunami::openNcFile(NcFile &file) const
+bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
 {
     std::string sFileName = m_filedir->getValue();
 
@@ -129,18 +126,17 @@ bool ReadTsunami::openNcFile(NcFile &file) const
         return false;
     } else {
         try {
-            file.open(sFileName.c_str(), NcFile::read);
+            file->open(sFileName.c_str(), NcFile::read);
             sendInfo("Reading File: " + sFileName);
         } catch (...) {
             sendInfo("Couldn't open NetCDF file!");
             return false;
         }
-        if (file.getVarCount() == 0) {
+        if (file->getVarCount() == 0) {
             sendInfo("empty NetCDF file!");
             return false;
-        } else {
+        } else
             return true;
-        }
     }
 }
 
@@ -178,11 +174,11 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     setTimesteps(-1);
-    if (nBlocks == size()) {
+    if (nBlocks <= size()) {
         setPartitions(nBlocks);
         return true;
     } else {
-        sendInfo("Number of blocks should equal MPISIZE.");
+        sendInfo("Number of blocks total should equal MPISIZE.");
         return false;
     }
 }
@@ -192,7 +188,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
  */
 bool ReadTsunami::inspectNetCDFVars()
 {
-    NcFile ncFile;
+    std::shared_ptr<NcFile> ncFile(new NcFile());
     if (!openNcFile(ncFile))
         return false;
 
@@ -208,14 +204,13 @@ bool ReadTsunami::inspectNetCDFVars()
             m_latLon_Sea[i] = name;
     };
 
-
     //delete previous choicelists.
     m_bathy->setChoices(std::vector<std::string>());
     for (const auto &scalar: m_scalars)
         scalar->setChoices(std::vector<std::string>());
 
     //read names of scalars
-    for (auto &[name, val]: ncFile.getVars()) {
+    for (auto &[name, val]: ncFile->getVars()) {
         if (strContains(name, "lat"))
             latLonContainsGrid(name, 0);
         else if (strContains(name, "lon"))
@@ -232,7 +227,7 @@ bool ReadTsunami::inspectNetCDFVars()
     for (auto &scalar: m_scalars)
         setParameterChoices(scalar, scalarChoiceVec);
 
-    ncFile.close();
+    ncFile->close();
 
     return true;
 }
@@ -334,6 +329,7 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
     T count = dim / numDimBlock;
     T start = partition * count;
     addGhostStructured_tmpl(start, count, dim, ghost);
+    sendInfo("Crash in generate?");
     return NcVarExtended(ncVar, start, count);
 }
 
@@ -411,7 +407,7 @@ void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle:
     nLatBlocks = blocks[0];
     nLonBlocks = blocks[1];
 
-    if (getIntParameter("ghost") && !(nLatBlocks == 1 && nLonBlocks == 1))
+    if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
         ghost++;
 
     blockPartitionStructured_tmpl(blocks.begin(), blocks.end(), blockPartitionIterFirst, blockNum);
@@ -427,17 +423,17 @@ void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle:
 template<class T>
 bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 {
-    NcFile ncFile;
+    std::shared_ptr<NcFile> ncFile(new NcFile());
     if (!openNcFile(ncFile))
         return false;
 
     // get nc var objects ref
-    const NcVar &latvar = ncFile.getVar(m_latLon_Sea[0]);
-    const NcVar &lonvar = ncFile.getVar(m_latLon_Sea[1]);
-    const NcVar &grid_lat = ncFile.getVar(m_latLon_Ground[0]);
-    const NcVar &grid_lon = ncFile.getVar(m_latLon_Ground[1]);
-    const NcVar &bathymetryvar = ncFile.getVar(m_bathy->getValue());
-    const NcVar &eta = ncFile.getVar("eta");
+    const NcVar &latvar = ncFile->getVar(m_latLon_Sea[0]);
+    const NcVar &lonvar = ncFile->getVar(m_latLon_Sea[1]);
+    const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
+    const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
+    const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
+    const NcVar &eta = ncFile->getVar("eta");
 
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
@@ -448,10 +444,15 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 
     // compute partition borders
     size_t ghost{0};
-    Index nLatBlocks;
-    Index nLonBlocks;
+    Index nLatBlocks{0};
+    Index nLonBlocks{0};
     std::array<Index, NUM_BLOCKS> bPartitionIdx;
     computeBlockPartion(blockNum, ghost, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
+    /* for (auto x: bPartitionIdx) */
+    /*     sendInfo("Partition block %d: %d", blockNum, x); */
+
+    /* sendInfo("nLatBlocks %d", nLatBlocks); */
+    /* sendInfo("nLonBlocks %d", nLonBlocks); */
 
     // dimension from lat and lon variables
     const Dim dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
@@ -468,6 +469,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
     const auto lonGround =
         generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
+    /* sendInfo("Crash generateNcVarExt ?"); */
 
     // num of polygons for sea & grnd
     const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
@@ -497,6 +499,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     bathymetryvar.getVar(std::vector{latGround.start, lonGround.start}, std::vector{latGround.count, lonGround.count},
                          vecDepth.data());
     eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+    sendInfo("after reading Nc");
 
     //************* create sea *************//
     std::vector coords{vecLat.data(), vecLon.data()};
@@ -524,7 +527,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         if (!m_scalarsOut[i]->isConnected())
             continue;
         const auto &scName = m_scalars[i]->getValue();
-        const auto &val = ncFile.getVar(scName);
+        const auto &val = ncFile->getVar(scName);
         Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
         ptr_Scalar[i] = ptr_scalar;
         auto scX = ptr_scalar->x().data();
@@ -544,7 +547,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         token.addObject(m_groundSurface_out, ptr_grnd);
     }
 
-    ncFile.close();
+    ncFile->close();
     return true;
 }
 
@@ -590,6 +593,11 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     ptr_timestepPoly->setTimestep(timestep);
     ptr_timestepPoly->setBlock(blockNum);
 
+    if (m_seaSurface_out->isConnected()) {
+        /* token.applyMeta(ptr_timestepPoly); */
+        token.addObject(m_seaSurface_out, ptr_timestepPoly);
+    }
+
     //add scalar to ports
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
         if (!m_scalarsOut[i]->isConnected())
@@ -603,11 +611,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         scalar->updateInternals();
 
         token.addObject(m_scalarsOut[i], scalar);
-    }
-
-    if (m_seaSurface_out->isConnected()) {
-        token.applyMeta(ptr_timestepPoly);
-        token.addObject(m_seaSurface_out, ptr_timestepPoly);
     }
 
     if (timestep == m_actualLastTimestep) {

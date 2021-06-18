@@ -51,7 +51,7 @@ void addGhostStructured_tmpl(InputIt &start, InputIt &end, const NumericType &di
 }
 
 /**
-  * Generates a vector<T> for structured data which contains block values for each dim partioned for current blocknumber.
+  * Generates a vector<T> for structured data which contains block values for each dim partitioned for current blocknumber.
   *
   * @first: Begin pointer of block container.
   * @last: End pointer of block container.
