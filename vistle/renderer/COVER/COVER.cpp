@@ -877,5 +877,4 @@ void COVER::eventLoop() {
 #endif
 }
 
-PluginRenderObject::~PluginRenderObject() {
-}
+PluginRenderObject::~PluginRenderObject() = default;
