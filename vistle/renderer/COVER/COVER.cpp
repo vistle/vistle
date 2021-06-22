@@ -705,7 +705,7 @@ std::string COVER::setupEnvAndGetLibDir(const std::string &bindir) {
         // Qt
         envvars.push_back("QT_AUTO_SCREEN_SCALE_FACTOR");
         envvars.push_back("QT_SCREEN_SCALE_FACTORS");
-        for (auto v: envvars) {
+        for (const auto &v: envvars) {
 
             const char *val = getenv(v.c_str());
             if (val)
@@ -863,16 +863,16 @@ void COVER::eventLoop() {
 
 #if defined(COVER_ON_MAINTHREAD) && defined(MODULE_THREAD)
    std::function<void()> f = [this](){
-      int argc=0;
-      char *argv[] = {nullptr};
       std::cerr << "running COVER on main thread" << std::endl;
+      int argc=1;
+      char *argv[] = {strdup("COVER"), nullptr};
       runMain(argc, argv);
    };
    run_on_main_thread(f);
    std::cerr << "COVER on main thread terminated" << std::endl;
 #else
-    int argc=0;
-    char *argv[] = {nullptr};
+    int argc=1;
+    char *argv[] = {strdup("COVER"), nullptr};
     runMain(argc, argv);
 #endif
 }
