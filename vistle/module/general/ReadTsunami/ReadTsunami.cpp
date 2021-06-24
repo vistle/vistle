@@ -248,8 +248,8 @@ void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, c
     auto sx_coord = poly->x().data(), sy_coord = poly->y().data(), sz_coord = poly->z().data();
     for (size_t i = 0; i < dim.dimLat; i++)
         for (size_t j = 0; j < dim.dimLon; j++, n++) {
-            sx_coord[n] = coords.at(0)[i];
-            sy_coord[n] = coords.at(1)[j];
+            sx_coord[n] = coords.at(1)[j];
+            sy_coord[n] = coords.at(0)[i];
             sz_coord[n] = zCalc(i, j);
         }
 }
@@ -474,7 +474,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const size_t &verticesGround = latGround.count * lonGround.count;
 
     // storage for read in values from ncdata
-    std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
+    std::vector<double> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
         vecLonGrid(lonGround.count), vecDepth(verticesGround);
 
     // need Eta-data for timestep poly => member var of reader
@@ -485,7 +485,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
     const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
 
-    // read in ncdata into float-pointer
+    // read in ncdata into double-pointer
     latSea.readNcVar(vecLat.data());
     lonSea.readNcVar(vecLon.data());
     latGround.readNcVar(vecLatGrid.data());
