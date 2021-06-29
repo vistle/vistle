@@ -139,7 +139,7 @@ QList<Module *> DataFlowView::selectedModules()
 {
    QList<Module *> list;
    if (scene()) {
-       for (auto item: scene()->selectedItems()) {
+       for (auto &item: scene()->selectedItems()) {
            if (auto module = dynamic_cast<Module *>(item))
                list.append(module);
        }
@@ -170,7 +170,7 @@ void DataFlowView::execModules()
 
 void DataFlowView::cancelExecModules()
 {
-    for (auto m: selectedModules())
+    for (auto &m: selectedModules())
         m->cancelExecModule();
 }
 
@@ -179,14 +179,14 @@ void DataFlowView::cancelExecModules()
  */
 void DataFlowView::deleteModules()
 {
-    for (auto m: selectedModules())
+    for (auto &m: selectedModules())
         m->deleteModule();
 }
 
 void DataFlowView::selectAllModules()
 {
    if (scene()) {
-       for (auto item: scene()->items()) {
+       for (auto &item: scene()->items()) {
            if (auto module = dynamic_cast<Module *>(item))
                module->setSelected(true);
        }
