@@ -98,10 +98,12 @@ Object *Object::loadObject(Archive &ar) {
       } else {
           if (objData) {
               std::cerr << "Object::loadObject: have " << name << ", but incomplete, refcount=" << objData->refcount() << std::endl;
+              obj = Object::create(objData);
+          } else {
+              auto funcs = ObjectTypeRegistry::getType(type);
+              obj = funcs.createEmpty(name);
           }
           Shm::the().unlockObjects();
-          auto funcs = ObjectTypeRegistry::getType(type);
-          obj = funcs.createEmpty(name);
           name = obj->getName();
           ar.registerObjectNameTranslation(arname, name);
           obj->loadFromArchive(ar);

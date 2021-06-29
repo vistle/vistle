@@ -342,20 +342,23 @@ bool Object::isEmpty() {
 }
 
 int ObjectData::ref() const {
-    return ShmData::ref();
+    Shm::the().lockObjects();
+    int ref = ShmData::ref();
+    Shm::the().unlockObjects();
+    return ref;
 }
 
 int ObjectData::unref() const {
-   int ref = ShmData::unref();
+    Shm::the().lockObjects();
+    int ref = ShmData::unref();
    if (ref == 0) {
-       Shm::the().lockObjects();
        ref = refcount();
        if (ref == 0) {
            ObjectTypeRegistry::getDestroyer(type)(name);
        }
-       Shm::the().unlockObjects();
    }
-   return ref;
+    Shm::the().unlockObjects();
+    return ref;
 }
 
 shm_handle_t Object::getHandle() const {

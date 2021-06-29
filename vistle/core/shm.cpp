@@ -577,13 +577,16 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
        return Object::const_ptr();
 
    lockObjects();
-   auto od = getObjectDataFromName(name);
+   auto *od = getObjectDataFromName(name);
    if (od) {
       if (od->isComplete() || !onlyComplete) {
+          //std::cerr << "Shm::getObjectFromName: " << name << " is complete, refcount=" << od->refcount() << std::endl;
           od->ref();
           unlockObjects();
           Object::const_ptr obj(Object::create(od));
+          assert(obj->refcount() > 1);
           od->unref();
+          assert(obj->refcount() > 0); // reference still held by obj
           return obj;
       }
       unlockObjects();
