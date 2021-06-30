@@ -66,8 +66,9 @@ Build Requirements
 - **COVISE/OpenCOVER**:
   a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for the COVER module and COVER plug-ins
-  Hint: the covise repository contains further information on how to build dependencies
-  on linux (README-Building-deps-linux.txt) and windows (README-Building-deps.txt)
+
+  Hint: The COVISE repository contains further information on how to build dependencies
+  on Linux (README-Building-deps-linux.txt) and Windows (README-Building-deps.txt).
 
   In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins
   should go.
