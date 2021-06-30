@@ -66,6 +66,8 @@ Build Requirements
 - **COVISE/OpenCOVER**:
   a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for the COVER module and COVER plug-ins
+  Hint: the covise repository contains further information on how to build dependencies
+  on linux (README-Building-deps-linux.txt) and windows (README-Building-deps.txt)
 
   In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins
   should go.
@@ -79,6 +81,7 @@ Build Requirements
 You can set the environment variable `EXTERNLIBS` to a directory where Vistle
 should search for 3rd party libraries.
 It will search in e.g. `$EXTERNLIBS/boost` if CMake is looking for `Boost`.
+
 
 ### macOS with [Homebrew](https://brew.sh)
 
