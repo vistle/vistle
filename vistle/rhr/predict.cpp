@@ -143,10 +143,6 @@ template<int planes, bool planar, bool rgba>
 void transform_predict(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
     const size_t plane_size = width*height;
-    unsigned char *out[planes];
-    for (int i=0; i<planes; ++i) {
-        out[i] = output + i*plane_size;
-    }
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -154,12 +150,16 @@ void transform_predict(unsigned char *output, const unsigned char *input, unsign
     for (unsigned y = 0; y < height; ++y) {
 
         const unsigned char *in = input + y*stride*planes;
+        unsigned char *out[planes];
+        for (int i=0; i<planes; ++i) {
+            out[i] = output + i*plane_size + y*width;
+        }
 
         uint8_t prev[planes] = {};
         for (unsigned x = 0; x < width; ++x) {
             for (unsigned p=0; p<planes; ++p) {
                 uint8_t d = *in;
-                *out[p] = d - prev[p];
+                *out[p] = (d - prev[p])&0xff;
                 prev[p] = d;
                 ++in;
                 ++out[p];
@@ -172,10 +172,6 @@ template<int planes, bool planar, bool rgba>
 void transform_unpredict(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
     const size_t plane_size = width*height;
-    const unsigned char *in[planes];
-    for (int i=0; i<planes; ++i) {
-        in[i] = input + i*plane_size;
-    }
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -183,6 +179,10 @@ void transform_unpredict(unsigned char *output, const unsigned char *input, unsi
     for (unsigned y = 0; y < height; ++y) {
 
         unsigned char *out = output + y*stride*planes;
+        const unsigned char *in[planes];
+        for (int i=0; i<planes; ++i) {
+            in[i] = input + i*plane_size + y*width;
+        }
 
         uint8_t prev[planes] = {};
         for (unsigned x = 0; x < width; ++x) {
@@ -190,9 +190,9 @@ void transform_unpredict(unsigned char *output, const unsigned char *input, unsi
             for (unsigned p = 0; p < planes; ++p) {
 
                 uint8_t a = prev[p] + *in[p];
-                ++in[p];
+                *out = a&0xff;
                 prev[p] = a;
-                *out = a;
+                ++in[p];
                 ++out;
             }
         }
@@ -227,15 +227,24 @@ template
 void transform_unpredict<6,true,false>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride);
 
 // for color data
+
+static void rgb2yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t &y, uint8_t &u, u_int8_t &v) {
+    y = b;
+    u = g - b;
+    v = g - r;
+}
+
+static void yuv2rgb(uint8_t y, uint8_t u, uint8_t v, uint8_t &r, uint8_t &g, u_int8_t &b) {
+    b = y;
+    g = u + b;
+    r = g - v;
+}
+
 template<>
 void transform_predict<3,true,true>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
     const int planes = 3;
     const size_t plane_size = width*height;
-    unsigned char *out[planes];
-    for (int i=0; i<planes; ++i) {
-        out[i] = output + i*plane_size;
-    }
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -243,6 +252,10 @@ void transform_predict<3,true,true>(unsigned char *output, const unsigned char *
     for (unsigned y = 0; y < height; ++y) {
 
         const unsigned char *in = input + y*stride*4;
+        unsigned char *out[planes];
+        for (int i=0; i<planes; ++i) {
+            out[i] = output + i*plane_size + y*width;
+        }
 
         uint8_t prev[planes] = {};
         for (unsigned x = 0; x < width; ++x) {
@@ -253,9 +266,8 @@ void transform_predict<3,true,true>(unsigned char *output, const unsigned char *
             uint8_t a = *in++;
             (void)a;
 
-            uint8_t y = b;
-            uint8_t u = g - b;
-            uint8_t v = g - r;
+            uint8_t y, u, v;
+            rgb2yuv(r,g,b, y,u,v);
 
             *out[0]++ = y - prev[0];
             *out[1]++ = u - prev[1];
@@ -269,14 +281,48 @@ void transform_predict<3,true,true>(unsigned char *output, const unsigned char *
 }
 
 template<>
+void transform_unpredict<3,true,true>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
+
+    const int planes = 3;
+    const size_t plane_size = width*height;
+
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+    for (unsigned y = 0; y < height; ++y) {
+
+        unsigned char *out = output + y*stride*4;
+        const unsigned char *in[planes];
+        for (int i=0; i<planes; ++i) {
+            in[i] = input + i*plane_size + y*width;
+        }
+
+        uint8_t prev[planes] = {};
+        for (unsigned x = 0; x < width; ++x) {
+
+            uint8_t y = prev[0] + *in[0]++;
+            prev[0] = y;
+            uint8_t u = prev[1] + *in[1]++;
+            prev[1] = u;
+            uint8_t v = prev[2] + *in[2]++;
+            prev[2] = v;
+
+            uint8_t r, g, b;
+            yuv2rgb(y,u,v, r,g,b);
+
+            *out++ = r;
+            *out++ = g;
+            *out++ = b;
+            *out++ = 0xff;
+        }
+    }
+}
+
+template<>
 void transform_predict<4,true,true>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
     const int planes = 4;
     const size_t plane_size = width*height;
-    unsigned char *out[planes];
-    for (int i=0; i<planes; ++i) {
-        out[i] = output + i*plane_size;
-    }
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -284,6 +330,10 @@ void transform_predict<4,true,true>(unsigned char *output, const unsigned char *
     for (unsigned y = 0; y < height; ++y) {
 
         const unsigned char *in = input + y*stride*planes;
+        unsigned char *out[planes];
+        for (int i=0; i<planes; ++i) {
+            out[i] = output + i*plane_size + y*width;
+        }
 
         uint8_t prev[planes] = {};
         for (unsigned x = 0; x < width; ++x) {
@@ -293,9 +343,8 @@ void transform_predict<4,true,true>(unsigned char *output, const unsigned char *
             uint8_t b = *in++;
             uint8_t a = *in++;
 
-            uint8_t y = b;
-            uint8_t u = g - b;
-            uint8_t v = g - r;
+            uint8_t y, u, v;
+            rgb2yuv(r,g,b, y,u,v);
 
             *out[0]++ = y - prev[0];
             *out[1]++ = u - prev[1];
@@ -311,52 +360,10 @@ void transform_predict<4,true,true>(unsigned char *output, const unsigned char *
 }
 
 template<>
-void transform_unpredict<3,true,true>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
-
-    const int planes = 3;
-    const size_t plane_size = width*height;
-    const unsigned char *in[planes];
-    for (int i=0; i<planes; ++i) {
-        in[i] = input + i*plane_size;
-    }
-
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
-    for (unsigned y = 0; y < height; ++y) {
-
-        unsigned char *out = output + y*stride*4;
-
-        uint8_t prev[planes] = {};
-        for (unsigned x = 0; x < width; ++x) {
-
-            uint8_t y = prev[0] + *in[0]++;
-            prev[0] = y;
-            uint8_t u = prev[1] + *in[1]++;
-            prev[1] = u;
-            uint8_t v = prev[2] + *in[2]++;
-            prev[2] = v;
-
-            uint8_t b = y;
-            uint8_t g = u + b;
-            uint8_t r = g - v;
-            *out++ = r;
-            *out++ = g;
-            *out++ = b;
-            *out++ = 0xff;
-        }
-    }
-}
-
-template<>
 void transform_unpredict<4,true,true>(unsigned char *output, const unsigned char *input, unsigned width, unsigned height, unsigned stride) {
 
     const int planes = 4;
     const size_t plane_size = width*height;
-    const unsigned char *in[planes];
-    for (int i=0; i<planes; ++i) {
-        in[i] = input + i*plane_size;
-    }
 
 #ifdef _OPENMP
 #pragma omp parallel for
@@ -364,6 +371,10 @@ void transform_unpredict<4,true,true>(unsigned char *output, const unsigned char
     for (unsigned y = 0; y < height; ++y) {
 
         unsigned char *out = output + y*stride*planes;
+        const unsigned char *in[planes];
+        for (int i=0; i<planes; ++i) {
+            in[i] = input + i*plane_size + y*width;
+        }
 
         uint8_t prev[planes] = {};
         for (unsigned x = 0; x < width; ++x) {
@@ -377,9 +388,9 @@ void transform_unpredict<4,true,true>(unsigned char *output, const unsigned char
             uint8_t a = prev[3] + *in[3]++;
             prev[3] = a;
 
-            uint8_t b = y;
-            uint8_t g = u + b;
-            uint8_t r = g - v;
+            uint8_t r, g, b;
+            yuv2rgb(y,u,v, r,g,b);
+
             *out++ = r;
             *out++ = g;
             *out++ = b;
