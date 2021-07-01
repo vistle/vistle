@@ -25,7 +25,12 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
             ec = lec;
             return false;
         }
-        acceptor_v4.listen();
+        acceptor_v4.listen(boost::asio::socket_base::max_listen_connections, lec);
+        if (lec) {
+            acceptor_v4.close();
+            ec = lec;
+            return false;
+        }
     }
 
     acceptor_v6.open(ip::tcp::v6(), lec);
@@ -46,10 +51,16 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
             return false;
         }
 
-        acceptor_v6.listen();
+        acceptor_v6.listen(boost::asio::socket_base::max_listen_connections, lec);
+        if (lec) {
+            acceptor_v4.close();
+            acceptor_v6.close();
+            ec = lec;
+            return false;
+        }
     }
 
-    return true;
+    return acceptor_v4.is_open() || acceptor_v6.is_open();
 }
 
 }

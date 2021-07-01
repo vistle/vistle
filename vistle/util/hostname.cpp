@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <boost/asio/ip/host_name.hpp>
+#include <iostream>
 
 namespace vistle {
 
@@ -19,10 +20,15 @@ std::string hostname() {
       hname = hostname;
 #else
       const char *hn = getenv("VISTLE_HOSTNAME");
-      if (hn)
+      if (hn) {
           hname = hn;
-      else
-          hname = boost::asio::ip::host_name();
+      } else {
+          boost::system::error_code ec;
+          hname = boost::asio::ip::host_name(ec);
+          if (ec) {
+              std::cerr << "failed to get hostname: " << ec.message() << std::endl;
+          }
+      }
 #endif
    }
    return hname;
