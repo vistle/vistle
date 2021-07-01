@@ -133,7 +133,7 @@ bool LibSimModule::beginExecute() {
     }
     vistle::insitu::message::SetPorts::value_type connectedPorts;
     std::vector<string> p;
-    for (const auto port : m_outputPorts) {
+    for (const auto &port : m_outputPorts) {
         if (port.second->isConnected()) {
             p.push_back(port.first);
         }

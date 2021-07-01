@@ -149,12 +149,12 @@ bool TecplotFile::Impl::open(std::string const & iFileName) {
 		mVersion=mVersion*10+versionString[6]-'0';
 	if (isdigit(versionString[7]))
 		mVersion=mVersion*10+versionString[7]-'0';
-		std::cerr << " Version: "<< versionString[5] << versionString[6] << "." << versionString[7]
-			<< " (" << mVersion << ")\n";
-		if (mVersion>112) {
-			std::cerr << "WARNING: Tecplot version newer than 360 2009 detected, hoping for compatibility...\n";
-		}
-	if (mVersion==112) {
+	std::cerr << " Version: "<< versionString[5] << versionString[6] << "." << versionString[7]
+        << " (" << mVersion << ")\n";
+    if (mVersion>112) {
+        std::cerr << "WARNING: Tecplot version newer than 360 2009 detected, hoping for compatibility...\n";
+    }
+    else if (mVersion==112) {
 // 		std::cout << "  Tecplot version 360 2009 detected\n";
 	}
 	else if (mVersion==111) {

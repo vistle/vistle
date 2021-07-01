@@ -56,7 +56,7 @@ std::set<std::string> DataTransmitter::getRequestedObjets(const message::ModuleI
     std::set<std::string> requested;
     size_t numVars = m_metaData.getNumObjects(SimulationObjectType::variable);
     auto meshes = m_metaData.getObjectNames(SimulationObjectType::mesh);
-    for (const auto mesh: meshes) {
+    for (const auto &mesh: meshes) {
         if (connectedPorts.isPortConnected(mesh)) {
             requested.insert(mesh);
         }

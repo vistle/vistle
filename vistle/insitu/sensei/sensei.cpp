@@ -159,7 +159,7 @@ bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 void SenseiAdapter::processData()
 {
     auto dataObjects = m_callbacks.getData(m_usedData);
-    for (const auto dataObject: dataObjects) {
+    for (const auto &dataObject: dataObjects) {
         bool keepTimesteps = m_internals->intOptions.find(IntOptions::KeepTimesteps)->value();
         keepTimesteps ? dataObject.object()->setTimestep(m_processedTimesteps)
                       : dataObject.object()->setIteration(m_processedTimesteps);
