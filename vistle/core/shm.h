@@ -16,10 +16,8 @@
 #include <boost/interprocess/containers/vector.hpp>
 #ifdef WIN32
 #include <boost/interprocess/managed_windows_shared_memory.hpp>
-typedef boost::interprocess::managed_windows_shared_memory managed_shm;
 #else
 #include <boost/interprocess/managed_shared_memory.hpp>
-typedef boost::interprocess::managed_shared_memory managed_shm;
 #endif
 #endif
 
@@ -40,8 +38,17 @@ typedef boost::interprocess::managed_shared_memory managed_shm;
 namespace vistle {
 
 #ifdef NO_SHMEM
+
 typedef ShmData *shm_handle_t;
+
 #else
+
+#ifdef WIN32
+typedef boost::interprocess::managed_windows_shared_memory managed_shm;
+#else
+typedef boost::interprocess::managed_shared_memory managed_shm;
+#endif
+
 typedef managed_shm::handle_t shm_handle_t;
 #endif
 
