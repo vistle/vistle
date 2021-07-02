@@ -183,7 +183,8 @@ class V_COREEXPORT Shm {
 #endif
 
  private:
-   Shm(const std::string &name, const int moduleID, const int rank, size_t size, bool create);
+   // create on size>0, otherwise attach
+   Shm(const std::string &name, const int moduleID, const int rank, size_t size = 0);
    ~Shm();
 
    void setId(int id);
