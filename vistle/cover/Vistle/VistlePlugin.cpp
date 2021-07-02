@@ -1,3 +1,4 @@
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/exceptions.hpp>
 
 // cover

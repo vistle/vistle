@@ -6,6 +6,13 @@
 #include <boost/config.hpp>
 #include <boost/version.hpp>
 
+#ifndef NO_SHMEM
+#include <vistle/util/boost_interprocess_config.h>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/vector.hpp>
+#endif
+
 #ifdef USE_BOOST_ARCHIVE
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/collections_save_imp.hpp>
@@ -16,12 +23,6 @@
 #include <boost/serialization/level.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
-#endif
-
-#ifndef NO_SHMEM
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/containers/string.hpp>
-#include <boost/interprocess/containers/vector.hpp>
 #endif
 
 #ifdef USE_YAS

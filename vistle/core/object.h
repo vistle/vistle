@@ -11,11 +11,9 @@
 #ifdef NO_SHMEM
 #include <map>
 #else
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/containers/map.hpp>
-#include <boost/interprocess/containers/string.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
+#include "shm.h"
 #endif
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/exceptions.hpp>
 
 #include <boost/mpl/size.hpp>

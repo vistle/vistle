@@ -5,6 +5,7 @@
 #include "shmname.h"
 #include "archives_config.h"
 #ifndef NO_SHMEM
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/offset_ptr.hpp>
 #endif
 

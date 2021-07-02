@@ -12,9 +12,11 @@
 #include <vector>
 #include <map>
 #else
-#include <boost/interprocess/containers/string.hpp>
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/containers/vector.hpp>
-#ifdef WIN32
+#include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#ifdef _WIN32
 #include <boost/interprocess/managed_windows_shared_memory.hpp>
 #else
 #include <boost/interprocess/managed_shared_memory.hpp>
@@ -43,7 +45,7 @@ typedef ShmData *shm_handle_t;
 
 #else
 
-#ifdef WIN32
+#ifdef _WIN32
 typedef boost::interprocess::managed_windows_shared_memory managed_shm;
 #else
 typedef boost::interprocess::managed_shared_memory managed_shm;
@@ -130,9 +132,9 @@ class V_COREEXPORT Shm {
  public:
    static std::string instanceName(const std::string &host, unsigned short port);
    static Shm & the();
-   static bool remove(const std::string &shmname, const int moduleID, const int rank);
-   static Shm & create(const std::string &shmname, const int moduleID, const int rank);
-   static Shm & attach(const std::string &shmname, const int moduleID, const int rank);
+   static bool remove(const std::string &shmname, int moduleID, int rank);
+   static Shm & create(const std::string &shmname, int moduleID, int rank);
+   static Shm & attach(const std::string &shmname, int moduleID, int rank);
    static bool isAttached();
 
    void detach();
@@ -142,7 +144,7 @@ class V_COREEXPORT Shm {
    const std::string &instanceName() const;
 
 #ifdef NO_SHMEM
-   typedef std::allocator<void> void_allocator;
+   typedef vistle::default_init_allocator<void> void_allocator;
 #else
    typedef boost::interprocess::allocator<void, managed_shm::segment_manager> void_allocator;
    managed_shm &shm();

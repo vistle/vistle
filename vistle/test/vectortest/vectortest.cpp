@@ -1,5 +1,6 @@
 #include <memory>
 
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>

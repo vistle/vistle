@@ -6,6 +6,7 @@
 #include <cassert>
 #include "shmname.h"
 #include "shm_array.h"
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/offset_ptr.hpp>
 
 namespace vistle {

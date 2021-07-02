@@ -2,6 +2,7 @@
 #define INSITU_SHM_MESSAGE_H
 #include "InSituMessage.h"
 #include "export.h"
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/ipc/message_queue.hpp>
 namespace vistle {
 namespace insitu {

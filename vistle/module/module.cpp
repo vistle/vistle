@@ -14,11 +14,6 @@
 #include <omp.h>
 #endif
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/for_each.hpp>
-#include <boost/mpl/transform.hpp>
 #include <mutex>
 #include <boost/asio.hpp>
 

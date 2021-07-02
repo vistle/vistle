@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <vistle/util/boost_interprocess_config.h>
 #include <boost/interprocess/creation_tags.hpp>
 
 using namespace vistle::insitu;
