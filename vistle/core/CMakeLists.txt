@@ -206,12 +206,12 @@ if(ZFP_FOUND)
 	    DIRECTORY 
 		     ${PROJECT_SOURCE_DIR}/3rdparty/zfp/include/
 	    DESTINATION
-		    include/3rdparty/
+		    include/vistle/3rdparty/
 	      COMPONENT
 		    Devel
     )
     target_include_directories(vistle_core SYSTEM
-		    PUBLIC $<INSTALL_INTERFACE:include/3rdparty>
+		    PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>
     )
     endif()
 endif()
@@ -247,24 +247,24 @@ if(VISTLE_INSTALL_3RDPARTY)
 	    DIRECTORY 
 		     ${PROJECT_SOURCE_DIR}/3rdparty/yas/include/yas
 	    DESTINATION
-		    include/3rdparty/
+		    include/vistle/3rdparty/
 	      COMPONENT
 		    Devel
     )
     target_include_directories(vistle_core SYSTEM
-		    PUBLIC $<INSTALL_INTERFACE:include/3rdparty>
+		    PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>
     )
     #eigen3
     install(
 	    DIRECTORY 
 		     ${PROJECT_SOURCE_DIR}/3rdparty/eigen3
 	    DESTINATION
-		    include/3rdparty/
+		    include/vistle/3rdparty/
 	      COMPONENT
 		    Devel
     )
     target_include_directories(vistle_core SYSTEM
-		    PUBLIC $<INSTALL_INTERFACE:include/3rdparty>
+		    PUBLIC $<INSTALL_INTERFACE:include/vistle/3rdparty>
     )
 endif()
 
