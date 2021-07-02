@@ -7,7 +7,6 @@
 #include <vistle/core/coords.h>
 #include <vistle/core/archives.h>
 #include <vistle/core/archive_loader.h>
-#include <vistle/core/archive_saver.h>
 
 #include "renderer.h"
 

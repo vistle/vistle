@@ -3,16 +3,16 @@
 
 #include <iostream>
 #include <fstream>
-#include <iomanip>
-#include <boost/mpl/vector.hpp>
+//#include <iomanip>
+//#include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
-#include <boost/mpl/transform.hpp>
+//#include <boost/mpl/transform.hpp>
 
-#include <limits.h>
+#include <climits>
 
 #include <vistle/util/valgrind.h>
 #include "messagequeue.h"
-#include "scalars.h"
+//#include "scalars.h"
 #include <cassert>
 
 #include "archives.h"
@@ -22,7 +22,7 @@
 #include "shm_reference_impl.h"
 
 #include "celltree.h"
-#include "archives_config.h"
+//#include "archives_config.h"
 
 using namespace boost::interprocess;
 namespace interprocess = boost::interprocess;
