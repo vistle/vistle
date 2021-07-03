@@ -342,21 +342,15 @@ bool Object::isEmpty() {
 }
 
 int ObjectData::ref() const {
-    Shm::the().lockObjects();
-    int ref = ShmData::ref();
-    Shm::the().unlockObjects();
-    return ref;
+    return ShmData::ref();
 }
 
 int ObjectData::unref() const {
     Shm::the().lockObjects();
     int ref = ShmData::unref();
-   if (ref == 0) {
-       ref = refcount();
-       if (ref == 0) {
-           ObjectTypeRegistry::getDestroyer(type)(name);
-       }
-   }
+    if (ref == 0) {
+        ObjectTypeRegistry::getDestroyer(type)(name);
+    }
     Shm::the().unlockObjects();
     return ref;
 }
@@ -657,15 +651,17 @@ Object::const_ptr ObjectData::getAttachment(const std::string &key) const {
 
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) {
 
-   attachment_mutex_lock_type lock(attachment_mutex);
-   const Key skey(key.c_str(), Shm::the().allocator());
-   AttachmentMap::const_iterator it = attachments.find(skey);
-   if (it != attachments.end()) {
-      return false;
-   }
+    {
+        attachment_mutex_lock_type lock(attachment_mutex);
+        const Key skey(key.c_str(), Shm::the().allocator());
+        AttachmentMap::const_iterator it = attachments.find(skey);
+        if (it != attachments.end()) {
+            return false;
+        }
+        attachments.insert(AttachmentMapValueType(skey, obj->d()));
+    }
 
    obj->ref();
-   attachments.insert(AttachmentMapValueType(skey, obj->d()));
 
    return true;
 }
