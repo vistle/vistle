@@ -1047,21 +1047,36 @@ bool StateTracker::handlePriv(const message::Quit &quit) {
 
 bool StateTracker::handlePriv(const message::Kill &kill) {
 
-   const int id = kill.getModule();
-   auto it = runningMap.find(id);
-   if (it == runningMap.end()) {
-      it = quitMap.find(id);
-      assert(it != quitMap.end());
-   }
-   auto &mod = it->second;
-   mod.killed = true;
+    const int destId = kill.getModule();
+    std::set<int> ids;
+    if (destId == message::Id::Broadcast) {
+        for (const auto &p: runningMap) {
+            ids.insert(p.first);
+        }
+        for (const auto &p: quitMap) {
+            ids.insert(p.first);
+        }
+    } else {
+        ids.insert(destId);
+    }
 
-   mutex_locker guard(m_stateMutex);
-   for (StateObserver *o: m_observers) {
-      o->moduleStateChanged(id, mod.state());
-   }
+    for (auto id: ids) {
+        auto it = runningMap.find(id);
+        if (it == runningMap.end()) {
+            it = quitMap.find(id);
+            assert(it != quitMap.end());
+        }
 
-   return true;
+        auto &mod = it->second;
+        mod.killed = true;
+
+        mutex_locker guard(m_stateMutex);
+        for (StateObserver *o: m_observers) {
+            o->moduleStateChanged(id, mod.state());
+        }
+    }
+
+    return true;
 }
 
 bool StateTracker::handlePriv(const message::AddObject &addObj) {
