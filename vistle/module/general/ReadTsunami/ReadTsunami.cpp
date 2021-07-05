@@ -122,30 +122,48 @@ bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
     std::string sFileName = m_filedir->getValue();
 
     if (sFileName.empty()) {
-        sendInfo("NetCDF filename is empty!");
+        /* sendInfo("NetCDF filename is empty!"); */
+        printRank0("NetCDF filename is empty!");
         return false;
     } else {
         try {
             file->open(sFileName.c_str(), NcFile::read);
-            sendInfo("Reading File: " + sFileName);
+            /* sendInfo("Reading File: " + sFileName); */
+            printRank0("Reading File: " + sFileName);
         } catch (...) {
-            sendInfo("Couldn't open NetCDF file!");
+            /* sendInfo("Couldn't open NetCDF file!"); */
+            printRank0("Couldn't open NetCDF file!");
             return false;
         }
         if (file->getVarCount() == 0) {
-            sendInfo("empty NetCDF file!");
+            /* sendInfo("empty NetCDF file!"); */
+            printRank0("empty NetCDF file!");
             return false;
         } else
             return true;
     }
 }
 
+
+/**
+ * @brief Print string only on rank 0.
+ *
+ * @param str Format str to print.
+ */
+template<class... Args>
+void ReadTsunami::printRank0(const std::string& str, Args... args) const
+{
+    if(rank() == 0)
+        sendInfo(str, args...);
+}
+
 /**
   * Prints current rank and the number of all ranks to the console.
   */
-inline void ReadTsunami::printMPIStats() const
+void ReadTsunami::printMPIStats() const
 {
-    sendInfo("Current Rank: " + std::to_string(rank()) + " Processes (MPISIZE): " + std::to_string(size()));
+    printRank0("Current Rank: " + std::to_string(rank()) + " Processes (MPISIZE): " + std::to_string(size()));
+    /* sendInfo("Current Rank: " + std::to_string(rank()) + " Processes (MPISIZE): " + std::to_string(size())); */
 }
 
 /**
@@ -165,8 +183,8 @@ inline void ReadTsunami::printThreadStats() const
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_filedir) {
-        if (rank() == 0)
-            printMPIStats();
+        /* if (rank() == 0) */
+        printMPIStats();
 
         if (!inspectNetCDFVars())
             return false;
@@ -178,7 +196,8 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
         setPartitions(nBlocks);
         return true;
     } else {
-        sendInfo("Number of blocks total should equal MPISIZE.");
+        printRank0("Number of blocks total should equal MPISIZE.");
+        /* sendInfo("Number of blocks total should equal MPISIZE."); */
         return false;
     }
 }
@@ -342,9 +361,9 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
   */
 bool ReadTsunami::read(Token &token, int timestep, int block)
 {
-    if (rank() == 0)
-        sendInfo("reading timestep: " + std::to_string(timestep));
-
+    /* if (rank() == 0) */
+        /* sendInfo("reading timestep: " + std::to_string(timestep)); */
+    printRank0("reading timestep: " + std::to_string(timestep));
     return computeBlock(token, block, timestep);
 }
 
@@ -463,7 +482,6 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         generateNcVarExt<size_t, Index>(grid_lat, dimGround.dimLat, ghost, nLatBlocks, bPartitionIdx[0]);
     const auto lonGround =
         generateNcVarExt<size_t, Index>(grid_lon, dimGround.dimLon, ghost, nLonBlocks, bPartitionIdx[1]);
-    /* sendInfo("Crash generateNcVarExt ?"); */
 
     // num of polygons for sea & grnd
     const size_t &numPolySea = (latSea.count - 1) * (lonSea.count - 1);
@@ -474,7 +492,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const size_t &verticesGround = latGround.count * lonGround.count;
 
     // storage for read in values from ncdata
-    std::vector<double> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
+    std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
         vecLonGrid(lonGround.count), vecDepth(verticesGround);
 
     // need Eta-data for timestep poly => member var of reader
@@ -485,7 +503,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
     const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
 
-    // read in ncdata into double-pointer
+    // read in ncdata into float-pointer
     latSea.readNcVar(vecLat.data());
     lonSea.readNcVar(vecLon.data());
     latGround.readNcVar(vecLatGrid.data());
@@ -569,7 +587,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     // verticesSea * timesteps = total count vecEta
 
     // debugging
-    /* sendInfo("timestep COVER: " + std::to_string(indexEta)); */
     auto startCopy = vecEta.begin() + indexEta++ * verticesSea;
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     //TODO: filter fill value

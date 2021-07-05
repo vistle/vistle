@@ -127,6 +127,8 @@ private:
 
     void printMPIStats() const;
     void printThreadStats() const;
+    template<class... Args>
+    void printRank0(const std::string &str, Args... args) const;
 
     //Parameter
     vistle::IntParameter *m_ghost = nullptr;
