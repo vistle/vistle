@@ -16,7 +16,7 @@
     => share with every partition
     [ ] optimize later.
  [ ] 3. Calculate actual partition neighbors
- [ ] 4. creat cell list to send to each partion
+ [ ] 4. create cell list to send to each partion
  [ ] 5. send cells to partion neighbors.
  [ ] 6. receive cells from partition.
  [ ] 7. integrate cells into local partion.
@@ -31,7 +31,7 @@
  ** Date:  10.05.2021                                                    **
 \**************************************************************************/
 
-#include <boost/mpi/collectives/all_gather.hpp>
+#include <boost/mpi.hpp>
 #include <sstream>
 #include <iomanip>
 
@@ -44,63 +44,201 @@
 #include "GhostCellGenerator.h"
 
 using namespace vistle;
+/* namespace b_mpi = boost::mpi; */
 
 GhostCellGenerator::GhostCellGenerator(const std::string &name, int moduleID, mpi::communicator comm)
 : Module("Generate Ghost Cells for UnstructuredGrid", name, moduleID, comm)
 {
     createInputPort("data_in");
     createOutputPort("data_out");
-    /* addIntParameter("ghost", "Show ghostcells", 0, Parameter::Boolean); */
-    /* addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean); */
-    /* addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean); */
-    /* addIntParameter("prism", "Show prism", 1, Parameter::Boolean); */
-    /* addIntParameter("hexahedron", "Show hexahedron", 1, Parameter::Boolean); */
-    /* addIntParameter("polyhedron", "Show polyhedron", 1, Parameter::Boolean); */
-    /* addIntParameter("triangle", "Show triangle", 0, Parameter::Boolean); */
-    /* addIntParameter("quad", "Show quad", 0, Parameter::Boolean); */
-    /* addIntParameter("reuseCoordinates", "Re-use the unstructured grids coordinate list and data-object", 0, Parameter::Boolean); */
 }
 
 GhostCellGenerator::~GhostCellGenerator()
 {}
 
-void calcActualPartitionNeighbor()
+void checkData(UnstructuredGrid::const_ptr ugrid)
 {}
 
 bool GhostCellGenerator::compute(std::shared_ptr<PortTask> task) const
 {
     DataBase::const_ptr data;
-    UnstructuredGrid::const_ptr ugrid;
-    ugrid = task->accept<UnstructuredGrid>("data_in");
-    if (!ugrid) {
+    Polygons::const_ptr surface;
+    surface = task->accept<Polygons>("data_in");
+    if (!surface) {
         data = task->expect<DataBase>("data_in");
-       if (!data) {
-           sendError("no grid and no data received");
-           return true;
-       }
-       if (!data->grid()) {
-           sendError("no grid attached to data");
-           return true;
-       }
-       ugrid = UnstructuredGrid::as(data->grid());
-       if (!ugrid) {
-           sendError("no valid grid attached to data");
-           return true;
-       }
+        if (!data) {
+            sendError("no grid and no data received");
+            return true;
+        }
+        if (!data->grid()) {
+            sendError("no grid attached to data");
+            return true;
+        }
+        surface = Polygons::as(data->grid());
+        if (!surface) {
+            sendError("no valid grid attached to data");
+            return true;
+        }
     }
-    Object::const_ptr grid_in = ugrid;
-    assert(grid_in);
+    Object::const_ptr surface_in = surface;
+    assert(surface_in);
 
 #if 0
     bool haveElementData = false;
-    if (data && data->guessMapping(grid_in) == DataBase::Element) {
+    if (data && data->guessMapping(surface_in) == DataBase::Element) {
         haveElementData = true;
     }
 #endif
 
-    //at the moment all to all comm
-    std::vector<Index *> el_neighbor;
-    /* boost::mpi::all_reduce(comm(), ugrid->el(), 5, el_neighbor, calcActualPartitionNeighbor); */
+    //gather all domainsurfaces => at the moment all to all comm
+    std::vector<Polygons::const_ptr> surfaceNeighbors;
+    /* b_mpi::all_gather(comm(), surface, surfaceNeighbors); */
+    MPI_Barrier(comm());
+
+
+    const auto num_elem = surface->getNumElements();
+    const auto num_corners = surface->getNumCorners();
+    const auto num_vertices = surface->getNumVertices();
+
+    int proc{0};
+    for (auto surface_neighbor: surfaceNeighbors) {
+        /*    _ _ _ _             _ _ _ _ 
+             /_/_/_/_/|         /_/_/_/_/               /| 
+            /_/_/_/_/ |        /_/_/_/_/               / | 
+           /_/_/_/_/  |       /_/_/_/_/               /  |
+          /_/_/_/_/   |      /_/_/_/_/    _ _ _ _    /   |
+          |_|_|_|_|   / =>               |_|_|_|_|   |   /
+          |_|_|_|_|  /                   |_|_|_|_|   |  / 
+          |_|_|_|_| /                    |_|_|_|_|   | /  
+          |_|_|_|_|/                     |_|_|_|_|   |/   */
+
+        ++proc;
+        std::vector<int> neighbors;
+
+        //extract neighbors via vertices + send back to proc
+        const auto n_num_elem = surface_neighbor->getNumElements();
+        const auto n_num_corners = surface_neighbor->getNumCorners();
+        const auto n_num_vertices = surface_neighbor->getNumVertices();
+
+        Polygons::ptr poly_build{new Polygons(num_elem + n_num_elem, num_corners + n_num_corners, num_vertices + n_num_vertices)};
+
+        /* const Index *el = &surface->el()[0]; */
+        /* const Index *cl = &surface->cl()[0]; */
+        /* Polygons::VertexOwnerList::const_ptr poly_vol = surface->getVertexOwnerList(); */
+
+        /* Polygons::ptr m_grid_out(new Polygons(0, 0, 0)); */
+        /* auto &pl = m_grid_out->el(); */
+        /* auto &pcl = m_grid_out->cl(); */
+
+        /* auto nf = m_grid_in->getNeighborFinder(); */
+        /* for (Index i=0; i<num_elem; ++i) { */
+        /*    const Index elStart = el[i], elEnd = el[i+1]; */
+        /*    bool ghost = tl[i] & UnstructuredGrid::GHOST_BIT; */
+        /*    if (!showgho && ghost) */
+        /*        continue; */
+        /*    Byte t = tl[i] & UnstructuredGrid::TYPE_MASK; */
+        /*    if (t == UnstructuredGrid::VPOLYHEDRON) { */
+        /*        if (showpol) { */
+        /*            Index j=elStart; */
+        /*            while (j<elEnd) { */
+        /*                Index numVert = cl[j]; */
+        /*                if (numVert >= 3) { */
+        /*                    auto face = &cl[j+1]; */
+        /*                    Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
+        /*                    if (neighbour == InvalidIndex) { */
+        /*                        const Index *begin = &face[0], *end=&face[numVert]; */
+        /*                        auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
+        /*                        std::copy(rbegin, rend, std::back_inserter(pcl)); */
+        /*                        if (haveElementData) */
+        /*                            em.emplace_back(i); */
+        /*                        pl.push_back(pcl.size()); */
+        /*                    } */
+        /*                } */
+        /*                j += numVert+1; */
+        /*            } */
+        /*            if (j != elEnd) { */
+        /*                std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl; */
+        /*            } */
+        /*        } */
+        /*    } else if (t == UnstructuredGrid::CPOLYHEDRON) { */
+        /*        if (showpol) { */
+        /*            Index facestart = InvalidIndex; */
+        /*            Index term = 0; */
+        /*            for (Index j=elStart; j<elEnd; ++j) { */
+        /*                if (facestart == InvalidIndex) { */
+        /*                    facestart = j; */
+        /*                    term = cl[j]; */
+        /*                } else if (cl[j] == term) { */
+        /*                    Index numVert = j - facestart; */
+        /*                    if (numVert >= 3) { */
+        /*                        auto face = &cl[facestart]; */
+        /*                        Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]); */
+        /*                        if (neighbour == InvalidIndex) { */
+        /*                            const Index *begin = &face[0], *end=&face[numVert]; */
+        /*                            auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin); */
+        /*                            std::copy(rbegin, rend, std::back_inserter(pcl)); */
+        /*                            if (haveElementData) */
+        /*                                em.emplace_back(i); */
+        /*                            pl.push_back(pcl.size()); */
+        /*                        } */
+        /*                    } */
+        /*                    facestart = InvalidIndex; */
+        /*                } */
+        /*            } */
+        /*        } */
+        /*    } else { */
+        /*        bool show = false; */
+        /*        switch(t) { */
+        /*        case UnstructuredGrid::PYRAMID: */
+        /*            show = showpyr; */
+        /*            break; */
+        /*        case UnstructuredGrid::PRISM: */
+        /*            show = showpri; */
+        /*            break; */
+        /*        case UnstructuredGrid::TETRAHEDRON: */
+        /*            show = showtet; */
+        /*            break; */
+        /*        case UnstructuredGrid::HEXAHEDRON: */
+        /*            show = showhex; */
+        /*            break; */
+        /*        case UnstructuredGrid::TRIANGLE: */
+        /*            show = showtri; */
+        /*            break; */
+        /*        case UnstructuredGrid::QUAD: */
+        /*            show = showqua; */
+        /*            break; */
+        /*        default: */
+        /*            break; */
+        /*        } */
+
+        /*        if (show) { */
+        /*          const auto numFaces = UnstructuredGrid::NumFaces[t]; */
+        /*          const auto &faces = UnstructuredGrid::FaceVertices[t]; */
+        /*          for (int f=0; f<numFaces; ++f) { */
+        /*             const auto &face = faces[f]; */
+        /*             Index neighbour = 0; */
+        /*             if (UnstructuredGrid::Dimensionality[t] == 3) */
+        /*                 neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]); */
+        /*             if (UnstructuredGrid::Dimensionality[t] == 2 || neighbour == InvalidIndex) { */
+        /*                const auto facesize = UnstructuredGrid::FaceSizes[t][f]; */
+        /*                for (unsigned j=0;j<facesize;++j) { */
+        /*                   pcl.push_back(cl[elStart + face[j]]); */
+        /*                } */
+        /*                if (haveElementData) */
+        /*                    em.emplace_back(i); */
+        /*                pl.push_back(pcl.size()); */
+        /*             } */
+        /*          } */
+        /*       } */
+        /*    } */
+        /* } */
+
+        /* if (m_grid_out->getNumElements() == 0) { */
+        /*    return Polygons::ptr(); */
+        /* } */
+
+        /* return m_grid_out; */
+    }
     /* Object::ptr surface; */
     /* broadcastObject(comm(), ugrid, ); */
     /* DataMapping vm; */
