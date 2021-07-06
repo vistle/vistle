@@ -295,14 +295,8 @@ vistle_find_package(Boost 1.59 REQUIRED
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-command-line-argument")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
-   if (VISTLE_PEDANTIC_ERRORS)
-       add_compile_options("-pedantic-errors")
-    endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
-   if (VISTLE_PEDANTIC_ERRORS)
-       add_compile_options("-pedantic-errors")
-   endif()
 
    if (NOT ${BUILD_SHARED_LIBS})
       # for linking the libraries into plugins
