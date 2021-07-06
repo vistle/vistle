@@ -65,7 +65,8 @@ bool ToUnstructured::compute() {
         data.reset();
     }
     if (UnstructuredGrid::as(gridObj)) {
-        passThroughObject("data_out", input);
+        auto ninput = input->clone();
+        addObject("data_out", ninput);
         return true;
     }
 

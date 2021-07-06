@@ -62,7 +62,8 @@ bool Variant::compute() {
    }
 
    if (variant.empty()) {
-      passThroughObject("data_out", obj);
+      auto nobj = obj->clone();
+      addObject("data_out", nobj);
       return true;
    }
 

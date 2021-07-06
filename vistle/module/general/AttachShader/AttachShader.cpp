@@ -29,16 +29,12 @@ bool AttachShader::compute() {
    if (!obj)
       return true;
 
-   if (obj->isEmpty() || m_shader->getValue().empty()) {
-      passThroughObject("data_out", obj);
-   } else {
-      Object::ptr nobj = obj->clone();
-      nobj->addAttribute("shader", m_shader->getValue());
-      if (!m_shaderParams->getValue().empty()) {
-         nobj->addAttribute("shader_params", m_shaderParams->getValue());
-      }
-      addObject("data_out", nobj);
+   Object::ptr nobj = obj->clone();
+   nobj->addAttribute("shader", m_shader->getValue());
+   if (!m_shaderParams->getValue().empty()) {
+       nobj->addAttribute("shader_params", m_shaderParams->getValue());
    }
+   addObject("data_out", nobj);
 
    return true;
 }

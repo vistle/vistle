@@ -37,11 +37,16 @@ bool Distribute::compute() {
    mpi::all_gather(comm(), have, haveObject);
    for (int r=0; r<size(); ++r) {
       if (haveObject[r]) {
-         Object::const_ptr xmit;
-         if (r == rank())
-            xmit = obj;
-         broadcastObject(xmit, r);
-         passThroughObject("data_out", xmit);
+          Object::const_ptr xmit;
+         if (r == rank()) {
+            auto nobj = obj->clone();
+            xmit = nobj;
+            broadcastObject(xmit, r);
+            addObject("data_out", nobj);
+         } else {
+            broadcastObject(xmit, r);
+            passThroughObject("data_out", xmit);
+         }
       }
    }
 

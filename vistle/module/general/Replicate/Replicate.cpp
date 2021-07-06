@@ -30,7 +30,10 @@ bool Replicate::compute() {
 
    if (hasObject("grid_in")) {
       Object::const_ptr obj = takeFirstObject("grid_in");
-      m_objs[obj->getBlock()] = obj;
+      auto nobj = obj->clone();
+      updateMeta(nobj);
+      m_objs[obj->getBlock()] = nobj;
+
       //std::cerr << "Replicate: grid " << obj->getName() << std::endl;
    }
 
@@ -51,7 +54,6 @@ bool Replicate::compute() {
             Object::const_ptr grid = m_objs[data->getBlock()];
             passThroughObject("grid_out", grid);
          }
-
       }
    }
 

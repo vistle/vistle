@@ -122,7 +122,8 @@ bool Transform::compute() {
            if (animation != Deanimate)
                ++timestep;
        } else {
-           passThroughObject(data_out, obj);
+           auto nobj = obj->clone();
+           addObject(data_out, nobj);
        }
    }
 

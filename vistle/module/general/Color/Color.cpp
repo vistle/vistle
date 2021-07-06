@@ -757,13 +757,16 @@ bool Color::compute() {
 
    Coords::const_ptr coords = accept<Coords>(m_dataIn);
    if (coords && m_dataOut->isConnected()) {
-      passThroughObject(m_dataOut, coords);
+      auto ncoords = coords->clone();
+      addObject(m_dataOut, ncoords);
    }
    DataBase::const_ptr data = accept<DataBase>(m_dataIn);
    if (!data) {
       Object::const_ptr obj = accept<Object>(m_dataIn);
-      if (m_dataOut->isConnected())
-          passThroughObject(m_dataOut, obj);
+      if (m_dataOut->isConnected()) {
+          auto nobj = obj->clone();
+          addObject(m_dataOut, nobj);
+      }
       return true;
    }
 

@@ -9,7 +9,7 @@ ShowGridIndex::ShowGridIndex(const std::string& name, int moduleID, boost::mpi::
 
     m_gridIn = createInputPort("gridIn", "grid input");
     m_grid_out = createOutputPort("gridOut", "pass grid from grid in");
-    m_indexOut = createOutputPort("indexOut", "the indicees of the vertices of the grid");
+    m_indexOut = createOutputPort("indexOut", "the indeces of the vertices of the grid");
 
 }
 
@@ -20,22 +20,18 @@ bool ShowGridIndex::compute() {
     if (!unstr) {
         return true;
     }
-    Vec<Scalar, 1>::ptr indicees(new Vec<Scalar, 1>(unstr->getSize()));
+    Vec<Scalar, 1>::ptr indices(new Vec<Scalar, 1>(unstr->getSize()));
     for (size_t i = 0; i < unstr->getSize(); ++i) {
-        indicees->x().data()[i] = i;
+        indices->x().data()[i] = i;
     }
-    indicees->setGrid(unstr);
-    indicees->addAttribute("_species", "Indiceees");
-    passThroughObject(m_grid_out, input);
-    addObject(m_indexOut, indicees);
+    indices->setGrid(unstr);
+    indices->addAttribute("_species", "Indices");
+    addObject(m_indexOut, indices);
 
+    auto ninput = input->clone();
+    addObject(m_grid_out, ninput);
 
     return true;
 }
-
-
-
-
-
 
 MODULE_MAIN(ShowGridIndex)

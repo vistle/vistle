@@ -69,7 +69,8 @@ bool FilterNode::compute() {
       pass = !pass;
 
    if (pass) {
-      passThroughObject("data_out", data);
+      auto ndata = data->clone();
+      addObject("data_out", ndata);
    } else {
       Object::ptr obj = data->cloneType();
       obj->setMeta(data->meta());

@@ -82,10 +82,11 @@ bool SortBlocks::compute() {
    if (invert)
       first = !first;
 
+   auto ndata = data->clone();
    if (first) {
-      passThroughObject("data_out0", data);
+      addObject("data_out0", ndata);
    } else {
-      passThroughObject("data_out1", data);
+      addObject("data_out1", ndata);
    }
 
    return true;

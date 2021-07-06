@@ -126,9 +126,11 @@ bool ToTriangles::compute() {
    if (auto tri = Triangles::as(obj)) {
 
        if (data) {
-           passThroughObject("grid_out", data);
+           auto ndata = data->clone();
+           addObject("grid_out", ndata);
        } else {
-          passThroughObject("grid_out", obj);
+          auto nobj = obj->clone();
+          addObject("grid_out", nobj);
        }
        return true;
    }

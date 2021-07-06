@@ -36,7 +36,8 @@ bool CreateVertexOwnerList::compute() {
       return false;
 
    unstr->getVertexOwnerList();
-   passThroughObject("grid_out", unstr);
+   auto nunstr = unstr->clone();
+   addObject("grid_out", nunstr);
    return true;
 }
 

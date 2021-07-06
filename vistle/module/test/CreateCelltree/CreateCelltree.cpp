@@ -42,7 +42,9 @@ bool CreateCelltree::compute() {
 
    cti->getCelltree();
 
-   passThroughObject("grid_out", obj);
+   auto nobj = obj->clone();
+
+   addObject("grid_out", nobj);
 
    return true;
 }

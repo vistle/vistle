@@ -109,7 +109,8 @@ bool FlattenTriangles::compute() {
    if (intri) {
        if (intri->getNumCorners() == 0) {
            // already flat
-           passThroughObject("grid_out", intri);
+           auto ntri = intri->clone();
+           addObject("grid_out", ntri);
            return true;
        }
 
@@ -122,7 +123,8 @@ bool FlattenTriangles::compute() {
    } else if (inquad) {
        if (inquad->getNumCorners() == 0) {
            // already flat
-           passThroughObject("grid_out", inquad);
+           auto nquad = inquad->clone();
+           addObject("grid_out", nquad);
            return true;
        }
 

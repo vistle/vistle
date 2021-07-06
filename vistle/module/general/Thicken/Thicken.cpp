@@ -65,12 +65,22 @@ bool Thicken::compute() {
 
    MapMode mode = (MapMode)m_mapMode->getValue();
    if (mode == DoNothing) {
-       passThroughObject("grid_out", obj);
+       auto nobj = obj->clone();
+       addObject("grid_out", nobj);
 
        auto data = accept<Object>("data_in");
        if (data) {
-           passThroughObject("data_out", data);
-       }
+           if (auto d = DataBase::as(data)) {
+               auto ndata = d->clone();
+               if (d->grid() == obj) {
+                   ndata->setGrid(nobj);
+               }
+               addObject("data_out", ndata);
+           } else {
+               auto ndata = data->clone();
+               addObject("data_out", ndata);
+           }
+       } 
        return true;
    }
 

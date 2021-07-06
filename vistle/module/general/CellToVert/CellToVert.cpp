@@ -42,7 +42,8 @@ bool CellToVert::compute(std::shared_ptr<PortTask> task) const {
 
    auto mapping = data->guessMapping();
    if (mapping == DataBase::Vertex) {
-       task->passThroughObject("data_out", data);
+       auto ndata = data->clone();
+       task->addObject("data_out", ndata);
    } else if (mapping != DataBase::Element) {
       std::stringstream str;
       str << "unsupported data mapping " << data->mapping() << ", guessed=" << mapping << " on " << data->getName();

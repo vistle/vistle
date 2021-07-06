@@ -31,9 +31,13 @@ bool ExtractGrid::compute() {
    }
 
    if (out) {
-      passThroughObject(m_gridOut, out);
-      if (out->normals())
-         passThroughObject(m_normalsOut, out->normals());
+      auto nout = out->clone();
+      if (out->normals()) {
+         auto nnorm = out->normals()->clone();
+         addObject(m_normalsOut, nnorm);
+         nout->setNormals(nnorm);
+      }
+      addObject(m_gridOut, nout);
    }
 
    return true;
