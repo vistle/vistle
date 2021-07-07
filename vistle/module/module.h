@@ -137,6 +137,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    const mpi::communicator &comm() const;
    int rank() const;
    int size() const;
+   int shmLeader(int rank = -1) const; // return -1 or rank of leader of shm group, if rank is in current shm group
    int id() const;
 
    unsigned hardware_concurrency() const;
@@ -155,6 +156,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
    vistle::Object::const_ptr receiveObject(int destRank) const;
    bool broadcastObject(const mpi::communicator &comm, vistle::Object::const_ptr &object, int root) const;
    bool broadcastObject(vistle::Object::const_ptr &object, int root) const;
+   bool broadcastObjectViaShm(vistle::Object::const_ptr &object, const std::string &objName, int root) const;
 
    bool addObject(Port *port, vistle::Object::ptr object);
    bool addObject(const std::string &portName, vistle::Object::ptr object);
@@ -343,7 +345,8 @@ protected:
    bool m_benchmark;
    double m_benchmarkStart;
    double m_avgComputeTime;
-   mpi::communicator m_comm;
+   mpi::communicator m_comm, m_commShmGroup, m_commShmLeaders;
+   std::vector<int> m_shmLeaders; // leader rank in m_comm of m commShmGroup for every rank in m_comm
 
    int m_numTimesteps;
    bool m_cancelRequested=false, m_cancelExecuteCalled=false, m_executeAfterCancelFound=false;

@@ -130,9 +130,12 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
 
     Object::const_ptr obj, placeholder;
     std::vector<Object::const_ptr> objs;
-    if (add.rank() == rank()) {
+    if (shmLeader(add.rank()) == shmLeader(rank())) {
         obj = add.takeObject();
         assert(obj);
+        if (rank() != add.rank())
+            obj->ref();
+        m_commShmGroup.barrier();
     }
 
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
@@ -140,10 +143,11 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
     if (size() > 1) {
         if (rm == AllNodes) {
             assert(pol == ObjectReceivePolicy::Distribute);
-            broadcastObject(obj, add.rank());
+            broadcastObjectViaShm(obj, add.objectName(), add.rank());
             assert(obj);
         } else if (pol == ObjectReceivePolicy::Distribute) {
 
+            std::string phName;
             if (add.rank() == rank()) {
 
                 auto geo_norm_tex = splitObject(obj);
@@ -156,13 +160,20 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
                 ph->setNormals(normals);
                 ph->setTexture(tex);
                 placeholder = ph;
+                phName = ph->getName();
             }
 
-            broadcastObject(placeholder, add.rank());
+            mpi::broadcast(comm(), phName, add.rank());
+            if (add.rank() != rank() && shmLeader(add.rank()) == shmLeader(rank())) {
+                placeholder = Shm::the().getObjectFromName(phName);
+                assert(placeholder);
+            }
+            broadcastObjectViaShm(placeholder, phName, add.rank());
             assert(placeholder);
+            m_commShmGroup.barrier();
         }
 
-        if (rm == MasterOnly && add.rank() != 0) {
+        if (rm == MasterOnly && shmLeader(add.rank()) != 0) {
             if (rank() == add.rank()) {
                 sendObject(obj, 0);
             } else if (rank() == 0) {

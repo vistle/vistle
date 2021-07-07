@@ -358,6 +358,12 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
 
    assert(s_singleton && "failed to create shared memory");
 
+#ifndef NO_SHMEM
+   auto r = s_singleton->shm().find_or_construct<int>("rank")();
+   *r = rank;
+#endif
+   s_singleton->m_owningRank = rank;
+
    return *s_singleton;
 }
 
@@ -377,6 +383,14 @@ Shm & Shm::attach(const std::string &name, const int id, const int rank) {
    }
 
    assert(s_singleton && "failed to attach to shared memory");
+
+#ifdef NO_SHMEM
+    s_singleton->m_owningRank = rank;
+#else
+    auto r = s_singleton->shm().find<int>("rank");
+    assert(r.first && "shared memory does not contain owning rank");
+    s_singleton->m_owningRank = *r.first;
+#endif
 
    return *s_singleton;
 }
@@ -587,6 +601,10 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    }
 
    return Object::const_ptr();
+}
+
+int Shm::owningRank() const {
+    return m_owningRank;
 }
 
 V_DEFINE_SHMREF(char)

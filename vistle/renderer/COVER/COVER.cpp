@@ -813,7 +813,7 @@ int COVER::runMain(int argc, char *argv[]) {
 
     int ret = 0;
     const char mainname[] = "mpi_main";
-    typedef int(*mpi_main_t)(MPI_Comm comm, int, char *[]);
+    typedef int(*mpi_main_t)(MPI_Comm comm, int,  int, char *[]);
     mpi_main_t mpi_main = NULL;
 #ifdef WIN32
     void *handle = LoadLibraryA(abslib.c_str());
@@ -843,7 +843,7 @@ int COVER::runMain(int argc, char *argv[]) {
         goto finish;
     }
 
-    ret = mpi_main((MPI_Comm)c, argc, argv);
+    ret = mpi_main((MPI_Comm)c, shmLeader(rank()), argc, argv);
 
 finish:
     if (handle)

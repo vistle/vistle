@@ -142,6 +142,7 @@ class V_COREEXPORT Shm {
 
    std::string name() const;
    const std::string &instanceName() const;
+   int owningRank() const;
 
 #ifdef NO_SHMEM
    typedef vistle::default_init_allocator<void> void_allocator;
@@ -203,6 +204,7 @@ class V_COREEXPORT Shm {
    bool m_remove;
    int m_id;
    const int m_rank;
+   int m_owningRank = -1;
    std::atomic<int> m_objectId, m_arrayId;
    static Shm *s_singleton;
 #ifdef NO_SHMEM

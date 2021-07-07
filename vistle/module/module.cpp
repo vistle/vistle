@@ -271,6 +271,11 @@ Module::Module(const std::string &desc,
 
    m_concurrency = addIntParameter("_concurrency", "number of tasks to keep in flight per MPI rank (-1: #cores/2)", -1);
    setParameterRange(m_concurrency, Integer(-1), Integer(hardware_concurrency()));
+
+   int leader = Shm::the().owningRank();
+   m_commShmGroup = boost::mpi::communicator(m_comm.split(leader));
+   m_commShmLeaders =boost::mpi::communicator(m_comm.split(leader==m_rank ? 1 : MPI_UNDEFINED));
+   mpi::all_gather(m_comm, leader, m_shmLeaders);
 }
 
 void Module::prepareQuit() {
@@ -616,6 +621,9 @@ Object::const_ptr Module::receiveObject(int destRank) const {
 
 bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &obj, int root) const {
 
+    if (comm.size() == 1)
+        return true;
+
     if (rank() == root) {
         vecostreambuf<buffer> memstr;
         vistle::oarchive memar(memstr);
@@ -662,6 +670,27 @@ bool Module::broadcastObject(const mpi::communicator &comm, Object::const_ptr &o
 bool Module::broadcastObject(Object::const_ptr &object, int root) const {
 
     return broadcastObject(comm(), object, root);
+}
+
+bool Module::broadcastObjectViaShm(Object::const_ptr &object, const std::string &objName, int root) const {
+
+    if (shmLeader(rank()) == shmLeader(root)) {
+        assert(object);
+    }
+    bool ok = true;
+    if (rank() == shmLeader(rank())) {
+        ok = broadcastObject(m_commShmLeaders, object, shmLeader(root));
+    }
+    if (shmLeader(rank()) != shmLeader(root)) {
+        m_commShmGroup.barrier();
+    }
+    if (shmLeader(rank()) == shmLeader(root) || shmLeader(rank()) == rank()) {
+        assert(object);
+    } else {
+        object = Shm::the().getObjectFromName(objName);
+        assert(object);
+    }
+    return ok;
 }
 
 void Module::updateCacheMode() {
@@ -2622,6 +2651,12 @@ bool Module::sendMessageWithPayload(message::Message &message, Payload &payload)
 
     auto pl = addPayload(message, payload);
     return this->sendMessage(message, &pl);
+}
+
+int Module::shmLeader(int rank) const {
+    if (rank == -1)
+        rank = this->rank();
+    return m_shmLeaders[rank];
 }
 
 } // namespace vistle
