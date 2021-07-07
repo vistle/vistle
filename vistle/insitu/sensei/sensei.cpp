@@ -87,12 +87,19 @@ bool SenseiAdapter::Execute(size_t timestep)
 #ifdef MODULE_THREAD
 bool SenseiAdapter::startVistle(const MPI_Comm &comm, const std::string &options)
 {
-    m_managerThread = std::thread([options, this]() {
-        const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
-        if (!VISTLE_ROOT) {
-            CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
-            return false;
-        }
+    int prov = MPI_THREAD_SINGLE;
+    MPI_Query_thread(&prov);
+    if (prov != MPI_THREAD_MULTIPLE)
+    {
+        CERR << "startVistle: MPI_THREAD_MULTIPLE not provided" << std::endl;
+        return false;
+    }
+    const char *VISTLE_ROOT = getenv("VISTLE_ROOT");
+    if (!VISTLE_ROOT) {
+        CERR << "VISTLE_ROOT not set to the path of the Vistle build directory." << endl;
+        return false;
+    }
+    m_managerThread = std::thread([VISTLE_ROOT, options, this]() {
         std::string cmd{VISTLE_ROOT};
         cmd += "/bin/vistle_manager";
         std::vector<char *> args;

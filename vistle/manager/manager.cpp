@@ -86,9 +86,18 @@ bool VistleManager::run(int argc, char* argv[]) {
     int flag = 0;
     MPI_Initialized(&flag);
     if (flag) {
+#ifdef MODULE_THREAD
+        int prov = MPI_THREAD_SINGLE;
+        MPI_Query_thread(&prov);
+        if (prov != MPI_THREAD_MULTIPLE)
+        {
+            std::cerr << "VistleManager: MPI_THREAD_MULTIPLE not provided" << std::endl;
+            rank = 0;
+            return false;
+        }
+#endif
         m_comm = boost::mpi::communicator(MPI_COMM_WORLD, boost::mpi::comm_duplicate);
         MPI_Comm_rank(m_comm, &rank);
-
     }
     else {
         //initialize mpi with single rank on local host?

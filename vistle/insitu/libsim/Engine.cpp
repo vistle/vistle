@@ -283,6 +283,14 @@ Engine::~Engine()
 #ifdef MODULE_THREAD
 bool Engine::startVistle(int argC, char **argV)
 {
+
+    int prov = MPI_THREAD_SINGLE;
+    MPI_Query_thread(&prov);
+    if (prov != MPI_THREAD_MULTIPLE)
+    {
+        CERR << "startVistle: MPI_THREAD_MULTIPLE not provided" << std::endl;
+        return false;
+    }
     if ((m_rank == 0 && ConnectMySelf()) || m_rank > 0) {
         m_messageHandler.initialize(
             m_socket,
