@@ -90,7 +90,6 @@ fi
 if mpirun -version 2>&1| grep -q MPT && echo true > /dev/null; then
    MPI_IMPL="mpt"
    echo "HPE MPT spawn: $@"
-   LAUNCH="--launch-agent $(which orted)"
 fi
 
 if [ -n "$PBS_ENVIRONMENT" ]; then
