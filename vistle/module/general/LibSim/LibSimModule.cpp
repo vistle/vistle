@@ -239,7 +239,22 @@ void LibSimModule::resetSocketThread() {
         std::unique_lock<std::mutex> lk(m_asioMutex);
         m_connectedCondition.wait(lk, [this]() { return m_waitingForAccept; });
         m_waitingForAccept = false;
+        for (int i = 0; i < size(); i++)
+        {
+            if(i != rank())
+                m_socketComm.send(i, 37);
+        }
     }
+    while (true)
+    {
+        if (m_socketComm.iprobe(0, 37)) {
+            m_socketComm.recv(0, 37);
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(500));
+    }
+
+
     m_socketComm.barrier(); // slaves are waiting here
     if (getBool(m_terminateSocketThread)) {
         return;
