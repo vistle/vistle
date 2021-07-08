@@ -70,10 +70,17 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
     }
     startSocketThread();
 #else
+    bool simRunning = true;
     if (rank() == 0 && !insitu::EngineInterface::getControllSocket()) {
         CERR << "can not start without running simulation" << endl;
+        simRunning = false;
+    }
+    boost::mpi::broadcast(comm, simRunning, 0);
+    if (!simRunning)
+    {
         return;
     }
+
     reconnect();
     m_connectedToEngine = true;
     m_messageHandler.initialize(insitu::EngineInterface::getControllSocket(),
