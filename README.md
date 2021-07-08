@@ -64,14 +64,16 @@ Build Requirements
   for interpreting Vistle scripts (.vsl), Python 2.7 and 3 should work.
 
 - **COVISE/OpenCOVER**:
-  a version of COVISE including OpenCOVER compiled by you is necessary, get it from
+  OpenCOVER or a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for the COVER module and COVER plug-ins
-
-  Hint: The COVISE repository contains further information on how to build dependencies
-  on Linux (README-Building-deps-linux.txt) and Windows (README-Building-deps.txt).
+ 
+  You can shorten the build process and cut down on dependencies by [building only OpenCOVER](https://github.com/hlrs-vis/covise#building-only-opencover).
 
   In addition you should set `COVISEDESTDIR` to a location where compiled COVER plug-ins
   should go.
+
+  Hint: The COVISE repository contains further information on how to build dependencies
+  on Linux (README-Building-deps-linux.txt) and Windows (README-Building-deps.txt).
 
 - **OpenSceneGraph**:
   the version of OpenSceneGraph that was used for compiling OpenCOVER
