@@ -91,10 +91,12 @@ bool GhostCellGenerator::compute(std::shared_ptr<PortTask> task) const
     Object::const_ptr grid_in = ugrid;
     assert(grid_in);
 
+#if 0
     bool haveElementData = false;
     if (data && data->guessMapping(grid_in) == DataBase::Element) {
         haveElementData = true;
     }
+#endif
 
     //at the moment all to all comm
     std::vector<Index *> el_neighbor;
@@ -243,6 +245,7 @@ Quads::ptr GhostCellGenerator::createSurface(vistle::StructuredGridBase::const_p
     /* } */
 
     /* return m_grid_out; */
+    return Quads::ptr();
 }
 
 void GhostCellGenerator::renumberVertices(Coords::const_ptr coords, Indexed::ptr poly, DataMapping &vm) const
@@ -487,6 +490,7 @@ Polygons::ptr GhostCellGenerator::createSurface(vistle::UnstructuredGrid::const_
     /* } */
 
     /* return m_grid_out; */
+    return Polygons::ptr();
 }
 
 //bool GhostCellGenerator::checkNormal(Index v1, Index v2, Index v3, Scalar x_center, Scalar y_center, Scalar z_center) {
