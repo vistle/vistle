@@ -27,8 +27,11 @@ Message InSituTcp::recv()
         if (m_comm.rank() == 0) {
             boost::system::error_code err;
             vistle::message::Buffer bf;
-            vistle::message::recv(*m_socket, bf, err, true, &payload);
-            if (err || static_cast<vistle::message::Message &>(bf).type() != vistle::message::Type::INSITU) {
+            if (!vistle::message::recv(*m_socket, bf, err, false, &payload))
+            {
+                error = true;
+            }
+            else if (err || static_cast<vistle::message::Message &>(bf).type() != vistle::message::Type::INSITU) {
                 type = static_cast<int>(InSituMessageType::ConnectionClosed);
                 ConnectionClosed proxy{false};
                 vistle::vecostreambuf<vistle::buffer> buf;
