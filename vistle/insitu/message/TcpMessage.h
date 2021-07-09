@@ -15,16 +15,16 @@ public:
     template<typename SomeMessage>
     bool send(const SomeMessage &msg) const
     {
-        if (!m_initialized) {
-            std::cerr << "InSituTcpMessage uninitialized: can not send message!" << std::endl;
-            return false;
-        }
-        if (msg.type == InSituMessageType::Invalid) {
-            std::cerr << "InSituTcpMessage : can not send invalid message!" << std::endl;
-            return false;
-        }
         bool error = false;
         if (m_comm.rank() == 0) {
+            if (!m_initialized) {
+                std::cerr << "InSituTcpMessage uninitialized: can not send message!" << std::endl;
+                return false;
+            }
+            if (msg.type == InSituMessageType::Invalid) {
+                std::cerr << "InSituTcpMessage : can not send invalid message!" << std::endl;
+                return false;
+            }
             boost::system::error_code err;
             InSituMessage ism(msg.type);
             vistle::vecostreambuf<vistle::buffer> buf;
