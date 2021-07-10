@@ -11,7 +11,7 @@
 #APRUN_FLAGS="-j2 -cc 0-11,24-35:12-23,36-47" # enable hyper-threading
 
 # environment variables to copy to all ranks
-envvars="VISTLE_KEY VISTLE_SHMSIZE LD_LIBRARY_PATH DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH COVISE_PATH COVISEDIR ARCHSUFFIX PYTHONHOME PYTHONPATH"
+envvars="VISTLE_KEY VISTLE_SHMSIZE LD_LIBRARY_PATH DYLD_LIBRRARY_PATH VISTLE_DYLD_LIBRARY_PATH COVISE_PATH COVISEDIR ARCHSUFFIX COCONFIG COCONFIG_DEBUG PYTHONHOME PYTHONPATH"
 
 if [ -n "$VISTLE_LAUNCH" ]; then
    case $VISTLE_LAUNCH in
@@ -86,7 +86,8 @@ if mpirun -version 2>&1| grep -q open-mpi\.org; then
    #LAUNCH="--launch-agent $(which orted)"
    export OMPI_MCA_btl_openib_allow_ib=1 # Open MPI 4.0.1 seems to require this
    #export OMPI_MCA_btl_openib_if_include="mlx4_0:1"
-   export OMPI_MCA_mpi_abort_delay=-1
+   export OMPI_MCA_mpi_abort_delay=1
+   #export OMPI_MCA_mpi_yield_when_idle=1
 elif mpirun -version 2>&1| grep -q MPT; then
    MPI_IMPL="mpt"
    echo "HPE MPT spawn: $@"
@@ -160,43 +161,44 @@ fi
 if [ "$MPISIZE" != "1" ]; then
    PREPENDRANK=-prepend-rank
    TAGOUTPUT=-tag-output
-
-   case "$MPI_IMPL" in
-       ompi)
-           BIND="-bind-to none"
-           if [ "$BINDTO" = "socket0" ]; then 
-               BIND="-cpu-list 0,1,2,3,4,5,6,7"
-           elif [ "$BINDTO" = "socket1" ]; then
-               BIND="-cpu-list 8,9,10,11,12,13,14,15"
-           fi
-
-           ENVS=""
-           for v in $envvars; do
-               eval test -z \${${v}+x} || ENVS="$ENVS -x $v"
-           done
-
-           if [ -n "$MPIHOSTFILE" ]; then
-               echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
-               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           elif [ -n "$MPIHOSTS" ]; then
-               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           else
-               echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@"
-               exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           fi
-           ;;
-
-       *)
-           if [ -n "$MPIHOSTFILE" ]; then	
-               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           elif [ -n "$MPIHOSTS" ]; then
-               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           else
-               exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
-           fi
-           ;;
-   esac
 fi
+
+case "$MPI_IMPL" in
+    ompi)
+        BIND="-bind-to none"
+        if [ "$BINDTO" = "socket0" ]; then 
+            BIND="-cpu-list 0,1,2,3,4,5,6,7"
+        elif [ "$BINDTO" = "socket1" ]; then
+            BIND="-cpu-list 8,9,10,11,12,13,14,15"
+        fi
+
+        ENVS=""
+        for v in $envvars; do
+            eval test -z \${${v}+x} || ENVS="$ENVS -x $v"
+        done
+
+        if [ -n "$MPIHOSTFILE" ]; then
+            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND --hostfile ${MPIHOSTFILE} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        elif [ -n "$MPIHOSTS" ]; then
+            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND -H ${MPIHOSTS} $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        else
+            echo mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE"
+            exec mpirun -x ${libpath} $ENVS $LAUNCH -np ${MPISIZE} $TAGOUTPUT $BIND $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        fi
+        ;;
+
+    *)
+        if [ -n "$MPIHOSTFILE" ]; then	
+            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -f ${MPIHOSTFILE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        elif [ -n "$MPIHOSTS" ]; then
+            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} -hosts ${MPIHOSTS} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        else
+            exec mpirun -envall ${PREPENDRANK} -np ${MPISIZE} $LAUNCH $WRAPPER "$@" >> "$LOGFILE" 2>&1 < /dev/null
+        fi
+        ;;
+esac
 
 echo "default: $@"
 exec $WRAPPER "$@"
