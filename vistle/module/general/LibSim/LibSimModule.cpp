@@ -377,6 +377,7 @@ void LibSimModule::recvAndhandleMessage()
     default:
         break;
     }
+    vistle::adaptive_wait(msg.type() != InSituMessageType::Invalid);
 }
 
 void LibSimModule::setBool(bool &target, bool newval)
