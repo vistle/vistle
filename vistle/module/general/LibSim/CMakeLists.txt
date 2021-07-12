@@ -2,11 +2,12 @@
 
 add_module(LibSimController LibSimModule.h LibSimModule.cpp)
 target_link_libraries(LibSimController
-	vistle_module
-	vistle_util
+	vistle_insitu_core
 	vistle_insitu_message
 	vistle_insitu_module
 	vistle_libsim_connect
+	vistle_module
+	vistle_util
 	Boost::boost
 	)
 

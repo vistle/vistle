@@ -14,7 +14,7 @@
 
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
-
+#include <vistle/insitu/core/slowMpi.h>
 #include <vistle/insitu/util/print.h>
 
 #ifdef MODULE_THREAD
@@ -27,20 +27,22 @@ using vistle::insitu::message::InSituMessageType;
 #define CERR cerr << "LibSimModule[" << rank() << "/" << size() << "] "
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
+
+
 LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm)
-    : InSituReader("View and controll LibSim instrumented simulations", name, moduleID, comm)
-    , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
+: InSituReader("View and controll LibSim instrumented simulations", name, moduleID, comm)
+, m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 #ifndef MODULE_THREAD
 #if BOOST_VERSION >= 106600
-    , m_workGuard(boost::asio::make_work_guard(m_ioService))
+, m_workGuard(boost::asio::make_work_guard(m_ioService))
 #else
-    , m_workGuard(new boost::asio::io_service::work(m_ioService))
+, m_workGuard(new boost::asio::io_service::work(m_ioService))
 #endif
-    , m_ioThread([this]() {
-        m_ioService.run();
-        DEBUG_CERR << "io thread terminated" << endl;
-    }) {
-
+, m_ioThread([this]() {
+    m_ioService.run();
+    DEBUG_CERR << "io thread terminated" << endl;
+})
+{
     m_acceptorv4.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
     m_acceptorv6.reset(new boost::asio::ip::tcp::acceptor(m_ioService));
 
@@ -76,8 +78,7 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
         simRunning = false;
     }
     boost::mpi::broadcast(comm, simRunning, 0);
-    if (!simRunning)
-    {
+    if (!simRunning) {
         return;
     }
 
@@ -94,7 +95,8 @@ LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator c
 #endif // !MODULE_THREAD
 }
 
-LibSimModule::~LibSimModule() {
+LibSimModule::~LibSimModule()
+{
     setBool(m_terminateSocketThread, true);
     comm().barrier(); // make sure m_terminate is set on all ranks before releasing slaves from waiting for connection
 #ifndef MODULE_THREAD
@@ -127,20 +129,20 @@ LibSimModule::~LibSimModule() {
     }
 }
 
-bool LibSimModule::endExecute() {
-
+bool LibSimModule::endExecute()
+{
     m_messageHandler.send(vistle::insitu::message::Ready{false});
     return true;
 }
 
-bool LibSimModule::beginExecute() {
-
+bool LibSimModule::beginExecute()
+{
     if (!getBool(m_connectedToEngine)) {
         return true;
     }
     vistle::insitu::message::SetPorts::value_type connectedPorts;
     std::vector<string> p;
-    for (const auto &port : m_outputPorts) {
+    for (const auto &port: m_outputPorts) {
         if (port.second->isConnected()) {
             p.push_back(port.first);
         }
@@ -152,7 +154,8 @@ bool LibSimModule::beginExecute() {
     return true;
 }
 
-bool LibSimModule::changeParameter(const vistle::Parameter *param) {
+bool LibSimModule::changeParameter(const vistle::Parameter *param)
+{
     Module::changeParameter(param);
     if (!param) {
         return true;
@@ -167,7 +170,6 @@ bool LibSimModule::changeParameter(const vistle::Parameter *param) {
 
         m_messageHandler.send(vistle::insitu::message::ExecuteCommand(param->getName()));
     } else {
-
         auto option = dynamic_cast<const vistle::IntParameter *>(param);
         auto it = m_intOptions.find(option);
         if (it != m_intOptions.end()) {
@@ -178,7 +180,8 @@ bool LibSimModule::changeParameter(const vistle::Parameter *param) {
     return InSituReader::changeParameter(param);
 }
 #ifndef MODULE_THREAD
-void LibSimModule::startControllServer() {
+void LibSimModule::startControllServer()
+{
     unsigned short port = m_port;
 
     boost::system::error_code ec;
@@ -198,8 +201,8 @@ void LibSimModule::startControllServer() {
     return;
 }
 
-bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
-
+bool LibSimModule::startAccept(shared_ptr<acceptor> a)
+{
     if (!a->is_open())
         return false;
 
@@ -223,7 +226,8 @@ bool LibSimModule::startAccept(shared_ptr<acceptor> a) {
     return true;
 }
 
-void LibSimModule::startSocketThread() {
+void LibSimModule::startSocketThread()
+{
     m_socketThread = std::thread([this]() {
         resetSocketThread();
         while (!getBool(m_terminateSocketThread)) {
@@ -232,41 +236,28 @@ void LibSimModule::startSocketThread() {
     });
 }
 
-void LibSimModule::resetSocketThread() {
+void LibSimModule::resetSocketThread()
+{
     if (rank() == 0) {
         startAccept(m_acceptorv4);
         startAccept(m_acceptorv6);
         std::unique_lock<std::mutex> lk(m_asioMutex);
         m_connectedCondition.wait(lk, [this]() { return m_waitingForAccept; });
         m_waitingForAccept = false;
-        for (int i = 0; i < size(); i++)
-        {
-            if(i != rank())
-                m_socketComm.send(i, 37);
-        }
     }
-    while (true)
-    {
-        if (m_socketComm.iprobe(0, 37)) {
-            m_socketComm.recv(0, 37);
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
-    }
-
-
-    m_socketComm.barrier(); // slaves are waiting here
+    vistle::insitu::waitForRank(m_socketComm, 0);
     if (getBool(m_terminateSocketThread)) {
         return;
     }
     setBool(m_connectedToEngine, true);
     m_messageHandler.initialize(m_socket, m_socketComm);
-    for (const auto &option : m_intOptions) {
+    for (const auto &option: m_intOptions) {
         m_messageHandler.send(vistle::insitu::message::LibSimIntOption{{option.second, option.first->getValue()}});
     }
 }
 
-void LibSimModule::connectToSim() {
+void LibSimModule::connectToSim()
+{
     if (m_simInitSent || m_connectedToEngine) {
         DEBUG_CERR << "already connected" << endl;
         return;
@@ -279,7 +270,7 @@ void LibSimModule::connectToSim() {
             auto simName = m_simName->getValue();
             path lastEditedFile;
             std::time_t lastEdit{};
-            for (auto &entry : boost::make_iterator_range(boost::filesystem::directory_iterator(p), {})) {
+            for (auto &entry: boost::make_iterator_range(boost::filesystem::directory_iterator(p), {})) {
                 if (simName.size() == 0 ||
                     entry.path().filename().generic_string().find(simName + ".sim2") != std::string::npos) {
                     auto editTime = last_write_time(entry.path());
@@ -304,7 +295,8 @@ void LibSimModule::connectToSim() {
     boost::mpi::broadcast(comm(), m_simInitSent, 0);
 }
 
-void LibSimModule::disconnectSim() {
+void LibSimModule::disconnectSim()
+{
     if (rank() == 0) {
         CERR << "LibSimController is disconnecting from simulation" << endl;
     }
@@ -321,8 +313,8 @@ void LibSimModule::disconnectSim() {
 }
 #endif // !MODULE_THREAD
 
-void LibSimModule::recvAndhandleMessage() {
-
+void LibSimModule::recvAndhandleMessage()
+{
     auto msg = m_messageHandler.recv();
 
     DEBUG_CERR << "handleMessage " << (int)msg.type() << endl;
@@ -338,7 +330,7 @@ void LibSimModule::recvAndhandleMessage() {
                 i = m_outputPorts.erase(i);
             }
         }
-        for (auto portList : em.value) {
+        for (auto portList: em.value) {
             for (size_t i = 0; i < portList.size() - 1; i++) {
                 auto lb = m_outputPorts.lower_bound(portList[i]);
                 if (!(lb != m_outputPorts.end() && !(m_outputPorts.key_comp()(portList[i], lb->first)))) {
@@ -349,8 +341,7 @@ void LibSimModule::recvAndhandleMessage() {
         }
 
     } break;
-    case InSituMessageType::SetCommands:
-    {
+    case InSituMessageType::SetCommands: {
         auto em = msg.unpackOrCast<vistle::insitu::message::SetCommands>();
         for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
             if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
@@ -358,7 +349,7 @@ void LibSimModule::recvAndhandleMessage() {
                 i = m_commandParameter.erase(i);
             }
         }
-        for (auto cmd : em.value) {
+        for (auto cmd: em.value) {
             auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
                                    [cmd](const auto &val) { return val->getName() == cmd; });
             if (lb == m_commandParameter.end()) {
@@ -367,12 +358,10 @@ void LibSimModule::recvAndhandleMessage() {
             }
         }
     } break;
-    case InSituMessageType::GoOn:
-    {
+    case InSituMessageType::GoOn: {
         m_messageHandler.send(vistle::insitu::message::GoOn{});
     } break;
-    case InSituMessageType::ConnectionClosed:
-    {
+    case InSituMessageType::ConnectionClosed: {
         auto state = msg.unpackOrCast<vistle::insitu::message::ConnectionClosed>();
         if (state.value) {
             CERR << "the simulation disconnected properly" << endl;
@@ -390,12 +379,14 @@ void LibSimModule::recvAndhandleMessage() {
     }
 }
 
-void LibSimModule::setBool(bool &target, bool newval) {
+void LibSimModule::setBool(bool &target, bool newval)
+{
     Guard g(m_socketMutex);
     target = newval;
 }
 
-bool LibSimModule::getBool(const bool &val) {
+bool LibSimModule::getBool(const bool &val)
+{
     Guard g(m_socketMutex);
     return val;
 }
