@@ -6,6 +6,8 @@
 #include <cover/coVRAnimationManager.h>
 #include <cover/coVRPluginList.h>
 #include <cover/coVRFileManager.h>
+#include <PluginUtil/StaticSequence.h>
+#include <mpiwrapper/mpicover.h>
 
 // vistle
 #include <vistle/core/messages.h>
@@ -19,7 +21,6 @@
 
 #include <vistle/cover/VistlePluginUtil/VistleRenderObject.h>
 #include <vistle/cover/VistlePluginUtil/VistleInteractor.h>
-#include <PluginUtil/StaticSequence.h>
 #include "VistleGeometryGenerator.h"
 
 #include "COVER.h"
@@ -813,8 +814,7 @@ int COVER::runMain(int argc, char *argv[]) {
 
     int ret = 0;
     const char mainname[] = "mpi_main";
-    typedef int(*mpi_main_t)(MPI_Comm comm, int,  int, char *[]);
-    mpi_main_t mpi_main = NULL;
+    mpi_main_t *mpi_main = NULL;
 #ifdef WIN32
     void *handle = LoadLibraryA(abslib.c_str());
 #else
@@ -833,9 +833,9 @@ int COVER::runMain(int argc, char *argv[]) {
     }
 
 #ifdef WIN32
-    mpi_main = (mpi_main_t)GetProcAddress((HINSTANCE)handle, mainname);;
+    mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);;
 #else
-    mpi_main = (mpi_main_t)dlsym(handle, mainname);
+    mpi_main = (mpi_main_t *)dlsym(handle, mainname);
 #endif
     if (!mpi_main) {
         std::cerr << "could not find " << mainname << " in " << libcover << std::endl;
