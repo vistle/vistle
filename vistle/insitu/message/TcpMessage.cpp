@@ -1,4 +1,5 @@
 #include "TcpMessage.h"
+#include <vistle/insitu/core/slowMpi.h>
 #include <boost/asio.hpp>
 using namespace vistle::insitu;
 using namespace vistle::insitu::message;
@@ -43,7 +44,7 @@ Message InSituTcp::recv()
             }
         }
     }
-    boost::mpi::broadcast(m_comm, error, 0);
+    vistle::insitu::broadcast(m_comm, error, 0);
     if (error) {
         return Message::errorMessage();
     }
