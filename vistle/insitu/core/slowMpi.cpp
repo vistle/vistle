@@ -14,26 +14,63 @@ template<typename T>
 void broadcast(boost::mpi::communicator &c, T&t, int root)
 {
     const int tag = 37;
-    if (c.rank() == root) {
-        for (int i = 0; i < c.size(); i++) {
-            if (i != c.rank()) {
-                c.send(i, tag, t);
-            }
-        }
+    // Make proc 0 the root if it isn't already
+    if (root != 0)
+    {
+        if (c.rank() == root) // only original root does this
+            c.send(0, tag, t);
+        if (c.rank() == 0)    // only new root (zero) does this
+            c.recv(root, tag, t);
+        root = 0;         // everyone does this
+    }
 
-    } else {
-        while (true) {
-            auto flag = c.iprobe(root, tag);
-            if (flag) {
-                c.recv(root, tag, t);
-                return;
-            }
-            std::this_thread::sleep_for(interval);
+    // Compute who the executing proc. will recieve its message from.
+    int srcProc = 0;
+    for (int i = 0; i < 31; i++)
+    {
+        int mask = 0x00000001;
+        int bit = (c.rank() >> i) & mask;
+        if (bit == 1)
+        {
+            int mask1 = ~(0x00000001 << i);
+            srcProc = (c.rank() & mask1);
+            break;
         }
+    }
+    // Polling Phase
+    if (c.rank() != 0) 
+    {
+        // Everyone posts a non-blocking recieve
+        auto bcastRecv = c.irecv(srcProc, tag, t);
+        // Main polling loop
+        vistle::adaptive_wait(true);
+        while (!bcastRecv.test())
+        {
+            vistle::adaptive_wait(false);
+        }
+    }
+    // Send on to other processors phase
+
+    // Determine highest rank proc above the executing proc
+    // that it is responsible to send a message to. 
+    int deltaProc = (c.rank() - srcProc) >> 1;
+    if (c.rank() == 0)
+    {
+        deltaProc = 1;
+        while ((deltaProc << 1) < c.size())
+            deltaProc = deltaProc << 1;
+    }
+
+    // Send message to other procs the executing proc is responsible for 
+    while (deltaProc > 0)
+    {
+        if (c.rank() + deltaProc < c.size())
+            c.send(c.rank() + deltaProc, tag, t);
+        deltaProc = deltaProc >> 1;
     }
 }
 
-}
+} //detail
 
 void vistle::insitu::waitForRank(boost::mpi::communicator &c, int rank)
 {
