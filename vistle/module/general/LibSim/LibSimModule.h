@@ -53,6 +53,8 @@ class LibSimModule : public vistle::insitu::InSituReader
     bool m_firstConnectionAttempt = true;
     std::map<std::string, vistle::Port *> m_outputPorts; // output ports for the data the simulation offers
     std::set<vistle::Parameter *> m_commandParameter;    // buttons to trigger simulation commands
+    std::set<vistle::Parameter *> m_customCommandParameter;    // string inputs to trigger simulation commands
+
     std::thread m_socketThread;                          // thread to sync tcp communcation with slaves
     boost::mpi::communicator m_socketComm;               // communicator to sync tcp communcation with slaves
     std::mutex m_socketMutex;                            // mutex to sync main and socket thread

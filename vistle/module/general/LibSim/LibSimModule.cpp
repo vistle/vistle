@@ -28,7 +28,6 @@ using vistle::insitu::message::InSituMessageType;
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
 
-
 LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm)
 : InSituReader("View and controll LibSim instrumented simulations", name, moduleID, comm)
 , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
@@ -166,9 +165,13 @@ bool LibSimModule::changeParameter(const vistle::Parameter *param)
     } else
 #endif
 
-        if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
-
-        m_messageHandler.send(vistle::insitu::message::ExecuteCommand(param->getName()));
+        if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end() ||
+            std::find(m_customCommandParameter.begin(), m_customCommandParameter.end(), param) !=
+                m_customCommandParameter.end()) {
+        std::string value;
+        if (const auto stringParam = dynamic_cast<const vistle::StringParameter *>(param))
+            value = stringParam->getValue();
+        m_messageHandler.send(vistle::insitu::message::ExecuteCommand({param->getName(), value}));
     } else {
         auto option = dynamic_cast<const vistle::IntParameter *>(param);
         auto it = m_intOptions.find(option);
@@ -341,20 +344,26 @@ void LibSimModule::recvAndhandleMessage()
         }
 
     } break;
-    case InSituMessageType::SetCommands: {
+    case InSituMessageType::SetCommands:
+    case InSituMessageType::SetCustomCommands: {
         auto em = msg.unpackOrCast<vistle::insitu::message::SetCommands>();
-        for (auto i = m_commandParameter.begin(); i != m_commandParameter.end(); ++i) {
+        auto &params = msg.type() == InSituMessageType::SetCommands ? m_commandParameter : m_customCommandParameter;
+
+        for (auto i = params.begin(); i != params.end(); ++i) {
             if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
                 removeParameter(*i);
-                i = m_commandParameter.erase(i);
+                i = params.erase(i);
             }
         }
         for (auto cmd: em.value) {
-            auto lb = std::find_if(m_commandParameter.begin(), m_commandParameter.end(),
-                                   [cmd](const auto &val) { return val->getName() == cmd; });
-            if (lb == m_commandParameter.end()) {
-                m_commandParameter.insert(
-                    addIntParameter(cmd, "trigger command on change", false, vistle::Parameter::Presentation::Boolean));
+            auto lb =
+                std::find_if(params.begin(), params.end(), [cmd](const auto &val) { return val->getName() == cmd; });
+            if (lb == params.end()) {
+                if (msg.type() == InSituMessageType::SetCommands)
+                    params.insert(addIntParameter(cmd, "trigger command on change", false,
+                                                  vistle::Parameter::Presentation::Boolean));
+                else
+                    params.insert(addStringParameter(cmd, "trigger command on change", ""));
             }
         }
     } break;

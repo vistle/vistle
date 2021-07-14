@@ -36,6 +36,7 @@ public:
     visit_handle getNthObject(SimulationObjectType type, int n) const;
     std::vector<std::string> getObjectNames(SimulationObjectType type) const;
     std::vector<std::string> getRegisteredGenericCommands() const;
+    std::vector<std::string> getRegisteredCustomCommands() const;
     std::vector<std::vector<std::string>> getMeshAndFieldNames() const;
     const char *getName(const visit_handle &handle, SimulationObjectType type) const;
 
@@ -45,6 +46,8 @@ private:
     int m_currentCycle = 0;
     double m_currentTime = 0;
     visit_handle m_handle = VISIT_INVALID_HANDLE;
+    std::vector<std::string> getRegisteredCommands(SimulationObjectType type) const;
+
 };
 } // namespace libsim
 } // namespace insitu

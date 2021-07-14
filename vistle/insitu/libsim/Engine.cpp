@@ -15,11 +15,13 @@
 #include <vistle/util/hostname.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/sleep.h>
+#include <vistle/util/stopwatch.h>
 
 #include <boost/asio/connect.hpp>
 #include <boost/mpi.hpp>
 
 #include <ostream>
+#include <chrono>
 
 #ifdef MODULE_THREAD
 #include "engineInterface/EngineInterface.cpp"
@@ -127,6 +129,8 @@ void Engine::SimulationTimeStepChanged()
     if (m_metaData.currentCycle() % m_intOptions.find(IntOptions::NthTimestep)->value()) {
         return;
     }
+    static std::unique_ptr<StopWatch> watch;
+    watch = std::make_unique<StopWatch>(("Engine: [" + std::to_string(m_rank) + "/" + std::to_string(m_mpiSize) + "]: time since last processed timestep").c_str());
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle() << " has " << numMeshes << " meshes and " << numVars
                << "variables" << endl;
     if (m_moduleInfo.isReady()) { // only here vistle::objects are allowed to be made
@@ -150,7 +154,12 @@ void Engine::SimulationInitiateCommand(const string &command)
         string cmd("INTERNALSYNC");
         string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
-        m_messageHandler.send(GoOn{}); // request tcp message from conroller
+#ifndef MODULE_THREAD
+    m_messageHandler.send(GoOn{}); // request tcp message from conroller
+#else
+    if (EngineInterface::getControllSocket())
+        message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
+#endif
     }
 }
 
@@ -195,16 +204,13 @@ bool Engine::fetchNewModuleState()
     case InSituMessageType::ExecuteCommand: {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
         if (simulationCommandCallback) {
-            simulationCommandCallback(exe.value.c_str(), "", simulationCommandCallbackData);
+            simulationCommandCallback(exe.value.first.c_str(), exe.value.second.c_str(), simulationCommandCallbackData);
         } else {
             CERR << "received command, but required callback is not set" << endl;
         }
-        m_messageHandler.send(GoOn{});
     } break;
     case InSituMessageType::GoOn: {
-        if (m_metaData.simMode() == VISIT_SIMMODE_RUNNING) {
-            // m_messageHandler.send(GoOn{});
-        }
+        //this is only to get the libsim interface to receive a tcp message and proceed 
     } break;
     case InSituMessageType::ConnectionClosed: {
         CERR << "connection closed" << endl;
@@ -481,6 +487,8 @@ void Engine::initializeSim()
 
             auto commands = m_metaData.getRegisteredGenericCommands();
             m_messageHandler.send(SetCommands{commands});
+            commands = m_metaData.getRegisteredCustomCommands();
+            m_messageHandler.send(SetCustomCommands{commands});
 
         } catch (const InsituExeption &ex) {
             CERR << "finalizeInit failed: " << ex.what() << endl;

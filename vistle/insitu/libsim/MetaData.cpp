@@ -181,16 +181,27 @@ std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type) con
     return names;
 }
 
-std::vector<std::string> MetaData::getRegisteredGenericCommands() const
+std::vector<std::string> MetaData::getRegisteredCommands(SimulationObjectType type) const
 {
     std::vector<std::string> commands;
-    for (size_t i = 0; i < getNumObjects(SimulationObjectType::genericCommand); i++) {
-        visit_handle commandHandle = getNthObject(SimulationObjectType::genericCommand, i);
+    for (size_t i = 0; i < getNumObjects(type); i++) {
+        visit_handle commandHandle = getNthObject(type, i);
         char *name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
         commands.push_back(name);
     }
     return commands;
+
+}
+
+std::vector<std::string> MetaData::getRegisteredGenericCommands() const
+{
+    return getRegisteredCommands(SimulationObjectType::genericCommand);
+}
+
+std::vector<std::string> MetaData::getRegisteredCustomCommands() const
+{
+    return getRegisteredCommands(SimulationObjectType::customCommand);
 }
 
 std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const

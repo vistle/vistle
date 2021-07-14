@@ -43,6 +43,7 @@ enum class InSituMessageType {
     Ready,
     SenseiIntOption,
     SetCommands,
+    SetCustomCommands,
     SetPorts, // detected ports from sim to module <--> connected ports from module
     // to Engine
     ShmInfo
@@ -104,8 +105,9 @@ DEFINE_IN_SITU_MESSAGE(ShmInfo, ModuleInfo::ShmInfo)
 DEFINE_IN_SITU_MESSAGE(AddObject, std::string)
 DEFINE_IN_SITU_MESSAGE(SetPorts, std::vector<std::vector<std::string>>)
 DEFINE_IN_SITU_MESSAGE(SetCommands, std::vector<std::string>)
+DEFINE_IN_SITU_MESSAGE(SetCustomCommands, std::vector<std::string>)
 DEFINE_IN_SITU_MESSAGE(Ready, bool)
-DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::string)
+DEFINE_IN_SITU_MESSAGE(ExecuteCommand, std::pair<std::string COMMA std::string>) //command name + enmpty string for generic or + value for custom 
 
 #ifdef MODULE_THREAD
 DEFINE_IN_SITU_MESSAGE(ModuleID, int)

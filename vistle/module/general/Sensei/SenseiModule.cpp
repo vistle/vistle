@@ -97,7 +97,7 @@ bool SenseiModule::changeParameter(const vistle::Parameter *param) {
     } else if (param == m_filePath) {
         connectToSim();
     } else if (std::find(m_commandParameter.begin(), m_commandParameter.end(), param) != m_commandParameter.end()) {
-        m_messageHandler.send(ExecuteCommand(param->getName()));
+        m_messageHandler.send(ExecuteCommand({param->getName(), ""}));
     } else {
         auto option = dynamic_cast<const vistle::IntParameter *>(param);
         auto it = m_intOptions.find(option);

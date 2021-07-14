@@ -246,11 +246,11 @@ bool SenseiAdapter::recvAndHandeMessage(bool blocking)
     } break;
     case InSituMessageType::ExecuteCommand: {
         ExecuteCommand exe = msg.unpackOrCast<ExecuteCommand>();
-        auto it = m_commands.find(exe.value);
+        auto it = m_commands.find(exe.value.first);
         if (it != m_commands.end()) {
             it->second = !it->second;
         } else {
-            CERR << "receive unknow command: " << exe.value << endl;
+            CERR << "receive unknow command: " << exe.value.first << endl;
         }
     } break;
     case InSituMessageType::ConnectionClosed: {
