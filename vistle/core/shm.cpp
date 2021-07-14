@@ -607,6 +607,34 @@ int Shm::owningRank() const {
     return m_owningRank;
 }
 
+#ifndef _WIN32
+pthread_barrier_t *Shm::newBarrier(const std::string &name, int count) {
+
+    pthread_barrier_t *result = nullptr;
+
+#ifndef NO_SHMEM
+    if (m_rank == m_owningRank) {
+        result = shm().find_or_construct<pthread_barrier_t>(name.c_str())();
+        m_barriers.emplace(name, boost::interprocess::ipcdetail::barrier_initializer(*result, boost::interprocess::ipcdetail::barrierattr_wrapper(), count));
+    } else {
+        result = shm().find<pthread_barrier_t>(name.c_str()).first;
+    }
+#endif
+
+    return result;
+}
+
+void Shm::deleteBarrier(const std::string &name) {
+
+#ifndef NO_SHMEM
+    if (m_rank == m_owningRank) {
+        m_barriers.erase(name);
+        shm().destroy<pthread_barrier_t>(name.c_str());
+    }
+#endif
+}
+#endif
+
 V_DEFINE_SHMREF(char)
 V_DEFINE_SHMREF(signed char)
 V_DEFINE_SHMREF(unsigned char)

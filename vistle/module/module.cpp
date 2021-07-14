@@ -351,6 +351,11 @@ int Module::size() const {
    return m_size;
 }
 
+const mpi::communicator &Module::commShmGroup() const {
+
+    return m_commShmGroup;
+}
+
 int Module::openmpThreads() const {
 
     int ret = (int)getIntParameter("_openmp_threads");

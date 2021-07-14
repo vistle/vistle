@@ -62,12 +62,10 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
 
    // determine first rank on each host
    bool first = true;
-   int shmLeaderRank = m_rank;
 #ifndef SHMPERRANK
    for (int index = 0; index < m_rank; index ++)
       if (hostnames[index] == hostname) {
          first = false;
-         shmLeaderRank = index;
       }
 #endif
 

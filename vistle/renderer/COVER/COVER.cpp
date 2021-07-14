@@ -823,7 +823,7 @@ int COVER::runMain(int argc, char *argv[]) {
     mpi::communicator c(comm(), mpi::comm_duplicate);
 
     if (!handle) {
-#ifdef WIN32
+#ifdef _WIN32
         std::cerr << "failed to dlopen " << abslib << std::endl;
 #else
         std::cerr << "failed to dlopen " << abslib << ": " << dlerror() << std::endl;
@@ -832,7 +832,7 @@ int COVER::runMain(int argc, char *argv[]) {
         goto finish;
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     mpi_main = (mpi_main_t *)GetProcAddress((HINSTANCE)handle, mainname);;
 #else
     mpi_main = (mpi_main_t *)dlsym(handle, mainname);
@@ -843,7 +843,25 @@ int COVER::runMain(int argc, char *argv[]) {
         goto finish;
     }
 
-    ret = mpi_main((MPI_Comm)c, shmLeader(rank()), argc, argv);
+    if (commShmGroup().size() == 1
+#ifdef _WIN32
+        || true
+#endif
+        ) {
+        ret = mpi_main((MPI_Comm)c, shmLeader(rank()), nullptr, argc, argv);
+#ifndef _WIN32
+    } else {
+        const std::string barrierName = name()+std::to_string(id());
+        pthread_barrier_t *barrier = nullptr;
+        if (rank() == shmLeader())
+            barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
+        commShmGroup().barrier();
+        if (rank() != shmLeader())
+            barrier = Shm::the().newBarrier(barrierName, commShmGroup().size());
+        ret = mpi_main((MPI_Comm)c, shmLeader(rank()), barrier, argc, argv);
+        Shm::the().deleteBarrier(barrierName);
+#endif
+    }
 
 finish:
     if (handle)

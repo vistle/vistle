@@ -135,6 +135,7 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
 
    const std::string &name() const;
    const mpi::communicator &comm() const;
+   const mpi::communicator &commShmGroup() const;
    int rank() const;
    int size() const;
    int shmLeader(int rank = -1) const; // return -1 or rank of leader of shm group, if rank is in current shm group

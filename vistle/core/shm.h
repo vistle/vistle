@@ -5,6 +5,7 @@
 #include <array>
 #include <mutex>
 #include <atomic>
+#include <map>
 
 #ifdef NO_SHMEM
 #include <memory>
@@ -20,6 +21,7 @@
 #include <boost/interprocess/managed_windows_shared_memory.hpp>
 #else
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <pthread.h>
 #endif
 #endif
 
@@ -192,6 +194,11 @@ class V_COREEXPORT Shm {
 #endif
 #endif
 
+#ifndef _WIN32
+   pthread_barrier_t *newBarrier(const std::string &name, int count);
+   void deleteBarrier(const std::string &name);
+#endif
+
  private:
    // create on size>0, otherwise attach
    Shm(const std::string &name, const int moduleID, const int rank, size_t size = 0);
@@ -217,6 +224,9 @@ class V_COREEXPORT Shm {
    managed_shm *m_shm;
 #endif
    mutable std::atomic<int> m_lockCount;
+#ifndef _WIN32
+   std::map<std::string, boost::interprocess::ipcdetail::barrier_initializer> m_barriers;
+#endif
 };
 
 template<typename T>
