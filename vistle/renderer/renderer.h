@@ -10,8 +10,10 @@ namespace vistle {
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
                                     (LocalOnly)
-                                    (MasterOnly)
-                                    (AllNodes)
+                                        (MasterOnly)
+                                        (AllRanks)
+                                        (LocalShmLeader)
+                                        (AllShmLeaders)
 )
 
 class V_RENDEREREXPORT Renderer: public Module {

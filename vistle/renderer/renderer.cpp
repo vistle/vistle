@@ -141,7 +141,7 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
     auto pol = objectReceivePolicy();
     if (size() > 1) {
-        if (rm == AllNodes) {
+        if (rm == AllRanks || rm == AllShmLeaders) {
             assert(pol == ObjectReceivePolicy::Distribute);
             broadcastObjectViaShm(obj, add.objectName(), add.rank());
             assert(obj);
@@ -182,7 +182,11 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
         }
     }
 
-    if (rm == AllNodes || (rm == MasterOnly && rank() == 0) || (rm != MasterOnly && rank() == add.rank())) {
+    if (rm == AllRanks
+        || (rm == AllShmLeaders && rank() == shmLeader())
+        || (rm == MasterOnly && rank() == 0)
+        || (rm == LocalShmLeader && shmLeader(add.rank()) == shmLeader())
+        || (rm == LocalOnly && rank() == add.rank())) {
         assert(obj);
         addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), obj);
     } else if (pol == ObjectReceivePolicy::Distribute) {
@@ -465,12 +469,14 @@ bool Renderer::changeParameter(const Parameter *p) {
     if (p == m_renderMode) {
         switch(m_renderMode->getValue()) {
         case LocalOnly:
+        case LocalShmLeader:
             setObjectReceivePolicy(m_fastestObjectReceivePolicy);
             break;
         case MasterOnly:
             setObjectReceivePolicy(m_fastestObjectReceivePolicy >= message::ObjectReceivePolicy::Master ? m_fastestObjectReceivePolicy : message::ObjectReceivePolicy::Master);
             break;
-        case AllNodes:
+        case AllShmLeaders:
+        case AllRanks:
             setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
             break;
         }

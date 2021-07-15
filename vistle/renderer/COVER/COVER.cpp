@@ -180,7 +180,7 @@ COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm)
    m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
    setObjectReceivePolicy(m_fastestObjectReceivePolicy);
 
-   setIntParameter("render_mode", AllNodes);
+   setIntParameter("render_mode", AllShmLeaders);
 
    m_maySleep = false;
 }
