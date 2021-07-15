@@ -340,7 +340,7 @@ protected:
    bool m_syncMessageProcessing;
 
    void updateOutputMode();
-   std::streambuf *m_origStreambuf, *m_streambuf;
+   std::streambuf *m_origStreambuf=nullptr, *m_streambuf=nullptr;
 
    int m_traceMessages;
    bool m_benchmark;

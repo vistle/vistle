@@ -1,7 +1,6 @@
 #include <cstdlib>
 #include <cstdio>
 
-#include <vistle/util/hostname.h>
 #include <sys/types.h>
 
 #include <sstream>
@@ -45,6 +44,11 @@
 //#define DEBUG
 //#define REDUCE_DEBUG
 //#define DETAILED_PROGRESS
+#define REDIRECT_OUTPUT
+
+#ifdef DEBUG
+#include <vistle/util/hostname.h>
+#endif
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
@@ -54,6 +58,7 @@ namespace vistle {
 
 using message::Id;
 
+#ifdef REDIRECT_OUTPUT
 template<typename CharT, typename TraitsT = std::char_traits<CharT> >
 class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
@@ -141,6 +146,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    bool m_console, m_gui;
    std::deque<std::string> m_backlog;
 };
+#endif
 
 
 int getTimestep(Object::const_ptr obj) {
@@ -310,8 +316,10 @@ const HubData &Module::getHub() const {
 void Module::initDone() {
 
 #ifndef MODULE_THREAD
+#ifdef REDIRECT_OUTPUT
    m_streambuf = new msgstreambuf<char>(this);
    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
+#endif
 #endif
 
    message::Started start(name());
@@ -718,6 +726,7 @@ void Module::updateCacheMode() {
 void Module::updateOutputMode() {
 
 #ifndef MODULE_THREAD
+#ifdef REDIRECT_OUTPUT
    const Integer r = getIntParameter("_error_output_rank");
    const Integer m = getIntParameter("_error_output_mode");
 
@@ -732,6 +741,7 @@ void Module::updateOutputMode() {
       sbuf->set_console_output(false);
       sbuf->set_gui_output(false);
    }
+#endif
 #endif
 }
 
@@ -1267,8 +1277,10 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
             static_cast<const message::Quit *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
          (void) quit;
+#ifdef REDIRECT_OUTPUT
          if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
             sbuf->clear_backlog();
+#endif
          return false;
          break;
       }
@@ -1279,8 +1291,10 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
             static_cast<const message::Kill *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
          if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
+#ifdef REDIRECT_OUTPUT
             if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
                sbuf->clear_backlog();
+#endif
             return false;
          } else {
             std::cerr << "module [" << name() << "] [" << id() << "] ["
