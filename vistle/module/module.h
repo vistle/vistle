@@ -397,6 +397,9 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
       if (provided == MPI_THREAD_SINGLE && THREAD_MODE != MPI_THREAD_SINGLE) { \
          std::cerr << "no thread support in MPI, continuing anyway" << std::endl; \
       } \
+      if (provided != THREAD_MODE) { \
+         std::cerr << "got " << provided << " instead of requested (" << THREAD_MODE << ") thread support mode in MPI, continuing anyway" << std::endl; \
+      } \
       vistle::registerTypes(); \
       int rank=-1, size=-1; \
       std::string shmname; \
