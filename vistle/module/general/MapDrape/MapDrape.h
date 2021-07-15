@@ -22,11 +22,10 @@ class MapDrape: public vistle::Module {
    StringParameter *p_mapping_from_, *p_mapping_to_;
    IntParameter *p_permutation;
    VectorParameter *p_offset;
-   void transformCoordinates(int numCoords, float * xIn, float * yIn, float * zIn, float * xOut, float * yOut, float * zOut);
    float offset[3];
    Port *data_in[NumPorts], *data_out[NumPorts];
 
-   std::map<Object::const_ptr, Coords::ptr> m_alreadyMapped;
+   std::map<std::string, Coords::ptr> m_alreadyMapped;
 };
 
 

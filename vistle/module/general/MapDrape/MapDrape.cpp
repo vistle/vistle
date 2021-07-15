@@ -66,7 +66,7 @@ bool MapDrape::compute() {
         if (!isConnected(*data_out[port]))
             continue;
 
-        auto it = m_alreadyMapped.find(inGeo);
+        auto it = m_alreadyMapped.find(inGeo->getName());
         if (it == m_alreadyMapped.end()) {
 
             const Scalar *xc, *yc, *zc;
@@ -149,7 +149,7 @@ bool MapDrape::compute() {
                 zout[i] = z + offset[2];
             }
 
-            m_alreadyMapped[inGeo] = outGeo;
+            m_alreadyMapped[inGeo->getName()] = outGeo;
         } else {
             outGeo = it->second;
         }
