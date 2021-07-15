@@ -225,7 +225,9 @@ class V_COREEXPORT Shm {
 #endif
    mutable std::atomic<int> m_lockCount;
 #ifndef _WIN32
+#ifndef NO_SHMEM
    std::map<std::string, boost::interprocess::ipcdetail::barrier_initializer> m_barriers;
+#endif
 #endif
 };
 
