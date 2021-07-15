@@ -74,7 +74,7 @@ class V_COVEREXPORT COVER: public vistle::Renderer {
 
    bool executeAll() const;
 
-   typedef std::map<VistleRenderObject *, std::string> FileAttachmentMap;
+   typedef std::map<std::string, std::string> FileAttachmentMap;
    FileAttachmentMap m_fileAttachmentMap;
 
    typedef std::map<int, VistleInteractor *> InteractorMap;

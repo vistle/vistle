@@ -334,15 +334,15 @@ void COVER::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       return;
    }
 
-   coVRPluginList::instance()->removeObject(ro->getName(), false);
-
-   auto it = m_fileAttachmentMap.find(ro.get());
+   auto it = m_fileAttachmentMap.find(ro->getName());
    if (it != m_fileAttachmentMap.end()) {
        coVRFileManager::instance()->unloadFile(it->second.c_str());
        m_fileAttachmentMap.erase(it);
    }
 
-   if (!ro->isGeometry()) {
+    coVRPluginList::instance()->removeObject(ro->getName(), false);
+
+    if (!ro->isGeometry()) {
       std::cerr << "removeObject: Node is not geometry: " << ro->getName() << std::endl;
       return;
    }
@@ -548,7 +548,7 @@ bool COVER::render() {
                  filenode->setName(filename);
                  transform->addChild(filenode);
              }
-             m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
+             m_fileAttachmentMap.emplace(ro->coverRenderObject->getName(), filename);
          }
          osg::ref_ptr<osg::Group> parent = getParent(ro->coverRenderObject.get());
          parent->addChild(transform);
