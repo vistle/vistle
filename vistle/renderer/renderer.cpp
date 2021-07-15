@@ -145,7 +145,8 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
             assert(pol == ObjectReceivePolicy::Distribute);
             broadcastObjectViaShm(obj, add.objectName(), add.rank());
             assert(obj);
-        } else if (pol == ObjectReceivePolicy::Distribute) {
+        }
+        if (rm != AllRanks && pol == ObjectReceivePolicy::Distribute) {
 
             std::string phName;
             if (add.rank() == rank()) {
