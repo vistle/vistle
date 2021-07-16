@@ -23,7 +23,7 @@ MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm
         data_out[i] = createOutputPort("data_out" + std::to_string(i));
     }
 
-   p_mapping_from_ = addStringParameter("from","","+proj=latlong +datum=WGS84");
+   p_mapping_from_ = addStringParameter("from","PROJ6 order of coordinates for EPSG geo coordinate ref system: 1. Latitude, 2. Longitude","+proj=latlong +datum=WGS84");
    p_mapping_to_ = addStringParameter("to","","+proj=tmerc +lat_0=0 +lon_0=9 +k=1.000000 +x_0=3500000 +y_0=0");
 
    p_offset = addVectorParameter("offset","",ParamVector(0,0,0));
