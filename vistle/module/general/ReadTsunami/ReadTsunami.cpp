@@ -44,7 +44,7 @@ MODULE_MAIN(ReadTsunami)
 
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm)
+: vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm), seaTimeConn(false)
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
@@ -122,21 +122,17 @@ bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
     std::string sFileName = m_filedir->getValue();
 
     if (sFileName.empty()) {
-        /* sendInfo("NetCDF filename is empty!"); */
         printRank0("NetCDF filename is empty!");
         return false;
     } else {
         try {
             file->open(sFileName.c_str(), NcFile::read);
-            /* sendInfo("Reading File: " + sFileName); */
             printRank0("Reading File: " + sFileName);
         } catch (...) {
-            /* sendInfo("Couldn't open NetCDF file!"); */
             printRank0("Couldn't open NetCDF file!");
             return false;
         }
         if (file->getVarCount() == 0) {
-            /* sendInfo("empty NetCDF file!"); */
             printRank0("empty NetCDF file!");
             return false;
         } else
@@ -151,9 +147,9 @@ bool ReadTsunami::openNcFile(std::shared_ptr<NcFile> file)
  * @param str Format str to print.
  */
 template<class... Args>
-void ReadTsunami::printRank0(const std::string& str, Args... args) const
+void ReadTsunami::printRank0(const std::string &str, Args... args) const
 {
-    if(rank() == 0)
+    if (rank() == 0)
         sendInfo(str, args...);
 }
 
@@ -163,7 +159,6 @@ void ReadTsunami::printRank0(const std::string& str, Args... args) const
 void ReadTsunami::printMPIStats() const
 {
     printRank0("Current Rank: " + std::to_string(rank()) + " Processes (MPISIZE): " + std::to_string(size()));
-    /* sendInfo("Current Rank: " + std::to_string(rank()) + " Processes (MPISIZE): " + std::to_string(size())); */
 }
 
 /**
@@ -183,7 +178,6 @@ inline void ReadTsunami::printThreadStats() const
 bool ReadTsunami::examine(const vistle::Parameter *param)
 {
     if (!param || param == m_filedir) {
-        /* if (rank() == 0) */
         printMPIStats();
 
         if (!inspectNetCDFVars())
@@ -197,7 +191,6 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
         return true;
     } else {
         printRank0("Number of blocks total should equal MPISIZE.");
-        /* sendInfo("Number of blocks total should equal MPISIZE."); */
         return false;
     }
 }
@@ -351,6 +344,20 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
     return NcVarExtended(ncVar, start, count);
 }
 
+
+/**
+ * @brief Called once before read. Checks if timestep polygon computation can be skipped. 
+ *
+ * @return true if everything is prepared. 
+ */
+bool ReadTsunami::prepareRead()
+{
+    seaTimeConn = m_seaSurface_out->isConnected();
+    for (auto scalar_out: m_scalarsOut)
+        seaTimeConn = seaTimeConn || scalar_out->isConnected();
+    return true;
+}
+
 /**
   * Called for each timestep and for each block (MPISIZE).
   *
@@ -361,9 +368,6 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
   */
 bool ReadTsunami::read(Token &token, int timestep, int block)
 {
-    /* if (rank() == 0) */
-        /* sendInfo("reading timestep: " + std::to_string(timestep)); */
-    printRank0("reading timestep: " + std::to_string(timestep));
     return computeBlock(token, block, timestep);
 }
 
@@ -380,8 +384,11 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 {
     if (timestep == -1)
         return computeInitial(token, blockNum);
-    else
+    else if (seaTimeConn) {
+        printRank0("reading timestep: " + std::to_string(timestep));
         return computeTimestep<int, size_t>(token, blockNum, timestep);
+    }
+    return true;
 }
 
 /**
@@ -512,11 +519,14 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
                          vecDepth.data());
     eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
 
-    //************* create sea *************//
     std::vector coords{vecLat.data(), vecLon.data()};
-    const auto &seaDim = Dim(latSea.count, lonSea.count);
-    const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
-    ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+
+    //************* create sea *************//
+    {
+        const auto &seaDim = Dim(latSea.count, lonSea.count);
+        const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
+        ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+    }
 
     //************* create grnd *************//
     coords[0] = vecLatGrid.data();
@@ -604,7 +614,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     ptr_timestepPoly->setBlock(blockNum);
 
     if (m_seaSurface_out->isConnected()) {
-        /* token.applyMeta(ptr_timestepPoly); */
         token.addObject(m_seaSurface_out, ptr_timestepPoly);
     }
 

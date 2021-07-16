@@ -82,6 +82,7 @@ private:
     };
 
     //Vistle functions
+    bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
 
@@ -150,6 +151,7 @@ private:
     std::array<vistle::Vec<vistle::Scalar>::ptr, NUM_SCALARS> ptr_Scalar;
 
     //helper variables
+    bool seaTimeConn;
     size_t verticesSea;
     size_t m_actualLastTimestep;
     std::vector<float> vecEta;
