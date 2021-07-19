@@ -133,6 +133,7 @@ private:
 
     //Parameter
     vistle::IntParameter *m_ghost = nullptr;
+    vistle::IntParameter *m_fill = nullptr;
     vistle::StringParameter *m_filedir = nullptr;
     vistle::StringParameter *m_bathy = nullptr;
     vistle::FloatParameter *m_verticalScale = nullptr;

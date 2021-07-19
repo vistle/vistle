@@ -52,6 +52,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 
     //ghost
     m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
+    m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
 
     // visualise variables
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
@@ -63,6 +64,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
     m_blocks[1] = addIntParameter("blocks longitude", "number of blocks in lon-direction", 2);
+    addFloatParameter("fillValue", "ncFile fillValue offset for eta", -9999.f);
+    addFloatParameter("fillValueNew", "set new fillValue offset for eta", 0.0f);
     setParameterRange(m_blocks[0], Integer(1), Integer(999999));
     setParameterRange(m_blocks[1], Integer(1), Integer(999999));
 
@@ -346,9 +349,9 @@ auto ReadTsunami::generateNcVarExt(const netCDF::NcVar &ncVar, const T &dim, con
 
 
 /**
- * @brief Called once before read. Checks if timestep polygon computation can be skipped. 
+ * @brief Called once before read. Checks if timestep polygon computation can be skipped.
  *
- * @return true if everything is prepared. 
+ * @return true if everything is prepared.
  */
 bool ReadTsunami::prepareRead()
 {
@@ -517,7 +520,16 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     lonGround.readNcVar(vecLonGrid.data());
     bathymetryvar.getVar(std::vector{latGround.start, lonGround.start}, std::vector{latGround.count, lonGround.count},
                          vecDepth.data());
-    eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+    if (seaTimeConn) {
+        eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+
+        //filter fillvalue
+        if (m_fill->getValue()) {
+            const float &fillValNew = getFloatParameter("fillValueNew");
+            const float &fillVal = getFloatParameter("fillValue");
+            std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
+        }
+    }
 
     std::vector coords{vecLat.data(), vecLon.data()};
 
@@ -595,20 +607,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-
-    // debugging
     auto startCopy = vecEta.begin() + indexEta++ * verticesSea;
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
-    //TODO: filter fill value
-    /* auto zPoly = ptr_timestepPoly->z().data(); */
-    /* auto start = indexEta++ * verticesSea; */
-    /* for (size_t i = start; i < verticesSea; i++) { */
-    /*     auto &tmp = vecEta[i]; */
-    /*     if (tmp <= -9999) */
-    /*         zPoly[i] = 0; */
-    /*     else */
-    /*         zPoly[i] = tmp; */
-    /* } */
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
     ptr_timestepPoly->setBlock(blockNum);
