@@ -20,8 +20,3 @@ vistle_target_link_libraries(vistle_insitu_core
   PRIVATE vistle_util
   PUBLIC  vistle_core 
   )
-  
-  if (VISTLE_SHM_PER_RANK)
-    target_compile_definitions(vistle_insitu_core 
-        PUBLIC -DSHMPERRANK)
-endif()

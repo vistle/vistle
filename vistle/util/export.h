@@ -19,4 +19,10 @@
 #define V_UTILEXPORT V_IMPORT
 #endif
 
+#if defined (vistle_util_mpi_EXPORTS)
+#define V_UTILMPIEXPORT V_EXPORT
+#else
+#define V_UTILMPIEXPORT V_IMPORT
+#endif
+
 #endif

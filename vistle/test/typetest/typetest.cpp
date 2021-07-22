@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
    vistle::registerTypes();
 
    std::string shmname = "vistle_typetest";
-   vistle::Shm::create(shmname, 0, 0);
+   vistle::Shm::create(shmname, 0, 0, true);
 
    Vec<Index, 1>::ptr vi1(new Vec<Index, 1>(10));
    Vec<Index, 3>::ptr vi3(new Vec<Index, 3>(10));
@@ -50,6 +50,8 @@ int main(int argc, char *argv[]) {
    P(vst1);
    P(vst3);
    P(p);
+
+    vistle::Shm::remove(shmname, 0, 0, true);
 
    return 0;
 }

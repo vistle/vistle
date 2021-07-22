@@ -16,6 +16,7 @@
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/sleep.h>
 #include <vistle/util/stopwatch.h>
+#include <vistle/util/shmconfig.h>
 
 #include <boost/asio/connect.hpp>
 #include <boost/mpi.hpp>
@@ -430,9 +431,10 @@ bool Engine::initializeVistleEnv()
 {
     vistle::registerTypes();
     try {
+        bool shmPerRank = vistle::shmPerRank();
         auto shmName = m_moduleInfo.shmName();
         CERR << "attaching to shm: name = " << shmName << " id = " << m_moduleInfo.id() << " rank = " << m_rank << endl;
-        vistle::Shm::attach(shmName, m_moduleInfo.id(), m_rank);
+        vistle::Shm::attach(shmName, m_moduleInfo.id(), m_rank, shmPerRank);
         if (m_rank == 0) {
             connectToModule(m_moduleInfo.hostname(), m_modulePort);
         }

@@ -22,14 +22,11 @@ class MpiInfo: public vistle::Module {
 
  public:
    MpiInfo(const std::string &name, int moduleID, mpi::communicator comm);
-   ~MpiInfo();
+   ~MpiInfo() override;
 
  private:
 
-   virtual bool compute();
-   virtual bool reduce(int timestep);
-
-   bool prepare();
+   bool prepare() override;
 };
 
 using namespace vistle;
@@ -44,34 +41,32 @@ MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm)
 
 MpiInfo::~MpiInfo() = default;
 
-bool MpiInfo::compute() {
-
-   std::stringstream str;
-   str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
-   str << "Process affinity: " << sched_affinity_map() << std::endl;
-   str << "Thread affinity:  " << thread_affinity_map() << std::endl;
-   sendInfo(str.str());
-
-   if (rank() == 0) {
-       int len = 0;
-       char version[MPI_MAX_LIBRARY_VERSION_STRING];
-       MPI_Get_library_version(version, &len);
-       std::stringstream str;
-       str << "MPI version: " << std::string(version, len) << std::endl;
-       sendInfo(str.str());
-   }
-
-   return true;
-}
-
 bool MpiInfo::prepare() {
 
-   return true;
-}
+    std::stringstream str;
+    str << "prepare(): rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;
+    str << "Process affinity: " << sched_affinity_map() << std::endl;
+    str << "Thread affinity:  " << thread_affinity_map() << std::endl;
+#ifdef NO_SHMEM
+    str << "Shared memory:    message queues only" << std::endl;
+#else
+    if (Shm::perRank())
+        str << "Shared memory:    no sharing between ranks on same node" << std::endl;
+    else
+        str << "Shared memory:    common for " << commShmGroup().size() << " ranks on same node, lead by " << shmLeader() << std::endl;
+#endif
+    sendInfo(str.str());
 
-bool MpiInfo::reduce(int timestep) {
+    if (rank() == 0) {
+        int len = 0;
+        char version[MPI_MAX_LIBRARY_VERSION_STRING];
+        MPI_Get_library_version(version, &len);
+        std::stringstream str;
+        str << "MPI version: " << std::string(version, len) << std::endl;
+        sendInfo(str.str());
+    }
 
-   return Module::reduce(timestep);
+    return true;
 }
 
 MODULE_MAIN(MpiInfo)

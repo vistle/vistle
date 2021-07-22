@@ -4,6 +4,7 @@
 
 #include <vistle/util/sysdep.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/shmconfig.h>
 
 #include <sys/types.h>
 
@@ -56,26 +57,29 @@ Executor::Executor(int argc, char *argv[], boost::mpi::communicator comm)
    // broadcast name of vistle session
    mpi::broadcast(comm, m_name, 0);
 
+   bool shmPerRank = vistle::shmPerRank();
+
    std::string hostname = vistle::hostname();
    std::vector<std::string> hostnames;
    mpi::all_gather(comm, hostname, hostnames);
 
    // determine first rank on each host
    bool first = true;
-#ifndef SHMPERRANK
-   for (int index = 0; index < m_rank; index ++)
-      if (hostnames[index] == hostname) {
-         first = false;
-      }
-#endif
+   if (!shmPerRank) {
+       for (int index = 0; index < m_rank; index++) {
+           if (hostnames[index] == hostname) {
+               first = false;
+           }
+       }
+   }
 
    if (first) {
-      vistle::Shm::remove(m_name, 0, m_rank);
-      vistle::Shm::create(m_name, 0, m_rank);
+      vistle::Shm::remove(m_name, 0, m_rank, shmPerRank);
+      vistle::Shm::create(m_name, 0, m_rank, shmPerRank);
    }
    comm.barrier();
    if (!first)
-      vistle::Shm::attach(m_name, 0, m_rank);
+      vistle::Shm::attach(m_name, 0, m_rank, shmPerRank);
    comm.barrier();
 
    m_comm = new vistle::Communicator(m_rank, hostnames, comm);

@@ -53,6 +53,9 @@ template<> size_t memorySize<8>() {
 }
 
 Shm* Shm::s_singleton = nullptr;
+#ifndef NO_SHMEN
+bool Shm::s_perRank = false;
+#endif
 #ifdef SHMDEBUG
 #ifdef NO_SHMEM
 shm<ShmDebugInfo>::vector *Shm::s_shmdebug = new shm<ShmDebugInfo>::vector;
@@ -122,8 +125,8 @@ Shm::~Shm() {
 
 #ifndef NO_SHMEM
    if (m_remove) {
-      shared_memory_object::remove(m_name.c_str());
-      std::cerr << "removed shm " << m_name << std::endl;
+      shared_memory_object::remove(name().c_str());
+      std::cerr << "removed shm " << name() << std::endl;
    }
    delete m_shm;
 #endif
@@ -185,7 +188,6 @@ std::string Shm::shmIdFilename() {
 
 void Shm::lockObjects() const {
 #ifndef NO_SHMEM
-#ifndef SHMPERRANK
    if (m_lockCount != 0) {
        //std::cerr << "Shm::lockObjects(): lockCount=" << m_lockCount << std::endl;
    }
@@ -193,19 +195,16 @@ void Shm::lockObjects() const {
    ++m_lockCount;
    m_shmDeletionMutex->lock();
 #endif
-#endif
 }
 
 void Shm::unlockObjects() const {
 #ifndef NO_SHMEM
-#ifndef SHMPERRANK
    m_shmDeletionMutex->unlock();
    --m_lockCount;
    //assert(m_lockCount==0);
    if (m_lockCount != 0) {
        //std::cerr << "Shm::unlockObjects(): lockCount=" << m_lockCount << std::endl;
    }
-#endif
 #endif
 }
 
@@ -241,13 +240,11 @@ void Shm::setArrayID(int id) {
 
 namespace {
 
-std::string shmSegName(const std::string &name, const int rank) {
-#ifdef SHMPERRANK
-    return name + "_r" + std::to_string(rank);
-#else
-    (void)rank;
+std::string shmSegName(const std::string &name, const int rank, bool perRank) {
+    if (perRank) {
+        return name + "_r" + std::to_string(rank);
+    }
     return name;
-#endif
 }
 
 }
@@ -272,7 +269,8 @@ bool Shm::cleanAll(int rank) {
             log = false;
          } else {
             std::cerr << "removing shared memory: id " << shmid << std::flush;
-            ok = shared_memory_object::remove(shmSegName(shmid.c_str(), rank).c_str());
+            ok = shared_memory_object::remove(shmSegName(shmid.c_str(), rank, false).c_str())
+                 || shared_memory_object::remove(shmSegName(shmid.c_str(), rank, true).c_str());
          }
          if (log)
              std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
@@ -290,7 +288,7 @@ bool Shm::cleanAll(int rank) {
 
 std::string Shm::name() const {
 
-    return shmSegName(instanceName(), m_rank);
+    return shmSegName(instanceName(), m_rank, perRank());
 }
 
 const std::string &Shm::instanceName() const {
@@ -312,18 +310,27 @@ Shm &Shm::the() {
    return *s_singleton;
 }
 
+bool Shm::perRank() {
+#ifndef NO_SHMEM
+   return s_perRank;
+#else
+    return true;
+#endif
+}
+
 bool Shm::isAttached() {
     return s_singleton;
 }
 
-bool Shm::remove(const std::string &name, const int id, const int rank) {
+bool Shm::remove(const std::string &name, const int id, const int rank, bool perRank) {
 
-   std::string n = shmSegName(name, rank);
+   std::string n = shmSegName(name, rank, perRank);
    return interprocess::shared_memory_object::remove(n.c_str());
 }
 
-Shm & Shm::create(const std::string &name, const int id, const int rank) {
+Shm & Shm::create(const std::string &name, const int id, const int rank, bool perRank) {
 
+   Shm::s_perRank = perRank;
    if (!s_singleton) {
       {
          // store name of shared memory segment for possible clean up
@@ -333,7 +340,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
       }
 
       size_t memsize = memorySize<sizeof(void *)>();
-      if (const char *shmsize = getenv("VISTLE_SHMSIZE")) {
+      if (const char *shmsize = getenv("VISTLE_SHM_SIZE")) {
           memsize = atol(shmsize);
       }
 
@@ -344,7 +351,7 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
              std::cerr << "failed to create shared memory segment of size " << memsize << ": "
                        << ex.what() << " - retrying with halved size" << std::endl;
              memsize /= 2;
-             remove(name, id, rank);
+             remove(name, id, rank, perRank);
          }
       } while (!s_singleton && memsize >= 4096);
 
@@ -367,8 +374,9 @@ Shm & Shm::create(const std::string &name, const int id, const int rank) {
    return *s_singleton;
 }
 
-Shm & Shm::attach(const std::string &name, const int id, const int rank) {
+Shm & Shm::attach(const std::string &name, const int id, const int rank, bool perRank) {
 
+    Shm::s_perRank = perRank;
     if (!s_singleton) {
         try {
             s_singleton = new Shm(name, id, rank);

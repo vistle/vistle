@@ -25,11 +25,7 @@ std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
-   mqID << Shm::the().instanceName() << "_" << prefix << "_m" << moduleID;
-#ifndef SHMPERRANK
-   // each rank needs its own message queue, even when shared memory arena is shared between ranks
-   mqID << "_r" << rank;
-#endif
+   mqID << Shm::the().instanceName() << "_" << prefix << "_m" << moduleID << "_r" << rank;
 
    return mqID.str();
 }

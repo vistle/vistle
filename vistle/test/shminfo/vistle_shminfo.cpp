@@ -9,6 +9,7 @@
 
 #include <mpi.h>
 
+#include <vistle/util/shmconfig.h>
 #include <vistle/core/shm.h>
 #include <vistle/core/object.h>
 #include <vistle/core/shmvector.h>
@@ -24,6 +25,7 @@ int main(int argc, char ** argv) {
     int forceRank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    bool shmPerRank = vistle::shmPerRank();
 
     std::string shmid;
 
@@ -70,7 +72,7 @@ int main(int argc, char ** argv) {
         }
 
         try {
-            Shm::attach(shmid, -1, forceRank >= 0 ? forceRank : rank);
+            Shm::attach(shmid, -1, forceRank >= 0 ? forceRank : rank, shmPerRank);
         } catch (std::exception &ex) {
             std::cerr << "failed to attach to " << shmid << ": " << ex.what() << std::endl;
             MPI_Finalize();

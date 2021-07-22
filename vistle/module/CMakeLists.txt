@@ -34,6 +34,7 @@ endif()
 
 vistle_target_link_libraries(vistle_module
     PUBLIC vistle_util
+    PUBLIC vistle_util_mpi
     PUBLIC vistle_core
     PUBLIC vistle_boost_mpi
     PUBLIC Boost::boost

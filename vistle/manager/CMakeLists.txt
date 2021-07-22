@@ -4,6 +4,7 @@ target_link_libraries(clean_vistle
         Boost::system
         MPI::MPI_C
         vistle_core
+        vistle_util_mpi
         vistle_boost_mpi
 )
 
@@ -64,6 +65,7 @@ if (NOT VISTLE_MULTI_PROCESS)
 		MPI::MPI_C
 		vistle_control
 		vistle_util
+        vistle_util_mpi
 		vistle_core
 		vistle_boost_mpi
 		Threads::Threads
@@ -88,6 +90,7 @@ target_link_libraries(vistle_manager
 	MPI::MPI_C
 	vistle_control
 	vistle_util
+    vistle_util_mpi
 	vistle_core
 	vistle_boost_mpi
 	Threads::Threads
@@ -122,17 +125,4 @@ if (NOT VISTLE_MULTI_PROCESS)
             #target_link_libraries(vistle_clustermanager $<TARGET_OBJECTS:${m}>)
         endforeach()
     endif()
-endif()
-
-if (VISTLE_SHM_PER_RANK)
-   target_compile_definitions(clean_vistle
-        PRIVATE -DSHMPERRANK)
-
-if (NOT VISTLE_MULTI_PROCESS)
-    target_compile_definitions(vistle_clustermanager
-                            PRIVATE -DSHMPERRANK)
-endif()
-
-    target_compile_definitions(vistle_manager
-        PRIVATE -DSHMPERRANK)
 endif()

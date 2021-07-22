@@ -20,6 +20,7 @@
 #include <vistle/util/tools.h>
 #include <vistle/util/stopwatch.h>
 #include <vistle/util/exception.h>
+#include <vistle/util/shmconfig.h>
 #include <vistle/core/object.h>
 #include <vistle/core/empty.h>
 #include <vistle/core/export.h>
@@ -185,7 +186,8 @@ double getRealTime(Object::const_ptr obj) {
 bool Module::setup(const std::string &shmname, int moduleID, int rank) {
 
 #ifndef MODULE_THREAD
-    Shm::attach(shmname, moduleID, rank);
+    bool perRank = shmPerRank();
+    Shm::attach(shmname, moduleID, rank, perRank);
 #endif
     return Shm::isAttached();
 }

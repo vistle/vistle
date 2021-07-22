@@ -193,9 +193,6 @@ vistle_target_link_libraries(vistle_core
         PUBLIC Boost::system
 )
 
-if (VISTLE_SHM_PER_RANK)
-   target_compile_definitions(vistle_core PRIVATE -DSHMPERRANK)
-endif()
 if(ZFP_FOUND)
 
    target_compile_definitions(vistle_core PRIVATE -DHAVE_ZFP)

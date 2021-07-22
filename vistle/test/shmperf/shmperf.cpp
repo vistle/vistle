@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <mpi.h>
-
 #include <vistle/core/shm_array.h>
 #include <vistle/core/shm.h>
 #include <vistle/core/vec.h>
@@ -169,14 +167,14 @@ int main(int argc, char *argv[]) {
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0);
+      vistle::Shm::create(shmname, 1, 0, true);
       vistle::Vec<DataType, 1> v(DataType(0));
       time_pb(v.x(), "vistle push_back only", size);
       bi::shared_memory_object::remove(shmname.c_str());
    }
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0);
+      vistle::Shm::create(shmname, 1, 0, true);
       vistle::Vec<DataType, 1> v(DataType(0));
       v.x().reserve(size);
       time_pb(v.x(), "vistle push_back+reserve", size);
@@ -187,23 +185,23 @@ int main(int argc, char *argv[]) {
       time_ptr(&(v.x()[0]), "vistle vector arr ptr", size);
       bi::shared_memory_object::remove(shmname.c_str());
 #endif
-      vistle::Shm::remove(shmname, 1, 0);
+      vistle::Shm::remove(shmname, 1, 0, true);
    }
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0);
+      vistle::Shm::create(shmname, 1, 0, true);
       vistle::Vec<DataType, 1> v(DataType(0));
       shm<DataType>::array &vv = v.x();
       vv.reserve(size);
       time_pb(vv, "vistle push_back+reserve", size);
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::remove(shmname, 1, 0);
+      vistle::Shm::remove(shmname, 1, 0, true);
    }
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0);
+      vistle::Shm::create(shmname, 1, 0, true);
       vistle::shm<DataType>::array_ptr v7p = Shm::the().shm().construct<vistle::shm<DataType>::array>("testvector")(0, Shm::the().allocator());
       vistle::shm<DataType>::array &v = *v7p;
       v.reserve(size);
@@ -215,13 +213,13 @@ int main(int argc, char *argv[]) {
       time_ptr(&v[0], "vistle explicit arr ptr", size);
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::remove(shmname, 1, 0);
+      vistle::Shm::remove(shmname, 1, 0, true);
    }
 
 #if 0
    { 
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::create(shmname, 1, 0);
+      vistle::Shm::create(shmname, 1, 0, true);
       auto v7p = Shm::the().shm().construct<vistle::shm<DataType>::vector>("testvector")(0, 0, Shm::the().allocator());
       vistle::shm<DataType>::vector &v = *v7p;
       v.reserve(size);
@@ -233,13 +231,13 @@ int main(int argc, char *argv[]) {
       time_ptr(&v[0], "vistle explicit arr ptr", size);
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
-      vistle::Shm::remove(shmname, 1, 0);
+      vistle::Shm::remove(shmname, 1, 0, true);
    }
 #endif
 
 #if 0
    bi::shared_memory_object::remove(shmname.c_str());
-   vistle::Shm::create(shmname, 1, 0);
+   vistle::Shm::create(shmname, 1, 0, true);
    start = clock();
    vistle::Vec<DataType, 1> v7(DataType(0));
    auto v7p = &(v7.x()());
@@ -249,7 +247,7 @@ int main(int argc, char *argv[]) {
    clock_t vi_dir = clock()-start;
    std::cerr << size << " vistle direct push_back: " << (double)vi_dir/CLOCKS_PER_SEC << std::endl;
    bi::shared_memory_object::remove(shmname.c_str());
-   vistle::Shm::remove(shmname, 1, 0);
+   vistle::Shm::remove(shmname, 1, 0, true);
 #endif
 
 #if 0 

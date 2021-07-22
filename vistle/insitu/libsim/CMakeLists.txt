@@ -58,9 +58,6 @@ vistle_export_library(${LIBNAME} ${RUNTIME_HEADERS} ${RUNTIME_SOURCES})
 if(LIBSIM_DEBUG)
    target_compile_definitions(${LIBNAME} PRIVATE -DLIBSIM_DEBUG)
 endif()
-if (VISTLE_SHM_PER_RANK)
-   target_compile_definitions(${LIBNAME} PRIVATE -DSHMPERRANK)
-endif()
 target_compile_definitions(${LIBNAME} PRIVATE -DLIBSIM_EXPORT)
 
 # By default, symbols provided by the sublibs that are not used by mainlib (which is all of them in this case)
@@ -81,6 +78,7 @@ vistle_target_link_libraries(${LIBNAME}
 		PRIVATE vistle_insitu_message
 		PRIVATE vistle_module
 		PRIVATE vistle_util
+		PRIVATE vistle_util_mpi
       PRIVATE MPI::MPI_C
       PRIVATE Threads::Threads
       PRIVATE vistle_boost_mpi

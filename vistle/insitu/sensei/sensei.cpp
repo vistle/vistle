@@ -6,6 +6,7 @@
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/addObjectMsq.h>
 #include <vistle/util/hostname.h>
+#include <vistle/util/shmconfig.h>
 
 #include <cassert>
 #include <fstream>
@@ -330,7 +331,8 @@ void SenseiAdapter::initializeMessageQueues() throw()
     auto shmName = m_internals->moduleInfo.shmName();
     CERR << "attaching to shm: name = " << shmName << " id = " << m_internals->moduleInfo.id() << " rank = " << m_rank
          << endl;
-    vistle::Shm::attach(shmName, m_internals->moduleInfo.id(), m_rank);
+    bool shmPerRank = vistle::shmPerRank();
+    vistle::Shm::attach(shmName, m_internals->moduleInfo.id(), m_rank, shmPerRank);
 
     m_internals->sendMessageQueue.reset(new AddObjectMsq(m_internals->moduleInfo, m_rank));
 

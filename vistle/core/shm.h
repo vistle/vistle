@@ -134,9 +134,10 @@ class V_COREEXPORT Shm {
  public:
    static std::string instanceName(const std::string &host, unsigned short port);
    static Shm & the();
-   static bool remove(const std::string &shmname, int moduleID, int rank);
-   static Shm & create(const std::string &shmname, int moduleID, int rank);
-   static Shm & attach(const std::string &shmname, int moduleID, int rank);
+   static bool perRank();
+   static bool remove(const std::string &shmname, int moduleID, int rank, bool perRank);
+   static Shm & create(const std::string &shmname, int moduleID, int rank, bool perRank);
+   static Shm & attach(const std::string &shmname, int moduleID, int rank, bool perRank);
    static bool isAttached();
 
    void detach();
@@ -219,6 +220,7 @@ class V_COREEXPORT Shm {
    mutable std::recursive_mutex *m_objectDictionaryMutex;
    std::map<std::string, shm_handle_t> m_objectDictionary;
 #else
+   static bool s_perRank;
    mutable boost::interprocess::interprocess_recursive_mutex *m_shmDeletionMutex;
    mutable boost::interprocess::interprocess_recursive_mutex *m_objectDictionaryMutex;
    managed_shm *m_shm;
