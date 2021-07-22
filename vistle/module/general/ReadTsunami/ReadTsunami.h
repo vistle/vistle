@@ -26,7 +26,7 @@
 #include <memory>
 
 constexpr int NUM_BLOCKS{2};
-constexpr int NUM_SCALARS{2};
+constexpr int NUM_SCALARS{4};
 
 class ReadTsunami: public vistle::Reader {
 public:

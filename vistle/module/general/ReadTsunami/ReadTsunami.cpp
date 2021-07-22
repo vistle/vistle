@@ -613,9 +613,8 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
     ptr_timestepPoly->setTimestep(timestep);
     ptr_timestepPoly->setBlock(blockNum);
 
-    if (m_seaSurface_out->isConnected()) {
+    if (m_seaSurface_out->isConnected())
         token.addObject(m_seaSurface_out, ptr_timestepPoly);
-    }
 
     //add scalar to ports
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
