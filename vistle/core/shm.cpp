@@ -615,7 +615,7 @@ int Shm::owningRank() const {
     return m_owningRank;
 }
 
-#ifndef _WIN32
+#ifdef SHMBARRIER
 pthread_barrier_t *Shm::newBarrier(const std::string &name, int count) {
 
     pthread_barrier_t *result = nullptr;

@@ -36,6 +36,10 @@
 #include "shmname.h"
 #include "shmdata.h"
 
+#if defined(BOOST_INTERPROCESS_POSIX_BARRIERS) && defined(BOOST_INTERPROCESS_POSIX_PROCESS_SHARED)
+#define SHMBARRIER
+#endif
+
 //#define SHMDEBUG
 //#define SHMPUBLISH
 
@@ -195,7 +199,7 @@ class V_COREEXPORT Shm {
 #endif
 #endif
 
-#ifndef _WIN32
+#ifdef SHMBARRIER
    pthread_barrier_t *newBarrier(const std::string &name, int count);
    void deleteBarrier(const std::string &name);
 #endif
@@ -226,7 +230,7 @@ class V_COREEXPORT Shm {
    managed_shm *m_shm;
 #endif
    mutable std::atomic<int> m_lockCount;
-#ifndef _WIN32
+#ifdef SHMBARRIER
 #ifndef NO_SHMEM
    std::map<std::string, boost::interprocess::ipcdetail::barrier_initializer> m_barriers;
 #endif

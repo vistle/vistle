@@ -844,12 +844,12 @@ int COVER::runMain(int argc, char *argv[]) {
     }
 
     if (commShmGroup().size() == 1
-#ifdef _WIN32
+#ifndef SHMBARRIER
         || true
 #endif
         ) {
         ret = mpi_main((MPI_Comm)c, shmLeader(rank()), nullptr, argc, argv);
-#ifndef _WIN32
+#ifdef SHMBARRIER
     } else {
         const std::string barrierName = name()+std::to_string(id());
         pthread_barrier_t *barrier = nullptr;
