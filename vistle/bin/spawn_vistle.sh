@@ -31,15 +31,24 @@ if [ -n "$VISTLE_LAUNCH" ]; then
       ;;
       aprun)
       exec aprun $APRUN_FLAGS "$@"
-      exit 0
+      exit 1
       ;;
       ddt-aprun)
       exec ddt --start --noqueue aprun $APRUN_FLAGS "$@"
-      exit 0
+      exit 1
       ;;
       ddt-connect-aprun)
       exec ddt --connect aprun $APRUN_FLAGS "$@"
-      exit 0
+      exit 1
+      ;;
+      must)
+      d="/var/tmp/${USER}/must/${4:-0}"
+      mkdir -p "$d" && cd "$d"
+      if which mustrun >/dev/null 2>&1; then
+          t:hybridxec mustrun --must:temp "$d" --must:hybrid -np "${MPISIZE:-1}" "$@" || true
+      fi
+      PATH="/usr/local/must/bin:$PATH" exec mustrun --must:temp "$d" --must:hybrid -np "${MPISIZE:-1}" "$@"
+      exit 1
       ;;
    esac
 fi
