@@ -128,6 +128,9 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
 
     using namespace vistle::message;
 
+    const RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
+    const auto pol = objectReceivePolicy();
+
     Object::const_ptr obj, placeholder;
     std::vector<Object::const_ptr> objs;
     if (shmLeader(add.rank()) == shmLeader(rank())) {
@@ -135,11 +138,11 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
         assert(obj);
         if (rank() != add.rank())
             obj->ref();
-        m_commShmGroup.barrier();
+        if (pol == ObjectReceivePolicy::Distribute) {
+            m_commShmGroup.barrier();
+        }
     }
 
-    RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
-    auto pol = objectReceivePolicy();
     if (size() > 1) {
         if (rm == AllRanks || rm == AllShmLeaders) {
             assert(pol == ObjectReceivePolicy::Distribute);
