@@ -391,47 +391,36 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #else
 // MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN_THREAD(X, THREAD_MODE) \
-   int main(int argc, char **argv) { \
-      int provided = MPI_THREAD_SINGLE; \
-      MPI_Init_thread(&argc, &argv, THREAD_MODE, &provided); \
-      if (provided == MPI_THREAD_SINGLE && THREAD_MODE != MPI_THREAD_SINGLE) { \
-         std::cerr << "no thread support in MPI, continuing anyway" << std::endl; \
+   int main(int argc, char **argv) {       \
+      if (argc != 4) { \
+          std::cerr << "module requires exactly 4 parameters" << std::endl; \
+          exit(1); \
       } \
-      if (provided != THREAD_MODE) { \
-         std::cerr << "got " << provided << " instead of requested (" << THREAD_MODE << ") thread support mode in MPI, continuing anyway" << std::endl; \
-      } \
-      vistle::registerTypes(); \
       int rank=-1, size=-1; \
-      std::string shmname; \
       try { \
-         if (argc != 4) { \
-            std::cerr << "module requires exactly 4 parameters" << std::endl; \
-            MPI_Finalize(); \
-            exit(1); \
-         } \
-         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
-         MPI_Comm_size(MPI_COMM_WORLD, &size); \
-         shmname = argv[1]; \
+         std::string shmname = argv[1]; \
          const std::string name = argv[2]; \
          int moduleID = atoi(argv[3]); \
+         mpi::environment mpi_environment(argc, argv, THREAD_MODE, true); \
+         vistle::registerTypes(); \
+         mpi::communicator comm_world; \
+         rank = comm_world.rank(); \
+         size = comm_world.size(); \
          vistle::Module::setup(shmname, moduleID, rank); \
          { \
-            X module(name, moduleID, mpi::communicator()); \
+            X module(name, moduleID, comm_world); \
             module.eventLoop(); \
-         } \
-         MPI_Barrier(MPI_COMM_WORLD); \
+         }                                 \
+         comm_world.barrier(); \
       } catch(vistle::exception &e) { \
          std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
          std::cerr << "  info: " << e.info() << std::endl; \
          std::cerr << e.where() << std::endl; \
-         MPI_Finalize(); \
          exit(1); \
       } catch(std::exception &e) { \
          std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
-         MPI_Finalize(); \
          exit(1); \
       } \
-      MPI_Finalize(); \
       return 0; \
    }
 
@@ -446,7 +435,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 #endif
 #endif
 
-#define MODULE_MAIN(X) MODULE_MAIN_THREAD(X, MPI_THREAD_FUNNELED)
+#define MODULE_MAIN(X) MODULE_MAIN_THREAD(X, boost::mpi::threading::funneled)
 
 #include "module_impl.h"
 #endif

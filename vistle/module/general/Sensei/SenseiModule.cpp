@@ -7,6 +7,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/mpi.hpp>
 
 #include <vistle/insitu/util/print.h>
 
@@ -232,4 +233,4 @@ bool SenseiModule::handleMessage(Message &msg) {
     return true;
 }
 
-MODULE_MAIN_THREAD(SenseiModule, MPI_THREAD_MULTIPLE)
+MODULE_MAIN_THREAD(SenseiModule, boost::mpi::threading::multiple)

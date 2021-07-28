@@ -11,6 +11,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/mpi.hpp>
 
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
@@ -401,4 +402,4 @@ bool LibSimModule::getBool(const bool &val)
     return val;
 }
 
-MODULE_MAIN_THREAD(LibSimModule, MPI_THREAD_MULTIPLE)
+MODULE_MAIN_THREAD(LibSimModule, boost::mpi::threading::multiple)

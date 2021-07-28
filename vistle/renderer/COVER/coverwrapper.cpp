@@ -2,4 +2,4 @@
 
 #include "COVER.h"
 
-MODULE_MAIN_THREAD(COVER, MPI_THREAD_MULTIPLE)
+MODULE_MAIN_THREAD(COVER, boost::mpi::threading::multiple)
