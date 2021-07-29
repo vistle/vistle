@@ -68,6 +68,7 @@ DataManager::~DataManager() {
 
     if (m_size > 1)
         m_req.cancel();
+    m_req.wait();
 
     m_recvThread.join();
 

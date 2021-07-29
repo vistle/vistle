@@ -63,7 +63,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 
    // post requests for length of next MPI message
    if (m_size > 1) {
-      MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, comm, &m_reqAny);
+      MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagForBroadcast, comm, &m_reqAny);
 
       MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.bufferSize(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, comm, &m_reqToRank);
    }
@@ -285,7 +285,7 @@ bool Communicator::dispatch(bool *work) {
          unsigned recvSize = m_recvSize;
 
          // post new receive
-         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, m_comm, &m_reqAny);
+         MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagForBroadcast, m_comm, &m_reqAny);
 
          if (recvSize > 0) {
             received = true;
@@ -315,10 +315,11 @@ bool Communicator::dispatch(bool *work) {
       }
 #endif
       for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
-          ++next;
           MPI_Test(&(*it)->req, &flag, &status);
           if (flag) {
-              m_ongoingSends.erase(it);
+              next = m_ongoingSends.erase(it);
+          } else {
+              ++next;
           }
       }
    }
@@ -539,7 +540,13 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
 
 Communicator::~Communicator() {
 
-   delete m_dataManager;
+    MPI_Status status;
+    for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
+        MPI_Wait(&(*it)->req, &status);
+        next = m_ongoingSends.erase(it);
+    }
+
+    delete m_dataManager;
    m_dataManager = nullptr;
 
    CERR << "shut down: deleting clusterManager" << std::endl;
@@ -551,26 +558,10 @@ Communicator::~Communicator() {
    CERR << "shut down: done init BARRIER" << std::endl;
 
    if (m_size > 1) {
-      int dummy = 0;
-      MPI_Request s;
-      MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagForBroadcast, m_comm, &s);
-      MPI_Wait(&s, MPI_STATUS_IGNORE);
-      CERR << "wait for sending to any" << std::endl;
-      MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
-      CERR << "wait for receiving, to any" << std::endl;
-
-#if 0
-      if (m_rank == 1) {
-         MPI_Request s2;
-         MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank, m_comm, &s2);
-         MPI_Wait(&s2, MPI_STATUS_IGNORE);
-         CERR << "wait for send to 0" << std::endl;
-      }
-      if (m_rank == 0) {
-         MPI_Wait(&m_reqToRank, MPI_STATUS_IGNORE);
-         CERR << "wait for recv from 1" << std::endl;
-      }
-#endif
+       MPI_Cancel(&m_reqAny);
+       MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
+       MPI_Cancel(&m_reqToRank);
+       MPI_Wait(&m_reqToRank, MPI_STATUS_IGNORE);
    }
    CERR << "SHUT DOWN COMPLETE" << std::endl;
    MPI_Barrier(m_comm);
