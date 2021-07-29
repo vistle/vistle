@@ -42,9 +42,9 @@ bool isLocal(int id) {
 }
 
 DataManager::DataManager(mpi::communicator &comm)
-: m_comm(comm)
-, m_rank(comm.rank())
-, m_size(comm.size())
+: m_comm(comm, mpi::comm_duplicate)
+, m_rank(m_comm.rank())
+, m_size(m_comm.size())
 , m_dataSocket(m_ioService)
 #if BOOST_VERSION >= 106600
 , m_workGuard(asio::make_work_guard(m_ioService))
