@@ -82,8 +82,12 @@ class Communicator {
        message::Buffer buf;
        MessagePayload payload;
        MPI_Request req, payload_req;
+
+       bool waitComplete();
+       bool testComplete();
    };
    std::set<std::shared_ptr<SendRequest>> m_ongoingSends;
+   bool startSend(int destRank, const message::Message &message, const MessagePayload &payload);
 
    static Communicator *s_singleton;
 

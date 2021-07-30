@@ -315,8 +315,7 @@ bool Communicator::dispatch(bool *work) {
       }
 #endif
       for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
-          MPI_Test(&(*it)->req, &flag, &status);
-          if (flag) {
+          if ((*it)->testComplete()) {
               next = m_ongoingSends.erase(it);
           } else {
               ++next;
@@ -344,14 +343,7 @@ bool Communicator::dispatch(bool *work) {
          if (buf.destRank() == 0) {
              handleMessage(buf, pl);
          } else if (buf.destRank() >= 0) {
-             auto p = m_ongoingSends.emplace(new SendRequest(buf));
-             auto it = p.first;
-             auto &sr = **it;
-             MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &sr.req);
-             if (buf.payloadSize() > 0) {
-                 sr.payload = pl;
-                 MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, buf.destRank(), TagToRank, m_comm, &sr.payload_req);
-             }
+             startSend(buf.destRank(), buf, pl);
          } else if(!broadcastAndHandleMessage(buf, pl)) {
             CERR << "Quit reason: broadcast & handle 2: " << buf << buf << std::endl;
             done = true;
@@ -400,21 +392,48 @@ bool Communicator::dispatch(bool *work) {
    return !done;
 }
 
+bool Communicator::startSend(int destRank, const message::Message &message, const MessagePayload &payload) {
+
+    auto p = m_ongoingSends.emplace(new SendRequest(message));
+    auto it = p.first;
+    auto &sr = **it;
+    MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, destRank, TagToRank, m_comm, &sr.req);
+    if (sr.buf.payloadSize() > 0) {
+        sr.payload = payload;
+        MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, m_comm, &sr.payload_req);
+    }
+    return true;
+}
+
+bool Communicator::SendRequest::waitComplete() {
+
+    MPI_Status status;
+    MPI_Wait(&req, &status);
+    if (buf.payloadSize() > 0)
+        MPI_Wait(&payload_req, &status);
+    return true;
+}
+
+bool Communicator::SendRequest::testComplete() {
+
+    int flag = 0;
+    MPI_Status status;
+    MPI_Test(&req, &flag, &status);
+    if (!flag)
+        return false;
+    if (buf.payloadSize() == 0)
+        return true;
+    MPI_Test(&payload_req, &flag, &status);
+    return flag;
+}
+
 bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank, const MessagePayload &payload) {
 
    if (m_rank == destRank || destRank == -1) {
       return clusterManager().sendMessage(moduleId, message);
-   } else {
-      auto p = m_ongoingSends.emplace(new SendRequest(message));
-      auto it = p.first;
-      auto &sr = **it;
-      MPI_Isend(sr.buf.data(), sr.buf.size(), MPI_BYTE, destRank, TagToRank, m_comm, &sr.req);
-      if (sr.buf.payloadSize() > 0) {
-          sr.payload = payload;
-          MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, m_comm, &sr.payload_req);
-      }
    }
-   return true;
+
+   return startSend(destRank, message, payload);
 }
 
 bool Communicator::forwardToMaster(const message::Message &message, const MessagePayload &payload) {
@@ -428,14 +447,7 @@ bool Communicator::forwardToMaster(const message::Message &message, const Messag
 
    assert(m_rank != 0);
    if (m_rank != 0) {
-      auto p = m_ongoingSends.emplace(new SendRequest(message));
-      auto it = p.first;
-      auto &sr = **it;
-      MPI_Isend(&sr.buf, sr.buf.size(), MPI_BYTE, 0, TagToRank, m_comm, &sr.req);
-      if (sr.buf.payloadSize() > 0) {
-          sr.payload = payload;
-          MPI_Isend(sr.payload->data(), sr.payload->size(), MPI_BYTE, 0, TagToRank, m_comm, &sr.payload_req);
-      }
+       return startSend(0, message, payload);
    }
 
    return true;
@@ -484,9 +496,6 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
 
         MPI_Bcast(buf.data(), buf.size(), MPI_BYTE, m_rank, m_comm);
         if (buf.payloadSize() > 0) {
-            if (m_rank > 0) {
-                pl.construct(buf.payloadSize());
-            }
             MPI_Bcast(pl->data(), pl->size(), MPI_BYTE, m_rank, m_comm);
         }
     }
@@ -540,9 +549,8 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
 
 Communicator::~Communicator() {
 
-    MPI_Status status;
     for (auto it = m_ongoingSends.begin(), next = it; it != m_ongoingSends.end(); it = next) {
-        MPI_Wait(&(*it)->req, &status);
+        (*it)->waitComplete();
         next = m_ongoingSends.erase(it);
     }
 
@@ -551,7 +559,7 @@ Communicator::~Communicator() {
 
    CERR << "shut down: deleting clusterManager" << std::endl;
    delete m_clusterManager;
-   m_clusterManager = NULL;
+   m_clusterManager = nullptr;
 
    CERR << "shut down: start init barrier" << std::endl;
    MPI_Barrier(m_comm);
