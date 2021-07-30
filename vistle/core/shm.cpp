@@ -53,7 +53,7 @@ template<> size_t memorySize<8>() {
 }
 
 Shm* Shm::s_singleton = nullptr;
-#ifndef NO_SHMEN
+#ifndef NO_SHMEM
 bool Shm::s_perRank = false;
 #endif
 #ifdef SHMDEBUG
@@ -330,7 +330,9 @@ bool Shm::remove(const std::string &name, const int id, const int rank, bool per
 
 Shm & Shm::create(const std::string &name, const int id, const int rank, bool perRank) {
 
+#ifndef NO_SHMEM
    Shm::s_perRank = perRank;
+#endif
    if (!s_singleton) {
       {
          // store name of shared memory segment for possible clean up
@@ -376,7 +378,9 @@ Shm & Shm::create(const std::string &name, const int id, const int rank, bool pe
 
 Shm & Shm::attach(const std::string &name, const int id, const int rank, bool perRank) {
 
+#ifndef NO_SHMEM
     Shm::s_perRank = perRank;
+#endif
     if (!s_singleton) {
         try {
             s_singleton = new Shm(name, id, rank);
