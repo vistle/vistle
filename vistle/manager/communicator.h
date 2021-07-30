@@ -26,7 +26,7 @@ class Communicator {
 
    enum MpiTags {
        TagToRank,
-       TagForBroadcast,
+       TagStartBroadcast,
        TagData,
    };
 

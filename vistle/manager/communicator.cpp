@@ -63,7 +63,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts, boost::
 
    // post requests for length of next MPI message
    if (m_size > 1) {
-      MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagForBroadcast, comm, &m_reqAny);
+      MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagStartBroadcast, comm, &m_reqAny);
 
       MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.bufferSize(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, comm, &m_reqToRank);
    }
@@ -274,7 +274,7 @@ bool Communicator::dispatch(bool *work) {
       //    - handle message
       //    - post another MPI receive for size of next message
       MPI_Test(&m_reqAny, &flag, &status);
-      if (flag && status.MPI_TAG == TagForBroadcast) {
+      if (flag && status.MPI_TAG == TagStartBroadcast) {
 
          if (m_recvSize > m_recvBufToAny.bufferSize()) {
             CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
@@ -285,7 +285,7 @@ bool Communicator::dispatch(bool *work) {
          unsigned recvSize = m_recvSize;
 
          // post new receive
-         MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagForBroadcast, m_comm, &m_reqAny);
+         MPI_Irecv(&m_recvSize, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TagStartBroadcast, m_comm, &m_reqAny);
 
          if (recvSize > 0) {
             received = true;
@@ -481,7 +481,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message, co
         for (int index = 0; index < m_size; ++index) {
             unsigned int size = buf.size();
             if (index != m_rank) {
-                MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, m_comm, &s[index]);
+                MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagStartBroadcast, m_comm, &s[index]);
             }
         }
 
