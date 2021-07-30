@@ -347,7 +347,7 @@ protected:
    double m_benchmarkStart;
    double m_avgComputeTime;
    mpi::communicator m_comm, m_commShmGroup, m_commShmLeaders;
-   std::vector<int> m_shmLeaders; // leader rank in m_comm of m commShmGroup for every rank in m_comm
+   std::vector<int> m_shmLeaders; // leader rank in m_comm of m_commShmGroup for every rank in m_comm
 
    int m_numTimesteps;
    bool m_cancelRequested=false, m_cancelExecuteCalled=false, m_executeAfterCancelFound=false;
