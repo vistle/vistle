@@ -41,7 +41,9 @@ using namespace vistle;
 using namespace netCDF;
 
 MODULE_MAIN(ReadTsunami)
-
+namespace {
+    constexpr auto ETA{"eta"};
+}
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm), seaTimeConn(false)
@@ -53,8 +55,6 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     //ghost
     m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
-
-    // visualise variables
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
     // define ports
@@ -64,10 +64,12 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     // block size
     m_blocks[0] = addIntParameter("blocks latitude", "number of blocks in lat-direction", 2);
     m_blocks[1] = addIntParameter("blocks longitude", "number of blocks in lon-direction", 2);
-    addFloatParameter("fillValue", "ncFile fillValue offset for eta", -9999.f);
-    addFloatParameter("fillValueNew", "set new fillValue offset for eta", 0.0f);
     setParameterRange(m_blocks[0], Integer(1), Integer(999999));
     setParameterRange(m_blocks[1], Integer(1), Integer(999999));
+
+    //fillvalue
+    addFloatParameter("fillValue", "ncFile fillValue offset for eta", -9999.f);
+    addFloatParameter("fillValueNew", "set new fillValue offset for eta", 0.0f);
 
     //bathymetryname
     m_bathy = addStringParameter("bathymetry ", "Select bathymetry stored in netCDF", "", Parameter::Choice);
@@ -116,7 +118,7 @@ void ReadTsunami::initScalarParamReader()
 }
 
 /**
- * Open Nc File and set pointer ncDataFile.
+ * @brief Open Nc File and set pointer ncDataFile.
  *
  * @return true if its not empty or cannot be opened.
  */
@@ -157,7 +159,7 @@ void ReadTsunami::printRank0(const std::string &str, Args... args) const
 }
 
 /**
-  * Prints current rank and the number of all ranks to the console.
+  * @brief Prints current rank and the number of all ranks to the console.
   */
 void ReadTsunami::printMPIStats() const
 {
@@ -165,7 +167,7 @@ void ReadTsunami::printMPIStats() const
 }
 
 /**
-  * Prints thread-id to /var/tmp/<user>/ReadTsunami-*.
+  * @brief Prints thread-id to /var/tmp/<user>/ReadTsunami-*.
   */
 inline void ReadTsunami::printThreadStats() const
 {
@@ -173,7 +175,7 @@ inline void ReadTsunami::printThreadStats() const
 }
 
 /**
-  * Called when any of the reader parameter changing.
+  * @brief Called when any of the reader parameter changing.
   *
   * @param: Parameter that got changed.
   * @return: true if all essential parameters could be initialized.
@@ -193,7 +195,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
         setPartitions(nBlocks);
         return true;
     } else {
-        printRank0("Number of blocks total should equal MPISIZE.");
+        printRank0("Total number of blocks should equal MPISIZE.");
         return false;
     }
 }
@@ -248,7 +250,7 @@ bool ReadTsunami::inspectNetCDFVars()
 }
 
 /**
-  * Set 2D coordinates for given polygon.
+  * @brief Set 2D coordinates for given polygon.
   *
   * @poly: Pointer on Polygon.
   * @dim: Dimension of coordinates.
@@ -270,7 +272,7 @@ void ReadTsunami::contructLatLonSurface(Polygons::ptr poly, const Dim<T> &dim, c
 }
 
 /**
-  * Set the connectivitylist for given polygon for 2 dimensions and 4 Corners.
+  * @brief Set the connectivitylist for given polygon for 2 dimensions and 4 Corners.
   *
   * @poly: Pointer on Polygon.
   * @dim: Dimension of vertice list.
@@ -290,7 +292,7 @@ void ReadTsunami::fillConnectListPoly2Dim(Polygons::ptr poly, const Dim<T> &dim)
 }
 
 /**
-  * Set which vertices represent a polygon.
+  * @brief Set number of vertices which represent a polygon.
   *
   * @poly: Pointer on Polygon.
   * @numCorner: number of corners.
@@ -302,7 +304,7 @@ void ReadTsunami::fillPolyList(Polygons::ptr poly, const T &numCorner)
 }
 
 /**
- * Generate surface from polygons.
+ * @brief Generate surface from polygons.
  *
  * @polyData: Data for creating polygon-surface (number elements, number corners, number vertices).
  * @dim: Dimension in lat and lon.
@@ -329,7 +331,7 @@ Polygons::ptr ReadTsunami::generateSurface(const PolygonData<U> &polyData, const
 }
 
 /**
-  * Generates NcVarParams struct which contains start, count and stride values computed based on given parameters.
+  * @brief Generates NcVarParams struct which contains start, count and stride values computed based on given parameters.
   *
   * @dim: Current dimension of NcVar.
   * @ghost: Number of ghost cells to add.
@@ -362,7 +364,7 @@ bool ReadTsunami::prepareRead()
 }
 
 /**
-  * Called for each timestep and for each block (MPISIZE).
+  * @brief Called for each timestep and for each block (MPISIZE).
   *
   * @token: Ref to internal vistle token.
   * @timestep: current timestep.
@@ -375,7 +377,7 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
 }
 
 /**
-  * Computing per block.
+  * @brief Computing per block.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallelization.
@@ -415,7 +417,7 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
 }
 
 /**
- * @brief Compute the unique block partition index borders for current block.
+ * @brief Compute the unique block partition index for current block.
  *
  * @tparam Iter Iterator.
  * @param blockNum Current block.
@@ -439,7 +441,7 @@ void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle:
 }
 
 /**
-  * Generates the inital polygon surfaces for sea and ground and adds them to scene.
+  * @brief Generates the inital polygon surfaces for sea and ground and adds only ground to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
@@ -458,7 +460,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     const NcVar &grid_lat = ncFile->getVar(m_latLon_Ground[0]);
     const NcVar &grid_lon = ncFile->getVar(m_latLon_Ground[1]);
     const NcVar &bathymetryvar = ncFile->getVar(m_bathy->getValue());
-    const NcVar &eta = ncFile->getVar("eta");
+    const NcVar &eta = ncFile->getVar(ETA);
 
     // compute current time parameters
     const ptrdiff_t &incrementTimestep = m_increment->getValue();
@@ -467,7 +469,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     size_t nTimesteps{0};
     computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
 
-    // compute partition borders
+    // compute partition borders => structured grid
     size_t ghost{0};
     Index nLatBlocks{0};
     Index nLonBlocks{0};
@@ -585,7 +587,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
 }
 
 /**
-  * Generates polygon for corresponding timestep and adds Object to scene.
+  * @brief Generates polygon for corresponding timestep and adds Object to scene.
   *
   * @token: Ref to internal vistle token.
   * @blockNum: current block number of parallel process.
