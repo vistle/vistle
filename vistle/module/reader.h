@@ -84,7 +84,7 @@ public:
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
 
-    virtual bool readDIYBlock(Token &token, int timestep = -1);
+    /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
     /// called once on every rank after execution of the module has been initiated before read is called
     virtual bool prepareRead();
     /// called once on every rank after all read calls have been made and before execution finishes
