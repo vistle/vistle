@@ -6,6 +6,7 @@
 #include <mutex>
 #include <thread>
 #include <set>
+#include <functional>
 
 #include <vistle/core/message.h>
 #include <vistle/util/enum.h>
@@ -37,7 +38,7 @@ public:
     unsigned short port() const;
     void setTrace(message::Type type);
 
-   bool connectRemoteData(const message::AddHub &hub);
+   bool connectRemoteData(const message::AddHub &add, std::function<void()> messageDispatcher);
    bool addSocket(const message::Identify &id, std::shared_ptr<tcp_socket> sock);
 
 private:

@@ -568,7 +568,7 @@ void DataProxy::printConnections() const {
     }
 }
 
-bool DataProxy::connectRemoteData(const message::AddHub &remote) {
+bool DataProxy::connectRemoteData(const message::AddHub &remote, std::function<void()> messageDispatcher) {
 
    CERR << "connectRemoteData: " << remote << std::endl;
 
@@ -633,6 +633,8 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote) {
        m_connectingSockets.insert(sock);
        lock.unlock();
 
+       messageDispatcher();
+
        sock->async_connect(dest, [this, sock, remote, dataPort, hubId](const boost::system::error_code &ec){
            lock_guard lock(m_mutex);
            m_connectingSockets.erase(sock);
@@ -668,6 +670,7 @@ bool DataProxy::connectRemoteData(const message::AddHub &remote) {
 
    while (!m_connectingSockets.empty() && m_remoteDataSocket[hubId].sockets.size() < numconn) {
        lock.unlock();
+       messageDispatcher();
        usleep(10000);
        lock.lock();
    }

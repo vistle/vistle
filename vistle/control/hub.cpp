@@ -1059,7 +1059,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                 }
             }
          }
-         if (m_dataProxy->connectRemoteData(add)) {
+         if (m_dataProxy->connectRemoteData(add, [this](){ dispatch();})) {
              m_stateTracker.handle(add, nullptr, true);
              sendUi(add);
          } else {
