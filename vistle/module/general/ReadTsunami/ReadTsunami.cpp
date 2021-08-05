@@ -42,8 +42,23 @@ using namespace netCDF;
 
 MODULE_MAIN(ReadTsunami)
 namespace {
-    constexpr auto ETA{"eta"};
-}
+constexpr auto ETA{"eta"};
+
+template<class T>
+struct CompNumTimesteps {
+private:
+    const T first;
+    const T last;
+    const T inc;
+
+public:
+    CompNumTimesteps(T f, T l, T i): first(f), last(l), inc(i) {}
+    void operator()(T &nTimestep) const
+    {
+        nTimestep = (inc > 0 && last >= first) /* || (inc < 0 && last <= first) */ ? ((last - first) / inc + 1) : -1;
+    }
+};
+} // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm), seaTimeConn(false)
@@ -191,6 +206,9 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     setTimesteps(-1);
+    /* setHandlePartitions(nBlocks > size()); */
+    /* setPartitions(nBlocks); */
+    /* return true; */
     if (nBlocks <= size()) {
         setPartitions(nBlocks);
         return true;
@@ -398,7 +416,7 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 
 /**
  * @brief Compute actual last timestep.
- *
+ 
  * @param incrementTimestep Stepwidth.
  * @param firstTimestep first timestep.
  * @param lastTimestep last timestep selected.
@@ -411,9 +429,7 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
         lastTimestep--;
 
     m_actualLastTimestep = lastTimestep - (lastTimestep % incrementTimestep);
-    if (incrementTimestep > 0)
-        if (m_actualLastTimestep >= firstTimestep)
-            nTimesteps = (m_actualLastTimestep - firstTimestep) / incrementTimestep + 1;
+    CompNumTimesteps<size_t>(firstTimestep, m_actualLastTimestep, incrementTimestep)(nTimesteps);
 }
 
 /**
@@ -507,79 +523,95 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     std::vector<float> vecLat(latSea.count), vecLon(lonSea.count), vecLatGrid(latGround.count),
         vecLonGrid(lonGround.count), vecDepth(verticesGround);
 
-    // need Eta-data for timestep poly => member var of reader
-    vecEta.resize(nTimesteps * verticesSea);
-
-    // read parameter for eta
-    const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start};
-    const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
-    const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
-
-    // read in ncdata into float-pointer
-    latSea.readNcVar(vecLat.data());
-    lonSea.readNcVar(vecLon.data());
-    latGround.readNcVar(vecLatGrid.data());
-    lonGround.readNcVar(vecLonGrid.data());
-    bathymetryvar.getVar(std::vector{latGround.start, lonGround.start}, std::vector{latGround.count, lonGround.count},
-                         vecDepth.data());
-    if (seaTimeConn) {
-        eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
-
-        //filter fillvalue
-        if (m_fill->getValue()) {
-            const float &fillValNew = getFloatParameter("fillValueNew");
-            const float &fillVal = getFloatParameter("fillValue");
-            std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
-        }
-    }
-
-    std::vector coords{vecLat.data(), vecLon.data()};
-
-    //************* create sea *************//
+    //************* read ncdata into float-pointer *************//
     {
-        const auto &seaDim = Dim(latSea.count, lonSea.count);
-        const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
-        ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+        // read bathymetry
+        {
+            const std::vector<size_t> vecStartBathy{latGround.start, lonGround.start};
+            const std::vector<size_t> vecCountBathy{latGround.count, lonGround.count};
+            bathymetryvar.getVar(vecStartBathy, vecCountBathy, vecDepth.data());
+        }
+
+        // read eta
+        {
+            vecEta.resize(nTimesteps * verticesSea);
+            sendInfo("nTimesteps: %d", (int)nTimesteps);
+            sendInfo("nTimesteps * verticesSea: %d", (int)(nTimesteps * verticesSea));
+            sendInfo("first: %d", (int)firstTimestep);
+            const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start};
+            const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
+            const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
+            if (seaTimeConn) {
+                eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
+                sendInfo("After");
+
+                //filter fillvalue
+                if (m_fill->getValue()) {
+                    const float &fillValNew = getFloatParameter("fillValueNew");
+                    const float &fillVal = getFloatParameter("fillValue");
+                    //TODO: Bad! needs rework.
+                    std::replace(vecEta.begin(), vecEta.end(), fillVal, fillValNew);
+                }
+            }
+        }
+
+        // read lat, lon, grid_lat, grid_lon
+        latSea.readNcVar(vecLat.data());
+        lonSea.readNcVar(vecLon.data());
+        latGround.readNcVar(vecLatGrid.data());
+        lonGround.readNcVar(vecLonGrid.data());
     }
 
-    //************* create grnd *************//
-    coords[0] = vecLatGrid.data();
-    coords[1] = vecLonGrid.data();
+    //************* create Polygons ************//
+    {
+        std::vector coords{vecLat.data(), vecLon.data()};
 
-    const auto &scale = m_verticalScale->getValue();
-    const auto &grndDim = Dim(latGround.count, lonGround.count);
-    const auto &polyDataGround = PolygonData(numPolyGround, numPolyGround * 4, verticesGround);
-    auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
-        return -vecDepth[j * lonGround.count + k] * scale;
-    };
-    Polygons::ptr ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
+        //************* create sea *************//
+        {
+            const auto &seaDim = Dim(latSea.count, lonSea.count);
+            const auto &polyDataSea = PolygonData(numPolySea, numPolySea * 4, verticesSea);
+            ptr_sea = generateSurface(polyDataSea, seaDim, coords);
+        }
 
-    //************* create selected scalars *************//
-    const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start};
-    const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count};
-    std::vector<float> vecScalar(verticesGround);
-    for (size_t i = 0; i < NUM_SCALARS; ++i) {
-        if (!m_scalarsOut[i]->isConnected())
-            continue;
-        const auto &scName = m_scalars[i]->getValue();
-        const auto &val = ncFile->getVar(scName);
-        Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
-        ptr_Scalar[i] = ptr_scalar;
-        auto scX = ptr_scalar->x().data();
-        val.getVar(vecScalarStart, vecScalarCount, scX);
+        //************* create grnd *************//
+        coords[0] = vecLatGrid.data();
+        coords[1] = vecLonGrid.data();
 
-        //set some meta data
-        ptr_scalar->addAttribute("_species", scName);
-        ptr_scalar->setTimestep(-1);
-        ptr_scalar->setBlock(blockNum);
-    }
+        const auto &scale = m_verticalScale->getValue();
+        const auto &grndDim = Dim(latGround.count, lonGround.count);
+        const auto &polyDataGround = PolygonData(numPolyGround, numPolyGround * 4, verticesGround);
+        auto grndZCalc = [&vecDepth, &lonGround, &scale](size_t j, size_t k) {
+            return -vecDepth[j * lonGround.count + k] * scale;
+        };
+        auto ptr_grnd = generateSurface(polyDataGround, grndDim, coords, grndZCalc);
 
-    // add ground data to port
-    if (m_groundSurface_out->isConnected()) {
-        ptr_grnd->setBlock(blockNum);
-        ptr_grnd->setTimestep(-1);
-        ptr_grnd->updateInternals();
-        token.addObject(m_groundSurface_out, ptr_grnd);
+        //************* create selected scalars *************//
+        const std::vector<size_t> vecScalarStart{latSea.start, lonSea.start};
+        const std::vector<size_t> vecScalarCount{latSea.count, lonSea.count};
+        std::vector<float> vecScalar(verticesGround);
+        for (size_t i = 0; i < NUM_SCALARS; ++i) {
+            if (!m_scalarsOut[i]->isConnected())
+                continue;
+            const auto &scName = m_scalars[i]->getValue();
+            const auto &val = ncFile->getVar(scName);
+            Vec<Scalar>::ptr ptr_scalar(new Vec<Scalar>(verticesSea));
+            ptr_Scalar[i] = ptr_scalar;
+            auto scX = ptr_scalar->x().data();
+            val.getVar(vecScalarStart, vecScalarCount, scX);
+
+            //set some meta data
+            ptr_scalar->addAttribute("_species", scName);
+            ptr_scalar->setTimestep(-1);
+            ptr_scalar->setBlock(blockNum);
+        }
+
+        // add ground data to port
+        if (m_groundSurface_out->isConnected()) {
+            ptr_grnd->setBlock(blockNum);
+            ptr_grnd->setTimestep(-1);
+            ptr_grnd->updateInternals();
+            token.addObject(m_groundSurface_out, ptr_grnd);
+        }
     }
 
     ncFile->close();
@@ -609,7 +641,10 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    auto startCopy = vecEta.begin() + indexEta++ * verticesSea;
+    sendInfo("indexEta %d", indexEta);
+    sendInfo("timestep %d", (int)timestep);
+    auto startCopy = vecEta.begin() + indexEta * verticesSea;
+    ++indexEta;
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
@@ -635,8 +670,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     if (timestep == m_actualLastTimestep) {
         sendInfo("Cleared Cache for rank: " + std::to_string(rank()));
-        vecEta.clear();
-        vecEta.shrink_to_fit();
+        std::vector<float>().swap(vecEta);
         for (auto &val: ptr_Scalar)
             val.reset();
         indexEta = 0;
