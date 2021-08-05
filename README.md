@@ -94,6 +94,18 @@ It will search in e.g. `$EXTERNLIBS/boost` if CMake is looking for `Boost`.
       brew install hlrs-vis/tap/vistle
 
 
+### Installing with [Spack](https://spack.io)
+
+  Add the [HLRS Vis Spack repository] to your installation of Spack:
+
+      git clone https://github.com/hlrs-vis/spack-hlrs-vis      spack
+      repo add spack-hlrs-vis
+
+  Then you can install Vistle with this command:
+
+      spack install vistle
+
+
 Building Vistle
 ---------------
 
