@@ -105,26 +105,6 @@ Then build with your build tool, e.g.:
 
       make -j20
 
-### Cray XC40 at HLRS (hazelhen.hww.de) [Hazel Hen](https://www.hlrs.de/en/systems/cray-xc40-hazel-hen)
-
-Preparation:
-- install a newer version of CMake (3.12 works), to some directory (e.g. ~/hazelhen)
-- install tbb
-- install other libraries as required: embree, libjpeg-turbo, zstd, lz4, snappy
-
-Set up your environment (also required before using Vistle):
-
-      export CRAYPE_LINK_TYPE=dynamic
-      module swap PrgEnv-cray PrgEnv-gnu
-      module load tools/vtk/8.1.0
-      module load tools/boost/1.66.0
-
-You most likely will want to install additional dependencies.
-
-From your build directory, invoke CMake like this:
-
-      cmake -DCMAKE_SYSTEM_NAME=CrayLinuxEnvironment ..
-
 
 Invoking Vistle
 ---------------
