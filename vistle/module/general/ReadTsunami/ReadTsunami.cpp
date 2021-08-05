@@ -55,7 +55,7 @@ public:
     CompNumTimesteps(T f, T l, T i): first(f), last(l), inc(i) {}
     void operator()(T &nTimestep) const
     {
-        nTimestep = (inc > 0 && last >= first) /* || (inc < 0 && last <= first) */ ? ((last - first) / inc + 1) : -1;
+        nTimestep = (inc > 0 && last >= first) || (inc < 0 && last <= first) ? ((last - first) / inc + 1) : -1;
     }
 };
 } // namespace
@@ -64,7 +64,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
 : vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm), seaTimeConn(false)
 {
     // file-browser
-    m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/pelicula_eta.nc",
+    m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/NewData/cadiz_5m.nc",
                                    Parameter::Filename);
 
     //ghost
@@ -205,7 +205,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     }
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
-    setTimesteps(-1);
+    // TODO: NetCDF not threadsafe => implement lock mechanisim?
     /* setHandlePartitions(nBlocks > size()); */
     /* setPartitions(nBlocks); */
     /* return true; */
@@ -213,7 +213,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
         setPartitions(nBlocks);
         return true;
     } else {
-        printRank0("Total number of blocks should equal MPISIZE.");
+        printRank0("Total number of blocks should equal MPISIZE or less.");
         return false;
     }
 }
@@ -227,6 +227,10 @@ bool ReadTsunami::inspectNetCDFVars()
     if (!openNcFile(ncFile))
         return false;
 
+    const int &maxTime = ncFile->getDim("time").getSize();
+    setTimesteps(maxTime);
+
+    //scalar inspection
     std::vector<std::string> scalarChoiceVec;
     std::vector<std::string> bathyChoiceVec;
     auto strContains = [](const std::string &name, const std::string &contains) {
@@ -535,15 +539,11 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
         // read eta
         {
             vecEta.resize(nTimesteps * verticesSea);
-            sendInfo("nTimesteps: %d", (int)nTimesteps);
-            sendInfo("nTimesteps * verticesSea: %d", (int)(nTimesteps * verticesSea));
-            sendInfo("first: %d", (int)firstTimestep);
             const std::vector<size_t> vecStartEta{firstTimestep, latSea.start, lonSea.start};
             const std::vector<size_t> vecCountEta{nTimesteps, latSea.count, lonSea.count};
             const std::vector<ptrdiff_t> vecStrideEta{incrementTimestep, latSea.stride, lonSea.stride};
             if (seaTimeConn) {
                 eta.getVar(vecStartEta, vecCountEta, vecStrideEta, vecEta.data());
-                sendInfo("After");
 
                 //filter fillvalue
                 if (m_fill->getValue()) {
@@ -641,10 +641,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    sendInfo("indexEta %d", indexEta);
-    sendInfo("timestep %d", (int)timestep);
-    auto startCopy = vecEta.begin() + indexEta * verticesSea;
-    ++indexEta;
+    auto startCopy = vecEta.begin() + (indexEta++ * verticesSea - 1);
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);
