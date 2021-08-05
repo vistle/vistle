@@ -203,9 +203,10 @@ bool Renderer::handleAddObject(const message::AddObject &add) {
 bool Renderer::dispatch(bool block, bool *messageReceived) {
    (void)block;
    int quit = 0;
-   bool checkAgain = false;
+   bool checkAgain = true;
+   bool wasAnyMessage = false;
    int numSync = 0;
-   do {
+   while (checkAgain) {
       // process all messages until one needs cooperative processing
       message::Buffer buf;
       message::Message &message = buf;
@@ -216,10 +217,9 @@ bool Renderer::dispatch(bool block, bool *messageReceived) {
             needSync = 1;
       }
       int anyMessage = boost::mpi::all_reduce(comm(), haveMessage ? 1 : 0, boost::mpi::maximum<int>());
-      if (m_maySleep)
-          vistle::adaptive_wait(anyMessage, this);
       int anySync = 0;
       if (anyMessage) {
+          wasAnyMessage = true;
           anySync = boost::mpi::all_reduce(comm(), needSync, boost::mpi::maximum<int>());
       }
 
@@ -228,19 +228,19 @@ bool Renderer::dispatch(bool block, bool *messageReceived) {
             if (messageReceived)
                *messageReceived = true;
 
+            if (needsSync(message))
+               needSync = 1;
+
             MessagePayload pl;
             if (buf.payloadSize() > 0) {
                 pl = Shm::the().getArrayFromName<char>(buf.payloadName());
                 pl.unref();
             }
-            quit = !handleMessage(&message, pl);
+            quit = handleMessage(&message, pl) ? 0 : 1;
             if (quit) {
                 std::cerr << "Quitting: " << message << std::endl;
                 break;
             }
-
-            if (needsSync(message))
-               needSync = 1;
          }
 
          if (anySync && !needSync) {
@@ -259,7 +259,7 @@ bool Renderer::dispatch(bool block, bool *messageReceived) {
       int maxNumMessages = boost::mpi::all_reduce(comm(), numMessages, boost::mpi::maximum<int>());
       ++numSync;
       checkAgain = maxNumMessages>0 && numSync<m_numObjectsPerFrame;
-   } while (checkAgain);
+   }
 
    double start = 0.;
    if (m_benchmark) {
@@ -274,7 +274,10 @@ bool Renderer::dispatch(bool block, bool *messageReceived) {
        }
    }
 
-   return true;
+   if (m_maySleep)
+      vistle::adaptive_wait(wasAnyMessage, this);
+
+    return true;
 }
 
 int Renderer::numTimesteps() const {
