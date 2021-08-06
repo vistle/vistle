@@ -91,7 +91,7 @@ public:
     virtual bool finishRead();
 
 
-    bool prepareDIY(int concurrency) const;
+    bool prepareDIY(Meta &meta, int concurrency) const;
 
     /// return number of timesteps to advance
     int timeIncrement() const;
@@ -139,6 +139,19 @@ protected:
     IntParameter *m_checkConvexity = nullptr;
 
 private:
+    struct ReaderProperties {
+        ReaderProperties(Meta *m, int nPart, int conc, int res): meta(m), numpart(nPart), concurrency(conc), result(res)
+        {}
+
+    public:
+        Meta *meta;
+        int numpart;
+        int concurrency;
+        bool result;
+    };
+
+    void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
+    void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop, int fist, int last, int inc);
     bool prepare() override;
     bool compute() override;
 

@@ -2,6 +2,7 @@
 #include <diy/assigner.hpp>
 #include <diy/decomposition.hpp>
 #include <diy/master.hpp>
+#include <memory>
 #include "diy/mpi/communicator.hpp"
 
 namespace vistle {
@@ -27,9 +28,7 @@ struct Block {
                   << link->bounds().max[2] << " : " << link->size() << ' ' //<< std::endl
                   << std::dec << std::endl;
     }
-    void readBlock(const ProxyLink &cp)
-    { /* readDIYBlock(token, ); */
-    }
+    void readBlock(const ProxyLink &cp) { auto blockNum = cp.gid(); }
 };
 
 Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
@@ -118,20 +117,20 @@ size_t Reader::waitForReaders(size_t maxRunning, bool &result)
     return m_tokens.size();
 }
 
-bool Reader::prepareDIY(int concurrency) const
+bool Reader::prepareDIY(Meta &meta, int concurrency) const
 {
     int dimDomain{3};
     int minDomain{0};
     int maxDomain{200};
-    int nBlocksInMem{-1}; // all at the moment
     int nBlocks{m_numPartitions};
+    int nBlocksInMem{-1}; // all in memory
     int nThreads{concurrency};
 
     auto diy_comm = diy::mpi::communicator(comm());
     diy::ContiguousAssigner assigner(size(), nBlocks);
 
     //dim of domain
-    Bounds domain(dimDomain); // global data size
+    Bounds domain(dimDomain);
     for (int i = 0; i < dimDomain; ++i) {
         domain.min[i] = minDomain;
         domain.max[i] = maxDomain;
@@ -145,11 +144,14 @@ bool Reader::prepareDIY(int concurrency) const
     // uninitialized values default to false
     diy::RegularDecomposer<Bounds>::BoolVector share_face;
     share_face.push_back(true);
+    share_face.push_back(true);
+    share_face.push_back(true);
 
     // wrap is an n-dim (size 3 in this example) vector of bools
     // indicating whether boundary conditions are periodic in each dimension
     // uninitialized values default to false
     diy::RegularDecomposer<Bounds>::BoolVector wrap;
+    wrap.push_back(true);
     wrap.push_back(true);
     wrap.push_back(true);
 
@@ -158,7 +160,8 @@ bool Reader::prepareDIY(int concurrency) const
     // uninitialized values default to 0
     diy::RegularDecomposer<Bounds>::CoordinateVector ghosts;
     ghosts.push_back(1);
-    ghosts.push_back(2);
+    ghosts.push_back(1);
+    ghosts.push_back(1);
 
     // either create the regular decomposer and call its decompose function
     // (having the decomposer available is useful for its other member functions
@@ -182,6 +185,62 @@ bool Reader::prepareDIY(int concurrency) const
     return true;
 }
 
+void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep)
+{
+    for (int p = -1; p < prop.numpart; ++p) {
+        if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
+            prop.meta->setBlock(p);
+            auto token = std::make_shared<Token>(this, prev);
+            ++m_tokenCount;
+            token->m_id = m_tokenCount;
+            token->m_meta = *prop.meta;
+            if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
+                prev.reset();
+            m_tokens.emplace_back(token);
+            prev = token;
+            token->m_future = std::async(std::launch::async, [this, token, timestep, p]() {
+                if (!read(*token, timestep, p)) {
+                    sendInfo("error reading time data %d on partition %d", timestep, p);
+                    return false;
+                }
+                return true;
+            });
+        }
+        if (cancelRequested()) {
+            waitForReaders(0, prop.result);
+            prev.reset();
+            prop.result = false;
+        }
+        if (!prop.result)
+            break;
+    }
+    if (m_parallel == ParallelizeBlocks) {
+        waitForReaders(0, prop.result);
+        prev.reset();
+    }
+}
+
+void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop, int first, int last, int inc)
+{
+    if (prop.result && inc != 0) {
+        int step = 0;
+        for (int t = first; inc < 0 ? t >= last : t <= last; t += inc) {
+            prop.meta->setTimeStep(step);
+            readTimestep(prev, prop, t);
+            if (m_parallel == ParallelizeBlocks) {
+                waitForReaders(0, prop.result);
+                prev.reset();
+            }
+            ++step;
+            if (!prop.result)
+                break;
+        }
+
+        waitForReaders(0, prop.result);
+        prev.reset();
+    }
+}
+
 bool Reader::prepare()
 {
     if (!m_readyForRead) {
@@ -203,8 +262,6 @@ bool Reader::prepare()
     int numpart = m_numPartitions;
     if (!m_handlePartitions)
         numpart = 0;
-
-    bool result = true;
 
     Meta meta;
     meta.setNumBlocks(m_numPartitions);
@@ -232,96 +289,19 @@ bool Reader::prepare()
     if (rank() == 0)
         sendInfo("reading %d timesteps with up to %d partitions", numtime, numpart);
 
+    //read const parts
     std::shared_ptr<Token> prev;
-    // read constant parts
     meta.setTimeStep(-1);
-    if (m_parallel == ParallelizeDIYBlocks)
-        prepareDIY(concurrency);
-    else {
-        for (int p = -1; p < numpart; ++p) {
-            if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(-1, p)) {
-                meta.setBlock(p);
-                auto token = std::make_shared<Token>(this, prev);
-                ++m_tokenCount;
-                token->m_id = m_tokenCount;
-                token->m_meta = meta;
-                if (waitForReaders(concurrency - 1, result) == 0) {
-                    prev.reset();
-                }
-                m_tokens.emplace_back(token);
-                prev = token;
-                token->m_future = std::async(std::launch::async, [this, token, p]() {
-                    if (!read(*token, -1, p)) {
-                        sendInfo("error reading constant data on partition %d", p);
-                        return false;
-                    }
-                    return true;
-                });
-            }
-            if (cancelRequested()) {
-                waitForReaders(0, result);
-                prev.reset();
-                result = false;
-            }
-            if (!result)
-                break;
-        }
-        if (m_parallel == ParallelizeBlocks) {
-            waitForReaders(0, result);
-            prev.reset();
-        }
-    }
-    // read timesteps
-    if (result && inc != 0) {
-        int step = 0;
-        for (int t = first; inc < 0 ? t >= last : t <= last; t += inc) {
-            meta.setTimeStep(step);
-            if (m_parallel == ParallelizeDIYBlocks) {
-            } else {
-                for (int p = -1; p < numpart; ++p) {
-                    if (!m_handlePartitions || comm().rank() == rankForTimestepAndPartition(step, p)) {
-                        meta.setBlock(p);
-                        auto token = std::make_shared<Token>(this, prev);
-                        ++m_tokenCount;
-                        token->m_id = m_tokenCount;
-                        token->m_meta = meta;
-                        if (waitForReaders(concurrency - 1, result) == 0) {
-                            prev.reset();
-                        }
-                        m_tokens.emplace_back(token);
-                        prev = token;
-                        token->m_future = std::async(std::launch::async, [this, token, t, p]() {
-                            if (!read(*token, t, p)) {
-                                sendInfo("error reading time data %d on partition %d", t, p);
-                                return false;
-                            }
-                            return true;
-                        });
-                    }
-                    if (cancelRequested()) {
-                        waitForReaders(0, result);
-                        prev.reset();
-                        result = false;
-                    }
-                    if (!result)
-                        break;
-                }
-                if (m_parallel == ParallelizeBlocks) {
-                    waitForReaders(0, result);
-                    prev.reset();
-                }
-                ++step;
-                if (!result)
-                    break;
-            }
-        }
+    ReaderProperties prop(&meta, numpart, concurrency, true);
+    readTimestep(prev, prop, -1);
 
-        waitForReaders(0, result);
-        prev.reset();
-    }
+    // read timesteps
+    readTimesteps(prev, prop, first, last, inc);
+
+    //finish read
     if (!finishRead()) {
         sendInfo("error finishing read");
-        result = false;
+        prop.result = false;
     }
 
     return true;
