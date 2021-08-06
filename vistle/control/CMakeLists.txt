@@ -4,6 +4,7 @@ set(control_SOURCES
    uiclient.cpp
    fileinfocrawler.cpp
    scanmodules.cpp
+   vistleurl.cpp
 )
 
 set(control_HEADERS
@@ -13,6 +14,7 @@ set(control_HEADERS
    uiclient.h
    fileinfocrawler.h
    scanmodules.h
+   vistleurl.h
 )
 
 if(Python_FOUND)

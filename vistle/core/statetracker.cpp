@@ -210,6 +210,8 @@ StateTracker::VistleState StateTracker::getState() const {
 
    // loaded map
    appendMessage(state, UpdateStatus(UpdateStatus::LoadedFile, m_loadedWorkflowFile));
+   if (!m_sessionUrl.empty())
+       appendMessage(state, UpdateStatus(UpdateStatus::SessionUrl, m_sessionUrl));
 
    // modules with parameters and ports
    for (auto &it: runningMap) {
@@ -1166,6 +1168,16 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status) {
         return true;
     }
 
+    if (status.statusType() == message::UpdateStatus::SessionUrl) {
+        m_sessionUrl = status.text();
+        mutex_locker guard(m_stateMutex);
+        for (StateObserver *o: m_observers) {
+            o->sessionUrlChanged(m_sessionUrl);
+        }
+
+        return true;
+    }
+
     auto it = runningMap.find(status.senderId());
     if (it == runningMap.end())
         return false;
@@ -1511,6 +1523,11 @@ std::string StateTracker::loadedWorkflowFile() const {
     return m_loadedWorkflowFile;
 }
 
+std::string StateTracker::sessionUrl() const {
+
+    return m_sessionUrl;
+}
+
 std::string StateTracker::statusText() const {
 
     return m_currentStatus;
@@ -1561,6 +1578,10 @@ long StateObserver::modificationCount() const {
 }
 
 void StateObserver::loadedWorkflowChanged(const std::string &filename) {
+
+}
+
+void StateObserver::sessionUrlChanged(const std::string &url) {
 
 }
 

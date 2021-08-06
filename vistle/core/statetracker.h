@@ -71,6 +71,7 @@ class V_COREEXPORT StateObserver {
    long modificationCount() const;
 
    virtual void loadedWorkflowChanged(const std::string &filename);
+   virtual void sessionUrlChanged(const std::string &url);
 
 private:
    long m_modificationCount;
@@ -157,6 +158,7 @@ public:
    int graphChangeCount() const;
 
    std::string loadedWorkflowFile() const;
+   std::string sessionUrl() const;
 
  protected:
    std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
@@ -273,6 +275,7 @@ public:
    mutable mutex m_stateMutex;
 
    std::string m_loadedWorkflowFile;
+   std::string m_sessionUrl;
 };
 
 } // namespace vistle

@@ -688,6 +688,7 @@ public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
                                        (Text)
                                        (LoadedFile)
+                                       (SessionUrl)
    )
 
    struct Payload {

@@ -16,6 +16,7 @@ set(util_SOURCES
    stopwatch.cpp
    sysdep.cpp
    tools.cpp
+   url.cpp
 )
 
 set(util_HEADERS
@@ -42,6 +43,7 @@ set(util_HEADERS
    stopwatch.h
    sysdep.h
    tools.h
+   url.h
    valgrind.h
    vecstreambuf.h
 )

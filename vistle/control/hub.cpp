@@ -21,6 +21,7 @@
 #include <vistle/core/porttracker.h>
 #include <vistle/core/statetracker.h>
 #include <vistle/core/shm.h>
+#include <vistle/control/vistleurl.h>
 
 #ifdef MODULE_THREAD
 #include <vistle/insitu/libsim/connectLibsim/connect.h>
@@ -164,14 +165,14 @@ bool Hub::init(int argc, char *argv[]) {
       ("port,p", po::value<unsigned short>(), "control port")
       ("dataport", po::value<unsigned short>(), "data port")
       ("execute,e", "call compute() after workflow has been loaded")
-      ("name", "Vistle script to process or slave name")
       ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
       ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+       ("url", "Vistle URL, script to process, or slave name")
       ;
    po::variables_map vm;
    try {
       po::positional_options_description popt;
-      popt.add("name", 1);
+      popt.add("url", 1);
       po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
       po::notify(vm);
    } catch (std::exception &e) {
@@ -188,16 +189,6 @@ bool Hub::init(int argc, char *argv[]) {
    if (vm.count("") > 0) {
       CERR << desc << std::endl;
       return false;
-   }
-
-    if (vm.count("name") > 1) {
-        CERR << desc << std::endl;
-        return false;
-    } else if (vm.count("name") == 1) {
-        if (m_isMaster)
-            m_scriptPath = vm["name"].as<std::string>();
-        else
-            m_name = vm["name"].as<std::string>();
    }
 
     if (vm.count("port") > 0) {
@@ -223,75 +214,108 @@ bool Hub::init(int argc, char *argv[]) {
        }
    }
 
-   try {
-       startServer();
-   } catch (std::exception &ex) {
-       CERR << "failed to initialise control server on port " << m_port << ": " << ex.what() << std::endl;
-       return false;
-   }
+    std::string uiCmd = "vistle_gui";
+    if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
+        if (std::string("PBS_INTERACTIVE") != pbs_env) {
+            if (!vm.count("batch"))
+                CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
+            uiCmd.clear();
+        }
+    }
+    bool pythonUi = false;
+    if (vm.count("tui")) {
+        pythonUi = true;
+        uiCmd.clear();
+    }
+    if (vm.count("gui")) {
+        uiCmd = "vistle_gui";
+    }
+    if (vm.count("batch")) {
+        uiCmd.clear();
+        pythonUi = false;
+    }
 
-   try {
-       if (m_dataPort > 0) {
-           m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
-       } else {
-           m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, 0, 0));
-       }
-       m_dataProxy->setTrace(m_traceMessages);
-   } catch (std::exception &ex) {
-       CERR << "failed to initialise data server on port " << (m_dataPort?m_dataPort:m_port+1) << ": " << ex.what() << std::endl;
-       return false;
-   }
+    std::string url;
+    ConnectionData connectionData;
+    if (vm.count("url") == 1) {
+        url = vm["url"].as<std::string>();
+        if (VistleUrl::parse(url, connectionData)) {
+            url.clear();
+            m_isMaster = connectionData.master;
+            if (m_isMaster) {
+                m_port = connectionData.port;
+            } else {
+                if (connectionData.port == 0)
+                    connectionData.port = m_basePort;
+                m_masterHost = connectionData.host;
+                m_masterPort = connectionData.port;
+            }
+            if (!connectionData.hex_key.empty()) {
+                CERR << "setting session key to " << connectionData.hex_key << std::endl;
+                crypto::set_session_key(connectionData.hex_key);
+            }
+            if (connectionData.kind == "/ui"
+                || connectionData.kind == "/gui") {
+                std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
+                startUi(uipath, true);
+            }
+        }
+    }
 
-   std::string uiCmd = "vistle_gui";
+    if (m_isMaster && vm.count("hub") > 0) {
+        m_isMaster = false;
+        m_masterHost = vm["hub"].as<std::string>();
+        auto colon = m_masterHost.find(':');
+        if (colon != std::string::npos) {
+            m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon + 1));
+            m_masterHost = m_masterHost.substr(0, colon);
+        }
+    }
 
-   if (vm.count("hub") > 0) {
-      m_isMaster = false;
-      m_masterHost = vm["hub"].as<std::string>();
-      auto colon = m_masterHost.find(':');
-      if (colon != std::string::npos) {
-         m_masterPort = boost::lexical_cast<unsigned short>(m_masterHost.substr(colon+1));
-         m_masterHost = m_masterHost.substr(0, colon);
-      }
+    try {
+        startServer();
+    } catch (std::exception &ex) {
+        CERR << "failed to initialise control server on port " << m_port << ": " << ex.what() << std::endl;
+        return false;
+    }
 
-      if (!connectToMaster(m_masterHost, m_masterPort)) {
-         CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
-         return false;
-      }
+    try {
+        if (m_dataPort > 0) {
+            m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, m_dataPort ? m_dataPort : m_port+1, !m_dataPort));
+        } else {
+            m_dataProxy.reset(new DataProxy(m_ioService, m_stateTracker, 0, 0));
+        }
+        m_dataProxy->setTrace(m_traceMessages);
+    } catch (std::exception &ex) {
+        CERR << "failed to initialise data server on port " << (m_dataPort?m_dataPort:m_port+1) << ": " << ex.what() << std::endl;
+        return false;
+    }
+
+    if (m_isMaster) {
+        // this is the master hub
+        m_hubId = Id::MasterHub;
+        if (!m_inManager) {
+            message::DefaultSender::init(m_hubId, 0);
+        }
+        make.setId(m_hubId);
+        make.setRank(0);
+        Router::init(message::Identify::HUB, m_hubId);
+
+        m_masterPort = m_port;
+        m_dataProxy->setHubId(m_hubId);
+
+        m_scriptPath = url;
    } else {
-      // this is the master hub
-      m_hubId = Id::MasterHub;
-      if (!m_inManager) {
-          message::DefaultSender::init(m_hubId, 0);
-      }
-      make.setId(m_hubId);
-      make.setRank(0);
-      Router::init(message::Identify::HUB, m_hubId);
+        if (!url.empty())
+            m_name = url;
 
-      m_masterPort = m_port;
-      m_dataProxy->setHubId(m_hubId);
+        if (!connectToMaster(m_masterHost, m_masterPort)) {
+            CERR << "failed to connect to master at " << m_masterHost << ":" << m_masterPort << std::endl;
+            return false;
+        }
    }
 
-   // start UI
-   if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
-      if (std::string("PBS_INTERACTIVE") != pbs_env) {
-         if (!vm.count("batch"))
-            CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
-         uiCmd.clear();
-      }
-   }
-   bool pythonUi = false;
-   if (vm.count("tui")) {
-       pythonUi = true;
-       uiCmd.clear();
-   }
-   if (vm.count("gui")) {
-      uiCmd = "vistle_gui";
-   }
-   if (vm.count("batch")) {
-      uiCmd.clear();
-      pythonUi = false;
-   }
-
+    // start UI
    if (!m_inManager && !m_quitting) {
        if (!uiCmd.empty()) {
            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
@@ -446,7 +470,17 @@ bool Hub::startServer() {
 
    m_port = port;
 
-   CERR << "listening for connections on port " << m_port << std::endl;
+   if (m_isMaster) {
+       ConnectionData cd;
+       cd.port = m_port;
+       cd.host = vistle::hostname();
+       cd.hex_key = crypto::get_session_key();
+       auto url = VistleUrl::create(cd);
+
+       setSessionUrl(url);
+       CERR << "listening for connections on port " << m_port << std::endl;
+   }
+
    startAccept(m_acceptorv4);
    startAccept(m_acceptorv6);
 
@@ -564,6 +598,11 @@ bool Hub::dispatch() {
       std::shared_ptr<boost::asio::ip::tcp::socket> sock;
       avail = 0;
       for (auto &s: m_clients) {
+         if (!s->is_open()) {
+             CERR << "socket closed" << std::endl;
+             removeSocket(sock);
+             return true;
+         }
          boost::asio::socket_base::bytes_readable command(true);
          try {
              s->io_control(command);
@@ -584,61 +623,8 @@ bool Hub::dispatch() {
       }
    } while (!m_quitting && avail > 0);
 
-   if (auto pid = vistle::try_wait()) {
-      work = true;
-      auto it = m_processMap.find(pid);
-      if (it == m_processMap.end()) {
-         CERR << "unknown process with PID " << pid << " exited" << std::endl;
-      } else {
-         const int id = it->second;
-         std::string idstring;
-         switch(id) {
-         case Process::Manager:
-             idstring = "Manager";
-             break;
-         case Process::Cleaner:
-             idstring = "Cleaner";
-             break;
-         case Process::Debugger:
-             idstring = "Debugger";
-             break;
-         case Process::GUI:
-             idstring = "GUI";
-             break;
-         default:
-             idstring = std::to_string(id);
-             break;
-         }
-         CERR << "process with id " << idstring << " (PID " << pid << ") exited" << std::endl;
-         m_processMap.erase(it);
-         if (id == Process::Manager) {
-            // manager died
-            m_ioService.stop();
-            m_dataProxy.reset();
-            if (!m_quitting) {
-               m_uiManager.requestQuit();
-               CERR << "manager died - cannot continue" << std::endl;
-               for (auto ent: m_processMap) {
-                  vistle::kill_process(ent.first);
-               }
-               if (startCleaner()) {
-                  m_quitting = true;
-               } else {
-                  exit(1);
-               }
-            }
-         }
-#ifndef MODULE_THREAD
-         if (message::Id::isModule(id)
-                 && m_stateTracker.getModuleState(id) != StateObserver::Unknown
-                 && m_stateTracker.getModuleState(id) != StateObserver::Quit) {
-            // synthesize ModuleExit message for crashed modules
-            auto m = make.message<message::ModuleExit>();
-            m.setSenderId(id);
-            sendManager(m); // will be returned and forwarded to master hub
-         }
-#endif
-      }
+   if (checkChildProcesses()) {
+       work = true;
    }
 
    if (m_quitting) {
@@ -934,6 +920,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        removeSocket(sock);
        if (senderType == Identify::HUB || senderType == Identify::MANAGER) {
            CERR << "terminating." << std::endl;
+           emergencyQuit();
            m_quitting = true;
            return false;
        }
@@ -1640,6 +1627,15 @@ void Hub::setLoadedFile(const std::string &file) {
    sendUi(t);
 }
 
+void Hub::setSessionUrl(const std::string &url) {
+
+    std::cerr << "Share this: " << url << std::endl;
+    std::cerr << std::endl;
+    auto t = make.message<message::UpdateStatus>(message::UpdateStatus::SessionUrl, url);
+    m_stateTracker.handle(t, nullptr);
+    sendUi(t);
+}
+
 void Hub::setStatus(const std::string &s, message::UpdateStatus::Importance prio) {
    CERR << "Status: " << s << std::endl;
    auto t = make.message<message::UpdateStatus>(s, prio);
@@ -1693,15 +1689,21 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
    return true;
 }
 
-bool Hub::startUi(const std::string &uipath) {
+bool Hub::startUi(const std::string &uipath, bool replace) {
 
    std::string port = boost::lexical_cast<std::string>(this->m_masterPort);
 
    std::vector<std::string> args;
    args.push_back(uipath);
-   args.push_back("-from-vistle");
+   if (!replace)
+       args.push_back("-from-vistle");
    args.push_back(m_masterHost);
    args.push_back(port);
+   if (replace) {
+       vistle::replace_process(uipath, args);
+       return false;
+   }
+
    auto pid = vistle::spawn_process(uipath, args);
    if (!pid) {
       CERR << "failed to spawn UI " << uipath << std::endl;
@@ -1904,6 +1906,77 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
         return sendUi(result, result.destUiId(), payload);
 
     return sendHub(result, result.destId(), payload);
+}
+
+bool Hub::checkChildProcesses(bool emergency) {
+
+    auto pid = vistle::try_wait();
+    if (!pid)
+        return false;
+
+    auto it = m_processMap.find(pid);
+    if (it == m_processMap.end()) {
+        CERR << "unknown process with PID " << pid << " exited" << std::endl;
+    } else {
+        const int id = it->second;
+        std::string idstring;
+        switch(id) {
+        case Process::Manager:
+            idstring = "Manager";
+            break;
+        case Process::Cleaner:
+            idstring = "Cleaner";
+            break;
+        case Process::Debugger:
+            idstring = "Debugger";
+            break;
+        case Process::GUI:
+            idstring = "GUI";
+            break;
+        default:
+            idstring = std::to_string(id);
+            break;
+        }
+        CERR << "process with id " << idstring << " (PID " << pid << ") exited" << std::endl;
+        m_processMap.erase(it);
+        if (!m_quitting && !emergency) {
+            if (id == Process::Manager) {
+                // manager died
+                CERR << "manager died - cannot continue" << std::endl;
+                emergencyQuit();
+            }
+            if (message::Id::isModule(id) && m_stateTracker.getModuleState(id) != StateObserver::Unknown &&
+                m_stateTracker.getModuleState(id) != StateObserver::Quit) {
+                // synthesize ModuleExit message for crashed modules
+                auto m = make.message<message::ModuleExit>();
+                m.setSenderId(id);
+                sendManager(m); // will be returned and forwarded to master hub
+            }
+        }
+    }
+
+    return true;
+}
+
+void Hub::emergencyQuit() {
+
+    m_ioService.stop();
+    m_dataProxy.reset();
+    if (!m_quitting) {
+        m_uiManager.requestQuit();
+        for (auto ent: m_processMap) {
+            vistle::kill_process(ent.first);
+        }
+        if (startCleaner()) {
+            m_quitting = true;
+            while(!m_processMap.empty()) {
+                if (!checkChildProcesses(true)) {
+                    usleep(100000);
+                }
+            }
+        }
+        exit(1);
+    }
 }
 
 } // namespace vistle

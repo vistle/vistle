@@ -60,7 +60,7 @@ private:
 
    bool hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
-   bool startUi(const std::string &uipath);
+   bool startUi(const std::string &uipath, bool replace=false);
    bool startPythonUi();
    bool startServer();
    bool startAccept(std::shared_ptr<acceptor> a);
@@ -148,10 +148,14 @@ struct Slave {
    bool handlePriv(const message::FileQuery &query, const buffer *payload);
    bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
 
+   bool checkChildProcesses(bool emergency = false);
+   void emergencyQuit();
+
    std::vector<message::Buffer> m_queue;
    bool handleQueue();
 
    void setLoadedFile(const std::string &file);
+   void setSessionUrl(const std::string &url);
    void setStatus(const std::string &s, message::UpdateStatus::Importance prio = message::UpdateStatus::Low);
    void clearStatus();
 
