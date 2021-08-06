@@ -447,7 +447,7 @@ void ReadTsunami::computeActualLastTimestep(const ptrdiff_t &incrementTimestep, 
  * @param blockPartitionIterFirst Start iterator for storage partion indices.
  */
 template<class Iter>
-void ReadTsunami::computeBlockPartion(const int blockNum, size_t &ghost, vistle::Index &nLatBlocks,
+void ReadTsunami::computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks,
                                       vistle::Index &nLonBlocks, Iter blockPartitionIterFirst)
 {
     std::array<Index, NUM_BLOCKS> blocks;
@@ -490,11 +490,10 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     computeActualLastTimestep(incrementTimestep, firstTimestep, lastTimestep, nTimesteps);
 
     // compute partition borders => structured grid
-    size_t ghost{0};
     Index nLatBlocks{0};
     Index nLonBlocks{0};
     std::array<Index, NUM_BLOCKS> bPartitionIdx;
-    computeBlockPartion(blockNum, ghost, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
+    computeBlockPartion(blockNum, nLatBlocks, nLonBlocks, bPartitionIdx.begin());
 
     // dimension from lat and lon variables
     const Dim<size_t> dimSea(latvar.getDim(0).getSize(), lonvar.getDim(0).getSize());
@@ -502,6 +501,7 @@ bool ReadTsunami::computeInitial(Token &token, const T &blockNum)
     // get dim from grid_lon & grid_lat
     const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
+    size_t ghost{0};
     if (m_ghost->getValue() == 1 && !(nLatBlocks == 1 && nLonBlocks == 1))
         ghost++;
 
@@ -641,7 +641,7 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     // getting z from vecEta and copy to z()
     // verticesSea * timesteps = total count vecEta
-    auto startCopy = vecEta.begin() + (indexEta++ * verticesSea - 1);
+    auto startCopy = vecEta.begin() + (indexEta++ * verticesSea);
     std::copy_n(startCopy, verticesSea, ptr_timestepPoly->z().begin());
     ptr_timestepPoly->updateInternals();
     ptr_timestepPoly->setTimestep(timestep);

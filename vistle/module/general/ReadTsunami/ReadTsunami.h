@@ -101,7 +101,7 @@ private:
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
 
     template<class Iter>
-    void computeBlockPartion(const int blockNum, size_t &ghost, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
+    void computeBlockPartion(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
                              Iter blockPartitionIterFirst);
 
     template<class T>
