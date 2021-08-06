@@ -15,7 +15,6 @@
 #include <vistle/util/sleep.h>
 #include <vistle/util/listenv4v6.h>
 #include <vistle/util/crypto.h>
-#include <vistle/core/object.h>
 #include <vistle/core/message.h>
 #include <vistle/core/tcpmessage.h>
 #include <vistle/core/messagerouter.h>
