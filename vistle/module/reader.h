@@ -4,8 +4,40 @@
 #include "module.h"
 #include <set>
 #include <future>
+#include <diy/assigner.hpp>
+#include <diy/decomposition.hpp>
+#include <diy/master.hpp>
+#include "diy/mpi/communicator.hpp"
 
 namespace vistle {
+
+typedef diy::DiscreteBounds Bounds;
+typedef diy::RegularGridLink RegGridLink;
+typedef diy::RegularLink<Bounds> RegLink;
+typedef diy::Master::ProxyWithLink ProxyLink;
+
+struct Block {
+    // mandatory
+    Block() {}
+    static void *create() { return new Block; }
+    static void destroy(void *b) { delete static_cast<Block *>(b); }
+    void load_block(const void *b, diy::BinaryBuffer &bb) { diy::load(bb, *static_cast<const Block *>(b)); }
+    void save_block(const void *b, diy::BinaryBuffer &bb) { diy::save(bb, *static_cast<const Block *>(b)); }
+
+    // optional
+    /* void show_link(const ProxyLink &cp) */
+    /* { */
+    /*     diy::RegularLink<Bounds> *link = static_cast<RegLink *>(cp.link()); */
+    /*     std::cout << "Block (" << cp.gid() << "): " << link->core().min[0] << ' ' << link->core().min[1] << ' ' */
+    /*               << link->core().min[2] << " - " << link->core().max[0] << ' ' << link->core().max[1] << ' ' */
+    /*               << link->core().max[2] << " : " << link->bounds().min[0] << ' ' << link->bounds().min[1] << ' ' */
+    /*               << link->bounds().min[2] << " - " << link->bounds().max[0] << ' ' << link->bounds().max[1] << ' ' */
+    /*               << link->bounds().max[2] << " : " << link->size() << ' ' //<< std::endl */
+    /*               << std::dec << std::endl; */
+    /* } */
+};
+
+//forward declaration in vistle scope
 /**
  \class Reader
 
@@ -66,7 +98,7 @@ public:
     /** construct a read module, parameters correspond to @ref Module constructor
     *  @param name name of the module in the workflow editor
     *  @param moduleID unique identifier of the module instance
-    *  @param Boost.MPI communicator 
+    *  @param Boost.MPI communicator
     */
     Reader(const std::string &name, const int moduleID, mpi::communicator comm);
     ~Reader() override;
@@ -83,15 +115,13 @@ public:
     *  The size of a work unit depends on the partitioning that has been requested by @ref setPartitions
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
+    virtual bool read(const ProxyLink &link, Token &token, int timestep);
 
     /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
     /// called once on every rank after execution of the module has been initiated before read is called
     virtual bool prepareRead();
     /// called once on every rank after all read calls have been made and before execution finishes
     virtual bool finishRead();
-
-
-    bool prepareDIY(Meta &meta, int concurrency) const;
 
     /// return number of timesteps to advance
     int timeIncrement() const;
@@ -113,6 +143,11 @@ protected:
 
     /// control whether and how @ref read invocations are called in parallel
     void setParallelizationMode(ParallelizationMode mode);
+
+    void setMaxDomain(std::vector<int> &max) { m_maxDomain = max; }
+    void setMinDomain(std::vector<int> &min) { m_minDomain = min; }
+    void setDimDomain(int dim) { m_dimDomain = dim; }
+
     /// whether partitions should be handled by the @ref Reader class
     void setHandlePartitions(bool enable);
     /// whether timesteps may be distributed to different ranks
@@ -129,6 +164,7 @@ protected:
     bool changeParameter(const Parameter *param) override;
     void prepareQuit() override;
 
+
     bool checkConvexity() const;
 
     IntParameter *m_first = nullptr;
@@ -139,21 +175,39 @@ protected:
     IntParameter *m_checkConvexity = nullptr;
 
 private:
+    struct ReaderTime {
+        ReaderTime(int first, int last, int inc): m_first(first), m_last(last), m_inc(inc) {}
+
+        int first() { return m_first; }
+        int last() { return m_last; }
+        int inc() { return m_inc; }
+        int calc_numtime();
+
+    private:
+        int m_first;
+        int m_last;
+        int m_inc;
+    };
+
     struct ReaderProperties {
-        ReaderProperties(Meta *m, int nPart, int conc, int res): meta(m), numpart(nPart), concurrency(conc), result(res)
+        ReaderProperties(Meta *m, ReaderTime rtime, int nPart, int conc, int res)
+        : meta(m), time(rtime), numpart(nPart), concurrency(conc), result(res)
         {}
 
     public:
         Meta *meta;
+        ReaderTime time;
         int numpart;
         int concurrency;
         bool result;
     };
 
     void readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
-    void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop, int fist, int last, int inc);
+    void readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop);
+    bool prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     bool prepare() override;
     bool compute() override;
+    bool readBlock(const ProxyLink &pL, Token &token, int timepstep = -1);
 
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues
@@ -162,7 +216,10 @@ private:
 
     std::set<const Parameter *> m_observedParameters;
 
+    std::vector<int> m_minDomain;
+    std::vector<int> m_maxDomain;
     int m_numTimesteps = 0;
+    int m_dimDomain = 3;
     int m_numPartitions = 0;
     bool m_readyForRead = true;
 
