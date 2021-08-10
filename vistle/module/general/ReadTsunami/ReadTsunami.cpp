@@ -103,7 +103,8 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
     observeParameter(m_blocks[1]);
     observeParameter(m_verticalScale);
 
-    setParallelizationMode(ParallelizeBlocks);
+    /* setParallelizationMode(ParallelizeBlocks); */
+    setParallelizationMode(ParallelizeDIYBlocks);
 }
 
 /**
@@ -210,6 +211,7 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     /* setPartitions(nBlocks); */
     /* return true; */
     if (nBlocks <= size()) {
+        setDimDomain(2);
         setPartitions(nBlocks);
         return true;
     } else {
@@ -229,6 +231,14 @@ bool ReadTsunami::inspectNetCDFVars()
 
     const int &maxTime = ncFile->getDim("time").getSize();
     setTimesteps(maxTime);
+
+    const int &maxLat = ncFile->getDim("lat").getSize();
+    const int &maxLon = ncFile->getDim("lon").getSize();
+    std::vector minDomain{0,0};
+    std::vector maxDomain{maxLat, maxLon};
+
+    setMaxDomain(maxDomain);
+    setMinDomain(minDomain);
 
     //scalar inspection
     std::vector<std::string> scalarChoiceVec;
@@ -400,6 +410,11 @@ bool ReadTsunami::read(Token &token, int timestep, int block)
     return computeBlock(token, block, timestep);
 }
 
+bool ReadTsunami::read(const ProxyLink &pL, Token &token, int timestep)
+{
+    return computeBlock(token, pL.gid(), timestep);
+}
+
 /**
   * @brief Computing per block.
   *
@@ -422,7 +437,6 @@ bool ReadTsunami::computeBlock(Reader::Token &token, const T &blockNum, const U 
 
 /**
  * @brief Compute actual last timestep.
- *
  * @param incrementTimestep Stepwidth.
  * @param firstTimestep first timestep.
  * @param lastTimestep last timestep selected.

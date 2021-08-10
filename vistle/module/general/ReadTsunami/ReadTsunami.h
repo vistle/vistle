@@ -84,6 +84,7 @@ private:
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
+    bool read(const vistle::ProxyLink &pL, Token &token, int timestep) override;
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
