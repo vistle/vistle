@@ -158,11 +158,11 @@ set(ENABLE_INSTALLER TRUE)
 #vistle_find_package(Thrust REQUIRED)
 set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/thrust")
 
+#new submodule for block distribution
+set(DIY_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdparty/diy/include")
+
 #vistle_find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
-
-#new submodule for block distribution
-set(DIY_INCLUDE_PATH "${PROJECT_SOURCE_DIR}/3rdparty/diy/include")
 
 if (NOT VISTLE_GUI_ONLY)
     #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
