@@ -30,6 +30,8 @@ Reader::Reader(const std::string &name, const int moduleID, mpi::communicator co
 {
     setCurrentParameterGroup("Reader");
 
+    m_ghost = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
+
     m_first = addIntParameter("first_step", "first timestep to read", 0);
     setParameterRange(m_first, Integer(0), std::numeric_limits<Integer>::max());
 
@@ -118,6 +120,10 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
     int nBlocks{m_numPartitions};
     int nBlocksInMem{-1}; // all in memory
     int nThreads{prop.concurrency};
+    int ghost{0};
+
+    if (m_ghost->getValue())
+        ghost++;
 
     auto diy_comm = diy::mpi::communicator(comm());
     diy::ContiguousAssigner assigner(size(), nBlocks);
@@ -147,7 +153,7 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
     for (int i = 0; i < dimDomain; ++i) {
         share_face.push_back(true);
         wrap.push_back(true);
-        ghosts.push_back(1);
+        ghosts.push_back(ghost);
     }
 
     // either create the regular decomposer and call its decompose function
@@ -303,16 +309,16 @@ bool Reader::prepare()
 bool Reader::readBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
 {
     if (b)
-        return read(b, pL, token, timestep);
-    return read(pL, token, timestep);
+        return readDIYBlock(b, pL, token, timestep);
+    return readDIY(pL, token, timestep);
 }
 
-bool Reader::read(const ProxyLink &pL, Token &token, int timestep)
+bool Reader::readDIY(const ProxyLink &pL, Token &token, int timestep)
 {
     return true;
 }
 
-bool Reader::read(Block *b, const ProxyLink &pL, Token &token, int timestep)
+bool Reader::readDIYBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
 {
     return true;
 }

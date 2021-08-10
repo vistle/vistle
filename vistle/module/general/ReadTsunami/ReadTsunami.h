@@ -16,14 +16,12 @@
 #ifndef _READTSUNAMI_H
 #define _READTSUNAMI_H
 
-#include <cstddef>
 #include <vistle/module/reader.h>
 #include <vistle/core/polygons.h>
 
 #include <netcdf>
 #include <vector>
 #include <array>
-#include <memory>
 
 constexpr int NUM_BLOCKS{2};
 constexpr int NUM_SCALARS{4};
@@ -84,7 +82,7 @@ private:
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
-    bool read(const vistle::ProxyLink &pL, Token &token, int timestep) override;
+    bool readDIY(const ProxyLink &pL, Token &token, int timestep) override;
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
@@ -100,6 +98,7 @@ private:
 
     template<class T, class U>
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
+    bool computeBlockDIY(const ProxyLink& pL, Token &token, int timestep);
 
     template<class Iter>
     void computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
@@ -107,9 +106,11 @@ private:
 
     template<class T>
     bool computeInitial(Token &token, const T &blockNum);
+    bool computeInitialDIY(const ProxyLink& pL, Token &token);
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
+    bool computeTimestepDIY(const ProxyLink& pL, Token &token, int timestep);
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
                                    size_t &lastTimestep, size_t &nTimesteps);
 
@@ -133,7 +134,7 @@ private:
     void printRank0(const std::string &str, Args... args) const;
 
     //Parameter
-    vistle::IntParameter *m_ghost = nullptr;
+    vistle::IntParameter *m_ghostTsu = nullptr;
     vistle::IntParameter *m_fill = nullptr;
     vistle::StringParameter *m_filedir = nullptr;
     vistle::StringParameter *m_bathy = nullptr;

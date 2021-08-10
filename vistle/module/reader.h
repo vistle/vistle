@@ -102,8 +102,8 @@ public:
     *  The size of a work unit depends on the partitioning that has been requested by @ref setPartitions
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
-    virtual bool read(const ProxyLink &link, Token &token, int timestep);
-    virtual bool read(Block *b, const ProxyLink &link, Token &token, int timestep);
+    virtual bool readDIY(const ProxyLink &link, Token &token, int timestep);
+    virtual bool readDIYBlock(Block *b, const ProxyLink &link, Token &token, int timestep);
 
     /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
     /// called once on every rank after execution of the module has been initiated before read is called
@@ -161,6 +161,7 @@ protected:
     IntParameter *m_distributeTime = nullptr;
     IntParameter *m_firstRank = nullptr;
     IntParameter *m_checkConvexity = nullptr;
+    IntParameter *m_ghost = nullptr;
 
 private:
     struct ReaderTime {
