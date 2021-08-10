@@ -11,33 +11,6 @@
 
 namespace vistle {
 
-typedef diy::DiscreteBounds Bounds;
-typedef diy::RegularGridLink RegGridLink;
-typedef diy::RegularLink<Bounds> RegLink;
-typedef diy::Master::ProxyWithLink ProxyLink;
-
-struct Block {
-    // mandatory
-    Block() {}
-    static void *create() { return new Block; }
-    static void destroy(void *b) { delete static_cast<Block *>(b); }
-    void load_block(const void *b, diy::BinaryBuffer &bb) { diy::load(bb, *static_cast<const Block *>(b)); }
-    void save_block(const void *b, diy::BinaryBuffer &bb) { diy::save(bb, *static_cast<const Block *>(b)); }
-
-    // optional
-    /* void show_link(const ProxyLink &cp) */
-    /* { */
-    /*     diy::RegularLink<Bounds> *link = static_cast<RegLink *>(cp.link()); */
-    /*     std::cout << "Block (" << cp.gid() << "): " << link->core().min[0] << ' ' << link->core().min[1] << ' ' */
-    /*               << link->core().min[2] << " - " << link->core().max[0] << ' ' << link->core().max[1] << ' ' */
-    /*               << link->core().max[2] << " : " << link->bounds().min[0] << ' ' << link->bounds().min[1] << ' ' */
-    /*               << link->bounds().min[2] << " - " << link->bounds().max[0] << ' ' << link->bounds().max[1] << ' ' */
-    /*               << link->bounds().max[2] << " : " << link->size() << ' ' //<< std::endl */
-    /*               << std::dec << std::endl; */
-    /* } */
-};
-
-//forward declaration in vistle scope
 /**
  \class Reader
 
@@ -94,6 +67,20 @@ public:
         std::map<std::string, std::shared_ptr<PortState>> m_ports;
     };
 
+    typedef diy::DiscreteBounds Bounds;
+    typedef diy::RegularGridLink RegGridLink;
+    typedef diy::RegularLink<Bounds> RegLink;
+    typedef diy::Master::ProxyWithLink ProxyLink;
+
+    struct Block {
+        // mandatory
+        Block() {}
+        static void *create() { return new Block; }
+        static void destroy(void *b) { delete static_cast<Block *>(b); }
+        void load_block(const void *b, diy::BinaryBuffer &bb) { diy::load(bb, *static_cast<const Block *>(b)); }
+        void save_block(const void *b, diy::BinaryBuffer &bb) { diy::save(bb, *static_cast<const Block *>(b)); }
+    };
+
     /// construct a read module, parameters correspond to @ref Module constructor
     /** construct a read module, parameters correspond to @ref Module constructor
     *  @param name name of the module in the workflow editor
@@ -116,6 +103,7 @@ public:
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
     virtual bool read(const ProxyLink &link, Token &token, int timestep);
+    virtual bool read(Block *b, const ProxyLink &link, Token &token, int timestep);
 
     /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
     /// called once on every rank after execution of the module has been initiated before read is called
@@ -207,7 +195,7 @@ private:
     bool prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     bool prepare() override;
     bool compute() override;
-    bool readBlock(const ProxyLink &pL, Token &token, int timepstep = -1);
+    bool readBlock(Block *block, const ProxyLink &pL, Token &token, int timepstep = -1);
 
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues

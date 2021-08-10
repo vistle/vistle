@@ -1,5 +1,4 @@
 #include "reader.h"
-#include <future>
 
 namespace vistle {
 
@@ -176,7 +175,7 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
     m_tokens.emplace_back(token);
     prev = token;
     token->m_future = std::async(std::launch::async, [this, &token, timestep, &master]() {
-        master.foreach ([&](ProxyLink &pL) { readBlock(pL, *token, timestep); });
+        master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); });
         return true;
     });
 
@@ -301,12 +300,19 @@ bool Reader::prepare()
     return true;
 }
 
-bool Reader::readBlock(const ProxyLink &pL, Token &token, int timestep)
+bool Reader::readBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
 {
-    return Reader::read(pL, token, timestep);
+    if (b)
+        return read(b, pL, token, timestep);
+    return read(pL, token, timestep);
 }
 
 bool Reader::read(const ProxyLink &pL, Token &token, int timestep)
+{
+    return true;
+}
+
+bool Reader::read(Block *b, const ProxyLink &pL, Token &token, int timestep)
 {
     return true;
 }
