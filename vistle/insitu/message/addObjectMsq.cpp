@@ -1,5 +1,4 @@
 #include "addObjectMsq.h"
-#include <vistle/core/messagequeue.h>
 #include <vistle/core/messages.h>
 #include <vistle/insitu/core/exeption.h>
 using namespace vistle::insitu::message;
@@ -12,28 +11,11 @@ AddObjectMsq::AddObjectMsq(const ModuleInfo &moduleInfo, size_t rank): m_moduleI
     std::string mqName = vistle::message::MessageQueue::createName(("recvFromSim" + moduleInfo.uniqueSuffix()).c_str(),
                                                                    moduleInfo.id(), rank);
     try {
-        m_sendMessageQueue = vistle::message::MessageQueue::open(mqName);
+        m_sendMessageQueue.reset(vistle::message::MessageQueue::open(mqName));
     } catch (boost::interprocess::interprocess_exception &ex) {
         throw vistle::insitu::InsituExeption()
             << "opening add object message queue with name " << mqName << ": " << ex.what();
     }
-}
-
-AddObjectMsq::~AddObjectMsq()
-{
-    delete m_sendMessageQueue;
-}
-
-AddObjectMsq::AddObjectMsq(AddObjectMsq &&other) noexcept: m_sendMessageQueue(other.m_sendMessageQueue)
-{
-    other.m_sendMessageQueue = nullptr;
-}
-
-AddObjectMsq &AddObjectMsq::operator=(AddObjectMsq &&other) noexcept
-{
-    m_sendMessageQueue = other.m_sendMessageQueue;
-    other.m_sendMessageQueue = nullptr;
-    return *this;
 }
 
 void AddObjectMsq::addObject(const std::string &port, vistle::Object::const_ptr obj)

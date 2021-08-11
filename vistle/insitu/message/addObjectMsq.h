@@ -3,27 +3,27 @@
 #include "export.h"
 #include "moduleInfo.h"
 #include <vistle/core/object.h>
+#include <vistle/core/messagequeue.h>
 
 namespace vistle {
 namespace message {
-class MessageQueue;
 }
 namespace insitu {
 namespace message {
+// Queue to send addObject messages to LibSImController module
 class V_INSITUMESSAGEEXPORT AddObjectMsq {
 public:
     AddObjectMsq(const ModuleInfo &moduleInfo, size_t rank);
-    ~AddObjectMsq();
+    ~AddObjectMsq() = default;
     AddObjectMsq(AddObjectMsq &other) = delete;
-    AddObjectMsq(AddObjectMsq &&other) noexcept;
+    AddObjectMsq(AddObjectMsq &&other) = default;
     AddObjectMsq operator=(AddObjectMsq &other) = delete;
-    AddObjectMsq &operator=(AddObjectMsq &&other) noexcept;
+    AddObjectMsq &operator=(AddObjectMsq &&other) = default;
 
     void addObject(const std::string &port, vistle::Object::const_ptr obj);
 
 private:
-    vistle::message::MessageQueue *m_sendMessageQueue =
-        nullptr; // Queue to send addObject messages to LibSImController module
+    std::unique_ptr<vistle::message::MessageQueue> m_sendMessageQueue;
     ModuleInfo m_moduleInfo;
     size_t m_rank = 0;
 };
