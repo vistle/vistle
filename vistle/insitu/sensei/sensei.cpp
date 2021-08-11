@@ -278,6 +278,7 @@ bool SenseiAdapter::initModule(const Message &msg)
              << m_internals->moduleInfo.name() << m_internals->moduleInfo.id() << endl;
         return false;
     }
+    //m_internals->moduleInfo() is already updated with the new shm info
     if (!checkHostName() || !checkMpiSize() || !initializeVistleEnv()) {
         m_internals->messageHandler.send(ConnectionClosed{true});
         return false;
