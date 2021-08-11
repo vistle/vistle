@@ -125,7 +125,7 @@ void insitu::InSituReader::reconnect()
     ++m_numInstances;
 }
 
-vistle::insitu::message::ModuleInfo::ShmInfo insitu::InSituReader::gatherModuleInfo()
+vistle::insitu::message::ModuleInfo::ShmInfo insitu::InSituReader::gatherModuleInfo() const
 {
     message::ModuleInfo::ShmInfo shmInfo;
     shmInfo.hostname = vistle::hostname();
@@ -154,7 +154,7 @@ void InSituReader::initRecvFromSimQueue()
 {
     std::string msqName = vistle::message::MessageQueue::createName(
         ("recvFromSim" + std::to_string(m_numInstances)).c_str(), id(), rank());
-
+    std::cerr << "created msqName " << msqName << std::endl;
     try {
         m_receiveFromSimMessageQueue.reset(vistle::message::MessageQueue::create(msqName));
         CERR << "receiveFromSimMessageQueue name = " << msqName << std::endl;

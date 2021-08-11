@@ -12,7 +12,7 @@ namespace insitu {
 // this type of module only calls prepare and reduce at the start/ end of the execution process.
 // it handles input from the manager also during execution
 // when execution starts (prepare) a Simulation that shares the shm area of this module must communicate it's shm ids
-// via SyncShmIDs object the sim must only create shm objects while this module m_isExecuting while these module must
+// via SyncShmIDs object the sim must only create shm objects while this module m_isExecuting while this module must
 // create vistle objects only if !m_isExecuting input ports are not tested on the InSituReader
 class V_INSITUMODULEEXPORT InSituReader: public vistle::Module {
 public:
@@ -26,7 +26,7 @@ public:
     virtual void cancelExecuteMessageReceived(const vistle::message::Message *msg) override;
     size_t instanceNum() const;
     void reconnect();
-    message::ModuleInfo::ShmInfo gatherModuleInfo();
+    message::ModuleInfo::ShmInfo gatherModuleInfo() const;
 
     virtual bool sendMessage(const vistle::message::Message &message, const buffer *payload = nullptr) const override;
 
