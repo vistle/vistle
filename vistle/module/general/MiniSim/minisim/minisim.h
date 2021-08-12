@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <string>
 #include <boost/mpi/communicator.hpp>
-
+#include <atomic>
 class MiniSimModule;
 
 namespace minisim {
