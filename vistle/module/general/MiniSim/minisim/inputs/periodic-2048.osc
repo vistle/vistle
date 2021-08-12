@@ -1,0 +1,9 @@
+# type      center           r       omega0      zeta
+periodic    512  512  512    256     3.14
+periodic    512  512  1536   256     3.14
+periodic    512  1536 512    256     3.14
+periodic    512  1536 1536   256     3.14
+periodic    1536 512  512    256     3.14
+periodic    1536 512  1536   256     3.14
+periodic    1536 1536 512    256     3.14
+periodic    1536 1536 1536   256     3.14
