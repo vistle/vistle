@@ -1,9 +1,0 @@
-# type      center             r       omega0      zeta
-periodic    1024 1024 1024     512     3.14
-periodic    1024 1024 3072     512     3.14
-periodic    1024 3072 1024     512     3.14
-periodic    1024 3072 3072     512     3.14
-periodic    3072 1024 1024     512     3.14
-periodic    3072 1024 3072     512     3.14
-periodic    3072 3072 1024     512     3.14
-periodic    3072 3072 3072     512     3.14

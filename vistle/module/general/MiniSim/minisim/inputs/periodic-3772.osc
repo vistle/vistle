@@ -1,9 +1,0 @@
-# type      center          r       omega0      zeta
-periodic    943  943  943   471     3.14
-periodic    943  943  2829  471     3.14
-periodic    943  2829 943   471     3.14
-periodic    943  2829 2829  471     3.14
-periodic    2829 943  943   471     3.14
-periodic    2829 943  2829  471     3.14
-periodic    2829 2829 943   471     3.14
-periodic    2829 2829 2829  471     3.14
