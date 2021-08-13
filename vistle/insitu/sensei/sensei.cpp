@@ -66,8 +66,8 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
 
 SenseiAdapter::~SenseiAdapter()
 {
-    delete m_internals;
     m_internals->messageHandler.send(message::ConnectionClosed{true});
+    delete m_internals;
 #ifdef MODULE_THREAD
     CERR << "Quit requested, waiting for vistle manager to finish" << endl;
     m_managerThread.join();
@@ -166,6 +166,13 @@ bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 
 void SenseiAdapter::processData()
 {
+    static bool first = true;
+    if (first)
+    {
+        first = false;
+        m_stopWatch = std::make_unique<StopWatch>("simulation took");
+    }
+
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
         bool keepTimesteps = m_internals->intOptions.find(IntOptions::KeepTimesteps)->value();
@@ -179,6 +186,7 @@ void SenseiAdapter::processData()
 bool SenseiAdapter::Finalize()
 {
     CERR << "Finalizing" << endl;
+    m_stopWatch.reset(nullptr);
     if (m_internals->moduleInfo.isInitialized()) {
         m_internals->messageHandler.send(ConnectionClosed{true});
     }

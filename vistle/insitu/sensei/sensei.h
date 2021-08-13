@@ -4,6 +4,7 @@
 #include "export.h"
 #include "metaData.h"
 #include "objectRetriever.h"
+#include <vistle/util/stopwatch.h>
 
 #include <mpi.h>
 #include <thread>
@@ -45,6 +46,7 @@ public:
     }
 
 private:
+    std::unique_ptr<vistle::StopWatch> m_stopWatch;
     ObjectRetriever m_callbacks;
     MetaData m_metaData;
     MetaData m_usedData;
