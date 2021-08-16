@@ -21,6 +21,7 @@ set(util_SOURCES
 set(util_HEADERS
    affinity.h
    allocator.h
+   boost_interprocess_config.h
    buffer.h
    coRestraint.h
    crypto.h
