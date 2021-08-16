@@ -1,0 +1,9 @@
+# type      center          r       omega0      zeta
+periodic    256 256 256     128     3.14
+periodic    256 256 768     128     3.14
+periodic    256 768 256     128     3.14
+periodic    256 768 768     128     3.14
+periodic    768 256 256     128     3.14
+periodic    768 256 768     128     3.14
+periodic    768 768 256     128     3.14
+periodic    768 768 768     128     3.14
