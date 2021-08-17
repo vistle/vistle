@@ -347,16 +347,18 @@ void LibSimModule::recvAndhandleMessage()
     } break;
     case InSituMessageType::SetCommands:
     case InSituMessageType::SetCustomCommands: {
-        auto em = msg.unpackOrCast<vistle::insitu::message::SetCommands>();
+        auto commands = msg.type() == InSituMessageType::SetCommands
+                      ? msg.unpackOrCast<vistle::insitu::message::SetCommands>().value
+                      : msg.unpackOrCast<vistle::insitu::message::SetCustomCommands>().value;
         auto &params = msg.type() == InSituMessageType::SetCommands ? m_commandParameter : m_customCommandParameter;
 
         for (auto i = params.begin(); i != params.end(); ++i) {
-            if (std::find(em.value.begin(), em.value.end(), (*i)->getName()) == em.value.end()) {
+            if (std::find(commands.begin(), commands.end(), (*i)->getName()) == commands.end()) {
                 removeParameter(*i);
                 i = params.erase(i);
             }
         }
-        for (auto cmd: em.value) {
+        for (auto cmd: commands) {
             auto lb =
                 std::find_if(params.begin(), params.end(), [cmd](const auto &val) { return val->getName() == cmd; });
             if (lb == params.end()) {
