@@ -53,8 +53,7 @@ private:
     void sendVarablesToModule(const std::set<std::string> &objects);
     VariableInfo collectVariableInfo(size_t nthVariable);
     vistle::Object::ptr makeCombinedVariable(const VariableInfo &varInfo);
-    vistle::Object::ptr makeVtkVariable(const VariableInfo &varInfo, int iteration);
-    vistle::Object::ptr makeNonVtkVariable(const VariableInfo &varInfo, int iteration);
+    vistle::Object::ptr makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat);
     void sendVarableToModule(vistle::Object::ptr variable, int block, const char *name);
 
     void setMeshTimestep(vistle::Object::ptr mesh);

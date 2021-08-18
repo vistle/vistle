@@ -226,13 +226,7 @@ void DataTransmitter::sendVarablesToModule(const std::set<std::string> &objects)
             } else {
                 for (size_t iteration = 0; iteration < varInfo.meshInfo.domains.size; ++iteration) {
                     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
-                    vistle::Object::ptr variable;
-                    if (m_rules.vtkFormat) {
-                        variable = makeVtkVariable(varInfo, iteration);
-                    } else {
-                        variable = makeNonVtkVariable(varInfo, iteration);
-                    }
-                    if (variable) {
+                    if (auto variable = makeVariable(varInfo, iteration, m_rules.vtkFormat)) {
                         sendVarableToModule(variable, currDomain, varInfo.name);
                     } else {
                         std::cerr << "sendVarablesToModule failed to convert variable " << varInfo.name
@@ -283,30 +277,25 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
     return variable;
 }
 
-vistle::Object::ptr DataTransmitter::makeVtkVariable(const VariableInfo &varInfo, int iteration)
-{
-    int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
-
-    visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, varInfo.name);
-    Array varArray = getVariableData(varHandle);
-    auto var = vtkData2Vistle(varArray.data, varArray.size, dataTypeToVistle(varArray.type),
-                              varInfo.meshInfo.grids[iteration], varInfo.mapping);
-    m_creator.set(vistle::Shm::the().objectID(), vistle::Shm::the().arrayID()); // since vtkData2Vistle creates objects
-
-    return var;
-}
-
-vistle::Object::ptr DataTransmitter::makeNonVtkVariable(const VariableInfo &varInfo, int iteration)
+vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat)
 {
     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
     visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, varInfo.name);
     Array varArray = getVariableData(varHandle);
-    auto var = m_creator.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(varArray.size);
-    transformArray(varArray, var->x().data());
-    var->setGrid(varInfo.meshInfo.grids[iteration]);
-    var->setMapping(varInfo.mapping);
+    if (vtkFormat) {
+        auto var = vtkData2Vistle(varArray.data, varArray.size, dataTypeToVistle(varArray.type),
+                                  varInfo.meshInfo.grids[iteration], varInfo.mapping);
+        m_creator.set(vistle::Shm::the().objectID(),
+                      vistle::Shm::the().arrayID()); // since vtkData2Vistle creates objects
+        return var;
+    } else {
+        auto var = m_creator.createVistleObject<vistle::Vec<vistle::Scalar, 1>>(varArray.size);
+        transformArray(varArray, var->x().data());
+        var->setGrid(varInfo.meshInfo.grids[iteration]);
+        var->setMapping(varInfo.mapping);
+        return var;
+    }
 
-    return var;
 }
 
 void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int block, const char *name)
