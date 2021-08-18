@@ -115,7 +115,7 @@ void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::Unstructur
         elemIndex += libsim::getNumVertices(elemType);
 
         if (idx + libsim::getNumVertices(elemType) > connListData.data.size) {
-            std::cerr << "element " << i << " with idx = " << idx << " and type " << elemType << "with typesize"
+            std::cerr << "element " << i << " with idx = " << idx << " and type " << elemType << " with typesize "
                       << libsim::getNumVertices(elemType) << " is outside of given elementList data!" << std::endl;
             break;
         }
