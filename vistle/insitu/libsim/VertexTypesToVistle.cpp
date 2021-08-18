@@ -1,6 +1,6 @@
 #include "VertexTypesToVistle.h"
 
-vistle::UnstructuredGrid::Type vistle::insitu::libsim::vertexTypeToVistle(int type)
+vistle::UnstructuredGrid::Type vistle::insitu::libsim::vertexTypeToVistle(size_t type)
 {
     static vistle::UnstructuredGrid::Type libsim_to_vistle[VISIT_NUM_CELL_TYPES];
     static bool init = false;
@@ -35,6 +35,8 @@ vistle::UnstructuredGrid::Type vistle::insitu::libsim::vertexTypeToVistle(int ty
         libsim_to_vistle[VISIT_CELL_BIQUADRATIC_QUADRATIC_HEX] = vistle::UnstructuredGrid::Type::NONE;
         init = true;
     }
+    if (type >= VISIT_NUM_CELL_TYPES)
+        return vistle::UnstructuredGrid::Type::NONE;
     return libsim_to_vistle[type];
 }
 

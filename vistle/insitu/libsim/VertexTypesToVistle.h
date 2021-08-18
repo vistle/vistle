@@ -6,7 +6,7 @@ namespace vistle {
 namespace insitu {
 namespace libsim {
 
-extern vistle::UnstructuredGrid::Type vertexTypeToVistle(int type);
+extern vistle::UnstructuredGrid::Type vertexTypeToVistle(size_t type);
 
 extern vistle::Index getNumVertices(vistle::UnstructuredGrid::Type type);
 
