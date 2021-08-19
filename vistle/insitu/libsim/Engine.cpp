@@ -60,11 +60,15 @@ Engine *Engine::EngineInstance()
 
 void Engine::DisconnectSimulation()
 {
-    std::cerr << "Enigne [" << instance->m_rank << "/" << instance->m_mpiSize
-              << "] disconnecting..." << endl;
+    std::cerr << "Enigne [" << instance->m_rank << "/" << instance->m_mpiSize << "] disconnecting..." << endl;
     instance->m_messageHandler.send(ConnectionClosed{true});
     delete instance;
     instance = nullptr;
+#ifndef MODULE_THREAD
+    if (vistle::Shm::isAttached()) {
+        vistle::Shm::the().detach();
+    }
+#endif // !#ifndef MODULE_THREAD
 }
 
 bool Engine::initialize(int argC, char **argV)
@@ -131,7 +135,9 @@ void Engine::SimulationTimeStepChanged()
         return;
     }
     static std::unique_ptr<StopWatch> watch;
-    watch = std::make_unique<StopWatch>(("Engine: [" + std::to_string(m_rank) + "/" + std::to_string(m_mpiSize) + "]: time since last processed timestep").c_str());
+    watch = std::make_unique<StopWatch>(("Engine: [" + std::to_string(m_rank) + "/" + std::to_string(m_mpiSize) +
+                                         "]: time since last processed timestep")
+                                            .c_str());
     DEBUG_CERR << "Timestep " << m_metaData.currentCycle() << " has " << numMeshes << " meshes and " << numVars
                << "variables" << endl;
     if (m_moduleInfo.isReady()) { // only here vistle::objects are allowed to be made
@@ -156,10 +162,10 @@ void Engine::SimulationInitiateCommand(const string &command)
         string args(command.substr(13, command.size() - 1));
         simulationCommandCallback(cmd.c_str(), args.c_str(), simulationCommandCallbackData);
 #ifndef MODULE_THREAD
-    m_messageHandler.send(GoOn{}); // request tcp message from conroller
+        m_messageHandler.send(GoOn{}); // request tcp message from conroller
 #else
-    if (EngineInterface::getControllSocket())
-        message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
+        if (EngineInterface::getControllSocket())
+            message::send(GoOn{}, *EngineInterface::getControllSocket()); //directly send GoOn to the sim
 #endif
     }
 }
@@ -211,7 +217,7 @@ bool Engine::fetchNewModuleState()
         }
     } break;
     case InSituMessageType::GoOn: {
-        //this is only to get the libsim interface to receive a tcp message and proceed 
+        //this is only to get the libsim interface to receive a tcp message and proceed
     } break;
     case InSituMessageType::ConnectionClosed: {
         CERR << "connection closed" << endl;
@@ -277,11 +283,7 @@ Engine::Engine()
 Engine::~Engine()
 {
     m_messageHandler.send(ConnectionClosed{true});
-#ifndef MODULE_THREAD
-    if (vistle::Shm::isAttached()) {
-        vistle::Shm::the().detach();
-    }
-#else
+#ifdef MODULE_THREAD
     m_managerThread.join();
 #endif
     Engine::instance = nullptr;
@@ -290,11 +292,9 @@ Engine::~Engine()
 #ifdef MODULE_THREAD
 bool Engine::startVistle(int argC, char **argV)
 {
-
     int prov = MPI_THREAD_SINGLE;
     MPI_Query_thread(&prov);
-    if (prov != MPI_THREAD_MULTIPLE)
-    {
+    if (prov != MPI_THREAD_MULTIPLE) {
         CERR << "startVistle: MPI_THREAD_MULTIPLE not provided" << std::endl;
         return false;
     }
@@ -303,8 +303,8 @@ bool Engine::startVistle(int argC, char **argV)
             m_socket,
             boost::mpi::communicator(
                 comm, boost::mpi::comm_create_kind::comm_duplicate)); // comm is not set by the simulation code at
-            // this point. Since most simulations never
-            // change comm, this is a easy cheat impl
+        // this point. Since most simulations never
+        // change comm, this is a easy cheat impl
         if (launchManager(argC, argV)) {
             m_initialized = true;
         }
