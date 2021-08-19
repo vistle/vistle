@@ -45,7 +45,6 @@ vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &cre
             throw EngineExeption("coord mode must be interleaved(1) or separate(0), it is " +
                                  std::to_string(coordMode));
         }
-        detail::addGhost(meshHandle, mesh);
         return mesh;
     }
     return nullptr;
@@ -73,29 +72,46 @@ void InterleavedAllocAndFill(const visit_handle &coordHandle, std::shared_ptr<vi
     transformInterleavedArray(a.data, gridCoords, a.size, dataTypeToVistle(a.type), dim);
 }
 
-void addGhost(const visit_handle &meshHandle, vistle::UnstructuredGrid::ptr grid)
-{
-    visit_handle ghostCellHandle;
-    v2check(simv2_UnstructuredMesh_getGhostCells, meshHandle, &ghostCellHandle);
-    if (ghostCellHandle != VISIT_INVALID_HANDLE) {
-        auto ghostArray = getVariableData(ghostCellHandle);
-        if (ghostArray.type != VISIT_DATATYPE_CHAR) {
-            EngineExeption ex("expectet ghostCellData of type char, type is ");
-            ex << ghostArray.type;
-            throw ex;
+//assuming the ghost data is provided as an array of bools(int) that is true when the cell/node is ghost
+class GhostData {
+public:
+    enum Mapping { None, Vertex, Element };
+
+    GhostData(visit_handle meshHandle)
+    {
+        visit_handle ghostHandle;
+        if (simv2_UnstructuredMesh_getGhostNodes(meshHandle, &ghostHandle) != VISIT_ERROR && ghostHandle != VISIT_INVALID_HANDLE) {
+            m_mapping = Vertex;
+            m_array = getVariableData(ghostHandle);
+        } else if (simv2_UnstructuredMesh_getGhostCells(meshHandle, &ghostHandle) != VISIT_ERROR && ghostHandle != VISIT_INVALID_HANDLE) {
+            if (m_mapping != None)
+                std::cerr
+                    << "A mesh should not set ghost elements and ghost vertices. Using elements and ignoring vertices"
+                    << std::endl;
+
+            m_mapping = Element;
+            m_array = getVariableData(ghostHandle);
         }
-        char *c = static_cast<char *>(ghostArray.data);
-        for (size_t i = 0; i < ghostArray.size; ++i) {
-            if (c[i]) {
-                grid->tl()[i] |= vistle::UnstructuredGrid::GHOST_BIT;
-            }
-        }
+        //check the assumption
+        assert(!m_array.data ||
+               *std::max_element(m_array.getIter<char>().begin(), m_array.getIter<char>().end()) <= 1);
     }
-}
+    bool operator[](size_t idx) {
+        assert(!m_array.data || idx < m_array.size);
+        return m_array.data ? m_array.as<char>()[idx] : false;
+    }
+    Mapping mapping() { return m_mapping; }
+
+private:
+    Array m_array;
+    Mapping m_mapping = None;
+};
 
 void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::UnstructuredGrid::ptr mesh)
 {
     auto connListData = getConListFromSim(meshHandle);
+
+    GhostData ghost{meshHandle};
 
     mesh->tl().reserve(connListData.numElements);
     mesh->el().reserve(connListData.numElements);
@@ -119,13 +135,22 @@ void fillTypeConnAndElemLists(const visit_handle &meshHandle, vistle::Unstructur
                       << libsim::getNumVertices(elemType) << " is outside of given elementList data!" << std::endl;
             break;
         }
-        mesh->el().push_back(elemIndex);
-        mesh->tl().push_back(elemType);
+        vistle::Byte elemTypeWithGhost = elemType;
+        if (ghost.mapping() == GhostData::Element && ghost[i])
+            elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
 
-        for (size_t i = 0; i < libsim::getNumVertices(elemType); i++) {
+        for (size_t j = 0; j < libsim::getNumVertices(elemType); j++) {
             mesh->cl().push_back(static_cast<int *>(connListData.data.data)[idx]);
             ++idx;
+            if (ghost.mapping() == GhostData::Vertex && 
+                ghost[static_cast<int *>(connListData.data.data)[idx]] &&
+                !(elemTypeWithGhost & vistle::UnstructuredGrid::Type::GHOST_BIT)) {
+                    elemTypeWithGhost |= vistle::UnstructuredGrid::Type::GHOST_BIT;
+            }
         }
+
+        mesh->el().push_back(elemIndex);
+        mesh->tl().push_back(elemTypeWithGhost);
     }
 }
 
