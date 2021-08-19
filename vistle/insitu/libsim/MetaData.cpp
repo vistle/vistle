@@ -177,6 +177,7 @@ std::vector<std::string> MetaData::getObjectNames(SimulationObjectType type) con
         char *name;
         v2check(getName, obj, &name);
         names.push_back(name);
+        free(name);
     }
     return names;
 }
