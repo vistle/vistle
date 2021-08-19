@@ -75,18 +75,18 @@ struct VtkArray2VistleConverter {
                 dim[c] = sgrid->getNumDivisions(c);
                 numGridDivisions[c] = sgrid->getNumDivisions(c);
             }
+            if (m == DataBase::Mapping::Element) {
+                for (int c = 0; c < 3; ++c)
+                    dim[c] > 1 ? --dim[c] : dim[c];
+                perCell = true;
+            }
+            if ((size_t)dim[0] * (size_t)dim[1] * (size_t)dim[2] != n) {
+                std::cerr << "vtkArray2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2]
+                        << "] != " << n << std::endl;
+                return nullptr;
+            }
         }
 
-        if (m == DataBase::Mapping::Element) {
-            for (int c = 0; c < 3; ++c)
-                dim[c] > 1 ? --dim[c] : dim[c];
-            perCell = true;
-        }
-        if ((size_t)dim[0] * (size_t)dim[1] * (size_t)dim[2] != n) {
-            std::cerr << "vtkArray2Vistle: non-matching grid size: [" << dim[0] << "*" << dim[1] << "*" << dim[2]
-                      << "] != " << n << std::endl;
-            return nullptr;
-        }
 
         if (interleaved) {
             Vec<Scalar, 3>::ptr cv(new Vec<Scalar, 3>(n));
