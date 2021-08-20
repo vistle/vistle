@@ -19,6 +19,11 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
+std::shared_ptr<vistle::Object> get(const visit_smart_handle<HandleType::RectilinearMesh> &meshHandle, message::SyncShmIDs &creator)
+{
+    return RectilinearMesh::get(meshHandle, creator);
+}
+
 namespace RectilinearMesh {
 
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
@@ -41,7 +46,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
     std::array<vistle::Scalar *, 3> gridCoords{mesh->x().data(), mesh->y().data(), mesh->z().data()};
 
     for (size_t iteration = 0; iteration < meshInfo.domains.size; iteration++) {
-        visit_handle meshHandle = v2check(simv2_invoke_GetMesh, meshInfo.domains.as<int>()[iteration], meshInfo.name);
+        visit_handle meshHandle = v2check(simv2_invoke_GetMesh, meshInfo.domains.as<int>()[iteration], meshInfo.name.c_str());
         auto meshArrays = detail::getMeshFromSim(meshHandle);
 
         int dims[3]{1, 1, 1};
@@ -82,7 +87,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
 
 namespace detail {
 
-vistle::RectilinearGrid::ptr makeVistleMesh(const std::array<Array, 3> &meshData, message::SyncShmIDs &creator)
+vistle::RectilinearGrid::ptr makeVistleMesh(const std::array<Array<HandleType::Coords>, 3> &meshData, message::SyncShmIDs &creator)
 {
     vistle::RectilinearGrid::ptr mesh =
         creator.createVistleObject<vistle::RectilinearGrid>(meshData[0].size, meshData[1].size, meshData[2].size);
@@ -111,12 +116,12 @@ void addGhost(const visit_handle &meshHandle, std::shared_ptr<vistle::Rectilinea
     }
 }
 
-std::array<Array, 3> getMeshFromSim(const visit_handle &meshHandle)
+std::array<Array<HandleType::Coords>, 3> getMeshFromSim(const  visit_smart_handle<HandleType::RectilinearMesh> &meshHandle)
 {
-    visit_handle coordHandles[3]; //handles to variable data
+    visit_smart_handle<HandleType::Coords> coordHandles[3]; //handles to variable data
     int ndims;
     v2check(simv2_RectilinearMesh_getCoords, meshHandle, &ndims, &coordHandles[0], &coordHandles[1], &coordHandles[2]);
-    std::array<Array, 3> meshData;
+    std::array<Array<HandleType::Coords>, 3> meshData;
     assert(ndims <= 3);
     for (int i = 0; i < ndims; ++i) {
         meshData[i] = getVariableData(coordHandles[i]);

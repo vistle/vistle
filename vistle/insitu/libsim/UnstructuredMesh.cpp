@@ -3,7 +3,6 @@
 #include "VisitDataTypesToVistle.h"
 #include "VertexTypesToVistle.h"
 #include "ArrayStruct.h"
-
 #include <vistle/insitu/core/transformArray.h>
 
 #include <vistle/insitu/message/SyncShmIDs.h>
@@ -20,6 +19,11 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle, message::SyncShmIDs &creator)
+{
+    return UnstructuredMesh::get(meshHandle, creator);
+}
+
 namespace UnstructuredMesh {
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
 {
@@ -79,7 +83,7 @@ public:
 
     GhostData(visit_handle meshHandle)
     {
-        visit_handle ghostHandle;
+        visit_smart_handle<HandleType::Coords> ghostHandle;
         if (simv2_UnstructuredMesh_getGhostNodes(meshHandle, &ghostHandle) != VISIT_ERROR && ghostHandle != VISIT_INVALID_HANDLE) {
             m_mapping = Vertex;
             m_array = getVariableData(ghostHandle);
@@ -103,7 +107,7 @@ public:
     Mapping mapping() { return m_mapping; }
 
 private:
-    Array m_array;
+    Array<HandleType::Coords> m_array;
     Mapping m_mapping = None;
 };
 

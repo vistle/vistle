@@ -70,17 +70,18 @@ std::set<std::string> DataTransmitter::getRequestedObjets(const message::ModuleI
             requested.insert(name);
             requested.insert(meshName);
         }
+        free(name);
+        free(meshName);
     }
     return requested;
 }
 
 void DataTransmitter::sendMeshesToModule(const std::set<std::string> &objects)
 {
-    auto type = SimulationObjectType::mesh;
-    size_t numMeshes = m_metaData.getNumObjects(type);
+    size_t numMeshes = m_metaData.getNumObjects(SimulationObjectType::mesh);
     for (size_t i = 0; i < numMeshes; i++) {
         MeshInfo meshInfo = collectMeshInfo(i);
-        if (isRequested(meshInfo.name, objects) && !sendConstantMesh(meshInfo)) {
+        if (isRequested(meshInfo.name.c_str(), objects) && !sendConstantMesh(meshInfo)) {
             makeMesh(meshInfo);
             sendMeshToModule(meshInfo);
         }
@@ -93,12 +94,12 @@ MeshInfo DataTransmitter::collectMeshInfo(size_t nthMesh)
     MeshInfo meshInfo;
     visit_handle meshHandle = m_metaData.getNthObject(type, nthMesh);
     meshInfo.name = m_metaData.getName(meshHandle, type);
-    visit_handle domainListHandle = v2check(simv2_invoke_GetDomainList, meshInfo.name);
+    meshInfo.domainHandle = v2check(simv2_invoke_GetDomainList, meshInfo.name.c_str());
     int allDoms = 0;
     visit_handle myDoms;
-    v2check(simv2_DomainList_getData, domainListHandle, allDoms, myDoms);
+    v2check(simv2_DomainList_getData, meshInfo.domainHandle.operator visit_handle(), allDoms, myDoms);
 
-    Array domList = getVariableData(myDoms);
+    auto domList = getVariableData(myDoms);
     if (domList.type != VISIT_DATATYPE_INT) {
         throw DataTransmitterExeption{} << "expected domain list to be ints";
     }
@@ -132,30 +133,10 @@ void DataTransmitter::makeMesh(MeshInfo &meshInfo)
 
 void DataTransmitter::makeSeparateMeshes(MeshInfo &meshInfo)
 {
-    auto maker = chooseMeshMaker(meshInfo.type);
     for (const auto dom: meshInfo.domains.getIter<int>()) {
-        makeSubMesh(dom, meshInfo, maker);
+        makeSubMesh(dom, meshInfo);
     }
     m_meshes[meshInfo.name] = meshInfo;
-}
-
-DataTransmitter::GetMeshFunction DataTransmitter::chooseMeshMaker(VisIt_MeshType type)
-{
-    switch (type) {
-    case VISIT_MESHTYPE_AMR:
-    case VISIT_MESHTYPE_RECTILINEAR: {
-        return RectilinearMesh::get;
-    } break;
-    case VISIT_MESHTYPE_CURVILINEAR: {
-        return StructuredMesh::get;
-    } break;
-    case VISIT_MESHTYPE_UNSTRUCTURED: {
-        return UnstructuredMesh::get;
-    } break;
-    default:
-        throw EngineExeption("meshtype ") << static_cast<int>(type) << " not implemented";
-        break;
-    }
 }
 
 void DataTransmitter::makeCombinedMesh(MeshInfo &meshInfo)
@@ -179,25 +160,36 @@ void DataTransmitter::makeCombinedMesh(MeshInfo &meshInfo)
     }
     }
     meshInfo.combined = true;
-    addBlockToMeshInfo(mesh, meshInfo);
+    meshInfo.grids.push_back(mesh);
     m_meshes[meshInfo.name] = meshInfo;
 }
 
-void DataTransmitter::makeSubMesh(int domain, MeshInfo &meshInfo, GetMeshFunction getter)
+void DataTransmitter::makeSubMesh(int domain, MeshInfo &meshInfo)
 {
-    visit_handle meshHandle = v2check(simv2_invoke_GetMesh, domain, meshInfo.name);
-    auto mesh = getter(meshHandle, m_creator);
-    if (!mesh) {
-        throw DataTransmitterExeption{} << "makeSubMesh failed to get mesh " << meshInfo.name << " dom " << domain;
+    vistle::Object::ptr mesh;
+    switch (meshInfo.type) {
+    case VISIT_MESHTYPE_AMR: /*  */
+    case VISIT_MESHTYPE_RECTILINEAR: {
+        visit_smart_handle<HandleType::RectilinearMesh> meshHandle =
+            v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
+        mesh = get(meshHandle, m_creator);
+    } break;
+    case VISIT_MESHTYPE_CURVILINEAR: {
+        visit_smart_handle<HandleType::CurvilinearMesh> meshHandle =
+            v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
+        mesh = get(meshHandle, m_creator);
+    } break;
+    case VISIT_MESHTYPE_UNSTRUCTURED: {
+        visit_smart_handle<HandleType::UnstructuredMesh> meshHandle =
+            v2check(simv2_invoke_GetMesh, domain, meshInfo.name.c_str());
+        mesh = get(meshHandle, m_creator);
+    } break;
+    default:
+        break;
     }
-    addBlockToMeshInfo(mesh, meshInfo, meshHandle);
-}
-
-void DataTransmitter::addBlockToMeshInfo(vistle::Object::ptr grid, MeshInfo &meshInfo, visit_handle meshHandle)
-{
-    assert(meshHandle != visit_handle{} || meshInfo.combined);
-    meshInfo.handles.push_back(meshHandle);
-    meshInfo.grids.push_back(grid);
+    if (!mesh)
+        throw DataTransmitterExeption{} << "makeSubMesh failed to get mesh " << meshInfo.name << " dom " << domain;
+    meshInfo.grids.push_back(mesh);
 }
 
 void DataTransmitter::sendMeshToModule(const MeshInfo &meshInfo)
@@ -218,16 +210,16 @@ void DataTransmitter::sendVarablesToModule(const std::set<std::string> &objects)
     for (size_t i = 0; i < numVars; i++) {
         VariableInfo varInfo = collectVariableInfo(i);
 
-        if (isRequested(varInfo.name, objects)) {
+        if (isRequested(varInfo.name.c_str(), objects)) {
             if (varInfo.meshInfo.combined) {
                 auto var = makeCombinedVariable(varInfo);
-                sendVarableToModule(var, m_rank, varInfo.name);
+                sendVarableToModule(var, m_rank, varInfo.name.c_str());
 
             } else {
                 for (size_t iteration = 0; iteration < varInfo.meshInfo.domains.size; ++iteration) {
                     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
                     if (auto variable = makeVariable(varInfo, iteration, m_rules.vtkFormat)) {
-                        sendVarableToModule(variable, currDomain, varInfo.name);
+                        sendVarableToModule(variable, currDomain, varInfo.name.c_str());
                     } else {
                         std::cerr << "sendVarablesToModule failed to convert variable " << varInfo.name
                                   << "... trying next" << std::endl;
@@ -245,6 +237,7 @@ VariableInfo DataTransmitter::collectVariableInfo(size_t nthVariable)
     v2check(simv2_VariableMetaData_getMeshName, varMetaHandle, &meshName);
 
     auto meshInfo = m_meshes.find(meshName);
+    free(meshName);
     if (meshInfo == m_meshes.end()) {
         throw DataTransmitterExeption{} << "sendVarablesToModule: can't find mesh " << meshName;
     }
@@ -252,6 +245,7 @@ VariableInfo DataTransmitter::collectVariableInfo(size_t nthVariable)
     char *name;
     v2check(simv2_VariableMetaData_getName, varMetaHandle, &name);
     varInfo.name = name;
+    free(name);
     int centering;
     v2check(simv2_VariableMetaData_getCentering, varMetaHandle, &centering);
     varInfo.mapping = mappingToVistle(centering);
@@ -267,8 +261,8 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
     variable = VariableData::allocVarForCombinedMesh(varInfo, varInfo.meshInfo.grids[0], m_creator);
     size_t combinedVecPos = 0;
     for (const auto dom: varInfo.meshInfo.domains.getIter<int>()) {
-        visit_handle varHandle = v2check(simv2_invoke_GetVariable, dom, varInfo.name);
-        Array varArray = getVariableData(varHandle);
+        visit_smart_handle<HandleType::VariableData> varHandle = v2check(simv2_invoke_GetVariable, dom, varInfo.name.c_str());
+        auto varArray = getVariableData(varHandle);
 
         assert(combinedVecPos + varArray.size >= variable->x().size());
         transformArray(varArray, variable->x().data() + combinedVecPos);
@@ -280,8 +274,9 @@ vistle::Object::ptr DataTransmitter::makeCombinedVariable(const VariableInfo &va
 vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, int iteration, bool vtkFormat)
 {
     int currDomain = varInfo.meshInfo.domains.as<int>()[iteration];
-    visit_handle varHandle = v2check(simv2_invoke_GetVariable, currDomain, varInfo.name);
-    Array varArray = getVariableData(varHandle);
+    visit_smart_handle<HandleType::VariableData> varHandle =
+        v2check(simv2_invoke_GetVariable, currDomain, varInfo.name.c_str());
+    auto varArray = getVariableData(varHandle);
     if (vtkFormat) {
         auto var = vtkData2Vistle(varArray.data, varArray.size, dataTypeToVistle(varArray.type),
                                   varInfo.meshInfo.grids[iteration], varInfo.mapping);
@@ -295,7 +290,6 @@ vistle::Object::ptr DataTransmitter::makeVariable(const VariableInfo &varInfo, i
         var->setMapping(varInfo.mapping);
         return var;
     }
-
 }
 
 void DataTransmitter::sendVarableToModule(vistle::Object::ptr variable, int block, const char *name)

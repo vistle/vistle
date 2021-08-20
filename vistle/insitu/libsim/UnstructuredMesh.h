@@ -5,6 +5,7 @@
 
 #include <vistle/core/index.h>
 #include <vistle/core/object.h>
+#include "SmartHandle.h"
 
 #include <memory>
 #include <array>
@@ -16,7 +17,9 @@ namespace insitu {
 namespace message {
 class SyncShmIDs;
 }
+
 namespace libsim {
+vistle::Object::ptr get(const visit_smart_handle<HandleType::UnstructuredMesh> &meshHandle, message::SyncShmIDs &creator);
 namespace UnstructuredMesh {
 
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator);
@@ -27,7 +30,7 @@ void InterleavedAllocAndFill(const visit_handle &coordHandle, std::shared_ptr<vi
 void addGhost(const visit_handle &meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
 void fillTypeConnAndElemLists(const visit_handle &meshHandle, std::shared_ptr<vistle::UnstructuredGrid> grid);
 struct connListData {
-    Array data;
+    Array<HandleType::Coords> data;
     int numElements = 0;
 };
 connListData getConListFromSim(const visit_handle &meshHandle);

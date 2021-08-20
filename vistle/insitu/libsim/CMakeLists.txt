@@ -28,9 +28,11 @@ function(createSimV2Lib libName)
    DataTransmitter.h
    Engine.h
    Exeption.h
+   IntOption.h
    MeshInfo.h
    MetaData.h
    RectilinearMesh.h
+   SmartHandle.h
    StructuredMesh.h  
    UnstructuredMesh.h
    VariableData.h  
@@ -38,7 +40,6 @@ function(createSimV2Lib libName)
    VertexTypesToVistle.h  
    VisItControlInterfaceRuntime.h
    VisitDataTypesToVistle.h  
-   IntOption.h
    export.h
    )
 

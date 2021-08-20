@@ -39,7 +39,7 @@ double MetaData::currentTime() const
     return m_currentTime;
 }
 
-const visit_handle &MetaData::handle() const
+visit_handle MetaData::handle() const
 {
     return m_handle;
 }
@@ -190,6 +190,7 @@ std::vector<std::string> MetaData::getRegisteredCommands(SimulationObjectType ty
         char *name;
         v2check(simv2_CommandMetaData_getName, commandHandle, &name);
         commands.push_back(name);
+        free(name);
     }
     return commands;
 
@@ -219,7 +220,7 @@ std::vector<std::vector<std::string>> MetaData::getMeshAndFieldNames() const
     return ports;
 }
 
-const char *MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
+std::string  MetaData::getName(const visit_handle &handle, SimulationObjectType type) const
 {
     char *name;
 
@@ -254,6 +255,8 @@ const char *MetaData::getName(const visit_handle &handle, SimulationObjectType t
     default:
         break;
     }
-    return name;
+    std::string n{name};
+    free(name);
+    return n;
 }
 //...................................................................................................

@@ -14,10 +14,11 @@ namespace insitu {
 namespace libsim {
 struct MeshInfo {
     bool combined = false; //if the mesh is made of multiple smaler meshes
-    const char *name = nullptr;
+    std::string name;
     int dim = 0; //2D or 3D
-    Array domains;
-    std::vector<int> handles;
+    visit_smart_handle<HandleType::DomainList> domainHandle;
+    Array<HandleType::Coords> domains;
+    //std::vector<int> handles;
     std::vector<vistle::Object::ptr> grids;
     VisIt_MeshType type = VISIT_MESHTYPE_UNKNOWN;
 };

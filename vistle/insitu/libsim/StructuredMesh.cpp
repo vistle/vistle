@@ -19,6 +19,11 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
+vistle::Object::ptr get(const visit_smart_handle<HandleType::CurvilinearMesh> &meshHandle, message::SyncShmIDs &creator)
+{
+    return StructuredMesh::get(meshHandle, creator);
+}
+
 namespace StructuredMesh {
 vistle::Object::ptr get(const visit_handle &meshHandle, message::SyncShmIDs &creator)
 {
@@ -61,7 +66,7 @@ vistle::Object::ptr getCombinedUnstructured(const MeshInfo &meshInfo, message::S
             // coordMode
         int dims[3]{1, 1, 1}; // the x,y,z dimensions
         int ndims, coordMode;
-        detail::getMeshCoord(meshInfo.domains.as<int>()[iteration], meshInfo.name, ndims, dims, coordMode,
+        detail::getMeshCoord(meshInfo.domains.as<int>()[iteration], meshInfo.name.c_str(), ndims, dims, coordMode,
                              coordHandles);
 
         size_t numVertices = getNumVertices(dims);

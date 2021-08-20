@@ -2,6 +2,7 @@
 #define SIMULATION_META_DATA_H
 
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
+#include "SmartHandle.h"
 #include <vector>
 #include <string>
 namespace vistle {
@@ -27,7 +28,7 @@ public:
     int simMode() const;
     size_t currentCycle() const;
     double currentTime() const;
-    const visit_handle &handle() const;
+    visit_handle handle() const;
 
     //functions to retrieve meta data from sim
 
@@ -38,14 +39,14 @@ public:
     std::vector<std::string> getRegisteredGenericCommands() const;
     std::vector<std::string> getRegisteredCustomCommands() const;
     std::vector<std::vector<std::string>> getMeshAndFieldNames() const;
-    const char *getName(const visit_handle &handle, SimulationObjectType type) const;
+    std::string getName(const visit_handle &handle, SimulationObjectType type) const;
 
 private:
     bool m_timestepChanged = false;
     int m_simMode = VISIT_SIMMODE_UNKNOWN;
     int m_currentCycle = 0;
     double m_currentTime = 0;
-    visit_handle m_handle = VISIT_INVALID_HANDLE;
+    visit_smart_handle<HandleType::SimulationMetaData> m_handle = VISIT_INVALID_HANDLE;
     std::vector<std::string> getRegisteredCommands(SimulationObjectType type) const;
 
 };

@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-
+#include <iostream>
 VisIt_ObjectBase::VisIt_ObjectBase(int t): object_type(t)
 {}
 
@@ -44,6 +44,7 @@ void VisItFreePointer(visit_handle h)
     size_t i = static_cast<size_t>(h);
     if (i < visit_pointers.size()) {
         visit_pointers[i] = NULL;
+        std::cerr << "freed handle " << h << std::endl;
     }
 }
 

@@ -1,19 +1,22 @@
 #ifndef VISLTE_LIBSIM_ARRAY_STRUCT_H
 #define VISLTE_LIBSIM_ARRAY_STRUCT_H
 #include "Exeption.h"
+#include "SmartHandle.h"
+#include "SmartHandle.h"
 #include "VisitDataTypesToVistle.h"
 
 #include <vistle/insitu/core/transformArray.h>
+#include <vistle/insitu/core/callFunctionWithVoidToTypeCast.h>
 #include <vistle/insitu/libsim/libsimInterface/VariableData.h>
 #include <vistle/insitu/libsim/libsimInterface/VisItDataTypes.h>
 
 namespace vistle {
 namespace insitu {
 namespace libsim {
-
+template<HandleType HT>
 struct Array {
     void *data = nullptr;
-    visit_handle handle;
+    visit_smart_handle<HT> handle;
     int owner = VISIT_INVALID_HANDLE;
     int type = VISIT_INVALID_HANDLE;
     int dim = 1;
@@ -57,9 +60,10 @@ struct Array {
         return static_cast<T *>(data);
     }
 };
-inline Array getVariableData(const visit_handle &handle)
+template<HandleType T>
+inline Array<T> getVariableData(const visit_smart_handle<T> &handle)
 {
-    Array a;
+    Array<T> a;
     a.handle = handle;
     int size;
     v2check(simv2_VariableData_getData, handle, a.owner, a.type, a.dim, size, a.data);
@@ -68,11 +72,21 @@ inline Array getVariableData(const visit_handle &handle)
     return a;
 }
 
-template<typename T>
-void transformArray(const Array &source, T *dest)
+inline Array<HandleType::Coords> getVariableData(const visit_handle &handle)
 {
-    detail::callFunctionWithVoidToTypeCast<void, detail::ArrayTransformer>(source.data, dataTypeToVistle(source.type),
-                                                                           source.size, dest);
+    Array<HandleType::Coords> a;
+    a.handle = handle;
+    int size;
+    v2check(simv2_VariableData_getData, handle, a.owner, a.type, a.dim, size, a.data);
+    assert(size >= 0);
+    a.size = static_cast<size_t>(size);
+    return a;
+}
+
+template<typename T, HandleType HT>
+void transformArray(const Array<HT> &source, T *dest)
+{
+    vistle::insitu::detail::callFunctionWithVoidToTypeCast<void, vistle::insitu::detail::ArrayTransformer>(source.data, dataTypeToVistle(source.type), source.size, dest);
 }
 
 } // namespace libsim

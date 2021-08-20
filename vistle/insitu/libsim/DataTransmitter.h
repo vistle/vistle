@@ -45,9 +45,8 @@ private:
     // combine the rectilinear/structured meshes of the domains of this rank to a single unstructured grid. Points of
     // adjacent faces will be doubled.
     void makeCombinedMesh(MeshInfo &meshInfo);
-    void makeSubMesh(int domain, MeshInfo &meshInfo, GetMeshFunction getter);
+    void makeSubMesh(int domain, MeshInfo &meshInfo);
 
-    void addBlockToMeshInfo(vistle::Object::ptr grid, MeshInfo &meshInfo, visit_handle meshHandle = visit_handle{});
     void sendMeshToModule(const MeshInfo &meshInfo);
 
     void sendVarablesToModule(const std::set<std::string> &objects);
