@@ -196,7 +196,7 @@ private:
     bool prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     bool prepare() override;
     bool compute() override;
-    bool readBlock(Block *block, const ProxyLink &pL, Token &token, int timepstep = -1);
+    bool readBlock(Block *block, const ProxyLink &pL, ReaderProperties& prop, std::shared_ptr<Token> prev, int timepstep = -1);
 
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues

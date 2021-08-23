@@ -172,18 +172,20 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
                              master.add(gid, b, l); // add block to the master (mandatory)
                          });
 
-    auto token = std::make_shared<Token>(this, prev);
-    ++m_tokenCount;
-    token->m_id = m_tokenCount;
-    token->m_meta = *prop.meta;
-    if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
-        prev.reset();
-    m_tokens.emplace_back(token);
-    prev = token;
-    token->m_future = std::async(std::launch::async, [this, &token, timestep, &master]() {
-        master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); });
-        return true;
-    });
+    /* auto token = std::make_shared<Token>(this, prev); */
+    /* ++m_tokenCount; */
+    /* token->m_id = m_tokenCount; */
+    /* token->m_meta = *prop.meta; */
+    /* if (waitForReaders(prop.concurrency - 1, prop.result) == 0) */
+    /*     prev.reset(); */
+    /* m_tokens.emplace_back(token); */
+    /* prev = token; */
+    /* token->m_future = std::async(std::launch::async, [this, &token, timestep, &master]() { */
+    /*     master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); }); */
+    /*     return true; */
+    /* }); */
+    /* master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); }); */
+    master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, prop, prev, timestep); });
 
     return true;
 }
@@ -218,8 +220,10 @@ void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, i
             if (!prop.result)
                 break;
         }
-    } else
+    } else {
+        sendInfo("diy");
         prop.result = prepareDIY(prev, prop, timestep);
+    }
     if (m_parallel == ParallelizeBlocks || m_parallel == ParallelizeDIYBlocks) {
         waitForReaders(0, prop.result);
         prev.reset();
@@ -306,11 +310,24 @@ bool Reader::prepare()
     return true;
 }
 
-bool Reader::readBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
+bool Reader::readBlock(Block *b, const ProxyLink &pL, ReaderProperties &prop, std::shared_ptr<Token> prev, int timestep)
 {
-    if (b)
-        return readDIYBlock(b, pL, token, timestep);
-    return readDIY(pL, token, timestep);
+    auto token = std::make_shared<Token>(this, prev);
+    ++m_tokenCount;
+    token->m_id = m_tokenCount;
+    token->m_meta = *prop.meta;
+    if (waitForReaders(prop.concurrency - 1, prop.result) == 0)
+        prev.reset();
+    m_tokens.emplace_back(token);
+    prev = token;
+    bool result = false;
+    /* if (b) */
+    /*     result = readDIYBlock(b, pL, *token, timestep); */
+    /* else */
+    result = readDIY(pL, *token, timestep);
+    token->m_future = std::async(std::launch::async, [result]() { return result; });
+    /* token->m_future = std::async(std::launch::async, [this, &token, &pL, timestep]() { return readDIY(pL, *token, timestep); }); */
+    return true;
 }
 
 bool Reader::readDIY(const ProxyLink &pL, Token &token, int timestep)
