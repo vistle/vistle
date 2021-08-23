@@ -33,6 +33,7 @@
 //std
 #include <algorithm>
 #include <array>
+#include <boost/mpi/environment.hpp>
 #include <iterator>
 #include <string>
 #include <cstddef>
@@ -40,7 +41,8 @@
 using namespace vistle;
 using namespace netCDF;
 
-MODULE_MAIN(ReadTsunami)
+/* MODULE_MAIN(ReadTsunami) */
+MODULE_MAIN_THREAD(ReadTsunami, boost::mpi::threading::multiple)
 namespace {
 constexpr auto ETA{"eta"};
 
@@ -68,7 +70,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
                                    Parameter::Filename);
 
     //ghost
-    m_ghostTsu = addIntParameter("ghost", "Show ghostcells.", 1, Parameter::Boolean);
+    m_ghostTsu = addIntParameter("ghost_old", "Show ghostcells.", 1, Parameter::Boolean);
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
@@ -460,11 +462,13 @@ bool ReadTsunami::computeInitialDIY(const ProxyLink &pL, Token &token)
     //testing only  => ground dim = sea dim
 
     // num of polygons for sea & grnd
-    const size_t &numPolySea = (latMax - 1) * (lonMax - 1);
+    /* const size_t &numPolySea = (latMax - 1) * (lonMax - 1); */
     const size_t &numPolyGround = (latMax - 1) * (lonMax - 1);
 
     // vertices sea & grnd
     verticesSea = latMax * lonMax;
+    sendInfo("rank: %d latMin: %d lonMin: %d", rank(), (int)latMin, (int)lonMin);
+    sendInfo("rank: %d latMax: %d lonMax: %d", rank(), (int)latMax, (int)lonMax);
     const size_t &verticesGround = latMax * lonMax;
 
     // storage for read in values from ncdata
@@ -499,10 +503,14 @@ bool ReadTsunami::computeInitialDIY(const ProxyLink &pL, Token &token)
         }
 
         // read lat, lon, grid_lat, grid_lon
-        latvar.getVar(std::vector<size_t>(latMin), std::vector<size_t>(latMax), vecLat.data());
-        latvar.getVar(std::vector<size_t>(lonMin), std::vector<size_t>(lonMax), vecLat.data());
-        grid_lat.getVar(std::vector<size_t>(latMin), std::vector<size_t>(latMax), vecLat.data());
-        grid_lon.getVar(std::vector<size_t>(lonMin), std::vector<size_t>(lonMax), vecLat.data());
+        latvar.getVar(std::vector<size_t>{latMin}, std::vector<size_t>{latMax}, vecLat.data());
+        sendInfo("%d latvar", rank());
+        lonvar.getVar(std::vector<size_t>{lonMin}, std::vector<size_t>{lonMax}, vecLon.data());
+        sendInfo("%d lonvar", rank());
+        grid_lat.getVar(std::vector<size_t>{latMin}, std::vector<size_t>{latMax}, vecLatGrid.data());
+        sendInfo("%d grid_lat", rank());
+        grid_lon.getVar(std::vector<size_t>{lonMin}, std::vector<size_t>{lonMax}, vecLonGrid.data());
+        sendInfo("%d grid_lon", rank());
     }
 
     //************* create Polygons ************//
@@ -549,12 +557,12 @@ bool ReadTsunami::computeInitialDIY(const ProxyLink &pL, Token &token)
         /* } */
 
         // add ground data to port
-        /* if (m_groundSurface_out->isConnected()) { */
-        /*     ptr_grnd->setBlock(pL.gid()); */
-        /*     ptr_grnd->setTimestep(-1); */
-        /*     ptr_grnd->updateInternals(); */
-        /*     token.addObject(m_groundSurface_out, ptr_grnd); */
-        /* } */
+        if (m_groundSurface_out->isConnected()) {
+            ptr_grnd->setBlock(pL.gid());
+            ptr_grnd->setTimestep(-1);
+            ptr_grnd->updateInternals();
+            token.addObject(m_groundSurface_out, ptr_grnd);
+        }
     }
 
     ncFile->close();
