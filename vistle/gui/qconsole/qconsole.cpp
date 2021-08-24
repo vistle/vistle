@@ -696,12 +696,14 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 {
 		QMenu *menu = new QMenu(this);
 
+#if 0
 		QAction *undo = new QAction(tr("Undo"), this);
 		undo->setShortcut(tr("Ctrl+Z"));
 		QAction *redo = new QAction(tr("Redo"), this);
 		redo->setShortcut(tr("Ctrl+Y"));
 		QAction *cut = new QAction(tr("Cut"), this);
 		cut->setShortcut(tr("Ctrl+X"));
+#endif
 		QAction *copy = new QAction(tr("Copy"), this);
 		copy->setShortcut(tr("Ctrl+Ins"));
 		QAction *paste = new QAction(tr("Paste"), this);
@@ -713,10 +715,12 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 		QAction *clear = new QAction(tr("Clear"), this);
 		clear->setShortcut(tr("Ctrl+L"));
 
+#if 0
 		menu->addAction(undo);
 		menu->addAction(redo);
 		menu->addSeparator();
 		menu->addAction(cut);
+#endif
 		menu->addAction(copy);
 		menu->addAction(paste);
 		menu->addAction(del);
@@ -724,9 +728,11 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 		menu->addAction(selectAll);
 		menu->addAction(clear);
 
+#if 0
 		connect(undo, SIGNAL(triggered()), this, SLOT(undo()));
 		connect(redo, SIGNAL(triggered()), this, SLOT(redo()));
 		connect(cut, SIGNAL(triggered()), this, SLOT(cut()));
+#endif
 		connect(copy, SIGNAL(triggered()), this, SLOT(copy()));
 		connect(paste, SIGNAL(triggered()), this, SLOT(paste()));
 		connect(del, SIGNAL(triggered()), this, SLOT(del()));
