@@ -95,6 +95,21 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
    return pid;
 }
 
+void replace_process(const std::string &executable, const std::vector<std::string> args) {
+    std::vector<const char *> a;
+    for (const auto &s : args) {
+        a.push_back(s.c_str());
+    }
+    a.push_back(nullptr);
+#ifdef _WIN32
+    std::cerr << "Error when executing " << executable << ": not implemented" << std::endl;
+#else
+    execvp(executable.c_str(), (char **)a.data());
+    std::cout << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
+    std::cerr << "Error when executing " << executable << ": " << strerror(errno) << std::endl;
+#endif
+}
+
 bool kill_process(process_handle pid) {
 
 #ifdef _WIN32
