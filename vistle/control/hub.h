@@ -70,6 +70,7 @@ private:
    bool removeSocket(std::shared_ptr<boost::asio::ip::tcp::socket> sock, bool close=true);
    void addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addSlave(const std::string &name, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   bool removeClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
    bool startCleaner();
    bool startManager();

@@ -495,7 +495,7 @@ bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close) {
        m_masterSocket.reset();
    }
 
-   if (m_clients.erase(sock) > 0) {
+   if (removeClient(sock)) {
        CERR << "removed client" << std::endl;
    }
 
@@ -508,6 +508,10 @@ void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock) {
 
    //CERR << "new client" << std::endl;
    m_clients.insert(sock);
+}
+
+bool Hub::removeClient(shared_ptr<asio::ip::tcp::socket> sock) {
+    return m_clients.erase(sock) > 0;
 }
 
 void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> sock) {
@@ -1040,7 +1044,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             case Identify::LOCALBULKDATA:
             case Identify::REMOTEBULKDATA: {
                 m_dataProxy->addSocket(id, sock);
-                removeSocket(sock, false);
+                removeClient(sock);
                 break;
             }
             default: {
