@@ -17,20 +17,31 @@ class Executor {
    , m_executeModules(executeModules)
    , m_done(false)
    {
-       m_interpreter.init();
+       if (!m_interpreter.init())
+           m_error = true;
+       else
+           m_py_release.reset(new pybind11::gil_scoped_release);
    }
 
    void operator()() {
 
-      if (!m_filename.empty())
-         m_interpreter.executeFile(m_filename);
+      assert(!m_done);
 
-      if (m_executeModules) {
-          m_interpreter.executeCommand("barrier()");
-          m_interpreter.executeCommand("compute()");
+      bool ok = !m_error;
+       if (ok && !m_filename.empty()) {
+          pybind11::gil_scoped_acquire acquire;
+          ok = m_interpreter.executeFile(m_filename);
+      }
+
+      if (ok && m_executeModules) {
+          pybind11::gil_scoped_acquire acquire;
+          ok = m_interpreter.executeCommand("barrier()");
+          if (ok)
+              ok = m_interpreter.executeCommand("compute()");
       }
 
       std::lock_guard<std::mutex> locker(m_mutex);
+      m_error = !ok;
       m_done = true;
    }
 
@@ -40,12 +51,19 @@ class Executor {
       return m_done;
    }
 
+    bool error() const {
+
+        return m_error;
+    }
+
  private:
    mutable std::mutex m_mutex;
    PythonInterpreter &m_interpreter;
    const std::string &m_filename;
    bool m_executeModules = false;
-   bool m_done;
+   volatile bool m_done = false;
+   volatile bool m_error = false;
+   std::unique_ptr<pybind11::gil_scoped_release> m_py_release;
 };
 
 PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path, bool executeModules)
@@ -57,29 +75,22 @@ PythonInterpreter::PythonInterpreter(const std::string &file, const std::string 
 {
 }
 
-void PythonInterpreter::init() {
-   m_interpreter->init();
-   m_module->import(&vistle::PythonInterface::the().nameSpace(), m_pythonPath);
+bool PythonInterpreter::init() {
+   if (!m_interpreter->init())
+       return false;
+   if (!m_module->import(&vistle::PythonInterface::the().nameSpace(), m_pythonPath))
+       return false;
+   return true;
 }
 
 bool PythonInterpreter::executeFile(const std::string &filename) {
 
-    try {
-        return m_interpreter->exec_file(filename);
-    } catch (...) {
-        std::cerr << "executing Python file " << filename << " failed" << std::endl;
-    }
-    return false;
+    return m_interpreter->exec_file(filename);
 }
 
-bool PythonInterpreter::executeCommand(const std::string &cmd)
-{
-    try {
-        return m_interpreter->exec(cmd);
-    } catch (...) {
-        std::cerr << "executing Python command " << cmd << " failed" << std::endl;
-    }
-    return false;
+bool PythonInterpreter::executeCommand(const std::string &cmd) {
+
+    return m_interpreter->exec(cmd);
 }
 
 PythonInterpreter::~PythonInterpreter() {
@@ -92,7 +103,17 @@ PythonInterpreter::~PythonInterpreter() {
 
 bool PythonInterpreter::check() {
 
-   return !m_executor->done();
+    if (m_executor->done()) {
+       m_error = m_executor->error();
+       return false;
+    }
+
+    return true;
+}
+
+bool PythonInterpreter::error() const {
+
+    return m_error;
 }
 
 } // namespace vistle

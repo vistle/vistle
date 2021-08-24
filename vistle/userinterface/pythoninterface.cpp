@@ -14,12 +14,15 @@ PythonInterface *PythonInterface::s_singleton = NULL;
 PythonInterface::PythonInterface(const std::string &name)
 : m_name(name)
 {
-   assert(s_singleton == NULL);
+   assert(s_singleton == nullptr);
    s_singleton = this;
 }
 
 
 PythonInterface::~PythonInterface() {
+
+   assert(s_singleton == this);
+   s_singleton = nullptr;
 
    m_namespace.reset();
    py::finalize_interpreter();

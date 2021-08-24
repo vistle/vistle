@@ -58,7 +58,7 @@ private:
 
    message::MessageFactory make;
 
-   void hubReady();
+   bool hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
    bool startUi(const std::string &uipath);
    bool startPythonUi();

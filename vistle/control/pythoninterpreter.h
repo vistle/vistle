@@ -14,9 +14,10 @@ class PythonInterpreter {
  public:
    PythonInterpreter(const std::string &filename, const std::string &path, bool executeModules=false);
    ~PythonInterpreter();
-   void init();
+   bool init();
 
    bool check();
+   bool error() const;
 
    bool executeFile(const std::string &filename);
    bool executeCommand(const std::string &cmd);
@@ -27,6 +28,7 @@ class PythonInterpreter {
    std::shared_ptr<PythonModule> m_module;
    std::shared_ptr<Executor> m_executor;
    std::thread m_thread;
+   bool m_error = false;
 };
 
 } // namespace vistle

@@ -187,6 +187,23 @@ bool Hub::init(int argc, char *argv[]) {
       return false;
    }
 
+    if (vm.count("name") > 1) {
+        CERR << desc << std::endl;
+        return false;
+    } else if (vm.count("name") == 1) {
+        if (m_isMaster)
+            m_scriptPath = vm["name"].as<std::string>();
+        else
+            m_name = vm["name"].as<std::string>();
+   }
+
+    if (vm.count("port") > 0) {
+        m_port = vm["port"].as<unsigned short>();
+    }
+    if (vm.count("dataport") > 0) {
+        m_dataPort = vm["dataport"].as<unsigned short>();
+    }
+
    if (vm.count("exposed") > 0) {
        m_exposedHost = vm["exposed"].as<std::string>();
        boost::asio::ip::tcp::resolver resolver(m_ioService);
@@ -201,13 +218,6 @@ bool Hub::init(int argc, char *argv[]) {
            m_exposedHostAddr = endpoint.address();
            CERR << m_exposedHost << " resolved to " << m_exposedHostAddr << std::endl;
        }
-   }
-
-   if (vm.count("port") > 0) {
-       m_port = vm["port"].as<unsigned short>();
-   }
-   if (vm.count("dataport") > 0) {
-       m_dataPort = vm["dataport"].as<unsigned short>();
    }
 
    try {
@@ -289,12 +299,6 @@ bool Hub::init(int argc, char *argv[]) {
        }
    }
 
-   if (vm.count("name") == 1) {
-      if (m_isMaster)
-         m_scriptPath = vm["name"].as<std::string>();
-      else
-         m_name = vm["name"].as<std::string>();
-   }
    if (vm.count("execute") > 0) {
        m_executeModules = true;
    }
@@ -819,7 +823,7 @@ int Hub::id() const {
     return m_hubId;
 }
 
-void Hub::hubReady() {
+bool Hub::hubReady() {
     assert(m_managerConnected);
     if (m_isMaster) {
         m_ready = true;
@@ -830,7 +834,13 @@ void Hub::hubReady() {
         }
         m_slavesToConnect.clear();
 
-        processScript();
+        if (!processScript()) {
+            auto q = message::Quit();
+            sendSlaves(q);
+            sendManager(q);
+            m_quitting = true;
+            return false;
+        }
     } else {
         auto hub = make.message<message::AddHub>(m_hubId, m_name);
         hub.setNumRanks(m_localRanks);
@@ -855,7 +865,7 @@ void Hub::hubReady() {
                         }
                     } catch (std::bad_cast &except) {
                         CERR << "AddHub: failed to convert local address to v6: " << except.what() << std::endl;
-                        return;
+                        return false;
                     }
                 } else {
                     hub.setAddress(m_exposedHostAddr);
@@ -869,6 +879,8 @@ void Hub::hubReady() {
         sendMaster(hub);
         m_ready = true;
     }
+
+    return true;
 }
 
 bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock, const buffer *payload) {
@@ -992,7 +1004,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                          sendMessage(sock, m.message, m.payload.get());
                      }
                   }
-                  hubReady();
+                  if (!hubReady()) {
+                      m_uiManager.lockUi(false);
+                      return false;
+                  }
                }
                m_uiManager.lockUi(false);
                break;
@@ -1394,14 +1409,16 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   sendMessage(sock, m);
                }
 #endif
-               hubReady();
+               if (!hubReady()) {
+                   return false;
+               }
             }
             break;
          }
 
          case message::QUIT: {
 
-            CERR << "quit requested by " <<  senderType << std::endl;
+            CERR << "quit requested by " << senderType << std::endl;
             m_uiManager.requestQuit();
             auto &quit = static_cast<const Quit &>(msg);
             if (senderType == message::Identify::MANAGER) {
@@ -1711,20 +1728,25 @@ bool Hub::startPythonUi() {
 bool Hub::processScript() {
 
    assert(m_uiManager.isLocked());
-#ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
+#ifdef HAVE_PYTHON
       setStatus("Loading "+m_scriptPath+"...");
-      setLoadedFile(m_scriptPath);
       PythonInterpreter inter(m_scriptPath, dir::share(m_prefix), m_executeModules);
       while(inter.check()) {
          dispatch();
       }
+      if (inter.error()) {
+          setStatus("Loading " + m_scriptPath + " failed");
+          return false;
+      }
       setStatus("Loading "+m_scriptPath+ " done");
+
+      setLoadedFile(m_scriptPath);
+#else
+      return false;
+#endif
    }
    return true;
-#else
-   return false;
-#endif
 }
 
 bool Hub::handlePriv(const message::Execute &exec) {
