@@ -142,17 +142,19 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
     // indicating whether faces are shared in each dimension
     // uninitialized values default to false
     diy::RegularDecomposer<Bounds>::BoolVector share_face;
+
     // wrap is an n-dim (size 3 in this example) vector of bools
     // indicating whether boundary conditions are periodic in each dimension
     // uninitialized values default to false
     diy::RegularDecomposer<Bounds>::BoolVector wrap;
+
     // ghosts is an n-dim (size 3 in this example) vector of ints
     // indicating number of ghost cells per side in each dimension
     // uninitialized values default to 0
     diy::RegularDecomposer<Bounds>::CoordinateVector ghosts;
     for (int i = 0; i < dimDomain; ++i) {
         share_face.push_back(true);
-        wrap.push_back(true);
+        wrap.push_back(false);
         ghosts.push_back(ghost);
     }
 
@@ -172,19 +174,6 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
                              master.add(gid, b, l); // add block to the master (mandatory)
                          });
 
-    /* auto token = std::make_shared<Token>(this, prev); */
-    /* ++m_tokenCount; */
-    /* token->m_id = m_tokenCount; */
-    /* token->m_meta = *prop.meta; */
-    /* if (waitForReaders(prop.concurrency - 1, prop.result) == 0) */
-    /*     prev.reset(); */
-    /* m_tokens.emplace_back(token); */
-    /* prev = token; */
-    /* token->m_future = std::async(std::launch::async, [this, &token, timestep, &master]() { */
-    /*     master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); }); */
-    /*     return true; */
-    /* }); */
-    /* master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, *token, timestep); }); */
     master.foreach ([&](Block *b, const ProxyLink &pL) { readBlock(b, pL, prop, prev, timestep); });
 
     return true;
@@ -220,10 +209,8 @@ void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, i
             if (!prop.result)
                 break;
         }
-    } else {
-        sendInfo("diy");
+    } else
         prop.result = prepareDIY(prev, prop, timestep);
-    }
     if (m_parallel == ParallelizeBlocks || m_parallel == ParallelizeDIYBlocks) {
         waitForReaders(0, prop.result);
         prev.reset();
@@ -320,17 +307,23 @@ bool Reader::readBlock(Block *b, const ProxyLink &pL, ReaderProperties &prop, st
         prev.reset();
     m_tokens.emplace_back(token);
     prev = token;
-    bool result = false;
-    /* if (b) */
-    /*     result = readDIYBlock(b, pL, *token, timestep); */
-    /* else */
-    result = readDIY(pL, *token, timestep);
-    token->m_future = std::async(std::launch::async, [result]() { return result; });
-    /* token->m_future = std::async(std::launch::async, [this, &token, &pL, timestep]() { return readDIY(pL, *token, timestep); }); */
+
+    auto link = static_cast<RegLink *>(pL.link());
+    auto bounds = link->bounds();
+    auto block = pL.gid();
+    token->m_future = std::async(std::launch::async, [this, token, bounds, block, timestep]() {
+        return readDIY(bounds, *token, timestep, block);
+    });
+
     return true;
 }
 
 bool Reader::readDIY(const ProxyLink &pL, Token &token, int timestep)
+{
+    return true;
+}
+
+bool Reader::readDIY(const Bounds &bounds, Token &token, int timestep, int block)
 {
     return true;
 }

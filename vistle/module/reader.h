@@ -103,6 +103,7 @@ public:
     */
     virtual bool read(Token &token, int timestep = -1, int block = -1) = 0;
     virtual bool readDIY(const ProxyLink &link, Token &token, int timestep);
+    virtual bool readDIY(const Bounds &link, Token &token, int timestep, int block);
     virtual bool readDIYBlock(Block *b, const ProxyLink &link, Token &token, int timestep);
 
     /* virtual bool readDIYBlock(Token &token, int timestep = -1); */
