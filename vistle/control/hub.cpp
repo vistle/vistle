@@ -163,7 +163,7 @@ bool Hub::init(int argc, char *argv[]) {
       ("execute,e", "call compute() after workflow has been loaded")
       ("name", "Vistle script to process or slave name")
       ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
-      ("gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+      ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
       ;
    po::variables_map vm;
    try {
