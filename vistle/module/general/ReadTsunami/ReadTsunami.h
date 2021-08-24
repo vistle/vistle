@@ -82,7 +82,7 @@ private:
     //Vistle functions
     bool prepareRead() override;
     bool read(Token &token, int timestep, int block) override;
-    bool readDIY(const ProxyLink &pL, Token &token, int timestep) override;
+    bool readDIY(const Bounds &bounds, Token &token, int timestep, int block) override;
     bool examine(const vistle::Parameter *param) override;
 
     //Own functions
@@ -98,7 +98,7 @@ private:
 
     template<class T, class U>
     bool computeBlock(Token &token, const T &blockNum, const U &timestep);
-    bool computeBlockDIY(const ProxyLink& pL, Token &token, int timestep);
+    bool computeBlockDIY(const Bounds &bounds, Token &token, int timestep, int block);
 
     template<class Iter>
     void computeBlockPartition(const int blockNum, vistle::Index &nLatBlocks, vistle::Index &nLonBlocks,
@@ -106,11 +106,11 @@ private:
 
     template<class T>
     bool computeInitial(Token &token, const T &blockNum);
-    bool computeInitialDIY(const ProxyLink& pL, Token &token);
+    bool computeInitialDIY(const Bounds &bounds, Token &token, int block);
 
     template<class T, class U>
     bool computeTimestep(Token &token, const T &blockNum, const U &timestep);
-    bool computeTimestepDIY(const ProxyLink& pL, Token &token, int timestep);
+    bool computeTimestepDIY(Token &token, int timestep, int block);
     void computeActualLastTimestep(const ptrdiff_t &incrementTimestep, const size_t &firstTimestep,
                                    size_t &lastTimestep, size_t &nTimesteps);
 
