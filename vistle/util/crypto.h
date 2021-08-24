@@ -6,11 +6,15 @@
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
+#include <string>
 
 namespace vistle {
 namespace crypto {
 
 V_UTILEXPORT bool initialize(size_t secret_size=64);
+V_UTILEXPORT bool set_session_key(const std::string &hex_key);
+V_UTILEXPORT std::string get_session_key();
+
 V_UTILEXPORT const std::vector<uint8_t> &session_data();
 V_UTILEXPORT const std::vector<uint8_t> &session_key();
 

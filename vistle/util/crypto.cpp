@@ -64,19 +64,46 @@ bool initialize(size_t secret_size) {
 
     s_initialized = true;
 
-    if (const char *key = getenv("VISTLE_KEY")) {
-        auto sec_key = Botan::hex_decode(key);
-        s_key = from_secure<uint8_t>(sec_key);
-    } else {
-        std::cerr << "VISTLE_KEY environment variable not set, using random session key" << std::endl;
-        s_key = random_data(secret_size);
-        std::string hex_key = Botan::hex_encode(s_key.data(), s_key.size());
-        setenv("VISTLE_KEY", hex_key.c_str(), 1);
-    }
-
     s_session_data = random_data(secret_size);
 
+    if (const char *key = getenv("VISTLE_KEY")) {
+        try {
+            auto sec_key = Botan::hex_decode(key);
+            s_key = from_secure<uint8_t>(sec_key);
+            return true;
+        } catch (...) {
+            std::cerr << "Could not decode VISTLE_KEY environment variable" << std::endl;
+        }
+    }
+
+    std::cerr << "VISTLE_KEY environment variable not set, using random session key" << std::endl;
+    s_key = random_data(secret_size);
+    std::string hex_key = Botan::hex_encode(s_key.data(), s_key.size());
+    setenv("VISTLE_KEY", hex_key.c_str(), 1);
+
     return true;
+}
+
+bool set_session_key(const std::string &hex_key) {
+
+    assert(s_initialized);
+
+    try {
+        auto sec_key = Botan::hex_decode(hex_key);
+        s_key = from_secure<uint8_t>(sec_key);
+    } catch (...) {
+        return false;
+    }
+
+    setenv("VISTLE_KEY", hex_key.c_str(), 1);
+    return true;
+}
+
+std::string get_session_key() {
+
+    auto key = session_key();
+    std::string hex_key = Botan::hex_encode(key.data(), key.size());
+    return hex_key;
 }
 
 std::vector<uint8_t> random_data(size_t length) {
