@@ -151,10 +151,12 @@ process_handle try_wait(process_handle pid0, int *status) {
 #else
    int stat = 0;
    pid_t pid = wait4(pid0, &stat, WNOHANG, nullptr);
-   if (status)
-       *status = stat;
-   if (pid > 0)
-      return pid;
+   if (WIFEXITED(stat) || WIFSIGNALED(stat)) {
+       if (status)
+           *status = stat;
+       if (pid > 0)
+           return pid;
+   }
 
    return 0;
 #endif
