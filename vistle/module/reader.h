@@ -127,15 +127,41 @@ protected:
         ParallelizeTimesteps, ///< up to 'concurrency' operations at a time, but the same block from different timesteps may be scheduled on other ranks
         ParallelizeTimeAndBlocks, ///< up to 'concurrency' operations at a time
         ParallelizeBlocks, ///< up to 'concurrency' operations at a time, all operations for one timestep have finished before operations for another timestep are started
-        ParallelizeDIYBlocks, ///< using diy for block distribution; you will need to set global dimension of your domain and number of blocks
+        ParallelizeDIYBlocks, ///< using diy for block distribution; you will need to set global dimension, min and max of your domain and number of blocks as well override the readDIY function
     };
 
     /// control whether and how @ref read invocations are called in parallel
     void setParallelizationMode(ParallelizationMode mode);
 
+
+    /**
+     * @brief Set max of current domain for DIY implementation in each dimension.
+     *
+     * @param max Vector.
+     */
     void setMaxDomain(std::vector<int> &max) { m_maxDomain = max; }
+
+    /**
+     * @brief Set min of current domain for DIY implementation in each dimension.
+     *
+     * @param max Vector.
+     */
     void setMinDomain(std::vector<int> &min) { m_minDomain = min; }
+
+    /**
+     * @brief Set dim of current domain for DIY implementation.
+     *
+     * @param max Vector.
+     */
     void setDimDomain(int dim) { m_dimDomain = dim; }
+
+
+    /**
+     * @brief Whether use own serialized diy block struct or default defined.
+     *
+     * @param enable Enables handling of own diy blocks.
+     */
+    void setHandleOwnDIYBlocks(bool enable) { m_handleOwnDIYBlocks = enable; }
 
     /// whether partitions should be handled by the @ref Reader class
     void setHandlePartitions(bool enable);
@@ -197,7 +223,8 @@ private:
     bool prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep);
     bool prepare() override;
     bool compute() override;
-    bool readBlock(Block *block, const ProxyLink &pL, ReaderProperties& prop, std::shared_ptr<Token> prev, int timepstep = -1);
+    bool readBlock(Block *block, const ProxyLink &pL, ReaderProperties &prop, std::shared_ptr<Token> prev,
+                   int timepstep = -1);
 
     ParallelizationMode m_parallel = Serial;
     std::mutex m_mutex; // protect ports and message queues
@@ -214,6 +241,7 @@ private:
     bool m_readyForRead = true;
 
     bool m_handlePartitions = true;
+    bool m_handleOwnDIYBlocks = false;
     bool m_allowTimestepDistribution = false;
 
     unsigned long m_tokenCount = 0;

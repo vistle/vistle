@@ -179,6 +179,13 @@ bool Reader::prepareDIY(std::shared_ptr<Token> prev, ReaderProperties &prop, int
     return true;
 }
 
+/**
+ * @brief Calls read function for corresponding parallelizationmode for given timestep blockparallel.
+ *
+ * @param prev Previous Token.
+ * @param prop Reader properties.
+ * @param timestep Current timestep.
+ */
 void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, int timestep)
 {
     if (m_parallel != ParallelizeDIYBlocks) {
@@ -217,6 +224,12 @@ void Reader::readTimestep(std::shared_ptr<Token> prev, ReaderProperties &prop, i
     }
 }
 
+/**
+ * @brief Read timesteps.
+ *
+ * @param prev Previous token.
+ * @param prop Reader properties.
+ */
 void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop)
 {
     if (prop.result && prop.time.inc() != 0) {
@@ -239,6 +252,11 @@ void Reader::readTimesteps(std::shared_ptr<Token> prev, ReaderProperties &prop)
     }
 }
 
+/**
+ * @brief Prepares reader for reading file. Calls the read function for choosen ParallelizationMode.
+ *
+ * @return True if everything went well.
+ */
 bool Reader::prepare()
 {
     if (!m_readyForRead) {
@@ -297,6 +315,17 @@ bool Reader::prepare()
     return true;
 }
 
+/**
+ * @brief Callback function for master::foreach invoked for each block. Calls virtual function readDIY.
+ *
+ * @param b Serialized DIY-Block (set by diy::master).
+ * @param pL Communcation proxy between DIY-Blocks (set by diy::master).
+ * @param prop Reader properties.
+ * @param prev Previous token.
+ * @param timestep current Timestep.
+ *
+ * @return True after succesfull read.
+ */
 bool Reader::readBlock(Block *b, const ProxyLink &pL, ReaderProperties &prop, std::shared_ptr<Token> prev, int timestep)
 {
     auto token = std::make_shared<Token>(this, prev);
@@ -312,22 +341,56 @@ bool Reader::readBlock(Block *b, const ProxyLink &pL, ReaderProperties &prop, st
     auto bounds = link->bounds();
     auto block = pL.gid();
     token->m_future = std::async(std::launch::async, [this, token, bounds, block, timestep]() {
+        if (m_handleOwnDIYBlocks) {
+            sendInfo("not implemented yet.");
+            return true;
+            /* return readDIYBlock(Block *b, const ProxyLink &link, Token &token, int timestep) */
+        }
         return readDIY(bounds, *token, timestep, block);
     });
 
     return true;
 }
 
+/**
+ * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you need access to communcation proxy.
+ *
+ * @param pL Communcation proxy between DIY-Blocks.
+ * @param token Token for current block.
+ * @param timestep current timestep.
+ *
+ * @return False when something went wrong else true.
+ */
 bool Reader::readDIY(const ProxyLink &pL, Token &token, int timestep)
 {
     return true;
 }
 
+/**
+ * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you only need boundaries of current block.
+ *
+ * @param bounds Bounds of block.
+ * @param token Token for current block.
+ * @param timestep current timestep.
+ * @param block Block id.
+ *
+ * @return False when something went wrong else true.
+ */
 bool Reader::readDIY(const Bounds &bounds, Token &token, int timestep, int block)
 {
     return true;
 }
 
+/**
+ * @brief Virtual function invoked for each DIY-Block. Override this function in reader module when using parallelizationmode parallelizeDIYBlocks. Use this function if you have implemented a own serialized block struct for DIY.
+ *
+ * @param b Serialized DIY-Block.
+ * @param pL Communcation proxy.
+ * @param token Current token for block.
+ * @param timestep current Timestep.
+ *
+ * @return False when somethin went wrong else true.
+ */
 bool Reader::readDIYBlock(Block *b, const ProxyLink &pL, Token &token, int timestep)
 {
     return true;
@@ -443,9 +506,8 @@ void Reader::setPartitions(int number)
 bool Reader::changeParameters(std::set<const Parameter *> params)
 {
     bool ret = true;
-    for (auto &p: params) {
+    for (auto &p: params)
         ret &= Module::changeParameter(p);
-    }
 
     for (auto &p: params) {
         auto it = m_observedParameters.find(p);
