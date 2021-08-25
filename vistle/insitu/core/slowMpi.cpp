@@ -79,12 +79,12 @@ void vistle::insitu::waitForRank(boost::mpi::communicator &c, int rank)
     assert(i == 2139);
 }
 
-void vistle::insitu::broadcast(boost::mpi::communicator &c, int val, int root)
+void vistle::insitu::broadcast(boost::mpi::communicator &c, int &val, int root)
 {
     detail::broadcast(c, val, root);
 }
 
-void vistle::insitu::broadcast(boost::mpi::communicator &c, bool val, int root)
+void vistle::insitu::broadcast(boost::mpi::communicator &c, bool &val, int root)
 {
     detail::broadcast(c, val, root);
 }
