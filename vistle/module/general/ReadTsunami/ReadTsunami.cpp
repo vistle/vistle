@@ -69,7 +69,7 @@ ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicato
                                    Parameter::Filename);
 
     //ghost
-    m_ghostTsu = addIntParameter("ghost_old", "Show ghostcells.", 1, Parameter::Boolean);
+    /* m_ghostTsu = addIntParameter("ghost_old", "Show ghostcells.", 1, Parameter::Boolean); */
     m_fill = addIntParameter("fill", "Replace filterValue.", 1, Parameter::Boolean);
     m_verticalScale = addFloatParameter("VerticalScale", "Vertical Scale parameter sea", 1.0);
 
@@ -209,16 +209,16 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     // TODO: NetCDF not threadsafe => implement lock mechanisim?
     /* setHandlePartitions(nBlocks > size()); */
-    setPartitions(nBlocks);
-    return true;
-    /* if (nBlocks <= size()) { */
-    /*     setDimDomain(2); */
-    /*     setPartitions(nBlocks); */
-    /*     return true; */
-    /* } else { */
-    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
-    /*     return false; */
-    /* } */
+    /* setPartitions(nBlocks); */
+    /* return true; */
+    if (nBlocks <= size()) {
+        setDimDomain(2);
+        setPartitions(nBlocks);
+        return true;
+    } else {
+        printRank0("Total number of blocks should equal MPISIZE or less.");
+        return false;
+    }
 }
 
 /**
@@ -453,11 +453,6 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
     // get dim from grid_lon & grid_lat
     const Dim<size_t> dimGround(grid_lat.getDim(0).getSize(), grid_lon.getDim(0).getSize());
 
-    /* RegLink *link = static_cast<RegLink *>(pL.link()); */
-    /* const size_t &latMin = link->bounds().min[0]; */
-    /* const size_t &latMax = link->bounds().max[0]; */
-    /* const size_t &lonMin = link->bounds().min[1]; */
-    /* const size_t &lonMax = link->bounds().max[1]; */
     const size_t &latMin = bounds.min[0];
     const size_t &latMax = bounds.max[0];
     const size_t &lonMin = bounds.min[1];
@@ -569,7 +564,6 @@ bool ReadTsunami::computeInitialDIY(const Bounds &bounds, Token &token, int bloc
             ptr_grnd->setBlock(block);
             ptr_grnd->setTimestep(-1);
             ptr_grnd->updateInternals();
-            /* this->addObject(m_groundSurface_out, ptr_grnd); */
             token.addObject(m_groundSurface_out, ptr_grnd);
         }
     }
@@ -833,7 +827,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
 
     if (m_seaSurface_out->isConnected())
         token.addObject(m_seaSurface_out, ptr_timestepPoly);
-        /* this->addObject(m_seaSurface_out, ptr_timestepPoly); */
 
     //add scalar to ports
     for (size_t i = 0; i < NUM_SCALARS; ++i) {
@@ -848,7 +841,6 @@ bool ReadTsunami::computeTimestep(Token &token, const T &blockNum, const U &time
         scalar->updateInternals();
 
         token.addObject(m_scalarsOut[i], scalar);
-        /* this->addObject(m_scalarsOut[i], scalar); */
     }
 
     if (timestep == m_actualLastTimestep) {

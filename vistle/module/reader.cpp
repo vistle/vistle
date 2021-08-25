@@ -26,7 +26,8 @@ struct Block {
     void readBlock(const ProxyLink &cp) { auto blockNum = cp.gid(); }
 };
 
-Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm): Module(name, moduleID, comm)
+Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm)
+: Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
 
