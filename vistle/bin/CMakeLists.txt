@@ -18,4 +18,12 @@ add_custom_target(vistle_tui ALL
 )
 endif()
 
+if (UNIX)
+add_custom_target(vistle_opener ALL
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/vistle_opener.sh ${EXECUTABLE_OUTPUT_PATH}/vistle_opener
+   DEPENDS vistle_opener.sh
+   SOURCES vistle_opener.sh
+)
+endif()
+
 install(PROGRAMS ${SPAWN_VISTLE} DESTINATION bin)
