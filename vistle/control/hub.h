@@ -31,7 +31,7 @@ class V_HUBEXPORT Hub {
    bool init(int argc, char *argv[]);
    bool processScript();
    bool dispatch();
-   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const buffer *payload=nullptr) const;
+   bool sendMessage(std::shared_ptr<socket> sock, const message::Message &msg, const buffer *payload=nullptr);
    unsigned short port() const;
    unsigned short dataPort() const;
    vistle::process_handle launchProcess(const std::vector<std::string>& argv) const;
@@ -39,13 +39,13 @@ class V_HUBEXPORT Hub {
 
    bool handleMessage(const message::Message &msg,
          std::shared_ptr<boost::asio::ip::tcp::socket> sock = std::shared_ptr<boost::asio::ip::tcp::socket>(), const buffer *payload=nullptr);
-   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload=nullptr) const;
-   bool sendMaster(const message::Message &msg, const buffer *payload=nullptr) const;
-   bool sendSlaves(const message::Message &msg, bool returnToSender=false, const buffer *payload=nullptr) const;
-   bool sendSlave(const message::Message &msg, int id, const buffer *payload=nullptr) const;
-   bool sendHub(const message::Message &msg, int id, const buffer *payload=nullptr) const;
-   bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload=nullptr) const;
-   bool sendModule(const message::Message &msg, int id, const buffer *payload=nullptr) const;
+   bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload=nullptr);
+   bool sendMaster(const message::Message &msg, const buffer *payload=nullptr);
+   bool sendSlaves(const message::Message &msg, bool returnToSender=false, const buffer *payload=nullptr);
+   bool sendSlave(const message::Message &msg, int id, const buffer *payload=nullptr);
+   bool sendHub(const message::Message &msg, int id, const buffer *payload=nullptr);
+   bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload=nullptr);
+   bool sendModule(const message::Message &msg, int id, const buffer *payload=nullptr);
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -73,12 +73,11 @@ private:
    bool removeClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
    bool startCleaner();
-   bool startManager();
 
 void cacheModuleValues(int oldModuleId, int newModuleId);
 void killOldModule(int migratedId);
-void sendInfo(const std::string &s) const;
-void sendError(const std::string &s) const;
+void sendInfo(const std::string &s);
+void sendError(const std::string &s);
 
 bool m_inManager = false;
 

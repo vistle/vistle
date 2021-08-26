@@ -387,8 +387,10 @@ vistle::process_handle Hub::launchProcess(const std::vector<std::string> &argv) 
     return pid;
 }
 
-bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const buffer *payload) const {
+bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, const buffer *payload) {
    bool result = true;
+   bool close = msg.type() == message::CLOSECONNECTION;
+
 #if 0
    try {
       result = message::send(*sock, msg, payload);
@@ -401,15 +403,19 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
          throw(err);
       }
    }
+   if (close)
+       removeSocket(sock);
 #else
-   std::shared_ptr<buffer> pl;
+    std::shared_ptr<buffer> pl;
    if (payload)
        pl = std::make_shared<buffer>(*payload);
 
-   message::async_send(*sock, msg, pl, [this](boost::system::error_code ec){
+   message::async_send(*sock, msg, pl, [this, sock, close](boost::system::error_code ec) {
        if (ec) {
            CERR << "send error: " << ec.message() << std::endl;
        }
+       if (close)
+           removeSocket(sock);
    });
 #endif
    return result;
@@ -688,7 +694,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
     }
 }
 
-bool Hub::sendMaster(const message::Message &msg, const buffer *payload) const {
+bool Hub::sendMaster(const message::Message &msg, const buffer *payload) {
 
    assert(!m_isMaster);
    if (m_isMaster) {
@@ -707,7 +713,7 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload) const {
    return numSent == 1;
 }
 
-bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload) const {
+bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payload) {
 
    if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
       assert(m_managerConnected);
@@ -731,7 +737,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
    return sendHub(msg, hub, payload);
 }
 
-bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buffer *payload) const {
+bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buffer *payload) {
 
    assert(m_isMaster);
    if (!m_isMaster)
@@ -757,7 +763,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buf
    return ok;
 }
 
-bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) const {
+bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) {
 
    if (hub == m_hubId)
       return true;
@@ -776,7 +782,7 @@ bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) c
    return false;
 }
 
-bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload) const {
+bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload) {
 
    assert(m_isMaster);
    if (!m_isMaster)
@@ -789,13 +795,13 @@ bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload
    return sendMessage(it->second.sock, msg, payload);
 }
 
-bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload) const {
+bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload) {
 
    m_uiManager.sendMessage(msg, id, payload);
    return true;
 }
 
-bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload) const {
+bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload) {
 
     if (!Id::isModule(id)) {
         CERR << "sendModule: id " << id << " is not for a module" << std::endl;
@@ -974,7 +980,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              CERR << "message authentication failed" << std::endl;
              auto close = make.message<message::CloseConnection>("message authentication failed");
              sendMessage(sock, close);
-             removeSocket(sock, false);
              break;
          }
          switch(id.identity()) {
@@ -1607,7 +1612,7 @@ void Hub::killOldModule(int migratedId)
 
 
 
-void Hub::sendInfo(const std::string &s) const {
+void Hub::sendInfo(const std::string &s) {
     CERR << s << std::endl;
     auto t = make.message<message::SendText>(message::SendText::Info);
     message::SendText::Payload pl(s);
@@ -1615,7 +1620,7 @@ void Hub::sendInfo(const std::string &s) const {
     sendUi(t, Id::Broadcast, &payload);
 }
 
-void Hub::sendError(const std::string &s) const {
+void Hub::sendError(const std::string &s) {
     CERR << "Error: " << s << std::endl;
     auto t = make.message<message::SendText>(message::SendText::Error);
     message::SendText::Payload pl(s);
