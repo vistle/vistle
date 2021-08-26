@@ -57,6 +57,7 @@ class Message;
 struct V_INSITUMESSAGEEXPORT InSituMessageBase {
     InSituMessageBase(InSituMessageType t): m_type(t){};
     InSituMessageType type() const;
+    virtual ~InSituMessageBase() = default;
 
 protected:
     InSituMessageType m_type;
