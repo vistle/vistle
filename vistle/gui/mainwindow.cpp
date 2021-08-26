@@ -73,6 +73,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
     ui->actionExecute->setShortcut(QKeySequence::StandardKey::Refresh);
     connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
+    connect(ui->actionShow_Session_URL, SIGNAL(triggered()), SIGNAL(showSessionUrl()));
+    connect(ui->actionCopy_Session_URL, SIGNAL(triggered()), SIGNAL(copySessionUrl()));
     ui->actionSelect_All->setShortcut(QKeySequence::StandardKey::SelectAll);
     connect(ui->actionSelect_All, SIGNAL(triggered()), SIGNAL(selectAllModules()));
     QList<QKeySequence> deleteKeys;

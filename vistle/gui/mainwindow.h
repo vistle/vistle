@@ -50,6 +50,8 @@ signals:
     void saveDataFlowAs();
     void executeDataFlow();
     void connectVistle();
+    void showSessionUrl();
+    void copySessionUrl();
     void selectAllModules();
     void deleteSelectedModules();
     void aboutQt();

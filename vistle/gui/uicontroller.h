@@ -53,9 +53,12 @@ private slots:
 
     void statusUpdated(int id, QString text, int prio);
     void setCurrentFile(QString file);
+    void setSessionUrl(QString url);
+
+    void showConnectionInfo();
+    void copyConnectionInfo();
 
 private:
-    void showConnectionInfo();
 
     vistle::VistleConnection *m_vistleConnection;
     vistle::UserInterface *m_ui;
@@ -70,6 +73,8 @@ private:
     QString m_currentFile;
     bool m_modified = false;
     std::string m_pythonDir;
+
+    QString m_sessionUrl;
 };
 
 } // namespace gui

@@ -66,6 +66,7 @@ public:
     void printHistory();
 
 public slots:
+    void appendHtml(const QString &html, int type=-1);
     void appendInfo(const QString &text, int type=-1);
     void appendDebug(const QString &text);
 

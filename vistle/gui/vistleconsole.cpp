@@ -159,6 +159,42 @@ void VistleConsole::printHistory()
     }
 }
 
+ void VistleConsole::appendHtml(const QString &text, int type)
+ {
+     using namespace vistle::message;
+
+     // save the current command
+     QTextCursor cursor = textCursor();
+     cursor.movePosition(QTextCursor::End);
+     cursor.movePosition(QTextCursor::StartOfLine);
+     cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+     QString saved = cursor.selectedText();
+     cursor.removeSelectedText();
+
+     // remove last line
+     cursor.movePosition(QTextCursor::End);
+     cursor.movePosition(QTextCursor::Up, QTextCursor::KeepAnchor);
+     cursor.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+     cursor.removeSelectedText();
+
+     cursor.movePosition(QTextCursor::End);
+
+     if (type == SendText::Info) {
+         setTextColor(infoColor());
+     } else if (type == SendText::Cerr) {
+         setTextColor(errColor());
+     }
+     insertHtml(text);
+
+     // reinsert it
+     cursor.movePosition(QTextCursor::End);
+     setTextColor(cmdColor());
+     append(saved);
+     cursor.movePosition(QTextCursor::End);
+     setTextCursor(cursor);
+     ensureCursorVisible();
+}
+
 void VistleConsole::appendInfo(const QString &text, int type)
 {
    using namespace vistle::message;

@@ -125,6 +125,11 @@ void VistleObserver::loadedWorkflowChanged(const std::string &filename)
     emit loadedWorkflowChanged_s(QString::fromStdString(filename));
 }
 
+void VistleObserver::sessionUrlChanged(const std::string &url)
+{
+    emit sessionUrlChanged_s(QString::fromStdString(url));
+}
+
 void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Type refType, const vistle::message::uuid_t &refUuid) {
 
    QString t = QString::fromStdString(text);

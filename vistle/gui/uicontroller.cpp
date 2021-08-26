@@ -13,6 +13,7 @@
 
 #include <thread>
 
+#include <QClipboard>
 #include <QDir>
 #include <QFileDialog>
 #include <QDockWidget>
@@ -79,7 +80,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
    } else {
        m_mainWindow->enableConnectButton(false);
-       showConnectionInfo();
    }
 
    setCurrentFile(QString::fromStdString(m_ui->state().loadedWorkflowFile()));
@@ -96,6 +96,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(m_mainWindow, SIGNAL(saveDataFlowAs()), SLOT(saveDataFlowNetworkAs()));
    connect(m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
    connect(m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
+   connect(m_mainWindow, SIGNAL(showSessionUrl()), SLOT(showConnectionInfo()));
+   connect(m_mainWindow, SIGNAL(copySessionUrl()), SLOT(copyConnectionInfo()));
    connect(m_mainWindow, SIGNAL(selectAllModules()), m_mainWindow->dataFlowView(), SLOT(selectAllModules()));
    connect(m_mainWindow, SIGNAL(deleteSelectedModules()), m_mainWindow->dataFlowView(), SLOT(deleteModules()));
    connect(m_mainWindow, SIGNAL(aboutQt()), SLOT(aboutQt()));
@@ -105,6 +107,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 
    connect(&m_observer, SIGNAL(quit_s()), qApp, SLOT(quit()));
    connect(&m_observer, SIGNAL(loadedWorkflowChanged_s(QString)), SLOT(setCurrentFile(QString)));
+   connect(&m_observer, SIGNAL(sessionUrlChanged_s(QString)), SLOT(setSessionUrl(QString)));
    connect(&m_observer, SIGNAL(info_s(QString, int)),
       m_mainWindow->console(), SLOT(appendInfo(QString, int)));
    connect(&m_observer, SIGNAL(modified(bool)),
@@ -291,9 +294,6 @@ void UiController::connectVistle()
 {
    if (!m_vistleConnection->ui().isConnected())
       m_vistleConnection->ui().tryConnect();
-
-   if (m_vistleConnection->ui().isConnected())
-       showConnectionInfo();
 }
 
 void UiController::moduleSelectionChanged()
@@ -378,6 +378,11 @@ void UiController::setCurrentFile(QString file) {
     m_mainWindow->setFilename(m_currentFile);
 }
 
+void UiController::setSessionUrl(QString url) {
+    m_sessionUrl = url;
+    showConnectionInfo();
+}
+
 void UiController::setModified(bool modified) {
     m_modified = modified;
 }
@@ -421,10 +426,21 @@ void UiController::aboutQt()
 
 void UiController::showConnectionInfo()
 {
-    auto &ui = m_vistleConnection->ui();
-    m_mainWindow->m_console->appendInfo(QString("Connected to master hub at %1:%2")
-            .arg(QString::fromStdString(ui.remoteHost())).arg(ui.remotePort()),
+#if 0
+    m_mainWindow->m_console->appendInfo(QString("Share this: <a href=\"%1\">%1</a>")
+            .arg(m_sessionUrl),
             vistle::message::SendText::Info);
+#else
+    m_mainWindow->m_console->appendInfo(QString("Share this: %1")
+                                            .arg(m_sessionUrl),
+                                        vistle::message::SendText::Info);
+#endif
 }
+
+void UiController::copyConnectionInfo()
+{
+    QGuiApplication::clipboard()->setText(m_sessionUrl);
+}
+
 
 } // namespace gui

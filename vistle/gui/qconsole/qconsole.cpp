@@ -167,6 +167,7 @@ QConsole::QConsole(QWidget *parent, const QString &welcomeText)
 		outColor_(Qt::blue), completionColor(Qt::darkGreen), infoColor_(Qt::darkGreen),
 		promptLength(0), promptParagraph(0)
 {
+    setAcceptRichText(false);
 	QPalette palette = QApplication::palette();
 	setCmdColor(palette.text().color());
 

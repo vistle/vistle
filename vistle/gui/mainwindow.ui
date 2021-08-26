@@ -100,6 +100,9 @@
     <addaction name="actionSave_As"/>
     <addaction name="separator"/>
     <addaction name="separator"/>
+    <addaction name="actionShow_Session_URL"/>
+    <addaction name="actionCopy_Session_URL"/>
+    <addaction name="separator"/>
     <addaction name="actionConnect"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -143,8 +146,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>78</width>
-     <height>53</height>
+     <width>106</width>
+     <height>54</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -390,6 +393,16 @@
   <action name="actionAbout_Qt">
    <property name="text">
     <string>About Qt</string>
+   </property>
+  </action>
+  <action name="actionShow_Session_URL">
+   <property name="text">
+    <string>Show Session URL</string>
+   </property>
+  </action>
+  <action name="actionCopy_Session_URL">
+   <property name="text">
+    <string>Copy Session URL</string>
    </property>
   </action>
  </widget>

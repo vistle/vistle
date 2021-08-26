@@ -36,6 +36,7 @@ signals:
    void moduleStatus_s(int id, QString msg, int prio);
 
    void loadedWorkflowChanged_s(QString file);
+   void sessionUrlChanged_s(QString url);
 
    void quit_s();
 
@@ -66,6 +67,7 @@ public:
    void resetModificationCount() override;
 
    void loadedWorkflowChanged(const std::string &filename) override;
+   void sessionUrlChanged(const std::string &url) override;
 
 private:
    std::map<int, QString> m_moduleNames;
