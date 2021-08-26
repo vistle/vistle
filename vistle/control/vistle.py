@@ -362,6 +362,7 @@ waitForHubs = _vistle.waitForHubs
 waitForNamedHubs = _vistle.waitForNamedHubs
 getMasterHub = _vistle.getMasterHub
 getVistleSession = _vistle.getVistleSession
+getSessionUrl = _vistle.getSessionUrl
 getAllHubs = _vistle.getAllHubs
 getHub = _vistle.getHub
 getOutputPorts = _vistle.getOutputPorts

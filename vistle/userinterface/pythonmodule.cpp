@@ -733,6 +733,11 @@ static std::string getLoadedFile() {
    return MODULEMANAGER.loadedWorkflowFile();
 }
 
+static std::string getSessionUrl() {
+
+    return MODULEMANAGER.sessionUrl();
+}
+
 class TrivialStateObserver: public StateObserver {
 public:
 
@@ -1101,6 +1106,7 @@ PY_MODULE(_vistle, m) {
     m.def("clearStatus", clearStatus, "clear status information");
     m.def("setLoadedFile", setLoadedFile, "update name of currently loaded workflow description file");
     m.def("getLoadedFile", getLoadedFile, "name of currently loaded workflow description file");
+    m.def("getSessionUrl", getSessionUrl, "URI for connecting to current session");
 
     param1(Int, setIntParam);
     param1(Float, setFloatParam);
