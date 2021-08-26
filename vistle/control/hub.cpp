@@ -103,6 +103,9 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub() {
 
+   while (!m_sockets.empty())
+      removeSocket(m_sockets.begin()->first);
+
    m_workGuard.reset();
    m_ioService.stop();
    m_ioThread.join();
@@ -579,7 +582,7 @@ bool Hub::dispatch() {
           work = true;
           handleWrite(sock, error);
       }
-   } while (avail > 0);
+   } while (!m_quitting && avail > 0);
 
    if (auto pid = vistle::try_wait()) {
       work = true;
