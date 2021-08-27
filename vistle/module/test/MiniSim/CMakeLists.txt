@@ -18,8 +18,8 @@ minisim/Oscillator.cpp
 minisim/Particles.cpp
 )
 find_path(DIY_INCLUDE_DIR Names diy/critical-resource.hpp) #critical-resource.hpp is an arbitrary file in the diy inclue dir
-message("DIY_INCLUDE_DIR = "${DIY_INCLUDE_DIR})
-if(EXISTS ${DIY_INCLUDE_DIR})
+#message("DIY_INCLUDE_DIR = ${DIY_INCLUDE_DIR}")
+if(DIY_INCLUDE_DIR)
     message("building minisim")
 	add_module(MiniSim ${HEADER} ${SOURCES})
     target_include_directories(MiniSim PRIVATE ${DIY_INCLUDE_DIR})
