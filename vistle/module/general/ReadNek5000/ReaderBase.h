@@ -31,6 +31,8 @@ public:
     bool hasPressure() const;
     bool hasTemperature() const;
     void UpdateCyclesAndTimes(int timestep);
+    bool hasGrid(int timestep) const;
+
 protected:
     //variables
     std::string file; //path to meta data file
@@ -64,26 +66,26 @@ protected:
 
 
     // This info is embedded in, or derived from, the file header
-    bool bSwapEndian = false;
+    bool m_swapEndian = false;
 
-    bool bHasVelocity = false;
-    bool bHasPressure = false;
-    bool bHasTemperature = false;
-    int numScalarFields = 0;
-    int iHeaderSize = 0;
-    int iPrecision = 4; //4 or 8 for float or double
+    bool m_hasVelocity = false;
+    bool m_hasPressure = false;
+    bool m_hasTemperature = false;
+    int m_numScalarFields = 0;
+    int m_headerSize = 0;
+    int m_precision = 4; //4 or 8 for float or double
     // This info is distributed through all the dumps, and only
     // computed on demand
-    std::vector<int> aCycles;
-    std::vector<double> aTimes;
-    std::vector<bool> readTimeInfoFor;
-    std::vector<bool> vTimestepsWithMesh;
-    int timestepToUseForMesh = 0;
+    std::vector<int> m_cycles;
+    std::vector<double> m_times;
+    std::vector<bool> m_readTimeInfoFor;
+    std::vector<bool> m_timestepsWithGrid;
+    int m_defaultTimestepToReadGrid = 0;
     //header of map file containing: numBlocks, numUniqeEdges, depth, maxNumPartitions(2^dept), ?, ?
-    std::array<int, 7> mapFileHeader;
+    std::array<int, 7> m_mapFileHeader;
     //contains the data from the .map file
-    std::vector < std::array<int, 9>> mapFileData; //toDo: sort out blocks that do not belong to this partition
-//methods
+    std::vector < std::array<int, 9>> m_mapFileData; //toDo: sort out blocks that do not belong to this partition
+    //methods
 
     template<class T>
     void ByteSwapArray(T* val, int size) {
@@ -91,15 +93,14 @@ protected:
             val[i] = vistle::byte_swap<vistle::endianness::little_endian, vistle::endianness::big_endian>(val[i]);
         }
     }
-    //      Create a filename from the template and other info.
+    //Create a filename from the template and other info.
     std::string GetFileName(int rawTimestep, int pardir);
-
     void sendError(const std::string& msg);
 
 
 private:
     //methods
-        //creates a list of all possible corners in edge indices
+    //creates a list of all possible corners in edge indices
     void setAllEdgesInCornerIndices();
     //creates a list of all possible planes in edge indices
     void setAllPlanesInCornerIndices();
@@ -123,7 +124,7 @@ private:
     //  stops when an unknown character is encountered, or when the file pointer
     //  moves beyond this->iHeaderSize characters.
     //
-    //  X or X Y Z indicate a mesh.  Ignored here, UpdateCyclesAndTimes picks this up.
+    //  X or X Y Z indicate a grid.  Ignored here, UpdateCyclesAndTimes picks this up.
     //  U indicates velocity
     //  P indicates pressure
     //  T indicates temperature

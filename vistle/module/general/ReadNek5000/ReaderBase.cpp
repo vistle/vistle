@@ -50,7 +50,7 @@ size_t ReaderBase::getNumTimesteps() const
 
 size_t ReaderBase::getNumScalarFields() const
 {
-    return numScalarFields;
+    return m_numScalarFields;
 }
 
 int ReaderBase::getDim() const
@@ -60,17 +60,17 @@ int ReaderBase::getDim() const
 
 bool ReaderBase::hasVelocity() const
 {
-    return bHasVelocity;
+    return m_hasVelocity;
 }
 
 bool ReaderBase::hasPressure() const
 {
-    return bHasPressure;
+    return m_hasPressure;
 }
 
 bool ReaderBase::hasTemperature() const
 {
-    return bHasTemperature;
+    return m_hasTemperature;
 }
 
 //protected methods
@@ -119,12 +119,12 @@ void ReaderBase::sendError(const std::string &msg)
 }
 
 void ReaderBase::UpdateCyclesAndTimes(int timestep) {
-    if (aTimes.size() != (size_t)numTimesteps) {
-        aTimes.resize(numTimesteps);
-        aCycles.resize(numTimesteps);
-        vTimestepsWithMesh.resize(numTimesteps, false);
-        vTimestepsWithMesh[0] = true;
-        readTimeInfoFor.resize(numTimesteps, false);
+    if (m_times.size() != (size_t)numTimesteps) {
+        m_times.resize(numTimesteps);
+        m_cycles.resize(numTimesteps);
+        m_timestepsWithGrid.resize(numTimesteps, false);
+        m_timestepsWithGrid[0] = true;
+        m_readTimeInfoFor.resize(numTimesteps, false);
     }
     ifstream f;
     char dummy[64];
@@ -134,8 +134,8 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
     t = 0.0;
     c = 0;
 
-    string meshfilename = GetFileName(timestep, 0);
-    f.open(meshfilename.c_str());
+    string gridFilename = GetFileName(timestep, 0);
+    f.open(gridFilename.c_str());
 
     if (!isParallelFormat) {
         string tString, cString;
@@ -161,8 +161,8 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
     }
     f.close();
 
-    aTimes[timestep] = t;
-    aCycles[timestep] = c;
+    m_times[timestep] = t;
+    m_cycles[timestep] = c;
     //if (metadata != nullptr) {
     //    metadata->SetTime(timestep + timeSliceOffset, t);
     //    metadata->SetTimeIsAccurate(true, timestep + timeSliceOffset);
@@ -170,18 +170,27 @@ void ReaderBase::UpdateCyclesAndTimes(int timestep) {
     //    metadata->SetCycleIsAccurate(true, timestep + timeSliceOffset);
     //}
 
-    // If this file contains a mesh, the first variable codes after the
+    // If this file contains a grid, the first variable codes after the
     // cycle number will be X Y
     if (v.find("X") != string::npos)
-        vTimestepsWithMesh[timestep] = true;
+    {
+        m_timestepsWithGrid[timestep] = true;
+    }
 
     // Nek has a bug where the time and cycle sometimes run together (e.g. 2.52000E+0110110 for
     // time 25.2, cycle 10110).  If that happens, then v will be Y
     if (v.find("Y") != string::npos)
-        vTimestepsWithMesh[timestep] = true;
+        m_timestepsWithGrid[timestep] = true;
 
-    readTimeInfoFor[timestep] = true;
+    m_readTimeInfoFor[timestep] = true;
 }
+
+bool ReaderBase::hasGrid(int timestep) const
+{
+    return m_timestepsWithGrid[timestep];
+}
+
+
 //private methods
 void ReaderBase::setAllEdgesInCornerIndices() {
     allEdgesInCornerIndices.insert({ 1,2 });
@@ -376,16 +385,16 @@ bool ReaderBase::ParseGridMap() {
     if (mptr.is_open()) {
 
         for (size_t i = 0; i < 7; i++) {
-            mptr >> mapFileHeader[i];
+            mptr >> m_mapFileHeader[i];
         }
-        mapFileData.reserve(mapFileHeader[0]);
+        m_mapFileData.reserve(m_mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
-        for (int i = 0; i < mapFileHeader[0]; ++i) {
+        for (int i = 0; i < m_mapFileHeader[0]; ++i) {
             array<int, 9> line;
             for (int j = 0; j < columns; j++) {
                 mptr >> line[j];
             }
-            mapFileData.emplace_back(line);
+            m_mapFileData.emplace_back(line);
         }
         mptr.close();
         return true;
@@ -402,24 +411,24 @@ bool ReaderBase::ParseGridMap() {
             return false;
         }
         for (size_t i = 0; i < 7; i++) {
-            ma2ptr >> mapFileHeader[i];
+            ma2ptr >> m_mapFileHeader[i];
         }
         ma2ptr.seekg(132/4 * sizeof(float), ios::beg);
         char test;
         ma2ptr >> test; //to do: use this to perform byteswap if neccessary
         ma2ptr.seekg((132 / 4  + 1) * sizeof(float), ios::beg);
-        mapFileData.reserve(mapFileHeader[0]);
+        m_mapFileData.reserve(m_mapFileHeader[0]);
         int columns = dim == 2 ? 5 : 9;
 
-        int* map = new int[columns * mapFileHeader[0]];
-        ma2ptr.read((char*)map, columns * mapFileHeader[0] * sizeof(float));
+        int* map = new int[columns * m_mapFileHeader[0]];
+        ma2ptr.read((char*)map, columns * m_mapFileHeader[0] * sizeof(float));
 
-        for (int i = 0; i < mapFileHeader[0]; ++i) {
+        for (int i = 0; i < m_mapFileHeader[0]; ++i) {
             array<int, 9> line;
             for (int j = 0; j < columns; j++) {
                 line[j] = map[i * columns + j];
             }
-            mapFileData.emplace_back(line);
+            m_mapFileData.emplace_back(line);
         } 
         delete[] map;
         ma2ptr.close();
@@ -467,11 +476,11 @@ bool ReaderBase::ParseNekFileHeader() {
     //iHeaderSize no longer includes the size of the block index metadata, for the
     //parallel format, since this now can vary per file.
     if (isBinary && isParallelFormat)
-        iHeaderSize = 136;
+        m_headerSize = 136;
     else if (isBinary && !isParallelFormat)
-        iHeaderSize = 84;
+        m_headerSize = 84;
     else
-        iHeaderSize = 80;
+        m_headerSize = 80;
 
 
     if (!isParallelFormat) {
@@ -491,7 +500,7 @@ bool ReaderBase::ParseNekFileHeader() {
         //This example means:  #std is for versioning, 4 bytes per sample,
         //  6x6x6 blocks, 120 of 240 blocks are in this file, time=1.5,
         //  cycle=300, this output dir=1, num output dirs=2, XUPT123 are
-        //  tags that this file has a mesh, velocity, pressure, temperature,
+        //  tags that this file has a grid, velocity, pressure, temperature,
         //  and 3 misc scalars.
         //
         //A new revision of the binary header changes the way tags are
@@ -507,7 +516,7 @@ bool ReaderBase::ParseNekFileHeader() {
             }
             return false;
         }
-        f >> iPrecision;
+        f >> m_precision;
         f >> blockDimensions[0];
         f >> blockDimensions[1];
         f >> blockDimensions[2];
@@ -561,11 +570,11 @@ bool ReaderBase::ParseNekFileHeader() {
             f.read((char*)(&test), 4);
         }
         if (test > 6.5 && test < 6.6)
-            bSwapEndian = false;
+            m_swapEndian = false;
         else {
             ByteSwapArray(&test, 1);
             if (test > 6.5 && test < 6.6)
-                bSwapEndian = true;
+                m_swapEndian = true;
             else {
                 sendError("Nek: Error reading file, while trying to determine endianness.");
                 if (f.is_open()) {
@@ -579,10 +588,10 @@ bool ReaderBase::ParseNekFileHeader() {
 }
 
 void ReaderBase::ParseFieldTags(ifstream& f) {
-    numScalarFields = 1;
+    m_numScalarFields = 1;
     int numSpacesInARow = 0;
     bool foundCoordinates = false;
-    while (f.tellg() < iHeaderSize) {
+    while (f.tellg() < m_headerSize) {
         char c = f.get();
         if (numSpacesInARow >= 5)
             continue;
@@ -595,16 +604,16 @@ void ReaderBase::ParseFieldTags(ifstream& f) {
             foundCoordinates = true;
             continue;
         } else if (c == 'U')
-            bHasVelocity = true;
+            m_hasVelocity = true;
         else if (c == 'P')
-            bHasPressure = true;
+            m_hasPressure = true;
         else if (c == 'T')
-            bHasTemperature = true;
+            m_hasTemperature = true;
         else if (c >= '1' && c <= '9') {
             // If we have S##, then it will be caught in the 'S'
             // logic below.  So this means that we have the legacy
             // representation and there is between 1 and 9 scalars.
-            numScalarFields = c - '0';
+            m_numScalarFields = c - '0';
         } else if (c == 'S') {
             while (f.peek() == ' ')
                 f.get();
@@ -615,14 +624,14 @@ void ReaderBase::ParseFieldTags(ifstream& f) {
 
             if (digit1 >= '0' && digit1 <= '9' &&
                 digit2 >= '0' && digit2 <= '9')
-                numScalarFields = (digit1 - '0') * 10 + (digit2 - '0');
+                m_numScalarFields = (digit1 - '0') * 10 + (digit2 - '0');
             else
-                numScalarFields = 1;
+                m_numScalarFields = 1;
         } else
             break;
     }
     if (!foundCoordinates) {
-        sendError("Nek: The first time step in a Nek file must contain a mesh");
+        sendError("Nek: The first time step in a Nek file must contain a grid");
 
     }
 }

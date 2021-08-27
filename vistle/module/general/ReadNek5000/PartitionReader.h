@@ -16,11 +16,15 @@ class PartitionReader : public ReaderBase{
 public:
 
     PartitionReader(const ReaderBase &base);
-
-    bool fillMesh(vistle::Scalar* x, vistle::Scalar* y, vistle::Scalar* z);
-    bool fillVelocity(int timestep, vistle::Scalar* x, vistle::Scalar* y, vistle::Scalar* z);
+    //construct the connectivity list out of the .map file(if available).
+    //Reads the mesh during construction to check for "mistakes" (e.g. logical connected blocks) in the .map file
+    //this updates the dimensions of the grid
+    bool constructUnstructuredGrid(int timestep);
+    //copies the mesh points read by constructUnstructuredMesh in the given array
+    void fillGrid(std::array<vistle::Scalar*, 3> mesh) const;
+    bool fillVelocity(int timestep, std::array<vistle::Scalar*, 3> data);
     bool fillScalarData(std::string varName, int timestep, vistle::Scalar* data);
-    bool fillBlockNumbers(vistle::Index* data);
+    void fillBlockNumbers(vistle::Index* data) const;
     void fillConnectivityList(vistle::Index* connectivityList);
 //getter
     size_t getBlocksToRead() const;
@@ -28,14 +32,14 @@ public:
     size_t getNumConn() const;
     size_t getGridSize() const;
     size_t getNumGhostHexes() const;
-
-//setter
-    bool setPartition(int partition, unsigned numGhostLayers, bool useMap = true); //also starts mapping the block ids
+    size_t partition() const;
+    //setter
+    bool setPartition(int partition, unsigned numGhostLayers); //also starts mapping the block ids
 private:
 
     //variables
     
-    int myPartition;
+    int m_partition;
     std::vector<int> myBlocksToRead; //number of blocks to read for this partition
     size_t numGhostBlocks = 0;
 
@@ -51,12 +55,12 @@ private:
     std::map<int, std::pair<int, int>> blockMap;
 
     // currently open file descriptors
-    std::unique_ptr<OpenFile> curOpenMeshFile, curOpenVarFile;
+    std::unique_ptr<OpenFile> curOpenGridFile, curOpenVarFile;
 
     //methods
 
     //read the mesh for the given timestep and block in x, y and z
-    bool ReadMesh(int timestep, int block, float* x, float* y, float* z);
+    bool ReadGrid(int timestep, int block, float* x, float* y, float* z);
     //read velocity in x, y and z
     bool ReadVelocity(int timestep, int block, float* x, float* y, float* z);
     //read var with varname in data
@@ -74,7 +78,7 @@ private:
         int domSizeInFloats = 0;
         int varOffsetBinary = 0;
         int varOffsetAscii = 0;
-        bool timestepHasMesh = 0;
+        bool timestepHasGrid = 0;
     };
     DomainParams GetDomainSizeAndVarOffset(int iTimestep, const std::string& varname);
     //return the file index for parallel files. 
@@ -83,9 +87,6 @@ private:
     bool CheckOpenFile(std::unique_ptr<OpenFile>& file, int timestep, int fileID);
     //adds numGhostLayers of block layers atound this partition and adds them to myBlocksToRead. 
     void addGhostBlocks(std::vector<int> &blocksNotToRead, unsigned numGhostLayers);
-    //construct the connectivity list out of the .map file(if available).
-    //Reads the mesh during construction to check for "mistakes" (e.g. logical connected blocks) in the .map file
-    bool makeConnectivityList();
     //checks if the current point is equal to the already cached point 
     bool checkPointInGridGrid(const std::array<std::vector<float>, 3> & currGrid, int currGridIndex, int gridIndex);
     //returns a vector with the local block indices of the given plane in a order that matches the globalWrittenPlane's order

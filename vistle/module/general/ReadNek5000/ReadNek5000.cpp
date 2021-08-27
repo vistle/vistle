@@ -5,26 +5,6 @@
 
  * License: LGPL 2+ */
 
- /**************************************************************************\
-  **                                                           (C)1995 RUS  **
-  **                                                                        **
-  ** Description: Read module for Nek5000 data                              **
-  **                                                                        **
-  **                                                                        **
-  **                                                                        **
-  **                                                                        **
-  **                                                                        **
-  ** Author:                                                                **
-  **                                                                        **
-  **                             Dennis Grieger                             **
-  **                                 HLRS                                   **
-  **                            Nobelstraße 19                              **
-  **                            70550 Stuttgart                             **
-  **                                                                        **
-  ** Date:  08.07.19  V1.0                                                  **
- \**************************************************************************/
-
-
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
@@ -52,121 +32,47 @@ using namespace vistle;
 using namespace std;
 namespace fs = boost::filesystem;
 
-
-bool ReadNek::prepareRead() {
-
-    return true;
-}
-
-bool ReadNek::read(Token& token, int timestep, int partition) {
-    ++numReads;
-    ++numReads;
-    if (!myRead(token, timestep, partition)) {
-        sendError("nek: could not read: timestep = %d, partition = %d", timestep, partition);
-        finishRead();
+bool ReadNek::read(Token &token, int timestep, int partition)
+{
+    if (timestep != -1) {
+        if (!myRead(token, timestep, partition)) {
+            sendError("nek: could not read: timestep = %d, partition = %d", timestep, partition);
+            finishRead();
+        }
     }
     return true;
 }
 
-bool ReadNek::myRead(Token& token, int timestep, int partition) {
-    if (!parameterChanged) //reuse data
-    {
-        if (timestep == -1)
-        {
-            std::cerr << "read: reusing data since parameters have not changed since last read" << std::endl;
-            token.addObject(p_grid, readGrid);
-            token.addObject(p_blockNumber, readBlockNumbers);
-        }
-        else
-        {
-            for (auto it : readData)
-            {
-                token.addObject(it.first, it.second[timestep]);
-            }
-        }
-        return true;
-    }
-    unique_lock<mutex> guard(readerMapMutex);
-    auto r = readers.find(partition);
-    if (r == readers.end()) {
-        r = readers.emplace(partition, nek5000::PartitionReader{ *readerBase }).first;
-        r->second.setPartition(partition, p_numGhostLayers->getValue(), p_useMap->getValue());
+bool ReadNek::myRead(Token &token, int timestep, int partition)
+{
+    auto &partitionReader = getPartitionReader(partition);
 
-    }
-    guard.unlock();
-    nek5000::PartitionReader* pReader = &r->second;
-    if (timestep == -1) {//there is only one grid for all timesteps, so we read it in advance
-
-        readData.clear();
-        int hexes = pReader->getHexes();
-        int ghostHexes = pReader->getNumGhostHexes();
-        UnstructuredGrid::ptr grid = UnstructuredGrid::ptr(new UnstructuredGrid(hexes, pReader->getNumConn(), pReader->getGridSize()));
-        Byte elemType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
-        Byte ghostType = pReader->getDim() == 2 ? UnstructuredGrid::QUAD| UnstructuredGrid::GHOST_BIT : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
-        std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
-        std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
-        pReader->fillConnectivityList(grid->cl().data());
-        int numCorners = pReader->getDim() == 2 ? 4 : 8;
-        for (int i = 0; i < hexes + 1; i++) {
-            grid->el().data()[i] = numCorners * i;
-        }
-        if (!pReader->fillMesh(grid->x().data(), grid->y().data(), grid->z().data())) {
-            cerr << "nek: failed to fill mesh" << endl;
+    partitionReader.UpdateCyclesAndTimes(timestep);
+    if (partitionReader.hasGrid(timestep)) {
+        if (!addGridAndBlockNumbers(token, timestep, partitionReader)) {
             return false;
         }
-        
-        mGrids[partition] = grid;
-        grid->setBlock(partition);
-        grid->setTimestep(-1);
-        token.addObject(p_grid, grid);
-        readGrid = grid;
-        //block numbers
-        Vec<Index>::ptr blockNumbers(new Vec<Index>(pReader->getGridSize()));
-        pReader->fillBlockNumbers(blockNumbers->x().data());
-        blockNumbers->setGrid(grid);
-        blockNumbers->setBlock(partition);
-        blockNumbers->setMapping(DataBase::Vertex);
-        token.addObject(p_blockNumber, blockNumbers);
-        readBlockNumbers = blockNumbers;
-
-    } else if (!p_only_geometry->getValue()) {
-        pReader->UpdateCyclesAndTimes(timestep);
-        {//velocities
-            if (pReader->hasVelocity() && p_velocity->isConnected()) {
-                auto grid = mGrids[partition];
-                if (!grid) {
-                    sendError(".nek5000 did not find a matching grid for partition %d", partition);
-                    return false;
-                }
-                Vec<Scalar, 3>::ptr velocity(new Vec<Scalar, 3>(pReader->getGridSize()));
-                velocity->setMapping(DataBase::Vertex);
-                velocity->setGrid(grid);
-                velocity->setTimestep(timestep);
-                velocity->setBlock(partition);
-                velocity->addAttribute("_species", "velocity");
-                auto x = velocity->x().data();
-                auto y = velocity->y().data();
-                auto z = velocity->z().data();
-                pReader->fillVelocity(timestep, x, y, z);
-                readData[p_velocity].push_back(velocity);
-                token.addObject(p_velocity, velocity);
-            }
+    } else {
+        auto grid = m_grids[partitionReader.partition()];
+        grid->setTimestep(timestep);
+        token.addObject(m_gridPort, grid);
+    }
+    if (!m_geometryOnlyParam->getValue()) {
+        if (partitionReader.hasVelocity() && m_velocityPort->isConnected() &&
+            !ReadVelocity(token, m_pressurePort, timestep, partitionReader)) {
+            return false;
         }
-        if (pReader->hasPressure() && p_pressure->isConnected()) {
-
-
-            if (!ReadScalarData(token, p_pressure, "pressure", timestep, partition)) {
-                return false;
-            }
+        if (partitionReader.hasPressure() && m_pressurePort->isConnected() &&
+            !ReadScalarData(token, m_pressurePort, "pressure", timestep, partitionReader)) {
+            return false;
         }
-        if (pReader->hasTemperature() && p_temperature->isConnected()) {
-            if (!ReadScalarData(token, p_temperature, "temperature", timestep, partition)) {
-                return false;
-            }
+        if (partitionReader.hasTemperature() && m_temperaturePort->isConnected() &&
+            !ReadScalarData(token, m_temperaturePort, "temperature", timestep, partitionReader)) {
+            return false;
         }
-        for (size_t i = 0; i < pReader->getNumScalarFields(); i++) {
-            if (pv_misc[i]->isConnected()) {
-                if (!ReadScalarData(token, pv_misc[i], "s" + std::to_string(i + 1), timestep, partition)) {
+        for (size_t i = 0; i < partitionReader.getNumScalarFields(); i++) {
+            if (m_miscPorts[i]->isConnected()) {
+                if (!ReadScalarData(token, m_miscPorts[i], "s" + std::to_string(i + 1), timestep, partitionReader)) {
                     return false;
                 }
             }
@@ -175,76 +81,141 @@ bool ReadNek::myRead(Token& token, int timestep, int partition) {
     return true;
 }
 
-bool ReadNek::examine(const vistle::Parameter* param) {
+nek5000::PartitionReader &ReadNek::getPartitionReader(int partition)
+{
+    lock_guard<mutex> guard(m_readerMapMutex);
+    auto r = m_readers.find(partition);
+    if (r == m_readers.end()) {
+        r = m_readers.emplace(partition, nek5000::PartitionReader{*m_staticData}).first;
+        r->second.setPartition(partition, m_numGhostLayersParam->getValue());
+    }
+    return r->second;
+}
+
+Object::ptr ReadNek::readGrid(int timestep, nek5000::PartitionReader &partitionReader)
+{
+    auto hexes = partitionReader.getHexes();
+    auto ghostHexes = partitionReader.getNumGhostHexes();
+    partitionReader.constructUnstructuredGrid(timestep);
+    UnstructuredGrid::ptr grid =
+        UnstructuredGrid::ptr(new UnstructuredGrid(hexes, partitionReader.getNumConn(), partitionReader.getGridSize()));
+    Byte elemType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD : UnstructuredGrid::HEXAHEDRON;
+    Byte ghostType = partitionReader.getDim() == 2 ? UnstructuredGrid::QUAD | UnstructuredGrid::GHOST_BIT
+                                                   : UnstructuredGrid::HEXAHEDRON | UnstructuredGrid::GHOST_BIT;
+    partitionReader.fillGrid({grid->x().data(), grid->y().data(), grid->z().data()});
+    std::fill_n(grid->tl().data(), hexes - ghostHexes, elemType);
+    std::fill_n(grid->tl().data() + hexes - ghostHexes, ghostHexes, ghostType);
+    partitionReader.fillConnectivityList(grid->cl().data());
+    int numCorners = partitionReader.getDim() == 2 ? 4 : 8;
+    for (size_t i = 0; i < hexes + 1; i++) {
+        grid->el().data()[i] = numCorners * i;
+    }
+
+    m_grids[partitionReader.partition()] = grid;
+    grid->setBlock(partitionReader.partition());
+    grid->setTimestep(timestep);
+    return grid;
+}
+
+Object::ptr ReadNek::generateBlockNumbers(nek5000::PartitionReader &partitionReader, Object::const_ptr grid)
+{
+    Vec<Index>::ptr blockNumbers(new Vec<Index>(partitionReader.getGridSize()));
+    partitionReader.fillBlockNumbers(blockNumbers->x().data());
+    blockNumbers->setGrid(grid);
+    blockNumbers->setBlock(partitionReader.partition());
+    blockNumbers->setMapping(DataBase::Vertex);
+    blockNumbers->addAttribute("_species", "blockBumber");
+    return blockNumbers;
+}
+
+bool ReadNek::addGridAndBlockNumbers(Token &token, int timestep, nek5000::PartitionReader &partitionReader)
+{
+    if (auto grid = readGrid(timestep, partitionReader)) {
+        token.addObject(m_gridPort, grid);
+        auto blockNumbers = generateBlockNumbers(partitionReader, grid);
+        token.addObject(m_blockIndexPort, blockNumbers);
+        return true;
+    } else
+        return false;
+}
+
+bool ReadNek::examine(const vistle::Parameter *param)
+{
     (void)param;
-    parameterChanged = true;
-    if (!fs::exists(p_data_path->getValue())) {
-        cerr << "file " << p_data_path->getValue() << " does not exist" << endl;
+    if (!fs::exists(m_filePathParam->getValue())) {
+        cerr << "file " << m_filePathParam->getValue() << " does not exist" << endl;
         return false;
     }
-    vistle::Integer numPartitions = p_numPartitions->getValue() == 0 ? size() : p_numPartitions->getValue();
-    readerBase.reset(new nek5000::ReaderBase(p_data_path->getValue(), numPartitions, p_numBlocks->getValue()));
-    if(!readerBase->init())
+    vistle::Integer numPartitions = m_numPartitionsParam->getValue() == 0 ? size() : m_numPartitionsParam->getValue();
+    m_staticData.reset(new nek5000::ReaderBase(m_filePathParam->getValue(), numPartitions, m_numBlocksParam->getValue()));
+    if (!m_staticData->init())
         return false;
-    size_t oldNumSFields = pv_misc.size();
+    size_t oldNumSFields = m_miscPorts.size();
 
-    setTimesteps(readerBase->getNumTimesteps());
+    setTimesteps(m_staticData->getNumTimesteps());
     setPartitions(numPartitions);
-    mGrids.resize(numPartitions);
-    for (size_t i = oldNumSFields; i < readerBase->getNumScalarFields(); i++) {
-        pv_misc.push_back(createOutputPort("scalarFiled" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
+    m_grids.resize(numPartitions);
+    for (size_t i = oldNumSFields; i < m_staticData->getNumScalarFields(); i++) {
+        m_miscPorts.push_back(
+            createOutputPort("scalarFiled" + std::to_string(i + 1), "scalar data " + std::to_string(i + 1)));
     }
-    for (size_t i = oldNumSFields; i > readerBase->getNumScalarFields(); --i) {
-        destroyPort(pv_misc[i]);
+    for (size_t i = oldNumSFields; i > m_staticData->getNumScalarFields(); --i) {
+        destroyPort(m_miscPorts[i]);
     }
-    return true;
-
-}
-
-bool ReadNek::finishRead() {
-    readers.clear();
-    parameterChanged = false;
-    std::cerr << "_________________________________________________________" << std::endl;
-    std::cerr << "read was called "<< numReads << " times" << std::endl;
-    std::cerr << "_________________________________________________________" << std::endl;
     return true;
 }
 
+bool ReadNek::finishRead()
+{
+    m_readers.clear();
+    return true;
+}
 
-bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::string& varname, int timestep, int partition) {
-
-    unique_lock<mutex> guard(readerMapMutex);
-    auto r = readers.find(partition);
-    if(r == readers.end())
-    {
-        sendError("nek: ReadScalar failed to find reader for partition " + std::to_string(partition));
-        guard.unlock();
-        return false;
-    }
-    guard.unlock();
-    nek5000::PartitionReader *pReader = &r->second;
-    auto grid = mGrids[partition];
+bool ReadNek::ReadVelocity(Reader::Token &token, vistle::Port *p, int timestep,
+                           nek5000::PartitionReader &partitionReader)
+{
+    auto grid = m_grids[partitionReader.partition()];
     if (!grid) {
-        sendError(".nek5000 did not find a matching grid for block %d", partition);
+        sendError(".nek5000 did not find a matching grid for partition %zu", partitionReader.partition());
         return false;
     }
-    Vec<Scalar>::ptr scal(new Vec<Scalar>(pReader->getGridSize()));
-    if(!pReader->fillScalarData(varname, timestep, scal->x().data()))
-    {
-        sendError("nek: ReadScalar failed to get data for " + varname + " for partition " + to_string(partition) + " in timestep " + to_string(timestep));
+    Vec<Scalar, 3>::ptr velocity(new Vec<Scalar, 3>(partitionReader.getGridSize()));
+    velocity->setMapping(DataBase::Vertex);
+    velocity->setGrid(grid);
+    velocity->setTimestep(timestep);
+    velocity->setBlock(partitionReader.partition());
+    velocity->addAttribute("_species", "velocity");
+    partitionReader.fillVelocity(timestep, {velocity->x().data(), velocity->y().data(), velocity->z().data()});
+    token.addObject(m_velocityPort, velocity);
+    return true;
+}
+
+
+bool ReadNek::ReadScalarData(Reader::Token &token, vistle::Port *p, const std::string &varname, int timestep,
+                             nek5000::PartitionReader &partitionReader)
+{
+    auto grid = m_grids[partitionReader.partition()];
+    if (!grid) {
+        sendError(".nek5000 did not find a matching grid for block %zu", partitionReader.partition());
+        return false;
+    }
+    Vec<Scalar>::ptr scal(new Vec<Scalar>(partitionReader.getGridSize()));
+    if (!partitionReader.fillScalarData(varname, timestep, scal->x().data())) {
+        sendError("nek: ReadScalar failed to get data for " + varname + " for partition " +
+                  to_string(partitionReader.partition()) + " in timestep " + to_string(timestep));
         return false;
     }
     scal->setMapping(DataBase::Vertex);
     scal->setGrid(grid);
     scal->setTimestep(timestep);
-    scal->setBlock(partition);
+    scal->setBlock(partitionReader.partition());
     scal->addAttribute("_species", varname);
     token.addObject(p, scal);
-    readData[p].push_back(scal);
     return true;
 }
 
-int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)     {
+int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)
+{
     std::set<std::array<vistle::Scalar, 3>> uniquePts;
     for (size_t i = 0; i < grid->getNumCoords(); i++) {
         uniquePts.insert(std::array<vistle::Scalar, 3>{grid->x().data()[i], grid->y().data()[i], grid->z().data()[i]});
@@ -252,40 +223,33 @@ int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)     {
     return uniquePts.size();
 }
 
-ReadNek::ReadNek(const std::string& name, int moduleID, mpi::communicator comm)
-   :vistle::Reader("Read .nek5000 files", name, moduleID, comm)
+ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm)
+: vistle::Reader("Read .nek5000 files", name, moduleID, comm)
 {
-   // Output ports
-   p_grid = createOutputPort("grid_out", "grid");
-   p_velocity = createOutputPort("velosity_out", "velocity");
-   p_pressure = createOutputPort("pressure_out", "pressure data");
-   p_temperature = createOutputPort("temperature_out", "temperature data");
-   p_blockNumber = createOutputPort("blockNumber_out", "block number");
+    // Output ports
+    m_gridPort = createOutputPort("grid_out", "grid");
+    m_velocityPort = createOutputPort("velosity_out", "velocity");
+    m_pressurePort = createOutputPort("pressure_out", "pressure data");
+    m_temperaturePort = createOutputPort("temperature_out", "temperature data");
+    m_blockIndexPort = createOutputPort("blockNumber_out", "Nek internal block numbers");
 
-   // Parameters
-   p_data_path = addStringParameter("filename", "Geometry file path", "", Parameter::Filename);
-   //p_byteswap = addIntParameter("byteswap", "Perform Byteswapping", Auto, Parameter::Choice);
-   //V_ENUM_SET_CHOICES(p_byteswap, ByteSwap);
-   p_only_geometry = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
-   p_useMap = addIntParameter("useMap", "use .map file to partition mesh", false, Parameter::Boolean);
-   p_numGhostLayers = addIntParameter("numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
-   setParameterMinimum(p_numGhostLayers, Integer{ 0 });
-   p_numBlocks = addIntParameter("number of blocks", "number of blocks, <= 0 to read all", 0);
-   p_numPartitions = addIntParameter("numerOfPartitions", "number of partitions, 0 = one partition for each rank", 0);
-   setParameterMinimum(p_numPartitions, Integer{ 0 });
-   observeParameter(p_useMap);
-   observeParameter(p_numGhostLayers);
-   observeParameter(p_data_path);
-   observeParameter(p_only_geometry);
-   observeParameter(p_numBlocks);
-   observeParameter(p_numPartitions);
+    // Parameters
+    m_filePathParam = addStringParameter("filename", "Geometry file path", "", Parameter::Filename);
+    m_geometryOnlyParam = addIntParameter("OnlyGeometry", "Reading only Geometry? yes|no", false, Parameter::Boolean);
+    m_numGhostLayersParam = addIntParameter(
+        "numGhostLayers", "number of ghost layers around eeach partition, a layer consists of whole blocks", 1);
+    setParameterMinimum(m_numGhostLayersParam, Integer{0});
+    m_numBlocksParam = addIntParameter("number of blocks", "number of blocks to read from file, <= 0 to read all", 0);
+    m_numPartitionsParam = addIntParameter(
+        "numberOfPartitions", "number of parallel partitions to use for reading, 0 = one partition for each rank", 0);
+    setParameterMinimum(m_numPartitionsParam, Integer{0});
+    observeParameter(m_numGhostLayersParam);
+    observeParameter(m_filePathParam);
+    observeParameter(m_geometryOnlyParam);
+    observeParameter(m_numBlocksParam);
+    observeParameter(m_numPartitionsParam);
 
-   setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
-
+    setParallelizationMode(ParallelizationMode::ParallelizeBlocks);
 }
 
-ReadNek::~ReadNek() {
-}
 MODULE_MAIN(ReadNek)
-
-
