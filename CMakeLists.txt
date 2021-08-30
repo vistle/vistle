@@ -448,19 +448,17 @@ option(VISTLE_INSTALL_3RDPARTY "Add the 3rdParty directories to the install dire
 option(VISTLE_INSTALL_HEADER "Install the Vistle headers in CMAKE_INSTALL_PREFIX/include/path to lib" ON)
 
 macro(vistle_export_library targetname)
-	
-	
 	string(REPLACE ${PROJECT_BINARY_DIR}/vistle "" directory  ${CMAKE_CURRENT_BINARY_DIR})
 
-	target_include_directories(${targetname}  
-        PRIVATE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}> 
-        PRIVATE  $<INSTALL_INTERFACE:include> 
-        INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}> 
+	target_include_directories(${targetname}
+        PRIVATE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+        PRIVATE  $<INSTALL_INTERFACE:include>
+        INTERFACE  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
         INTERFACE  $<INSTALL_INTERFACE:include> 
 		)
 	
 	set(header "${ARGN}")
-	list(FILTER	header INCLUDE	REGEX "(\.(h|H|hpp|HPP)$)"	)
+	list(FILTER	header INCLUDE	REGEX "(\.(h|H|hpp|HPP)$)")
         if(VISTLE_INSTALL_HEADER)
 	    install(
 	      FILES
@@ -469,11 +467,11 @@ macro(vistle_export_library targetname)
 		    include/vistle/${directory}
 	      COMPONENT
 		    Devel
-	    ) 
+	    )
     endif()
 	set(config_in_file ${CMAKE_CURRENT_BINARY_DIR}/cmake/${targetname}Config.cmake.in)
-	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")") 
-    message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
+	file(WRITE  ${config_in_file} "include(\"\${CMAKE_CURRENT_LIST_DIR}/${targetname}Targets.cmake\")")
+    #message("configuring file ${config_in_file} to ${buildPackageLocation}/${targetname}Config.cmake")
 
 	configure_file(${config_in_file}
 		"${buildPackageLocation}/${targetname}Config.cmake"
@@ -499,7 +497,7 @@ macro(vistle_export_library targetname)
 	)
 #	configure_package_config_file(${config_in_file}
 #	"${CMAKE_CURRENT_BINARY_DIR}/${targetname}Config.cmake"
-#	INSTALL_DESTINATION "${installPackageLocation}/${targetname}Config.cmake")  
+#	INSTALL_DESTINATION "${installPackageLocation}/${targetname}Config.cmake")
 	install(
 		FILES 
 			"${buildPackageLocation}/${targetname}Config.cmake"
