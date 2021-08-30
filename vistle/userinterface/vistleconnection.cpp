@@ -94,6 +94,7 @@ void VistleConnection::operator()() {
    while(m_ui.dispatch()) {
       lock.lock();
       if (m_done) {
+         lock.unlock();
          break;
       }
       lock.unlock();
