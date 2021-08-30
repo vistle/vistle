@@ -1,0 +1,5 @@
+add_executable(vistle_util_test enumArrayTest.cpp)
+
+target_link_libraries(vistle_util_test
+        PRIVATE vistle_util
+)

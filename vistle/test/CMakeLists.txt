@@ -6,4 +6,6 @@ add_subdirectory(shminfo)
 add_subdirectory(shmperf)
 add_subdirectory(shmtest)
 add_subdirectory(typetest)
+add_subdirectory(utiltest)
 add_subdirectory(vectortest)
+
