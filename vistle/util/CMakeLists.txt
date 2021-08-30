@@ -28,6 +28,7 @@ set(util_HEADERS
    crypto.h
    directory.h
    enum.h
+   enumarray.h
    exception.h
    export.h
    fileio.h
