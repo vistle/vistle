@@ -8,7 +8,7 @@ if (APPLE)
 endif()
 vistle_find_package(LibArchive)
 
-vistle_find_package(LibZip)
+vistle_find_package(LIBZIP)
 
 vistle_find_package(ZLIB)
 if (NOT Boost_FOUND)
