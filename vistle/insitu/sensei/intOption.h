@@ -7,7 +7,7 @@
 namespace vistle {
 namespace insitu {
 namespace sensei {
-enum class IntOptions { NthTimestep, KeepTimesteps };
+enum class IntOptions { NthTimestep, KeepTimesteps, LastDummy };
 
 typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
 } // namespace sensei

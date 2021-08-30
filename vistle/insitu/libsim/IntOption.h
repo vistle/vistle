@@ -8,7 +8,7 @@
 namespace vistle {
 namespace insitu {
 namespace libsim {
-enum class IntOptions { CombineGrids, ConstGrids, KeepTimesteps, NthTimestep, VtkFormat };
+enum class IntOptions { CombineGrids, ConstGrids, KeepTimesteps, NthTimestep, VtkFormat, LastDummy };
 
 typedef message::SharedOption<IntOptions, vistle::Integer> IntOption;
 } // namespace libsim

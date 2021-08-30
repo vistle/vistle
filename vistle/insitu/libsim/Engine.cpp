@@ -131,7 +131,7 @@ void Engine::SimulationTimeStepChanged()
     int numMeshes, numVars;
     v2check(simv2_SimulationMetaData_getNumMeshes, m_metaData.handle(), numMeshes);
     v2check(simv2_SimulationMetaData_getNumVariables, m_metaData.handle(), numVars);
-    if (m_metaData.currentCycle() % m_intOptions.find(IntOptions::NthTimestep)->value()) {
+    if (m_metaData.currentCycle() % m_intOptions[IntOptions::NthTimestep].value()) {
         return;
     }
     static std::unique_ptr<StopWatch> watch;
@@ -268,13 +268,13 @@ int Engine::GetInputSocket()
 //----------------private----------------------------------------------------------------------------
 Engine::Engine()
 {
-    m_intOptions.insert(IntOption{IntOptions::CombineGrids, false});
-    m_intOptions.insert(IntOption{IntOptions::ConstGrids, false});
-    m_intOptions.insert(IntOption{IntOptions::KeepTimesteps, 1});
-    m_intOptions.insert(IntOption{IntOptions::NthTimestep, 1});
-    m_intOptions.insert(IntOption{IntOptions::VtkFormat, false, [this]() {
+    m_intOptions[IntOptions::CombineGrids] = IntOption{IntOptions::CombineGrids, false};
+    m_intOptions[IntOptions::ConstGrids] = IntOption{IntOptions::ConstGrids, false};
+    m_intOptions[IntOptions::KeepTimesteps] = IntOption{IntOptions::KeepTimesteps, 1};
+    m_intOptions[IntOptions::NthTimestep] = IntOption{IntOptions::NthTimestep, 1};
+    m_intOptions[IntOptions::VtkFormat] = IntOption{IntOptions::VtkFormat, false, [this]() {
                                       resetDataTransmitter();
-                                  }});
+                                  }};
 
     auto comm = MPI_COMM_WORLD;
     setMpiComm(static_cast<void *>(&comm));
@@ -455,10 +455,10 @@ bool Engine::initializeVistleEnv()
 Rules Engine::gatherObjectRules()
 {
     Rules rules;
-    rules.combineGrid = m_intOptions.find(IntOptions::CombineGrids)->value();
-    rules.constGrids = m_intOptions.find(IntOptions::ConstGrids)->value();
-    rules.keepTimesteps = m_intOptions.find(IntOptions::KeepTimesteps)->value();
-    rules.vtkFormat = m_intOptions.find(IntOptions::VtkFormat)->value();
+    rules.combineGrid = m_intOptions[IntOptions::CombineGrids].value();
+    rules.constGrids = m_intOptions[IntOptions::ConstGrids].value();
+    rules.keepTimesteps = m_intOptions[IntOptions::KeepTimesteps].value();
+    rules.vtkFormat = m_intOptions[IntOptions::VtkFormat].value();
     return rules;
 }
 

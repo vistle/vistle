@@ -10,6 +10,7 @@
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/TcpMessage.h>
 #include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/util/enumarray.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -95,8 +96,8 @@ private:
     int m_modulePort = 0;
     size_t m_timestep = 0; // timestep couter for module
 
-    std::set<IntOption> m_intOptions; // options that can be set in the module
-
+    //std::set<IntOption> m_intOptions; // options that can be set in the module
+    vistle::EnumArray<IntOption, IntOptions> m_intOptions;
     // callbacks from simulation
     void (*simulationCommandCallback)(const char *, const char *, void *) = nullptr;
     void *simulationCommandCallbackData = nullptr;

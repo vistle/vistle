@@ -5,6 +5,7 @@
 #include <vistle/insitu/message/ShmMessage.h>
 #include <vistle/insitu/message/SyncShmIDs.h>
 #include <vistle/insitu/message/addObjectMsq.h>
+#include <vistle/util/enumarray.h>
 #include <vistle/util/hostname.h>
 #include <vistle/util/shmconfig.h>
 
@@ -36,7 +37,9 @@ struct Internals {
 
     insitu::message::SyncShmIDs shmIDs;
     message::InSituShmMessage messageHandler;
-    std::set<IntOption> intOptions; // options that can be set in the module
+    // options that can be set in the module
+    EnumArray<IntOption, IntOptions> intOptions{IntOption{IntOptions::NthTimestep, 1},
+                                                IntOption{IntOptions::KeepTimesteps, true}};
 };
 } // namespace detail
 } // namespace sensei
@@ -57,8 +60,6 @@ SenseiAdapter::SenseiAdapter(bool paused, MPI_Comm Comm, MetaData &&meta, Object
     } catch (...) {
         throw Exeption() << "failed to create connection facilities for Vistle";
     }
-    m_internals->intOptions.insert(IntOption{IntOptions::KeepTimesteps, true});
-    m_internals->intOptions.insert(IntOption{IntOptions::NthTimestep, 1});
 #ifdef MODULE_THREAD
     startVistle(comm, options);
 #endif
@@ -161,7 +162,7 @@ bool SenseiAdapter::WaitedForModuleCommands()
 
 bool SenseiAdapter::haveToProcessTimestep(size_t timestep)
 {
-    return timestep % m_internals->intOptions.find(IntOptions::NthTimestep)->value() == 0;
+    return timestep % m_internals->intOptions[IntOptions::NthTimestep].value() == 0;
 }
 
 void SenseiAdapter::processData()
@@ -175,7 +176,7 @@ void SenseiAdapter::processData()
 
     auto dataObjects = m_callbacks.getData(m_usedData);
     for (const auto &dataObject: dataObjects) {
-        bool keepTimesteps = m_internals->intOptions.find(IntOptions::KeepTimesteps)->value();
+        bool keepTimesteps = m_internals->intOptions[IntOptions::KeepTimesteps].value();
         keepTimesteps ? dataObject.object()->setTimestep(m_processedTimesteps)
                       : dataObject.object()->setIteration(m_processedTimesteps);
         addObject(dataObject.portName(), dataObject.object());
