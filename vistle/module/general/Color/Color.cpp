@@ -139,7 +139,7 @@ ColorMap::TF pinsFromArrayWithCoord(const float *data, size_t n, Scalar scale=1.
 
 
 Color::Color(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("Color", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    setReducePolicy(message::ReducePolicy::OverAll);
 

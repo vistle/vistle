@@ -1,1 +1,1 @@
-add_module(Assemble Assemble.cpp)
+add_module(Assemble "assemble blocks of indexed geometry" Assemble.cpp)

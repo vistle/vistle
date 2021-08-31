@@ -18,9 +18,8 @@ namespace mpi = boost::mpi;
 
 namespace vistle {
 
-Renderer::Renderer(const std::string &description,
-                   const std::string &name, const int moduleID, mpi::communicator comm)
-   : Module(description, name, moduleID, comm)
+Renderer::Renderer(const std::string &name, const int moduleID, mpi::communicator comm)
+   : Module(name, moduleID, comm)
    , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Local)
 {
 

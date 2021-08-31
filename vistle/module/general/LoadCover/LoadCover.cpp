@@ -12,7 +12,7 @@ MODULE_MAIN(LoadCover)
 using namespace vistle;
 
 LoadCover::LoadCover(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("instruct COVER to load a file", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

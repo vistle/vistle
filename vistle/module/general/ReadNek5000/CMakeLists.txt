@@ -12,4 +12,4 @@ set(SOURCES
   ReaderBase.cpp
 )
 
-add_module(ReadNek5000 ${SOURCES} ${HEADERS})
+add_module(ReadNek5000 "Read .nek5000 files" ${SOURCES} ${HEADERS})

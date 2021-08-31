@@ -27,7 +27,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimationMode, (Keep)(Deanimate)(Animate)(Ti
 using namespace vistle;
 
 Transform::Transform(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("add color attribute", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    data_in = createInputPort("data_in", "input data");

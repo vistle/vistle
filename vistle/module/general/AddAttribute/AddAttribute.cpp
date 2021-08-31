@@ -22,7 +22,7 @@ class AddAttribute: public vistle::Module {
 using namespace vistle;
 
 AddAttribute::AddAttribute(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("add attributes", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

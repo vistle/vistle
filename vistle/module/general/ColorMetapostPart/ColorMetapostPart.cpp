@@ -40,7 +40,7 @@ class ColorMetapostPart: public vistle::Module {
 using namespace vistle;
 
 ColorMetapostPart::ColorMetapostPart(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("add color attribute from METApost description", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

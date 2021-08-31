@@ -14,7 +14,7 @@ MODULE_MAIN(TestInterpolation)
 using namespace vistle;
 
 TestInterpolation::TestInterpolation(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("test interpolation", name, moduleID, comm) {
+    : Module(name, moduleID, comm) {
 
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

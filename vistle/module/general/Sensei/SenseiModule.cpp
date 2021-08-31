@@ -19,7 +19,7 @@ using namespace vistle::insitu::message;
 #define DEBUG_CERR vistle::DoNotPrintInstance
 
 SenseiModule::SenseiModule(const string &name, int moduleID, mpi::communicator comm)
-    : InSituReader("Observe simulations via SENSEI", name, moduleID, comm) {
+    : InSituReader(name, moduleID, comm) {
 
     m_filePath = addStringParameter("path", "path to a .vistle file", "", vistle::Parameter::ExistingFilename);
     setParameterFilters(m_filePath, "simulation Files (*.vistle)");

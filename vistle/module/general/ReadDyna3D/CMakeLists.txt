@@ -10,4 +10,4 @@ set(SOURCES
   Dyna3DReader.cpp
 )
 
-add_module(ReadDyna3D ${SOURCES} ${HEADERS})
+add_module(ReadDyna3D "read LS-Dyna3D ptf files" ${SOURCES} ${HEADERS})

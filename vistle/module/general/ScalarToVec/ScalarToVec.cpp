@@ -10,7 +10,7 @@
 using namespace vistle;
 
 ScalarToVec::ScalarToVec(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("combine up to three scalar fields to a vector field", name, moduleID, comm) {
+: Module(name, moduleID, comm) {
     for (int i=0; i<NumScalars; ++i) {
         m_scalarIn[i] = createInputPort("data_in"+std::to_string(i));
     }

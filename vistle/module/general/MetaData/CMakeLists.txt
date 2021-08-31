@@ -1,1 +1,1 @@
-add_module(MetaData MetaData.cpp)
+add_module(MetaData "change the meta data" MetaData.cpp)

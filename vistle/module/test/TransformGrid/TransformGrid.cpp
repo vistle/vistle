@@ -20,7 +20,7 @@ using namespace vistle;
 constexpr std::array<char, 3> axisNames{ 'X', 'Y', 'Z' };
 
 TransformGrid::TransformGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("transform grid", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
     data_in = createInputPort("data_in", "input data");
     data_out = createOutputPort("data_out", "output data");

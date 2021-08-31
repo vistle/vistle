@@ -315,7 +315,7 @@ void ReadVtk::setChoices(const VtkFile &fileinfo) {
 }
 
 ReadVtk::ReadVtk(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader("read VTK data", name, moduleID, comm)
+   : Reader(name, moduleID, comm)
 {
 
    createOutputPort("grid_out");

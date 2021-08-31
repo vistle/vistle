@@ -1,1 +1,1 @@
-add_module(Transform Transform.cpp)
+add_module(Transform "add color attribute" Transform.cpp)

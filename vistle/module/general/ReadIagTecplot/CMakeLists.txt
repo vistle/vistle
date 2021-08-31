@@ -14,7 +14,7 @@ set(SOURCES
 
 #add_definitions(-DMARENCO)
 #add_definitions(-DAHD)
-add_module(ReadIagTecplot ${HEADERS} ${SOURCES})
+add_module(ReadIagTecplot "read IAG Tecplot data (hexahedra only)" ${HEADERS} ${SOURCES})
 
 target_link_libraries(ReadIagTecplot
    ${VTK_LIBRARIES}

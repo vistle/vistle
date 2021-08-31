@@ -4,7 +4,7 @@
 
 using namespace vistle;
 ShowGridIndex::ShowGridIndex(const std::string& name, int moduleID, boost::mpi::communicator comm)
-    :Module("Show the index of each vertex in the grid", name, moduleID, comm)
+    :Module(name, moduleID, comm)
 {
 
     m_gridIn = createInputPort("gridIn", "grid input");

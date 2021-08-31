@@ -19,7 +19,7 @@ MODULE_MAIN(VectorField)
 using namespace vistle;
 
 VectorField::VectorField(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("transform mapped vectors into lines", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

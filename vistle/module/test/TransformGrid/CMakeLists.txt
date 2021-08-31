@@ -1,2 +1,2 @@
-add_module(TransformGrid TransformGrid.h TransformGrid.cpp)
+add_module(TransformGrid "transform grid" TransformGrid.h TransformGrid.cpp)
 

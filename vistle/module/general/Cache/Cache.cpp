@@ -68,7 +68,7 @@ class Cache: public vistle::Module {
 using namespace vistle;
 
 Cache::Cache(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("cache input objects", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

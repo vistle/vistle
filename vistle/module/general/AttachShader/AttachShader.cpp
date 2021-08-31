@@ -7,7 +7,7 @@ MODULE_MAIN(AttachShader)
 using namespace vistle;
 
 AttachShader::AttachShader(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("attach GLSL shader in COVER", name, moduleID, comm) {
+    : Module(name, moduleID, comm) {
 
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

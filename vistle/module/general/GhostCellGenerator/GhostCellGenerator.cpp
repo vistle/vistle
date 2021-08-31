@@ -47,7 +47,7 @@ using namespace vistle;
 /* namespace b_mpi = boost::mpi; */
 
 GhostCellGenerator::GhostCellGenerator(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("Generate Ghost Cells for UnstructuredGrid", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
     createInputPort("data_in");
     createOutputPort("data_out");

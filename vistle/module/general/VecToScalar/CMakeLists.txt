@@ -1,1 +1,1 @@
-add_module(VecToScalar VecToScalar.cpp VecToScalar.h)
+add_module(VecToScalar "transform vector fields to scalar fields" VecToScalar.cpp VecToScalar.h)

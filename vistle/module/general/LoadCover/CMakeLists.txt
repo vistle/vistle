@@ -1,1 +1,1 @@
-add_module(LoadCover LoadCover.cpp)
+add_module(LoadCover "instruct COVER to load a file" LoadCover.cpp)

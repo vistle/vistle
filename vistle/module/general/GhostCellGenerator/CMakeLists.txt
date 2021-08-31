@@ -1,1 +1,1 @@
-add_module(GhostCellGenerator GhostCellGenerator.cpp)
+add_module(GhostCellGenerator "Generate Ghost Cells for UnstructuredGrids" GhostCellGenerator.cpp)

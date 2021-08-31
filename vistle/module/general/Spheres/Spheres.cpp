@@ -19,7 +19,7 @@ MODULE_MAIN(ToSpheres)
 using namespace vistle;
 
 ToSpheres::ToSpheres(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("Spheres", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    createInputPort("grid_in");
    createInputPort("map_in");

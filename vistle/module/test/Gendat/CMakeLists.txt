@@ -1,4 +1,4 @@
-add_module(Gendat Gendat.cpp)
+add_module(Gendat "generate test data"Gendat.cpp)
 
 #enable_testing()
 

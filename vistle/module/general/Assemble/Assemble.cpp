@@ -34,7 +34,7 @@ class Assemble: public vistle::Module {
 using namespace vistle;
 
 Assemble::Assemble(const std::string &name, int moduleID, mpi::communicator comm)
-    : vistle::Module("assemble blocks of indexed geometry", name, moduleID, comm)
+    : vistle::Module(name, moduleID, comm)
 {
     for (int i=0; i<NumPorts; ++i) {
         m_in[i] = createInputPort("data_in"+std::to_string(i));

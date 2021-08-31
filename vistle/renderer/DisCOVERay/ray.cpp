@@ -112,7 +112,7 @@ class DisCOVERay: public vistle::Renderer {
 
 
 DisCOVERay::DisCOVERay(const std::string &name, int moduleId, mpi::communicator comm)
-: Renderer("CPU ray casting renderer", name, moduleId, comm)
+: Renderer(name, moduleId, comm)
 , m_renderManager(this, nullptr)
 , m_tilesize(64)
 , m_doShade(true)

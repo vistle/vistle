@@ -224,7 +224,7 @@ int ReadNek::numberOfUniqePoints(vistle::UnstructuredGrid::ptr grid)
 }
 
 ReadNek::ReadNek(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read .nek5000 files", name, moduleID, comm)
+: vistle::Reader(name, moduleID, comm)
 {
     // Output ports
     m_gridPort = createOutputPort("grid_out", "grid");

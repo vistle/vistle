@@ -1,1 +1,1 @@
-add_module(ToPoints ToPoints.cpp ToPoints.h)
+add_module(ToPoints "reduce geometry to underlying points" ToPoints.cpp ToPoints.h)

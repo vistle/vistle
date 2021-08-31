@@ -192,8 +192,7 @@ bool Module::setup(const std::string &shmname, int moduleID, int rank) {
     return Shm::isAttached();
 }
 
-Module::Module(const std::string &desc,
-      const std::string &moduleName, const int moduleId, mpi::communicator comm)
+Module::Module(const std::string &moduleName, const int moduleId, mpi::communicator comm)
 : ParameterManager(moduleName, moduleId)
 , m_name(moduleName)
 , m_rank(-1)

@@ -66,8 +66,13 @@ endmacro(vistle_add_executable)
 
 set(ALL_MODULES "" CACHE INTERNAL "")
 if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
-macro(add_module targetname)
-    set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
+
+file(REMOVE ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt)
+macro(add_module targetname description)
+    
+file(APPEND ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt  ${targetname} " " ${description}\n)
+install(FILES ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/vistle/)
+set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
     if(VISTLE_MULTI_PROCESS)
        add_executable(${targetname} ${ARGN})
        set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
@@ -90,6 +95,8 @@ macro(add_module targetname)
        endif()
     endif()
     target_compile_definitions(${targetname} PRIVATE -DVISTLE_MODULE_NAME="${targetname}")
+    target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
+
     set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
     target_link_libraries(${targetname}
         ${Boost_LIBRARIES}

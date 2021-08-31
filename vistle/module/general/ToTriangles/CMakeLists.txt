@@ -1,1 +1,1 @@
-add_module(ToTriangles ToTriangles.cpp)
+add_module(ToTriangles "transform Polygons into Triangles" ToTriangles.cpp)

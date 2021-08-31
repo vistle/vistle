@@ -1,1 +1,1 @@
-add_module(ColorAttribute ColorAttribute.cpp)
+add_module(ColorAttribute "add color attribute" ColorAttribute.cpp)

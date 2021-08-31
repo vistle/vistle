@@ -15,7 +15,7 @@ using namespace vistle;
 MODULE_MAIN(Replicate)
 
 Replicate::Replicate(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("Replicate", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    createInputPort("grid_in");
    createInputPort("data_in");

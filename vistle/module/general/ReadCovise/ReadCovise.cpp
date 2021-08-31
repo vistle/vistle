@@ -46,7 +46,7 @@ const std::string NONE("(none)");
 using namespace vistle;
 
 ReadCovise::ReadCovise(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader("read COVISE data", name, moduleID, comm)
+   : Reader(name, moduleID, comm)
 {
 #ifdef READ_DIRECTORY
    m_directory = addStringParameter("directory", "directory to scan for .covise files", "", Parameter::ExistingDirectory);

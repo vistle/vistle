@@ -1,1 +1,1 @@
-add_module(AttachGrid AttachGrid.cpp)
+add_module(AttachGrid "AttachGrid" AttachGrid.cpp)

@@ -14,7 +14,7 @@ MODULE_MAIN(ShowGrid)
 using namespace vistle;
 
 ShowGrid::ShowGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("show outlines of grid cells", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

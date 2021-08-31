@@ -61,7 +61,7 @@ public:
 } // namespace
 
 ReadTsunami::ReadTsunami(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read ChEESE Tsunami files", name, moduleID, comm), seaTimeConn(false)
+: vistle::Reader(name, moduleID, comm), seaTimeConn(false)
 {
     // file-browser
     m_filedir = addStringParameter("file_dir", "NC File directory", "/data/ChEESE/tsunami/NewData/cadiz_5m.nc",

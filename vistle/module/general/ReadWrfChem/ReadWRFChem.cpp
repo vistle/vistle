@@ -30,7 +30,7 @@ namespace bf = boost::filesystem;
 
 
 ReadWRFChem::ReadWRFChem(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read WRF Chem data files", name, moduleID, comm)
+: vistle::Reader(name, moduleID, comm)
 {
     ncFirstFile = NULL;
 

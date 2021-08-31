@@ -1,1 +1,1 @@
-add_module(AttachNormals AttachNormals.cpp)
+add_module(AttachNormals "AttachNormals" AttachNormals.cpp)

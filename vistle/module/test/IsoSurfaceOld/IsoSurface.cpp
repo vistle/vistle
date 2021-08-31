@@ -22,7 +22,7 @@ using namespace vistle;
 
 
 IsoSurfaceOld::IsoSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("compute iso surfaces on structured grids", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);

@@ -169,7 +169,7 @@ ObjectStatistics::stats operator+(const ObjectStatistics::stats &lhs, const Obje
 using namespace vistle;
 
 ObjectStatistics::ObjectStatistics(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("object statistics", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
    setReducePolicy(message::ReducePolicy::OverAll);
    continuousOutput = addIntParameter("continuous output", "additionally write info of received objects as they arrive", false, vistle::Parameter::Boolean);

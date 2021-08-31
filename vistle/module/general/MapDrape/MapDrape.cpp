@@ -16,7 +16,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(PermutationOption,
 MODULE_MAIN(MapDrape)
 
 MapDrape::MapDrape(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("MapDrape", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
     for (unsigned i=0; i<NumPorts; ++i) {
         data_in[i] = createInputPort("data_in" + std::to_string(i));

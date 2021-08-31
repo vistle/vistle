@@ -12,7 +12,7 @@ using namespace vistle;
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (X)(Y)(Z)(AbsoluteValue))
 
 VecToScalar::VecToScalar(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("transform vector fields to scalar fields", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
    createInputPort("data_in");
    createOutputPort("data_out");
    m_caseParam = addIntParameter("Choose Scalar Value", "Choose Scalar Value", 3, Parameter::Choice);

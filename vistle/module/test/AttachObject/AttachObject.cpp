@@ -16,7 +16,7 @@ class AttachObject: public vistle::Module {
 using namespace vistle;
 
 AttachObject::AttachObject(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("AttachObject", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

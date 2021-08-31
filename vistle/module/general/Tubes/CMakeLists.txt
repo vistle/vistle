@@ -1,1 +1,1 @@
-add_module(Tubes Tubes.cpp)
+add_module(Tubes "transform lines to tubes" Tubes.cpp)

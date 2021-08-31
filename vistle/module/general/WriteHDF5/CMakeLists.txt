@@ -15,7 +15,7 @@ link_directories(
         ${HDF5_LIBRARY_DIRS}
 )
 
-add_module(WriteHDF5 WriteHDF5.cpp HDF5Objects.h)
+add_module(WriteHDF5 "write HDF5" WriteHDF5.cpp HDF5Objects.h)
 
 use_openmp()
 

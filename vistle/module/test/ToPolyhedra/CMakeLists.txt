@@ -1,1 +1,1 @@
-add_module(ToPolyhedra ToPolyhedra.cpp)
+add_module(ToPolyhedra "transform unstructured cells into polyhedral cells" ToPolyhedra.cpp)

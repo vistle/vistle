@@ -1,1 +1,1 @@
-add_module(AttachShader AttachShader.cpp)
+add_module(AttachShader "attach GLSL shader in COVER" AttachShader.cpp)

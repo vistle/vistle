@@ -215,7 +215,7 @@ bool ReadIagTecplot::read(Reader::Token &token, int timestep, int block)
 
 
 ReadIagTecplot::ReadIagTecplot(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader("read IAG Tecplot data (hexahedra only)", name, moduleID, comm)
+   : Reader(name, moduleID, comm)
 {
 
    m_filename = addStringParameter("filename", "name of Tecplot file", "", vistle::Parameter::ExistingFilename);

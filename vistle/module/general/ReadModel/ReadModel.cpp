@@ -21,7 +21,7 @@ MODULE_MAIN(ReadModel)
 using namespace vistle;
 
 ReadModel::ReadModel(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader("read polygonal models with Assimp", name, moduleID, comm)
+   : Reader(name, moduleID, comm)
 {
    createOutputPort("grid_out");
    auto filename = addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "", Parameter::Filename);

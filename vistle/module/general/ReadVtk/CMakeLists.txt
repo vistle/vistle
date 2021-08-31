@@ -19,7 +19,7 @@ elseif (${CMAKE_CXX_COMPILER_ID} MATCHES "Clang")
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated -Wno-inconsistent-missing-override")
 endif()
 
-add_module(ReadVtk
+add_module(ReadVtk "read VTK data"
    ReadVtk.cpp
    ReadVtk.h
 )

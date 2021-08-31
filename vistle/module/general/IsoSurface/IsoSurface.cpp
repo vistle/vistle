@@ -49,16 +49,8 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(PointOrValue,
 )
 
 IsoSurface::IsoSurface(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module(
-#ifdef CUTTINGSURFACE
-"cut through grids"
-#elif defined(ISOHEIGHTSURFACE)
-"extract surface at constant height"
-#else
-"extract isosurfaces"
-#endif
-, name, moduleID, comm)
-, isocontrol(this) {
+   : Module(name, moduleID, comm)
+   , isocontrol(this) {
 
    isocontrol.init();
 

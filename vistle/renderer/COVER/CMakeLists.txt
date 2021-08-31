@@ -42,7 +42,7 @@ if(NOT VISTLE_MULTI_PROCESS)
         PRIVATE vistle_clustermanager)
 endif()
 
-add_module(COVER coverwrapper.cpp)
+add_module(COVER "VR renderer for immersive environments" coverwrapper.cpp)
 
 target_include_directories(COVER SYSTEM
         PRIVATE ${OPENSCENEGRAPH_INCLUDE_DIRS}

@@ -19,8 +19,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
 class V_RENDEREREXPORT Renderer: public Module {
 
  public:
-   Renderer(const std::string &desc, const std::string &name,
-            const int moduleID, mpi::communicator comm);
+   Renderer(const std::string &name, const int moduleID, mpi::communicator comm);
    virtual ~Renderer();
 
    bool dispatch(bool block = true, bool *messageReceived=nullptr) override;

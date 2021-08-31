@@ -45,7 +45,7 @@ namespace mpi = boost::mpi;
 using namespace vistle;
 
 ReadFOAM::ReadFOAM(const std::string &name, int moduleId, mpi::communicator comm)
-: Reader("Read OpenFOAM data", name, moduleId, comm)
+: Reader(name, moduleId, comm)
 , m_boundOut(nullptr)
 {
    // all ranks have to be scheduled simultaneously

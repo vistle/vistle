@@ -85,7 +85,7 @@ const std::unordered_map<std::type_index, hid_t> WriteHDF5::s_nativeTypeMap = {
 // * intitializes data and records the number of members in the meta object
 //-------------------------------------------------------------------------
 WriteHDF5::WriteHDF5(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("WriteHDF5", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    // create ports
    createInputPort("data0_in");

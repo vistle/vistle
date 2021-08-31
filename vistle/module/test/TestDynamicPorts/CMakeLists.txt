@@ -1,1 +1,1 @@
-add_module(TestDynamicPorts TestDynamicPorts.cpp)
+add_module(TestDynamicPorts "test port removal" TestDynamicPorts.cpp)

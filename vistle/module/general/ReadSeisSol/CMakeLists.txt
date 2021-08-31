@@ -26,7 +26,7 @@ set(SOURCES
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_module(ReadSeisSol ${SOURCES} ${HEADERS})
+add_module(ReadSeisSol "read ChEESE Seismic Data files (xmdf/hdf5)" ${SOURCES} ${HEADERS})
 
 use_openmp()
 

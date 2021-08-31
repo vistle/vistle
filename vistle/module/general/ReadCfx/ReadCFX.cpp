@@ -79,7 +79,7 @@ void wrapCfxDone() {
 using namespace vistle;
 
 ReadCFX::ReadCFX(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("read ANSYS CFX data", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
     m_ExportDone = true;
 

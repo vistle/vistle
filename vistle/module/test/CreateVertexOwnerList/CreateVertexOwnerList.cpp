@@ -18,7 +18,7 @@ class CreateVertexOwnerList: public vistle::Module {
 using namespace vistle;
 
 CreateVertexOwnerList::CreateVertexOwnerList(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("CreateVertexOwnerList", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);

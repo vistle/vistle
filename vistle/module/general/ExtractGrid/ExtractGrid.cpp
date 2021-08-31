@@ -9,7 +9,7 @@ using namespace vistle;
 MODULE_MAIN(ExtractGrid)
 
 ExtractGrid::ExtractGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("ExtractGrid", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    m_dataIn = createInputPort("data_in");
 

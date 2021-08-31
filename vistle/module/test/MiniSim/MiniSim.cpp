@@ -35,7 +35,7 @@ struct MiniSimModule::InternalsType {
 };
 
 MiniSimModule::MiniSimModule(const std::string &name, int moduleID, mpi::communicator comm)
-: insitu::InSituReader("small simulation to compare performance of other in situ interfaces", name, moduleID, comm)
+: insitu::InSituReader(name, moduleID, comm)
 {
     m_filePath = addStringParameter("Input params", "path to file with input parameters", "",
                                     vistle::Parameter::ExistingFilename);

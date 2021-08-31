@@ -17,7 +17,7 @@ enum ShowWhat {
 };
 
 ShowCelltree::ShowCelltree(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("ShowCelltree", name, moduleID, comm) {
+: Module(name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

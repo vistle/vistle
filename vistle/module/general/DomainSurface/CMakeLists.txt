@@ -1,1 +1,1 @@
-add_module(DomainSurface DomainSurface.cpp)
+add_module(DomainSurface "show surface of grid" DomainSurface.cpp)

@@ -30,7 +30,7 @@ using vistle::insitu::message::InSituMessageType;
 
 
 LibSimModule::LibSimModule(const string &name, int moduleID, mpi::communicator comm)
-: InSituReader("View and controll LibSim instrumented simulations", name, moduleID, comm)
+: InSituReader(name, moduleID, comm)
 , m_socketComm(comm, boost::mpi::comm_create_kind::comm_duplicate)
 #ifndef MODULE_THREAD
 #if BOOST_VERSION >= 106600

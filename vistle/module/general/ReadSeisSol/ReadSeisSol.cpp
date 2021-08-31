@@ -180,7 +180,7 @@ void extractUniquePoints(XdmfArray *arr, std::set<T> &refSet)
   * @brief: Constructor.
   */
 ReadSeisSol::ReadSeisSol(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read ChEESE Seismic Data files (xmdf/hdf5)", name, moduleID, comm)
+: vistle::Reader(name, moduleID, comm)
 {
     //settings
     m_file = addStringParameter("xfile", "Xdmf File", "/data/ChEESE/SeisSol/LMU_Sulawesi_example/sula-surface.xdmf",

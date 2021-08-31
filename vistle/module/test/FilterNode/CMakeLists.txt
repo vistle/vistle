@@ -1,1 +1,1 @@
-add_module(FilterNode FilterNode.cpp)
+add_module(FilterNode "filter data objects" FilterNode.cpp)

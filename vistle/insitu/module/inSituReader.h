@@ -16,7 +16,7 @@ namespace insitu {
 // create vistle objects only if !m_isExecuting input ports are not tested on the InSituReader
 class V_INSITUMODULEEXPORT InSituReader: public vistle::Module {
 public:
-    InSituReader(const std::string &description, const std::string &name, const int moduleID, mpi::communicator comm);
+    InSituReader(const std::string &name, const int moduleID, mpi::communicator comm);
     bool isExecuting();
     // use these function to make sure that the insitu process only creates vistle objects after beginExecute and before
     // endExecute.

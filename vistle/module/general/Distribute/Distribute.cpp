@@ -17,7 +17,7 @@ class Distribute: public vistle::Module {
 using namespace vistle;
 
 Distribute::Distribute(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("broadcast input objects", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
    setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
 

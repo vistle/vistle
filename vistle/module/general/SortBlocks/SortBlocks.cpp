@@ -12,7 +12,7 @@ using namespace vistle;
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (Rank)(BlockNumber)(Timestep))
 
 SortBlocks::SortBlocks(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("sort data objects", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    createInputPort("data_in");
    createOutputPort("data_out0");

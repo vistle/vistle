@@ -50,7 +50,7 @@ unsigned ReadHDF5::s_numMetaMembers = 0;
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 ReadHDF5::ReadHDF5(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("read Vistle data stored in HDF5 format", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    // add module parameters
    m_fileName = addStringParameter("File Name", "Name of File that will read from", "", Parameter::ExistingFilename);

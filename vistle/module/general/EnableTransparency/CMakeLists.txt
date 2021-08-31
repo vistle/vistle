@@ -1,1 +1,1 @@
-add_module(EnableTransparency EnableTransparency.cpp)
+add_module(EnableTransparency "advise COVER to enable depth sorting" EnableTransparency.cpp)

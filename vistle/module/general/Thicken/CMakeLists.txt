@@ -1,1 +1,1 @@
-add_module(Thicken Thicken.cpp Thicken.h)
+add_module(Thicken "transform lines to tubes" Thicken.cpp Thicken.h)

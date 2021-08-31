@@ -17,7 +17,7 @@ class CreateCelltree: public vistle::Module {
 using namespace vistle;
 
 CreateCelltree::CreateCelltree(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("CreateCelltree", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);

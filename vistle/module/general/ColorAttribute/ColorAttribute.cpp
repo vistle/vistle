@@ -18,7 +18,7 @@ class ColorAttribute: public vistle::Module {
 using namespace vistle;
 
 ColorAttribute::ColorAttribute(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("add color attribute", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

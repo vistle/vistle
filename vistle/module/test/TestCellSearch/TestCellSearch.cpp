@@ -10,7 +10,7 @@ MODULE_MAIN(TestCellSearch)
 using namespace vistle;
 
 TestCellSearch::TestCellSearch(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("test celltree", name, moduleID, comm) {
+    : Module(name, moduleID, comm) {
 
     setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

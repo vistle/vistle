@@ -14,7 +14,7 @@
 using namespace vistle;
 
 SplitDimensions::SplitDimensions(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("separate grid into 1D, 2D and 3D components", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    p_in = createInputPort("data_in");
    p_out[3] = createOutputPort("data_out_3d");

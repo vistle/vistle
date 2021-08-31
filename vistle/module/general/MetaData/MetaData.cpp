@@ -24,7 +24,7 @@ using namespace vistle;
 MODULE_MAIN(MetaData)
 
 MetaData::MetaData(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("MetaData", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    createInputPort("grid_in");
 

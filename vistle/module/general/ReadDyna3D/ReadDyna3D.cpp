@@ -40,7 +40,7 @@ using namespace vistle;
 
 // Constructor
 ReadDyna3D::ReadDyna3D(const std::string &name, int moduleID, mpi::communicator comm)
-: vistle::Reader("Read LS-Dyna3D ptf files", name, moduleID, comm)
+: vistle::Reader(name, moduleID, comm)
 {
 
     // Output ports

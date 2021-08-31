@@ -57,7 +57,7 @@ if (USE_TBB)
    include_directories(SYSTEM ${TBB_INCLUDE_DIRS})
 endif()
 
-add_module(${NAME} ${SOURCES} ${CUDA_OBJ})
+add_module(${NAME} ${DESCRIPTION} ${SOURCES} ${CUDA_OBJ})
 
 if (USE_TBB)
     target_link_libraries(${NAME} ${TBB_LIBRARIES})

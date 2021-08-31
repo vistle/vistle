@@ -1,1 +1,1 @@
-add_module(Replicate Replicate.cpp)
+add_module(Replicate "deprecated" Replicate.cpp)

@@ -22,7 +22,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(MultiHits,
       )
 
 Sample::Sample(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("MapDrape", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
     setSchedulingPolicy(message::SchedulingPolicy::Single);
     setReducePolicy(message::ReducePolicy::PerTimestepOrdered);

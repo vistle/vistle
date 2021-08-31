@@ -9,7 +9,7 @@ using namespace vistle;
 MODULE_MAIN(AttachGrid)
 
 AttachGrid::AttachGrid(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("AttachGrid", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    m_gridIn = createInputPort("grid_in");
 

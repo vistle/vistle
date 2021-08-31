@@ -5,7 +5,7 @@ MODULE_MAIN(TestDynamicPorts)
 using namespace vistle;
 
 TestDynamicPorts::TestDynamicPorts(const std::string &name, int moduleID, mpi::communicator comm)
-    : Module("test port removal", name, moduleID, comm)
+    : Module(name, moduleID, comm)
     , m_numPorts(0)
     , m_numPortsParam(nullptr)
 {

@@ -20,7 +20,7 @@ using namespace vistle;
 MODULE_MAIN(WriteVistle)
 
 WriteVistle::WriteVistle(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("WriteVistle", shmname, name, moduleID)
+   : Module(shmname, name, moduleID)
    , m_ofs(NULL)
    , m_binAr(NULL)
    , m_textAr(NULL)

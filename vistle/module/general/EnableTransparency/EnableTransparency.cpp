@@ -20,7 +20,7 @@ class EnableTransparency: public vistle::Module {
 using namespace vistle;
 
 EnableTransparency::EnableTransparency(const std::string &name, int moduleID, mpi::communicator comm)
-: Module("advise COVER to enable depth sorting", name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

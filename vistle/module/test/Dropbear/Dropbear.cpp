@@ -43,7 +43,7 @@ class Dropbear: public vistle::Module {
 using namespace vistle;
 
 Dropbear::Dropbear(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("Dropbear SSH server", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
 
    std::stringstream str;

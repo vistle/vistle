@@ -21,7 +21,7 @@ find_path(DIY_INCLUDE_DIR Names diy/critical-resource.hpp) #critical-resource.hp
 #message("DIY_INCLUDE_DIR = ${DIY_INCLUDE_DIR}")
 if(DIY_INCLUDE_DIR)
     message("building minisim")
-	add_module(MiniSim ${HEADER} ${SOURCES})
+	add_module(MiniSim "small simulation to compare performance with other in situ interfaces" ${HEADER} ${SOURCES})
     target_include_directories(MiniSim PRIVATE ${DIY_INCLUDE_DIR})
 	target_link_libraries(MiniSim
 		Boost::boost

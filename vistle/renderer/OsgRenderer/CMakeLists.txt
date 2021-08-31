@@ -26,7 +26,7 @@ endif()
 
 
 
-add_module(OsgRenderer
+add_module(OsgRenderer "OpenSceneGraph renderer"
    OSGRenderer.cpp
    ../COVER/VistleGeometryGenerator.cpp
    EnableGLDebugOperation.cpp

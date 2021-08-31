@@ -34,7 +34,7 @@ if (LIBZIP_FOUND)
     include_directories(SYSTEM ${LIBZIP_INCLUDE_DIRS})
 endif()
 
-add_module(ReadFoam ReadFOAM.cpp
+add_module(ReadFoam "read OpenFOAM data" ReadFOAM.cpp
    foamtoolbox.cpp foamtoolbox.h
    archivemodel.cpp archivemodel.h)
 

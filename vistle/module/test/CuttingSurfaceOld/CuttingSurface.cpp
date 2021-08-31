@@ -15,7 +15,7 @@ using namespace vistle;
 MODULE_MAIN(CuttingSurfaceOld)
 
 CuttingSurfaceOld::CuttingSurfaceOld(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("cut through data", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 

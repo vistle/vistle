@@ -1,1 +1,1 @@
-add_module(TestInterpolation TestInterpolation.cpp)
+add_module(TestInterpolation "test interpolation" TestInterpolation.cpp)

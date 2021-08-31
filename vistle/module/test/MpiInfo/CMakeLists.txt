@@ -1,3 +1,3 @@
-add_module(MpiInfo MpiInfo.cpp)
+add_module(MpiInfo "print MPI info" MpiInfo.cpp)
 
 use_openmp()

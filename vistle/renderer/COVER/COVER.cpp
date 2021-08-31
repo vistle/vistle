@@ -166,7 +166,7 @@ bool COVER::removeCreator(int id) {
 
 
 COVER::COVER(const std::string &name, int moduleId, mpi::communicator comm)
-: vistle::Renderer("VR renderer for immersive environments", name, moduleId, comm)
+: vistle::Renderer(name, moduleId, comm)
 {
    assert(!s_instance);
    s_instance = this;

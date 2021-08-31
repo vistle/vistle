@@ -2,8 +2,8 @@
 
 namespace vistle {
 
-Reader::Reader(const std::string &description, const std::string &name, const int moduleID, mpi::communicator comm)
-: Module(description, name, moduleID, comm)
+Reader::Reader(const std::string &name, const int moduleID, mpi::communicator comm)
+: Module(name, moduleID, comm)
 {
     setCurrentParameterGroup("Reader");
 

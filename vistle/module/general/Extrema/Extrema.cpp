@@ -115,7 +115,7 @@ class Extrema: public vistle::Module {
 using namespace vistle;
 
 Extrema::Extrema(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("compute extremal values", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
 
    setReducePolicy(message::ReducePolicy::OverAll);

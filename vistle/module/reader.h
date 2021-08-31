@@ -68,13 +68,11 @@ public:
 
    /// construct a read module, parameters correspond to @ref Module constructor
    /** construct a read module, parameters correspond to @ref Module constructor
-    *  @param description short description of the purpose of this reader
     *  @param name name of the module in the workflow editor
     *  @param moduleID unique identifier of the module instance
     *  @param Boost.MPI communicator 
     */
-   Reader(const std::string &description,
-          const std::string &name, const int moduleID, mpi::communicator comm);
+   Reader(const std::string &name, const int moduleID, mpi::communicator comm);
    ~Reader() override;
    /// called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed
    /** called whenever an observed parameter (cf. @ref Reader::observerParameter) has been changed.

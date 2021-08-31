@@ -1,1 +1,1 @@
-add_module(ShowCelltree ShowCelltree.cpp)
+add_module(ShowCelltree "show cell tree" ShowCelltree.cpp)

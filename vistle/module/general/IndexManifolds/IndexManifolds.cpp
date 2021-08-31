@@ -17,7 +17,7 @@ using namespace vistle;
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(Direction, (X)(Y)(Z))
 
 IndexManifolds::IndexManifolds(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("reduce geometry to underlying points", name, moduleID, comm) {
+   : Module(name, moduleID, comm) {
 
    p_data_in = createInputPort("data_in0");
    p_surface_out = createOutputPort("surface_out0");

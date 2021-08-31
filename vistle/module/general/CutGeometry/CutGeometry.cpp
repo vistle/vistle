@@ -14,7 +14,7 @@ MODULE_MAIN(CutGeometry)
 using namespace vistle;
 
 CutGeometry::CutGeometry(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("CutGeometry", name, moduleID, comm)
+   : Module(name, moduleID, comm)
    , isocontrol(this)
 {
    isocontrol.init();

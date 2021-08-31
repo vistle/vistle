@@ -1,1 +1,1 @@
-add_module(VectorField VectorField.cpp)
+add_module(VectorField "transform mapped vectors into lines" VectorField.cpp)

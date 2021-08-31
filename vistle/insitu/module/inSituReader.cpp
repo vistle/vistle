@@ -10,9 +10,9 @@ using std::endl;
 
 size_t InSituReader::m_numInstances = 0;
 
-InSituReader::InSituReader(const std::string &description, const std::string &name, const int moduleID,
+InSituReader::InSituReader(const std::string &name, const int moduleID,
                            mpi::communicator comm)
-: Module(description, name, moduleID, comm)
+: Module(name, moduleID, comm)
 {
     setReducePolicy(vistle::message::ReducePolicy::OverAll);
 }

@@ -32,7 +32,7 @@ class MpiInfo: public vistle::Module {
 using namespace vistle;
 
 MpiInfo::MpiInfo(const std::string &name, int moduleID, mpi::communicator comm)
-   : Module("MPI info", name, moduleID, comm)
+   : Module(name, moduleID, comm)
 {
    std::stringstream str;
    str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname() << std::endl;

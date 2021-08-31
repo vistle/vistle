@@ -1,1 +1,1 @@
-add_module(AttachObject AttachObject.cpp)
+add_module(AttachObject "attach an object" AttachObject.cpp)

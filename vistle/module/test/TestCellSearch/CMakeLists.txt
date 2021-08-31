@@ -1,1 +1,1 @@
-add_module(TestCellSearch TestCellSearch.cpp)
+add_module(TestCellSearch "test celltree" TestCellSearch.cpp)

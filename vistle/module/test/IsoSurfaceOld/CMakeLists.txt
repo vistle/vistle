@@ -5,7 +5,7 @@ include_directories(SYSTEM
         ${TBB_INCLUDE_DIRS}
 )
 
-add_module(IsoSurfaceOld IsoSurface.cpp)
+add_module(IsoSurfaceOld "compute iso surfaces on structured grids, deprecated" IsoSurface.cpp)
 
 target_link_libraries(IsoSurfaceOld
         ${TBB_LIBRARIES}

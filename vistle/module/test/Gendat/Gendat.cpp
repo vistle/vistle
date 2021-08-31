@@ -55,7 +55,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(AnimDataMode,
                                     (Add_Z))
 
 Gendat::Gendat(const std::string &name, int moduleID, mpi::communicator comm)
-   : Reader("generate test data", name, moduleID, comm) {
+   : Reader(name, moduleID, comm) {
 
    createOutputPort("grid_out", "only grid");
    createOutputPort("data_out0", "scalar data");

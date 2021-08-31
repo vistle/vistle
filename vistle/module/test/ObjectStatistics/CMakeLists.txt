@@ -1,3 +1,3 @@
-add_module(ObjectStatistics ObjectStatistics.cpp)
+add_module(ObjectStatistics "print object statistics" ObjectStatistics.cpp)
 
 use_openmp()

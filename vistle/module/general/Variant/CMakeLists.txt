@@ -1,1 +1,1 @@
-add_module(Variant Variant.cpp)
+add_module(Variant "add variant attribute" Variant.cpp)

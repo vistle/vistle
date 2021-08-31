@@ -4,6 +4,7 @@ if (NOT GDAL_FOUND)
 endif()
 
 set(NAME IsoHeightSurface)
+set(DESCRIPTION "extract surface at constant height")
 add_definitions(-DISOHEIGHTSURFACE)
 
 set(SOURCES
