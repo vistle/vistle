@@ -44,7 +44,7 @@ add_library(vistle_remotefiledialog STATIC
   ${UI_SRCS})
 
 target_compile_definitions(vistle_remotefiledialog PRIVATE ${QT_DEFINITIONS})
-target_compile_definitions(vistle_remotefiledialog PRIVATE "-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+target_compile_definitions(vistle_remotefiledialog PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
 
 target_include_directories(vistle_remotefiledialog SYSTEM
    #PRIVATE ${Boost_INCLUDE_DIRS}

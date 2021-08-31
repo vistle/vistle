@@ -60,7 +60,7 @@ add_library(vistle_propertybrowser STATIC
   ${UI_SRCS})
 
 target_compile_definitions(vistle_propertybrowser PRIVATE ${QT_DEFINITIONS})
-target_compile_definitions(vistle_propertybrowser PRIVATE "-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
+target_compile_definitions(vistle_propertybrowser PRIVATE QT_DISABLE_DEPRECATED_BEFORE=0x000000)
 
 
 target_include_directories(vistle_propertybrowser SYSTEM

@@ -36,10 +36,10 @@ target_link_libraries(vistle_control
 
 if(Python_FOUND)
    target_compile_definitions(vistle_control
-    PRIVATE -DHAVE_PYTHON
-    PRIVATE -DVISTLE_CONTROL
-    PRIVATE -Dvistle_userinterface_EXPORTS
-    PRIVATE -DEMBED_PYTHON)
+    PRIVATE HAVE_PYTHON
+    PRIVATE VISTLE_CONTROL
+    PRIVATE vistle_userinterface_EXPORTS
+    PRIVATE EMBED_PYTHON)
    target_link_libraries(vistle_control
     PRIVATE Python::Python)
 endif()

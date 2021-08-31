@@ -55,9 +55,9 @@ set(boost_mpi_HEADERS
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 vistle_export_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
-target_compile_definitions(vistle_boost_mpi PUBLIC -DBOOST_MPI_SOURCE)
+target_compile_definitions(vistle_boost_mpi PUBLIC BOOST_MPI_SOURCE)
 if(NOT WIN32)
-target_compile_definitions(vistle_boost_mpi PUBLIC -DBOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
+target_compile_definitions(vistle_boost_mpi PUBLIC BOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
 endif(NOT WIN32)
 
 

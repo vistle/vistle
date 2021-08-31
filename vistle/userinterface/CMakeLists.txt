@@ -38,8 +38,8 @@ target_link_libraries(vistle_userinterface
 
 if (Python_FOUND)
     pybind11_add_module(_vistle NO_EXTRAS ${userinterface_SOURCES} ${userinterface_HEADERS})
-    target_compile_definitions(vistle_userinterface PRIVATE -DEMBED_PYTHON)
-    target_compile_definitions(_vistle PRIVATE -Dvistle_userinterface_EXPORTS)
+    target_compile_definitions(vistle_userinterface PRIVATE EMBED_PYTHON)
+    target_compile_definitions(_vistle PRIVATE vistle_userinterface_EXPORTS)
     target_link_libraries(_vistle PRIVATE
         PRIVATE Boost::system
         PRIVATE Python::Python

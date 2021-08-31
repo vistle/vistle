@@ -49,10 +49,10 @@ if (NOT VISTLE_MULTI_PROCESS)
             if (APPLE OR WIN32 OR XCB_FOUND)
                 set(USE_QT TRUE)
                 target_compile_definitions(vistle_clustermanager 
-                    PRIVATE -DHAVE_QT)
+                    PRIVATE HAVE_QT)
                 if (X11_ICE_FOUND)
                     target_compile_definitions(vistle_clustermanager
-                        PRIVATE -DHAVE_X11_ICE)
+                        PRIVATE HAVE_X11_ICE)
                     target_include_directories(vistle_clustermanager 
                         PRIVATE X11_ICE_INCLUDE_PATH)
                 endif()

@@ -65,7 +65,7 @@ if(JPEGTURBO_FOUND)
       message("vistle_rhr: turbojpeg w/o tjMcuWidth")
    else()
       target_compile_definitions(vistle_rhr
-        PRIVATE -DHAVE_TURBOJPEG)
+        PRIVATE HAVE_TURBOJPEG)
       target_include_directories(vistle_rhr SYSTEM 
         PRIVATE ${JPEGTURBO_INCLUDE_DIR})
    endif()
@@ -89,7 +89,7 @@ endif()
 
 if (ZFP_FOUND)
    target_compile_definitions(vistle_rhr
-        PRIVATE -DHAVE_ZFP)
+        PRIVATE HAVE_ZFP)
    target_include_directories(vistle_rhr SYSTEM 
         PRIVATE ${ZFP_INCLUDE_DIRS})
    target_link_libraries(vistle_rhr 

@@ -94,7 +94,7 @@ set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
           add_library(${targetname} STATIC ${ARGN})
        endif()
     endif()
-    target_compile_definitions(${targetname} PRIVATE -DVISTLE_MODULE_NAME="${targetname}")
+    target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
     target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
     set_target_properties(${targetname} PROPERTIES FOLDER "Modules")

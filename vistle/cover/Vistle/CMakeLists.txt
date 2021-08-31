@@ -24,4 +24,4 @@ target_include_directories(VistlePlugin
 )
 
 target_compile_definitions(VistlePlugin 
-    PRIVATE -DCOVER_PLUGIN)
+    PRIVATE COVER_PLUGIN)

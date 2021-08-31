@@ -50,9 +50,9 @@ function(createSimV2Lib libName)
 
 
    if(LIBSIM_DEBUG)
-      target_compile_definitions(${libName} PRIVATE -DLIBSIM_DEBUG)
+      target_compile_definitions(${libName} PRIVATE LIBSIM_DEBUG)
    endif()
-   target_compile_definitions(${libName} PRIVATE -DLIBSIM_EXPORT)
+   target_compile_definitions(${libName} PRIVATE LIBSIM_EXPORT)
 
    # By default, symbols provided by the sublibs that are not used by mainlib (which is all of them in this case)
    # are not used. This changes that.
