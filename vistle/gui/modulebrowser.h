@@ -62,7 +62,7 @@ std::map<int, QTreeWidgetItem *>
    bool filterInFocus = false;
    QLineEdit *filterEdit() const;
    void selectNewModule(bool up);
-
+std::map<std::string, std::string> moduleDescriptions;
 Ui::ModuleBrowser *ui;
 bool goToNextModule();
 bool goToPreviousModule();

@@ -5,13 +5,38 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMimeData>
-
+#include <fstream>
 namespace gui {
 
 enum ItemTypes {
     Hub,
     Module,
 };
+
+std::map<std::string, std::string> readModuleDescriptions(){
+    std::fstream f(MODULE_DESCRIPTION_FILE_BUILD, std::ios_base::in);
+    std::cerr << "opening " << MODULE_DESCRIPTION_FILE_BUILD << std::endl;
+    std::string msg;
+
+    if (!f.is_open())
+    {
+    }
+    if (!f.is_open())
+    {
+        std::cerr << "failed to open module description file" << std::endl;
+        return std::map<std::string, std::string>();
+    }
+    std::map<std::string, std::string> moduleDescriptions;
+    
+    std::string line;
+    while (std::getline(f, line))
+    {
+        auto del = line.find_first_of(" ");
+        moduleDescriptions[line.substr(0, del)] = line.substr(del + 1, line.size());
+        std::cerr << "module " << line.substr(0, del) << " does " << line.substr(del + 1, line.size()) << std::endl;
+    }
+    return moduleDescriptions;
+}
 
 ModuleListWidget::ModuleListWidget(QWidget *parent): QTreeWidget(parent)
 {
@@ -94,6 +119,7 @@ ModuleBrowser::ModuleBrowser(QWidget *parent): QWidget(parent), ui(new Ui::Modul
     ui->moduleListWidget->setFocusProxy(filterEdit());
     setFocusProxy(filterEdit());
     ui->filterEdit->installEventFilter(this);
+    moduleDescriptions = readModuleDescriptions();
 }
 
 ModuleBrowser::~ModuleBrowser()
@@ -113,7 +139,6 @@ void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString 
         it->second->setForeground(0, QColor(0, 0, 0));
         QString tt = hubName;
         tt += " (" + QString::number(hub) + ")";
-        it->second->setToolTip(0, tt);
     }
     auto &hubItem = it->second;
 
@@ -121,6 +146,10 @@ void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString 
     item->setData(0, hubRole(), hub);
     QString tt = path;
     tt += " - " + hubName + " (" + QString::number(hub) + ")";
+    auto desc = moduleDescriptions.find(module.toStdString());
+    if (desc != moduleDescriptions.end())
+        tt = desc->second.c_str();
+
     item->setData(0, Qt::ToolTipRole, tt);
     ui->moduleListWidget->filterItem(item);
 }
