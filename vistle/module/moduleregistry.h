@@ -8,7 +8,7 @@
 
 #include <string>
 
-#include <vistle/util/directory.h>
+#include <vistle/core/availablemodule.h>
 
 namespace mpi = boost::mpi;
 

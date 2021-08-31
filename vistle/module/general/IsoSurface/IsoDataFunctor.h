@@ -143,6 +143,8 @@ struct IsoDataFunctor {
 #define IsoController GeoController
 #elif defined(CUTTINGSURFACE)
 #define IsoController CutController
+#elif defined(ISOHEIGHTSURFACE)
+#define IsoController HeightController
 #endif
 class IsoController {
 

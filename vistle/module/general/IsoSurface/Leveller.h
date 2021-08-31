@@ -17,6 +17,8 @@
 
 #ifdef CUTTINGSURFACE
 #define Leveller CutLeveller
+#elif defined(ISOHEIGHTSURFACE)
+#define Leveller IsoHeightLeveller
 #else
 #define Leveller IsoLeveller
 #endif
