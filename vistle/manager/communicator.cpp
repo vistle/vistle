@@ -212,7 +212,9 @@ bool Communicator::scanModules(const std::string &dir) {
       for (auto &p: m_localModules) {
          const auto &m = p.second;
          message::ModuleAvailable msg(m_hubId, m.name, m.path);
-         sendHub(msg);
+         auto pl = addPayload(msg, m.description);
+         MessagePayload shmpl(pl);
+         sendHub(msg, shmpl);
       }
    }
    return result;

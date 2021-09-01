@@ -134,8 +134,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)),
            SLOT(parameterValueChanged(int, QString)));
 
-   connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)),
-           m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString)));
+   connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString, QString)),
+           m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString, QString)));
 
    connect(&m_observer, SIGNAL(status_s(int, QString, int)),
            SLOT(statusUpdated(int, QString, int)));

@@ -1,14 +1,51 @@
 #include <iostream>
+#include <map>
+#include <string>
+#include <fstream>
 #include <vistle/util/filesystem.h>
 #include <vistle/util/directory.h>
 #include "scanmodules.h"
 
 namespace vistle {
 
+std::map<std::string, std::string> readModuleDescriptions(std::istream &str) {
+    std::map<std::string, std::string> moduleDescriptions;
+
+    std::string line;
+    while (std::getline(str, line)) {
+        auto del = line.find_first_of(" ");
+        moduleDescriptions[line.substr(0, del)] = line.substr(del + 1, line.size());
+        //std::cerr << "module: " << line.substr(0, del) << " -> description: " << line.substr(del+1, line.size()) << std::endl;
+    }
+    return moduleDescriptions;
+}
+
+
 bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
 {
     namespace bf = vistle::filesystem;
     using vistle::directory::build_type;
+
+    std::map<std::string, std::string> moduleDescriptions;
+
+    auto share = directory::share(prefix);
+    bf::path pshare(share);
+    try {
+        if (!bf::is_directory(pshare)) {
+            std::cerr << "scanModules: " << share << " is not a directory" << std::endl;
+        } else {
+            std::string file = share + "/moduledescriptions.txt";
+            std::fstream f(file, std::ios_base::in);
+
+            if (f.is_open()) {
+                moduleDescriptions = readModuleDescriptions(f);
+            } else {
+                std::cerr << "failed to open module description file " << file << std::endl;
+            }
+        }
+    } catch (const bf::filesystem_error &e) {
+        std::cerr << "scanModules: error in" << share << ": " << e.what() << std::endl;
+    }
 
     auto dir = directory::module(prefix);
     bf::path p(dir);
@@ -78,6 +115,10 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
         if (prev != available.end()) {
             std::cerr << "scanModules: overriding " << mod.name << ", " << prev->second.path << " -> " << mod.path
                       << std::endl;
+        }
+        auto descit = moduleDescriptions.find(mod.name);
+        if (descit != moduleDescriptions.end()) {
+            mod.description = descit->second;
         }
         available[key] = mod;
     }

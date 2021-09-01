@@ -994,13 +994,15 @@ private:
 };
 
 template<class Payload>
-extern V_COREEXPORT buffer addPayload(Message &message, Payload &payload);
+extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);
 template<class Payload>
 extern V_COREEXPORT Payload getPayload(const buffer &data);
 
-extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
-extern template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
+extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
+extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
+extern template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
 
+extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 

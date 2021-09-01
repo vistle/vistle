@@ -13,30 +13,6 @@ enum ItemTypes {
     Module,
 };
 
-std::map<std::string, std::string> readModuleDescriptions(){
-    std::fstream f(MODULE_DESCRIPTION_FILE_BUILD, std::ios_base::in);
-    std::cerr << "opening " << MODULE_DESCRIPTION_FILE_BUILD << std::endl;
-    std::string msg;
-
-    if (!f.is_open())
-    {
-    }
-    if (!f.is_open())
-    {
-        std::cerr << "failed to open module description file" << std::endl;
-        return std::map<std::string, std::string>();
-    }
-    std::map<std::string, std::string> moduleDescriptions;
-    
-    std::string line;
-    while (std::getline(f, line))
-    {
-        auto del = line.find_first_of(" ");
-        moduleDescriptions[line.substr(0, del)] = line.substr(del + 1, line.size());
-    }
-    return moduleDescriptions;
-}
-
 ModuleListWidget::ModuleListWidget(QWidget *parent): QTreeWidget(parent)
 {
     header()->setVisible(false);
@@ -118,7 +94,6 @@ ModuleBrowser::ModuleBrowser(QWidget *parent): QWidget(parent), ui(new Ui::Modul
     ui->moduleListWidget->setFocusProxy(filterEdit());
     setFocusProxy(filterEdit());
     ui->filterEdit->installEventFilter(this);
-    moduleDescriptions = readModuleDescriptions();
 }
 
 ModuleBrowser::~ModuleBrowser()
@@ -126,7 +101,7 @@ ModuleBrowser::~ModuleBrowser()
     delete ui;
 }
 
-void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path)
+void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path, QString description)
 {
     currentModule.exists = false;
     auto it = hubItems.find(hub);
@@ -138,16 +113,16 @@ void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString 
         it->second->setForeground(0, QColor(0, 0, 0));
         QString tt = hubName;
         tt += " (" + QString::number(hub) + ")";
+        it->second->setData(0, Qt::ToolTipRole, tt);
     }
     auto &hubItem = it->second;
 
     auto item = new QTreeWidgetItem(hubItem, {module}, Module);
     item->setData(0, hubRole(), hub);
-    QString tt = path;
-    tt += " - " + hubName + " (" + QString::number(hub) + ")";
-    auto desc = moduleDescriptions.find(module.toStdString());
-    if (desc != moduleDescriptions.end())
-        tt = desc->second.c_str();
+    QString tt;
+    if (!description.isEmpty())
+        tt = "<p>" + description.toHtmlEscaped() + "</p>";
+    tt += "<small><i>" + path.toHtmlEscaped();
 
     item->setData(0, Qt::ToolTipRole, tt);
     ui->moduleListWidget->filterItem(item);
@@ -174,7 +149,7 @@ bool ModuleBrowser::eventFilter(QObject *object, QEvent *event)
         }
         if (event->type() == QEvent::FocusOut) {
             filterInFocus = false;
-        }        
+        }
         if (auto keyEvent =  dynamic_cast<QKeyEvent*>(event)) {
             return handleKeyPress(keyEvent);
         }

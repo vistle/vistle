@@ -35,10 +35,10 @@ static T min(T a, T b) { return a<b ? a : b; }
    } while(false)
 
 template<class Payload>
-buffer addPayload(Message &message, Payload &payload) {
+buffer addPayload(Message &message, const Payload &payload) {
     vecostreambuf<buffer> buf;
     oarchive ar(buf);
-    ar & payload;
+    ar & const_cast<Payload &>(payload);
     auto vec = buf.get_vector();
     message.setPayloadSize(vec.size());
     return vec;
@@ -63,9 +63,11 @@ Payload getPayload(const buffer &data) {
     return payload;
 }
 
-template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, SendText::Payload &payload);
-template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, SetParameterChoices::Payload &payload);
+template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
+template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
+template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
 
+template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
 

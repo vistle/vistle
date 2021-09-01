@@ -1,1 +1,1 @@
-add_module(Transform "add color attribute" Transform.cpp)
+add_module(Transform "apply transformation matrix to grid" Transform.cpp)

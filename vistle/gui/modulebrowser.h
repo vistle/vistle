@@ -45,7 +45,7 @@ public:
    bool eventFilter(QObject *object, QEvent *event) override;
    bool handleKeyPress(QKeyEvent *event);
    public slots:
-   void addModule(int hub, QString hubName, QString module, QString path);
+   void addModule(int hub, QString hubName, QString module, QString path, QString description);
    void setFilter(QString filter);
 signals:
    void startModule(int hub, QString moduleName, Qt::Key direction);
@@ -62,7 +62,6 @@ std::map<int, QTreeWidgetItem *>
    bool filterInFocus = false;
    QLineEdit *filterEdit() const;
    void selectNewModule(bool up);
-std::map<std::string, std::string> moduleDescriptions;
 Ui::ModuleBrowser *ui;
 bool goToNextModule();
 bool goToPreviousModule();

@@ -1146,6 +1146,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          mod.name = mm.name();
          mod.path = mm.path();
          mod.hub = mm.hub();
+         if (payload) {
+             mod.description = message::getPayload<std::string>(*payload);
+         }
          if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
              mod.hub = m_hubId;
          }
@@ -1157,10 +1160,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              AvailableModule::Key key(mod.hub, mod.name);
              m_availableModules.emplace(key, mod);
              message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
-             m_stateTracker.handle(avail, nullptr);
+             auto pl = message::addPayload(avail, mod.description);
+             m_stateTracker.handle(avail, pl.data(), pl.size());
              if (!m_isMaster)
-                 sendMaster(avail);
-             sendUi(avail);
+                 sendMaster(avail, &pl);
+             sendUi(avail, Id::Broadcast, &pl);
          }
          return true;
          break;

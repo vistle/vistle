@@ -205,7 +205,10 @@ StateTracker::VistleState StateTracker::getState() const {
    auto avail = availableModules();
    for(const auto &keymod: avail) {
       const auto &mod = keymod.second;
-      appendMessage(state, ModuleAvailable(mod.hub, mod.name, mod.path));
+      ModuleAvailable avail(mod.hub, mod.name, mod.path);
+      auto pl = message::addPayload(avail, mod.description);
+      auto shpl = std::make_shared<buffer>(pl);
+      appendMessage(state, avail, shpl);
    }
 
    // loaded map
@@ -525,7 +528,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
       }
       case MODULEAVAILABLE: {
          const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
-         handled = handlePriv(mod);
+         handled = handlePriv(mod, pl);
          break;
       }
       case EXECUTIONPROGRESS: {
@@ -1208,7 +1211,7 @@ bool StateTracker::handlePriv(const message::UpdateStatus &status) {
     return true;
 }
 
-bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
+bool StateTracker::handlePriv(const message::ModuleAvailable &avail, const buffer &payload) {
 
     if (avail.hub() == Id::Invalid)
         return true;
@@ -1217,13 +1220,14 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
     mod.hub = avail.hub();
     mod.name = avail.name();
     mod.path = avail.path();
+    mod.description = message::getPayload<std::string>(payload);
 
     AvailableModule::Key key(mod.hub, mod.name);
 
     mutex_locker guard(m_stateMutex);
     if (m_availableModules.emplace(key, mod).second) {
         for (StateObserver *o: m_observers) {
-            o->moduleAvailable(mod.hub, mod.name, mod.path);
+            o->moduleAvailable(mod.hub, mod.name, mod.path, mod.description);
         }
     } else {
         CERR << "Duplicate module: " << mod.hub << " " << mod.name << std::endl;

@@ -15,7 +15,7 @@ class VistleObserver: public QObject, public vistle::StateObserver
 	Q_OBJECT
 
 signals:
-   void moduleAvailable_s(int hub, QString hubName, QString name, QString path);
+   void moduleAvailable_s(int hub, QString hubName, QString name, QString path, QString description);
    void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
 	void deleteModule_s(int moduleId);
    void moduleStateChanged_s(int moduleId, int stateBits);
@@ -42,7 +42,7 @@ signals:
 
 public:
    VistleObserver(QObject *parent=0);
-   void moduleAvailable(int hub, const std::string &name, const std::string &path) override;
+   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override;
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override;
     void deleteModule(int moduleId) override;
     void moduleStateChanged(int moduleId, int stateBits) override;

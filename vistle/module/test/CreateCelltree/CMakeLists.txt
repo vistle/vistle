@@ -1,1 +1,1 @@
-add_module(CreateCelltree "creat a cell tree" CreateCelltree.cpp)
+add_module(CreateCelltree "create a cell tree" CreateCelltree.cpp)

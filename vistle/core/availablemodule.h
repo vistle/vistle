@@ -22,6 +22,7 @@ struct V_COREEXPORT AvailableModule {
     int hub;
     std::string name;
     std::string path;
+    std::string description;
 
     AvailableModule();
 };

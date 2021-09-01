@@ -747,9 +747,9 @@ public:
 #endif
       {}
 
-   void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
+   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override {
 #ifdef OBSERVER_DEBUG
-       m_out << "   hub: " << hub << ", module: " << name << " (" << path << ")" << std::endl;
+       m_out << "   hub: " << hub << ", module: " << name << " (" << path << "): \"" << description << "\"" std::endl;
 #endif
    }
 
@@ -862,13 +862,14 @@ public:
 
     using TrivialStateObserver::TrivialStateObserver;
 
-   void moduleAvailable(int hub, const std::string &name, const std::string &path) override {
+   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override {
        PYBIND11_OVERLOAD(void, /* Return type */
            Base, /* Parent class */
            moduleAvailable, /* Name of function in C++ (must match Python name) */
            hub, /* parameters */
            name,
-           path
+           path,
+           description
            );
    }
 

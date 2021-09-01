@@ -39,3 +39,6 @@
 [submodule "vistle/module/general/ReadCovise/file"]
 	path = vistle/module/general/ReadCovise/file
 	url = git://github.com/hlrs-vis/covise-file.git
+[submodule "3rdparty/cmrc"]
+	path = 3rdparty/cmrc
+	url = git://github.com/vector-of-bool/cmrc.git

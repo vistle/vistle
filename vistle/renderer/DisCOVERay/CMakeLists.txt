@@ -180,7 +180,6 @@ target_link_libraries(DisCOVERay
         ${TBB_LIBRARIES}
 		${EXTRA_LIBS}
 )
-file(APPEND ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt  ${targetname} "DisCOVERay CPU ray casting renderer"\n)
-install(FILES ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/vistle/)
+file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} "DisCOVERay CPU ray casting renderer"\n)
 set(description "DisCOVERay CPU ray casting renderer")
 target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${description}")

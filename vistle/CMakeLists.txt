@@ -65,13 +65,15 @@ macro(vistle_add_executable targetname)
 endmacro(vistle_add_executable)
 
 set(ALL_MODULES "" CACHE INTERNAL "")
+set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescriptions.txt)
 if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
-file(REMOVE ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt)
+file(REMOVE ${MODULE_DESCRIPTION_FILE})
+
 macro(add_module targetname description)
     
-file(APPEND ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt  ${targetname} " " ${description}\n)
-install(FILES ${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt DESTINATION ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/vistle/)
+    file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} " " ${description}\n)
+    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/moduledescriptions.txt)
 set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
     if(VISTLE_MULTI_PROCESS)
        add_executable(${targetname} ${ARGN})
@@ -197,8 +199,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
-#include_directories(.)
-
 add_subdirectory(util)
 add_subdirectory(core)
 add_subdirectory(net)
@@ -214,12 +214,15 @@ add_subdirectory(bin)
 add_subdirectory(control)
 add_subdirectory(hub)
 add_subdirectory(insitu)
+add_subdirectory(vtk)
+
 add_subdirectory(module)
 add_subdirectory(renderer)
-add_subdirectory(vtk)
+if (NOT VISTLE_MODULES_SHARED)
+    add_subdirectory(module_descriptions)
+endif()
 #message("Vistle modules: ${ALL_MODULES}")
 # keep after module and renderer, as ALL_MODULES will be populated within those two directories
-
 
 vistle_find_package(COVER) # required for spinning Qt event loop in single-process config
 add_subdirectory(manager)

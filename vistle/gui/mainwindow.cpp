@@ -140,9 +140,9 @@ void MainWindow::setModified(bool state)
    setWindowModified(state);
 }
 
-void MainWindow::moduleAvailable(int hub, const QString &hubName, const QString &mod, const QString &path) {
+void MainWindow::moduleAvailable(int hub, const QString &hubName, const QString &mod, const QString &path, const QString &description) {
 
-    m_moduleBrowser->addModule(hub, hubName, mod, path);
+    m_moduleBrowser->addModule(hub, hubName, mod, path, description);
 }
 
 void MainWindow::enableConnectButton(bool state) {

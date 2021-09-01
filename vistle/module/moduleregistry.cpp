@@ -1,6 +1,14 @@
 #include "moduleregistry.h"
 #include "module.h"
 
+#include <vistle/control/scanmodules.h>
+#include <cmrc/cmrc.hpp>
+#include <fstream>
+#include <istream>
+#include <streambuf>
+
+CMRC_DECLARE(moduledescriptions);
+
 namespace vistle {
 
 ModuleRegistry::RegisterClass::RegisterClass(const std::string &name, NewModuleFunc factory) {
@@ -51,11 +59,41 @@ bool ModuleRegistry::availableModules(AvailableMap &available) {
 
    const int hub = 0;
 
+   std::map<std::string, std::string> moduleDescriptions;
+   try {
+       auto fs = cmrc::moduledescriptions::get_filesystem();
+       auto data = fs.open("moduledescriptions.txt");
+
+       struct membuf: std::streambuf {
+           membuf(const char *cbegin, const char *cend) {
+               char* begin(const_cast<char*>(cbegin));
+               char* end(const_cast<char*>(cend));
+               this->setg(begin, begin, end);
+           }
+       };
+
+       struct imemstream: virtual membuf, std::istream {
+           imemstream(const char *begin, const char *end)
+               : membuf(begin, end)
+               , std::istream(static_cast<std::streambuf*>(this)) {
+               }
+       };
+
+       imemstream str(data.begin(), data.end());
+       moduleDescriptions = readModuleDescriptions(str);
+   } catch (std::exception &ex) {
+       std::cerr << "ModuleRegistry::availableModules: exception: " << ex.what() << std::endl;
+   }
+
    for (const auto &m: m_modules) {
 
       AvailableModule mod;
       mod.hub = hub;
       mod.name = m.first;
+      auto it = moduleDescriptions.find(mod.name);
+      if (it != moduleDescriptions.end()) {
+          mod.description = it->second;
+      }
 
       AvailableModule::Key key(hub, mod.name);
       available[key] = mod;
