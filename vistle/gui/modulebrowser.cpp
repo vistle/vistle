@@ -33,7 +33,6 @@ std::map<std::string, std::string> readModuleDescriptions(){
     {
         auto del = line.find_first_of(" ");
         moduleDescriptions[line.substr(0, del)] = line.substr(del + 1, line.size());
-        std::cerr << "module " << line.substr(0, del) << " does " << line.substr(del + 1, line.size()) << std::endl;
     }
     return moduleDescriptions;
 }
