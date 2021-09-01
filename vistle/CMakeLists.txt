@@ -73,7 +73,7 @@ file(REMOVE ${MODULE_DESCRIPTION_FILE})
 macro(add_module targetname description)
     
     file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} " " ${description}\n)
-    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/moduledescriptions.txt)
+    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
     if(VISTLE_MULTI_PROCESS)
        add_executable(${targetname} ${ARGN})
