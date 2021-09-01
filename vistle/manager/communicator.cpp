@@ -202,8 +202,10 @@ bool Communicator::scanModules(const std::string &dir) {
 #if defined(MODULE_THREAD) && defined(MODULE_STATIC)
    ModuleRegistry::the().availableModules(m_localModules);
 #else
-   if (m_localModules.empty()) {
-       result = vistle::scanModules(dir, 0, m_localModules);
+   if (getRank() == 0) {
+       if (m_localModules.empty()) {
+           result = vistle::scanModules(dir, 0, m_localModules);
+       }
    }
 #endif
    if (getRank() == 0) {
