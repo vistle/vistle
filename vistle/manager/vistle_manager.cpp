@@ -1,23 +1,14 @@
 /*
- * Visualization Testing Laboratory for Exascale Computing (VISTLE)
+ * Vistle Parallel Scientific Visualization
+ *
+ * Started by Florian Niebling in early 2012 as
+ * "Visualization Testing Laboratory for Exascale Computing (VISTLE)"
  */
 
 #include <mpi.h>
 #include "manager.h"
 
 #include <iostream>
-//#include <fstream>
-//#include <exception>
-//#include <cstdlib>
-//#include <sstream>
-//#include "run_on_main_thread.h"
-//#include <vistle/util/directory.h>
-//#include <vistle/core/objectmeta.h>
-//#include <vistle/core/object.h>
-//
-//#include <vistle/util/hostname.h>
-//#include <vistle/control/hub.h>
-//#include <boost/mpi.hpp>
 #include <vistle/util/directory.h>
 
 
