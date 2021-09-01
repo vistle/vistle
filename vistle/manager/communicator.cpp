@@ -77,9 +77,9 @@ Communicator &Communicator::the() {
    return *s_singleton;
 }
 
-void Communicator::setModuleDir(const std::string &dir) {
+void Communicator::setVistleRoot(const std::string &dir) {
 
-    m_moduleDir = dir;
+    m_vistleRoot = dir;
 }
 
 int Communicator::hubId() const {
@@ -524,7 +524,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
          message::DefaultSender::init(m_hubId, m_rank);
          Shm::the().setId(m_hubId);
          m_clusterManager->init();
-         //scanModules(m_moduleDir);
+         //scanModules(m_vistleRoot);
          return connectData();
          break;
       }
@@ -538,7 +538,7 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
              ident.computeMac();
              sendHub(ident);
          }
-         scanModules(m_moduleDir);
+         scanModules(m_vistleRoot);
          break;
       }
       default: {

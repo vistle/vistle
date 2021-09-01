@@ -34,7 +34,7 @@ class Communicator {
    ~Communicator();
    static Communicator &the();
 
-   void setModuleDir(const std::string &dir);
+   void setVistleRoot(const std::string &dir);
    void run();
    bool dispatch(bool *work);
    bool handleMessage(const message::Buffer &message, const MessagePayload &payload=MessagePayload());
@@ -71,7 +71,7 @@ class Communicator {
    int m_hubId;
    const int m_rank;
    const int m_size;
-   std::string m_moduleDir;
+   std::string m_vistleRoot;
 
    unsigned m_recvSize;
    message::Buffer m_recvBufToRank, m_recvBufToAny;

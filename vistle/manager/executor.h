@@ -26,7 +26,7 @@ class Executor {
 
       void run();
 
-      void setModuleDir(const std::string &directory);
+      void setVistleRoot(const std::string &directory);
 
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }

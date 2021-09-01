@@ -10,10 +10,10 @@ namespace directory {
 std::string build_type() {
 
 #ifdef CMAKE_INTDIR
-    const std::string btype = CMAKE_INTDIR;
+const std::string btype = CMAKE_INTDIR;
 #else
 #ifdef _WIN32
-    #ifdef CMAKE_BUILD_TYPE
+#ifdef CMAKE_BUILD_TYPE
 const std::string btype = CMAKE_BUILD_TYPE;
 #else
 #ifdef _DEBUG
@@ -23,7 +23,7 @@ const std::string btype = "Release";
 #endif
 #endif
 #else
-    const std::string btype = "";
+const std::string btype = "";
 #endif
 #endif
 

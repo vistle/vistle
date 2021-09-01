@@ -5,20 +5,13 @@
 
 namespace vistle {
 
-bool scanModules(const std::string &dir, int hub, AvailableMap &available)
+bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
 {
     namespace bf = vistle::filesystem;
     using vistle::directory::build_type;
+
+    auto dir = directory::module(prefix);
     bf::path p(dir);
-    if (!build_type().empty()) {
-#ifdef MODULE_THREAD
-        std::cerr << dir + "/../../../lib/module/" + build_type() << std::endl;
-        p = dir + "/../../../lib/module/" + build_type();
-#else
-        std::cerr << dir + "/../../../libexec/module/" + build_type() << std::endl;
-        p = dir + "/../../../libexec/module/" + build_type();
-#endif
-    }
     try {
         if (!bf::is_directory(p)) {
             std::cerr << "scanModules: " << dir << " is not a directory" << std::endl;

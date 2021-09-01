@@ -97,10 +97,10 @@ Executor::~Executor()
    Shm::the().detach();
 }
 
-void Executor::setModuleDir(const std::string &dir) {
+void Executor::setVistleRoot(const std::string &dir) {
 
 
-    return m_comm->setModuleDir(dir);
+    return m_comm->setVistleRoot(dir);
 }
 
 
