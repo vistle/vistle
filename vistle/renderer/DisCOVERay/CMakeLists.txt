@@ -180,6 +180,6 @@ target_link_libraries(DisCOVERay
         ${TBB_LIBRARIES}
 		${EXTRA_LIBS}
 )
-file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} "DisCOVERay CPU ray casting renderer"\n)
-set(description "DisCOVERay CPU ray casting renderer")
-target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${description}")
+set(description "CPU ray casting renderer")
+file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} " " ${description}\n)
+#target_compile_definitions(DisCOVERay PRIVATE MODULE_DESCRIPTION="${Iescription}")

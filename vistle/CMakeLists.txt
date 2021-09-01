@@ -69,12 +69,12 @@ set(MODULE_DESCRIPTION_FILE ${PROJECT_BINARY_DIR}/share/vistle/moduledescription
 if (NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten")
 
 file(REMOVE ${MODULE_DESCRIPTION_FILE})
+install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
 
 macro(add_module targetname description)
     
     file(APPEND ${MODULE_DESCRIPTION_FILE}  ${targetname} " " ${description}\n)
-    install(FILES ${MODULE_DESCRIPTION_FILE} DESTINATION ${CMAKE_INSTALL_PREFIX}/share/vistle/)
-set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
+    set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
     if(VISTLE_MULTI_PROCESS)
        add_executable(${targetname} ${ARGN})
        set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
@@ -97,7 +97,7 @@ set(ALL_MODULES ${ALL_MODULES} ${targetname} CACHE INTERNAL "")
        endif()
     endif()
     target_compile_definitions(${targetname} PRIVATE VISTLE_MODULE_NAME="${targetname}")
-    target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
+    #target_compile_definitions(${targetname} PRIVATE MODULE_DESCRIPTION="${description}")
 
     set_target_properties(${targetname} PROPERTIES FOLDER "Modules")
     target_link_libraries(${targetname}
