@@ -105,6 +105,8 @@
     <addaction name="separator"/>
     <addaction name="actionConnect"/>
     <addaction name="actionQuit"/>
+    <addaction name="separator"/>
+    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -227,13 +229,12 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionNew"/>
-   <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
+   <addaction name="actionSelect_All"/>
+   <addaction name="actionDelete"/>
    <addaction name="separator"/>
    <addaction name="actionExecute"/>
    <addaction name="separator"/>
-   <addaction name="actionConnect"/>
   </widget>
   <widget class="QDockWidget" name="modulesDock">
    <property name="sizePolicy">
