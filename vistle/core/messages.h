@@ -91,6 +91,8 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    AddHub(int id, const std::string &name);
    int id() const;
    const char *name() const;
+   const char *loginName() const;
+   const char *realName() const;
    int numRanks() const;
    unsigned short port() const;
    unsigned short dataPort() const;
@@ -108,9 +110,15 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    void setAddress(boost::asio::ip::address_v6 addr);
    void setAddress(boost::asio::ip::address_v4 addr);
 
+   void setLoginName(const std::string &login);
+   void setRealName(const std::string &real);
+
  private:
    int m_id;
    address_t m_name;
+   address_t m_loginName;
+   address_t m_realName;
+
    int m_numRanks;
    unsigned short m_port;
    unsigned short m_dataPort;

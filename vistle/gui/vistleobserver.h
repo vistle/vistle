@@ -15,6 +15,8 @@ class VistleObserver: public QObject, public vistle::StateObserver
 	Q_OBJECT
 
 signals:
+   void newHub_s(int hub, QString name, int nranks, QString address, QString logname, QString realname);
+   void deleteHub_s(int hub);
    void moduleAvailable_s(int hub, QString hubName, QString name, QString path, QString description);
    void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
 	void deleteModule_s(int moduleId);
@@ -25,10 +27,8 @@ signals:
    void parameterChoicesChanged_s(int moduleId, QString parameterName);
    void newPort_s(int moduleId, QString portName);
    void deletePort_s(int moduleId, QString portName);
-    void newConnection_s(int fromId, QString fromName,
-                   		 int toId, QString toName);
-	void deleteConnection_s(int fromId, QString fromName,
-                      		int toId, QString toName);
+    void newConnection_s(int fromId, QString fromName, int toId, QString toName);
+	void deleteConnection_s(int fromId, QString fromName, int toId, QString toName);
    void modified(bool state);
 
    void info_s(QString msg, int type);
@@ -42,6 +42,8 @@ signals:
 
 public:
    VistleObserver(QObject *parent=0);
+   void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) override;
+   void deleteHub(int hub) override;
    void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override;
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override;
     void deleteModule(int moduleId) override;

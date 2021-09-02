@@ -29,6 +29,8 @@ class V_COREEXPORT StateObserver {
    StateObserver(): m_modificationCount(0) {}
    virtual ~StateObserver() {}
 
+   virtual void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) = 0;
+   virtual void deleteHub(int hub) = 0;
    virtual void moduleAvailable(int hub, const std::string &moduleName, const std::string &path, const std::string &description) = 0;
 
    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
@@ -88,6 +90,8 @@ struct V_COREEXPORT HubData {
 
     int id;
     std::string name;
+    std::string logName;
+    std::string realName;
     int numRanks = 0;
     unsigned short port;
     unsigned short dataPort;

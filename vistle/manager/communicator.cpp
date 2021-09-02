@@ -540,8 +540,15 @@ bool Communicator::handleMessage(const message::Buffer &message, const MessagePa
              ident.computeMac();
              sendHub(ident);
          }
-         scanModules(m_vistleRoot);
          break;
+      }
+      case message::ADDHUB: {
+          const auto &addhub = message.as<message::AddHub>();
+          CERR << "AddHub message: " << addhub << std::endl;
+          if (addhub.id() == m_hubId) {
+              scanModules(m_vistleRoot);
+          }
+          return m_clusterManager->handle(message, payload);
       }
       default: {
          return m_clusterManager->handle(message, payload);

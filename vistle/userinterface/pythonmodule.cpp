@@ -747,6 +747,12 @@ public:
 #endif
       {}
 
+   void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) override {
+
+   }
+   void deleteHub(int hub) override {
+
+   }
    void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override {
 #ifdef OBSERVER_DEBUG
        m_out << "   hub: " << hub << ", module: " << name << " (" << path << "): \"" << description << "\"" std::endl;
@@ -871,6 +877,14 @@ public:
            path,
            description
            );
+   }
+
+   void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) override {
+       PYBIND11_OVERLOAD(void, Base, newHub, hub, name, nranks, address, logname, realname);
+   }
+
+   void deleteHub(int hub) override {
+       PYBIND11_OVERLOAD(void, Base, deleteHub, hub);
    }
 
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override {

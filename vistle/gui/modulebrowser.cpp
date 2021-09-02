@@ -101,9 +101,8 @@ ModuleBrowser::~ModuleBrowser()
     delete ui;
 }
 
-void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path, QString description)
-{
-    currentModule.exists = false;
+void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname) {
+
     auto it = hubItems.find(hub);
     if (it == hubItems.end()) {
         it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
@@ -111,9 +110,21 @@ void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString 
         it->second->setExpanded(hubItems.size() <= 1);
         it->second->setBackground(0, Module::hubColor(hub));
         it->second->setForeground(0, QColor(0, 0, 0));
-        QString tt = hubName;
+        QString tt = logname + "@" + hubName;
         tt += " (" + QString::number(hub) + ")";
+        tt += "\n" + realname;
+        tt += "\n" + QString::number(nranks) + " ranks";
+
         it->second->setData(0, Qt::ToolTipRole, tt);
+    }
+}
+
+void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path, QString description)
+{
+    currentModule.exists = false;
+    auto it = hubItems.find(hub);
+    if (it == hubItems.end()) {
+        return;
     }
     auto &hubItem = it->second;
 

@@ -185,6 +185,8 @@ AddHub::AddHub(int id, const std::string &name)
 , m_addrType(AddHub::Unspecified)
 {
    COPY_STRING(m_name, name);
+   memset(m_loginName.data(), 0, m_loginName.size());
+   memset(m_realName.data(), 0, m_realName.size());
    memset(m_address.data(), 0, m_address.size());
 }
 
@@ -194,6 +196,24 @@ int AddHub::id() const {
 
 const char *AddHub::name() const {
     return m_name.data();
+}
+
+const char *AddHub::loginName() const {
+    return m_loginName.data();
+}
+
+void AddHub::setLoginName(const std::string &login) {
+
+    COPY_STRING(m_loginName, login);
+}
+
+const char *AddHub::realName() const {
+    return m_realName.data();
+}
+
+void AddHub::setRealName(const std::string &real) {
+
+    COPY_STRING(m_realName, real);
 }
 
 int AddHub::numRanks() const {

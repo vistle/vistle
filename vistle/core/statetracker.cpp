@@ -193,6 +193,8 @@ StateTracker::VistleState StateTracker::getState() const {
 
    for (const auto &slave: m_hubs) {
       AddHub msg(slave.id, slave.name);
+      msg.setLoginName(slave.logName);
+      msg.setRealName(slave.realName);
       msg.setNumRanks(slave.numRanks);
       msg.setPort(slave.port);
       msg.setDataPort(slave.dataPort);
@@ -657,11 +659,17 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    m_hubs.back().dataPort = slave.dataPort();
    if (slave.hasAddress())
       m_hubs.back().address = slave.address();
+   m_hubs.back().logName = slave.loginName();
+   m_hubs.back().realName = slave.realName();
 
-   // for per-hub parameters
+   // for per-hub parametersdd
    Module hub(slave.id(), slave.id());
    hub.name = slave.name();
    runningMap.emplace(slave.id(), hub);
+
+   for (StateObserver *o: m_observers) {
+      o->newHub(slave.id(), slave.name(), slave.numRanks(), "", slave.loginName(), slave.realName());
+   }
 
    m_slaveCondition.notify_all();
    return true;

@@ -17,6 +17,7 @@ set(util_SOURCES
    sysdep.cpp
    tools.cpp
    url.cpp
+   userinfo.cpp
 )
 
 set(util_HEADERS
@@ -45,6 +46,7 @@ set(util_HEADERS
    sysdep.h
    tools.h
    url.h
+   userinfo.h
    valgrind.h
    vecstreambuf.h
 )

@@ -10,6 +10,7 @@
 #include <cassert>
 
 #include <vistle/util/hostname.h>
+#include <vistle/util/userinfo.h>
 #include <vistle/util/directory.h>
 #include <vistle/util/spawnprocess.h>
 #include <vistle/util/sleep.h>
@@ -848,6 +849,8 @@ bool Hub::hubReady() {
         hub.setDestId(Id::ForBroadcast);
         hub.setPort(m_port);
         hub.setDataPort(m_dataProxy->port());
+        hub.setLoginName(vistle::getLoginName());
+        hub.setRealName(vistle::getRealName());
 
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
@@ -988,6 +991,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    master.setNumRanks(m_localRanks);
                    master.setPort(m_port);
                    master.setDataPort(m_dataProxy->port());
+                   master.setLoginName(vistle::getLoginName());
+                   master.setRealName(vistle::getRealName());
                    if (!m_exposedHost.empty()) {
                        master.setAddress(m_exposedHostAddr);
                    }

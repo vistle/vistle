@@ -34,6 +34,20 @@ VistleObserver::VistleObserver(QObject *parent) : QObject(parent)
     }
 }
 
+void VistleObserver::newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) {
+
+    QString qname = QString::fromStdString(name);
+    QString qaddress = QString::fromStdString(address);
+    QString qlogname = QString::fromStdString(logname);
+    QString qrealname = QString::fromStdString(realname);
+    emit newHub_s(hub, qname, nranks, qaddress, qlogname, qrealname);
+}
+
+void VistleObserver::deleteHub(int hub) {
+
+    emit deleteHub_s(hub);
+}
+
 void VistleObserver::moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) {
 
    QString qname = QString::fromStdString(name);
