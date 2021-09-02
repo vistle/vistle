@@ -53,7 +53,7 @@ public:
 
     ~visit_smart_handle()
     {
-        if constexpr (freeFunctions[static_cast<int>(T)]) //compiler warning before c++17
+        if (freeFunctions[static_cast<int>(T)]) //compiler warning before c++17
         {
             if (m_handle != VISIT_INVALID_HANDLE)
                 v2check(freeFunctions[static_cast<int>(T)], m_handle);
