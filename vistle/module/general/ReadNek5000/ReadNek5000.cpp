@@ -54,8 +54,9 @@ bool ReadNek::myRead(Token &token, int timestep, int partition)
         }
     } else {
         auto grid = m_grids[partitionReader.partition()];
-        grid->setTimestep(timestep);
-        token.addObject(m_gridPort, grid);
+        auto newGrid = grid->clone();
+        newGrid->setTimestep(timestep);
+        token.addObject(m_gridPort, newGrid);
     }
     if (!m_geometryOnlyParam->getValue()) {
         if (partitionReader.hasVelocity() && m_velocityPort->isConnected() &&

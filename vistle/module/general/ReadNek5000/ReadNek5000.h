@@ -63,7 +63,7 @@ private:
     //one reader for each partition
     std::map<int, nek5000::PartitionReader> m_readers;
     //the last read grid for each partitions, updated by readGrid
-    std::vector<vistle::UnstructuredGrid::ptr> m_grids;
+    std::vector<vistle::UnstructuredGrid::const_ptr> m_grids;
 
 
 public:
