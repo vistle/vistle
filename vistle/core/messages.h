@@ -817,8 +817,8 @@ class V_COREEXPORT Trace: public MessageBase<Trace, TRACE> {
    bool m_on;
 };
 
-//! announce availability of a module to UI
-class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAVAILABLE> {
+
+class V_COREEXPORT ModuleBaseMessage {
 
  public:
    struct V_COREEXPORT Payload {
@@ -833,7 +833,7 @@ class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAV
        }
    };
 
-   ModuleAvailable(const AvailableModule& mod);
+   ModuleBaseMessage(const AvailableModule& mod);
    const char *name() const;
    const char *path() const;
    int hub() const;
@@ -843,6 +843,17 @@ class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAV
     int m_hub;
     module_name_t m_name;
     path_t m_path;
+};
+
+//! announce availability of a module to UI
+class V_COREEXPORT ModuleAvailable: public ModuleBaseMessage, public MessageBase<ModuleAvailable, MODULEAVAILABLE> {
+    using ModuleBaseMessage::ModuleBaseMessage;
+};
+
+static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
+
+class V_COREEXPORT CreateModuleCompound: public ModuleBaseMessage, public MessageBase<CreateModuleCompound, CREATEMODULECOMPOUND> {
+    using ModuleBaseMessage::ModuleBaseMessage;
 };
 
 static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");

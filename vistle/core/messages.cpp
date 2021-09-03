@@ -66,12 +66,12 @@ Payload getPayload(const buffer &data) {
 template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
-template V_COREEXPORT buffer addPayload<ModuleAvailable::Payload>(Message &message, const ModuleAvailable::Payload &payload);
+template V_COREEXPORT buffer addPayload<ModuleBaseMessage::Payload>(Message &message, const ModuleBaseMessage::Payload &payload);
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
-template V_COREEXPORT ModuleAvailable::Payload getPayload(const buffer &data);
+template V_COREEXPORT ModuleBaseMessage::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -1474,12 +1474,12 @@ bool Trace::on() const {
    return m_on;
 }
 
-ModuleAvailable::Payload::Payload() = default;
+ModuleBaseMessage::Payload::Payload() = default;
 
-ModuleAvailable::Payload::Payload(const AvailableModule& mod):m_module(mod){}
+ModuleBaseMessage::Payload::Payload(const AvailableModule& mod):m_module(mod){}
 
 
-ModuleAvailable::ModuleAvailable(const AvailableModule& mod)
+ModuleBaseMessage::ModuleBaseMessage(const AvailableModule& mod)
 : m_hub(mod.hub)
 {
 
@@ -1487,22 +1487,22 @@ ModuleAvailable::ModuleAvailable(const AvailableModule& mod)
    COPY_STRING(m_path, mod.path);
 }
 
-int ModuleAvailable::hub() const {
+int ModuleBaseMessage::hub() const {
 
    return m_hub;
 }
 
-const char *ModuleAvailable::name() const {
+const char *ModuleBaseMessage::name() const {
 
     return m_name.data();
 }
 
-const char *ModuleAvailable::path() const {
+const char *ModuleBaseMessage::path() const {
 
    return m_path.data();
 }
 
-AvailableModule ModuleAvailable::unpack(const buffer &payload) const
+AvailableModule ModuleBaseMessage::unpack(const buffer &payload) const
 {
    AvailableModule av;
    av.name = name();
@@ -1510,7 +1510,7 @@ AvailableModule ModuleAvailable::unpack(const buffer &payload) const
    av.hub = m_hub;
    if (!payload.empty())
    {
-      auto pl =  getPayload<ModuleAvailable::Payload>(payload);
+      auto pl =  getPayload<ModuleBaseMessage::Payload>(payload);
       auto mod = pl.m_module;
       av.description = std::move(mod.description);
       av.submodules = std::move(mod.submodules);
