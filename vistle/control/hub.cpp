@@ -726,7 +726,7 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
       return numSent == 1;
    }
 
-   return sendHub(msg, hub, payload);
+   return sendHub(hub, msg, payload);
 }
 
 bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buffer *payload) {
@@ -755,7 +755,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buf
    return ok;
 }
 
-bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) {
+bool Hub::sendHub(int hub, const message::Message &msg, const buffer *payload) {
 
    if (hub == m_hubId)
       return true;
@@ -772,19 +772,6 @@ bool Hub::sendHub(const message::Message &msg, int hub, const buffer *payload) {
    }
 
    return false;
-}
-
-bool Hub::sendSlave(const message::Message &msg, int dest, const buffer *payload) {
-
-   assert(m_isMaster);
-   if (!m_isMaster)
-      return false;
-
-   auto it = m_slaves.find(dest);
-   if (it == m_slaves.end())
-      return false;
-
-   return sendMessage(it->second.sock, msg, payload);
 }
 
 bool Hub::sendUi(const message::Message &msg, int id, const buffer *payload) {
@@ -806,7 +793,7 @@ bool Hub::sendModule(const message::Message &msg, int id, const buffer *payload)
         return false;
     }
 
-    return sendHub(msg, hub, payload);
+    return sendHub(hub, msg, payload);
 }
 
 int Hub::idToHub(int id) const {
@@ -1217,7 +1204,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
        } else {
            if (dest != m_hubId) {
                if (m_isMaster) {
-                   sendHub(msg, dest, payload);
+                   sendHub(dest, msg, payload);
                    //sendSlaves(msg);
                    slave = true;
                } else if (sender == m_hubId) {
@@ -1898,7 +1885,7 @@ bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
 {
     int hub = m_stateTracker.getHub(query.moduleId());
     if (hub != m_hubId)
-        return sendHub(query, hub, payload);
+        return sendHub(hub, query, payload);
 
     buffer pl;
     if (!payload)
@@ -1914,7 +1901,7 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
     if (result.destId() == m_hubId)
         return sendUi(result, result.destUiId(), payload);
 
-    return sendHub(result, result.destId(), payload);
+    return sendHub(result.destId(), result, payload);
 }
 
 bool Hub::checkChildProcesses(bool emergency) {

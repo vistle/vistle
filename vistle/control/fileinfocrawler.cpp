@@ -221,7 +221,7 @@ bool FileInfoCrawler::sendResponse(const message::FileQuery &query, message::Fil
         return m_hub.sendUi(response, query.uiId(), &payload);
     }
 
-    return m_hub.sendHub(response, query.senderId(), &payload);
+    return m_hub.sendHub(query.senderId(), response, &payload);
 }
 
 }

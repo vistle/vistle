@@ -42,8 +42,7 @@ class V_HUBEXPORT Hub {
    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub, const buffer *payload=nullptr);
    bool sendMaster(const message::Message &msg, const buffer *payload=nullptr);
    bool sendSlaves(const message::Message &msg, bool returnToSender=false, const buffer *payload=nullptr);
-   bool sendSlave(const message::Message &msg, int id, const buffer *payload=nullptr);
-   bool sendHub(const message::Message &msg, int id, const buffer *payload=nullptr);
+   bool sendHub(int id, const message::Message &msg, const buffer *payload=nullptr);
    bool sendUi(const message::Message &msg, int id = message::Id::Broadcast, const buffer *payload=nullptr);
    bool sendModule(const message::Message &msg, int id, const buffer *payload=nullptr);
 
