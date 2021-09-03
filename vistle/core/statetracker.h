@@ -218,6 +218,7 @@ public:
    void updateStatus();
 
    bool handlePriv(const message::AddHub &slave);
+   bool handlePriv(const message::RemoveHub &slave);
    bool handlePriv(const message::Ping &ping);
    bool handlePriv(const message::Pong &pong);
    bool handlePriv(const message::Trace &trace);

@@ -40,6 +40,7 @@ public slots:
     void setFilename(const QString &filename);
     void setModified(bool state);
     void newHub(int hub, const QString &hubName, int nranks, const QString &address, const QString &logname, const QString &realname);
+    void deleteHub(int hub);
     void moduleAvailable(int hub, const QString &module, const QString &path, const QString &description);
     void enableConnectButton(bool state);
 

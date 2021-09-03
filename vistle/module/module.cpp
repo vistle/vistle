@@ -1274,8 +1274,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
 
       case message::QUIT: {
 
-         const message::Quit *quit =
-            static_cast<const message::Quit *>(message);
+         const message::Quit *quit = static_cast<const message::Quit *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
          (void) quit;
 #ifdef REDIRECT_OUTPUT
@@ -1540,7 +1539,7 @@ bool Module::handleMessage(const vistle::message::Message *message, const Messag
       case message::MODULEAVAILABLE:
       case message::REPLAYFINISHED:
       case message::ADDHUB:
-      case message::REMOVESLAVE:
+      case message::REMOVEHUB:
       case message::UPDATESTATUS:
       case message::IDLE:
       case message::BUSY:

@@ -191,6 +191,15 @@ static bool barrier() {
    return false;
 }
 
+static void removeHub(int hub) {
+
+    if (message::Id::isHub(hub)) {
+        message::Quit m(hub);
+        m.setDestId(hub);
+        sendMessage(m);
+    }
+}
+
 static std::string spawnAsync(int hub, const char *module, int numSpawn=-1, int baseRank=-1, int rankSkip=-1) {
 
 #ifdef DEBUG
@@ -246,9 +255,11 @@ static void kill(int id) {
 #ifdef DEBUG
    std::cerr << "Python: kill "<< id << std::endl;
 #endif
-   message::Kill m(id);
-   m.setDestId(id);
-   sendMessage(m);
+   if (message::Id::isModule(id)) {
+       message::Kill m(id);
+       m.setDestId(id);
+       sendMessage(m);
+   }
 }
 
 static int waitForAnySlaveHub() {
@@ -1090,6 +1101,7 @@ PY_MODULE(_vistle, m) {
         .def("updateStatus", &TSO::updateStatus);
 
     m.def("source", &source, "execute commands from `file`", "file"_a);
+    m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
     m.def("spawn", spawn, "spawn new module `arg1`\n" "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);
     m.def("spawn", spawnSimple, "spawn new module `arg1`\n" "return its ID");

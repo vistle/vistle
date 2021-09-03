@@ -338,7 +338,10 @@ bool Communicator::dispatch(bool *work) {
       if (!message::recv(m_hubSocket, buf, ec, false, &payload)) {
          if (ec) {
              CERR << "Quit reason: hub comm interrupted: " << ec.message() << std::endl;
-             broadcastAndHandleMessage(message::Quit());
+             if (hubId() == Id::MasterHub)
+                 broadcastAndHandleMessage(message::Quit());
+             else
+                 broadcastAndHandleMessage(message::Quit(hubId()));
              done = true;
          }
       } else {
@@ -390,7 +393,10 @@ bool Communicator::dispatch(bool *work) {
 
    if (m_rank == 0 && done) {
 
-       sendHub(message::Quit());
+       if (hubId() == Id::MasterHub)
+           sendHub(message::Quit());
+       else
+           sendHub(message::Quit(hubId()));
    }
 
    return !done;

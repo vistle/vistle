@@ -643,7 +643,8 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
 
       case message::QUIT: {
 
-         result = false;
+         const message::Quit &quit = message.as<Quit>();
+         result = handlePriv(quit);
          break;
       }
 
@@ -775,7 +776,7 @@ bool ClusterManager::handle(const message::Buffer &message, const MessagePayload
       }
 
       case message::ADDHUB:
-      case message::REMOVESLAVE:
+      case message::REMOVEHUB:
       case message::STARTED:
       case message::ADDPORT:
       case message::ADDPARAMETER:
@@ -836,6 +837,17 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
    Communicator::the().dataManager().trace(m_traceMessages);
 
    return true;
+}
+
+bool ClusterManager::handlePriv(const message::Quit &quit) {
+
+    if (quit.id() == Id::Broadcast || quit.id() == Communicator::the().hubId()) {
+
+        sendAllLocal(quit);
+        this->quit();
+    }
+
+    return true;
 }
 
 bool ClusterManager::handlePriv(const message::Spawn &spawn) {

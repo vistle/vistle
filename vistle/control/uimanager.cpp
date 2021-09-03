@@ -40,16 +40,26 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
     }
 
    switch(msg.type()) {
-   case MODULEEXIT:
-   case QUIT: {
+   case MODULEEXIT: {
+       auto exit = msg.as<ModuleExit>();
        if (!sender) {
            std::cerr << "UiManager: unknown UI quit" << std::endl;
        } else {
            sender->cancel();
            removeClient(sender);
        }
-       if (msg.type() == MODULEEXIT)
-           return true;
+       return true;
+   }
+   case QUIT: {
+       auto quit = msg.as<Quit>();
+       if (quit.id() == Id::Broadcast) {
+           if (!sender) {
+               std::cerr << "UiManager: unknown UI quit" << std::endl;
+           } else {
+               sender->cancel();
+               removeClient(sender);
+           }
+       }
        break;
    }
    default:

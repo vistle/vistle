@@ -2,6 +2,7 @@
 #include <vistle/userinterface/pythoninterface.h>
 #include <vistle/userinterface/pythonmodule.h>
 #endif
+#include <vistle/core/messages.h>
 #include "dataflownetwork.h"
 #include "dataflowview.h"
 #include "modifieddialog.h"
@@ -136,6 +137,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 
    connect(&m_observer, SIGNAL(newHub_s(int, QString, int, QString, QString, QString)),
            m_mainWindow, SLOT(newHub(int, QString, int, QString, QString, QString)));
+    connect(&m_observer, SIGNAL(deleteHub_s(int)),
+            m_mainWindow, SLOT(deleteHub(int)));
    connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString, QString)),
            m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString)));
 
@@ -146,6 +149,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 
    QObject::connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::startModule, this,
            [this](int hubId, const QString &moduleName, Qt::Key direction) { m_scene->addModule(hubId, moduleName, direction); });
+
+   connect(m_mainWindow->m_moduleBrowser, &ModuleBrowser::requestRemoveHub, [this](int id){
+           vistle::message::Quit quit(id);
+           m_vistleConnection->sendMessage(quit);
+   });
 
    m_mainWindow->show();
 }

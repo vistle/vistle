@@ -17,7 +17,7 @@ void Router::initRoutingTable() {
    rt[IDENTIFY]              = Special;
    rt[SETID]                 = Special;
    rt[ADDHUB]                = Broadcast|Track|DestUi|TriggerQueue;
-   rt[REMOVESLAVE]           = Broadcast|Track|DestUi;
+   rt[REMOVEHUB]             = Broadcast|Track|DestUi|TriggerQueue;
    rt[REPLAYFINISHED]        = Special;
    rt[TRACE]                 = Broadcast|DestHub|DestManager|DestModules|Track;
    rt[SPAWN]                 = Track|HandleOnMaster;
@@ -26,7 +26,7 @@ void Router::initRoutingTable() {
    rt[MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0|CleanQueue;
    rt[KILL]                  = DestModules|HandleOnDest;
    rt[DEBUG]                 = Track|HandleOnHub;
-   rt[QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
+   rt[QUIT]                  = Track|Special;
    rt[CLOSECONNECTION]       = Track|Special;
    rt[EXECUTE]               = Special|HandleOnMaster|OnlyRank0;
    rt[CANCELEXECUTE]         = Special|HandleOnMaster|OnlyRank0;

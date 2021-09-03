@@ -45,11 +45,14 @@ public:
    ~ModuleBrowser();
    bool eventFilter(QObject *object, QEvent *event) override;
    bool handleKeyPress(QKeyEvent *event);
-   public slots:
+public slots:
    void addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname);
+   void removeHub(int hub);
    void addModule(int hub, QString module, QString path, QString description);
    void setFilter(QString filter);
+
 signals:
+   void requestRemoveHub(int hub);
    void startModule(int hub, QString moduleName, Qt::Key direction);
 
 private:
@@ -63,13 +66,14 @@ std::map<int, QTreeWidgetItem *>
     hubItems;
    bool filterInFocus = false;
    QLineEdit *filterEdit() const;
-   void selectNewModule(bool up);
 Ui::ModuleBrowser *ui;
 bool goToNextModule();
 bool goToPreviousModule();
 void selectModule(Qt::Key dir);
 void initCurrentModule(Qt::Key dir);
 void setCurrentModuleSelected(bool select);
+
+void prepareMenu(const QPoint &pos);
 };
 
 } // namespace gui

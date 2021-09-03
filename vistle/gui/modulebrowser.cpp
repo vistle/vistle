@@ -5,6 +5,7 @@
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMimeData>
+#include <QMenu>
 #include <fstream>
 namespace gui {
 
@@ -89,11 +90,15 @@ int ModuleBrowser::pathRole()
 ModuleBrowser::ModuleBrowser(QWidget *parent): QWidget(parent), ui(new Ui::ModuleBrowser)
 {
     ui->setupUi(this);
+
     connect(filterEdit(), SIGNAL(textChanged(QString)), SLOT(setFilter(QString)));
     filterEdit()->installEventFilter(this);
     ui->moduleListWidget->setFocusProxy(filterEdit());
     setFocusProxy(filterEdit());
     ui->filterEdit->installEventFilter(this);
+
+    ui->moduleListWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->moduleListWidget, &ModuleListWidget::customContextMenuRequested, this, &ModuleBrowser::prepareMenu);
 }
 
 ModuleBrowser::~ModuleBrowser()
@@ -101,22 +106,54 @@ ModuleBrowser::~ModuleBrowser()
     delete ui;
 }
 
+void ModuleBrowser::prepareMenu(const QPoint &pos) {
+
+    auto *widget = ui->moduleListWidget;
+    QTreeWidgetItem *item = widget->itemAt( pos );
+    for (auto hub: hubItems) {
+        int id = hub.first;
+        if (hub.second == item) {
+            auto *rmAct = new QAction(tr("&Remove"), this);
+            connect(rmAct, &QAction::triggered, [this, id](){
+                emit requestRemoveHub(id);
+            });
+
+            QMenu menu(this);
+            menu.addAction(rmAct);
+
+            menu.exec( widget->mapToGlobal(pos) );
+        }
+    }
+}
+
 void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname) {
 
     auto it = hubItems.find(hub);
     if (it == hubItems.end()) {
         it = hubItems.emplace(hub, new QTreeWidgetItem({hubName}, Hub)).first;
-        ui->moduleListWidget->addTopLevelItem(it->second);
-        it->second->setExpanded(hubItems.size() <= 1);
-        it->second->setBackground(0, Module::hubColor(hub));
-        it->second->setForeground(0, QColor(0, 0, 0));
+        auto &item = it->second;
+        ui->moduleListWidget->addTopLevelItem(item);
+        item->setExpanded(hubItems.size() <= 1);
+        item->setBackground(0, Module::hubColor(hub));
+        item->setForeground(0, QColor(0, 0, 0));
+
         QString tt = logname + "@" + hubName;
         tt += " (" + QString::number(hub) + ")";
         tt += "\n" + realname;
         tt += "\n" + QString::number(nranks) + " ranks";
-
-        it->second->setData(0, Qt::ToolTipRole, tt);
+        item->setData(0, Qt::ToolTipRole, tt);
     }
+}
+
+void ModuleBrowser::removeHub(int hub) {
+
+    auto it = hubItems.find(hub);
+    if (it == hubItems.end())
+        return;
+
+    auto &item = it->second;
+    delete item;
+    hubItems.erase(it);
 }
 
 void ModuleBrowser::addModule(int hub, QString module, QString path, QString description)

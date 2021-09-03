@@ -31,7 +31,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (IDENTIFY)
       (CLOSECONNECTION)
       (ADDHUB)
-      (REMOVESLAVE)
+      (REMOVEHUB)
       (SETID)
       (TRACE)
       (SPAWN)

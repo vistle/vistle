@@ -137,6 +137,8 @@ struct Slave {
    std::string sim2FilePath;
    bool m_inSitu = false;
 
+   bool handlePriv(const message::Quit &quit, message::Identify::Identity senderType);
+   bool handlePriv(const message::RemoveHub &rm);
    bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::CancelExecute &cancel);
    bool handlePriv(const message::Barrier &barrier);
@@ -148,6 +150,7 @@ struct Slave {
    bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
 
    bool checkChildProcesses(bool emergency = false);
+   bool hasChildProcesses(bool ignoreGui = false);
    void emergencyQuit();
 
    std::vector<message::Buffer> m_queue;

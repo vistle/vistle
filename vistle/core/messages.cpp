@@ -294,6 +294,16 @@ void AddHub::setAddress(boost::asio::ip::address_v4 addr) {
 }
 
 
+RemoveHub::RemoveHub(int id)
+    : m_id(id)
+{
+}
+
+int RemoveHub::id() const {
+    return m_id;
+}
+
+
 Ping::Ping(const char c)
 : character(c)
 {
@@ -414,7 +424,7 @@ const char * Started::getName() const {
 
 Kill::Kill(const int m)
 : module(m) {
-    assert(m >= Id::ModuleBase || m == Id::Broadcast);
+    assert(Id::isModule(m) || Id::isHub(m) || m == Id::Broadcast);
 }
 
 int Kill::getModule() const {
@@ -432,9 +442,17 @@ int Debug::getModule() const {
    return module;
 }
 
-Quit::Quit()
+
+Quit::Quit(int id)
+: m_id(id)
 {
 }
+
+int Quit::id() const {
+
+    return m_id;
+}
+
 
 CloseConnection::CloseConnection(const std::string &reason)
 {

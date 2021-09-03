@@ -325,6 +325,7 @@ class PythonStateObserver(_vistle.StateObserver):
 
 # re-export functions from _vistle
 source = _vistle.source
+removeHub = _vistle.removeHub
 spawn = _vistle.spawn
 spawnAsync = _vistle.spawnAsync
 waitForSpawn = _vistle.waitForSpawn

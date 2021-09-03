@@ -62,6 +62,12 @@ DataProxy::DataProxy(io_service &io, StateTracker &state, unsigned short basePor
 }
 
 DataProxy::~DataProxy() {
+
+   io().stop();
+   while (!io().stopped()) {
+       usleep(10000);
+   }
+
    cleanUp();
 }
 

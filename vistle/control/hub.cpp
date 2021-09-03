@@ -105,14 +105,21 @@ Hub::Hub(bool inManager)
 
 Hub::~Hub() {
 
-   while (!m_sockets.empty())
-      removeSocket(m_sockets.begin()->first);
+   if (!m_isMaster) {
+       sendMaster(message::RemoveHub(m_hubId));
+       sendMaster(message::CloseConnection("terminating"));
+   }
+
+   while (!m_sockets.empty()) {
+       removeSocket(m_sockets.begin()->first);
+   }
+
+   m_dataProxy.reset();
 
    m_workGuard.reset();
    m_ioService.stop();
    m_ioThread.join();
 
-   m_dataProxy.reset();
    hub_instance = nullptr;
 }
 
@@ -629,7 +636,7 @@ bool Hub::dispatch() {
    }
 
    if (m_quitting) {
-      if (m_processMap.empty()) {
+      if (!hasChildProcesses(true)) {
          ret = false;
       } else {
 #if 0
@@ -1414,27 +1421,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
 
          case message::QUIT: {
+             auto &quit = static_cast<const Quit &>(msg);
+             handlePriv(quit, senderType);
+             break;
+         }
 
-            CERR << "quit requested by " << senderType << std::endl;
-            m_uiManager.requestQuit();
-            auto &quit = static_cast<const Quit &>(msg);
-            if (senderType == message::Identify::MANAGER) {
-               if (m_isMaster)
-                  sendSlaves(quit);
-            } else if (senderType == message::Identify::HUB) {
-               sendManager(quit);
-            } else if (senderType == message::Identify::UI) {
-               if (m_isMaster)
-                  sendSlaves(quit);
-               else
-                  sendMaster(quit);
-               sendManager(quit);
-            } else {
-               sendSlaves(quit);
-               sendManager(quit);
-            }
-            m_quitting = true;
-            break;
+         case message::REMOVEHUB: {
+             auto &rm = static_cast<const RemoveHub &>(msg);
+             handlePriv(rm);
+             break;
          }
 
          case message::EXECUTE: {
@@ -1761,6 +1756,63 @@ bool Hub::processScript() {
    return true;
 }
 
+bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType) {
+
+    if (quit.id() == Id::Broadcast) {
+        CERR << "quit requested by " << senderType << std::endl;
+        m_uiManager.requestQuit();
+        if (senderType == message::Identify::MANAGER) {
+            if (m_isMaster)
+                sendSlaves(quit);
+        } else if (senderType == message::Identify::HUB) {
+            sendManager(quit);
+        } else if (senderType == message::Identify::UI) {
+            if (m_isMaster)
+                sendSlaves(quit);
+            else
+                sendMaster(quit);
+            sendManager(quit);
+        } else {
+            sendSlaves(quit);
+            sendManager(quit);
+        }
+        m_quitting = true;
+        return false;
+    } else if (quit.id() == m_hubId) {
+        if (m_isMaster) {
+            CERR << "ignoring request to remove master hub" << std::endl;
+        } else {
+            CERR << "removal of hub requested by " << senderType << std::endl;
+            m_uiManager.requestQuit();
+            if (senderType != message::Identify::MANAGER) {
+                sendManager(quit);
+            }
+            m_quitting = true;
+            return true;
+        }
+    } else if (Id::isHub(quit.id())) {
+        return sendHub(quit.id(), quit);
+    }
+
+    return true;
+}
+
+bool Hub::handlePriv(const message::RemoveHub &rm) {
+
+    int hub = rm.id();
+    if (m_isMaster) {
+        if (hub != Id::MasterHub && message::Id::isHub(hub)) {
+            return sendHub(hub, message::Quit());
+        } else {
+            return false;
+        }
+    } else {
+        return sendMaster(rm);
+    }
+
+    return false;
+}
+
 bool Hub::handlePriv(const message::Execute &exec) {
 
    auto toSend = make.message<message::Execute>(exec);
@@ -1881,8 +1933,8 @@ bool Hub::handlePriv(const message::Disconnect &disc) {
     return true;
 }
 
-bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
-{
+bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload) {
+
     int hub = m_stateTracker.getHub(query.moduleId());
     if (hub != m_hubId)
         return sendHub(hub, query, payload);
@@ -1896,12 +1948,26 @@ bool Hub::handlePriv(const message::FileQuery &query, const buffer *payload)
     return c.handle(query, *payload);
 }
 
-bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *payload)
-{
+bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *payload) {
+
     if (result.destId() == m_hubId)
         return sendUi(result, result.destUiId(), payload);
 
     return sendHub(result.destId(), result, payload);
+}
+
+bool Hub::hasChildProcesses(bool ignoreGui) {
+
+    if (ignoreGui) {
+        for (const auto &pk: m_processMap) {
+            if (pk.second != Process::GUI)
+                return true;
+        }
+
+        return false;
+    }
+
+    return !m_processMap.empty();
 }
 
 bool Hub::checkChildProcesses(bool emergency) {
@@ -1957,7 +2023,12 @@ bool Hub::checkChildProcesses(bool emergency) {
 void Hub::emergencyQuit() {
 
     m_ioService.stop();
+    while (!m_ioService.stopped()) {
+        usleep(100000);
+    }
+
     m_dataProxy.reset();
+
     if (!m_quitting) {
         m_uiManager.requestQuit();
         for (auto ent: m_processMap) {
@@ -1965,7 +2036,7 @@ void Hub::emergencyQuit() {
         }
         if (startCleaner()) {
             m_quitting = true;
-            while(!m_processMap.empty()) {
+            while(hasChildProcesses()) {
                 if (!checkChildProcesses(true)) {
                     usleep(100000);
                 }

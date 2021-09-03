@@ -116,6 +116,3 @@ endif()
 if (APPLE)
     target_link_libraries(${gui_name} PRIVATE "-framework AppKit")
 endif()
-
-target_compile_definitions(${gui_name} PRIVATE MODULE_DESCRIPTION_FILE_BUILD="${PROJECT_BINARY_DIR}/libexec/module/descriptions.txt")
-target_compile_definitions(${gui_name} PRIVATE MODULE_DESCRIPTION_FILE_INSTALL="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/vistle/descriptions.txt")

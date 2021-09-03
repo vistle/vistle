@@ -77,7 +77,7 @@ class V_COREEXPORT Identify: public MessageBase<Identify, IDENTIFY> {
 static_assert(sizeof(Identify) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(Identity, Identify)
 
-//! announce that a slave hub has connected
+//! announce that a (slave) hub has connected
 class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
@@ -128,7 +128,18 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
 };
 static_assert(sizeof(AddHub) <= Message::MESSAGE_SIZE, "message too large");
 
-//! debug: request a reply containing character 'c'
+//! request that a slave hub be deletet
+class V_COREEXPORT RemoveHub: public MessageBase<RemoveHub, REMOVEHUB> {
+
+public:
+    RemoveHub(int id);
+    int id() const;
+
+private:
+    int m_id;
+};
+
+    //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public MessageBase<Ping, PING> {
 
  public:
@@ -239,29 +250,31 @@ class V_COREEXPORT Kill: public MessageBase<Kill, KILL> {
 };
 static_assert(sizeof(Kill) <= Message::MESSAGE_SIZE, "message too large");
 
-//! request a module to quit
-class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
-
- public:
-   Debug(const int module);
-
-   int getModule() const;
-
- private:
-   //! ID of module to stop
-   const int module;
-};
-static_assert(sizeof(Debug) <= Message::MESSAGE_SIZE, "message too large");
-
 //! request all modules to quit for terminating the session
 class V_COREEXPORT Quit: public MessageBase<Quit, QUIT> {
 
  public:
-   Quit();
+   Quit(int id = Id::Broadcast);
+   int id() const;
 
  private:
+    const int m_id;
 };
 static_assert(sizeof(Quit) <= Message::MESSAGE_SIZE, "message too large");
+
+//! request a module to quit
+class V_COREEXPORT Debug: public MessageBase<Debug, DEBUG> {
+
+public:
+    Debug(const int module);
+
+    int getModule() const;
+
+private:
+    //! ID of module to stop
+    const int module;
+};
+static_assert(sizeof(Debug) <= Message::MESSAGE_SIZE, "message too large");
 
 //! notify that a module has quit
 class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, MODULEEXIT> {

@@ -388,6 +388,11 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
          handled = handlePriv(slave);
          break;
       }
+      case REMOVEHUB: {
+          const RemoveHub &rm = static_cast<const RemoveHub &>(msg);
+          handled = handlePriv(rm);
+          break;
+      }
       case SPAWN: {
          const Spawn &spawn = static_cast<const Spawn &>(msg);
          registerReply(msg.uuid(), msg);
@@ -645,6 +650,28 @@ void StateTracker::cleanQueue(int id) {
    }
 }
 
+bool StateTracker::handlePriv(const message::RemoveHub &rm) {
+    std::lock_guard<mutex> locker(m_slaveMutex);
+    int id = rm.id();
+
+    for (StateObserver *o: m_observers) {
+        o->deleteHub(id);
+    }
+
+    runningMap.erase(id);
+
+    auto it = std::find_if(m_hubs.begin(), m_hubs.end(), [id](const HubData &hub){
+        return hub.id == id;
+    });
+
+    if (it != m_hubs.end()) {
+        std::swap(*it, m_hubs.back());
+        m_hubs.pop_back();
+    }
+
+    return true;
+}
+
 bool StateTracker::handlePriv(const message::AddHub &slave) {
    std::lock_guard<mutex> locker(m_slaveMutex);
    for (auto &h: m_hubs) {
@@ -662,7 +689,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    m_hubs.back().logName = slave.loginName();
    m_hubs.back().realName = slave.realName();
 
-   // for per-hub parametersdd
+   // for per-hub parameters
    Module hub(slave.id(), slave.id());
    hub.name = slave.name();
    runningMap.emplace(slave.id(), hub);
