@@ -234,9 +234,9 @@ StateTracker::VistleState StateTracker::getState() const {
    // available modules
    auto avail = availableModules();
    for(const auto &keymod: avail) {
-      const auto &mod = keymod.second;
-      ModuleAvailable avail(mod.hub, mod.name, mod.path);
-      auto pl = message::addPayload(avail, mod.description);
+      ModuleAvailable avail(keymod.second);
+      ModuleAvailable::Payload availPl(keymod.second);
+      auto pl = message::addPayload(avail, availPl);
       auto shpl = std::make_shared<buffer>(pl);
       appendMessage(state, avail, shpl);
    }
@@ -1299,18 +1299,13 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail, const buffe
     if (avail.hub() == Id::Invalid)
         return true;
 
-    AvailableModule mod;
-    mod.hub = avail.hub();
-    mod.name = avail.name();
-    mod.path = avail.path();
-    mod.description = message::getPayload<std::string>(payload);
-
+    AvailableModule mod = avail.unpack(payload);
     AvailableModule::Key key(mod.hub, mod.name);
 
     mutex_locker guard(m_stateMutex);
     if (m_availableModules.emplace(key, mod).second) {
         for (StateObserver *o: m_observers) {
-            o->moduleAvailable(mod.hub, mod.name, mod.path, mod.description);
+            o->moduleAvailable(mod);
         }
     } else {
         CERR << "Duplicate module: " << mod.hub << " " << mod.name << std::endl;

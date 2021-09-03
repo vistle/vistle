@@ -31,7 +31,7 @@ class V_COREEXPORT StateObserver {
 
    virtual void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) = 0;
    virtual void deleteHub(int hub) = 0;
-   virtual void moduleAvailable(int hub, const std::string &moduleName, const std::string &path, const std::string &description) = 0;
+   virtual void moduleAvailable(const AvailableModule &mod) = 0;
 
    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;

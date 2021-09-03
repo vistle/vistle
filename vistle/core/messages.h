@@ -9,16 +9,16 @@
 #include <boost/asio/ip/address_v4.hpp>
 
 #include <vistle/util/enum.h>
-#include "uuid.h"
-#include "shmname.h"
-#include "object.h"
-#include "scalar.h"
-#include "paramvector.h"
-#include "parameter.h"
-#include "message.h"
-#include "export.h"
-
 #include "archives_config.h"
+#include "availablemodule.h"
+#include "export.h"
+#include "message.h"
+#include "object.h"
+#include "parameter.h"
+#include "paramvector.h"
+#include "scalar.h"
+#include "shmname.h"
+#include "uuid.h"
 
 #pragma pack(push)
 #pragma pack(1)
@@ -821,16 +821,31 @@ class V_COREEXPORT Trace: public MessageBase<Trace, TRACE> {
 class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAVAILABLE> {
 
  public:
-   ModuleAvailable(int hub, const std::string &name, const std::string &path = std::string());
+   struct V_COREEXPORT Payload {
+       Payload();
+       Payload(const AvailableModule& mod);
+
+       AvailableModule m_module;
+       ARCHIVE_ACCESS
+       template<class Archive>
+       void serialize(Archive & ar) {
+           ar & m_module;
+       }
+   };
+
+   ModuleAvailable(const AvailableModule& mod);
    const char *name() const;
    const char *path() const;
    int hub() const;
+   AvailableModule unpack(const buffer &payload) const;
 
- private:
-   int m_hub;
-   module_name_t m_name;
-   path_t m_path;
+   private:
+    int m_hub;
+    module_name_t m_name;
+    path_t m_path;
 };
+
+static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
 
 //! lock UI (block user interaction)
 class V_COREEXPORT LockUi: public MessageBase<LockUi, LOCKUI> {
@@ -1007,10 +1022,12 @@ extern V_COREEXPORT Payload getPayload(const buffer &data);
 extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 extern template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
+extern template V_COREEXPORT buffer addPayload<ModuleAvailable::Payload>(Message &message, const ModuleAvailable::Payload &payload);
 
 extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
+extern template V_COREEXPORT ModuleAvailable::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

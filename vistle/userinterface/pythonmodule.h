@@ -11,9 +11,8 @@ class object;
 namespace vistle {
 
 class VistleConnection;
-
+class AvailableModule;
 class V_UIEXPORT PythonModule {
-
 public:
    explicit PythonModule(VistleConnection *vc = nullptr);
    ~PythonModule();
@@ -24,6 +23,7 @@ public:
 private:
    VistleConnection *m_vistleConnection;
 };
+void V_UIEXPORT availablModuleToFile(const AvailableModule &comp);
 
 } // namespace vistle
 

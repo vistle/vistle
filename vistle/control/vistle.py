@@ -215,6 +215,42 @@ def saveWorkflow(f, mods, numSlaves, remote):
             f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c[0])+",'"+str(c[1])+"')\n")
 
 
+def save2(file, moduleList):
+   file.write("MasterHub=getMasterHub()\n")
+   file.write("VistleSession=getVistleSession()\n")
+
+   master = getMasterHub()
+   slavehubs = set()
+   for m in moduleList:
+      h = _vistle.getHub(m)
+      if h != master:
+         slavehubs.add(h)
+   numSlaves = len(slavehubs)
+
+   file.write("uuids = {}\n");
+
+   saveParameters(file, getVistleSession())
+   saveWorkflow(file, moduleList, numSlaves, False)
+
+   if numSlaves > 1:
+      print("slave hubs: %s" % slavehubs)
+      file.write("slavehubs = waitForHubs("+str(numSlaves)+")\n")
+      count = 0
+      for h in slavehubs:
+          file.write(hubVar(h, numSlaves) + " = slavehubs["+str(count)+"]\n")
+          count = count+1
+   elif numSlaves > 0:
+      print("slave hubs: %s" % slavehubs)
+      file.write("print('waiting for a slave hub to connect...')\n")
+      file.write("printInfo('waiting for a slave hub to connect...')\n")
+      file.write("SlaveHub=waitForHub()\n")
+      file.write("print('slave hub %s connected\\n' % SlaveHub)\n")
+      file.write("printInfo('slave hub %s connected\\n' % SlaveHub)\n")
+
+   saveWorkflow(file, moduleList, numSlaves, True)
+
+
+
 def save(filename = None):
    if filename == None:
       filename = _vistle.getLoadedFile()
@@ -227,38 +263,7 @@ def save(filename = None):
    f = open(filename, 'w')
    mods = _vistle.getRunning()
 
-   master = getMasterHub()
-   f.write("MasterHub=getMasterHub()\n")
-   f.write("VistleSession=getVistleSession()\n")
-
-   slavehubs = set()
-   for m in mods:
-      h = _vistle.getHub(m)
-      if h != master:
-         slavehubs.add(h)
-   numSlaves = len(slavehubs)
-
-   f.write("uuids = {}\n");
-
-   saveParameters(f, getVistleSession())
-   saveWorkflow(f, mods, numSlaves, False)
-
-   if numSlaves > 1:
-      print("slave hubs: %s" % slavehubs)
-      f.write("slavehubs = waitForHubs("+str(numSlaves)+")\n")
-      count = 0
-      for h in slavehubs:
-          f.write(hubVar(h, numSlaves) + " = slavehubs["+str(count)+"]\n")
-          count = count+1
-   elif numSlaves > 0:
-      print("slave hubs: %s" % slavehubs)
-      f.write("print('waiting for a slave hub to connect...')\n")
-      f.write("printInfo('waiting for a slave hub to connect...')\n")
-      f.write("SlaveHub=waitForHub()\n")
-      f.write("print('slave hub %s connected\\n' % SlaveHub)\n")
-      f.write("printInfo('slave hub %s connected\\n' % SlaveHub)\n")
-
-   saveWorkflow(f, mods, numSlaves, True)
+   save2(f, mods)
 
    #f.write("checkMessageQueue()\n")
 
@@ -288,7 +293,27 @@ def load(filename = None):
    _vistle.setLoadedFile(filename)
    _vistle.setStatus("Workflow loaded: "+filename)
 
+def loadScript(filename):
+   _vistle.loadScript(filename)
 
+def moduleCompoundAlloc(compoundName):
+   return _vistle.moduleCompoundAlloc(compoundName)
+
+def moduleCompoundAddModule(compoundId, moduleName, x, y):
+   return _vistle.moduleCompoundAddModule(compoundId, moduleName, x, y)
+
+def moduleCompoundConnect(compoundId, fromId, fromName, toId, toName): #if fromId or toId is equal to compound id the port is exposed with the given name
+   _vistle.moduleCompoundConnect(compoundId, fromId, fromName, toId, toName)
+
+def moduleCompoundCreate(compoundId):
+   _vistle.moduleCompoundCreate(compoundId)
+
+def setRelativePos(moduleId, x, y):
+   _vistle.setRelativePos(moduleId, x, y)
+
+def setCompoundDropPosition(x, y):
+   _vistle.setCompoundDropPosition(x, y)
+   
 class PythonStateObserver(_vistle.StateObserver):
     def __init__(self):
         super(PythonStateObserver, self).__init__()
@@ -322,6 +347,7 @@ class PythonStateObserver(_vistle.StateObserver):
         super(PythonStateObserver, self).status(moduleId, text, prio)
     def updateStatus(self, moduleId, text, prio):
         super(PythonStateObserver, self).updateStatus(moduleId, text, prio)
+
 
 # re-export functions from _vistle
 source = _vistle.source

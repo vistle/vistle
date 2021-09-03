@@ -210,9 +210,11 @@ bool Communicator::scanModules(const std::string &dir) {
 #endif
    if (getRank() == 0) {
       for (auto &p: m_localModules) {
-         const auto &m = p.second;
-         message::ModuleAvailable msg(m_hubId, m.name, m.path);
-         auto pl = addPayload(msg, m.description);
+         auto m = p.second;
+         m.hub = m_hubId;
+         message::ModuleAvailable msg(m);
+         message::ModuleAvailable::Payload msgPl(m);
+         auto pl = addPayload(msg, msgPl);
          MessagePayload shmpl(pl);
          sendHub(msg, shmpl);
       }

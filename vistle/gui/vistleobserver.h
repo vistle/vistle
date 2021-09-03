@@ -7,7 +7,6 @@
 #include <vistle/userinterface/vistleconnection.h>
 
 #include "module.h"
-
 namespace gui {
 
 class VistleObserver: public QObject, public vistle::StateObserver
@@ -44,7 +43,7 @@ public:
    VistleObserver(QObject *parent=0);
    void newHub(int hub, const std::string &name, int nranks, const std::string &address, const std::string &logname, const std::string &realname) override;
    void deleteHub(int hub) override;
-   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override;
+   void moduleAvailable(const vistle::AvailableModule &mod) override;
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override;
     void deleteModule(int moduleId) override;
     void moduleStateChanged(int moduleId, int stateBits) override;

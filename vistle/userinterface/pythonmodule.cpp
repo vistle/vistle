@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <thread>
+#include <fstream>
 
 #include <pybind11/embed.h>
 #include <pybind11/stl.h>
@@ -139,6 +140,8 @@ static bool source(const std::string &filename) {
    return ok;
 #endif
 }
+
+
 
 static void quit() {
 
@@ -748,6 +751,205 @@ static std::string getSessionUrl() {
 
     return MODULEMANAGER.sessionUrl();
 }
+//contains allocated compounds
+//key is compoundId
+//submoduleIds are compoundId + 1 + pos in AvailableModule::submodules
+struct ModuleCompound{
+    int id;
+    vistle::AvailableModule module;
+    
+};
+bool operator==(const ModuleCompound& c, int i)
+{
+    return c.id == i;
+}
+
+std::vector<ModuleCompound> compounds;
+
+static void loadScript(const std::string& filename)
+{
+#ifdef EMBED_PYTHON
+   std::cerr << "loading " << filename << std::endl;
+   PythonInterface::the().exec_file(filename);
+#endif
+}
+
+static int moduleCompoundAlloc(const std::string& compoundName)
+{
+   auto comp = std::find_if(compounds.begin(), compounds.end(),
+                             [&compoundName](const ModuleCompound &c) { return c.module.name == compoundName; });
+   if (comp == compounds.end())
+   {
+      int i = 0;
+      while (true)
+      {
+         ++i;
+         auto it = std::find(compounds.begin(), compounds.end(), i);
+         if (it == compounds.end()) {
+             compounds.push_back(ModuleCompound{
+                 i, AvailableModule{}});
+             compounds[compounds.size() - 1].module.name = compoundName;
+             return i;
+         }
+      }
+   }
+   else
+   {
+       printError("Compound " + compoundName + " already exists!");
+       return comp->id;
+   }
+}
+
+static void compoundNotFoundError(int compoundId)
+{
+   printError("module compound with id " + std::to_string(compoundId) + "hast not been found!");
+   printError("allocate it with moduleCompoundAlloc(\"compoundName\"");
+}
+
+static int moduleCompoundAddModule(int compoundId, const std::string& moduleName, float x = 0, float y = 0)
+{
+    auto comp = std::find(compounds.begin(), compounds.end(), compoundId);
+    if (comp == compounds.end())
+    {
+        compoundNotFoundError(compoundId);
+        return 0;
+    }
+    auto sub = comp->module.submodules.emplace(comp->module.submodules.end());
+    sub->name = moduleName;
+    sub->x = x;
+    sub->y = y;
+    return compoundId + comp->module.submodules.size();
+}
+
+static void moduleCompoundConnect(int compoundId, int fromId, const std::string &fromName, int toId, const std::string &toName)
+{
+    auto comp = std::find(compounds.begin(), compounds.end(), compoundId);
+    if (comp == compounds.end())
+    {
+        compoundNotFoundError(compoundId);
+        return;
+    }
+    if(fromId != compoundId && //not to expose
+    fromId - compoundId >= static_cast<int>(comp->module.submodules.size())&& //module not added
+    fromId < 1) //invalid
+    {
+        printError("moduleCompoundConnect: invalid fromId " + std::to_string(fromId));
+        return;
+    }
+    if(toId != compoundId && //not to expose
+    toId - compoundId >= static_cast<int>(comp->module.submodules.size())&& //module not added
+    toId < 1) //invalid
+    {
+        printError("moduleCompoundConnect: invalid toId " + std::to_string(fromId));
+        return;
+    }
+
+    comp->module.connections.insert({fromId - compoundId - 1, toId - compoundId - 1, fromName, toName});
+}
+
+
+Float compoundDropPositionX = 0;
+Float compoundDropPositionY = 0;
+
+static void setCompoundDropPosition(Float x, Float y)
+{
+    compoundDropPositionX = x;
+    compoundDropPositionY = y;
+}
+
+static void setRelativePos(int id, Float x, Float y)
+{
+    setVectorParam2(id, "_position", x + compoundDropPositionX, y + compoundDropPositionY, true);
+}
+
+void spawnAvailablModule(const AvailableModule &comp)
+{
+    std::cerr << "writing file " << comp.name << ".comp" << std::endl;
+    auto filename = comp.path.empty() ? comp.name  : comp.path;
+    if (filename.find_last_of(".comp") != filename.size() - 1)
+        filename += ".comp";
+
+    std::fstream file{filename, std::ios_base::out};
+    file << "MasterHub=getMasterHub()" << std::endl;
+    for (size_t i = 0; i < comp.submodules.size(); i++)
+    {
+       file << "um" << comp.submodules[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules[i].name << "')" << std::endl;
+    }
+    file << std::endl;
+    for (size_t i = 0; i < comp.submodules.size(); i++) {
+        float posX = comp.submodules[i].x - comp.submodules[0].x;
+        float posY = comp.submodules[i].y - comp.submodules[0].y;
+        file << "m" << comp.submodules[i].name << i << " = waitForSpawn(um" << comp.submodules[i].name << i << ")"
+             << std::endl;
+        file << "setRelativePos("
+             << "m" << comp.submodules[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
+        file << "applyParameters(m" << comp.submodules[i].name << i << ")" << std::endl;
+    }
+    for(const auto &conn : comp.connections)
+    {
+       if (conn.fromId >= 0 && conn.toId >= 0) //internal connection
+       {
+           file << "connect(m" << comp.submodules[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
+                << comp.submodules[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
+       }
+    }
+}
+
+void availablModuleToFile(const AvailableModule &comp)
+{
+    std::cerr << "writing file " << comp.name << ".comp" << std::endl;
+    auto filename = comp.path.empty() ? comp.name  : comp.path;
+    if (filename.find_last_of(".comp") != filename.size() - 1)
+        filename += ".comp";
+
+    std::fstream file{filename, std::ios_base::out};
+    file << "CompoundId=moduleCompoundAlloc(\"" << comp.name << "\")" << std::endl;
+    for (size_t i = 0; i < comp.submodules.size(); i++)
+    {
+       file << "um" << comp.submodules[i].name << i << " = moduleCompoundAddModule(CompoundId, \"" << 
+                                                                                   comp.submodules[i].name << "\", " << 
+                                                                                   comp.submodules[i].x << ", " << 
+                                                                                   comp.submodules[i].y << ")" << std::endl;
+    }
+    file << std::endl;
+    for(const auto &conn : comp.connections)
+    {
+        file << "moduleCompoundConnect(CompoundId, " << conn.fromId << ",\"" << conn.fromPort << "\", " << conn.toId
+             << ", \"" << conn.toPort << "\")" << std::endl;
+    }
+    file << "moduleCompoundCreate(CompoundId)" << std::endl;
+}
+
+static void moduleCompoundCreate(int compoundId)
+{
+    auto mc = std::find(compounds.begin(), compounds.end(), compoundId);
+    if (mc == compounds.end())
+    {
+      printError("Failed to create module compound: invalid id " + std::to_string(compoundId));
+      printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
+      return;
+    }
+
+    vistle::message::ModuleAvailable msg(mc->module);
+    vistle::message::ModuleAvailable::Payload p(mc->module);
+    sendMessage(msg, p);
+    availablModuleToFile(mc->module);
+    compounds.erase(mc);
+}
+
+static void moduleCompoundInstantiate(int compoundId)
+{
+   auto mc = std::find(compounds.begin(), compounds.end(), compoundId);
+   if (mc == compounds.end())
+   {
+   printError("Failed to instantiate module compound: invalid id " + std::to_string(compoundId));
+   printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
+   return;
+   }
+
+
+}
+
 
 class TrivialStateObserver: public StateObserver {
 public:
@@ -764,9 +966,9 @@ public:
    void deleteHub(int hub) override {
 
    }
-   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override {
+   void moduleAvailable(const AvailableModule &mod) override {
 #ifdef OBSERVER_DEBUG
-       m_out << "   hub: " << hub << ", module: " << name << " (" << path << "): \"" << description << "\"" std::endl;
+       m_out << "   hub: " << mod.hub() << ", module: " << mod.name() << " (" << mod.path() << ")" << std::endl;
 #endif
    }
 
@@ -879,14 +1081,11 @@ public:
 
     using TrivialStateObserver::TrivialStateObserver;
 
-   void moduleAvailable(int hub, const std::string &name, const std::string &path, const std::string &description) override {
+   void moduleAvailable(const AvailableModule &mod) override {
        PYBIND11_OVERLOAD(void, /* Return type */
            Base, /* Parent class */
            moduleAvailable, /* Name of function in C++ (must match Python name) */
-           hub, /* parameters */
-           name,
-           path,
-           description
+           mod /* parameters */
            );
    }
 
@@ -1104,6 +1303,18 @@ PY_MODULE(_vistle, m) {
     m.def("removeHub", &removeHub, "remove hub `id` from session", "id"_a);
     m.def("spawn", spawn, "spawn new module `arg1`\n" "return its ID",
           "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);
+    m.def("loadScript", &loadScript, "load a python script", "filename"_a);
+    m.def("moduleCompoundAlloc", &moduleCompoundAlloc, "allocate a new module compound", "name"_a);
+    m.def("moduleCompoundAddModule", &moduleCompoundAddModule, "add a module to a module compound", "compoundId"_a, "modulename"_a, "x"_a = 0, "y"_a = 0);
+    m.def("moduleCompoundConnect", &moduleCompoundConnect, "connect ports of modules inside the compound, expose port if compound id is given", "compoundId"_a, "fromId"_a, "toId"_a, "fromPort"_a, "toPort"_a);
+    m.def("setRelativePos", &setRelativePos, "move module relative to compound drop position", "moduleId"_a, "x"_a, "y"_a);
+    m.def("setCompoundDropPosition", &setCompoundDropPosition, "set the position for a module compound", "x"_a, "y"_a);
+    m.def("moduleCompoundCreate", &moduleCompoundCreate, "lock and create the compound", "compoundId"_a);
+
+        m.def("spawn", spawn,
+              "spawn new module `arg1`\n"
+              "return its ID",
+              "hub"_a, "modulename"_a, "numspawn"_a = -1, "baserank"_a = -1, "rankskip"_a = -1);
     m.def("spawn", spawnSimple, "spawn new module `arg1`\n" "return its ID");
     m.def("spawnAsync", spawnAsync, "spawn new module `arg1`\n" "return uuid to wait on its ID",
           "hub"_a, "modulename"_a, "numspawn"_a=-1, "baserank"_a=-1, "rankskip"_a=-1);

@@ -1235,8 +1235,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          } else {
              AvailableModule::Key key(mod.hub, mod.name);
              m_availableModules.emplace(key, mod);
-             message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
-             auto pl = message::addPayload(avail, mod.description);
+             message::ModuleAvailable avail(mod);
+             message::ModuleAvailable::Payload availPl(mod);
+             auto pl = message::addPayload(avail, availPl);
              m_stateTracker.handle(avail, pl.data(), pl.size());
              if (!m_isMaster)
                  sendMaster(avail, &pl);
@@ -1518,8 +1519,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    mod.hub = m_hubId;
                    AvailableModule::Key key(mod.hub, mod.name);
                    m_availableModules.emplace(key, mod);
-                   message::ModuleAvailable avail(mod.hub, mod.name, mod.path);
-                   m_stateTracker.handle(avail, nullptr);
+                   message::ModuleAvailable avail(mod);
+                   message::ModuleAvailable::Payload availPl(mod);
+                   auto pl = message::addPayload(avail, availPl);
+                   m_stateTracker.handle(avail, pl.data(), pl.size());
                    sendMaster(avail);
                    sendUi(avail);
                }
