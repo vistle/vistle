@@ -7,12 +7,21 @@
  * - any interactions between modules, such as sorting, is performed
  */
 /**********************************************************************************/
+#ifdef HAVE_PYTHON
+#include <vistle/userinterface/pythoninterface.h>
+#include <vistle/userinterface/pythonmodule.h>
+#endif
+
 #include "dataflownetwork.h"
 #include "module.h"
 #include "connection.h"
 #include "vistleconsole.h"
+#include "dataflowview.h"
 
 #include <vistle/core/statetracker.h>
+
+
+
 
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
@@ -102,7 +111,7 @@ void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
     module->setPos(dropPos);
     module->setPositionValid();
     module->setStatus(Module::SPAWNING);
-
+    connect(module, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
     vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
     spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
@@ -128,6 +137,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
    }
    if (!mod) {
       mod = new Module(nullptr, name);
+      connect(mod, &Module::createModuleCompound, this, &DataFlowNetwork::createModuleCompound);
       addItem(mod);
       mod->setStatus(Module::SPAWNING);
       m_moduleList.append(mod);
@@ -451,5 +461,85 @@ void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     QLineF newLine(m_Line->line().p1(), event->scenePos());
     m_Line->setLine(newLine);
 }
+
+void DataFlowNetwork::createModuleCompound()
+{
+   std::cerr << "saving preset" << std::endl;
+        QString filter = "Vistle Compound Files (*";
+        filter += vistle::ModulePresetExtension.c_str();
+        filter +=    +")";
+        QString text =
+            QFileDialog::getSaveFileName(nullptr, tr("Save Compound"), vistle::directory::configHome().c_str(),
+                                         filter, &filter);
+        if (text.size() - text.lastIndexOf("/") > vistle::ModuleNameLength) {
+#ifdef HAVE_PYTHON
+            vistle::PythonInterface::the().exec("print(\"Module preset must not exeed " +
+                                                std::to_string(vistle::ModuleNameLength) + "!\"");
+#endif
+            return;
+            }
+            
+        vistle::AvailableModule am;
+        am.path = text.toStdString();
+        am.name = am.path.substr(am.path.find_last_of("/") + 1);
+        auto selectedModules = DataFlowView::the()->selectedModules();
+        std::sort(selectedModules.begin(), selectedModules.end(),
+                  [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });
+
+        int i = 0;
+        for (const auto &m: selectedModules) {
+            if (m->hub() != selectedModules[0]->hub()) {
+#ifdef HAVE_PYTHON
+               vistle::PythonInterface::the().exec("print(\"Modules in a module preset must be on a single host!\"");
+               return;
+#endif
+            }
+            vistle::AvailableModule::SubModule sub;
+            sub.name = m->name().toStdString();
+            sub.x = m->pos().x() - selectedModules[0]->pos().x();
+            sub.y = m->pos().y() - selectedModules[0]->pos().y();
+            am.submodules.push_back(sub);
+            
+            for (const auto &fromPort : m_state.portTracker()->getConnectedOutputPorts(m->id())) {
+                    for(const auto &toPort : fromPort->connections())
+                    {
+                        vistle::AvailableModule::Connection c;
+                        c.fromId = i;
+                        auto toMod = std::find_if(selectedModules.begin(), selectedModules.end(),
+                                                   [&toPort](const Module *mod) { return toPort->getModuleID() == mod->id(); });
+
+                        c.toId = toMod == selectedModules.end() ? -1 : toMod - selectedModules.begin(); //-1 for an exposed output port for the compound
+                        c.fromPort = fromPort->getName();
+                        c.toPort = toPort->getName();
+                        am.connections.insert(c);
+
+                    }
+            }
+            //get exposed input ports
+            
+            for (const auto &toPort : m_state.portTracker()->getConnectedInputPorts(m->id())) {
+                for (const auto &fromPort : toPort->connections()) {
+                    auto mod = std::find_if(selectedModules.begin(), selectedModules.end(),
+                                            [&fromPort](const Module *mod) { return mod->id() == fromPort->getModuleID(); });
+                    if (mod == selectedModules.end())
+                    {
+                        vistle::AvailableModule::Connection c;
+                        c.fromId = -1;
+                        c.toId = i;
+                        c.fromPort = fromPort->getName();
+                        c.toPort = toPort->getName();
+                        am.connections.insert(c);
+                    }
+                }
+            }
+            ++i;
+        }
+        availablModuleToFile(am);
+        vistle::message::ModuleAvailable msg(am);
+        vistle::message::ModuleAvailable::Payload p(am);
+        auto pl = addPayload(msg, p);
+        m_vistleConnection->sendMessage(msg, &pl);
+}
+
 
 } //namespace gui

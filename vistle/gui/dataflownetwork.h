@@ -98,6 +98,8 @@ private:
     ConnectionMap m_connections;
 
     QColor m_highlightColor;
+private slots:
+    void createModuleCompound();
 };
 
 } //namespace gui

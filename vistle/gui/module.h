@@ -1,14 +1,15 @@
 #ifndef GUI_MODULE_H
 #define GUI_MODULE_H
 
-#include <QRect>
-#include <QPolygon>
-#include <QPoint>
-#include <QList>
-#include <QString>
-#include <QSize>
-#include <QGraphicsRectItem>
 #include <QAction>
+#include <QFileDialog>
+#include <QGraphicsRectItem>
+#include <QList>
+#include <QPoint>
+#include <QPolygon>
+#include <QRect>
+#include <QSize>
+#include <QString>
 
 #include <vistle/core/uuid.h>
 
@@ -21,14 +22,13 @@ namespace gui {
 class Connection;
 class DataFlowNetwork;
 
-class Module : public QObject, public QGraphicsRectItem
-{
-   Q_OBJECT
-   Q_INTERFACES(QGraphicsItem)
+class Module: public QObject, public QGraphicsRectItem {
+    Q_OBJECT
+    Q_INTERFACES(QGraphicsItem)
 
-   typedef QGraphicsRectItem Base;
+    typedef QGraphicsRectItem Base;
 
-   static const double portDistance;
+    static const double portDistance;
 
 signals:
     void mouseClickEvent();
@@ -80,6 +80,8 @@ public:
     DataFlowNetwork *scene() const;
 
     static QColor hubColor(int hub);
+signals:
+    void createModuleCompound();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -107,6 +109,8 @@ private:
     QAction *m_execAct = nullptr;
     QAction *m_cancelExecAct = nullptr;
     QAction *m_restartAct = nullptr;
+    QAction *m_createModuleGroup = nullptr;
+
 
     int m_hub;
     int m_id;
