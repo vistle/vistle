@@ -119,7 +119,7 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
     }
 }
 
-void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path, QString description)
+void ModuleBrowser::addModule(int hub, QString module, QString path, QString description)
 {
     currentModule.exists = false;
     auto it = hubItems.find(hub);

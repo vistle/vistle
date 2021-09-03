@@ -145,9 +145,9 @@ void MainWindow::newHub(int hub, const QString &hubName, int nranks, const QStri
     m_moduleBrowser->addHub(hub, hubName, nranks, address, logname, realname);
 }
 
-void MainWindow::moduleAvailable(int hub, const QString &hubName, const QString &mod, const QString &path, const QString &description) {
+void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path, const QString &description) {
 
-    m_moduleBrowser->addModule(hub, hubName, mod, path, description);
+    m_moduleBrowser->addModule(hub, mod, path, description);
 }
 
 void MainWindow::enableConnectButton(bool state) {

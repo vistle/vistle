@@ -28,6 +28,7 @@ public slots:
 protected:
    QMimeData *mimeData(const QList<QTreeWidgetItem *> dragList) const;
 
+
    QString m_filter;
 };
 
@@ -46,7 +47,7 @@ public:
    bool handleKeyPress(QKeyEvent *event);
    public slots:
    void addHub(int hub, QString hubName, int nranks, QString address, QString logname, QString realname);
-   void addModule(int hub, QString hubName, QString module, QString path, QString description);
+   void addModule(int hub, QString module, QString path, QString description);
    void setFilter(QString filter);
 signals:
    void startModule(int hub, QString moduleName, Qt::Key direction);
