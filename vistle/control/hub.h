@@ -74,52 +74,53 @@ private:
    bool removeClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
    bool startCleaner();
+   bool processScript(const std::string &filename, bool executeModules);
+   bool processStartupScripts();
+   void cacheModuleValues(int oldModuleId, int newModuleId);
+   void killOldModule(int migratedId);
+   void sendInfo(const std::string &s);
+   void sendError(const std::string &s);
+   
+   bool m_inManager = false;
 
-void cacheModuleValues(int oldModuleId, int newModuleId);
-void killOldModule(int migratedId);
-void sendInfo(const std::string &s);
-void sendError(const std::string &s);
+   unsigned short m_basePort = 31093;
+   unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;
+   std::string m_exposedHost;
+   boost::asio::ip::address m_exposedHostAddr;
+   std::string m_masterHost;
+   boost::asio::io_service m_ioService;
+   std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
 
-bool m_inManager = false;
+   std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
+   std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
 
-unsigned short m_basePort = 31093;
-unsigned short m_port = 0, m_dataPort = 0, m_masterPort = m_basePort;
-std::string m_exposedHost;
-boost::asio::ip::address m_exposedHostAddr;
-std::string m_masterHost;
-boost::asio::io_service m_ioService;
-std::shared_ptr<acceptor> m_acceptorv4, m_acceptorv6;
+   std::shared_ptr<DataProxy> m_dataProxy;
+   TunnelManager m_tunnelManager;
+   StateTracker m_stateTracker;
+   UiManager m_uiManager;
+   bool m_hasUi = false;
+   
+   std::map<process_handle, int> m_processMap;
+   bool m_managerConnected;
 
-std::map<std::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
-std::set<std::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
+   std::string m_prefix;
+   std::string m_scriptPath;
+   bool m_executeModules = false;
+   bool m_quitting = false, m_emergency = false;
+   static volatile std::atomic<bool> m_interrupt;
+   boost::asio::signal_set m_signals;
+   static void signalHandler(const boost::system::error_code& error, int signal_number);
 
-std::shared_ptr<DataProxy> m_dataProxy;
-TunnelManager m_tunnelManager;
-StateTracker m_stateTracker;
-UiManager m_uiManager;
-bool m_hasUi = false;
+   AvailableMap m_availableModules;
+   std::vector<AvailableModule> m_localModules;
 
-std::map<process_handle, int> m_processMap;
-bool m_managerConnected;
-
-std::string m_prefix;
-std::string m_scriptPath;
-bool m_executeModules = false;
-bool m_quitting = false, m_emergency = false;
-static volatile std::atomic<bool> m_interrupt;
-boost::asio::signal_set m_signals;
-static void signalHandler(const boost::system::error_code& error, int signal_number);
-
-AvailableMap m_availableModules;
-std::vector<AvailableModule> m_localModules;
-
-bool m_isMaster;
-std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
-struct Slave {
-    std::shared_ptr<boost::asio::ip::tcp::socket> sock;
-    std::string name;
-    bool ready = false;
-    int id = 0;
+   bool m_isMaster;
+   std::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+   struct Slave {
+       std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+       std::string name;
+       bool ready = false;
+       int id = 0;
    };
    std::map<int, Slave> m_slaves;
    std::vector<Slave *> m_slavesToConnect;

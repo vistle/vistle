@@ -1,19 +1,21 @@
 set(control_SOURCES
-   hub.cpp
-   uimanager.cpp
-   uiclient.cpp
    fileinfocrawler.cpp
+   hub.cpp
    scanmodules.cpp
+   scanscripts.cpp
+   uiclient.cpp
+   uimanager.cpp
    vistleurl.cpp
 )
 
 set(control_HEADERS
    export.h
-   hub.h
-   uimanager.h
-   uiclient.h
    fileinfocrawler.h
+   hub.h
    scanmodules.h
+   scanscripts.h
+   uiclient.h
+   uimanager.h
    vistleurl.h
 )
 

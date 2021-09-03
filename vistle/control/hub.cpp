@@ -37,7 +37,7 @@
 #include "uiclient.h"
 #include "hub.h"
 #include "fileinfocrawler.h"
-
+#include "scanscripts.h"
 #ifdef HAVE_PYTHON
 #include "pythoninterpreter.h"
 #endif
@@ -953,7 +953,7 @@ bool Hub::hubReady() {
         }
         m_ready = true;
     }
-
+    processStartupScripts();
     return true;
 }
 
@@ -1856,28 +1856,34 @@ bool Hub::startPythonUi() {
 }
 
 
+
 bool Hub::processScript() {
+    if (!m_scriptPath.empty()) {
+        auto retval = processScript(m_scriptPath, m_executeModules);
+        setLoadedFile(m_scriptPath);
+        return retval;
+    }
+    return true;
+}
+
+bool Hub::processScript(const std::string &filename, bool executeModules) {
 
    assert(m_uiManager.isLocked());
-   if (!m_scriptPath.empty()) {
 #ifdef HAVE_PYTHON
-      setStatus("Loading "+m_scriptPath+"...");
-      PythonInterpreter inter(m_scriptPath, dir::share(m_prefix), m_executeModules);
-      while(inter.check()) {
-         dispatch();
-      }
-      if (inter.error()) {
-          setStatus("Loading " + m_scriptPath + " failed");
-          return false;
-      }
-      setStatus("Loading "+m_scriptPath+ " done");
-
-      setLoadedFile(m_scriptPath);
+    setStatus("Loading "+m_scriptPath+"...");
+    PythonInterpreter inter(filename, dir::share(m_prefix), executeModules);
+    while(inter.check()) {
+        dispatch();
+    }
+    if (inter.error()) {
+        setStatus("Loading " + m_scriptPath + " failed");
+        return false;
+    }
+    setStatus("Loading "+m_scriptPath+ " done");
+   return true;
 #else
       return false;
 #endif
-   }
-   return true;
 }
 
 bool Hub::handlePriv(const message::Quit &quit, message::Identify::Identity senderType) {
@@ -1934,6 +1940,15 @@ bool Hub::handlePriv(const message::RemoveHub &rm) {
     }
 
     return false;
+}
+bool Hub::processStartupScripts()
+{
+    bool error = false;
+    for (const auto &script: scanStartupScripts()) {
+        std::cerr << "loading script " << script << std::endl;
+        error += !processScript(script, false);
+    }
+    return error;
 }
 
 bool Hub::handlePriv(const message::Execute &exec) {
