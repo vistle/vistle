@@ -76,6 +76,21 @@ std::string share(const std::string &prefix) {
     return prefix + "/share/vistle";
 }
 
+std::string configHome()
+{
+#ifdef _WIN32
+    auto var =  "LOCALAPPDATA";
+#else
+    auto var =  "XDG_CONFIG_HOME";
+#endif
+    if (const char *CONFIG = getenv(var)) {
+        return CONFIG + std::string("/vistle");
+    } else if (const char *HOME = getenv("HOME")) {
+       return HOME + std::string("/.config/vistle");
+    }
+    return "";
+}
+
 } // namespace directory
 
 }
