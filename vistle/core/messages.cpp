@@ -13,7 +13,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/archive/basic_archive.hpp>
 
-#include "archives.h"
+#include "messagepayloadtemplates.h"
 #include <vistle/util/vecstreambuf.h>
 #include <vistle/util/crypto.h>
 #include <vistle/util/tools.h>
@@ -33,35 +33,6 @@ static T min(T a, T b) { return a<b ? a : b; }
       dst[size] = '\0'; \
       assert(src.size() < dst.size()); \
    } while(false)
-
-template<class Payload>
-buffer addPayload(Message &message, const Payload &payload) {
-    vecostreambuf<buffer> buf;
-    oarchive ar(buf);
-    ar & const_cast<Payload &>(payload);
-    auto vec = buf.get_vector();
-    message.setPayloadSize(vec.size());
-    return vec;
-}
-
-template<class Payload>
-Payload getPayload(const buffer &data) {
-    vecistreambuf<buffer> buf(data);
-    Payload payload;
-    try {
-        iarchive ar(buf);
-        ar & payload;
-#ifdef USE_YAS
-    } catch (::yas::io_exception &ex) {
-        std::cerr << "ERROR: failed to get message payload from " << data.size() << " bytes: " << ex.what() << std::endl;
-        std::cerr << vistle::backtrace() << std::endl;
-#endif
-    } catch (...) {
-        throw;
-    }
-
-    return payload;
-}
 
 template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);

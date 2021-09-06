@@ -64,11 +64,11 @@ set(core_SOURCES ${core_SOURCES}
 )
 
 set(core_HEADERS
-   availablemodule.h
    archive_loader.h
    archive_saver.h
    archives.h
    archives_config.h
+   availablemodule.h
    cellalgorithm.h
    celltree.h
    celltree_impl.h
@@ -95,6 +95,7 @@ set(core_HEADERS
    lines_impl.h
    message.h
    messagepayload.h
+   messagepayloadtemplates.h
    messagequeue.h
    messagerouter.h
    messages.h
