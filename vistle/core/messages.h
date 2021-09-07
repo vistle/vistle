@@ -10,7 +10,6 @@
 
 #include <vistle/util/enum.h>
 #include "archives_config.h"
-#include "availablemodule.h"
 #include "export.h"
 #include "message.h"
 #include "object.h"
@@ -28,7 +27,7 @@ namespace vistle {
 class Communicator;
 class Parameter;
 class Port;
-
+class AvailableModuleBase;
 namespace message {
 
 //! indicate the kind of a communication partner
@@ -818,26 +817,13 @@ class V_COREEXPORT Trace: public MessageBase<Trace, TRACE> {
 };
 
 
-class V_COREEXPORT ModuleBaseMessage {
+struct V_COREEXPORT ModuleBaseMessage {
 
  public:
-   struct V_COREEXPORT Payload {
-       Payload();
-       Payload(const AvailableModule& mod);
-
-       AvailableModule m_module;
-       ARCHIVE_ACCESS
-       template<class Archive>
-       void serialize(Archive & ar) {
-           ar & m_module;
-       }
-   };
-
-   ModuleBaseMessage(const AvailableModule& mod);
+   ModuleBaseMessage(const AvailableModuleBase& mod);
    const char *name() const;
    const char *path() const;
    int hub() const;
-   AvailableModule unpack(const buffer &payload) const;
 
    private:
     int m_hub;
@@ -846,17 +832,17 @@ class V_COREEXPORT ModuleBaseMessage {
 };
 
 //! announce availability of a module to UI
-class V_COREEXPORT ModuleAvailable: public ModuleBaseMessage, public MessageBase<ModuleAvailable, MODULEAVAILABLE> {
+class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, MODULEAVAILABLE>, public ModuleBaseMessage {
     using ModuleBaseMessage::ModuleBaseMessage;
 };
 
 static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
 
-class V_COREEXPORT CreateModuleCompound: public ModuleBaseMessage, public MessageBase<CreateModuleCompound, CREATEMODULECOMPOUND> {
+class V_COREEXPORT CreateModuleCompound: public MessageBase<CreateModuleCompound, CREATEMODULECOMPOUND>, public ModuleBaseMessage {
     using ModuleBaseMessage::ModuleBaseMessage;
 };
 
-static_assert(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE, "message too large");
+static_assert(sizeof(CreateModuleCompound) <= Message::MESSAGE_SIZE, "message too large");
 
 //! lock UI (block user interaction)
 class V_COREEXPORT LockUi: public MessageBase<LockUi, LOCKUI> {
@@ -1033,12 +1019,10 @@ extern V_COREEXPORT Payload getPayload(const buffer &data);
 extern template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 extern template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 extern template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
-extern template V_COREEXPORT buffer addPayload<ModuleAvailable::Payload>(Message &message, const ModuleAvailable::Payload &payload);
 
 extern template V_COREEXPORT std::string getPayload(const buffer &data);
 extern template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 extern template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
-extern template V_COREEXPORT ModuleAvailable::Payload getPayload(const buffer &data);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

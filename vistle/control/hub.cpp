@@ -1217,31 +1217,31 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          break;
       }
       case message::MODULEAVAILABLE: {
+         if (!payload)
+         {
+             std::cerr << "missing payload for MODULEAVAILABLE message!" << std::endl;
+             break;
+         }
          auto &mm = static_cast<ModuleAvailable &>(msg);
-         AvailableModule mod;
-         mod.name = mm.name();
-         mod.path = mm.path();
-         mod.hub = mm.hub();
-         if (payload) {
-             mod.description = message::getPayload<std::string>(*payload);
-         }
+         AvailableModule mod(msg, *payload);
          if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
-             mod.hub = m_hubId;
+             mod.setHub(m_hubId);
          }
-         if (mod.hub == Id::Invalid && senderType == Identify::MANAGER) {
-             m_localModules.emplace_back(mod);
-         } else if (mod.hub == Id::Invalid) {
+         if (mod.hub() == Id::Invalid && senderType == Identify::MANAGER) {
+             m_localModules.emplace_back(std::move(mod));
+         } else if (mod.hub() == Id::Invalid) {
              CERR << "invalid module message from " << senderType << ": " << mm << std::endl;
          } else {
-             AvailableModule::Key key(mod.hub, mod.name);
-             m_availableModules.emplace(key, mod);
-             message::ModuleAvailable avail(mod);
-             message::ModuleAvailable::Payload availPl(mod);
-             auto pl = message::addPayload(avail, availPl);
-             m_stateTracker.handle(avail, pl.data(), pl.size());
-             if (!m_isMaster)
-                 sendMaster(avail, &pl);
-             sendUi(avail, Id::Broadcast, &pl);
+             AvailableModule::Key key(mod.hub(), mod.name());
+             auto modIt = m_availableModules.emplace(key, std::move(mod));
+             modIt.first->second.send([this](const message::Message &avail, const buffer *pl) {
+                 bool reverseRetval = false;
+                 reverseRetval += !m_stateTracker.handle(avail, pl);
+                 if (!m_isMaster)
+                     reverseRetval += !sendMaster(avail, pl);
+                 reverseRetval += !sendUi(avail, Id::Broadcast, pl);
+                 return reverseRetval;
+             });
          }
          return true;
          break;
@@ -1439,7 +1439,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                      }
                      return true;
                  }
-                 const std::string &path = mod->path;
+                 const std::string &path = mod->path();
                  const std::string &executable = path;
                  std::vector<std::string> argv;
                  argv.push_back(executable);
@@ -1516,15 +1516,13 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_managerConnected) {
                sendManager(set);
                for (auto &mod: m_localModules) {
-                   mod.hub = m_hubId;
-                   AvailableModule::Key key(mod.hub, mod.name);
-                   m_availableModules.emplace(key, mod);
-                   message::ModuleAvailable avail(mod);
-                   message::ModuleAvailable::Payload availPl(mod);
-                   auto pl = message::addPayload(avail, availPl);
-                   m_stateTracker.handle(avail, pl.data(), pl.size());
-                   sendMaster(avail);
-                   sendUi(avail);
+                   mod.setHub(m_hubId);
+                   mod.send([this](const message::Message &avail, const buffer *payload) {
+                       auto reversetRetval = !m_stateTracker.handle(avail, payload);
+                       reversetRetval += !sendMaster(avail, payload);
+                       reversetRetval += !sendUi(avail, message::Id::Broadcast, payload);
+                       return !reversetRetval;
+                   });
                }
                m_localModules.clear();
             }

@@ -1,10 +1,11 @@
 #include <vistle/util/tools.h>
 
+#include "availablemodule.h"
 #include "message.h"
 #include "messages.h"
-#include "shm.h"
 #include "parameter.h"
 #include "port.h"
+#include "shm.h"
 #include <cassert>
 
 #include <boost/uuid/random_generator.hpp>
@@ -37,12 +38,10 @@ static T min(T a, T b) { return a<b ? a : b; }
 template V_COREEXPORT buffer addPayload<std::string>(Message &message, const std::string &payload);
 template V_COREEXPORT buffer addPayload<SendText::Payload>(Message &message, const SendText::Payload &payload);
 template V_COREEXPORT buffer addPayload<SetParameterChoices::Payload>(Message &message, const SetParameterChoices::Payload &payload);
-template V_COREEXPORT buffer addPayload<ModuleBaseMessage::Payload>(Message &message, const ModuleBaseMessage::Payload &payload);
 
 template V_COREEXPORT std::string getPayload(const buffer &data);
 template V_COREEXPORT SendText::Payload getPayload(const buffer &data);
 template V_COREEXPORT SetParameterChoices::Payload getPayload(const buffer &data);
-template V_COREEXPORT ModuleBaseMessage::Payload getPayload(const buffer &data);
 
 Identify::Identify(const std::string &name)
 : m_identity(Identity::REQUEST)
@@ -1445,17 +1444,12 @@ bool Trace::on() const {
    return m_on;
 }
 
-ModuleBaseMessage::Payload::Payload() = default;
-
-ModuleBaseMessage::Payload::Payload(const AvailableModule& mod):m_module(mod){}
-
-
-ModuleBaseMessage::ModuleBaseMessage(const AvailableModule& mod)
-: m_hub(mod.hub)
+ModuleBaseMessage::ModuleBaseMessage(const AvailableModuleBase& mod)
+: m_hub(mod.hub())
 {
 
-   COPY_STRING(m_name, mod.name);
-   COPY_STRING(m_path, mod.path);
+   COPY_STRING(m_name, mod.name());
+   COPY_STRING(m_path, mod.path());
 }
 
 int ModuleBaseMessage::hub() const {
@@ -1471,23 +1465,6 @@ const char *ModuleBaseMessage::name() const {
 const char *ModuleBaseMessage::path() const {
 
    return m_path.data();
-}
-
-AvailableModule ModuleBaseMessage::unpack(const buffer &payload) const
-{
-   AvailableModule av;
-   av.name = name();
-   av.path = path();
-   av.hub = m_hub;
-   if (!payload.empty())
-   {
-      auto pl =  getPayload<ModuleBaseMessage::Payload>(payload);
-      auto mod = pl.m_module;
-      av.description = std::move(mod.description);
-      av.submodules = std::move(mod.submodules);
-      av.connections = std::move(mod.connections);
-   }
-   return av;
 }
 
 LockUi::LockUi(bool locked)

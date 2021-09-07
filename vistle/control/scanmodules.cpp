@@ -97,30 +97,25 @@ bool scanModules(const std::string &prefix, int hub, AvailableMap &available)
 #endif
 #endif
 
-        AvailableModule mod;
-        mod.hub = hub;
+        std::string name;
 #ifdef MODULE_THREAD
         if (stem.find("lib") == 0)
-            mod.name = stem.substr(3);
+            name = stem.substr(3);
         else
-            mod.name = stem;
+            name = stem;
 #else
-        mod.name = stem;
+        name = stem;
 #endif
-        mod.path = bf::path(*it).string();
+        auto descit = moduleDescriptions.find(name);
+        AvailableModule mod{hub, name, bf::path(*it).string(), descit != moduleDescriptions.end() ? descit->second : ""};
 
-        AvailableModule::Key key(hub, mod.name);
-        //std::cerr << "scanModules: new " << mod.name << " on hub " << hub << std::endl;
+        AvailableModule::Key key(hub, name);
         auto prev = available.find(key);
         if (prev != available.end()) {
-            std::cerr << "scanModules: overriding " << mod.name << ", " << prev->second.path << " -> " << mod.path
+            std::cerr << "scanModules: overriding " << name << ", " << prev->second.path() << " -> " << mod.path()
                       << std::endl;
         }
-        auto descit = moduleDescriptions.find(mod.name);
-        if (descit != moduleDescriptions.end()) {
-            mod.description = descit->second;
-        }
-        available[key] = mod;
+        available[key] = std::move(mod);
     }
 
     return true;

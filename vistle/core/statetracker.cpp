@@ -232,13 +232,12 @@ StateTracker::VistleState StateTracker::getState() const {
    }
 
    // available modules
-   auto avail = availableModules();
-   for(const auto &keymod: avail) {
-      ModuleAvailable avail(keymod.second);
-      ModuleAvailable::Payload availPl(keymod.second);
-      auto pl = message::addPayload(avail, availPl);
-      auto shpl = std::make_shared<buffer>(pl);
-      appendMessage(state, avail, shpl);
+   for(const auto &keymod: availableModules()) {
+       keymod.second.send([this, &state](const message::Message &avail, const buffer *payload) {
+                              auto shpl = std::make_shared<buffer>(*payload);
+                              appendMessage(state, avail, shpl);
+                              return true;
+                          });
    }
 
    // loaded map
@@ -599,11 +598,12 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
          break;
       }
 
+      case COVER:
+      case CREATEMODULECOMPOUND:
+      case DATATRANSFERSTATE:
       case FILEQUERY:
       case FILEQUERYRESULT:
-      case DATATRANSFERSTATE:
       case REMOTERENDERING:
-      case COVER:
          break;
 
       default:
@@ -1299,16 +1299,17 @@ bool StateTracker::handlePriv(const message::ModuleAvailable &avail, const buffe
     if (avail.hub() == Id::Invalid)
         return true;
 
-    AvailableModule mod = avail.unpack(payload);
-    AvailableModule::Key key(mod.hub, mod.name);
+    AvailableModule mod{avail, payload};
+    AvailableModule::Key key(mod.hub(), mod.name());
 
     mutex_locker guard(m_stateMutex);
-    if (m_availableModules.emplace(key, mod).second) {
+    auto modIt = m_availableModules.emplace(key, std::move(mod));
+    if (modIt.second) {
         for (StateObserver *o: m_observers) {
-            o->moduleAvailable(mod);
+            o->moduleAvailable(modIt.first->second);
         }
     } else {
-        CERR << "Duplicate module: " << mod.hub << " " << mod.name << std::endl;
+        CERR << "Duplicate module: " << modIt.first->second.hub() << " " << modIt.first->second.name() << std::endl;
     }
 
     return true;

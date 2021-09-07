@@ -479,9 +479,9 @@ void DataFlowNetwork::createModuleCompound()
             return;
             }
             
-        vistle::AvailableModule am;
-        am.path = text.toStdString();
-        am.name = am.path.substr(am.path.find_last_of("/") + 1);
+        auto path = text.toStdString();
+        auto name = path.substr(path.find_last_of("/") + 1);
+        vistle::ModuleCompound comp{0, name, path, ""};
         auto selectedModules = DataFlowView::the()->selectedModules();
         std::sort(selectedModules.begin(), selectedModules.end(),
                   [](const gui::Module *m1, const gui::Module *m2) { return m1->id() < m2->id(); });
@@ -494,16 +494,16 @@ void DataFlowNetwork::createModuleCompound()
                return;
 #endif
             }
-            vistle::AvailableModule::SubModule sub;
-            sub.name = m->name().toStdString();
-            sub.x = m->pos().x() - selectedModules[0]->pos().x();
-            sub.y = m->pos().y() - selectedModules[0]->pos().y();
-            am.submodules.push_back(sub);
+            comp.addSubmodule(vistle::ModuleCompound::SubModule{
+               m->name().toStdString(),
+               static_cast<float>(m->pos().x() - selectedModules[0]->pos().x()),
+               static_cast<float>(m->pos().y() - selectedModules[0]->pos().y())
+            });
             
             for (const auto &fromPort : m_state.portTracker()->getConnectedOutputPorts(m->id())) {
                     for(const auto &toPort : fromPort->connections())
                     {
-                        vistle::AvailableModule::Connection c;
+                        vistle::ModuleCompound::Connection c;
                         c.fromId = i;
                         auto toMod = std::find_if(selectedModules.begin(), selectedModules.end(),
                                                    [&toPort](const Module *mod) { return toPort->getModuleID() == mod->id(); });
@@ -511,7 +511,7 @@ void DataFlowNetwork::createModuleCompound()
                         c.toId = toMod == selectedModules.end() ? -1 : toMod - selectedModules.begin(); //-1 for an exposed output port for the compound
                         c.fromPort = fromPort->getName();
                         c.toPort = toPort->getName();
-                        am.connections.insert(c);
+                        comp.addConnection(c);
 
                     }
             }
@@ -523,22 +523,20 @@ void DataFlowNetwork::createModuleCompound()
                                             [&fromPort](const Module *mod) { return mod->id() == fromPort->getModuleID(); });
                     if (mod == selectedModules.end())
                     {
-                        vistle::AvailableModule::Connection c;
+                        vistle::ModuleCompound::Connection c;
                         c.fromId = -1;
                         c.toId = i;
                         c.fromPort = fromPort->getName();
                         c.toPort = toPort->getName();
-                        am.connections.insert(c);
+                        comp.addConnection(c);
                     }
                 }
             }
             ++i;
         }
-        availablModuleToFile(am);
-        vistle::message::ModuleAvailable msg(am);
-        vistle::message::ModuleAvailable::Payload p(am);
-        auto pl = addPayload(msg, p);
-        m_vistleConnection->sendMessage(msg, &pl);
+        moduleCompoundToFile(comp);
+        comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
+                            std::placeholders::_2));
 }
 
 

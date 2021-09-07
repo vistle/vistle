@@ -338,7 +338,7 @@ static std::vector<std::string> getAvailable() {
    std::vector<std::string> ret;
    for (auto &a: avail) {
       auto &m = a.second;
-      ret.push_back(m.name);
+      ret.push_back(m.name());
    }
    return ret;
 }
@@ -753,18 +753,24 @@ static std::string getSessionUrl() {
 }
 //contains allocated compounds
 //key is compoundId
-//submoduleIds are compoundId + 1 + pos in AvailableModule::submodules
+//submoduleIds are compoundId + 1 + pos in AvailableModule::submodules()
+namespace detail{
 struct ModuleCompound{
     int id;
-    vistle::AvailableModule module;
+    vistle::ModuleCompound module;
     
 };
-bool operator==(const ModuleCompound& c, int i)
-{
-    return c.id == i;
-}
+} //detail
+} //vistle
 
-std::vector<ModuleCompound> compounds;
+namespace vistle{
+std::vector<detail::ModuleCompound> compounds;
+
+std::vector<detail::ModuleCompound>::iterator findCompound(int id)
+{
+   return  std::find_if(compounds.begin(), compounds.end(),
+                                [id](const detail::ModuleCompound &c) { return c.id == id; });
+}
 
 static void loadScript(const std::string& filename)
 {
@@ -777,18 +783,17 @@ static void loadScript(const std::string& filename)
 static int moduleCompoundAlloc(const std::string& compoundName)
 {
    auto comp = std::find_if(compounds.begin(), compounds.end(),
-                             [&compoundName](const ModuleCompound &c) { return c.module.name == compoundName; });
+                             [&compoundName](const detail::ModuleCompound &c) { return c.module.name() == compoundName; });
    if (comp == compounds.end())
    {
       int i = 0;
       while (true)
       {
-         ++i;
-         auto it = std::find(compounds.begin(), compounds.end(), i);
+         --i;
+         auto it = findCompound(i);
          if (it == compounds.end()) {
-             compounds.push_back(ModuleCompound{
-                 i, AvailableModule{}});
-             compounds[compounds.size() - 1].module.name = compoundName;
+             compounds.push_back(detail::ModuleCompound{
+                 i, ModuleCompound{0 , compoundName, "", ""}});
              return i;
          }
       }
@@ -808,43 +813,39 @@ static void compoundNotFoundError(int compoundId)
 
 static int moduleCompoundAddModule(int compoundId, const std::string& moduleName, float x = 0, float y = 0)
 {
-    auto comp = std::find(compounds.begin(), compounds.end(), compoundId);
+    auto comp = findCompound(compoundId);
     if (comp == compounds.end())
     {
         compoundNotFoundError(compoundId);
         return 0;
     }
-    auto sub = comp->module.submodules.emplace(comp->module.submodules.end());
-    sub->name = moduleName;
-    sub->x = x;
-    sub->y = y;
-    return compoundId + comp->module.submodules.size();
+    return comp->module.addSubmodule(ModuleCompound::SubModule{moduleName, x, y});
 }
 
 static void moduleCompoundConnect(int compoundId, int fromId, const std::string &fromName, int toId, const std::string &toName)
 {
-    auto comp = std::find(compounds.begin(), compounds.end(), compoundId);
+    auto comp = findCompound(compoundId);
     if (comp == compounds.end())
     {
         compoundNotFoundError(compoundId);
         return;
     }
     if(fromId != compoundId && //not to expose
-    fromId - compoundId >= static_cast<int>(comp->module.submodules.size())&& //module not added
+    fromId - compoundId >= static_cast<int>(comp->module.submodules().size())&& //module not added
     fromId < 1) //invalid
     {
         printError("moduleCompoundConnect: invalid fromId " + std::to_string(fromId));
         return;
     }
     if(toId != compoundId && //not to expose
-    toId - compoundId >= static_cast<int>(comp->module.submodules.size())&& //module not added
+    toId - compoundId >= static_cast<int>(comp->module.submodules().size())&& //module not added
     toId < 1) //invalid
     {
         printError("moduleCompoundConnect: invalid toId " + std::to_string(fromId));
         return;
     }
 
-    comp->module.connections.insert({fromId - compoundId - 1, toId - compoundId - 1, fromName, toName});
+    comp->module.addConnection(ModuleCompound::Connection{fromId - compoundId - 1, toId - compoundId - 1, fromName, toName});
 }
 
 
@@ -864,55 +865,55 @@ static void setRelativePos(int id, Float x, Float y)
 
 void spawnAvailablModule(const AvailableModule &comp)
 {
-    std::cerr << "writing file " << comp.name << ".comp" << std::endl;
-    auto filename = comp.path.empty() ? comp.name  : comp.path;
-    if (filename.find_last_of(".comp") != filename.size() - 1)
-        filename += ".comp";
+    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
+    auto filename = comp.path().empty() ? comp.name()  : comp.path();
+    if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
+        filename += moduleCompoundSuffix;
 
     std::fstream file{filename, std::ios_base::out};
     file << "MasterHub=getMasterHub()" << std::endl;
-    for (size_t i = 0; i < comp.submodules.size(); i++)
+    for (size_t i = 0; i < comp.submodules().size(); i++)
     {
-       file << "um" << comp.submodules[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules[i].name << "')" << std::endl;
+       file << "um" << comp.submodules()[i].name << i << " = spawnAsync(MasterHub, '" << comp.submodules()[i].name << "')" << std::endl;
     }
     file << std::endl;
-    for (size_t i = 0; i < comp.submodules.size(); i++) {
-        float posX = comp.submodules[i].x - comp.submodules[0].x;
-        float posY = comp.submodules[i].y - comp.submodules[0].y;
-        file << "m" << comp.submodules[i].name << i << " = waitForSpawn(um" << comp.submodules[i].name << i << ")"
+    for (size_t i = 0; i < comp.submodules().size(); i++) {
+        float posX = comp.submodules()[i].x - comp.submodules()[0].x;
+        float posY = comp.submodules()[i].y - comp.submodules()[0].y;
+        file << "m" << comp.submodules()[i].name << i << " = waitForSpawn(um" << comp.submodules()[i].name << i << ")"
              << std::endl;
         file << "setRelativePos("
-             << "m" << comp.submodules[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
-        file << "applyParameters(m" << comp.submodules[i].name << i << ")" << std::endl;
+             << "m" << comp.submodules()[i].name << i << ", " << posX << ", " << posY << ")" << std::endl;
+        file << "applyParameters(m" << comp.submodules()[i].name << i << ")" << std::endl;
     }
-    for(const auto &conn : comp.connections)
+    for(const auto &conn : comp.connections())
     {
        if (conn.fromId >= 0 && conn.toId >= 0) //internal connection
        {
-           file << "connect(m" << comp.submodules[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
-                << comp.submodules[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
+           file << "connect(m" << comp.submodules()[conn.fromId].name << conn.fromId << ",'" << conn.fromPort << "', m"
+                << comp.submodules()[conn.toId].name << conn.toId << ",'" << conn.toPort << "')" << std::endl;
        }
     }
 }
 
-void availablModuleToFile(const AvailableModule &comp)
+void moduleCompoundToFile(const ModuleCompound &comp)
 {
-    std::cerr << "writing file " << comp.name << ".comp" << std::endl;
-    auto filename = comp.path.empty() ? comp.name  : comp.path;
-    if (filename.find_last_of(".comp") != filename.size() - 1)
-        filename += ".comp";
+    std::cerr << "writing file " << comp.name() << moduleCompoundSuffix << std::endl;
+    auto filename = comp.path().empty() ? comp.name()  : comp.path();
+    if (filename.find_last_of(moduleCompoundSuffix) != filename.size() - 1)
+        filename += moduleCompoundSuffix;
 
     std::fstream file{filename, std::ios_base::out};
-    file << "CompoundId=moduleCompoundAlloc(\"" << comp.name << "\")" << std::endl;
-    for (size_t i = 0; i < comp.submodules.size(); i++)
+    file << "CompoundId=moduleCompoundAlloc(\"" << comp.name() << "\")" << std::endl;
+    for (size_t i = 0; i < comp.submodules().size(); i++)
     {
-       file << "um" << comp.submodules[i].name << i << " = moduleCompoundAddModule(CompoundId, \"" << 
-                                                                                   comp.submodules[i].name << "\", " << 
-                                                                                   comp.submodules[i].x << ", " << 
-                                                                                   comp.submodules[i].y << ")" << std::endl;
+       file << "um" << comp.submodules()[i].name << i << " = moduleCompoundAddModule(CompoundId, \"" << 
+                                                                                   comp.submodules()[i].name << "\", " << 
+                                                                                   comp.submodules()[i].x << ", " << 
+                                                                                   comp.submodules()[i].y << ")" << std::endl;
     }
     file << std::endl;
-    for(const auto &conn : comp.connections)
+    for(const auto &conn : comp.connections())
     {
         file << "moduleCompoundConnect(CompoundId, " << conn.fromId << ",\"" << conn.fromPort << "\", " << conn.toId
              << ", \"" << conn.toPort << "\")" << std::endl;
@@ -922,34 +923,19 @@ void availablModuleToFile(const AvailableModule &comp)
 
 static void moduleCompoundCreate(int compoundId)
 {
-    auto mc = std::find(compounds.begin(), compounds.end(), compoundId);
+    auto mc = findCompound(compoundId);
     if (mc == compounds.end())
     {
       printError("Failed to create module compound: invalid id " + std::to_string(compoundId));
       printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
       return;
     }
-
-    vistle::message::ModuleAvailable msg(mc->module);
-    vistle::message::ModuleAvailable::Payload p(mc->module);
-    sendMessage(msg, p);
-    availablModuleToFile(mc->module);
+    mc->module.send([](const message::Message &msg, const buffer *payload)-> bool{
+        return sendMessage(msg, payload);
+        });
+    moduleCompoundToFile(mc->module);
     compounds.erase(mc);
 }
-
-static void moduleCompoundInstantiate(int compoundId)
-{
-   auto mc = std::find(compounds.begin(), compounds.end(), compoundId);
-   if (mc == compounds.end())
-   {
-   printError("Failed to instantiate module compound: invalid id " + std::to_string(compoundId));
-   printError("Module compound has to be allocated using \"moduleCompoundAlloc(string compoundName)\"");
-   return;
-   }
-
-
-}
-
 
 class TrivialStateObserver: public StateObserver {
 public:
@@ -1440,13 +1426,13 @@ bool PythonModule::import(py::object *ns, const std::string &path) {
 #endif
       (*ns)["vistle"] = locals["newmodule"];
    } catch (py::error_already_set &ex) {
-      std::cerr << "loading of vistle.py failed: " << ex.what() << std::endl;
-      if (PyErr_Occurred()) {
-         std::cerr << PythonInterface::errorString() << std::endl;
-      }
-      //py::handle_exception();
-      PyErr_Clear();
-      return false;
+       std::cerr << "loading of vistle.py failed: " << ex.what() << std::endl;
+       if (PyErr_Occurred()) {
+           std::cerr << PythonInterface::errorString() << std::endl;
+       }
+       //py::handle_exception();
+       PyErr_Clear();
+       return false;
    }
    if (!PythonInterface::the().exec("from vistle import *")) {
       std::cerr << "importing vistle.py Python add-on failed" << std::endl;
