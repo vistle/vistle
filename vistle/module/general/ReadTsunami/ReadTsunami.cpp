@@ -208,17 +208,18 @@ bool ReadTsunami::examine(const vistle::Parameter *param)
 
     const int &nBlocks = m_blocks[0]->getValue() * m_blocks[1]->getValue();
     // TODO: NetCDF not threadsafe => implement lock mechanisim?
-    /* setHandlePartitions(nBlocks > size()); */
-    /* setPartitions(nBlocks); */
-    /* return true; */
-    if (nBlocks <= size()) {
-        setDimDomain(2);
-        setPartitions(nBlocks);
-        return true;
-    } else {
-        printRank0("Total number of blocks should equal MPISIZE or less.");
-        return false;
-    }
+    setDimDomain(2);
+    setHandlePartitions(nBlocks > size());
+    setPartitions(nBlocks);
+    return true;
+    /* if (nBlocks <= size()) { */
+    /*     setDimDomain(2); */
+    /*     setPartitions(nBlocks); */
+    /*     return true; */
+    /* } else { */
+    /*     printRank0("Total number of blocks should equal MPISIZE or less."); */
+    /*     return false; */
+    /* } */
 }
 
 /**
