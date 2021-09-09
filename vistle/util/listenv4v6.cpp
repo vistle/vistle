@@ -2,6 +2,8 @@
 
 #include <boost/asio/ip/v6_only.hpp>
 
+#define REUSEADDR
+
 namespace vistle {
 
 bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_v4, boost::asio::ip::tcp::acceptor &acceptor_v6, boost::system::error_code &ec) {
@@ -11,7 +13,14 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
     boost::system::error_code lec;
     ec = lec;
 
+#ifdef REUSEADDR
+    boost::asio::socket_base::reuse_address option(true);
+#endif
+
     acceptor_v4.open(ip::tcp::v4(), lec);
+#ifdef REUSEADDR
+    acceptor_v4.set_option(option);
+#endif
     if (lec == boost::system::errc::address_family_not_supported) {
 
     } else if (lec) {
@@ -34,6 +43,9 @@ bool start_listen(unsigned short port, boost::asio::ip::tcp::acceptor &acceptor_
     }
 
     acceptor_v6.open(ip::tcp::v6(), lec);
+#ifdef REUSEADDR
+    acceptor_v6.set_option(option);
+#endif
     if (lec == boost::system::errc::address_family_not_supported) {
 
     } else if (lec) {
