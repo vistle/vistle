@@ -733,12 +733,14 @@ bool Hub::sendMaster(const message::Message &msg, const buffer *payload) {
    int numSent = 0;
    for (auto &sock: m_sockets) {
       if (sock.second == message::Identify::HUB) {
-         if (!sendMessage(sock.first, msg, payload))
+         if (!sendMessage(sock.first, msg, payload)) {
+             removeSocket(sock.first);
              break;
+         }
          ++numSent;
       }
    }
-   assert(numSent == 1);
+   assert(numSent <= 1);
    return numSent == 1;
 }
 
@@ -798,8 +800,7 @@ bool Hub::sendHub(int hub, const message::Message &msg, const buffer *payload) {
       return true;
 
    if (!m_isMaster && hub == Id::MasterHub) {
-      sendMaster(msg, payload);
-      return true;
+      return sendMaster(msg, payload);
    }
 
    for (auto &slave: m_slaves) {
@@ -904,7 +905,9 @@ bool Hub::hubReady() {
 
         m_stateTracker.handle(hub, nullptr, true);
 
-        sendMaster(hub);
+        if (!sendMaster(hub)) {
+            return false;
+        }
         m_ready = true;
     }
 
@@ -2052,7 +2055,11 @@ bool Hub::checkChildProcesses(bool emergency) {
 
 void Hub::emergencyQuit() {
 
+    if (m_emergency)
+        return;
+
     CERR << "forced to quit" << std::endl;
+    m_emergency = true;
 
     m_ioService.stop();
     while (!m_ioService.stopped()) {

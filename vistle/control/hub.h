@@ -103,7 +103,7 @@ bool m_managerConnected;
 std::string m_prefix;
 std::string m_scriptPath;
 bool m_executeModules = false;
-bool m_quitting;
+bool m_quitting = false, m_emergency = false;
 static volatile std::atomic<bool> m_interrupt;
 boost::asio::signal_set m_signals;
 static void signalHandler(const boost::system::error_code& error, int signal_number);
