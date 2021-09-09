@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <cassert>
+#include <signal.h>
 
 #include <vistle/util/hostname.h>
 #include <vistle/util/userinfo.h>
@@ -63,7 +64,27 @@ enum Id {
 
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
 
-Hub *hub_instance = nullptr;
+static Hub *hub_instance = nullptr;
+volatile std::atomic<bool> Hub::m_interrupt = false;
+
+void Hub::signalHandler(const boost::system::error_code& error, int signal_number) {
+
+    //std::cerr << "Hub: handling signal " << signal_number << std::endl;
+
+    if (error) {
+        std::cerr << "Hub: error while handling signal: " << error.message() << std::endl;
+        return;
+    }
+
+    // A signal occurred.
+    switch (signal_number) {
+    case SIGINT:
+    case SIGTERM:
+        //std::cerr << "Hub: interruting because of signal" << std::endl;
+        m_interrupt = true;
+        break;
+    }
+}
 
 Hub::Hub(bool inManager)
 : m_inManager(inManager)
@@ -76,6 +97,7 @@ Hub::Hub(bool inManager)
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
 , m_quitting(false)
+, m_signals(m_ioService)
 , m_isMaster(true)
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
@@ -101,6 +123,12 @@ Hub::Hub(bool inManager)
    make.setId(m_hubId);
    make.setRank(0);
    m_uiManager.lockUi(true);
+
+   // install a signal handler for e.g. Ctrl-c
+   m_interrupt = false;
+   m_signals.add(SIGINT);
+   m_signals.add(SIGTERM);
+   m_signals.async_wait(signalHandler);
 }
 
 Hub::~Hub() {
@@ -323,8 +351,12 @@ bool Hub::init(int argc, char *argv[]) {
         }
    }
 
+   if (vm.count("execute") > 0) {
+       m_executeModules = true;
+   }
+
     // start UI
-   if (!m_inManager && !m_quitting) {
+   if (!m_inManager && !m_interrupt && !m_quitting) {
        if (!uiCmd.empty()) {
            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
            startUi(uipath);
@@ -332,13 +364,7 @@ bool Hub::init(int argc, char *argv[]) {
        if (pythonUi) {
            startPythonUi();
        }
-   }
 
-   if (vm.count("execute") > 0) {
-       m_executeModules = true;
-   }
-
-   if (!m_inManager && !m_quitting) {
        std::string port = boost::lexical_cast<std::string>(this->port());
        std::string dataport = boost::lexical_cast<std::string>(dataPort());
 
@@ -629,7 +655,11 @@ bool Hub::dispatch() {
           work = true;
           handleWrite(sock, error);
       }
-   } while (!m_quitting && avail > 0);
+   } while (!m_interrupt && !m_quitting && avail > 0);
+
+   if (m_interrupt) {
+       emergencyQuit();
+   }
 
    if (checkChildProcesses()) {
        work = true;
@@ -2021,6 +2051,8 @@ bool Hub::checkChildProcesses(bool emergency) {
 }
 
 void Hub::emergencyQuit() {
+
+    CERR << "forced to quit" << std::endl;
 
     m_ioService.stop();
     while (!m_ioService.stopped()) {

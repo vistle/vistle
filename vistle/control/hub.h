@@ -2,6 +2,7 @@
 #define VISTLE_HUB_H
 
 #include <memory>
+#include <atomic>
 #include <boost/asio/ip/tcp.hpp>
 #include <vistle/core/statetracker.h>
 #include <vistle/util/spawnprocess.h>
@@ -103,6 +104,9 @@ std::string m_prefix;
 std::string m_scriptPath;
 bool m_executeModules = false;
 bool m_quitting;
+static volatile std::atomic<bool> m_interrupt;
+boost::asio::signal_set m_signals;
+static void signalHandler(const boost::system::error_code& error, int signal_number);
 
 AvailableMap m_availableModules;
 std::vector<AvailableModule> m_localModules;
