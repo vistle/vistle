@@ -460,6 +460,7 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
       result = false;
       if (err.code() == boost::system::errc::broken_pipe) {
          CERR << "broken pipe" << std::endl;
+         removeSocket(sock);
       } else {
          throw(err);
       }
@@ -473,6 +474,20 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg, cons
 
    message::async_send(*sock, msg, pl, [this, sock, close](boost::system::error_code ec) {
        if (ec) {
+#if 0
+           if (ec.code() == boost::system::errc::broken_pipe) {
+               CERR << "send error, socket closed: " << ec.message() << std::endl;
+               removeSocket(sock);
+           }
+#endif
+           if (ec.value() == boost::asio::error::eof) {
+               CERR << "send error, socket closed: " << ec.message() << std::endl;
+               removeSocket(sock);
+           }
+           if (ec.value() == boost::asio::error::broken_pipe) {
+               CERR << "send error, broken pipe: " << ec.message() << std::endl;
+               removeSocket(sock);
+           }
            CERR << "send error: " << ec.message() << std::endl;
        }
        if (close)
@@ -567,10 +582,19 @@ bool Hub::removeSocket(shared_ptr<asio::ip::tcp::socket> sock, bool close) {
         }
     }
 
-   if (m_masterSocket == sock) {
-       CERR << "lost connection to master" << std::endl;
-       m_masterSocket.reset();
-   }
+    if (m_isMaster) {
+        for (auto &s: m_slaves) {
+            if (s.second.sock == sock) {
+                CERR << "lost connection to slave " << s.first << std::endl;
+                s.second.sock.reset();
+            }
+        }
+    } else {
+        if (m_masterSocket == sock) {
+            CERR << "lost connection to master" << std::endl;
+            m_masterSocket.reset();
+        }
+    }
 
    if (removeClient(sock)) {
        CERR << "removed client" << std::endl;
@@ -607,6 +631,10 @@ void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> so
    } else {
        m_slavesToConnect.push_back(&m_slaves[slaveid]);
    }
+}
+
+void Hub::removeSlave(int id) {
+    m_slaves.erase(id);
 }
 
 void Hub::slaveReady(Slave &slave) {
@@ -658,6 +686,17 @@ bool Hub::dispatch() {
    } while (!m_interrupt && !m_quitting && avail > 0);
 
    if (m_interrupt) {
+       if (m_isMaster) {
+           sendSlaves(message::Quit());
+           sendSlaves(message::CloseConnection("user interrupt"));
+       }
+       m_workGuard.reset();
+       while (m_ioService.stopped())
+           usleep(10000);
+       emergencyQuit();
+   }
+
+   if (!m_isMaster && !m_masterSocket) {
        emergencyQuit();
    }
 
@@ -687,6 +726,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
 
     if (error) {
         CERR << "error during write on socket: " << error.message() << std::endl;
+        removeSocket(sock);
         m_quitting = true;
         return;
     }
@@ -719,6 +759,7 @@ void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const 
        }
     } else if (ec) {
         CERR << "error during read from socket: " << ec.message() << std::endl;
+        removeSocket(sock);
         m_quitting = true;
     }
 }
@@ -785,7 +826,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender, const buf
    for (auto &slave: m_slaves) {
       if (slave.first != senderHub || returnToSender) {
          //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
-         if (slave.second.ready) {
+         if (slave.second.ready && slave.second.sock) {
             if (!sendMessage(slave.second.sock, msg, payload))
                 ok = false;
          }
@@ -1835,12 +1876,11 @@ bool Hub::handlePriv(const message::RemoveHub &rm) {
     int hub = rm.id();
     if (m_isMaster) {
         if (hub != Id::MasterHub && message::Id::isHub(hub)) {
+            removeSlave(hub);
             return sendHub(hub, message::Quit());
         } else {
             return false;
         }
-    } else {
-        return sendMaster(rm);
     }
 
     return false;
@@ -2061,6 +2101,7 @@ void Hub::emergencyQuit() {
     CERR << "forced to quit" << std::endl;
     m_emergency = true;
 
+    m_workGuard.reset();
     m_ioService.stop();
     while (!m_ioService.stopped()) {
         usleep(100000);
