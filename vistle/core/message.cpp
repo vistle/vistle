@@ -28,6 +28,54 @@
 namespace vistle {
 namespace message {
 
+bool Id::isHub(int id) {
+    return id <= Id::LocalHub;
+}
+
+bool Id::isModule(int id) {
+    return id >= Id::ModuleBase;
+}
+
+std::string Id::toString(Reserved id) {
+
+    switch (id) {
+    case Invalid:
+        return "Invalid";
+    case Vistle:
+        return "Vistle session";
+    case Broadcast:
+        return "Broadcast";
+    case ForBroadcast:
+        return "For broadcast";
+    case NextHop:
+        return "Next hop";
+    case UI:
+        return "User interface";
+    case LocalManager:
+        return "Local cluster manager";
+    case LocalHub:
+        return "Local hub";
+    case MasterHub:
+        return "Master hub";
+    case ModuleBase:
+        return "Modules";
+    }
+
+    return "ERROR";
+}
+
+std::string Id::toString(int id) {
+
+    if (isModule(id)) {
+        return "Module " + std::to_string(id);
+    }
+    if (isHub(id) && id != MasterHub) {
+        return "Client hub " + std::to_string(MasterHub - id - 1);
+    }
+
+    return toString(static_cast<Reserved>(id));
+}
+
 codec_error::codec_error(const std::string &what)
 : vistle::exception(what)
 {

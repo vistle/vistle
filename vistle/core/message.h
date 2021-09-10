@@ -80,7 +80,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
 )
 V_ENUM_OUTPUT_OP(Type, ::vistle::message)
 
-struct Id {
+struct V_COREEXPORT Id {
 
    enum Reserved {
       ModuleBase = 1, //< >= ModuleBase: modules
@@ -95,8 +95,10 @@ struct Id {
       MasterHub = -8, //< < MasterHub: slave hubs
    };
 
-   static bool isHub(int id) { return id <= Id::LocalHub; }
-   static bool isModule(int id) { return id >= Id::ModuleBase; }
+   static bool isHub(int id);
+   static bool isModule(int id);
+   static std::string toString(Reserved id);
+   static std::string toString(int id);
 };
 
 class V_COREEXPORT DefaultSender {

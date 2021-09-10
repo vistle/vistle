@@ -2,6 +2,8 @@
 #include "ui_modulebrowser.h"
 #include "module.h"
 
+#include <vistle/core/message.h>
+
 #include <QDebug>
 #include <QKeyEvent>
 #include <QMimeData>
@@ -113,6 +115,8 @@ void ModuleBrowser::prepareMenu(const QPoint &pos) {
     for (auto hub: hubItems) {
         int id = hub.first;
         if (hub.second == item) {
+            if (id == vistle::message::Id::MasterHub)
+                break;
             auto *rmAct = new QAction(tr("&Remove"), this);
             connect(rmAct, &QAction::triggered, [this, id](){
                 emit requestRemoveHub(id);
@@ -122,6 +126,7 @@ void ModuleBrowser::prepareMenu(const QPoint &pos) {
             menu.addAction(rmAct);
 
             menu.exec( widget->mapToGlobal(pos) );
+            break;
         }
     }
 }
@@ -137,10 +142,12 @@ void ModuleBrowser::addHub(int hub, QString hubName, int nranks, QString address
         item->setBackground(0, Module::hubColor(hub));
         item->setForeground(0, QColor(0, 0, 0));
 
-        QString tt = logname + "@" + hubName;
-        tt += " (" + QString::number(hub) + ")";
-        tt += "\n" + realname;
-        tt += "\n" + QString::number(nranks) + " ranks";
+        QString tt;
+        tt += "<b>" + QString::fromStdString(vistle::message::Id::toString(hub)).toHtmlEscaped() + "</b> "
+              + QString("(" + QString::number(hub) + ")").toHtmlEscaped() + "<br>";
+        tt += QString(logname + "@" + hubName).toHtmlEscaped() + "<br>";
+        tt += QString(realname).toHtmlEscaped() + "<br>";
+        tt += QString(QString::number(nranks) + " ranks").toHtmlEscaped();
         item->setData(0, Qt::ToolTipRole, tt);
     }
 }
