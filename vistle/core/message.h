@@ -308,6 +308,7 @@ public:
     static const Type s_type = MessageType;
 protected:
     MessageBase(): Message(MessageType, sizeof(MessageClass)) {
+        static_assert(sizeof(MessageClass) <= Message::MESSAGE_SIZE, "message too large");
     }
 };
 

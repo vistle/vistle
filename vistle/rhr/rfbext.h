@@ -346,7 +346,6 @@ public:
 private:
     std::array<char, RhrMessageSize> m_rhr;
 };
-static_assert(sizeof(RemoteRenderMessage) <= Message::MESSAGE_SIZE, "message too large");
 
 } // namespace message
 
