@@ -41,9 +41,9 @@ bool UiManager::handleMessage(std::shared_ptr<boost::asio::ip::tcp::socket> sock
 
    switch(msg.type()) {
    case MODULEEXIT: {
-       auto exit = msg.as<ModuleExit>();
+       const auto &exit = msg.as<ModuleExit>();
        if (!sender) {
-           std::cerr << "UiManager: unknown UI quit" << std::endl;
+           std::cerr << "UiManager: unknown UI on hub " << exit.senderId() << " quit" << std::endl;
        } else {
            sender->cancel();
            removeClient(sender);
