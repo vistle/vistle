@@ -183,6 +183,7 @@ AddHub::AddHub(int id, const std::string &name)
 , m_port(0)
 , m_dataPort(0)
 , m_addrType(AddHub::Unspecified)
+, m_hasUserInterface(false)
 {
    COPY_STRING(m_name, name);
    memset(m_loginName.data(), 0, m_loginName.size());
@@ -291,6 +292,14 @@ void AddHub::setAddress(boost::asio::ip::address_v4 addr) {
    const std::string addrString = addr.to_string();
    COPY_STRING(m_address, addrString);
    m_addrType = IPv4;
+}
+
+void AddHub::setHasUserInterface(bool ui) {
+    m_hasUserInterface = ui;
+}
+
+bool AddHub::hasUserInterface() const {
+    return m_hasUserInterface;
 }
 
 

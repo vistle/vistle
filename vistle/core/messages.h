@@ -112,6 +112,9 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    void setLoginName(const std::string &login);
    void setRealName(const std::string &real);
 
+   bool hasUserInterface() const;
+   void setHasUserInterface(bool ui);
+
  private:
    int m_id;
    address_t m_name;
@@ -123,6 +126,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
    unsigned short m_dataPort;
    AddressType m_addrType;
    address_t m_address;
+   bool m_hasUserInterface;
 
 };
 

@@ -96,6 +96,7 @@ struct V_COREEXPORT HubData {
     unsigned short port;
     unsigned short dataPort;
     boost::asio::ip::address address;
+    bool hasUi = false;
 };
 
 class V_COREEXPORT StateTracker {

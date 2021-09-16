@@ -200,6 +200,7 @@ StateTracker::VistleState StateTracker::getState() const {
       msg.setDataPort(slave.dataPort);
       if (!slave.address.is_unspecified())
           msg.setAddress(slave.address);
+      msg.setHasUserInterface(slave.hasUi);
       appendMessage(state, msg);
    }
 
@@ -689,6 +690,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
       m_hubs.back().address = slave.address();
    m_hubs.back().logName = slave.loginName();
    m_hubs.back().realName = slave.realName();
+   m_hubs.back().hasUi = slave.hasUserInterface();
 
    // for per-hub parameters
    Module hub(slave.id(), slave.id());

@@ -97,6 +97,7 @@ std::shared_ptr<DataProxy> m_dataProxy;
 TunnelManager m_tunnelManager;
 StateTracker m_stateTracker;
 UiManager m_uiManager;
+bool m_hasUi = false;
 
 std::map<process_handle, int> m_processMap;
 bool m_managerConnected;

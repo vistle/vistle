@@ -358,10 +358,12 @@ bool Hub::init(int argc, char *argv[]) {
     // start UI
    if (!m_inManager && !m_interrupt && !m_quitting) {
        if (!uiCmd.empty()) {
+           m_hasUi = true;
            std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
            startUi(uipath);
        }
        if (pythonUi) {
+           m_hasUi = true;
            startPythonUi();
        }
 
@@ -917,6 +919,7 @@ bool Hub::hubReady() {
         hub.setDataPort(m_dataProxy->port());
         hub.setLoginName(vistle::getLoginName());
         hub.setRealName(vistle::getRealName());
+        hub.setHasUserInterface(m_hasUi);
 
         for (auto &sock: m_sockets) {
             if (sock.second == message::Identify::HUB) {
@@ -1064,6 +1067,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                    if (!m_exposedHost.empty()) {
                        master.setAddress(m_exposedHostAddr);
                    }
+                   master.setHasUserInterface(m_hasUi);
                    CERR << "MASTER HUB: " << master << std::endl;
                    m_stateTracker.handle(master, nullptr);
                    sendUi(master);
