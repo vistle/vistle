@@ -2,7 +2,9 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 // cover
+#include <net/message.h>
 #include <cover/coVRPluginSupport.h>
+#include <cover/coVRCommunication.h>
 #include <cover/coVRAnimationManager.h>
 #include <cover/coVRPluginList.h>
 #include <cover/coVRFileManager.h>
@@ -903,6 +905,13 @@ bool COVER::handleMessage(const message::Message *message, const MessagePayload 
     case vistle::message::REMOTERENDERING: {
         VistleMessage wrap(*message, payload);
         coVRPluginList::instance()->message(0, opencover::PluginMessageTypes::VistleMessageIn, sizeof(wrap), &wrap);
+        return true;
+    }
+    case vistle::message::COVER: {
+        auto &cmsg = message->as<const message::Cover>();
+        covise::DataHandle dh(payload->data(), payload->size(), false /* do not delete */);
+        covise::Message msg(cmsg.subtype(), dh);
+        coVRCommunication::instance()->handleVRB(msg);
         return true;
     }
     default:

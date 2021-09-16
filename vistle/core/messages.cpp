@@ -361,9 +361,23 @@ int Spawn::migrateId() const {
     return m_migrateId;
 }
 
+void Spawn::setMirroringId(int id) {
+    m_mirroringId = id;
+}
+
+int Spawn::mirroringId() const {
+
+    return m_mirroringId;
+}
+
 int Spawn::hubId() const {
 
    return m_hub;
+}
+
+void Spawn::setHubId(int hub) {
+
+    m_hub = hub;
 }
 
 int Spawn::spawnId() const {
@@ -825,9 +839,19 @@ const char * Connect::getPortBName() const {
    return portBName.data();
 }
 
+void Connect::setModuleA(int id) {
+
+    moduleA = id;
+}
+
 int Connect::getModuleA() const {
 
    return moduleA;
+}
+
+void Connect::setModuleB(int id) {
+
+    moduleB = id;
 }
 
 int Connect::getModuleB() const {
@@ -859,9 +883,19 @@ const char * Disconnect::getPortBName() const {
    return portBName.data();
 }
 
+void Disconnect::setModuleA(int id) {
+
+    moduleA = id;
+}
+
 int Disconnect::getModuleA() const {
 
    return moduleA;
+}
+
+void Disconnect::setModuleB(int id) {
+
+    moduleB = id;
 }
 
 int Disconnect::getModuleB() const {
@@ -1911,7 +1945,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case FILEQUERYRESULT: {
          auto &mm = static_cast<const FileQueryResult &>(m);
-         s << "status: " << mm.status() << ", path: " << mm.path() << ", filebrowser: " << mm.filebrowserId();
+         s << ", status: " << mm.status() << ", path: " << mm.path() << ", filebrowser: " << mm.filebrowserId();
+         break;
+      }
+      case COVER: {
+         auto &mm = static_cast<const Cover &>(m);
+         s << ", mirror: " << mm.mirrorId() << ", subtype: " << mm.subtype();
          break;
       }
       default:
@@ -1927,6 +1966,22 @@ SetParameterChoices::Payload::Payload(const std::vector<std::string> &choices)
 : choices(choices)
 {
 }
+
+Cover::Cover(int mirror, int subtype)
+: m_mirrorId(mirror)
+, m_subtype(subtype)
+{}
+
+int Cover::mirrorId() const {
+
+    return m_mirrorId;
+}
+
+int Cover::subtype() const {
+
+    return m_subtype;
+}
+
 
 } // namespace message
 } // namespace vistle

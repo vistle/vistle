@@ -75,6 +75,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (REMOTERENDERING)
       (FILEQUERY)
       (FILEQUERYRESULT)
+      (COVER)
       (INSITU)
       (NumMessageTypes) // keep last
 )

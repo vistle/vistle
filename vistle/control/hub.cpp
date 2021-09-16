@@ -804,7 +804,6 @@ bool Hub::sendManager(const message::Message &msg, int hub, const buffer *payloa
             ++numSent;
          }
       }
-      assert(numSent == 1);
       return numSent == 1;
    }
 
@@ -1321,34 +1320,76 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             if (m_isMaster) {
+               bool restart = Id::isModule(spawn.migrateId());
+               bool isMirror = Id::isModule(spawn.mirroringId());
+               bool shouldMirror = !restart && !isMirror && std::string(spawn.getName()) == "COVER";
                auto notify = spawn;
                notify.setReferrer(spawn.uuid());
                notify.setSenderId(m_hubId);
                bool doSpawn = false;
+               int mirroredId = message::Id::Invalid;
                if (spawn.spawnId() == Id::Invalid) {
                   notify.setSpawnId(Id::ModuleBase + m_moduleCount);
+                  mirroredId = Id::ModuleBase + m_moduleCount;
                   ++m_moduleCount;
                   doSpawn = true;
                }
-               bool restart = Id::isModule(spawn.migrateId());
-               if (restart) {
+                CERR << "sendManager: " << notify << std::endl;
+                notify.setDestId(Id::Broadcast);
+                if (shouldMirror)
+                    notify.setMirroringId(mirroredId);
+                m_stateTracker.handle(notify, nullptr);
+                sendManager(notify);
+                sendUi(notify);
+                sendSlaves(notify, true /* return to sender */);
+                if (doSpawn) {
+                    notify.setDestId(spawn.hubId());
+                    CERR << "doSpawn: sendManager: " << notify << std::endl;
+                    sendManager(notify, spawn.hubId());
+                }
+
+                if (doSpawn && shouldMirror) {
+                    for (auto &hubid: m_stateTracker.getHubs()) {
+                       if (hubid == spawn.hubId())
+                           continue;
+                       const auto &hub = m_stateTracker.getHubData(hubid);
+                       if (!hub.hasUi)
+                           continue;
+
+                       vistle::message::Spawn mirror(hubid, spawn.getName());
+                       //mirror.setReferrer(spawn.uuid());
+                       //mirror.setSenderId(m_hubId);
+                       mirror.setSpawnId(Id::ModuleBase + m_moduleCount);
+                       ++m_moduleCount;
+                       mirror.setMirroringId(mirroredId);
+                       mirror.setDestId(Id::Broadcast);
+                       m_stateTracker.handle(mirror, nullptr);
+                       CERR << "sendManager mirror: " << mirror << std::endl;
+                       sendManager(mirror);
+                       sendUi(mirror);
+                       sendSlaves(mirror, true /* return to sender */);
+                       mirror.setDestId(hubid);
+                       CERR << "doSpawn: sendManager mirror: " << mirror << std::endl;
+                       sendManager(mirror, spawn.hubId());
+                   }
+               } else if (restart) {
                    if (doSpawn)
                    {
                        cacheModuleValues(spawn.migrateId(), notify.spawnId());
                    }
                    killOldModule(spawn.migrateId());
-               }
 
-               CERR << "sendManager: " << notify << std::endl;
-               notify.setDestId(Id::Broadcast);
-               m_stateTracker.handle(notify, nullptr);
-               sendManager(notify);
-               sendUi(notify);
-               sendSlaves(notify, true /* return to sender */);
-               if (doSpawn) {
-                  notify.setDestId(spawn.hubId());
-                  CERR << "doSpawn: sendManager: " << notify << std::endl;
-                  sendManager(notify, spawn.hubId());
+                    CERR << "sendManager: " << notify << std::endl;
+                    notify.setDestId(Id::Broadcast);
+                    m_stateTracker.handle(notify, nullptr);
+                    sendManager(notify);
+                    sendUi(notify);
+                    sendSlaves(notify, true /* return to sender */);
+                    if (doSpawn) {
+                        notify.setDestId(spawn.hubId());
+                        CERR << "doSpawn: sendManager: " << notify << std::endl;
+                        sendManager(notify, spawn.hubId());
+                   }
                }
             } else {
                CERR << "SLAVE: handle spawn: " << spawn << std::endl;
@@ -1553,6 +1594,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          case FILEQUERYRESULT: {
               auto &result = msg.as<FileQueryResult>();
               handlePriv(result, payload);
+              break;
+         }
+         case COVER: {
+              auto &cover = msg.as<Cover>();
+              handlePriv(cover, payload);
               break;
          }
          default: {
@@ -1996,6 +2042,31 @@ bool Hub::handlePriv(const message::Connect &conn) {
     sendManager(c);
     sendSlaves(c);
 
+    auto modA = conn.getModuleA();
+    auto modB = conn.getModuleB();
+    auto mirA = m_stateTracker.getMirrors(modA);
+    auto mirB = m_stateTracker.getMirrors(modB);
+
+    for (auto a: mirA) {
+        if (a == modA)
+            continue;
+        c.setModuleA(a);
+        sendUi(c);
+        sendManager(c);
+        sendSlaves(c);
+    }
+    c.setModuleA(modA);
+
+    for (auto b: mirB) {
+        if (b == modB)
+            continue;
+        c.setModuleB(b);
+        sendUi(c);
+        sendManager(c);
+        sendSlaves(c);
+    }
+    c.setModuleB(modB);
+
     return true;
 }
 
@@ -2006,6 +2077,31 @@ bool Hub::handlePriv(const message::Disconnect &disc) {
     sendUi(d);
     sendManager(d);
     sendSlaves(d);
+
+    auto modA = disc.getModuleA();
+    auto modB = disc.getModuleB();
+    auto mirA = m_stateTracker.getMirrors(modA);
+    auto mirB = m_stateTracker.getMirrors(modB);
+
+    for (auto a: mirA) {
+        if (a == modA)
+            continue;
+        d.setModuleA(a);
+        sendUi(d);
+        sendManager(d);
+        sendSlaves(d);
+    }
+    d.setModuleA(modA);
+
+    for (auto b: mirB) {
+        if (b == modB)
+            continue;
+        d.setModuleB(b);
+        sendUi(d);
+        sendManager(d);
+        sendSlaves(d);
+    }
+    d.setModuleB(modB);
 
     return true;
 }
@@ -2031,6 +2127,19 @@ bool Hub::handlePriv(const message::FileQueryResult &result, const buffer *paylo
         return sendUi(result, result.destUiId(), payload);
 
     return sendHub(result.destId(), result, payload);
+}
+
+bool Hub::handlePriv(const message::Cover &cover, const buffer *payload) {
+
+    auto mid = cover.mirrorId();
+    auto mirrors = m_stateTracker.getMirrors(mid);
+    message::Buffer buf(cover);
+    for (auto id: mirrors) {
+        buf.setDestId(id);
+        sendModule(buf, id, payload);
+    }
+
+    return true;
 }
 
 bool Hub::hasChildProcesses(bool ignoreGui) {

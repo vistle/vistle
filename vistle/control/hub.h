@@ -154,6 +154,7 @@ struct Slave {
    bool handlePriv(const message::Disconnect &disc);
    bool handlePriv(const message::FileQuery &query, const buffer *payload);
    bool handlePriv(const message::FileQueryResult &result, const buffer *payload);
+   bool handlePriv(const message::Cover &cover, const buffer *payload);
 
    bool checkChildProcesses(bool emergency = false);
    bool hasChildProcesses(bool ignoreGui = false);

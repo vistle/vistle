@@ -175,7 +175,10 @@ class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
 
    void setMigrateId(int id);
    int migrateId() const;
+   void setMirroringId(int id);
+   int mirroringId() const;
    int hubId() const;
+   void setHubId(int id);
    int spawnId() const;
    void setSpawnId(int id);
    const char *getName() const;
@@ -196,6 +199,8 @@ class V_COREEXPORT Spawn: public MessageBase<Spawn, SPAWN> {
    int rankSkip;
    //! id of module to migrate
    int m_migrateId = Id::Invalid;
+    //! id of module that is being mirrored (for replicating COVER renderer on clusters with UI)
+   int m_mirroringId = Id::Invalid;
    //! name of module to be started
    module_name_t name;
 };
@@ -442,7 +447,9 @@ class V_COREEXPORT Connect: public MessageBase<Connect, CONNECT> {
    const char * getPortAName() const;
    const char * getPortBName() const;
 
+   void setModuleA(int id);
    int getModuleA() const;
+   void setModuleB(int id);
    int getModuleB() const;
 
    void reverse(); //! swap source and destination
@@ -465,7 +472,9 @@ class V_COREEXPORT Disconnect: public MessageBase<Disconnect, DISCONNECT> {
    const char * getPortAName() const;
    const char * getPortBName() const;
 
+   void setModuleA(int id);
    int getModuleA() const;
+   void setModuleB(int id);
    int getModuleB() const;
 
    void reverse(); //! swap source and destination
@@ -974,6 +983,21 @@ public:
 private:
     long m_numTransferring;
 };
+
+//! wrap a COVISE message sent by COVER
+class V_COREEXPORT Cover: public MessageBase<Cover, COVER> {
+
+public:
+    Cover(int mirror, int subtype);
+
+    int subtype() const;
+    int mirrorId() const;
+
+private:
+    int m_mirrorId;
+    int m_subtype;
+};
+
 
 template<class Payload>
 extern V_COREEXPORT buffer addPayload(Message &message, const Payload &payload);

@@ -2056,6 +2056,18 @@ std::string Module::getModuleName(int id) const {
    return m_stateTracker->getModuleName(id);
 }
 
+int Module::mirrorId() const {
+
+    return m_stateTracker->getMirrorId(m_id);
+}
+
+std::set<int> Module::getMirrors() const {
+
+    auto m = m_stateTracker->getMirrors(m_id);
+    m.erase(m_id);
+    return m;
+}
+
 Module::~Module() {
 
 #ifndef MODULE_THREAD

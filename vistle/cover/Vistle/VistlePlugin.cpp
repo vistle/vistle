@@ -2,6 +2,7 @@
 #include <boost/interprocess/exceptions.hpp>
 
 // cover
+#include <net/message.h>
 #include <cover/coVRPluginSupport.h>
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
@@ -36,6 +37,7 @@ class VistlePlugin: public opencover::coVRPlugin, public ui::Owner {
    void requestQuit(bool killSession) override;
    bool executeAll() override;
    void message(int toWhom, int type, int length, const void *data) override;
+   bool sendVisMessage(const covise::Message *msg) override;
 
  private:
    COVER *m_module = nullptr;
@@ -209,6 +211,19 @@ void VistlePlugin::message(int toWhom, int type, int length, const void *data) {
             m_module->sendMessage(wrap->buf, wrap->payload);
         }
     }
+}
+
+bool VistlePlugin::sendVisMessage(const covise::Message *msg) {
+
+    if (!m_module) {
+        return false;
+    }
+
+    message::Cover cover(m_module->mirrorId(), msg->type);
+    cover.setDestId(message::Id::MasterHub);
+    MessagePayload pl(msg->data.data(), msg->data.length());
+    cover.setPayloadSize(msg->data.length());
+    return m_module->sendMessage(cover, pl);
 }
 
 COVERPLUGIN(VistlePlugin)

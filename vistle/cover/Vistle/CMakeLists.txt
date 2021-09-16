@@ -13,7 +13,7 @@ cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
 target_link_libraries(VistlePlugin 
     VistlePluginUtil 
     vistle_cover 
-    vistle_renderer 
+    vistle_renderer
     vistle_boost_mpi)
 
 set_target_properties(VistlePlugin PROPERTIES OUTPUT_NAME "Vistle")

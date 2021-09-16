@@ -125,6 +125,8 @@ public:
     const HubData &getHubData(int id) const;
     std::string getModuleName(int id) const;
     int getModuleState(int id) const;
+    int getMirrorId(int id) const;
+    const std::set<int> &getMirrors(int id) const;
 
     std::vector<std::string> getParameters(int id) const;
     std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
@@ -173,6 +175,8 @@ public:
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
       int id;
+      int mirrorOfId = message::Id::Invalid;
+      std::set<int> mirrors;
       int hub;
       bool initialized;
       bool killed;

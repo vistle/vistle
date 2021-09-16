@@ -244,6 +244,12 @@ class V_MODULEEXPORT Module: public ParameterManager, public MessageSender {
 
    const HubData &getHub() const;
 
+   bool isConnected(const Port &port) const;
+   bool isConnected(const std::string &portname) const;
+   std::string getModuleName(int id) const;
+   int mirrorId() const;
+   std::set<int> getMirrors() const;
+
 protected:
 
    void setObjectReceivePolicy(int pol);
@@ -276,12 +282,9 @@ protected:
    bool syncMessageProcessing() const;
    void setSyncMessageProcessing(bool sync);
 
-   bool isConnected(const Port &port) const;
-   bool isConnected(const std::string &portname) const;
    virtual void connectionAdded(const Port *from, const Port *to);
    virtual void connectionRemoved(const Port *from, const Port *to);
 
-   std::string getModuleName(int id) const;
 
    bool changeParameter(const Parameter *p) override;
 

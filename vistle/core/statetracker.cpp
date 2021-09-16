@@ -176,6 +176,33 @@ int StateTracker::getModuleState(int id) const {
    return it->second.state();
 }
 
+int StateTracker::getMirrorId(int id) const {
+
+    mutex_locker guard(m_stateMutex);
+    RunningMap::const_iterator it = runningMap.find(id);
+    if (it == runningMap.end())
+        return Id::Invalid;
+    return it->second.mirrorOfId;
+}
+
+const std::set<int> &StateTracker::getMirrors(int id) const {
+
+    static std::set<int> empty;
+    mutex_locker guard(m_stateMutex);
+    RunningMap::const_iterator it = runningMap.find(id);
+    if (it == runningMap.end())
+        return empty;
+    int mid = it->second.mirrorOfId;
+    if (mid == message::Id::Invalid) {
+        return it->second.mirrors;
+    }
+    RunningMap::const_iterator mit = runningMap.find(mid);
+    if (mit == runningMap.end())
+        return empty;
+
+    return mit->second.mirrors;
+}
+
 namespace {
 
 void appendMessage(std::vector<StateTracker::MessageWithPayload> &v, const message::Message &msg, std::shared_ptr<const buffer> payload = std::shared_ptr<const buffer>()) {
@@ -227,6 +254,7 @@ StateTracker::VistleState StateTracker::getState() const {
       if (Id::isModule(id)) {
           Spawn spawn(m.hub, m.name);
           spawn.setSpawnId(id);
+          spawn.setMirroringId(m.mirrorOfId);
           appendMessage(state, spawn);
 
           if (m.initialized) {
@@ -575,6 +603,7 @@ bool StateTracker::handle(const message::Message &msg, const char *payload, size
       case FILEQUERYRESULT:
       case DATATRANSFERSTATE:
       case REMOTERENDERING:
+      case COVER:
          break;
 
       default:
@@ -748,6 +777,15 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
    assert(hub <= Id::MasterHub);
    mod.hub = hub;
    mod.name = spawn.getName();
+   mod.mirrors.insert(moduleId);
+   int mid = spawn.mirroringId();
+   if (mid != Id::Invalid) {
+       mod.mirrorOfId = mid;
+       auto it = runningMap.find(mid);
+       if (it != runningMap.end()) {
+           it->second.mirrors.insert(moduleId);
+       }
+   }
 
    mutex_locker guard(m_stateMutex);
    for (StateObserver *o: m_observers) {
@@ -851,6 +889,13 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
    { 
       RunningMap::iterator it = runningMap.find(mod);
       if (it != runningMap.end()) {
+         int mid = it->second.mirrorOfId;
+         if (mid != message::Id::Invalid) {
+             auto mit = runningMap.find(mid);
+             if (mit != runningMap.end()) {
+                 mit->second.mirrors.erase(moduleExit.senderId());
+             }
+         }
          quitMap.insert(*it);
          runningMap.erase(it);
       } else {
