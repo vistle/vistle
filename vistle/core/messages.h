@@ -126,7 +126,7 @@ class V_COREEXPORT AddHub: public MessageBase<AddHub, ADDHUB> {
 
 };
 
-//! request that a slave hub be deletet
+//! request that a slave hub be deleted
 class V_COREEXPORT RemoveHub: public MessageBase<RemoveHub, REMOVEHUB> {
 
 public:
