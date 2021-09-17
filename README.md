@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/vistle/vistle.svg?branch=master)](https://travis-ci.org/vistle/vistle)
+[![Build status](https://github.com/vistle/vistle/workflows/CMake/badge.svg)](https://github.com/vistle/vistle/actions?query=workflow%3ACMake)
 
 Vistle - A Modular Data-Parallel Visualization System
 =====================================================
