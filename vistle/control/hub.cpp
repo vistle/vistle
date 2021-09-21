@@ -114,12 +114,12 @@ Hub::Hub(bool inManager)
 #endif
 , m_ioThread([this](){ m_ioService.run(); })
 {
+    
+    assert(!hub_instance);
+    hub_instance = this;
 
-   assert(!hub_instance);
-   hub_instance = this;
-
-   if (!inManager) {
-       message::DefaultSender::init(m_hubId, 0);
+    if (!inManager) {
+        message::DefaultSender::init(m_hubId, 0);
    }
    make.setId(m_hubId);
    make.setRank(0);
@@ -1218,20 +1218,19 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          break;
       }
       case message::MODULEAVAILABLE: {
-         if (!payload)
+         if (!payload || payload->empty())
          {
              std::cerr << "missing payload for MODULEAVAILABLE message!" << std::endl;
              break;
          }
-         auto &mm = static_cast<ModuleAvailable &>(msg);
          AvailableModule mod(msg, *payload);
-         if (mm.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
+         if (mod.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
              mod.setHub(m_hubId);
          }
          if (mod.hub() == Id::Invalid && senderType == Identify::MANAGER) {
              m_localModules.emplace_back(std::move(mod));
          } else if (mod.hub() == Id::Invalid) {
-             CERR << "invalid module message from " << senderType << ": " << mm << std::endl;
+             CERR << "invalid module message from " << senderType << ": " << mod.print() << std::endl;
          } else {
              AvailableModule::Key key(mod.hub(), mod.name());
              auto modIt = m_availableModules.emplace(key, std::move(mod));
