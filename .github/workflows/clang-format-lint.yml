@@ -1,0 +1,27 @@
+name: Clang Format
+
+on:
+  push:
+    paths:
+      - ".github/workflows/clang-format-lint.yml"
+      - "vistle/**/*.h"
+      - "vistle/**/*.c"
+      - "vistle/**/*.cpp"
+  pull_request:
+    paths:
+      - ".github/workflows/clang-format-lint.yml"
+      - "vistle/**/*.h"
+      - "vistle/**/*.c"
+      - "vistle/**/*.cpp"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: DoozyX/clang-format-lint-action@v0.12
+        with:
+          source: "vistle"
+          exclude: "vistle/gui/propertybrowser vistle/module/univiz"
+          extensions: "h,c,cpp"
+          clangFormatVersion: 12
