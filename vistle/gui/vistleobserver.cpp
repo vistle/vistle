@@ -50,7 +50,6 @@ void VistleObserver::deleteHub(int hub) {
 
 void VistleObserver::moduleAvailable(const vistle::AvailableModule &mod) {
    emit moduleAvailable_s(mod.hub(),
-                          QString::fromStdString(vistle::VistleConnection::the().ui().state().hubName(mod.hub())),
                           QString::fromStdString(mod.name()),
                           QString::fromStdString(mod.path()),
                           QString::fromStdString(mod.description()));

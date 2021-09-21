@@ -466,7 +466,7 @@ void DataFlowNetwork::createModuleCompound()
 {
    std::cerr << "saving preset" << std::endl;
         QString filter = "Vistle Compound Files (*";
-        filter += vistle::ModulePresetExtension.c_str();
+        filter += vistle::moduleCompoundSuffix.c_str();
         filter +=    +")";
         QString text =
             QFileDialog::getSaveFileName(nullptr, tr("Save Compound"), vistle::directory::configHome().c_str(),
@@ -534,7 +534,6 @@ void DataFlowNetwork::createModuleCompound()
             }
             ++i;
         }
-        moduleCompoundToFile(comp);
         comp.send(std::bind(&vistle::VistleConnection::sendMessage, m_vistleConnection, std::placeholders::_1,
                             std::placeholders::_2));
 }

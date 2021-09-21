@@ -39,6 +39,7 @@
 #include "fileinfocrawler.h"
 #include "scanscripts.h"
 #ifdef HAVE_PYTHON
+#include <vistle/userinterface/pythonmodule.h>
 #include "pythoninterpreter.h"
 #endif
 
@@ -1246,7 +1247,18 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          return true;
          break;
       }
-
+    case message::CREATEMODULECOMPOUND:
+    {
+        if (!payload)
+        {
+        std::cerr << "missing payload for CREATEMODULECOMPOUND message!" << std::endl;
+        break;
+        }
+        ModuleCompound comp(msg, *payload);
+#ifdef HAVE_PYTHON
+        moduleCompoundToFile(comp);
+#endif
+    }
       default:
          break;
    }
