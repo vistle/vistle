@@ -39,7 +39,7 @@ public:
     const std::string &description() const;
     void setHub(int hubId);
     std::string print() const;
-
+    bool isCompound() const;
     struct SubModule {
         std::string name;
         float x, y; //offset in mapeditor if split
@@ -116,12 +116,15 @@ private:
     }
 };
 const std::string moduleCompoundSuffix = ".vsl";
-
+class ModuleCompound;
 class V_COREEXPORT AvailableModule: public AvailableModuleBase {
 public:
+    friend class ModuleCompound;
     using AvailableModuleBase::AvailableModuleBase;
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+private:
+    AvailableModule(ModuleCompound &&other);
 };
 
 class V_COREEXPORT ModuleCompound: public AvailableModuleBase {
@@ -129,6 +132,7 @@ public:
     using AvailableModuleBase::AvailableModuleBase;
     bool send(const sendMessageFunction &func) const;
     bool send(const sendShmMessageFunction &func) const;
+    AvailableModule transform(); //this invalidates this object;
 };
 typedef std::map<AvailableModule::Key, AvailableModule> AvailableMap;
 

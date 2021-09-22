@@ -144,6 +144,12 @@ std::string AvailableModuleBase::print() const
     return ss.str();
 }
 
+bool AvailableModuleBase::isCompound() const
+{
+    return m_submodules.size();
+}
+
+
 AvailableModuleBase::Key::Key(int hub, const std::string &name): hub(hub), name(name)
 {}
 
@@ -154,6 +160,10 @@ bool AvailableModuleBase::Key::operator<(const Key &rhs) const
     }
     return hub < rhs.hub;
 }
+
+AvailableModule::AvailableModule(ModuleCompound &&other)
+:AvailableModuleBase(std::move(other)){}
+
 
 bool AvailableModule::send(const sendMessageFunction &func) const
 {
@@ -174,5 +184,11 @@ bool ModuleCompound::send(const sendShmMessageFunction &func) const
 {
     return AvailableModuleBase::send(message::Type::CREATEMODULECOMPOUND, func);
 }
+
+AvailableModule ModuleCompound::transform()
+{
+    return AvailableModule{std::move(*this)};
+}
+
 
 } // namespace vistle
