@@ -1431,25 +1431,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                  assert(spawn.hubId() == m_hubId);
                  assert(m_ready);
 
-                 std::string name = spawn.getName();
-                 AvailableModule::Key key(spawn.hubId(), name);
-                 const AvailableModule *mod = nullptr;
-                 auto it = m_availableModules.find(key);
-                 if (it != m_availableModules.end()) {
-                     mod = &it->second;
-                 }
-                 if (!mod) {
-                     if (spawn.hubId() == m_hubId) {
-                         std::stringstream str;
-                         str << "refusing to spawn " << name << ":" << spawn.spawnId() << ": not in list of available modules";
-                         sendError(str.str());
-                         auto ex = make.message<message::ModuleExit>();
-                         ex.setSenderId(spawn.spawnId());
-                         sendManager(ex);
-                     }
+                 const AvailableModule *mod = findModule({spawn.hubId(), spawn.getName()}, spawn.spawnId());
+                 if (!mod)
                      return true;
-                 }
-                 spawnModule(mod->path(), name, spawn.spawnId());
+                 spawnModule(mod->path(), spawn.getName(), spawn.spawnId());
 #endif
              }
              break;
@@ -2244,6 +2229,27 @@ void Hub::emergencyQuit() {
         exit(1);
     }
 }
+
+const AvailableModule *Hub::findModule(const AvailableModule::Key& key, int spawnId)
+{
+    const AvailableModule *mod = nullptr;
+    auto it = m_availableModules.find(key);
+    if (it != m_availableModules.end()) {
+        mod = &it->second;
+    }
+    if (!mod) {
+        if (key.hub == m_hubId) {
+            std::stringstream str;
+            str << "refusing to spawn " << key.name << ":" << spawnId << ": not in list of available modules";
+            sendError(str.str());
+            auto ex = make.message<message::ModuleExit>();
+            ex.setSenderId(spawnId);
+            sendManager(ex);
+        }
+    }
+    return mod;
+}
+
 
 void Hub::spawnModule(const std::string &path, const std::string &name, int spawnId)
 {
