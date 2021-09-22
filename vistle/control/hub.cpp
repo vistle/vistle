@@ -1226,12 +1226,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
              break;
          }
          AvailableModule mod(msg, *payload);
-         if (mod.hub() == Id::Invalid && senderType == message::Identify::MANAGER) {
+         if (mod.hub() == Id::Invalid && senderType == Identify::MANAGER)
              mod.setHub(m_hubId);
-         }
-         if (mod.hub() == Id::Invalid && senderType == Identify::MANAGER) {
-             m_localModules.emplace_back(std::move(mod));
-         } else if (mod.hub() == Id::Invalid) {
+         if (mod.hub() == Id::Invalid) {
              CERR << "invalid module message from " << senderType << ": " << mod.print() << std::endl;
          } else {
              AvailableModule::Key key(mod.hub(), mod.name());
