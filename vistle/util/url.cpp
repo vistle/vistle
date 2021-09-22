@@ -41,7 +41,7 @@ Url::Url(const std::string &url)
         return;
 
     auto it = url.begin();
-    // must contain scheme and must begin with an aplhabet character
+    // must contain scheme and must begin with an alphabet character
     if (!isalpha(*it))
         return;
 
