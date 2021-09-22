@@ -1449,27 +1449,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                      }
                      return true;
                  }
-                 const std::string &path = mod->path();
-                 const std::string &executable = path;
-                 std::vector<std::string> argv;
-                 argv.push_back(executable);
-                 argv.push_back(Shm::instanceName(hostname(), m_port));
-                 argv.push_back(name);
-                 argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
-                 std::cerr << "starting module " << name << std::endl;
-                 auto pid = launchProcess(argv);
-                 if (pid) {
-                     //CERR << "started " << executable << " with PID " << pid << std::endl;
-                     m_processMap[pid] = spawn.spawnId();
-                 } else {
-                     std::stringstream str;
-                     str << "program " << argv[0] << " failed to start";
-                     sendError(str.str());
-                     auto ex = make.message<message::ModuleExit>();
-                     ex.setSenderId(spawn.spawnId());
-                     sendManager(ex);
-                 }
- 
+                 spawnModule(mod->path(), name, spawn.spawnId());
 #endif
              }
              break;
@@ -2264,5 +2244,28 @@ void Hub::emergencyQuit() {
         exit(1);
     }
 }
+
+void Hub::spawnModule(const std::string &path, const std::string &name, int spawnId)
+{
+    std::vector<std::string> argv;
+    argv.push_back(path);
+    argv.push_back(Shm::instanceName(hostname(), m_port));
+    argv.push_back(name);
+    argv.push_back(boost::lexical_cast<std::string>(spawnId));
+    std::cerr << "starting module " << name << std::endl;
+    auto pid = launchProcess(argv);
+    if (pid) {
+        //CERR << "started " << mod->path() << " with PID " << pid << std::endl;
+        m_processMap[pid] = spawnId;
+    } else {
+        std::stringstream str;
+        str << "program " << argv[0] << " failed to start";
+        sendError(str.str());
+        auto ex = make.message<message::ModuleExit>();
+        ex.setSenderId(spawnId);
+        sendManager(ex);
+    }
+}
+
 
 } // namespace vistle

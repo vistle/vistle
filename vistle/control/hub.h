@@ -160,7 +160,7 @@ private:
    bool checkChildProcesses(bool emergency = false);
    bool hasChildProcesses(bool ignoreGui = false);
    void emergencyQuit();
-
+   void spawnModule(const std::string &path, const std::string &name, int spawnId);
    std::vector<message::Buffer> m_queue;
    bool handleQueue();
 
