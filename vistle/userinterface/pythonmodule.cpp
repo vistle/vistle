@@ -933,7 +933,6 @@ static void moduleCompoundCreate(int compoundId)
     mc->module.send([](const message::Message &msg, const buffer *payload)-> bool{
         return sendMessage(msg, payload);
         });
-    moduleCompoundToFile(mc->module);
     compounds.erase(mc);
 }
 
