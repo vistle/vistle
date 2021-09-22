@@ -193,19 +193,21 @@ bool Hub::init(int argc, char *argv[]) {
 
    namespace po = boost::program_options;
    po::options_description desc("usage");
-   desc.add_options()
-      ("help,h", "show this message")
-      ("hub,c", po::value<std::string>(), "connect to hub")
-      ("batch,b", "do not start user interface")
-      ("gui,g", "start graphical user interface")
-      ("tui,t", "start command line interface (requires ipython)")
-      ("port,p", po::value<unsigned short>(), "control port")
-      ("dataport", po::value<unsigned short>(), "data port")
-      ("execute,e", "call compute() after workflow has been loaded")
-      ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
-      ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
-       ("url", "Vistle URL, script to process, or slave name")
-      ;
+    // clang-format off
+    desc.add_options()
+        ("help,h", "show this message")
+        ("hub,c", po::value<std::string>(), "connect to hub")
+        ("batch,b", "do not start user interface")
+        ("gui,g", "start graphical user interface")
+        ("tui,t", "start command line interface (requires ipython)")
+        ("port,p", po::value<unsigned short>(), "control port")
+        ("dataport", po::value<unsigned short>(), "data port")
+        ("execute,e", "call compute() after workflow has been loaded")
+        ("libsim,l", po::value<std::string>(), "connect to a LibSim instrumented simulation by entering the path to the .sim2 file")
+        ("exposed,gateway-host,gateway,gw", po::value<std::string>(), "ports are exposed externally on this host")
+        ("url", "Vistle URL, script to process, or slave name")
+    ;
+    // clang-format on
    po::variables_map vm;
    try {
       po::positional_options_description popt;

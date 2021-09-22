@@ -58,6 +58,7 @@ const unsigned UnstructuredGrid::FaceSizes[UnstructuredGrid::NUM_TYPES][Unstruct
    { 4, 4, 4, 4, 4, 4 },
 };
 
+// clang-format off
 const unsigned UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][UnstructuredGrid::MaxNumFaces][UnstructuredGrid::MaxNumVertices] = {
 { // none
 },
@@ -137,6 +138,7 @@ const unsigned UnstructuredGrid::FaceVertices[UnstructuredGrid::NUM_TYPES][Unstr
    { 4, 7, 3, 0 },
 }
 };
+// clang-format on
 
 UnstructuredGrid::UnstructuredGrid(const Index numElements,
       const Index numCorners,

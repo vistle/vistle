@@ -5,6 +5,7 @@
 
  * License: LGPL 2+ */
 
+// clang-format off
 #ifndef FOAMTOOLBOX_H
 #define FOAMTOOLBOX_H
 
